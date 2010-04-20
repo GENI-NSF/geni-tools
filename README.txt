@@ -1,5 +1,5 @@
 Instructions
-=============
+============
 
 1. Initialize the clearinghouse:
 
