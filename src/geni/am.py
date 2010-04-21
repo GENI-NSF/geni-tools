@@ -81,6 +81,9 @@ class AggregateManagerServer(object):
         if delegate is None:
             delegate = PrintingAggregateManager()
         self._server.register_instance(AggregateManager(delegate))
+        # Set the server on the delegate so it can access the
+        # client certificate.
+        delegate._server = self._server
 
     def serve_forever(self):
         self._server.serve_forever()

@@ -3,9 +3,9 @@
 import optparse
 import random
 import sys
-import uuid
 import xml.dom.minidom as minidom
 import xmlrpclib
+import sfa.trust.credential as cred
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
@@ -149,28 +149,38 @@ def test_list_resources(server, credentials):
     print dom
     return dom
 
-def exercise_am(host, port, keyfile, certfile, verbose=False):
+def exercise_am(ch_server, am_server):
+    # Create a slice at the clearinghouse
+    slice_cred_string = ch_server.CreateSlice()
+    slice_credential = cred.Credential(string=slice_cred_string)
+    slice_gid = slice_credential.get_gid_object()
+    slice_urn = slice_gid.get_urn()
+    print 'Slice URN = %s' % (slice_urn)
+    
+    # Set up the array of credentials as just the slice credential
+    credentials = [slice_cred_string]
+
+    test_get_version(am_server)
+    dom = test_list_resources(am_server, credentials)
+    test_create_sliver(am_server, slice_urn, credentials, dom)
+    test_sliver_status(am_server, slice_urn, credentials)
+    #TODO: Fix expiration time
+    test_renew_sliver(am_server, slice_urn, credentials, 10)
+    test_delete_sliver(am_server, slice_urn, credentials)
+    test_shutdown(am_server, slice_urn, credentials)
+
+def make_server(host_port, keyfile, certfile, verbose=False):
+    """Create an SSL connection to an XML RPC server.
+    Returns the XML RPC server proxy.
+    """
+    host, port = host_port.split(':')
     cert_transport = SafeTransportWithCert(keyfile=keyfile, certfile=certfile)
     url = 'https://%s' % (host)
     if port:
         url = '%s:%s' % (url, port)
-    server = xmlrpclib.ServerProxy(url, transport=cert_transport,
-                                   verbose=verbose)
-    # Temporary until CH is connected
-    slice_urn = str(uuid.uuid4())
-    slice_credential = '<credential/>'
-    credentials = [slice_credential]
-    print credentials
-
-    test_get_version(server)
-    dom = test_list_resources(server, credentials)
-    test_create_sliver(server, slice_urn, credentials, dom)
-    test_sliver_status(server, slice_urn, credentials)
-    #TODO: Fix expiration time
-    test_renew_sliver(server, slice_urn, credentials, 10)
-    test_delete_sliver(server, slice_urn, credentials)
-    test_shutdown(server, slice_urn, credentials)
-
+    return xmlrpclib.ServerProxy(url, transport=cert_transport,
+                                 verbose=verbose)
+    
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
@@ -183,18 +193,21 @@ def parse_args(argv):
                       help="server ip", metavar="HOST")
     parser.add_option("-p", "--port", type=int, default=8000,
                       help="server port", metavar="PORT")
-    parser.add_option("--ch", action="store_true", default=False,
+    parser.add_option("--ch", default='localhost:8000',
                       help="exercise clearinghouse")
+    parser.add_option("--am", default='localhost:8001',
+                      help="exercise clearinghouse")
+    parser.add_option("--debug", action="store_true", default=False,
+                       help="enable debugging output")
     return parser.parse_args()
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
-    opts, args = parse_args(argv)
-    if opts.ch:
-        exercise_ch(opts.host, opts.port, opts.keyfile, opts.certfile)
-    else:
-        exercise_am(opts.host, opts.port, opts.keyfile, opts.certfile)
+    opts = parse_args(argv)[0]
+    ch_server = make_server(opts.ch, opts.keyfile, opts.certfile, opts.debug)
+    am_server = make_server(opts.am, opts.keyfile, opts.certfile, opts.debug)
+    exercise_am(ch_server, am_server)
     return 0
 
 if __name__ == "__main__":

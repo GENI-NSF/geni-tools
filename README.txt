@@ -2,65 +2,26 @@
 Instructions
 ============
 
-1. Initialize the clearinghouse:
+1. Initialize the certificate authority and generate keys and certificates:
 
- $ gch.py init
+ $ src/init-ca.py
 
- This creates a demoCA directory and walks you through creating a
- certificate authority certificate and key. You must specify a common
- name (I used "ca"), but you can take the default values for everything
- else. Remember the key password, you will need it later. I used "myca".
+ This creates a certificate authority key and certificate and then
+ creates keys and certificates for a clearinghouse (ch), an aggregate
+ manager (am), and a researcher (alice).
 
-2. Create the am ssl certificate
+2. Start the clearinghouse server:
 
- $ openssl req -new -keyout am-skey.pem -out am-req.pem -days 365
+ $ src/gch.py -r ca-cert.pem -c am-cert.pem -k am-key.pem
 
- This creates a password protected key name am-skey.pem and a
- certificate request. As above, don't forget the key password ("myam")
- and you must fill in the common name field ("am").
+3. Start the aggregate manager server:
 
-3. Sign the am ssl certificate
+ $ src/gam.py -r ca-cert.pem -c am-cert.pem -k am-key.pem
 
- $ gch.py sign -i am-req.pem -o am-cert.pem
+4. Run the client
 
- You will be prompted for the ca key password and then asked to sign
- and commit the certificate. Answer 'y' to both questions.
-
-4. [Optional] Unprotect the am key
-
- $ openssl rsa -in am-skey.pem -out am-key.pem
-
- This removes the password protection on the am key, making it more
- convenient to use when running the sample am. If you choose not to do
- this you will be prompted for the password whenever you launch the am.
-
-5. Create a researcher certificate request:
-
- $ openssl req -new -keyout alice-skey.pem -out alice-req.pem -days 365
-
- Same as above. I used common name "alice", password "alice".
-
-4. Sign the certificate request:
-
- $ gch.py sign -i alice-req.pem -o alice-cert.pem
-
- Same as above.
-
-5. [Optional] Unprotect the researcher key:
-
- $ openssl rsa -in alice-skey.pem -out alice-key.pem
-
- Same as above.
-
-6. Start the aggregate manager server:
-
- $ gam.py -r demoCA/cacert.pem -c am-cert.pem -k am-key.pem
-
- Use "am-skey.pem" if you did not unprotect the researcher key.
-
-7. Run the client
-
- $ client.py -c alice-cert.pem -k alice-key.pem
+ $ client.py -c alice-cert.pem -k alice-key.pem --ch localhost:8000 \
+     --am localhost:8001
 
  The output should show some basic API testing, and possibly some
  debug output.

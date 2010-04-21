@@ -5,6 +5,7 @@ from SecureXMLRPCServer import SecureXMLRPCServer
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 import sfa.trust.credential as cred
+import sfa.trust.rights as rights
 
 class ClearinghouseServer(object):
     """The public API for the Clearinghouse.  This class provides the
@@ -114,7 +115,8 @@ class Clearinghouse(object):
         ucred.set_gid_caller(user_gid)
         ucred.set_gid_object(slice_gid)
         ucred.set_lifetime(3600)
-        ucred.set_privileges("embed:1, bind:1")
+        privileges = rights.determine_rights('user', None)
+        ucred.set_privileges(privileges)
         ucred.encode()
         ucred.set_issuer_keys(self.keyfile, self.certfile)
         ucred.sign()

@@ -13,11 +13,27 @@ import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 import geni
+import sfa.trust.credential as cred
+import sfa.trust.gid as gid
 
 class CredentialVerifier(object):
 
-    def verify(self, credential, permissions):
-        return True
+    def verify(self, credential_string, target=None, source=None,
+               permissions=None):
+        credential = cred.Credential(string=credential_string)
+        # TODO: Verify signature
+        if target:
+            target_urn = credential.get_gid_object().get_urn()
+            if target_urn != target:
+                return False
+        if source:
+            source_urn = credential.get_gid_caller().get_urn()
+            if source_urn != source:
+                fault_code = 'Credential Verification Error'
+                fault_string = 'expected source %s, found source %s'
+                fault_string = fault_string % (source, source_urn)
+                raise xmlrpclib.Fault(fault_code, fault_string)
+        return credential.get_privileges()
 
 
 class Resource(object):
@@ -62,11 +78,19 @@ class AggregateManager(object):
     def __init__(self):
         self._slivers = dict()
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
+        self._cred_verifier = CredentialVerifier()
 
     def GetVersion(self):
         return dict(geni_api=1)
 
     def ListResources(self, credentials, options):
+        user_gid = gid.GID(string=str(self._server.pem_cert))
+        privs = self._cred_verifier.verify(credentials[0],
+                                           source=user_gid.get_urn())
+        print 'Privileges = %r' % (privs)
+        if not privs.can_perform('listresources'):
+            raise xmlrpclib.Fault('Insufficient Privileges',
+                                  'Requires listresources, found %r' % (privs.save_to_string()))
         compressed = False
         if options and 'geni_compressed' in options:
             compressed  = options['geni_compressed']
@@ -147,7 +171,7 @@ def parse_args(argv):
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", default='127.0.0.1',
                       help="server ip", metavar="HOST")
-    parser.add_option("-p", "--port", type=int, default=8000,
+    parser.add_option("-p", "--port", type=int, default=8001,
                       help="server port", metavar="PORT")
     parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose", default=True,
