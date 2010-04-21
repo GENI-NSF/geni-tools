@@ -1,7 +1,7 @@
 # Copyright (c) 2008 Board of Trustees, Princeton University
 #
 # Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the “Work”) to
+# a copy of this software and/or hardware specification (the "Work") to
 # deal in the Work without restriction, including without limitation the
 # rights to use, copy, modify, merge, publish, distribute, sublicense,
 # and/or sell copies of the Work, and to permit persons to whom the Work
