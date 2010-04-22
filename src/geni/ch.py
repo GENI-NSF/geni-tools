@@ -44,18 +44,19 @@ class Clearinghouse(object):
     def __init__(self):
         pass
 
-    def runserver(self, addr, basedir='.', keyfile=None, certfile=None,
+    def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None):
         """Run the clearinghouse server."""
         self.keyfile = keyfile
         self.certfile = certfile
         # Create the xmlrpc server, load the rootkeys and do the ssl thing.
-        self._server = self._make_server(addr, basedir, keyfile, certfile,
+        self._server = self._make_server(addr, keyfile, certfile,
                                          ca_certs)
         self._server.register_instance(SampleClearinghouseServer(self))
+        print 'Listening on port %d...' % (addr[1])
         self._server.serve_forever()
 
-    def _make_server(self, addr, basedir='.', keyfile=None, certfile=None,
+    def _make_server(self, addr, keyfile=None, certfile=None,
                      ca_certs=None):
         """Creates the XML RPC server."""
         return SecureXMLRPCServer(addr, keyfile=keyfile, certfile=certfile,

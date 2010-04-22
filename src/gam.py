@@ -173,15 +173,14 @@ def parse_args(argv):
                       help="server ip", metavar="HOST")
     parser.add_option("-p", "--port", type=int, default=8001,
                       help="server port", metavar="PORT")
-    parser.add_option("-q", "--quiet",
-                      action="store_false", dest="verbose", default=True,
-                      help="don't print status messages to stdout")
+    parser.add_option("--debug", action="store_true", default=False,
+                       help="enable debugging output")
     return parser.parse_args()
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
-    opts, args = parse_args(argv)
+    opts = parse_args(argv)[0]
     ams = geni.AggregateManagerServer((opts.host, opts.port),
                                       delegate=AggregateManager(),
                                       keyfile=opts.keyfile,
