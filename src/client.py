@@ -45,11 +45,8 @@ def verify_rspec(rspec):
     # The children of the top level node should all be named 'resource'
     dom = minidom.parseString(rspec)
     top = dom.documentElement
-    if top.tagName != 'rspec':
+    if top.tagName.lower() != 'rspec':
         return None
-    for node in top.childNodes:
-        if node.tagName != 'resource':
-            return None
     return dom
 
 def test_create_sliver(server, slice_urn, slice_credential, dom):
