@@ -160,6 +160,16 @@ def exercise_am(ch_server, am_server):
     #TODO: Fix expiration time
     test_renew_sliver(am_server, slice_urn, credentials, 10)
     test_delete_sliver(am_server, slice_urn, credentials)
+    
+    # Now create a slice and shut it down instead of deleting it.
+    slice_cred_string = ch_server.CreateSlice()
+    slice_credential = cred.Credential(string=slice_cred_string)
+    slice_gid = slice_credential.get_gid_object()
+    slice_urn = slice_gid.get_urn()
+    print 'Second Slice URN = %s' % (slice_urn)
+    credentials = [slice_cred_string]
+    dom = test_list_resources(am_server, credentials)
+    test_create_sliver(am_server, slice_urn, credentials, dom)
     test_shutdown(am_server, slice_urn, credentials)
 
 def make_server(host_port, keyfile, certfile, verbose=False):
