@@ -106,6 +106,7 @@ class AggregateManager(object):
         return dict(geni_api=1)
 
     def ListResources(self, credentials, options):
+        print 'ListResources(%r)' % (options)
         privileges = ('listresources',)
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
@@ -123,6 +124,11 @@ class AggregateManager(object):
 
     def CreateSliver(self, slice_urn, credentials, rspec):
         print 'CreateSliver(%r)' % (slice_urn)
+        privileges = ('createsliver',)
+        self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                credentials,
+                                                slice_urn,
+                                                privileges)
         if slice_urn in self._slivers:
             raise Exception('Sliver already exists.')
         rspec_dom = minidom.parseString(rspec)
@@ -141,6 +147,11 @@ class AggregateManager(object):
 
     def DeleteSliver(self, slice_urn, credentials):
         print 'DeleteSliver(%r)' % (slice_urn)
+        privileges = ('deleteslice',)
+        self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                credentials,
+                                                slice_urn,
+                                                privileges)
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
             # return the resources to the pool
@@ -153,9 +164,13 @@ class AggregateManager(object):
     def SliverStatus(self, slice_urn, credentials):
         # Loop over the resources in a sliver gathering status.
         print 'SliverStatus(%r)' % (slice_urn)
+        privileges = ('getsliceresources',)
+        self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                credentials,
+                                                slice_urn,
+                                                privileges)
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
-            sliver_status = None
             res_status = list()
             for res in sliver.resources():
                 urn = geni.urn_to_publicid(res.urn())
@@ -163,7 +178,7 @@ class AggregateManager(object):
                                        geni_status='ready',
                                        geni_error=''))
             return dict(geni_urn=sliver.urn,
-                        # XXX need to calculate sliver status
+                        # TODO: need to calculate sliver status
                         geni_status='ready',
                         geni_resources=res_status)
         else:
@@ -171,10 +186,13 @@ class AggregateManager(object):
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         print 'RenewSliver(%r, %r)' % (slice_urn, expiration_time)
+        # No permission for Renew currently exists.
+        # TODO: error if slice does not exist.
         return False
 
     def Shutdown(self, slice_urn, credentials):
         print 'Shutdown(%r)' % (slice_urn)
+        # No permission for Renew currently exists.
         # TODO: error if slice does not exist.
         return False
 
