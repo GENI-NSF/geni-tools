@@ -182,19 +182,29 @@ class AggregateManager(object):
                         geni_status='ready',
                         geni_resources=res_status)
         else:
-            raise Exception('No such slice.')
+            self.no_such_slice(slice_urn)
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         print 'RenewSliver(%r, %r)' % (slice_urn, expiration_time)
         # No permission for Renew currently exists.
-        # TODO: error if slice does not exist.
-        return False
+        if slice_urn in self._slivers:
+            return False
+        else:
+            self.no_such_slice(slice_urn)
 
     def Shutdown(self, slice_urn, credentials):
         print 'Shutdown(%r)' % (slice_urn)
         # No permission for Renew currently exists.
-        # TODO: error if slice does not exist.
-        return False
+        if slice_urn in self._slivers:
+            return False
+        else:
+            self.no_such_slice(slice_urn)
+
+    def no_such_slice(self, slice_urn):
+        "Raise a no such slice exception."
+        fault_code = 'No such slice.'
+        fault_string = 'The slice named by %s does not exist' % (slice_urn)
+        raise xmlrpclib.Fault(fault_code, fault_string)
 
 
 def parse_args(argv):
