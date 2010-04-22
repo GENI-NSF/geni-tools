@@ -1,5 +1,4 @@
 
-import datetime
 import uuid
 from SecureXMLRPCServer import SecureXMLRPCServer
 import sfa.trust.gid as gid
@@ -86,7 +85,7 @@ class Clearinghouse(object):
                                                         port)
         urn = urn_to_publicid(public_id)
         # Create a credential authorizing this user to use this slice.
-        (slice_gid, slice_keys) = self.create_slice_gid(slice_uuid, urn)
+        slice_gid  = self.create_slice_gid(slice_uuid, urn)[0]
         user_gid = gid.GID(string=str(self._server.pem_cert))
         try:
             slice_cred = self.create_slice_credential(user_gid,
@@ -117,6 +116,7 @@ class Clearinghouse(object):
         ucred.set_gid_object(slice_gid)
         ucred.set_lifetime(3600)
         privileges = rights.determine_rights('user', None)
+        privileges.add('embed')
         ucred.set_privileges(privileges)
         ucred.encode()
         ucred.set_issuer_keys(self.keyfile, self.certfile)
