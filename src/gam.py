@@ -17,24 +17,46 @@ import sfa.trust.credential as cred
 import sfa.trust.gid as gid
 
 class CredentialVerifier(object):
+    
+    def verify_from_strings(self, gid_string, cred_strings, target_urn,
+                            privileges):
+        def make_cred(cred_string):
+            return cred.Credential(string=cred_string)
+        self.verify(gid.GID(string=gid_string),
+                    map(make_cred, cred_strings),
+                    target_urn,
+                    privileges)
+        
+    def verify_source(self, source_gid, credential):
+        source_urn = source_gid.get_urn()
+        cred_source_urn = credential.get_gid_caller().get_urn()
+        return cred_source_urn == source_urn
+    
+    def verify_target(self, target_urn, credential):
+        if not target_urn:
+            return True
+        else:
+            cred_target_urn = credential.get_gid_object().get_urn()
+            return target_urn == cred_target_urn
+    
+    def verify_privileges(self, privileges, credential):
+        result = True
+        privs = credential.get_privileges()
+        for priv in privileges:
+            result = result and privs.can_perform(priv)
+        return result
 
-    def verify(self, credential_string, target=None, source=None,
-               permissions=None):
-        credential = cred.Credential(string=credential_string)
-        # TODO: Verify signature
-        if target:
-            target_urn = credential.get_gid_object().get_urn()
-            if target_urn != target:
-                return False
-        if source:
-            source_urn = credential.get_gid_caller().get_urn()
-            if source_urn != source:
-                fault_code = 'Credential Verification Error'
-                fault_string = 'expected source %s, found source %s'
-                fault_string = fault_string % (source, source_urn)
-                raise xmlrpclib.Fault(fault_code, fault_string)
-        return credential.get_privileges()
-
+    def verify(self, gid, credentials, target_urn, privileges):
+        for cred in credentials:
+            if (self.verify_source(gid, cred) and
+                self.verify_target(target_urn, cred) and
+                self.verify_privileges(privileges, cred)):
+                return True
+        # We did not find any credential with sufficient privileges
+        # Raise an exception.
+        fault_code = 'Insufficient privileges'
+        fault_string = 'No credential was found with appropriate privileges.'
+        raise xmlrpclib.Fault(fault_code, fault_string)
 
 class Resource(object):
 
@@ -74,7 +96,7 @@ class Sliver(object):
 
 
 class AggregateManager(object):
-
+    
     def __init__(self):
         self._slivers = dict()
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
@@ -84,13 +106,11 @@ class AggregateManager(object):
         return dict(geni_api=1)
 
     def ListResources(self, credentials, options):
-        user_gid = gid.GID(string=str(self._server.pem_cert))
-        privs = self._cred_verifier.verify(credentials[0],
-                                           source=user_gid.get_urn())
-        print 'Privileges = %r' % (privs)
-        if not privs.can_perform('listresources'):
-            raise xmlrpclib.Fault('Insufficient Privileges',
-                                  'Requires listresources, found %r' % (privs.save_to_string()))
+        privileges = ('listresources',)
+        self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                credentials,
+                                                None,
+                                                privileges)
         compressed = False
         if options and 'geni_compressed' in options:
             compressed  = options['geni_compressed']
