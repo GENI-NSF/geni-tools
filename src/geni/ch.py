@@ -76,8 +76,6 @@ class Clearinghouse(object):
     def CreateSlice(self):
         # Create a random uuid for the slice
         slice_uuid = uuid.uuid4()
-        # Who created the slice? Use the peer cert.
-        print self._server.pem_cert
         # Where was the slice created?
         (ipaddr, port) = self._server.socket._sock.getsockname()
         public_id = 'IDN geni.net//slice//%s//%s:%d' % (slice_uuid,
@@ -85,7 +83,8 @@ class Clearinghouse(object):
                                                         port)
         urn = urn_to_publicid(public_id)
         # Create a credential authorizing this user to use this slice.
-        slice_gid  = self.create_slice_gid(slice_uuid, urn)[0]
+        slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
+        # Get the creator info from the peer certificate
         user_gid = gid.GID(string=str(self._server.pem_cert))
         try:
             slice_cred = self.create_slice_credential(user_gid,
@@ -94,6 +93,7 @@ class Clearinghouse(object):
             import traceback
             traceback.print_exc()
             raise
+        print 'Created slice %r' % (urn)
         return slice_cred.save_to_string()
 
     def ListAggregates(self):

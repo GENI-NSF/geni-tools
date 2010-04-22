@@ -124,7 +124,7 @@ def test_shutdown(server, slice_urn, credentials):
         print 'returned %r instead of boolean value' % (result)
 
 def test_get_version(server):
-    print 'Testing GetVersion...'
+    print 'Testing GetVersion...',
     vdict = server.GetVersion()
     if vdict['geni_api'] == 1:
         print 'passed'
@@ -132,18 +132,14 @@ def test_get_version(server):
         print 'failed'
 
 def test_list_resources(server, credentials):
-    print 'Testing ListResources...'
+    print 'Testing ListResources...',
     options = dict()
     rspec = server.ListResources(credentials, options)
-    print
-    print rspec
-    print
     dom = verify_rspec(rspec)
     if dom:
         print 'passed'
     else:
         print 'failed'
-    print dom
     return dom
 
 def exercise_am(ch_server, am_server):
