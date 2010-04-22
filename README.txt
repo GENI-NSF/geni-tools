@@ -20,8 +20,8 @@ Instructions
 
 4. Run the client
 
- $ client.py -c alice-cert.pem -k alice-key.pem --ch localhost:8000 \
-     --am localhost:8001
+ $ src/client.py -c alice-cert.pem -k alice-key.pem \
+     --ch https://localhost:8000/ --am https://localhost:8001/
 
  The output should show some basic API testing, and possibly some
  debug output.

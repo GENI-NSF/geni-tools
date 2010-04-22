@@ -172,15 +172,11 @@ def exercise_am(ch_server, am_server):
     test_create_sliver(am_server, slice_urn, credentials, dom)
     test_shutdown(am_server, slice_urn, credentials)
 
-def make_server(host_port, keyfile, certfile, verbose=False):
+def make_server(url, keyfile, certfile, verbose=False):
     """Create an SSL connection to an XML RPC server.
     Returns the XML RPC server proxy.
     """
-    host, port = host_port.split(':')
     cert_transport = SafeTransportWithCert(keyfile=keyfile, certfile=certfile)
-    url = 'https://%s' % (host)
-    if port:
-        url = '%s:%s' % (url, port)
     return xmlrpclib.ServerProxy(url, transport=cert_transport,
                                  verbose=verbose)
     
@@ -196,10 +192,10 @@ def parse_args(argv):
                       help="server ip", metavar="HOST")
     parser.add_option("-p", "--port", type=int, default=8000,
                       help="server port", metavar="PORT")
-    parser.add_option("--ch", default='localhost:8000',
-                      help="exercise clearinghouse")
-    parser.add_option("--am", default='localhost:8001',
-                      help="exercise clearinghouse")
+    parser.add_option("--ch", default='https://localhost:8000/',
+                      help="clearinghouse URL")
+    parser.add_option("--am", default='https://localhost:8001/',
+                      help="aggregate manager URL")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
     return parser.parse_args()
