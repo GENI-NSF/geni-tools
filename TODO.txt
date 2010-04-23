@@ -1,0 +1,15 @@
+
+Things to do:
+
+ * Put a copyright header on all source files.
+
+ * Update README.txt to include a description of the package and
+   external software dependencies (M2Crypto, dateutil, xmlsec1).
+
+ * Update the PlanetLab code to a well-defined revision and document
+   that revision in the sfa README.txt
+
+ * Per above, add a README.txt to the sfa dir explaining the genesis
+   of the package and the license and the revision.
+
+ * Implement client and server sides of RenewSliver
