@@ -25,7 +25,7 @@ import logging
 
 SFA_ACCESS_LOGFILE='/var/log/sfa_access.log'
 SFA_HTTPD_ACCESS_LOGFILE='/tmp/sfa_httpd_access.log'
-logger=logging.getLogger()
+logger=logging.getLogger('sfa')
 logger.setLevel(logging.INFO)
 try:
      logfile=logging.FileHandler(SFA_ACCESS_LOGFILE)
