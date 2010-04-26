@@ -31,6 +31,7 @@ if sys.version_info < (2, 6):
 elif sys.version_info >= (3,):
     raise Exception('Not python 3 ready')
 
+import logging
 import optparse
 import xml.dom.minidom as minidom
 import xmlrpclib
@@ -53,23 +54,41 @@ class CredentialVerifier(object):
     def verify_source(self, source_gid, credential):
         source_urn = source_gid.get_urn()
         cred_source_urn = credential.get_gid_caller().get_urn()
-        return cred_source_urn == source_urn
+        logging.debug('Verifying source %r against credential %r source %r',
+                      source_urn, credential, cred_source_urn)
+        result = (cred_source_urn == source_urn)
+        if result:
+            logging.debug('Source URNs match')
+        else:
+            logging.debug('Source URNs do not match')
+        return result
     
     def verify_target(self, target_urn, credential):
         if not target_urn:
+            logging.debug('No target specified, considering it a match.')
             return True
         else:
             cred_target_urn = credential.get_gid_object().get_urn()
-            return target_urn == cred_target_urn
-    
+            logging.debug('Verifying target %r against credential target %r',
+                          target_urn, cred_target_urn)
+            result = target_urn == cred_target_urn
+            if result:
+                logging.debug('Target URNs match.')
+            else:
+                logging.debug('Target URNs do not match.')
+            return result
+
     def verify_privileges(self, privileges, credential):
         result = True
         privs = credential.get_privileges()
         for priv in privileges:
-            result = result and privs.can_perform(priv)
+            if not privs.can_perform(priv):
+                logging.debug('Privilege %s not found', priv)
+                result = false
         return result
 
     def verify(self, gid, credentials, target_urn, privileges):
+        logging.debug('Verifying privileges')
         for cred in credentials:
             if (self.verify_source(gid, cred) and
                 self.verify_target(target_urn, cred) and
@@ -252,6 +271,10 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts = parse_args(argv)[0]
+    level = logging.INFO
+    if opts.debug:
+        level = logging.DEBUG
+    logging.basicConfig(level=level)
     ams = geni.AggregateManagerServer((opts.host, opts.port),
                                       delegate=AggregateManager(),
                                       keyfile=opts.keyfile,
