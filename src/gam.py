@@ -84,7 +84,7 @@ class CredentialVerifier(object):
         for priv in privileges:
             if not privs.can_perform(priv):
                 logging.debug('Privilege %s not found', priv)
-                result = false
+                result = False
         return result
 
     def verify(self, gid, credentials, target_urn, privileges):
