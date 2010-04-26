@@ -37,16 +37,16 @@
 # privilege_table is a list of priviliges and what operations are allowed
 # per privilege.
 
-privilege_table = {"authority": ["register", "remove", "update", "resolve", "list", "getcredential", "*"],
+privilege_table = {"authority": ["register", "remove", "update", "resolve", "list", "listresources", "getcredential", "*"],
                    "refresh": ["remove", "update"],
-                   "resolve": ["resolve", "list", "getcredential", "getversion"],
-                   "sa": ["getticket", "redeemslice", "redeemticket", "createslice", "deleteslice", "updateslice",  
+                   "resolve": ["resolve", "list", "listresources", "getcredential", "getversion"],
+                   "sa": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "deleteslice", "deletesliver", "updateslice",  
                           "getsliceresources", "getticket", "loanresources", "stopslice", "startslice", "renewsliver",
-                          "deleteslice", "resetslice", "listslices", "listnodes", "getpolicy", "sliverstatus"],
-                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice",  "deleteslice", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
+                          "deleteslice", "deletesliver", "resetslice", "listslices", "listnodes", "getpolicy", "sliverstatus"],
+                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver",  "deleteslice", "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
                    "bind": ["getticket", "loanresources", "redeemticket"],
-                   "control": ["updateslice", "createslice", "sliverstatus", "stopslice", "startslice", "deleteslice", "resetslice", "getsliceresources", "getgids"],
-                   "info": ["listslices", "listnodes", "getpolicy"],
+                   "control": ["updateslice", "createslice", "createsliver", "sliverstatus", "stopslice", "startslice", "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
+                   "info": ["listslices", "listnodes", "getpolicy","listresources"],
                    "ma": ["setbootstate", "getbootstate", "reboot", "getgids", "gettrustedcerts"],
                    "operator": ["gettrustedcerts", "getgids"]}
 
