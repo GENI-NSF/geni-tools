@@ -157,15 +157,20 @@ publicid_xforms = [(' ', '+'),
                    (':', '%3A'),
                    ('//', ':')]
 
+publicid_urn_prefix = 'urn:publicid:'
 
-def urn_to_publicid(id):
+def urn_to_publicid(urn):
     # Remove prefix
+    if not urn.startswith(publicid_urn_prefix):
+        # Erroneous urn for conversion
+        raise ValueError('Invalid urn: ' + urn)
+    publicid = urn[len(publicid_urn_prefix):]
     for a, b in reversed(publicid_xforms):
-        id = id.replace(b, a)
-    return id
+        publicid = publicid.replace(b, a)
+    return publicid
 
 def publicid_to_urn(id):
     for a, b in publicid_xforms:
         id = id.replace(a, b)
     # prefix with 'urn:publicid:'
-    return 'urn:publicid:' + id
+    return publicid_urn_prefix + id

@@ -33,6 +33,7 @@ key is created for a user named Alice.
 import optparse
 import os.path
 import sys
+import geni
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 import sfa.trust.credential as cred
@@ -45,9 +46,10 @@ AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
 
 def create_cert(subject, type, issuer_key=None, issuer_cert=None):
-    urn = 'urn:publicid:IDN+geni.net:gpo+%s+%s' % (type, subject)
+    publicid = 'IDN geni.net//gpo %s %s' % (type, subject)
+    urn = geni.publicid_to_urn(publicid)
     newgid = gid.GID(create=True, subject=subject, uuid=gid.create_uuid(),
-                  urn=urn)
+                     urn=urn)
     keys = cert.Keypair(create=True)
     newgid.set_pubkey(keys)
     if issuer_key:
