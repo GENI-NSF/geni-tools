@@ -23,11 +23,13 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import base64
 import optparse
 import random
 import sys
 import xml.dom.minidom as minidom
 import xmlrpclib
+import zlib
 import sfa.trust.credential as cred
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
@@ -91,7 +93,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
             top.appendChild(resources.item(index).cloneNode(True))
     manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
                                          request_rspec.toxml())
-    # XXX verify manifest_rspec
+    # TODO: verify manifest_rspec
     print 'passed'
 
 def test_delete_sliver(server, slice_urn, slice_credential):
@@ -154,10 +156,12 @@ def test_get_version(server):
     else:
         print 'failed'
 
-def test_list_resources(server, credentials):
+def test_list_resources(server, credentials, compressed=False):
     print 'Testing ListResources...',
-    options = dict()
+    options = dict(geni_compressed=compressed)
     rspec = server.ListResources(credentials, options)
+    if compressed:
+        rspec = zlib.decompress(base64.b64decode(rspec))
     dom = verify_rspec(rspec)
     if dom:
         print 'passed'
@@ -184,6 +188,9 @@ def exercise_am(ch_server, am_server):
     test_renew_sliver(am_server, slice_urn, credentials, 10)
     test_delete_sliver(am_server, slice_urn, credentials)
     
+    # Test compression on list resources
+    dom = test_list_resources(am_server, credentials, compressed=True)
+
     # Now create a slice and shut it down instead of deleting it.
     slice_cred_string = ch_server.CreateSlice()
     slice_credential = cred.Credential(string=slice_cred_string)

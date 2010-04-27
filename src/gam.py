@@ -31,6 +31,7 @@ if sys.version_info < (2, 6):
 elif sys.version_info >= (3,):
     raise Exception('Not python 3 ready')
 
+import base64
 import logging
 import optparse
 import xml.dom.minidom as minidom
@@ -156,12 +157,12 @@ class AggregateManager(object):
                                                 privileges)
         compressed = False
         if options and 'geni_compressed' in options:
-            compressed  = options['geni_compressed']
+            compressed = options['geni_compressed']
         # return an empty rspec
         result = ('<rspec>' + ''.join([x.toxml() for x in self._resources])
                   + '</rspec>')
         if compressed:
-            result = xmlrpclib.Binary(zlib.compress(result))
+            result = base64.b64encode(zlib.compress(result))
         return result
 
     def CreateSliver(self, slice_urn, credentials, rspec):
