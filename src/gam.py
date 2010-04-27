@@ -106,10 +106,12 @@ class Resource(object):
     def __init__(self, id, type):
         self._id = id
         self._type = type
+        self.available = True
 
     def toxml(self):
-        template = '<resource><type>%s</type><id>%s</id></resource>'
-        return template % (self._type, self._id)
+        template = ('<resource><type>%s</type><id>%s</id>'
+                    + '<available>%r</available></resource>')
+        return template % (self._type, self._id, self.available)
 
     def urn(self):
         publicid = 'IDN geni.net//resource//%s_%s' % (self._type, str(self._id))
@@ -155,13 +157,32 @@ class AggregateManager(object):
                                                 credentials,
                                                 None,
                                                 privileges)
-        compressed = False
-        if options and 'geni_compressed' in options:
-            compressed = options['geni_compressed']
-        # return an empty rspec
-        result = ('<rspec>' + ''.join([x.toxml() for x in self._resources])
-                  + '</rspec>')
-        if compressed:
+        if not options:
+            options = dict()
+        if 'geni_slice_urn' in options:
+            slice_urn = options['geni_slice_urn']
+            if slice_urn in self._slivers:
+                sliver = self._slivers[slice_urn]
+                result = ('<rspec>'
+                          + ''.join([x.toxml() for x in sliver.resources()])
+                          + '</rspec>')
+            else:
+                # return an empty rspec
+                result = '<rspec/>'
+        elif 'geni_available' in options and options['geni_available']:
+            result = ('<rspec>' + ''.join([x.toxml() for x in self._resources])
+                      + '</rspec>')
+        else:
+            all_resources = list()
+            print 'extending all_resources: ', self._resources
+            all_resources.extend(self._resources)
+            for sliver in self._slivers:
+                print 'extending all_resources: ', self._slivers[sliver].resources()
+                all_resources.extend(self._slivers[sliver].resources())
+            result = ('<rspec>' + ''.join([x.toxml() for x in all_resources])
+                      + '</rspec>')
+        # Optionally compress the result
+        if 'geni_compressed' in options and options['geni_compressed']:
             result = base64.b64encode(zlib.compress(result))
         return result
 
@@ -185,8 +206,10 @@ class AggregateManager(object):
         # remove resources from available list
         for resource in resources:
             self._resources.remove(resource)
+            resource.available = False
         self._slivers[slice_urn] = sliver
-        return '<rspec>%s</rspec>' % resource.toxml()
+        return ('<rspec>' + ''.join([x.toxml() for x in sliver.resources()])
+                + '</rspec>')
 
     def DeleteSliver(self, slice_urn, credentials):
         print 'DeleteSliver(%r)' % (slice_urn)
@@ -199,6 +222,8 @@ class AggregateManager(object):
             sliver = self._slivers[slice_urn]
             # return the resources to the pool
             self._resources.extend(sliver.resources())
+            for resource in sliver.resources():
+                resource.available = True
             del self._slivers[slice_urn]
             return True
         else:
@@ -272,9 +297,11 @@ def main(argv=None):
         argv = sys.argv
     opts = parse_args(argv)[0]
     level = logging.INFO
+    logging.basicConfig(level=level)
     if opts.debug:
         level = logging.DEBUG
-    logging.basicConfig(level=level)
+    logger = logging.Logger("am")
+    logger.setLevel(level)
     ams = geni.AggregateManagerServer((opts.host, opts.port),
                                       delegate=AggregateManager(),
                                       keyfile=opts.keyfile,

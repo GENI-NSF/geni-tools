@@ -24,6 +24,7 @@
 #----------------------------------------------------------------------
 
 import base64
+import logging
 import optparse
 import random
 import sys
@@ -156,12 +157,13 @@ def test_get_version(server):
     else:
         print 'failed'
 
-def test_list_resources(server, credentials, compressed=False):
+def test_list_resources(server, credentials, compressed=False, available=True):
     print 'Testing ListResources...',
-    options = dict(geni_compressed=compressed)
+    options = dict(geni_compressed=compressed, geni_available=available)
     rspec = server.ListResources(credentials, options)
     if compressed:
         rspec = zlib.decompress(base64.b64decode(rspec))
+    logging.debug(rspec)
     dom = verify_rspec(rspec)
     if dom:
         print 'passed'
@@ -189,7 +191,8 @@ def exercise_am(ch_server, am_server):
     test_delete_sliver(am_server, slice_urn, credentials)
     
     # Test compression on list resources
-    dom = test_list_resources(am_server, credentials, compressed=True)
+    dom = test_list_resources(am_server, credentials, compressed=True,
+                              available=False)
 
     # Now create a slice and shut it down instead of deleting it.
     slice_cred_string = ch_server.CreateSlice()
@@ -228,14 +231,22 @@ def parse_args(argv):
                       help="aggregate manager URL")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
+    parser.add_option("--debug-rpc", action="store_true", default=False,
+                      help="enable XML RPC debugging")
     return parser.parse_args()
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts = parse_args(argv)[0]
-    ch_server = make_server(opts.ch, opts.keyfile, opts.certfile, opts.debug)
-    am_server = make_server(opts.am, opts.keyfile, opts.certfile, opts.debug)
+    level = logging.INFO
+    if opts.debug:
+        level = logging.DEBUG
+    logging.basicConfig(level=level)
+    ch_server = make_server(opts.ch, opts.keyfile, opts.certfile,
+                            opts.debug_rpc)
+    am_server = make_server(opts.am, opts.keyfile, opts.certfile,
+                            opts.debug_rpc)
     exercise_am(ch_server, am_server)
     return 0
 
