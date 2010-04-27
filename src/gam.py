@@ -43,6 +43,9 @@ import sfa.trust.gid as gid
 
 class CredentialVerifier(object):
     
+    def __init__(self, root_cert_file):
+        self.root_cert_files = [root_cert_file]
+
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
                             privileges):
         def make_cred(cred_string):
@@ -90,10 +93,13 @@ class CredentialVerifier(object):
 
     def verify(self, gid, credentials, target_urn, privileges):
         logging.debug('Verifying privileges')
+        for tcf in self.root_cert_files:
+            print 'Trusted cert file: %r' % (tcf)
         for cred in credentials:
             if (self.verify_source(gid, cred) and
                 self.verify_target(target_urn, cred) and
-                self.verify_privileges(privileges, cred)):
+                self.verify_privileges(privileges, cred) and
+                cred.verify(self.root_cert_files)):
                 return True
         # We did not find any credential with sufficient privileges
         # Raise an exception.
@@ -142,10 +148,10 @@ class Sliver(object):
 
 class AggregateManager(object):
     
-    def __init__(self):
+    def __init__(self, root_cert):
         self._slivers = dict()
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
-        self._cred_verifier = CredentialVerifier()
+        self._cred_verifier = CredentialVerifier(root_cert)
 
     def GetVersion(self):
         return dict(geni_api=1)
@@ -302,8 +308,9 @@ def main(argv=None):
         level = logging.DEBUG
     logger = logging.Logger("am")
     logger.setLevel(level)
+    delegate = AggregateManager(opts.rootcafile)
     ams = geni.AggregateManagerServer((opts.host, opts.port),
-                                      delegate=AggregateManager(),
+                                      delegate=delegate,
                                       keyfile=opts.keyfile,
                                       certfile=opts.certfile,
                                       ca_certs=opts.rootcafile)
