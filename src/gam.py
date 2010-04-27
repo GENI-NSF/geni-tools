@@ -111,8 +111,8 @@ class Resource(object):
         return template % (self._type, self._id)
 
     def urn(self):
-        urn = 'IDN geni.net//resource//%s_%s' % (self._type, str(self._id))
-        return urn
+        publicid = 'IDN geni.net//resource//%s_%s' % (self._type, str(self._id))
+        return geni.publicid_to_urn(publicid)
 
     def __eq__(self, other):
         return self._id == other._id
@@ -215,8 +215,7 @@ class AggregateManager(object):
             sliver = self._slivers[slice_urn]
             res_status = list()
             for res in sliver.resources():
-                urn = geni.urn_to_publicid(res.urn())
-                res_status.append(dict(geni_urn=urn,
+                res_status.append(dict(geni_urn=res.urn(),
                                        geni_status='ready',
                                        geni_error=''))
             return dict(geni_urn=sliver.urn,

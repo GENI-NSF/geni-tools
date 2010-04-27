@@ -103,7 +103,7 @@ class Clearinghouse(object):
         public_id = 'IDN geni.net//slice//%s//%s:%d' % (slice_uuid,
                                                         ipaddr,
                                                         port)
-        urn = urn_to_publicid(public_id)
+        urn = publicid_to_urn(public_id)
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
         # Get the creator info from the peer certificate
@@ -158,12 +158,13 @@ publicid_xforms = [(' ', '+'),
                    ('//', ':')]
 
 
-def urn_from_publicid(id):
+def urn_to_publicid(id):
+    # Remove prefix
     for a, b in reversed(publicid_xforms):
         id = id.replace(b, a)
     return id
 
-def urn_to_publicid(id):
+def publicid_to_urn(id):
     for a, b in publicid_xforms:
         id = id.replace(a, b)
     # prefix with 'urn:publicid:'
