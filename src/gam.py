@@ -38,6 +38,7 @@ import optparse
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
+import dateutil.parser
 import geni
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
@@ -261,14 +262,18 @@ class AggregateManager(object):
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         print 'RenewSliver(%r, %r)' % (slice_urn, expiration_time)
         privileges = ('renewsliver',)
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                credentials,
-                                                slice_urn,
-                                                privileges)
-        # TODO: verify that the slice credential expiration is equal to
-        # or after the requested expiration_time.
+        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                        credentials,
+                                                        slice_urn,
+                                                        privileges)
         if slice_urn in self._slivers:
-            return False
+            sliver = self._slivers.get(slice_urn)
+            requested = dateutil.parser.parse(str(expiration_time))
+            for cred in creds:
+                if cred.expiration < requested:
+                    return False
+            sliver.expiration = requested
+            return True
         else:
             self.no_such_slice(slice_urn)
 

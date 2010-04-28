@@ -24,6 +24,7 @@
 #----------------------------------------------------------------------
 
 import base64
+import datetime
 import logging
 import optparse
 import random
@@ -190,8 +191,10 @@ def exercise_am(ch_server, am_server):
     test_create_sliver(am_server, slice_urn, credentials, dom)
     test_sliver_status(am_server, slice_urn, credentials)
     test_list_resources(am_server, credentials, slice_urn=slice_urn)
-    #TODO: Fix expiration time
-    test_renew_sliver(am_server, slice_urn, credentials, 10)
+    
+    expiration = datetime.datetime.now() + datetime.timedelta(days=1)
+    test_renew_sliver(am_server, slice_urn, credentials, expiration)
+    
     test_delete_sliver(am_server, slice_urn, credentials)
     
     # Test compression on list resources
