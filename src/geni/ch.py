@@ -100,9 +100,9 @@ class Clearinghouse(object):
         slice_uuid = uuid.uuid4()
         # Where was the slice created?
         (ipaddr, port) = self._server.socket._sock.getsockname()
-        public_id = 'IDN geni.net//slice//%s//%s:%d' % (slice_uuid,
-                                                        ipaddr,
-                                                        port)
+        public_id = 'IDN geni.net//gpo test-ch slice %s//%s:%d' % (slice_uuid,
+                                                                   ipaddr,
+                                                                   port)
         urn = publicid_to_urn(public_id)
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
@@ -126,8 +126,9 @@ class Clearinghouse(object):
         keys = cert.Keypair(create=True)
         newgid.set_pubkey(keys)
         issuer_key = cert.Keypair(filename=self.keyfile)
-        issuer_cert = cert.Certificate(filename=self.certfile)
+        issuer_cert = gid.GID(filename=self.certfile)
         newgid.set_issuer(issuer_key, cert=issuer_cert)
+        newgid.set_parent(issuer_cert)
         newgid.encode()
         newgid.sign()
         return newgid, keys
