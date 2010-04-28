@@ -139,6 +139,9 @@ class Clearinghouse(object):
         ucred.set_lifetime(3600)
         privileges = rights.determine_rights('user', None)
         privileges.add('embed')
+        # TODO: This should be 'control', not 'sa', but
+        # renewsliver is only an 'sa' privilege at this time.
+        privileges.add('sa')
         ucred.set_privileges(privileges)
         ucred.encode()
         ucred.set_issuer_keys(self.keyfile, self.certfile)
