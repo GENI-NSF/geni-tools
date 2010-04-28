@@ -157,9 +157,12 @@ def test_get_version(server):
     else:
         print 'failed'
 
-def test_list_resources(server, credentials, compressed=False, available=True):
+def test_list_resources(server, credentials, compressed=False, available=True,
+                        slice_urn=None):
     print 'Testing ListResources...',
     options = dict(geni_compressed=compressed, geni_available=available)
+    if slice_urn:
+        options['geni_slice_urn'] = slice_urn
     rspec = server.ListResources(credentials, options)
     if compressed:
         rspec = zlib.decompress(base64.b64decode(rspec))
@@ -186,6 +189,7 @@ def exercise_am(ch_server, am_server):
     dom = test_list_resources(am_server, credentials)
     test_create_sliver(am_server, slice_urn, credentials, dom)
     test_sliver_status(am_server, slice_urn, credentials)
+    test_list_resources(am_server, credentials, slice_urn=slice_urn)
     #TODO: Fix expiration time
     test_renew_sliver(am_server, slice_urn, credentials, 10)
     test_delete_sliver(am_server, slice_urn, credentials)
