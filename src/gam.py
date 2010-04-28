@@ -32,11 +32,13 @@ elif sys.version_info >= (3,):
     raise Exception('Not python 3 ready')
 
 import base64
+import datetime
 import logging
 import optparse
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
+import dateutil.parser
 import geni
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
@@ -50,10 +52,10 @@ class CredentialVerifier(object):
                             privileges):
         def make_cred(cred_string):
             return cred.Credential(string=cred_string)
-        self.verify(gid.GID(string=gid_string),
-                    map(make_cred, cred_strings),
-                    target_urn,
-                    privileges)
+        return self.verify(gid.GID(string=gid_string),
+                           map(make_cred, cred_strings),
+                           target_urn,
+                           privileges)
         
     def verify_source(self, source_gid, credential):
         source_urn = source_gid.get_urn()
@@ -93,19 +95,21 @@ class CredentialVerifier(object):
 
     def verify(self, gid, credentials, target_urn, privileges):
         logging.debug('Verifying privileges')
-        for tcf in self.root_cert_files:
-            print 'Trusted cert file: %r' % (tcf)
+        result = list()
         for cred in credentials:
             if (self.verify_source(gid, cred) and
                 self.verify_target(target_urn, cred) and
                 self.verify_privileges(privileges, cred) and
                 cred.verify(self.root_cert_files)):
-                return True
-        # We did not find any credential with sufficient privileges
-        # Raise an exception.
-        fault_code = 'Insufficient privileges'
-        fault_string = 'No credential was found with appropriate privileges.'
-        raise xmlrpclib.Fault(fault_code, fault_string)
+                result.append(cred)
+        if result:
+            return result
+        else:
+            # We did not find any credential with sufficient privileges
+            # Raise an exception.
+            fault_code = 'Insufficient privileges'
+            fault_string = 'No credential was found with appropriate privileges.'
+            raise xmlrpclib.Fault(fault_code, fault_string)
 
 class Resource(object):
 
@@ -138,13 +142,10 @@ class Resource(object):
 
 class Sliver(object):
 
-    def __init__(self, urn, resources):
+    def __init__(self, urn, expiration=datetime.datetime.now()):
         self.urn = urn
-        self._resources = resources
-
-    def resources(self):
-        return self._resources
-
+        self.resources = list()
+        self.expiration = expiration
 
 class AggregateManager(object):
     
@@ -152,6 +153,7 @@ class AggregateManager(object):
         self._slivers = dict()
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
         self._cred_verifier = CredentialVerifier(root_cert)
+        self.max_lease = datetime.timedelta(days=365)
 
     def GetVersion(self):
         return dict(geni_api=1)
@@ -170,7 +172,7 @@ class AggregateManager(object):
             if slice_urn in self._slivers:
                 sliver = self._slivers[slice_urn]
                 result = ('<rspec>'
-                          + ''.join([x.toxml() for x in sliver.resources()])
+                          + ''.join([x.toxml() for x in sliver.resources])
                           + '</rspec>')
             else:
                 # return an empty rspec
@@ -180,11 +182,9 @@ class AggregateManager(object):
                       + '</rspec>')
         else:
             all_resources = list()
-            print 'extending all_resources: ', self._resources
             all_resources.extend(self._resources)
             for sliver in self._slivers:
-                print 'extending all_resources: ', self._slivers[sliver].resources()
-                all_resources.extend(self._slivers[sliver].resources())
+                all_resources.extend(self._slivers[sliver].resources)
             result = ('<rspec>' + ''.join([x.toxml() for x in all_resources])
                       + '</rspec>')
         # Optionally compress the result
@@ -195,10 +195,10 @@ class AggregateManager(object):
     def CreateSliver(self, slice_urn, credentials, rspec):
         print 'CreateSliver(%r)' % (slice_urn)
         privileges = ('createsliver',)
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                credentials,
-                                                slice_urn,
-                                                privileges)
+        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                        credentials,
+                                                        slice_urn,
+                                                        privileges)
         if slice_urn in self._slivers:
             raise Exception('Sliver already exists.')
         rspec_dom = minidom.parseString(rspec)
@@ -208,13 +208,19 @@ class AggregateManager(object):
             if resource not in self._resources:
                 raise Exception('Resource not available')
             resources.append(resource)
-        sliver = Sliver(slice_urn, resources)
+        # determine max expiration time from credentials
+        expiration = datetime.datetime.now() + self.max_lease
+        for cred in creds:
+            if cred.expiration < expiration:
+                expiration = cred.expiration
+        sliver = Sliver(slice_urn, expiration)
         # remove resources from available list
         for resource in resources:
+            sliver.resources.append(resource)
             self._resources.remove(resource)
             resource.available = False
         self._slivers[slice_urn] = sliver
-        return ('<rspec>' + ''.join([x.toxml() for x in sliver.resources()])
+        return ('<rspec>' + ''.join([x.toxml() for x in sliver.resources])
                 + '</rspec>')
 
     def DeleteSliver(self, slice_urn, credentials):
@@ -227,8 +233,8 @@ class AggregateManager(object):
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
             # return the resources to the pool
-            self._resources.extend(sliver.resources())
-            for resource in sliver.resources():
+            self._resources.extend(sliver.resources)
+            for resource in sliver.resources:
                 resource.available = True
             del self._slivers[slice_urn]
             return True
@@ -246,7 +252,7 @@ class AggregateManager(object):
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
             res_status = list()
-            for res in sliver.resources():
+            for res in sliver.resources:
                 res_status.append(dict(geni_urn=res.urn(),
                                        geni_status='ready',
                                        geni_error=''))
@@ -259,9 +265,19 @@ class AggregateManager(object):
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         print 'RenewSliver(%r, %r)' % (slice_urn, expiration_time)
-        # No permission for Renew currently exists.
+        privileges = ('renewsliver',)
+        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                        credentials,
+                                                        slice_urn,
+                                                        privileges)
         if slice_urn in self._slivers:
-            return False
+            sliver = self._slivers.get(slice_urn)
+            requested = dateutil.parser.parse(str(expiration_time))
+            for cred in creds:
+                if cred.expiration < requested:
+                    return False
+            sliver.expiration = requested
+            return True
         else:
             self.no_such_slice(slice_urn)
 
