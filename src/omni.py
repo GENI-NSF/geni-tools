@@ -37,6 +37,7 @@ import sys
 import os
 import json
 import dateutil.parser
+from geni.omni.util.namespace import long_urn
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
@@ -69,18 +70,20 @@ class CallHandler(object):
     def listresources(self, args):
         rspecs = {}
         options = {}
+        urn = long_urn(args[0])
+        print urn
         
         # Get the credential for this query
         if len(args) == 0:
             cred = self.framework.get_user_cred()
         else:
-            cred = self.framework.get_slice_cred(args[0])
-            options['geni_slice_urn'] = args[0]
+            cred = self.framework.get_slice_cred(urn)
+            options['geni_slice_urn'] = urn
 
         
         # Connect to each available GENI AM to list their resources
         for client in self.getclients():
-            try:        
+            try:
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
             except:
@@ -88,8 +91,8 @@ class CallHandler(object):
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
-        for ((urn,url), rspec) in rspecs.items():            
-            omnispecs[url] = rspec_to_omnispec(urn,rspec)
+        for ((aurn,url), rspec) in rspecs.items():            
+            omnispecs[url] = rspec_to_omnispec(aurn,rspec)
                         
         jspecs = json.dumps(omnispecs, indent=4)
         print jspecs
@@ -97,7 +100,7 @@ class CallHandler(object):
     
     
     def createsliver(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         
         # Load up the user's edited omnispec
@@ -126,7 +129,7 @@ class CallHandler(object):
                     raise Exception("Unable to allocate from: %s" % url)
 
     def deletesliver(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         # Connect to each available GENI AM 
         for client in self.getclients():
@@ -137,7 +140,7 @@ class CallHandler(object):
                 pass
             
     def renewsliver(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         time = dateutil.parser.parse(args[1])
         print time        
@@ -149,7 +152,7 @@ class CallHandler(object):
                 print "Failed to renew sliver on %s" % client.urn
     
     def sliverstatus(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self.getclients():
             try:
@@ -158,7 +161,7 @@ class CallHandler(object):
                 print "Failed to retrieve status for: %s" % client.urn
                 
     def shutdown(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self.getclients():
             try:
@@ -175,11 +178,11 @@ class CallHandler(object):
                 
                 
     def createslice(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         self.framework.create_slice(urn)
         
     def deleteslice(self, args):
-        urn = args[0]
+        urn = long_urn(args[0])
         self.framework.delete_slice(urn)
         
     def listaggregates(self, args):
