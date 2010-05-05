@@ -72,7 +72,7 @@ Running Omni -
 ** renewsliver
 - format:  omni.py renewsliver <slice urn> "<time>"
 - example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 4:15pm"
-  example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 16:15"
+- example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 16:15"
 
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
