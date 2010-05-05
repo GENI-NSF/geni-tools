@@ -70,13 +70,12 @@ class CallHandler(object):
     def listresources(self, args):
         rspecs = {}
         options = {}
-        urn = long_urn(args[0])
-        print urn
         
         # Get the credential for this query
         if len(args) == 0:
             cred = self.framework.get_user_cred()
         else:
+            urn = long_urn(args[0])
             cred = self.framework.get_slice_cred(urn)
             options['geni_slice_urn'] = urn
 
@@ -91,8 +90,8 @@ class CallHandler(object):
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
-        for ((aurn,url), rspec) in rspecs.items():            
-            omnispecs[url] = rspec_to_omnispec(aurn,rspec)
+        for ((urn,url), rspec) in rspecs.items():            
+            omnispecs[url] = rspec_to_omnispec(urn,rspec)
                         
         jspecs = json.dumps(omnispecs, indent=4)
         print jspecs
