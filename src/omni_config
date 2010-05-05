@@ -1,0 +1,17 @@
+{
+	"sfa": {
+		"authority": "plc.gpo.site2",
+    	"user": "plc.gpo.site2.jkarlin",
+		"cert": "~/.omni/jkarlin.cert",
+		"key":	"~/.omni/jkarlin.pkey",
+		"registry": "http://128.89.81.175:12345",
+		"slicemgr": "http://128.89.81.175:12347"
+	},
+	"gcf": {
+    	"host": "localhost"
+	},
+	"omni": {
+		"cert": "~/.omni/jkarlin.cert",
+		"key": "~/.omni/jkarlin.pkey"
+	}
+}
