@@ -214,7 +214,7 @@ def main(argv=None):
     framework = framework_mod.Framework(config[cf])
         
     # Process the user's call
-    handler = CallHandler(framework, config['omni'])    
+    handler = CallHandler(framework, config[cf])    
     handler.handle(args)
     
     

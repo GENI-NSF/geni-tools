@@ -54,7 +54,7 @@ Running Omni -
 - argument: the omnispec file should have been created by a call to 
             listresources (e.g. omni.py listresources > ospec)
             Then, edit the file and set "allocate": true, for each
-						resource that you want to allocate.
+			resource that you want to allocate.
 
   This command will allocate the requested resources (those marked
   with allocate: true in the rspec).  It will send an rspec to each
@@ -67,6 +67,7 @@ Running Omni -
 - example: omni.py deletesliver plc:gpo:site+slice+foobar
 
 	This command will free any resources associated with your slice.  
+
 
 
 ** renewsliver
@@ -86,6 +87,8 @@ Running Omni -
 
 	This command will get information from each aggregate about the
 	status of the specified slice
+
+
 
 ** shutdown
 - format:  omni.py shutdown <slice urn> 

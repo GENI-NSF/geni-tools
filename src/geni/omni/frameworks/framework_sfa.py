@@ -1,5 +1,4 @@
 from geni.omni.xmlrpc.client import make_client
-from geni.omni.util.paths import *
 import os
 import time
 

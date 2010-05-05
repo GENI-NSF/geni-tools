@@ -8,10 +8,8 @@
 		"slicemgr": "http://128.89.81.175:12347"
 	},
 	"gcf": {
-    	"host": "localhost"
-	},
-	"omni": {
-		"cert": "~/.omni/jkarlin.cert",
-		"key": "~/.omni/jkarlin.pkey"
+    	"ch": "http://localhost:8000"
+		"cert": "~/.omni/gcf.jkarlin.cert",
+		"key":	"~/.omni/gcf.jkarlin.pkey"    	
 	}
 }

@@ -36,6 +36,7 @@ class ClearinghouseServer(object):
 
     def __init__(self, delegate):
         self._delegate = delegate
+        self.slices = {}
         
     def GetVersion(self):
         return self._delegate.GetVersion()
@@ -95,7 +96,10 @@ class Clearinghouse(object):
         dict['urn'] = urn
         return result
 
-    def CreateSlice(self):
+    def CreateSlice(self, urn_req = None):
+        if urn_req and self.slices.has_key(urn_req):
+            return self.slices[urn_req].save_to_string()
+        
         # Create a random uuid for the slice
         slice_uuid = uuid.uuid4()
         # Where was the slice created?
@@ -103,7 +107,10 @@ class Clearinghouse(object):
         public_id = 'IDN geni.net//gpo test-ch slice %s//%s:%d' % (slice_uuid,
                                                                    ipaddr,
                                                                    port)
-        urn = publicid_to_urn(public_id)
+        if urn_req:
+            urn = urn_req
+        else:
+            urn = publicid_to_urn(public_id)
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
         # Get the creator info from the peer certificate
@@ -116,10 +123,18 @@ class Clearinghouse(object):
             traceback.print_exc()
             raise
         print 'Created slice %r' % (urn)
+        
+        self.slices[urn] = slice_cred
+        
         return slice_cred.save_to_string()
 
+    def DeleteSlice(self, urn_req):
+        if self.slices.has_key(urn_req):
+            self.slices.pop(urn_req)
+
     def ListAggregates(self):
-        return list()
+        out = [('urn:publicid:IDN+gcf+authority+geni', 'http://localhost:8001')]
+        return out
     
     def create_slice_gid(self, subject, slice_urn):
         newgid = gid.GID(create=True, uuid=gid.create_uuid(), urn=slice_urn)
@@ -132,7 +147,19 @@ class Clearinghouse(object):
         newgid.encode()
         newgid.sign()
         return newgid, keys
-
+    
+    def create_user_credential(self, user_gid):
+        ucred = cred.Credential()
+        ucred.set_gid_caller(user_gid)
+        ucred.set_gid_object(user_gid)
+        ucred.set_lifetime(3600)
+        privileges = rights.determine_rights('user', None)
+        ucred.set_privileges(privileges)
+        ucred.encode()
+        ucred.set_issuer_keys(self.keyfile, self.certfile)
+        ucred.sign()
+        return ucred
+    
     def create_slice_credential(self, user_gid, slice_gid):
         ucred = cred.Credential()
         ucred.set_gid_caller(user_gid)
