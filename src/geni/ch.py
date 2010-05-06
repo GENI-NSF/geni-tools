@@ -141,11 +141,11 @@ class Clearinghouse(object):
         return False
 
     def ListAggregates(self):
-        out = [('urn:publicid:IDN+gcf+authority+geni', 'http://localhost:8001')]
+        out = [('urn:publicid:IDN+gcf+authority+geni', 'http://localhost:8001'), ('urn:publicid:IDN+plc:gpo+authority+site2', 'http://128.89.81.175:12348')]
         return out
     
     def create_slice_gid(self, subject, slice_urn):
-        newgid = gid.GID(create=True, uuid=gid.create_uuid(), urn=slice_urn)
+        newgid = gid.GID(create=True, subject=slice_urn, uuid=gid.create_uuid(), urn=slice_urn)
         keys = cert.Keypair(create=True)
         newgid.set_pubkey(keys)
         issuer_key = cert.Keypair(filename=self.keyfile)
