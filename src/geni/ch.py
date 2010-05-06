@@ -36,13 +36,13 @@ class ClearinghouseServer(object):
 
     def __init__(self, delegate):
         self._delegate = delegate
-        self.slices = {}
         
     def GetVersion(self):
         return self._delegate.GetVersion()
 
     def Resolve(self, urn):
         return self._delegate.Resolve(urn)
+    
 
 
 class SampleClearinghouseServer(ClearinghouseServer):
@@ -54,17 +54,23 @@ class SampleClearinghouseServer(ClearinghouseServer):
     def __init__(self, delegate):
         self._delegate = delegate
         
-    def CreateSlice(self):
-        return self._delegate.CreateSlice()
+    def CreateSlice(self, urn=None):
+        return self._delegate.CreateSlice(urn_req=urn)
+
+    def DeleteSlice(self, urn):
+        return self._delegate.DeleteSlice(urn)
 
     def ListAggregates(self):
         return self._delegate.ListAggregates()
+    
+    def CreateUserCredential(self, cert):
+        return self._delegate.CreateUserCredential(cert)
 
 
 class Clearinghouse(object):
 
     def __init__(self):
-        pass
+        self.slices = {}
 
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None):
@@ -131,6 +137,8 @@ class Clearinghouse(object):
     def DeleteSlice(self, urn_req):
         if self.slices.has_key(urn_req):
             self.slices.pop(urn_req)
+            return True
+        return False
 
     def ListAggregates(self):
         out = [('urn:publicid:IDN+gcf+authority+geni', 'http://localhost:8001')]
@@ -148,8 +156,9 @@ class Clearinghouse(object):
         newgid.sign()
         return newgid, keys
     
-    def create_user_credential(self, user_gid):
+    def CreateUserCredential(self, user_gid):
         ucred = cred.Credential()
+        user_gid = gid.GID(string=user_gid)
         ucred.set_gid_caller(user_gid)
         ucred.set_gid_object(user_gid)
         ucred.set_lifetime(3600)
@@ -158,7 +167,7 @@ class Clearinghouse(object):
         ucred.encode()
         ucred.set_issuer_keys(self.keyfile, self.certfile)
         ucred.sign()
-        return ucred
+        return ucred.save_to_string()
     
     def create_slice_credential(self, user_gid, slice_gid):
         ucred = cred.Credential()

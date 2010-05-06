@@ -12,7 +12,7 @@ class Framework(object):
         self.cert_string = file(config['cert'],'r').read()
         
     def get_user_cred(self):
-        return self.ch.create_user_credential(self.cert_string)
+        return self.ch.CreateUserCredential(self.cert_string)
     
     def get_slice_cred(self, urn):
         return self.ch.CreateSlice(urn)

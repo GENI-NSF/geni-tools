@@ -1,4 +1,7 @@
 {
+	"omni": {
+		"default_cf": "sfa"
+	},
 	"sfa": {
 		"authority": "plc.gpo.site2",
     	"user": "plc.gpo.site2.jkarlin",

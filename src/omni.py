@@ -171,11 +171,10 @@ class CallHandler(object):
     def getversion(self, args):
         for client in self.getclients():
             try:
-                print client.GetVersion()
+                print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
             except:
                 print "Failed to get version information for %s at (%s)" % (client.urn, client.url)
-                
-                
+                                
     def createslice(self, args):
         urn = long_urn(args[0])
         self.framework.create_slice(urn)
@@ -194,7 +193,7 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-c", "--configfile", default="~/.omni/omni_config",
                       help="config file name", metavar="FILE")
-    parser.add_option("-f", "--framework", default="SFA",
+    parser.add_option("-f", "--framework", default="",
                       help="control framework to use for creation/deletion of slices")
     return parser.parse_args()
 
@@ -207,6 +206,9 @@ def main(argv=None):
     # Load up the JSON formatted config file
     filename = os.path.expanduser(opts.configfile)
     config = json.loads(file(filename, 'r').read())
+        
+    if not opts.framework:
+        opts.framework = config['omni']['default_cf']
         
     # Dynamically load the selected control framework
     cf = opts.framework.lower()
