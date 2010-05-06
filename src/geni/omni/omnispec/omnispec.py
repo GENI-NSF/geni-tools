@@ -59,10 +59,14 @@ class OmniResource(dict):
         
     def set_name(self, name):
         self['name'] = name
+    def get_name(self):
+        return self['name']
     def set_description(self, description):
         self['description'] = description
     def set_type(self, type):
         self['type'] = type
+    def get_type(self):
+        return self['type']
     
     def add_option(self, name, defValue=None):
         if not defValue:
@@ -70,8 +74,9 @@ class OmniResource(dict):
         self['option'][name] = defValue
     def set_allocated(self, value):
         self['allocated'] = value
-    
-    def allocate(self):
+    def get_allocated(self):
+        return self['allocated']
+    def get_allocate(self):
         return self['allocate']
     
     def get_misc(self):

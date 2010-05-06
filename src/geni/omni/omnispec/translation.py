@@ -28,7 +28,7 @@ def rspec_to_omnispec(urn, rspec):
     
     
 
-def omnispec_to_rspec(omnispec):
+def omnispec_to_rspec(omnispec, filter_allocated):
     mod = __import__(mod_name + '.' + omnispec.get_type(), fromlist=[mod_name])
-    return mod.omnispec_to_rspec(omnispec)
+    return mod.omnispec_to_rspec(omnispec, filter_allocated)
 

@@ -151,7 +151,6 @@ class Clearinghouse(object):
         issuer_key = cert.Keypair(filename=self.keyfile)
         issuer_cert = gid.GID(filename=self.certfile)
         newgid.set_issuer(issuer_key, cert=issuer_cert)
-        newgid.set_parent(issuer_cert)
         newgid.encode()
         newgid.sign()
         return newgid, keys

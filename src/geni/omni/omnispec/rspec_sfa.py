@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 
 
 def can_translate(urn, rspec):
-    if urn.split('+')[1].lower() == 'plc':
+    if urn.split('+')[1].lower().startswith('plc'):
         return True
     return False
 
@@ -36,17 +36,19 @@ def rspec_to_omnispec(urn, rspec):
                 ospec.add_resource(urn, r)
     return ospec
 
-def omnispec_to_rspec(omnispec):
+def omnispec_to_rspec(omnispec, filter_allocated):
 
     # Load up information about all the resources
     networks = {}    
     for _, r in omnispec.get_resources().items():
+        if filter_allocated and not r.get_allocate():
+            continue
         net = networks.setdefault(r['misc']['net_name'], {})
         site = net.setdefault(r['misc']['site_id'], {})
         node = site.setdefault(r['misc']['node_id'], {})
         node['site_name'] = r['misc']['site_name']
         node['hostname'] = r['misc']['hostname']
-        node['allocate'] = r.allocate()
+        node['allocate'] = r.get_allocate()
 
     # Convert it to XML
     root = ET.Element('RSpec')

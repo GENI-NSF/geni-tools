@@ -114,7 +114,7 @@ class CallHandler(object):
         for (url, ospec) in omnispecs.items():
             allocate = False
             for (_, r) in ospec.get_resources().items():
-                if r.allocate():
+                if r.get_allocate():
                     allocate = True
                     break
                 
@@ -122,7 +122,7 @@ class CallHandler(object):
             if allocate:
                 try:
                     client = make_client(url, self.config['key'], self.config['cert'])
-                    rspec = omnispec_to_rspec(ospec)
+                    rspec = omnispec_to_rspec(ospec, True)
                     client.CreateSliver(urn, [slice_cred], rspec)
                 except:
                     raise Exception("Unable to allocate from: %s" % url)
@@ -155,7 +155,7 @@ class CallHandler(object):
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self.getclients():
             try:
-                print client.SliverStatus(urn, [slice_cred])
+                print "%s (%s)\n\t%s" % (client.urn, client.url, client.SliverStatus(urn, [slice_cred]))
             except:
                 print "Failed to retrieve status for: %s" % client.urn
                 
