@@ -120,11 +120,11 @@ class CallHandler(object):
                 
             # Okay, send a message to the AM this resource came from
             if allocate:
-#                try:
+                try:
                     client = make_client(url, self.config['key'], self.config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
                     client.CreateSliver(urn, [slice_cred], rspec)
-#                except:
+                except:
                     raise Exception("Unable to allocate from: %s" % url)
 
     def deletesliver(self, args):
