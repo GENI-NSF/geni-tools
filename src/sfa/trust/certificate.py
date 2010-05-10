@@ -1,24 +1,3 @@
-# Copyright (c) 2008 Board of Trustees, Princeton University
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the "Work") to
-# deal in the Work without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Work, and to permit persons to whom the Work
-# is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Work.
-#
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
-# IN THE WORK.
-
 ##
 # SFA uses two crypto libraries: pyOpenSSL and M2Crypto to implement
 # the necessary crypto functionality. Ideally just one of these libraries
@@ -32,7 +11,7 @@
 # This module exports two classes: Keypair and Certificate.
 ##
 #
-### $Id: certificate.py 17733 2010-04-19 21:25:29Z jkarlin $
+### $Id: certificate.py 17966 2010-05-10 16:13:57Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/certificate.py $
 #
 
@@ -44,7 +23,8 @@ from OpenSSL import crypto
 import M2Crypto
 from M2Crypto import X509
 from tempfile import mkstemp
-
+from sfa.util.sfalogging import logger
+from sfa.util.namespace import urn_to_hrn
 from sfa.util.faults import *
 
 def convert_public_key(key):
@@ -203,6 +183,7 @@ class Keypair:
    def get_openssl_pkey(self):
       return self.key
 
+
    ##
    # Given another Keypair object, return TRUE if the two keys are the same.
 
@@ -255,7 +236,7 @@ class Certificate:
    # @param string If string!=None, load the certficate from the string.
    # @param filename If filename!=None, load the certficiate from the file.
 
-   def __init__(self, create=False, subject=None, string=None, filename=None):
+   def __init__(self, create=False, subject=None, string=None, filename=None, intermediate=None):
        self.data = {}
        if create or subject:
            self.create()
@@ -266,12 +247,17 @@ class Certificate:
        if filename:
            self.load_from_file(filename)
 
+       if intermediate:
+           self.set_intermediate_ca(intermediate)
+       else:
+           self.set_intermediate_ca(False)
+
    ##
    # Create a blank X509 certificate and store it in this object.
 
    def create(self):
        self.cert = crypto.X509()
-       self.cert.set_serial_number(1)
+       self.cert.set_serial_number(3)
        self.cert.gmtime_adj_notBefore(0)
        self.cert.gmtime_adj_notAfter(60*60*24*365*5) # five years
 
@@ -377,7 +363,7 @@ class Certificate:
              self.issuerReq = req
        if cert:
           # if a cert was supplied, then get the subject from the cert
-          subject = cert.cert.get_subject()
+          subject = cert.cert.get_issuer()
        assert(subject)
        self.issuerSubject = subject
 
@@ -426,6 +412,13 @@ class Certificate:
        pkey.key = self.cert.get_pubkey()
        pkey.m2key = m2x509.get_pubkey()
        return pkey
+   
+   def set_intermediate_ca(self, val):
+       self.intermediate = val
+       if val:
+           self.add_extension('basicConstraints', 1, 'CA:TRUE')
+       
+
 
    ##
    # Add an X509 extension to the certificate. Add_extension can only be called
@@ -572,6 +565,12 @@ class Certificate:
             #print "TRUSTED CERT", trusted_cert.dump()
             #print "Client is signed by Trusted?", self.is_signed_by_cert(trusted_cert)
             if self.is_signed_by_cert(trusted_cert):
+                # make sure sure the trusted cert's hrn is a prefix of the
+                # signed cert's hrn
+                trusted_hrn, _ = urn_to_hrn(trusted_cert.get_subject())
+                cur_hrn, _ = urn_to_hrn(self.get_subject())
+                if not cur_hrn.startswith(trusted_hrn):
+                    raise GidParentHrn(trusted_cert.get_subject() + " " + self.get_subject()) 
                 #print self.get_subject(), "is signed by a root"
                 return
 
