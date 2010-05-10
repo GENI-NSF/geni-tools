@@ -21,4 +21,5 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from am import AggregateManager, AggregateManagerServer
+from am import AggregateManagerServer
+from reference import ReferenceAggregateManager
