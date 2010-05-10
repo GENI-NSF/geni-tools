@@ -64,11 +64,11 @@ Instructions
 
 2. Start the clearinghouse server:
 
- $ src/gch.py -r ca-cert.pem -c ch-cert.pem -k ch-key.pem
+ $ src/gch.py -r ca-cert.pem -c ca-cert.pem -k ca-key.pem
 
 3. Start the aggregate manager server:
 
- $ src/gam.py -r ca-cert.pem -c am-cert.pem -k am-key.pem
+ $ src/gam.py -r ca-cert.pem -c ca-cert.pem -k ca-key.pem
 
 4. Run the client
 
