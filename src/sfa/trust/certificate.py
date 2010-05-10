@@ -570,6 +570,8 @@ class Certificate:
                 trusted_hrn, _ = urn_to_hrn(trusted_cert.get_subject())
                 cur_hrn, _ = urn_to_hrn(self.get_subject())
                 if not cur_hrn.startswith(trusted_hrn):
+                    print trusted_cert.get_subject()
+                    print self.get_subject()
                     raise GidParentHrn(trusted_cert.get_subject() + " " + self.get_subject()) 
                 #print self.get_subject(), "is signed by a root"
                 return
