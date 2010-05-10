@@ -23,7 +23,7 @@
 
 import xmlrpclib
 import zlib
-from SecureXMLRPCServer import SecureXMLRPCServer
+from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 class AggregateManager(object):
     """The public API for a GENI Aggregate Manager.  This class provides the
