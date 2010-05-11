@@ -15,4 +15,7 @@
 		"cert": "~/.omni/gcf.jkarlin.cert",
 		"key":	"~/.omni/gcf.jkarlin.pkey"    	
 	}
+	"pg": {
+	   "ch": "http://myboss.elabinelab.geni.emulab.net/sa"
+	}
 }
