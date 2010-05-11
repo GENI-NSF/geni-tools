@@ -1,31 +1,10 @@
-# Copyright (c) 2008 Board of Trustees, Princeton University
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the "Work") to
-# deal in the Work without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Work, and to permit persons to whom the Work
-# is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Work.
-#
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
-# IN THE WORK.
-
 ##
 # Implements SFA Credentials
 #
 # Credentials are signed XML files that assign a subject gid privileges to an object gid
 ##
 
-### $Id: credential.py 17781 2010-04-26 16:45:36Z jkarlin $
+### $Id: credential.py 17966 2010-05-10 16:13:57Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/credential.py $
 
 import os
@@ -614,6 +593,10 @@ class Credential(object):
                                     
             
     ##
+    # Verify
+    #   trusted_certs: A list of trusted GID filenames (not GID objects!) 
+    #                  Chaining is not supported within the GIDs by xmlsec1.
+    #    
     # Verify that:
     # . All of the signatures are valid and that the issuers trace back
     #   to trusted roots (performed by xmlsec1)
@@ -621,6 +604,7 @@ class Credential(object):
     # . That the issuer of the credential is the authority in the target's urn
     #    . In the case of a delegated credential, this must be true of the root
     # . That all of the gids presented in the credential are valid
+    # . The credential is not expired
     #
     # -- For Delegates (credentials with parents)
     # . The privileges must be a subset of the parent credentials
@@ -638,7 +622,6 @@ class Credential(object):
     def verify(self, trusted_certs):
         if not self.xml:
             self.decode()        
-
         trusted_cert_objects = [GID(filename=f) for f in trusted_certs]
 
         # Use legacy verification if this is a legacy credential
@@ -649,6 +632,10 @@ class Credential(object):
             if self.legacy.object_gid:
                 self.legacy.object_gid.verify_chain(trusted_cert_objects)
             return True
+        
+        # make sure it is not expired
+        if self.get_lifetime() < datetime.datetime.utcnow():
+            raise CredentialNotVerifiable("credential is expired")
 
         # Verify the signatures
         filename = self.save_to_random_tmp_file()
@@ -656,11 +643,13 @@ class Credential(object):
 
         # Verify the gids of this cred and of its parents
 
+
+
         for cur_cred in self.get_credential_list():
             cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
             cur_cred.get_gid_caller().verify_chain(trusted_cert_objects)            
 
-        
+
         refs = []
         refs.append("Sig_%s" % self.get_refid())
 

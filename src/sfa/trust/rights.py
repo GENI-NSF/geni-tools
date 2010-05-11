@@ -1,24 +1,3 @@
-# Copyright (c) 2008 Board of Trustees, Princeton University
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the "Work") to
-# deal in the Work without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Work, and to permit persons to whom the Work
-# is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Work.
-#
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
-# IN THE WORK.
-
 ##
 # This Module implements rights and lists of rights for the SFA. Rights
 # are implemented by two classes:
@@ -43,9 +22,9 @@ privilege_table = {"authority": ["register", "remove", "update", "resolve", "lis
                    "sa": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "deleteslice", "deletesliver", "updateslice",  
                           "getsliceresources", "getticket", "loanresources", "stopslice", "startslice", "renewsliver",
                           "deleteslice", "deletesliver", "resetslice", "listslices", "listnodes", "getpolicy", "sliverstatus"],
-                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver",  "deleteslice", "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
+                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "renewsliver", "deleteslice", "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
                    "bind": ["getticket", "loanresources", "redeemticket"],
-                   "control": ["updateslice", "createslice", "createsliver", "sliverstatus", "stopslice", "startslice", "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
+                   "control": ["updateslice", "createslice", "createsliver", "renewsliver", "sliverstatus", "stopslice", "startslice", "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
                    "info": ["listslices", "listnodes", "getpolicy","listresources"],
                    "ma": ["setbootstate", "getbootstate", "reboot", "getgids", "gettrustedcerts"],
                    "operator": ["gettrustedcerts", "getgids"]}

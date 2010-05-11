@@ -1,30 +1,9 @@
-# Copyright (c) 2008 Board of Trustees, Princeton University
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the "Work") to
-# deal in the Work without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Work, and to permit persons to whom the Work
-# is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Work.
-#
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
-# IN THE WORK.
-
 ##
 # Implements SFA GID. GIDs are based on certificates, and the GID class is a
 # descendant of the certificate class.
 ##
 
-### $Id: gid.py 17747 2010-04-20 20:19:33Z jkarlin $
+### $Id: gid.py 17869 2010-04-29 20:35:25Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/gid.py $
 
 import xmlrpclib
@@ -198,12 +177,12 @@ class GID(Certificate):
 
     def verify_chain(self, trusted_certs = None):
         # do the normal certificate verification stuff
-        Certificate.verify_chain(self, trusted_certs)
-
+        Certificate.verify_chain(self, trusted_certs)        
         if self.parent:
             # make sure the parent's hrn is a prefix of the child's hrn
             if not self.get_hrn().startswith(self.parent.get_hrn()):
                 raise GidParentHrn(self.parent.get_subject())
+                
 
         return
 

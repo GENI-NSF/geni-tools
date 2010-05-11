@@ -58,7 +58,7 @@ class CallHandler(object):
             return
         getattr(self,call)(args[1:])
 
-    def getclients(self):
+    def _getclients(self):
         clients = []
         for (urn, url) in self.listaggregates([]).items():
             client = make_client(url, self.config['key'], self.config['cert'])
@@ -81,7 +81,7 @@ class CallHandler(object):
 
         
         # Connect to each available GENI AM to list their resources
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
@@ -120,18 +120,18 @@ class CallHandler(object):
                 
             # Okay, send a message to the AM this resource came from
             if allocate:
-                try:
+#                try:
                     client = make_client(url, self.config['key'], self.config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
                     client.CreateSliver(urn, [slice_cred], rspec)
-                except:
-                    raise Exception("Unable to allocate from: %s" % url)
+#                except:
+#                    raise Exception("Unable to allocate from: %s" % url)
 
     def deletesliver(self, args):
         urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
         # Connect to each available GENI AM 
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 client.DeleteSliver(urn, [slice_cred])
             except:
@@ -144,7 +144,7 @@ class CallHandler(object):
         time = dateutil.parser.parse(args[1])
         print time        
 
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 client.RenewSliver(urn, [slice_cred], time.isoformat())
             except:
@@ -153,7 +153,7 @@ class CallHandler(object):
     def sliverstatus(self, args):
         urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 print "%s (%s)\n\t%s" % (client.urn, client.url, client.SliverStatus(urn, [slice_cred]))
             except:
@@ -162,14 +162,14 @@ class CallHandler(object):
     def shutdown(self, args):
         urn = long_urn(args[0])
         slice_cred = self.framework.get_slice_cred(urn)
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 client.Shutdown(urn, [slice_cred])
             except:
                 print "Failed to shutdown: %s at %s" % (client.urn, client.url)
     
     def getversion(self, args):
-        for client in self.getclients():
+        for client in self._getclients():
             try:
                 print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
             except:
