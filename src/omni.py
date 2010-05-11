@@ -49,7 +49,7 @@ class CallHandler(object):
         config['key'] = os.path.expanduser(config['key'])
         self.config = config
 
-    def handle(self, args):
+    def _handle(self, args):
         if len(args) == 0:
             sys.exit('Insufficient number of arguments')
         
@@ -217,7 +217,7 @@ def main(argv=None):
         
     # Process the user's call
     handler = CallHandler(framework, config[cf])    
-    handler.handle(args)
+    handler._handle(args)
     
     
         
