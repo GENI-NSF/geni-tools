@@ -160,7 +160,7 @@ class Clearinghouse(object):
         user_gid = gid.GID(string=user_gid)
         ucred.set_gid_caller(user_gid)
         ucred.set_gid_object(user_gid)
-        ucred.set_lifetime(3600)
+        ucred.set_lifetime(86400)
         privileges = rights.determine_rights('user', None)
         ucred.set_privileges(privileges)
         ucred.encode()
