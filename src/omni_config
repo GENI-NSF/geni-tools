@@ -18,7 +18,8 @@
 	"pg": {
         "xxxverbose": true,
         "ch": "https://www.emulab.net:443/protogeni/xmlrpc/ch",
-	    "sa": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
+        "sa2": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
+        "sa": "https://boss.pgeni3.gpolab.bbn.com:443/protogeni/xmlrpc/sa",
         "cert": "~/.omni/encrypted.pem",
         "key":  "~/.omni/pgcert.pem"
 	}
