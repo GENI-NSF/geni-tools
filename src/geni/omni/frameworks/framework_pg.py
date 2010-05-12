@@ -53,8 +53,10 @@ class Framework(object):
         self.config = config
         self.logger.debug("Configured with key file %s", config['key'])
         
+        self.logger.debug('using clearinghouse %s', self.config['ch'])
         self.ch = make_client(self.config['ch'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
+        self.logger.debug('using slice authority %s', self.config['sa'])
         self.sa = make_client(self.config['sa'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
         
@@ -131,6 +133,10 @@ class Framework(object):
                                      timeout=5)
                 try:
                     version = client.GetVersion()
+                    self.logger.debug('version = %r', version)
+                    # Temporarily accept pg style result until pgeni3 is upgraded.
+                    if version.has_key('output'):
+                        version = version['value']
                     if version.has_key('geni_api'):
                         cm_dict['am_url'] = am_url
                         result.append(cm_dict)
