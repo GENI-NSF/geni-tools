@@ -99,6 +99,8 @@ class Framework(object):
         in https://www.protogeni.net/trac/protogeni/wiki/ClearingHouseAPI2#ListComponents
         """
         cred = self.get_user_cred()
+        if not cred:
+            raise Exception("No user credential available.")
         pg_response = self.ch.ListComponents({'credential': cred})
         code = pg_response['code']
         if code:
