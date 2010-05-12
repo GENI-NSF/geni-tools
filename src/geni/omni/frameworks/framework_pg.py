@@ -50,12 +50,21 @@ class Framework(object):
         self.config = config
         self.logger.debug("Configured with key file %s", config['key'])
         
-        # TODO: use a real PG key and cert
+        self.ch = make_client(self.config['ch'], self.config['key'],
+                              self.config['cert'], self.config['verbose'])
         self.sa = make_client(self.config['sa'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
         
     def get_user_cred(self):
-        return self.sa.GetCredential()
+        pg_response = self.sa.GetCredential()
+        code = pg_response['code']
+        if code:
+            self.logger.error("Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            return None
+        else:
+            return pg_response['value']
     
     def get_slice_cred(self, urn):
         return self.ch.CreateSlice(urn)
@@ -67,9 +76,27 @@ class Framework(object):
         self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
-        sites = self.ch.ListAggregates()
-        aggs = {}
-        for (urn, url) in sites:
-            aggs[urn] = url
-        
-        return aggs
+        cred = self.get_user_cred()
+        self.logger.debug("Credential = %r", cred)
+        args = {}
+        args['credential'] = cred
+        pg_response = self.ch.ListComponents(args)
+        code = pg_response['code']
+        if code:
+            self.logger.error("Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            return dict()
+        # value is a list of dicts, each containing info about an aggregate
+        agg_dicts = pg_response['value']
+        result = dict()
+        for agg_dict in agg_dicts:
+            self.logger.debug("Keys: %r", agg_dict.keys())
+            result[agg_dict['urn']] = agg_dict['url']
+        for key, value in result.items():
+            self.logger.debug('Found aggregate %r: %r', key, value)
+        # At this point we have ProtoGENI ComponentManagers. We need
+        # to iterate through this list and determine if they have the
+        # GENI AM enabled. If so, replace the CM URL the AM URL. If
+        # not, remove it from the list.
+        return dict()
