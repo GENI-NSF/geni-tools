@@ -16,10 +16,10 @@
 		"key":	"~/.omni/gcf.jkarlin.pkey"    	
 	},
 	"pg": {
+        "xxxverbose": true,
         "ch": "https://www.emulab.net:443/protogeni/xmlrpc/ch",
 	    "sa": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
         "cert": "~/.omni/encrypted.pem",
-        "key":  "~/.omni/pgcert.pem",
-        "verbose": true
+        "key":  "~/.omni/pgcert.pem"
 	}
 }

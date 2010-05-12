@@ -23,6 +23,9 @@
 from ..xmlrpc.client import make_client
 import logging
 import os
+import socket
+import ssl
+import xmlrpclib
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded
@@ -76,23 +79,12 @@ class Framework(object):
         self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
-        cred = self.get_user_cred()
-        self.logger.debug("Credential = %r", cred)
-        args = {}
-        args['credential'] = cred
-        pg_response = self.ch.ListComponents(args)
-        code = pg_response['code']
-        if code:
-            self.logger.error("Received error code: %d", code)
-            output = pg_response['output']
-            self.logger.error("Received error message: %s", output)
-            return dict()
-        # value is a list of dicts, each containing info about an aggregate
-        agg_dicts = pg_response['value']
+        cm_dicts = self._get_components()
+        am_dicts = self._find_geni_ams(cm_dicts)
         result = dict()
-        for agg_dict in agg_dicts:
-            self.logger.debug("Keys: %r", agg_dict.keys())
-            result[agg_dict['urn']] = agg_dict['url']
+        for am_dict in am_dicts:
+            self.logger.debug("Keys: %r", am_dict.keys())
+            result[am_dict['urn']] = am_dict['am_url']
         for key, value in result.items():
             self.logger.debug('Found aggregate %r: %r', key, value)
         # At this point we have ProtoGENI ComponentManagers. We need
@@ -100,3 +92,61 @@ class Framework(object):
         # GENI AM enabled. If so, replace the CM URL the AM URL. If
         # not, remove it from the list.
         return dict()
+
+    def _get_components(self):
+        """Gets the ProtoGENI component managers from the ProtoGENI
+        Clearinghouse. Returns a list of dictionaries as documented
+        in https://www.protogeni.net/trac/protogeni/wiki/ClearingHouseAPI2#ListComponents
+        """
+        cred = self.get_user_cred()
+        pg_response = self.ch.ListComponents({'credential': cred})
+        code = pg_response['code']
+        if code:
+            self.logger.error("Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            # Return an empty list.
+            return list()
+        # value is a list of dicts, each containing info about an aggregate
+        return pg_response['value']
+    
+    def _find_geni_ams(self, cm_dicts):
+        """Finds ComponentManagers that also support the GENI AM API.
+        Returns a list of dicts containing those CMs that implement the AM API.
+        The AM URL is included in the dict in the key 'am_url'.
+        """
+        result = list()
+        for cm_dict in cm_dicts:
+            cm_url = cm_dict['url']
+            self.logger.debug('Checking for AM at %s', cm_url)
+            am_url = self._cm_to_am(cm_url)
+            self.logger.debug('AM URL = %s', am_url)
+            if am_url != cm_url:
+                # Test the am_url...
+                client = make_client(am_url, self.config['key'],
+                                     self.config['cert'],
+                                     self.config['verbose'],
+                                     timeout=5)
+                try:
+                    version = client.GetVersion()
+                    if version.has_key('geni_api'):
+                        cm_dict['am_url'] = am_url
+                        result.append(cm_dict)
+                except xmlrpclib.ProtocolError, err:
+                    self.logger.debug("Skipping %s due to xml rpc error: %s",
+                                      cm_url, err)
+                except ssl.SSLError, err:
+                    self.logger.debug("Skipping %s due to ssl error: %s",
+                                      cm_url, err)
+                except socket.error, err:
+                    self.logger.debug("Skipping %s due to socket error: %s",
+                                      cm_url, err)
+        return result
+
+    def _cm_to_am(self, url):
+        """Convert a CM url to an AM url."""
+        # Replace the trailing "cm" with "am"
+        if url.endswith('cm'):
+            return url[:-2] + 'am'
+        else:
+            return url
