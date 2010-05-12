@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import logging
 
 #----------------------------------------------------------------------
 # Copyright (c) 2010 Raytheon BBN Technologies
@@ -195,16 +196,28 @@ def parse_args(argv):
                       help="config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="control framework to use for creation/deletion of slices")
+    parser.add_option("--debug", action="store_true", default=False,
+                       help="enable debugging output")
     return parser.parse_args()
 
+def configure_logging(opts):
+    level = logging.INFO
+    logging.basicConfig(level=level)
+    if opts.debug:
+        level = logging.DEBUG
+    logger = logging.getLogger("omni")
+    logger.setLevel(level)
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
+    configure_logging(opts)
 
+    logger = logging.getLogger('omni')
     # Load up the JSON formatted config file
     filename = os.path.expanduser(opts.configfile)
+    logger.debug("Loading config file %s", filename)
     config = json.loads(file(filename, 'r').read())
         
     if not opts.framework:
