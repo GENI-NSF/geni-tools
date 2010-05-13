@@ -3,6 +3,17 @@ import json
    
 
 class OmniSpec(dict):
+    """
+    An omnispec is meant to be an intermediate representation of RSpecs from various aggregates.
+    The omnispec representation can then be used by tools to present resources to users, in an 
+    rspec-format agnostic way.  Once the user has selected the resources that they want, the
+    omnispecs are then reverted back into aggregate-specific formats and sent back to the 
+    aggregates to create the slivers.
+    
+    An omnispec instance represents a conversion of an rspec from a single aggregate.  The type and urn
+    of the aggregate are stored in the omnispec so that it can be reverted later.  Each resource represented
+    in the rspec is converted into an OmniResource, and the omnispec keeps a list of OmniResources.
+    """
     def __init__(self, type, urn, filename = None, dictionary = None):
         dict.__init__(self, {})    
 
@@ -44,6 +55,26 @@ class OmniSpec(dict):
     
 
 class OmniResource(dict):
+    """
+    An omniresource is an intermediate representation of a single resource in an rspec.
+    Its fields are very general, such as the type of the resource, and the name of the resources.
+    Descriptive information that should be presented to the user can be set in the description.
+    Options that the user can specify, such as memory usage, bandwidth, vlans, etc.. should be stored
+    in the options dictionary.  Specific information about the resource that is needed to reconstruct
+    the RSpec from the OmniResource should be placed in the misc dictionary.
+    
+    Field descriptions:
+    Name: The name of the resource
+    Description: Details about the resource that the user might want to read
+    Type: Is it a link? a vm? a switch?
+    Allocated: Is this resource currently allocated?
+    Allocate: This is set to true by the user if they want to allocate this resource in CreateSliver
+    Options: Settings that the user can adjust
+    Misc: Extra information mainly meant for conversion back from omnispec to rspecs
+    
+    Future ideas:
+    Should probably add location information for each resource.
+    """
     def __init__(self, name, description, type, dictionary=None):
         dict.__init__(self, {})
         if dictionary:
