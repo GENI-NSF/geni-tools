@@ -37,6 +37,7 @@ import sys
 import os
 import json
 import dateutil.parser
+from copy import copy
 from geni.omni.util.namespace import long_urn
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
@@ -111,10 +112,13 @@ class CallHandler(object):
             omnispecs[url] = OmniSpec('','',dictionary=spec_dict)
         
         
-        keys = []
-        for f in self.omni_config['pubkeys']:
-            keys.append(file(os.path.expanduser(f)).read())
-        users = [{'keys': keys}]
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = copy(self.omni_config['slice_users'])
+        for user in slice_users:
+            newkeys = []
+            for f in user['keys']:
+                newkeys.append(file(os.path.expanduser(f)).read())
+            user['keys'] = newkeys
         
         # Anything we need to allocate?
         for (url, ospec) in omnispecs.items():
@@ -129,7 +133,7 @@ class CallHandler(object):
 #                try:
                     client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
-                    client.CreateSliver(urn, [slice_cred], rspec, users)
+                    client.CreateSliver(urn, [slice_cred], rspec, slice_users)
 #                except:
 #                    raise Exception("Unable to allocate from: %s" % url)
 

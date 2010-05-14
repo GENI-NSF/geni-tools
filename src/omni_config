@@ -1,7 +1,13 @@
 {
 	"omni": {
-		"default_cf": "sfa",
-		"pubkeys": ["~/.omni/jkarlin.pub"]
+		"default_cf": "gcf",
+		"slice_users": [ 
+		    {
+				"name": "jkarlin",
+				"email": "jkarlin@bbn.com",
+				"keys": ["~/.omni/jkarlin.pub"]
+			}
+		]
 	},
 	"sfa": {
 		"authority": "plc.gpo.site2",
