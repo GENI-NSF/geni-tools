@@ -1,6 +1,7 @@
 {
 	"omni": {
-		"default_cf": "sfa"
+		"default_cf": "sfa",
+		"pubkeys": ["~/.omni/jkarlin.pub"]
 	},
 	"sfa": {
 		"authority": "plc.gpo.site2",
