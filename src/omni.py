@@ -86,8 +86,10 @@ class CallHandler(object):
             try:
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
-            except:
+            except Exception, exc:
                 print "Failed to get resources from %s (%s)" % (client.urn, client.url)
+                logger = logging.getLogger('omni')
+                logger.debug(str(exc))
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
