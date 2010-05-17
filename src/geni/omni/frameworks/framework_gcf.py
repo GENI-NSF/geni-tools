@@ -1,8 +1,9 @@
 from geni.omni.xmlrpc.client import make_client
+from geni.omni.frameworks.framework_base import Framework_Base
 import os
 import time
 
-class Framework(object):
+class Framework(Framework_Base):
     def __init__(self, config):
         config['cert'] = os.path.expanduser(config['cert'])
         config['key'] = os.path.expanduser(config['key'])        

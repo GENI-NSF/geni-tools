@@ -38,17 +38,19 @@ import sys
 import os
 import json
 import dateutil.parser
+from copy import copy
 from geni.omni.util.namespace import long_urn
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
 
 class CallHandler(object):
-    def __init__(self, framework, config):
+    def __init__(self, framework, frame_config, omni_config):
         self.framework = framework    
-        config['cert'] = os.path.expanduser(config['cert'])
-        config['key'] = os.path.expanduser(config['key'])
-        self.config = config
+        self.frame_config = frame_config
+        self.omni_config = omni_config
+        frame_config['cert'] = os.path.expanduser(frame_config['cert'])
+        frame_config['key'] = os.path.expanduser(frame_config['key'])
 
     def _handle(self, args):
         if len(args) == 0:
@@ -62,7 +64,7 @@ class CallHandler(object):
     def _getclients(self):
         clients = []
         for (urn, url) in self.listaggregates([]).items():
-            client = make_client(url, self.config['key'], self.config['cert'])
+            client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
             client.urn = urn
             client.url = url
             clients.append(client)
@@ -113,6 +115,14 @@ class CallHandler(object):
             omnispecs[url] = OmniSpec('','',dictionary=spec_dict)
         
         
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = copy(self.omni_config['slice_users'])
+        for user in slice_users:
+            newkeys = []
+            for f in user['keys']:
+                newkeys.append(file(os.path.expanduser(f)).read())
+            user['keys'] = newkeys
+        
         # Anything we need to allocate?
         for (url, ospec) in omnispecs.items():
             allocate = False
@@ -124,9 +134,9 @@ class CallHandler(object):
             # Okay, send a message to the AM this resource came from
             if allocate:
 #                try:
-                    client = make_client(url, self.config['key'], self.config['cert'])
+                    client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
-                    client.CreateSliver(urn, [slice_cred], rspec)
+                    client.CreateSliver(urn, [slice_cred], rspec, slice_users)
 #                except:
 #                    raise Exception("Unable to allocate from: %s" % url)
 
@@ -231,7 +241,7 @@ def main(argv=None):
     framework = framework_mod.Framework(config[cf])
         
     # Process the user's call
-    handler = CallHandler(framework, config[cf])    
+    handler = CallHandler(framework, config[cf], config['omni'])    
     handler._handle(args)
     
     
