@@ -59,6 +59,12 @@ class Framework(object):
         self.logger.debug('using slice authority %s', self.config['sa'])
         self.sa = make_client(self.config['sa'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
+        # Hardcode the PG in ELab instance because it does not
+        # show up in the clearinghouse.
+        self.aggs = {
+                     'urn:publicid:IDN+elabinelab.geni.emulab.net':
+                     'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am'
+        }
         
     def get_user_cred(self):
         pg_response = self.sa.GetCredential()
@@ -81,6 +87,8 @@ class Framework(object):
         self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
+        if self.aggs:
+            return self.aggs
         cm_dicts = self._get_components()
         am_dicts = self._find_geni_ams(cm_dicts)
         result = dict()
@@ -89,11 +97,7 @@ class Framework(object):
             result[am_dict['urn']] = am_dict['am_url']
         for key, value in result.items():
             self.logger.debug('Found aggregate %r: %r', key, value)
-        # At this point we have ProtoGENI ComponentManagers. We need
-        # to iterate through this list and determine if they have the
-        # GENI AM enabled. If so, replace the CM URL the AM URL. If
-        # not, remove it from the list.
-        return dict()
+        return result
 
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI
