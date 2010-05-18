@@ -51,25 +51,29 @@ def pg_tag(tag):
 
 def add_nodes(ospec, root):
     for res in root.findall(pg_tag('node')):
-        id = res.attrib['component_uuid']
         name = res.attrib['component_name']
-#        code.interact(local=locals())
-        type = res.find(pg_tag('node_type')).attrib['type_name']
-        available = res.find(pg_tag('available')).text.lower() == 'true'
+        description = 'ProtoGENI Node'
+        type = 'node'
+        omni_res = OmniResource(name, description, type)
         
-        omni_res = OmniResource(id, name, type)
+        available = res.find(pg_tag('available')).text.lower() == 'true'
         omni_res.set_allocated(not(available))
+        omni_res['orig_xml'] = ET.tostring(res)
+        id = res.attrib['component_uuid']
         ospec.add_resource(id, omni_res)
         
 def add_links(ospec, root):
     for res in root.findall(pg_tag('link')):
-        id = res.attrib['component_uuid']
         name = res.attrib['component_name']
-        type = res.find(pg_tag('link_type')).attrib['type_name']
-        available = True
+        description = 'ProtoGENI Link'
+        type = 'link'
+        omni_res = OmniResource(name, description, type)
         
-        omni_res = OmniResource(id, name, type)
+        # Links appear to be always available
+        available = True
         omni_res.set_allocated(not(available))
+        omni_res['orig_xml'] = ET.tostring(res)
+        id = res.attrib['component_uuid']
         ospec.add_resource(id, omni_res)
 
 def rspec_to_omnispec(urn, rspec):
@@ -79,17 +83,25 @@ def rspec_to_omnispec(urn, rspec):
     add_links(ospec, doc)
     return ospec
 
+def add_node(root, onode):
+    root.append(ET.fromstring(onode['orig_xml']))
+
+def add_link(root, olink):
+    root.append(ET.fromstring(olink['orig_xml']))
+
 def omnispec_to_rspec(omnispec, filter_allocated):
     # Convert it to XML
     root = ET.Element('rspec')
-    for _, r in omnispec.get_resources().items():
+    for id, r in omnispec.get_resources().items():
         if filter_allocated and not r.get_allocate():
             continue
-        
-        res = ET.SubElement(root, 'resource')
-        ET.SubElement(res, 'type').text = r.get_type()
-        ET.SubElement(res, 'id').text = r.get_name()
-        ET.SubElement(res, 'available').text = str(not r.get_allocated())
+        res_type = r.get_type()
+        if res_type == 'node':
+            add_node(root, r)
+        elif res_type == 'link':
+            add_link(root, r)
+        else:
+            raise(Exception('Unknown resource type ' + res_type))
 
     return ET.tostring(root)
     
