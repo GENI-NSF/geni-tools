@@ -36,10 +36,10 @@ import logging
 import optparse
 import sys
 import os
+import pprint
 import json
 import dateutil.parser
 from copy import copy
-from geni.omni.util.namespace import long_urn
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
@@ -78,7 +78,8 @@ class CallHandler(object):
         if len(args) == 0:
             cred = self.framework.get_user_cred()
         else:
-            urn = long_urn(args[0])
+            name = args[0]
+            urn = self.framework.slice_name_to_urn(name)
             cred = self.framework.get_slice_cred(urn)
             options['geni_slice_urn'] = urn
 
@@ -104,7 +105,8 @@ class CallHandler(object):
     
     
     def createsliver(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         
         # Load up the user's edited omnispec
@@ -141,7 +143,8 @@ class CallHandler(object):
 #                    raise Exception("Unable to allocate from: %s" % url)
 
     def deletesliver(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         # Connect to each available GENI AM 
         for client in self._getclients():
@@ -152,7 +155,8 @@ class CallHandler(object):
                 pass
             
     def renewsliver(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         time = dateutil.parser.parse(args[1])
         print time        
@@ -164,16 +168,22 @@ class CallHandler(object):
                 print "Failed to renew sliver on %s" % client.urn
     
     def sliverstatus(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self._getclients():
             try:
-                print "%s (%s)\n\t%s" % (client.urn, client.url, client.SliverStatus(urn, [slice_cred]))
-            except:
+                status = client.SliverStatus(urn, [slice_cred])
+                print "%s (%s):" % (client.urn, client.url)
+                pprint.pprint(status)
+            except Exception, exc:
                 print "Failed to retrieve status for: %s" % client.urn
+                logger = logging.getLogger('omni')
+                logger.debug(str(exc))
                 
     def shutdown(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self._getclients():
             try:
@@ -194,7 +204,8 @@ class CallHandler(object):
         self.framework.create_slice(urn)
         
     def deleteslice(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         self.framework.delete_slice(urn)
         
     def listaggregates(self, args):
