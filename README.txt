@@ -10,8 +10,13 @@ software is intended to demonstrate the GENI Aggregate Manager API.
 Software Dependencies
 =====================
 
+The GCF package is intended to be run on a modern Linux distribution
+(circa 2010 or 2009). Python 2.6 is required. This software is not
+Python 3 compatible.
+
 This software requires a number of readily available software
-packages.
+packages. Most modern Linux distributions should have these packages
+available via their native package management suite (eg. yum or apt).
 
 1. Python M2Crypto package
 
