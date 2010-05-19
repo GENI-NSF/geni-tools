@@ -21,10 +21,19 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import code
 import logging
 import xml.etree.ElementTree as ET
 from .omnispec import OmniSpec, OmniResource
+
+# This is an Unbound Request RSpec for testing.
+ONE_NODE_RSPEC = """
+<rspec xmlns=\"http://protogeni.net/resources/rspec/0.1\">
+  <node virtual_id=\"geni1\"
+        virtualization_type=\"emulab-vnode\"
+        startup_command=\"/bin/ls > /tmp/foo\">
+  </node>" +\
+</rspec>
+"""
 
 def can_translate(urn, rspec):
     """Determine if I can translate the given rspec from the aggregate
@@ -89,7 +98,7 @@ def add_node(root, onode):
 def add_link(root, olink):
     root.append(ET.fromstring(olink['orig_xml']))
 
-def omnispec_to_rspec(omnispec, filter_allocated):
+def wannabe_omnispec_to_rspec(omnispec, filter_allocated):
     # Convert it to XML
     root = ET.Element('rspec')
     for id, r in omnispec.get_resources().items():
@@ -104,4 +113,7 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             raise(Exception('Unknown resource type ' + res_type))
 
     return ET.tostring(root)
-    
+
+def omnispec_to_rspec(omnispec, filter_allocated):
+    """Return a static rspec for testing."""
+    return ONE_NODE_RSPEC
