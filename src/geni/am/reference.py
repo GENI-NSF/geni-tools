@@ -181,7 +181,7 @@ class ReferenceAggregateManager(object):
             result = base64.b64encode(zlib.compress(result))
         return result
 
-    def CreateSliver(self, slice_urn, credentials, rspec):
+    def CreateSliver(self, slice_urn, credentials, rspec, users):
         print 'CreateSliver(%r)' % (slice_urn)
         privileges = ('createsliver',)
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,

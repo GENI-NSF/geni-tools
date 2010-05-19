@@ -143,8 +143,10 @@ class CallHandler(object):
                     client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
                     client.CreateSliver(urn, [slice_cred], rspec, slice_users)
-                except:
-                    raise Exception("Unable to allocate from: %s" % url)
+                except Exception, exc:
+                    print "Unable to allocate from: %s" % (url)
+                    logger = logging.getLogger('omni')
+                    logger.debug(str(exc))
 
     def deletesliver(self, args):
         name = args[0]

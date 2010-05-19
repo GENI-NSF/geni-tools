@@ -40,8 +40,8 @@ class AggregateManager(object):
     def ListResources(self, credentials, options):
         return self._delegate.ListResources(credentials, options)
 
-    def CreateSliver(self, slice_urn, credentials, rspec):
-        return self._delegate.CreateSliver(slice_urn, credentials, rspec)
+    def CreateSliver(self, slice_urn, credentials, rspec, users):
+        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users)
 
     def DeleteSliver(self, slice_urn, credentials):
         return self._delegate.DeleteSliver(slice_urn, credentials)
@@ -72,7 +72,7 @@ class PrintingAggregateManager(object):
             result = xmlrpclib.Binary(zlib.compress(result))
         return result
 
-    def CreateSliver(self, slice_urn, credentials, rspec):
+    def CreateSliver(self, slice_urn, credentials, rspec, users):
         print 'CreateSliver(%r)' % (slice_urn)
         return '<rspec/>'
 
