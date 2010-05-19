@@ -23,12 +23,19 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import sys
+
+# Check python version. Requires 2.6 or greater, but less than 3.
+if sys.version_info < (2, 6):
+    raise Exception('Must use python 2.6 or greater.')
+elif sys.version_info >= (3,):
+    raise Exception('Not python 3 ready')
+
 import base64
 import datetime
 import logging
 import optparse
 import random
-import sys
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
@@ -89,7 +96,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
     else:
         # pick two at random
         indices = range(resources.length)
-        for i in range(2):
+        for _ in range(2):
             index = random.choice(indices)
             indices.remove(index)
             top.appendChild(resources.item(index).cloneNode(True))
