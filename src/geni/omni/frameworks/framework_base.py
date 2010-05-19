@@ -21,7 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-
+from ..util import namespace
 
 class Framework_Base():
     """
@@ -75,3 +75,8 @@ class Framework_Base():
         Returns: a dictionary where keys are urns and values are aggregate urls
         """
         raise NotImplementedError('list_aggregates')
+
+    def slice_name_to_urn(self, name):
+        """Convert a slice name to a slice urn."""
+        # Default implementation just converts to generic URN.
+        return namespace.long_urn(name)

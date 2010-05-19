@@ -189,7 +189,8 @@ class CallHandler(object):
                 print "Failed to get version information for %s at (%s)" % (client.urn, client.url)
                                 
     def createslice(self, args):
-        urn = long_urn(args[0])
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
         self.framework.create_slice(urn)
         
     def deleteslice(self, args):
