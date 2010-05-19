@@ -20,12 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-from ..xmlrpc.client import make_client
+
 import logging
 import os
 import socket
 import ssl
+from urlparse import urlparse
 import xmlrpclib
+
+from ..xmlrpc.client import make_client
+from ..util import namespace
+from framework_base import Framework_Base
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded
@@ -39,7 +44,7 @@ import xmlrpclib
 # protected. See the openssl pkcs12 man page for more info.
 
 
-class Framework(object):
+class Framework(Framework_Base):
     """The ProtoGENI backend for Omni. This class defines the
     interface to the Protogeni Control Framework.
     """
@@ -78,14 +83,67 @@ class Framework(object):
             return pg_response['value']
     
     def get_slice_cred(self, urn):
-        return self.ch.CreateSlice(urn)
+        mycred = self.get_user_cred()
+        # Note params may be used again later in this method
+        params = {'credential': mycred,
+                  'type': 'Slice',
+                  'urn': urn}
+        self.logger.debug("Resolving %s at slice authority", urn)
+        response = self.sa.Resolve(params)
+        # response is a dict with three keys: code, value and output
+        self.logger.debug("Got resolve response %r", response)
+        if response['code']:
+            # Unable to resolve, slice does not exist
+            raise Exception('Slice %s does not exist.' % (urn))
+        else:
+            # Slice exists, get credential and return it
+            self.logger.debug("Resolved slice %s, getting credential", urn)
+            response = self.sa.GetCredential(params)
+            return response['value']
+
     
-    def create_slice(self, urn):    
-        return self.get_slice_cred(urn)
+    def slice_name_to_urn(self, name):
+        """Convert a slice name to a slice urn."""
+        #
+        # Sample URNs:
+        #   urn:publicid:IDN+pgeni3.gpolab.bbn.com+slice+tom1
+        #   urn:publicid:IDN+elabinelab.geni.emulab.net+slice+tom1
+        #
+        url = urlparse(self.config['sa'])
+        sa_host = url.hostname
+        pg_site = sa_host[sa_host.index('.')+1:]
+        slice_name = '%s+slice+%s' % (pg_site, name)
+        return namespace.long_urn(slice_name)
     
+    def create_slice(self, urn):
+        """Create a slice at the PG Slice Authority.
+        If the slice exists, just return a credential for the existing slice.
+        If the slice does not exist, create it and return a credential.
+        """
+        mycred = self.get_user_cred()
+        # Note: params is used again below through either code path.
+        params = {'credential': mycred,
+                  'type': 'Slice',
+                  'urn': urn}
+        self.logger.debug("Resolving %s at slice authority", urn)
+        response = self.sa.Resolve(params)
+        # response is a dict with three keys: code, value and output
+        self.logger.debug("Got resolve response %r", response)
+        if response['code']:
+            # Unable to resolve, create a new slice
+            self.logger.debug("Creating new slice %s", urn)
+            response = self.sa.Register(params)
+            self.logger.debug("Got register response %r", response)
+            return response['value']
+        else:
+            # Slice exists, get credential and return it
+            self.logger.debug("Resolved slice %s, getting credential", urn)
+            response = self.sa.GetCredential(params)
+            return response['value']
+
     def delete_slice(self, urn):
-        self.ch.DeleteSlice(urn)
-     
+        raise Exception("delete_slice is not implemented.")
+
     def list_aggregates(self):
         if self.aggs:
             return self.aggs
