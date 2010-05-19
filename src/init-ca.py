@@ -30,9 +30,16 @@ a clearinghouse and an aggregate manager. Finally, a user cert and
 key is created for a user named Alice.
 """
 
+import sys
+
+# Check python version. Requires 2.6 or greater, but less than 3.
+if sys.version_info < (2, 6):
+    raise Exception('Must use python 2.6 or greater.')
+elif sys.version_info >= (3,):
+    raise Exception('Not python 3 ready')
+
 import optparse
 import os.path
-import sys
 import geni
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
