@@ -63,12 +63,16 @@ class CallHandler(object):
 
     def _getclients(self):
         clients = []
-        for (urn, url) in self.listaggregates([]).items():
+        for (urn, url) in self._listaggregates([]).items():
             client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
             client.urn = urn
             client.url = url
             clients.append(client)
         return clients    
+        
+    def _listaggregates(self, args):
+        aggs = self.framework.list_aggregates()
+        return aggs
 
     def listresources(self, args):
         rspecs = {}
@@ -135,12 +139,12 @@ class CallHandler(object):
                 
             # Okay, send a message to the AM this resource came from
             if allocate:
-#                try:
+                try:
                     client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
                     client.CreateSliver(urn, [slice_cred], rspec, slice_users)
-#                except:
-#                    raise Exception("Unable to allocate from: %s" % url)
+                except:
+                    raise Exception("Unable to allocate from: %s" % url)
 
     def deletesliver(self, args):
         name = args[0]
@@ -207,10 +211,7 @@ class CallHandler(object):
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         self.framework.delete_slice(urn)
-        
-    def listaggregates(self, args):
-        aggs = self.framework.list_aggregates()
-        return aggs
+
 
 
 
