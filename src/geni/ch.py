@@ -110,7 +110,7 @@ class Clearinghouse(object):
         slice_uuid = uuid.uuid4()
         # Where was the slice created?
         (ipaddr, port) = self._server.socket._sock.getsockname()
-        public_id = 'IDN geni.net//gpo test-ch slice %s//%s:%d' % (slice_uuid.__str__()[4:12],
+        public_id = 'IDN geni.net//gpo//gcf slice %s//%s:%d' % (slice_uuid.__str__()[4:12],
                                                                    ipaddr,
                                                                    port)
         if urn_req:
@@ -141,7 +141,7 @@ class Clearinghouse(object):
         return False
 
     def ListAggregates(self):
-        out = [('urn:publicid:IDN+gcf+authority+geni', 'http://localhost:8001'), ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2', 'http://myplc2.gpolab.bbn.com:12348'), ('urn:publicid:IDN+plc:gpo+authority+site2', 'http://128.89.81.175:12348')]
+        out = [('urn:publicid:IDN+geni.net:gpo+authority+gcf', 'http://localhost:8001'), ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2', 'http://myplc2.gpolab.bbn.com:12348'), ('urn:publicid:IDN+plc:gpo+authority+site2', 'http://128.89.81.175:12348')]
         return out
     
     def create_slice_gid(self, subject, slice_urn):
