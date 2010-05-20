@@ -7,7 +7,7 @@ directory is subject to the PlanetLab license (see "License"
 below). There are a small number of modifications to the code. These
 modifications are documented in the "Modifications" section below.
 
-This code is based on revision 17966 (May 5th, 2010) of the PlanetLab
+This code is based on revision 18090 (May 20th, 2010) of the PlanetLab
 Subversion repository, geni-api branch.
 
 
