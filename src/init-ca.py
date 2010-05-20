@@ -52,9 +52,8 @@ CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
 
-def create_cert(subject, type, issuer_key=None, issuer_cert=None):
-    publicid = 'IDN geni.net//gpo %s %s' % (type, subject)
-    urn = geni.publicid_to_urn(publicid)
+def create_cert(subject, issuer_key=None, issuer_cert=None):
+    urn = 'urn:publicid:IDN+%s' % subject
     newgid = gid.GID(create=True, subject=subject, uuid=gid.create_uuid(),
                      urn=urn)
     keys = cert.Keypair(create=True)
@@ -81,19 +80,19 @@ def create_user_credential(user_gid, issuer_keyfile, issuer_certfile):
 
 def make_certs(dir):
     # Create the CA cert
-    (ca_cert, ca_key) = create_cert('gcf', 'authority')
+    (ca_cert, ca_key) = create_cert('geni.net:gpo+authority+gcf',)
     ca_cert.save_to_file(os.path.join(dir, CA_CERT_FILE))
     ca_key.save_to_file(os.path.join(dir, CA_KEY_FILE))
     # Make a cert for the clearinghouse
-    (ch_gid, ch_keys) = create_cert('gcf.ch', 'authority', ca_key, ca_cert)
+    (ch_gid, ch_keys) = create_cert('geni.net:gpo:gcf+authority+ch', ca_key, ca_cert)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     # Make a cert for the aggregate manager
-    (am_gid, am_keys) = create_cert('gcf.am', 'authority', ca_key, ca_cert)
+    (am_gid, am_keys) = create_cert('geni.net:gpo:gcf+authority+am', ca_key, ca_cert)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     # Make a GID/Cert for Alice
-    (alice_gid, alice_keys) = create_cert('gcf.alice', 'user', ca_key, ca_cert)
+    (alice_gid, alice_keys) = create_cert('geni.net:gpo+gcf+user+alice', ca_key, ca_cert)
     alice_gid.save_to_file(os.path.join(dir, 'alice-cert.pem'))
     alice_keys.save_to_file(os.path.join(dir, 'alice-key.pem'))
 

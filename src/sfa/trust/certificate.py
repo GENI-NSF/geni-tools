@@ -11,7 +11,7 @@
 # This module exports two classes: Keypair and Certificate.
 ##
 #
-### $Id: certificate.py 17966 2010-05-10 16:13:57Z jkarlin $
+### $Id: certificate.py 18088 2010-05-20 13:44:14Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/certificate.py $
 #
 
@@ -249,8 +249,6 @@ class Certificate:
 
        if intermediate:
            self.set_intermediate_ca(intermediate)
-       else:
-           self.set_intermediate_ca(False)
 
    ##
    # Create a blank X509 certificate and store it in this object.
@@ -363,7 +361,7 @@ class Certificate:
              self.issuerReq = req
        if cert:
           # if a cert was supplied, then get the subject from the cert
-          subject = cert.cert.get_issuer()
+          subject = cert.cert.get_subject()
        assert(subject)
        self.issuerSubject = subject
 
@@ -565,16 +563,8 @@ class Certificate:
             #print "TRUSTED CERT", trusted_cert.dump()
             #print "Client is signed by Trusted?", self.is_signed_by_cert(trusted_cert)
             if self.is_signed_by_cert(trusted_cert):
-                # make sure sure the trusted cert's hrn is a prefix of the
-                # signed cert's hrn
-                trusted_hrn, _ = urn_to_hrn(trusted_cert.get_subject())
-                cur_hrn, _ = urn_to_hrn(self.get_subject())
-                if not cur_hrn.startswith(trusted_hrn):
-                    print trusted_cert.get_subject()
-                    print self.get_subject()
-                    raise GidParentHrn(trusted_cert.get_subject() + " " + self.get_subject()) 
                 #print self.get_subject(), "is signed by a root"
-                return
+                return trusted_cert
 
         # if there is no parent, then no way to verify the chain
         if not self.parent:
