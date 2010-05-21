@@ -3,7 +3,6 @@ import xml.etree.ElementTree as ET
 
 
 def can_translate(urn, rspec):
-    print urn
     if urn.split('+')[1].lower().startswith('geni.net:gpo'):
         return True
     return False
