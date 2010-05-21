@@ -141,7 +141,14 @@ class Clearinghouse(object):
         return False
 
     def ListAggregates(self):
-        out = [('urn:publicid:IDN+geni.net:gpo+authority+gcf', 'http://localhost:8001')]#, ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2', 'http://myplc2.gpolab.bbn.com:12348')]#, ('urn:publicid:IDN+plc:gpo+authority+site2', 'http://128.89.81.175:12348')]
+        out = [('urn:publicid:IDN+geni.net:gpo+authority+gcf', 'http://localhost:8001')
+#                , ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2',
+#                   'http://myplc2.gpolab.bbn.com:12348')
+#                , ('urn:publicid:IDN+plc:gpo+authority+site2',
+#                   'http://128.89.81.175:12348')
+#               , ('urn:publicid:IDN+elabinelab.geni.emulab.net',
+#                  'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am')
+               ]
         return out
     
     def create_slice_gid(self, subject, slice_urn):
