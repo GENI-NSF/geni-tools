@@ -3,7 +3,7 @@
 # descendant of the certificate class.
 ##
 
-### $Id: gid.py 18088 2010-05-20 13:44:14Z jkarlin $
+### $Id: gid.py 18100 2010-05-20 21:12:26Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/gid.py $
 
 import xmlrpclib
@@ -115,11 +115,11 @@ class GID(Certificate):
         else:
             urn = hrn_to_urn(self.hrn, None)
             
-        szURN = "URI:" + urn
-        szUUID = "URI:" + uuid.UUID(int=self.uuid).urn
+        str = "URI:" + urn
+
+        if self.uuid:
+            str += ", " + "URI:" + uuid.UUID(int=self.uuid).urn
         
-        
-        str = szURN + ", " + szUUID
         self.set_data(str, 'subjectAltName')
 
         

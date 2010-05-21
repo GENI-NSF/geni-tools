@@ -54,7 +54,7 @@ AM_KEY_FILE = 'am-key.pem'
 
 def create_cert(subject, issuer_key=None, issuer_cert=None):
     urn = 'urn:publicid:IDN+%s' % subject
-    newgid = gid.GID(create=True, subject=subject, uuid=gid.create_uuid(),
+    newgid = gid.GID(create=True, subject=subject,
                      urn=urn)
     keys = cert.Keypair(create=True)
     newgid.set_pubkey(keys)
