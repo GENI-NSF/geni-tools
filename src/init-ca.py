@@ -92,7 +92,7 @@ def make_certs(dir):
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     # Make a GID/Cert for Alice
-    (alice_gid, alice_keys) = create_cert('geni.net:gpo+gcf+user+alice', ca_key, ca_cert)
+    (alice_gid, alice_keys) = create_cert('geni.net:gpo:gcf+user+alice', ca_key, ca_cert)
     alice_gid.save_to_file(os.path.join(dir, 'alice-cert.pem'))
     alice_keys.save_to_file(os.path.join(dir, 'alice-key.pem'))
 
