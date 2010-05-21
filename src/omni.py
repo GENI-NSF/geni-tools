@@ -214,7 +214,11 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         self.framework.delete_slice(urn)
 
-
+    def getslicecred(self, args):
+        name = args[0]
+        urn = self.framework.slice_name_to_urn(name)
+        cred = self.framework.get_slice_cred(urn)
+        print cred
 
 
 def parse_args(argv):
