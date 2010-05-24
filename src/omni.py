@@ -100,7 +100,7 @@ class CallHandler(object):
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
-        for ((urn,url), rspec) in rspecs.items():            
+        for ((urn,url), rspec) in rspecs.items():                        
             omnispecs[url] = rspec_to_omnispec(urn,rspec)
                         
         jspecs = json.dumps(omnispecs, indent=4)
