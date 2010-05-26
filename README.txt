@@ -36,7 +36,16 @@ available via their native package management suite (eg. yum or apt).
   More information is available at:
     http://labix.org/python-dateutil
 
-3. xmlsec1 package
+3. Python OpenSSL package
+
+  The OpenSSL package provides a python API to the OpenSSL
+  package. There is an implicity dependency on OpenSSL, but that
+  should be handled by the Linux package manager (yum, apt, etc.)
+
+  More information is available at:
+    https://launchpad.net/pyopenssl
+
+4. xmlsec1 package
 
   The XML Security Library provides implementations of XML Digital
   Signature (RFC 3275) and W3C XML Encryption. The program xmlsec1
