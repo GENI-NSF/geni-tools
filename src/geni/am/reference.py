@@ -149,7 +149,7 @@ class ReferenceAggregateManager(object):
 
     def ListResources(self, credentials, options):
         print 'ListResources(%r)' % (options)
-        privileges = ('listresources',)
+        privileges = ()
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 None,
