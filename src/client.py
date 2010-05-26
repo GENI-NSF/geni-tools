@@ -100,8 +100,9 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
             index = random.choice(indices)
             indices.remove(index)
             top.appendChild(resources.item(index).cloneNode(True))
+    users = [{'key':''}]
     manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
-                                         request_rspec.toxml())
+                                         request_rspec.toxml(), users)
     # TODO: verify manifest_rspec
     print 'passed'
 

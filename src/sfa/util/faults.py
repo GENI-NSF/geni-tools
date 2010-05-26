@@ -1,31 +1,9 @@
-#----------------------------------------------------------------------
-# Copyright (c) 2008 Board of Trustees, Princeton University
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and/or hardware specification (the "Work") to
-# deal in the Work without restriction, including without limitation the
-# rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Work, and to permit persons to whom the Work
-# is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Work.
-#
-# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
-# IN THE WORK.
-#----------------------------------------------------------------------
 #
 # SFA API faults
 #
 #
 
-### $Id: faults.py 17852 2010-04-29 16:15:59Z jkarlin $
+### $Id: faults.py 18138 2010-05-25 17:16:49Z jkarlin $
 ### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/util/faults.py $
 
 import xmlrpclib
@@ -128,7 +106,7 @@ class NonexistingCredType(SfaFault):
         return repr(self.value)
 
 class NonexistingFile(SfaFault):
-    def __init__(self, value):
+    def __init__(self, value, extra = None):
         self.value = value
         faultString = "Non existing file: %(value)s, " % locals()
         SfaFault.__init__(self, 111, faultString, extra)
@@ -136,7 +114,7 @@ class NonexistingFile(SfaFault):
         return repr(self.value)
 
 class InvalidRPCParams(SfaFault):
-    def __init__(self, value):
+    def __init__(self, value, extra = None):
         self.value = value
         faultString = "Invalid RPC Params: %(value)s, " % locals()
         SfaFault.__init__(self, 102, faultString, extra)
@@ -266,7 +244,7 @@ class SliverDoesNotExist(SfaFault):
         return repr(self.value)
 
 class BadRequestHash(xmlrpclib.Fault):
-   def __init__(self, hash = None):
+    def __init__(self, hash = None, extra = None):
         faultString = "bad request hash: " + str(hash)
         xmlrpclib.Fault.__init__(self, 902, faultString)
 
