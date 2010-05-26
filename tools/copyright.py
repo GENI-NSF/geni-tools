@@ -61,7 +61,7 @@ def do_report(top):
                 path = os.path.join(dirpath, filename)
                 logger.debug('Checking %s', path)
                 # Need to send the output somewhere...
-                status = os.system('/usr/bin/grep -q -L -i copyright %s' % (path))
+                status = os.system('/bin/grep -q -L -i copyright %s' % (path))
                 logger.debug('\t==> %d', status)
                 if status:
                     # Only report if the file is not empty?
