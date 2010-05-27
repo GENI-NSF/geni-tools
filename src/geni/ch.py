@@ -145,7 +145,7 @@ class Clearinghouse(object):
 #                , ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2',
 #                   'http://myplc2.gpolab.bbn.com:12348')
 #                , ('urn:publicid:IDN+plc:gpo+authority+site2',
-#                   'http://128.89.81.175:12348')
+#                   'http://128.89.81.74:12348')
 #               , ('urn:publicid:IDN+elabinelab.geni.emulab.net',
 #                  'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am')
                ]

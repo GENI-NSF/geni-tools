@@ -64,7 +64,7 @@ class CallHandler(object):
     def _getclients(self):
         clients = []
         for (urn, url) in self._listaggregates([]).items():
-            client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
+            client = make_client(url, self.frame_config['key'], self.frame_config['cert'], timeout=2)
             client.urn = urn
             client.url = url
             clients.append(client)
