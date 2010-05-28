@@ -3,8 +3,8 @@
 		"default_cf": "gcf",
 		"slice_users": [ 
 		    {
-				"name": "jkarlin",
-				"email": "jkarlin@bbn.com",
+				"name": "Alice",
+				"urn": "urn:publicid:IDN+geni.net:gpo:gcf+user+alice"
 				"keys": ["~/.omni/jkarlin.pub"]
 			}
 		]
