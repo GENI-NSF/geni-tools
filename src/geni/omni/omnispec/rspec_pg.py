@@ -56,7 +56,7 @@ def pg_tag(tag):
     # The elementtree parser throws away namespace declarations.
     # Hardcoded for now, but...
     # TODO: use a different xml parser or some other way of preserving xmlns
-    return '{http://www.protogeni.net/resources/rspec/0.1}' + tag
+    return '{http://www.protogeni.net/resources/rspec/0.2}' + tag
 
 def add_nodes(ospec, root):
     for res in root.findall(pg_tag('node')):
