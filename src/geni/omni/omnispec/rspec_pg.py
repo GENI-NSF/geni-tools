@@ -27,7 +27,7 @@ from .omnispec import OmniSpec, OmniResource
 
 # This is an Unbound Request RSpec for testing.
 ONE_NODE_RSPEC = """
-<rspec xmlns=\"http://protogeni.net/resources/rspec/0.1\">
+<rspec xmlns=\"http://protogeni.net/resources/rspec/0.2\">
   <node virtual_id=\"geni1\"
         virtualization_type=\"emulab-vnode\"
         startup_command=\"/bin/ls > /tmp/foo\">
