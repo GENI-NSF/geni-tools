@@ -156,9 +156,10 @@ class CallHandler(object):
         for client in self._getclients():
             try:
                 client.DeleteSliver(urn, [slice_cred])
-            except:
+            except Exception, exc:
                 print "Failed to delete sliver on %s (%s)" %(client.urn, client.url)
-                pass
+                logger = logging.getLogger('omni')
+                logger.debug(str(exc))
             
     def renewsliver(self, args):
         name = args[0]
