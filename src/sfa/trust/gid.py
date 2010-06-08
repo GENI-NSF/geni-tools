@@ -208,7 +208,11 @@ class GID(Certificate):
         else:
             # make sure that the trusted root's hrn is a prefix of the child's
             trusted_gid = GID(string=trusted_root.save_to_string())
+            trusted_type = trusted_gid.get_type()
             trusted_hrn = trusted_gid.get_hrn()
+            if trusted_type == 'authority':
+                # Could add a check for type == 'authority'
+                trusted_hrn = trusted_hrn[:trusted_hrn.rindex('.')]
             cur_hrn = self.get_hrn()
             if not self.get_hrn().startswith(trusted_hrn):
                 raise GidParentHrn(trusted_hrn + " " + self.get_hrn())

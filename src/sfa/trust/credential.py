@@ -715,13 +715,31 @@ class Credential(object):
         root_cred = self.get_credential_list()[-1]
         root_target_gid = root_cred.get_gid_object()
         root_cred_signer = root_cred.get_signature().get_issuer_gid()
-        
-        if root_target_gid.is_signed_by_cert(root_cred_signer) or \
-            root_target_gid.save_to_string() == root_cred_signer.save_to_string():
-            pass
-        else:            
-            raise CredentialNotVerifiable("Could not verify credential signer")
-        
+
+        if root_target_gid.is_signed_by_cert(root_cred_signer):
+            # cred signer matches target signer, return success
+            return
+
+        root_target_gid_str = root_target_gid.save_to_string()
+        root_cred_signer_str = root_cred_signer.save_to_string()
+        if root_target_gid_str == root_cred_signer_str:
+            # cred signer is target, return success
+            return
+
+        # See if it the signer is an authority over the domain of the target
+        # Maybe should be (hrn, type) = urn_to_hrn(root_cred_signer.get_urn())
+        root_cred_signer_type = root_cred_signer.get_type()
+        if (root_cred_signer_type == 'authority'):
+            # signer is an authority, see if target is in authority's domain
+            hrn = root_cred_signer.get_hrn()
+            domain = hrn[:hrn.rindex('.')]
+            if root_target_gid.get_hrn().startswith(domain):
+                # target is in domain of signer's authority
+                return
+
+        # Give up, credential does not pass issuer verification
+        raise CredentialNotVerifiable("Could not verify credential signer")
+
 
     ##
     # -- For Delegates (credentials with parents) verify that:
