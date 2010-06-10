@@ -144,9 +144,12 @@ class Framework(Framework_Base):
         aggs = {}
         
         for site in sites:
-            url = site['addr'] + ":" + str(site['port'])
-            if not url.startswith('http://'):
-                url = 'http://' + url
+            if not site.has_key('url'):
+                url = site['addr'] + ":" + str(site['port'])
+                if not url.startswith('http://'):
+                    url = 'http://' + url
+            else:
+                url = site['url']
             aggs[site['urn']] = url
 
         return aggs

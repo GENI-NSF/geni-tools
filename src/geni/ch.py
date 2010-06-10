@@ -142,8 +142,8 @@ class Clearinghouse(object):
 
     def ListAggregates(self):
         out = [('urn:publicid:IDN+geni.net:gpo+authority+gcf', 'http://localhost:8001')
-#                , ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2',
-#                   'http://myplc2.gpolab.bbn.com:12348')
+                , ('urn:publicid:IDN+plc:gpotest+authority+gpolabr2',
+                   'http://myplc2.gpolab.bbn.com:12348')
 #                , ('urn:publicid:IDN+plc:gpo+authority+site2',
 #                   'http://128.89.81.74:12348')
 #               , ('urn:publicid:IDN+elabinelab.geni.emulab.net',
