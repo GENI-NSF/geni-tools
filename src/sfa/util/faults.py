@@ -25,8 +25,8 @@
 #
 #
 
-### $Id: faults.py 18138 2010-05-25 17:16:49Z jkarlin $
-### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/util/faults.py $
+### $Id: faults.py 18182 2010-06-02 20:42:30Z tmack $
+### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/util/faults.py $
 
 import xmlrpclib
 

@@ -7,8 +7,8 @@ directory is subject to the PlanetLab license (see "License"
 below). There are a small number of modifications to the code. These
 modifications are documented in the "Modifications" section below.
 
-This code is based on revision 18143 (May 26th, 2010) of the PlanetLab
-Subversion repository, geni-api branch.
+This code is based on revision 18273 (June 15, 2010) of the PlanetLab
+Subversion repository trunk (http://svn.planet-lab.org/svn/sfa/trunk).
 
 
 License

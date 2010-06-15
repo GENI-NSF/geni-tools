@@ -33,8 +33,8 @@
 # This module exports two classes: Keypair and Certificate.
 ##
 #
-### $Id: certificate.py 18138 2010-05-25 17:16:49Z jkarlin $
-### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/certificate.py $
+### $Id: certificate.py 18182 2010-06-02 20:42:30Z tmack $
+### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/trust/certificate.py $
 #
 
 import os

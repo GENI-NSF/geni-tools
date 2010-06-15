@@ -26,8 +26,8 @@
 # Credentials are signed XML files that assign a subject gid privileges to an object gid
 ##
 
-### $Id: credential.py 18090 2010-05-20 14:01:21Z jkarlin $
-### $URL: http://svn.planet-lab.org/svn/sfa/branches/geni-api/sfa/trust/credential.py $
+### $Id: credential.py 18245 2010-06-10 20:29:16Z tmack $
+### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/trust/credential.py $
 
 import os
 import datetime
@@ -709,8 +709,8 @@ class Credential(object):
         return list
     
     ##
-    # Make sure the credential's target gid was signed by (or is the same) as the entity that signed
-    # the original credential.  
+    # Make sure the credential's target gid was signed by (or is the same) the entity that signed
+    # the original credential or an authority over that namespace.
     def verify_issuer(self):                
         root_cred = self.get_credential_list()[-1]
         root_target_gid = root_cred.get_gid_object()
