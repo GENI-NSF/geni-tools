@@ -67,8 +67,15 @@ class Framework(Framework_Base):
         # Hardcode the PG in ELab instance because it does not
         # show up in the clearinghouse.
         self.aggs = {
-                     'urn:publicid:IDN+elabinelab.geni.emulab.net':
-                     'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am'
+            # Tom's inner emulab
+            'urn:publicid:IDN+elabinelab.geni.emulab.net':
+                'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am'
+            # Leigh's inner emulab
+            # 'urn:publicid:IDN+myelab.testbed.emulab.net':
+                # 'https://myboss.myelab.testbed.emulab.net:443/protogeni/xmlrpc/am'
+            # Utah ProtoGENI
+            #'urn:publicid:IDN+emulab.net':
+                #'https://boss.emulab.net:443/protogeni/xmlrpc/am'
         }
         
     def get_user_cred(self):
