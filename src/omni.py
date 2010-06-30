@@ -78,6 +78,7 @@ class CallHandler(object):
         rspecs = {}
         options = {}
         
+        options['geni_compressed'] = True;
         # Get the credential for this query
         if len(args) == 0:
             cred = self.framework.get_user_cred()
