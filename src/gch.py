@@ -47,7 +47,7 @@ class CommandHandler(object):
         ch = geni.Clearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, opts.port)
-        ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile)
+        ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile, opts.usercertfile)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -57,6 +57,8 @@ def parse_args(argv):
                       help="certificate file name", metavar="FILE")
     parser.add_option("-r", "--rootcafile",
                       help="root ca certificate file name", metavar="FILE")
+    parser.add_option("-u", "--usercertfile",
+                      help="cert file of the ch's user (alice)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", default='127.0.0.1',

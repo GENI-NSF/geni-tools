@@ -73,10 +73,11 @@ class Clearinghouse(object):
         self.slices = {}
 
     def runserver(self, addr, keyfile=None, certfile=None,
-                  ca_certs=None):
+                  ca_certs=None, user_cert=None):
         """Run the clearinghouse server."""
         self.keyfile = keyfile
         self.certfile = certfile
+        self.usercert = user_cert
         # Create the xmlrpc server, load the rootkeys and do the ssl thing.
         self._server = self._make_server(addr, keyfile, certfile,
                                          ca_certs)
@@ -120,7 +121,12 @@ class Clearinghouse(object):
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
         # Get the creator info from the peer certificate
-        user_gid = gid.GID(string=str(self._server.pem_cert))
+        # We only know of one user cert, passed in at command line
+        user_gid = gid.GID(filename=self.usercert)
+        # The problem with self._server.pem_cert is it doesn't
+        # include the chain! but this is a fake ch.. so okay?
+        #user_gid = gid.GID(string=str(self._server.pem_cert))
+
         try:
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid)
@@ -158,6 +164,7 @@ class Clearinghouse(object):
         issuer_key = cert.Keypair(filename=self.keyfile)
         issuer_cert = gid.GID(filename=self.certfile)
         newgid.set_issuer(issuer_key, cert=issuer_cert)
+        newgid.set_parent(issuer_cert)
         newgid.encode()
         newgid.sign()
         return newgid, keys

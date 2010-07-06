@@ -91,6 +91,7 @@ class CredentialVerifier(object):
                 self.verify_privileges(privileges, cred) and
                 cred.verify(self.root_cert_files)):
                 result.append(cred)
+        
         if result:
             return result
         else:

@@ -574,7 +574,6 @@ class Certificate:
         # Verify a chain of certificates. Each certificate must be signed by
         # the public key contained in it's parent. The chain is recursed
         # until a certificate is found that is signed by a trusted root.
-
         # TODO: verify expiration time
         #print "====Verify Chain====="
         # if this cert is signed by a trusted_cert, then we are set
