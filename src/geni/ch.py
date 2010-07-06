@@ -100,7 +100,7 @@ class Clearinghouse(object):
 
     def Resolve(self, urn):
         result = dict()
-        dict['urn'] = urn
+        result['urn'] = urn
         return result
 
     def CreateSlice(self, urn_req = None):

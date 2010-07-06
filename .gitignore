@@ -1,2 +1,6 @@
 *.pem
 *.pyc
+*~
+*#
+semantic.cache
+.metadata
