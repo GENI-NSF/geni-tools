@@ -1,0 +1,15 @@
+7/12/10:
+	Much more documentation, error checking, logging, and clearer error
+	reporting.
+
+	Support credentials from multiple control frameworks / CAs
+	without restarting.
+
+	gam and gch want the -r argument to be a directory of all
+	trusted (federated) CA and Clearinghouse certificates, to be
+	able to validate and accept certificates from multiple control
+	frameworks at once.
+
+	gch takes a user certificate argument for test purposes
+
+	

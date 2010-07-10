@@ -24,18 +24,32 @@ from geni.omni.xmlrpc.client import make_client
 from geni.omni.frameworks.framework_base import Framework_Base
 import os
 import time
+import traceback
+import sys
 
 class Framework(Framework_Base):
     def __init__(self, config):
         config['cert'] = os.path.expanduser(config['cert'])
+        if not os.path.exists(config['cert']):
+            sys.exit('GCF Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
+        if not os.path.exists(config['key']):
+            sys.exit('GCF Framework keyfile %s doesnt exist' % config['key'])
+        if not config.has_key('verbose'):
+            config['verbose'] = False
         self.config = config
         
         self.ch = make_client(config['ch'], config['key'], config['cert'])
         self.cert_string = file(config['cert'],'r').read()
+        self.user_cred = None
         
     def get_user_cred(self):
-        return self.ch.CreateUserCredential(self.cert_string)
+        if self.user_cred == None:
+            try:
+                self.user_cred = self.ch.CreateUserCredential(self.cert_string)
+            except Exception as exc:
+                raise Exception("Using GCF Failed to do CH.CreateUserCredentials on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
+        return self.user_cred
     
     def get_slice_cred(self, urn):
         return self.ch.CreateSlice(urn)

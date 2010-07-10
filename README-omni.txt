@@ -1,4 +1,4 @@
-The Omni Geni Client -
+The Omni GENI Client -
 
 Omni is an end-user GENI client that communicates with GENI Aggregate
 Managers and presents their resources with a uniform specification,
@@ -6,21 +6,43 @@ known as the omnispec.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.
 
-To configure Omni, please copy the omni_config file to your ~/.omni
+To configure Omni, please copy the src/omni_config file to your ~/.omni
 directory and fill in the parameters for at least one control
 framework.  The "omni" section should be filled in with the
 certificate and key that you use in your control framework.
+
+See src/documented_omni_config_dont_use for commentary explaining how to
+customize your omni_config file.
+
+The currently supported control frameworks are SFA, PG and GCF.
+
+Omni works by 
+- The Framework classes know the API for each clearinghouse
+- Aggregate Managers are contacted via the GENI API
+- RSpecs are converted to a very simple common 'omnispec'
+format. Users (hand) edit these and supply these to createsliver calls.
+
+Each OmniResource has a name, a description, a type, booleans
+indicating whether the resource is allocated and whether the request
+wants to allocate it, and then hashes for options and misc fields.
+
+Extending Omni to support additional types of Aggregate Managers with
+different RSpec formats requires adding a new omnispec/rspec conversion file.
+
+Extending Omni to support additional frameworks with their own
+clearinghouse APIs requires adding a new Framework extension class.
 
 
 Running Omni -
 
 == The following options are supported: ==
 
--c FILE -- location of your config file
+-c FILE -- location of your config file (default ~/.omni/omni_config)
 
--f FRAMEWORK -- control framework to use (e.g. sfa)
+-f FRAMEWORK -- control framework to use (e.g. sfa), overiding default
+ in config file
 
-
+--debug -- Enable debug output
 
 == The following commands are supported: ==
 

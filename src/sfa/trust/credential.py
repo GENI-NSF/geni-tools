@@ -53,7 +53,6 @@ DEFAULT_CREDENTIAL_LIFETIME = 60 * 60 * 24 * 365 * 2
 # . Need to add support for other types of credentials, e.g. tickets
 
 
-
 signature_template = \
 '''
 <Signature xml:id="Sig_%s" xmlns="http://www.w3.org/2000/09/xmldsig#">
@@ -89,7 +88,6 @@ def str2bool(str):
     return False
 
 
-
 ##
 # Utility function to get the text of an XML element
 
@@ -116,8 +114,7 @@ def append_sub(doc, parent, element, text):
 #
 
 class Signature(object):
-
-    
+   
     def __init__(self, string=None):
         self.refid = None
         self.issuer_gid = None
@@ -125,7 +122,6 @@ class Signature(object):
         if string:
             self.xml = string
             self.decode()
-
 
 
     def get_refid(self):
@@ -175,9 +171,7 @@ class Signature(object):
 # not be changed else the signature is no longer valid.  So, once
 # you have loaded an existing signed credential, do not call encode() or sign() on it.
 
-
 class Credential(object):
-
 
     ##
     # Create a Credential object
@@ -186,7 +180,7 @@ class Credential(object):
     # @param subject If subject!=None, create an x509 cert with the subject name
     # @param string If string!=None, load the credential from the string
     # @param filename If filename!=None, load the credential from the file
-
+    # FIXME: create and subject are ignored!
     def __init__(self, create=False, subject=None, string=None, filename=None):
         self.gidCaller = None
         self.gidObject = None
@@ -200,9 +194,6 @@ class Credential(object):
         self.xml = None
         self.refid = None
         self.legacy = None
-
-
-
 
         # Check if this is a legacy credential, translate it if so
         if string or filename:
@@ -388,7 +379,7 @@ class Credential(object):
         append_sub(doc, cred, "target_gid", self.gidObject.save_to_string())
         append_sub(doc, cred, "target_urn", self.gidObject.get_urn())
         append_sub(doc, cred, "uuid", "")
-        if  not self.expiration:
+        if not self.expiration:
             self.set_lifetime(DEFAULT_CREDENTIAL_LIFETIME)
         self.expiration = self.expiration.replace(microsecond=0)
         append_sub(doc, cred, "expires", self.expiration.isoformat())
@@ -546,9 +537,7 @@ class Credential(object):
             self.legacy = None
 
         # Update signatures
-        self.decode()
-
-        
+        self.decode()       
 
         
     ##
@@ -572,7 +561,6 @@ class Credential(object):
         else:
             cred = doc.getElementsByTagName("credential")[0]
         
-
 
         self.set_refid(cred.getAttribute("xml:id"))
         self.set_lifetime(parse(getTextNode(cred, "expires")))
@@ -640,7 +628,6 @@ class Credential(object):
     #   must be done elsewhere
     #
     # @param trusted_certs: The certificates of trusted CA certificates
-    
     def verify(self, trusted_certs):
         if not self.xml:
             self.decode()        
@@ -657,20 +644,16 @@ class Credential(object):
         
         # make sure it is not expired
         if self.get_lifetime() < datetime.datetime.utcnow():
-            raise CredentialNotVerifiable("credential is expired")
+            raise CredentialNotVerifiable("Credential expired at %s" % self.expiration.isoformat())
 
         # Verify the signatures
         filename = self.save_to_random_tmp_file()
         cert_args = " ".join(['--trusted-pem %s' % x for x in trusted_certs])
 
         # Verify the gids of this cred and of its parents
-
-
-
         for cur_cred in self.get_credential_list():
             cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
-            cur_cred.get_gid_caller().verify_chain(trusted_cert_objects)            
-
+            cur_cred.get_gid_caller().verify_chain(trusted_cert_objects) 
 
         refs = []
         refs.append("Sig_%s" % self.get_refid())
@@ -683,7 +666,7 @@ class Credential(object):
             verified = os.popen('%s --verify --node-id "%s" %s %s 2>&1' \
                             % (self.xmlsec_path, ref, cert_args, filename)).read()
             if not verified.strip().startswith("OK"):
-                raise CredentialNotVerifiable("xmlsec1 error: " + verified)
+                raise CredentialNotVerifiable("xmlsec1 error verifying cert: " + verified)
         os.remove(filename)
 
         # Verify the parents (delegation)
@@ -730,6 +713,7 @@ class Credential(object):
         # Maybe should be (hrn, type) = urn_to_hrn(root_cred_signer.get_urn())
         root_cred_signer_type = root_cred_signer.get_type()
         if (root_cred_signer_type == 'authority'):
+            #logger.debug('Cred signer is an authority')
             # signer is an authority, see if target is in authority's domain
             hrn = root_cred_signer.get_hrn()
             domain = hrn[:hrn.rindex('.')]
@@ -737,8 +721,15 @@ class Credential(object):
                 # target is in domain of signer's authority
                 return
 
+        # Weve required that the credential be signed by an authority
+        # for that domain. Reasonable and probably correct.
+        # A looser model would also allow the signer to be an authority
+        # in my control framework - eg My CA or CH. Even if it is not
+        # the CH that issued these, eg, user credentials.
+
         # Give up, credential does not pass issuer verification
-        raise CredentialNotVerifiable("Could not verify credential signer")
+
+        raise CredentialNotVerifiable("Could not verify credential owned by %s for object %s. Cred signer %s not the trusted authority for Cred target %s" % (self.gidCaller.get_urn(), self.gidObject.get_urn(), root_cred_signer.get_hrn(), root_target_gid.get_hrn()))
 
 
     ##
@@ -747,8 +738,7 @@ class Credential(object):
     # . The privileges must have "can_delegate" set for each delegated privilege
     # . The target gid must be the same between child and parents
     # . The expiry time on the child must be no later than the parent
-    # . The signer of the child must be the owner of the parent
-        
+    # . The signer of the child must be the owner of the parent        
     def verify_parent(self, parent_cred):
         # make sure the rights given to the child are a subset of the
         # parents rights (and check delegate bits)
@@ -760,17 +750,18 @@ class Credential(object):
         # make sure my target gid is the same as the parent's
         if not parent_cred.get_gid_object().save_to_string() == \
            self.get_gid_object().save_to_string():
-            raise CredentialNotVerifiable("target gid not equal between parent and child")
+            raise CredentialNotVerifiable("Target gid not equal between parent and child")
 
         # make sure my expiry time is <= my parent's
         if not parent_cred.get_lifetime() >= self.get_lifetime():
-            raise CredentialNotVerifiable("delegated credential expires after parent")
+            raise CredentialNotVerifiable("Delegated credential expires after parent")
 
         # make sure my signer is the parent's caller
         if not parent_cred.get_gid_caller().save_to_string(False) == \
            self.get_signature().get_issuer_gid().save_to_string(False):
-            raise CredentialNotVerifiable("delegated credential not signed by parent caller")
+            raise CredentialNotVerifiable("Delegated credential not signed by parent caller")
                 
+        # Recurse
         if parent_cred.parent:
             parent_cred.verify_parent(parent_cred.parent)
 
@@ -780,7 +771,9 @@ class Credential(object):
     # @param dump_parents If true, also dump the parent certificates
 
     def dump(self, dump_parents=False):
-        print "CREDENTIAL", self.get_subject()
+# FIXME: get_subject doesnt exist
+#        print "CREDENTIAL", self.get_subject()
+        print "CREDENTIAL"
 
         print "      privs:", self.get_privileges().save_to_string()
 

@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 ##
 # SFA uses two crypto libraries: pyOpenSSL and M2Crypto to implement
 # the necessary crypto functionality. Ideally just one of these libraries
@@ -470,7 +471,7 @@ class Certificate:
         # pyOpenSSL only allows us to add extensions, so if we try to set the
         # same extension more than once, it will not work
         if self.data.has_key(field):
-            raise "cannot set ", field, " more than once"
+            raise "Cannot set ", field, " more than once"
         self.data[field] = str
         self.add_extension(field, 0, str)
 
@@ -584,6 +585,7 @@ class Certificate:
             #print "TRUSTED CERT", trusted_cert.dump()
             #print "Client is signed by Trusted?", self.is_signed_by_cert(trusted_cert)
             if self.is_signed_by_cert(trusted_cert):
+                logger.debug("Cert %s signed by trusted cert %s", self.get_subject(), trusted_cert.get_subject())
                 return trusted_cert
 
         # if there is no parent, then no way to verify the chain

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import logging
 
 #----------------------------------------------------------------------
 # Copyright (c) 2010 Raytheon BBN Technologies
@@ -25,43 +24,78 @@ import logging
 #----------------------------------------------------------------------
 
 """ The OMNI client
-    This client is a GENI API client that is capable to connecting
+    This client is a GENI API client that is capable of connecting
     to the supported control frameworks for slice creation and deletion.
     It is also able to parse and create standard RSPECs of all supported 
     control frameworks.
+    See README-omni.txt
+
+    Be sure to create an omni config file (typically ~/.omni/omni_config)
+    and supply valid paths to your per control framework user certs and keys.
+
+    Typical usage:
+    omni.py -f sfa listresources > sfa-resources.rspec
+
     
-    The currently supported control frameworks are SFA and GCF.
+    The currently supported control frameworks are SFA, PG and GCF.
+
+    Extending Omni to support additional types of Aggregate Managers
+    with different RSpec formats requires adding a new omnispec/rspec
+    conversion file.
+
+    Extending Omni to support additional frameworks with their own
+    clearinghouse APIs requires adding a new Framework extension class.
 """
 
+from copy import copy
+import base64
+import json
+import logging
 import optparse
-import sys
 import os
 import pprint
-import json
+import sys
+import zlib
+
 import dateutil.parser
-from copy import copy
+
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
 
 class CallHandler(object):
+    """Handle calls on the framework. Valid calls are all
+    methods without an underscore: getversion, createslice, deleteslice, 
+    getslicecred, listresouces, createsliver, deletesliver,
+    renewsliver, sliverstatus, shutdown
+    """
+
     def __init__(self, framework, frame_config, omni_config):
         self.framework = framework    
         self.frame_config = frame_config
         self.omni_config = omni_config
         frame_config['cert'] = os.path.expanduser(frame_config['cert'])
+        if not os.path.exists(frame_config['cert']):
+            sys.exit('Frameworks certfile %s doesnt exist' % frame_config['cert'])
+
         frame_config['key'] = os.path.expanduser(frame_config['key'])
+        if not os.path.exists(frame_config['key']):
+            sys.exit('Frameworks keyfile %s doesnt exist' % frame_config['key'])
 
     def _handle(self, args):
         if len(args) == 0:
-            sys.exit('Insufficient number of arguments')
+            sys.exit('Insufficient number of arguments - Missing command to run')
         
         call = args[0].lower()
         if call.startswith('_'):
             return
+        if not hasattr(self,call):
+            sys.exit('Unknown function: %s' % call)
         getattr(self,call)(args[1:])
 
     def _getclients(self):
+        ''' Ask FW CH for known aggregates (_listaggregates) and construct 
+        an XMLRPC client for each.'''
         clients = []
         for (urn, url) in self._listaggregates([]).items():
             client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
@@ -71,14 +105,19 @@ class CallHandler(object):
         return clients    
         
     def _listaggregates(self, args):
+        '''Ask Framework CH for known aggregates'''
         aggs = self.framework.list_aggregates()
         return aggs
 
     def listresources(self, args):
+        '''Optional arg is a slice name limiting results. Call ListResources
+        on all AMs known by the FW CH, and return the omnispecs found.'''
         rspecs = {}
         options = {}
-        
+        logger = logging.getLogger('omni')
+
         options['geni_compressed'] = True;
+
         # Get the credential for this query
         if len(args) == 0:
             cred = self.framework.get_user_cred()
@@ -92,30 +131,45 @@ class CallHandler(object):
         # Connect to each available GENI AM to list their resources
         for client in self._getclients():
             try:
+                if cred is None:
+                    logger.debug("Have null credentials in call to ListResources!")
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
-                print "Failed to get resources from %s (%s)" % (client.urn, client.url)
-                logger = logging.getLogger('omni')
-                logger.debug(str(exc))
+                logger.error("Failed to List Resources from %s (%s): %s" % (client.urn, client.url, exc))
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
         for ((urn,url), rspec) in rspecs.items():                        
+            logger.debug("Getting RSpec items for urn %s", urn)
+            if 'geni_compressed' in options and options['geni_compressed']:
+                # Yuck. Apparently PG ignores the compressed flag? At least sometimes?
+                try:
+                    rspec = zlib.decompress(base64.b64decode(rspec))
+                except:
+                    logger.debug("Failed to decompress resource list. In PG framework this is ok.")
+                    pass
             omnispecs[url] = rspec_to_omnispec(urn,rspec)
-                        
-        jspecs = json.dumps(omnispecs, indent=4)
-        print jspecs
+
+        if omnispecs and omnispecs != {}:
+            jspecs = json.dumps(omnispecs, indent=4)
+            print jspecs
         return omnispecs
     
     
     def createsliver(self, args):
+        if len(args) < 2:
+            sys.exit('createsliver requires 2 args: slicename and rspec filename')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         
         # Load up the user's edited omnispec
         specfile = args[1]
+        if not os.path.isfile(specfile):
+            sys.exit('omnispec file of resources to request missing: %s' % specfile)
+
         jspecs = json.loads(file(specfile,'r').read())
         omnispecs = {}
         for url, spec_dict in jspecs.items():
@@ -154,6 +208,9 @@ class CallHandler(object):
                 logger.debug('Nothing to allocate at %r', url)
 
     def deletesliver(self, args):
+        if len(args) == 0:
+            sys.exit('deletesliver requires arg of slice name')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
@@ -162,11 +219,14 @@ class CallHandler(object):
             try:
                 client.DeleteSliver(urn, [slice_cred])
             except Exception, exc:
-                print "Failed to delete sliver on %s (%s)" %(client.urn, client.url)
+                print "Failed to delete sliver %s on %s (%s)" %(urn, client.urn, client.url)
                 logger = logging.getLogger('omni')
                 logger.debug(str(exc))
             
     def renewsliver(self, args):
+        if len(args) == 0:
+            sys.exit('renewsliver requires arg of slice name')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
@@ -177,9 +237,12 @@ class CallHandler(object):
             try:
                 client.RenewSliver(urn, [slice_cred], time.isoformat())
             except:
-                print "Failed to renew sliver on %s" % client.urn
+                print "Failed to renew sliver %s on %s" % (urn, client.urn)
     
     def sliverstatus(self, args):
+        if len(args) == 0:
+            sys.exit('sliverstatus requires arg of slice name')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
@@ -189,11 +252,14 @@ class CallHandler(object):
                 print "%s (%s):" % (client.urn, client.url)
                 pprint.pprint(status)
             except Exception, exc:
-                print "Failed to retrieve status for: %s" % client.urn
+                print "Failed to retrieve status of %s at %s" % (urn, client.urn)
                 logger = logging.getLogger('omni')
                 logger.debug(str(exc))
                 
     def shutdown(self, args):
+        if len(args) == 0:
+            sys.exit('shutdown requires arg of slice name')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
@@ -201,7 +267,7 @@ class CallHandler(object):
             try:
                 client.Shutdown(urn, [slice_cred])
             except:
-                print "Failed to shutdown: %s at %s" % (client.urn, client.url)
+                print "Failed to shutdown %s: %s at %s" % (urn, client.urn, client.url)
     
     def getversion(self, args):
         for client in self._getclients():
@@ -211,16 +277,21 @@ class CallHandler(object):
                 print "Failed to get version information for %s at (%s)" % (client.urn, client.url)
                                 
     def createslice(self, args):
+        # FIXME: Require slice name?
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         self.framework.create_slice(urn)
         
     def deleteslice(self, args):
+        if len(args) == 0:
+            sys.exit('deleteslice requires arg of slice name')
+
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         self.framework.delete_slice(urn)
 
     def getslicecred(self, args):
+        # FIXME: Require slice name?
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         cred = self.framework.get_slice_cred(urn)
@@ -254,23 +325,30 @@ def main(argv=None):
     logger = logging.getLogger('omni')
     # Load up the JSON formatted config file
     filename = os.path.expanduser(opts.configfile)
+
+    if not os.path.exists(filename):
+        sys.exit('Missing omni config file %s' % filename)
+
     logger.debug("Loading config file %s", filename)
     config = json.loads(file(filename, 'r').read())
         
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
+
+    print 'Using control framework %s' % opts.framework
         
     # Dynamically load the selected control framework
     cf = opts.framework.lower()
+    if config[cf] is None:
+        sys.exit('Missing config for CF %s' % cf)
+
     framework_mod = __import__('geni.omni.frameworks.framework_%s' % cf, fromlist=['geni.omni.frameworks'])
     framework = framework_mod.Framework(config[cf])
         
     # Process the user's call
     handler = CallHandler(framework, config[cf], config['omni'])    
     handler._handle(args)
-    
-    
         
-
+        
 if __name__ == "__main__":
     sys.exit(main())

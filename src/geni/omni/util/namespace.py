@@ -23,10 +23,15 @@
 URN_PREFIX = "urn:publicid:IDN+"
 
 def short_urn(urn):
-    return urn[len(URN_PREFIX):]
+    if not urn or not urn.startswith(URN_PREFIX):
+        return urn
+    else:
+        return urn[len(URN_PREFIX):]
 
 def long_urn(urn):
-    if not urn.startswith(URN_PREFIX):
+    if not urn:
+        return URN_PREFIX
+    elif not urn.startswith(URN_PREFIX):
         return URN_PREFIX + urn
     else:
         return urn

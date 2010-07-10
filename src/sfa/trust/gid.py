@@ -81,7 +81,7 @@ class GID(Certificate):
         
         Certificate.__init__(self, create, subject, string, filename)
         if subject:
-            logger.info("subject: %s" % subject)
+            logger.debug("Creating GID for subject: %s" % subject)
         if uuid:
             self.uuid = int(uuid)
         if hrn:
@@ -212,8 +212,9 @@ class GID(Certificate):
             # Could add a check for type == 'authority'
             test_hrn = test_hrn[:test_hrn.rindex('.')]
         cur_hrn = self.get_hrn()
+        logger.debug('Accepted trusted root %s for signing %s' % (test_hrn, cur_hrn))
         if not self.get_hrn().startswith(test_hrn):
-            GidParentHrn(test_hrn + " " + self.get_hrn())
+            raise GidParentHrn(test_hrn + " " + self.get_hrn())
 
         return
 

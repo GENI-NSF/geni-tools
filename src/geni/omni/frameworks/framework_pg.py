@@ -25,6 +25,7 @@ import logging
 import os
 import socket
 import ssl
+import sys
 from urlparse import urlparse
 import xmlrpclib
 
@@ -52,18 +53,23 @@ class Framework(Framework_Base):
     def __init__(self, config):
         self.logger = logging.getLogger("omni.protogeni")
         config['cert'] = os.path.expanduser(config['cert'])
+        if not os.path.exists(config['cert']):
+            sys.exit('PG Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])
+        if not os.path.exists(config['key']):
+            sys.exit('PG Framework keyfile %s doesnt exist' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
         self.config = config
         self.logger.debug("Configured with key file %s", config['key'])
         
-        self.logger.debug('using clearinghouse %s', self.config['ch'])
+        self.logger.debug('Using clearinghouse %s', self.config['ch'])
         self.ch = make_client(self.config['ch'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
-        self.logger.debug('using slice authority %s', self.config['sa'])
+        self.logger.debug('Using slice authority %s', self.config['sa'])
         self.sa = make_client(self.config['sa'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
+        self.user_cred = None
         # Hardcode the PG in ELab instance because it does not
         # show up in the clearinghouse.
         self.aggs = {
@@ -79,15 +85,23 @@ class Framework(Framework_Base):
         }
         
     def get_user_cred(self):
-        pg_response = self.sa.GetCredential()
-        code = pg_response['code']
-        if code:
-            self.logger.error("Received error code: %d", code)
-            output = pg_response['output']
-            self.logger.error("Received error message: %s", output)
-            return None
-        else:
-            return pg_response['value']
+        if self.user_cred == None:
+            pg_response = dict()
+            try:
+                pg_response = self.sa.GetCredential()
+            except Exception as exc:
+                self.logger.error('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
+                raise Exception('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
+                                  
+            code = pg_response['code']
+            if code:
+                self.logger.error("Received error code: %d", code)
+                output = pg_response['output']
+                self.logger.error("Received error message: %s", output)
+                #return None
+            else:
+                self.user_cred = pg_response['value']
+        return self.user_cred
     
     def get_slice_cred(self, urn):
         mycred = self.get_user_cred()

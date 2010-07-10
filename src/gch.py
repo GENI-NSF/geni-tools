@@ -22,6 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+"""
+Run the GENI GCF Clearinghouse. See geni/ch.py
+"""
 
 import sys
 
@@ -31,6 +34,7 @@ if sys.version_info < (2, 6):
 elif sys.version_info >= (3,):
     raise Exception('Not python 3 ready')
 
+import logging
 import optparse
 import geni
 
@@ -47,18 +51,19 @@ class CommandHandler(object):
         ch = geni.Clearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, opts.port)
+        # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile, opts.usercertfile)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
-                      help="key file name", metavar="FILE")
+                      help="CH key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
-                      help="certificate file name", metavar="FILE")
+                      help="CH certificate file name (PEM format)", metavar="FILE")
     parser.add_option("-r", "--rootcafile",
-                      help="root ca certificate file name", metavar="FILE")
+                      help="Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
     parser.add_option("-u", "--usercertfile",
-                      help="cert file of the ch's user (alice)", metavar="FILE")
+                      help="Cert file of the CH's test User (eg alice) (PEM format)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", default='127.0.0.1',
@@ -73,8 +78,16 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
+    level = logging.INFO
+    if opts.debug:
+        level = logging.DEBUG
+    logging.basicConfig(level=level)
     if not args:
         args = ('runserver',)
+
+    if opts.rootcafile is None:
+        sys.exit('Missing path to Root CAs file or directory (-r argument)')
+    
     handler = '_'.join((args[0], 'handler'))
     ch = CommandHandler()
     if hasattr(ch, handler):

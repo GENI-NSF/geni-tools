@@ -22,8 +22,10 @@
 #----------------------------------------------------------------------
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.frameworks.framework_base import Framework_Base
+import logging
 import os
 import time
+import sys
 
 URN_PREFIX = "urn:publicid:IDN"
 
@@ -88,15 +90,29 @@ def hrn_to_urn(hrn, type=None):
 class Framework(Framework_Base):
     def __init__(self, config):
         config['cert'] = os.path.expanduser(config['cert'])
+        if not os.path.exists(config['cert']):
+            sys.exit('SFA Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
+        if not os.path.exists(config['key']):
+            sys.exit('SFA Framework keyfile %s doesnt exist' % config['key'])
+        if not config.has_key('verbose'):
+            config['verbose'] = False
         self.config = config
-        
+        logger = logging.getLogger('omni.sfa')
+        logger.info('SFA Registry: %s', config['registry'])
         self.registry = make_client(config['registry'], config['key'], config['cert'])
+        logger.info('SFA Slice Manager: %s', config['slicemgr'])
         self.slicemgr = make_client(config['slicemgr'], config['key'], config['cert'])
         self.cert_string = file(config['cert'],'r').read()
+        self.user_cred = None
         
     def get_user_cred(self):
-        return self.registry.get_self_credential(self.cert_string, "user", self.config['user'])
+        if self.user_cred is None:
+            try:
+                self.user_cred = self.registry.get_self_credential(self.cert_string, "user", self.config['user'])
+            except Exception as exc:
+                raise Exception("Using SFA Failed to get User credentials from registry %s cert file %s, user %s: %s" % (self.config['registry'], self.config['cert'], self.config['user'], exc))
+        return self.user_cred
     
     def get_slice_cred(self, urn):
         user_cred = self.get_user_cred()

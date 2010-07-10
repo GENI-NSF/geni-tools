@@ -22,4 +22,4 @@
 #----------------------------------------------------------------------
 
 from am import AggregateManagerServer
-from reference import ReferenceAggregateManager
+from reference import ReferenceAggregateManager, CredentialVerifier

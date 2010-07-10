@@ -22,6 +22,10 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+"""
+Framework to run a GENI Aggregate Manager. See geni/am for the 
+Reference Aggregate Manager that this runs.
+"""
 
 import sys
 
@@ -33,16 +37,17 @@ elif sys.version_info >= (3,):
 
 import logging
 import optparse
+import os
 import geni
 
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
-                      help="key file name", metavar="FILE")
+                      help="AM key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
-                      help="certificate file name", metavar="FILE")
+                      help="AM certificate file name (PEM format)", metavar="FILE")
     parser.add_option("-r", "--rootcafile",
-                      help="root ca certificate file name", metavar="FILE")
+                      help="Root CA certificates file or directory name (PEM format)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", default='127.0.0.1',
@@ -58,18 +63,26 @@ def main(argv=None):
         argv = sys.argv
     opts = parse_args(argv)[0]
     level = logging.INFO
-    logging.basicConfig(level=level)
     if opts.debug:
         level = logging.DEBUG
-    logger = logging.Logger("am")
-    logger.setLevel(level)
+    logging.basicConfig(level=level)
+
+    if opts.rootcafile is None:
+        sys.exit('Missing path to Root CAs file or directory (-r argument)')
+    
+    # rootcafile is a single cert in 1 file or a dir of multiple such files
     delegate = geni.ReferenceAggregateManager(opts.rootcafile)
+
+    # here rootcafile is supposed to be a single file with multiple
+    # certs possibly concatenated together
+    comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(opts.rootcafile)
+
     ams = geni.AggregateManagerServer((opts.host, opts.port),
                                       delegate=delegate,
                                       keyfile=opts.keyfile,
                                       certfile=opts.certfile,
-                                      ca_certs=opts.rootcafile)
-    print 'Listening on port %d...' % (opts.port)
+                                      ca_certs=comboCertsFile)
+    logging.getLogger('gam').info('GENI AM Listening on port %d...' % (opts.port))
     ams.serve_forever()
 
 if __name__ == "__main__":

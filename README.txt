@@ -75,19 +75,76 @@ Instructions
  This creates a certificate authority key and certificate and then
  creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
+ The directory for the output, the researcher name, and which keys to
+ generate are configurable via commandline options. Cert URNs and
+ some privileges are modifiable via constants.
+ Note you can generate multiple AM credentials and multiple user
+ credentials using this script.
+
+Optional: Create a directory containing all known and trusted (federated)
+clearinghouse and certificate authority certificates (see below for an explanation).
 
 2. Start the clearinghouse server:
 
- $ src/gch.py -r ca-cert.pem -c ch-cert.pem -k ch-key.pem -u alice-cert.pem
+ $ src/gch.py -r <ca-cert.pem or trusted_chs_and_cas_dir/> \
+   	      -c ch-cert.pem -k ch-key.pem -u alice-cert.pem
 
+ Note the requirement to supply (-u arg) a user credential (test CH
+ artifact). If the trusted certificates directory doesn't include the
+ CH cert for a user contacting this CH, then we default to issuing
+ Slice credentials in the name of this user. A testing artifact.
+
+ The -r argument could be a file with the GCF CA certificate. However
+ to support federation, it should be a directory with all trusted / federated
+CH and CA certificates or certificate chains (PEM format). 
+
+ Optional arguments include -H to specify a full hostname, -p to
+ listen on a port other than 8000, and --debug for debugging output.
+
+ See geni/ch.py constants to change the known Aggregates, slice URNs,
+ etc. EG by addding other known federated aggregates, a single gch
+ instance can point a client at multiple gam instances. And (if
+ configured), at GENI AM API compliant Aggregate Managers from other
+ control frameworks.
+ 
 3. Start the aggregate manager server:
 
- $ src/gam.py -r ca-cert.pem -c am-cert.pem -k am-key.pem
+ $ src/gam.py -r <ca-cert.pem or trusted_chs_and_cas_dir/> \
+   	      -c am-cert.pem -k am-key.pem
 
-4. Run the client
+NOTE: The -r ca-cert.pem is a file name with the AMs' CA cert, or
+better still, a directory with all trusted CH and CA certs.
+This is the 1 or many certs that should be trusted to sign slice
+credentials, or listResources requests. IE to federate, put the CA
+(and maybe CH) certs from all federates into a directory.
+
+ Optional arguments include -H to specify a full hostname, -p to
+ listen on a port other than 8001, and --debug for debugging output.
+
+4. Run the GCF installation testing client:
 
  $ src/client.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/
 
  The output should show some basic API testing, and possibly some
  debug output.
+Optional arguments --debug and --debug-rpc enable more debug output.
+
+Note that you can use user credentials from any federated control framework, as long as
+the appropriate CH and CA PEM certificates were supplied to the -r
+arguments to gch and gam above.
+
+5. See README-omni.txt for instructions on running the OMNI GENI
+Client for further usage.
+
+6. To allow another Aggregate Manager to accept these user
+credentials, or slice credentials from this clearinghouse, you will
+need to copy the generated ca-cert.pem and ch-cert.pem (see step 1) to that AM's
+server:
+a) For a GENI AM, to the trusted_roots dir used for startup (as in
+steps 2 and 3 above)
+b) For a PlanetLab AM, the trusted_roots dir is at /etc/sfa/trusted_roots
+AND FIXME: ?Concat? ?Register in a DB?
+
+See FIXME
+<Wiki on the GENI AM API, RSpecs, ?>
