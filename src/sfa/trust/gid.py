@@ -196,28 +196,28 @@ class GID(Certificate):
     # for a principal that is not a member of that authority. For example,
     # planetlab.us.arizona cannot sign a GID for planetlab.us.princeton.foo.
 
+
     def verify_chain(self, trusted_certs = None):
         # do the normal certificate verification stuff
         trusted_root = Certificate.verify_chain(self, trusted_certs)        
-
-        test_gid = None
+       
         if self.parent:
-            test_gid = self.parent
+            # make sure the parent's hrn is a prefix of the child's hrn
+            if not self.get_hrn().startswith(self.parent.get_hrn()):
+                print self.get_hrn(), " ", self.parent.get_hrn()
+                raise GidParentHrn(self.parent.get_subject())
         else:
-            test_gid = GID(string=trusted_root.save_to_string())
-
-        test_type = test_gid.get_type()
-        test_hrn = test_gid.get_hrn()
-        if test_type == 'authority':
-            # Could add a check for type == 'authority'
-            test_hrn = test_hrn[:test_hrn.rindex('.')]
-        cur_hrn = self.get_hrn()
-        if not self.get_hrn().startswith(test_hrn):
-            GidParentHrn(test_hrn + " " + self.get_hrn())
+            # make sure that the trusted root's hrn is a prefix of the child's
+            trusted_gid = GID(string=trusted_root.save_to_string())
+            trusted_type = trusted_gid.get_type()
+            trusted_hrn = trusted_gid.get_hrn()
+            if trusted_type == 'authority':
+                # Could add a check for type == 'authority'
+                trusted_hrn = trusted_hrn[:trusted_hrn.rindex('.')]
+            cur_hrn = self.get_hrn()
+            if not self.get_hrn().startswith(trusted_hrn):
+                raise GidParentHrn(trusted_hrn + " " + self.get_hrn())
 
         return
-
-
-
 
 
