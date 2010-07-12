@@ -98,7 +98,8 @@ def urn_to_hrn(urn):
     hrn = '.'.join([part.replace(':', '.') for part in hrn_parts if part]) 
     
     if type == 'authority':
-        hrn = hrn.replace ('.sa', '')
+        hrn = hrn[:hrn.rindex('.')]
+        #hrn = hrn.replace ('.sa', '')
    
     return str(hrn), str(type) 
     
