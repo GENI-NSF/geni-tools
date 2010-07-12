@@ -716,12 +716,10 @@ class Credential(object):
             #logger.debug('Cred signer is an authority')
             # signer is an authority, see if target is in authority's domain
             hrn = root_cred_signer.get_hrn()
-            domain = hrn[:hrn.rindex('.')]
-            if root_target_gid.get_hrn().startswith(domain):
-                # target is in domain of signer's authority
+            if root_target_gid.get_hrn().startswith(hrn):
                 return
 
-        # Weve required that the credential be signed by an authority
+        # We've required that the credential be signed by an authority
         # for that domain. Reasonable and probably correct.
         # A looser model would also allow the signer to be an authority
         # in my control framework - eg My CA or CH. Even if it is not
