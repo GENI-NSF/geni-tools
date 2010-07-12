@@ -52,7 +52,7 @@ class CommandHandler(object):
         # address is a tuple in python socket servers
         addr = (opts.host, opts.port)
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
-        ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile, opts.usercertfile)
+        ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile, opts.usercertfile, opts.aggfile)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -62,8 +62,10 @@ def parse_args(argv):
                       help="CH certificate file name (PEM format)", metavar="FILE")
     parser.add_option("-r", "--rootcafile",
                       help="Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
-    parser.add_option("-u", "--usercertfile",
+    parser.add_option("-u", "--usercertfile", 
                       help="Cert file of the CH's test User (eg alice) (PEM format)", metavar="FILE")
+    parser.add_option("-g", "--aggfile", default="geni_aggregates",
+                      help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", default='127.0.0.1',

@@ -49,7 +49,10 @@ available via their native package management suite (eg. yum or apt).
 
   The XML Security Library provides implementations of XML Digital
   Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
-  from this package is used to sign credentials.  
+  from this package is used to sign credentials.  On rpm systems the
+  required packages are 'xmlsec1 and xmlsec1-openssl-devel'.  On
+  debian systems the packages are 'libxmlsec1, xmlsec1,
+  libxmlsec1-openssl, and libxmlsec1-dev'.
 
   More information is available at:
     http://www.aleksey.com/xmlsec/
@@ -140,17 +143,40 @@ explanation).
  commands against multiple Aggregate Managers.
 
 6. Federating: Interacting with multiple Control Frameworks.
+ 
+ With federation, a user from one control framework can use their
+ certificate and slice credentials to allocate resources from
+ aggregates affiliated with other control frameworks.  In a federated
+ network, each clearinghouse lists to its users all of the known
+ aggregate managers that its users can allocate from.  Second, each
+ aggregate manager has a list of trusted root certificates for each
+ federated control framework.
 
- To allow another Aggregate Manager to accept user
- credentials or slice credentials from this clearinghouse, you will
- need to copy the generated ca-cert.pem and ch-cert.pem (see step 1) to 
- that AM's server:
- a) For a GENI AM, copy the certificates to the trusted_roots dir used for 
- startup (as in steps 2 and 3 above)
- b) For a PlanetLab AM, the trusted_roots dir is at /etc/sfa/trusted_roots
- AND FIXME: ?Concat? ?Register in a DB?
- c) For a PG AM FIXME FIXME
- d) For an OpenFlow AM FIXME FIXME
+ -- Step 1) Sharing keys -- Do this for each control framework
+
+ To add your GCF certificate to an SFA based aggregate manager, copy the 
+ ca-cert.pem file to /etc/sfa/trusted_roots/ on the AM's server.
+
+ To add an SFA certificate to a GCF based aggregate manager, copy your
+ SFA key from /etc/sfa/trusted_roots/<should be a .gid file> to your GCF
+ trusted roots directory as described in steps 2 and 3 above.
+
+ -- Step 2) Listing Aggregates -- Do this on all aggregate managers
+
+ To list your GCF AM to SFA users, add your GCF address to /etc/sfa/geni_aggregates.xml.
+ The form is <aggregate addr="hostname" hrn="hrn" port="port" url="hostname:port"/>
+
+   URL and addr/port are redundant, but fill in both.  hrn can be anything, but its intent
+   is to be a shorthand dotted notation of your URN, such as 'plc.princeton' or 'geni.gpo.bbn'
+
+
+
+ To list your SFA aggregate manager in your GCF clearinghouse, edit
+ the 'geni_aggregates' file in your root gcf/ directory and add an
+ entry for the SFA AM. The form is "URN,URL" one pair per line. An example is:
+ 'urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
+
+
 
 Further Reading
 ===============

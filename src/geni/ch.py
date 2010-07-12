@@ -107,8 +107,8 @@ class Clearinghouse(object):
         self.slices = {}
         self.aggs = []
         # FIXME: Shouldnt be hard coding these...
-        self.register_aggregate_pair(GPOMYPLC)
-        self.register_aggregate_pair(TESTGCFAM)
+        #self.register_aggregate_pair(GPOMYPLC)
+        #self.register_aggregate_pair(TESTGCFAM)
 
     def register_aggregate_pair(self, aggpair):
         '''Add an aggregate URN and URL pair to the known set. URL is unverified'''
@@ -132,11 +132,12 @@ class Clearinghouse(object):
         
         # ca_certs is a file of 1 ca cert possibly, preferably a dir of several
     def runserver(self, addr, keyfile=None, certfile=None,
-                  ca_certs=None, user_cert=None):
+                  ca_certs=None, user_cert=None, aggfile=None):
         """Run the clearinghouse server."""
         self.keyfile = keyfile
         self.certfile = certfile
         self.usercert = user_cert
+        
 
         # Error check the keyfile, certfile, usercert all exist
         if keyfile is None or not os.path.isfile(os.path.expanduser(keyfile)):
@@ -151,6 +152,14 @@ class Clearinghouse(object):
 
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
+
+        # Load up the aggregates
+        print aggfile
+        if os.path.isfile(aggfile):
+            for line in file(aggfile):
+                spl = line.strip().split(',')
+                if len(spl) == 2:
+                    self.register_aggregate_pair((spl[0].strip(),spl[1].strip()))
 
         # This is the arg to _make_server
         ca_certs_onefname = CredentialVerifier.getCAsFileFromDir(ca_certs)
