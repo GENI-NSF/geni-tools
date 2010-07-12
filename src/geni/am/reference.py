@@ -122,7 +122,7 @@ class CredentialVerifier(object):
             self.logger.info('AM will accept credentials signed by the single root cert %s' % root_cert_file)
             self.root_cert_files = [root_cert_file]
         else:
-            raise Exception("Couldnt find Root certs in %s" % root_cert_file)
+            raise Exception("Couldn't find Root certs in %s" % root_cert_file)
 
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
                             privileges):
@@ -194,10 +194,10 @@ class CredentialVerifier(object):
 
             try:
                 if not cred.verify(self.root_cert_files):
-                    failure = "Couldnt validate cert %s with known root certs" % cred.get_gid_caller().get_urn()
+                    failure = "Couldn't validate cert %s with known root certs" % cred.get_gid_caller().get_urn()
                     continue
             except Exception, exc:
-                failure = "Couldnt validate cert %s with known root certs: %s" % (cred.get_gid_caller().get_urn(), exc)
+                failure = "Couldn't validate cert %s with known root certs: %s" % (cred.get_gid_caller().get_urn(), exc)
                 self.logger.info(failure)
                 continue
             # If got here it verified

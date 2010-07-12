@@ -52,7 +52,7 @@ SLICE_CRED_LIFE = 3600
 # Clearinghouse.init currently does the register_aggregate_pair,
 # but this should be doable dynamically
 # FIXME: This should be a dynamically modifiable list
-GPOMYPLC = ('urn:publicid:IDN+plc:gpotest+authority+gpolab',
+GPOMYPLC = ('urn:publicid:IDN+plc:gpo1+authority+sa',
             'http://myplc1.gpolab.bbn.com:12348')
 TESTGCFAM = ('urn:publicid:IDN+geni.net:gpo+authority+gcf', 
              'http://127.0.0.1:8001') 

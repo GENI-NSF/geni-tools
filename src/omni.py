@@ -164,7 +164,7 @@ class CallHandler(object):
         name = args[0]
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
-        
+
         # Load up the user's edited omnispec
         specfile = args[1]
         if not os.path.isfile(specfile):
@@ -335,7 +335,7 @@ def main(argv=None):
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
 
-    print 'Using control framework %s' % opts.framework
+    logger.info( 'Using control framework %s' % opts.framework)
         
     # Dynamically load the selected control framework
     cf = opts.framework.lower()
