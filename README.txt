@@ -159,21 +159,23 @@ explanation).
 
  To add an SFA certificate to a GCF based aggregate manager, copy your
  SFA key from /etc/sfa/trusted_roots/<should be a .gid file> to your GCF
- trusted roots directory as described in steps 2 and 3 above.
+ trusted roots directory created in steps 2 and 3 above.
+
 
  -- Step 2) Listing Aggregates -- Do this on all aggregate managers
 
  To list your GCF AM to SFA users, add your GCF address to /etc/sfa/geni_aggregates.xml.
  The form is <aggregate addr="hostname" hrn="hrn" port="port" url="hostname:port"/>
 
-   URL and addr/port are redundant, but fill in both.  hrn can be anything, but its intent
+   URL and addr/port are redundant, but fill in both.  The hrn can be anything, but its intent
    is to be a shorthand dotted notation of your URN, such as 'plc.princeton' or 'geni.gpo.bbn'
 
 
 
  To list your SFA aggregate manager in your GCF clearinghouse, edit
  the 'geni_aggregates' file in your root gcf/ directory and add an
- entry for the SFA AM. The form is "URN,URL" one pair per line. An example is:
+ entry for the SFA AM. The form is "URN,URL" (without quotes) with one
+ such entry per line. An example is: 
  'urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
 
 
