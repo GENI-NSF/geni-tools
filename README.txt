@@ -80,9 +80,13 @@ Instructions
  manager (am), and a researcher (alice).
  The directory for the output, the researcher name, and which keys to
  generate are configurable via commandline options. Cert URNs and
- some privileges are modifiable via constants.
+ some privileges are modifiable via constants. 
  Note you can generate multiple AM credentials and multiple user
  credentials using this script.
+
+ Note that you should customize the certificates generated at your
+ site using the constants at the top of this file, if you will use
+ these certificates to interact with any other GENI site.
 
 Optional: Create a directory containing all known and trusted (federated)
 clearinghouse and certificate authority certificates (see below for an 
@@ -102,6 +106,8 @@ explanation).
  The -r argument could be a file with the GCF CA certificate. However
  to support federation, it should be a directory with all trusted / federated
  CH and CA certificates or certificate chains (PEM format). 
+ Note that the CH certificate is used in generating slice credentials.
+ And any cert not in PEM format may cause cryptic errors.
 
  The geni_aggregates file lists the Aggregate Managers that have
  federated with this Clearinghouse. For some other examples 
@@ -174,7 +180,7 @@ explanation).
 
    URL and addr/port are redundant, but fill in both.  The hrn can be 
    anything, but its intent is to be a shorthand dotted notation of your 
-   URN, such as 'plc.princeton' or 'geni.gpo.bbn'
+   URN, such as 'plc.princeton' or 'geni.gpo.bbn'. Be sure it is unique.
 
 
  To list your SFA aggregate manager in your GCF clearinghouse, edit
@@ -183,6 +189,7 @@ explanation).
  such entry per line. An example is: 
  'urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
 
+ The URN should be unique.
 
 
 Further Reading
