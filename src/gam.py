@@ -58,6 +58,19 @@ def parse_args(argv):
                        help="enable debugging output")
     return parser.parse_args()
 
+def getAbsPath(path):
+    """Return None or a normalized absolute path version of the argument string.
+    Does not check that the path exists."""
+    if path is None:
+        return None
+    if path.strip() == "":
+        return None
+    path = os.path.normcase(os.path.expanduser(path))
+    if os.path.isabs(path):
+        return path
+    else:
+        return os.path.abspath(path)
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
@@ -71,16 +84,16 @@ def main(argv=None):
         sys.exit('Missing path to Root CAs file or directory (-r argument)')
     
     # rootcafile is a single cert in 1 file or a dir of multiple such files
-    delegate = geni.ReferenceAggregateManager(opts.rootcafile)
+    delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcafile))
 
     # here rootcafile is supposed to be a single file with multiple
     # certs possibly concatenated together
-    comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(opts.rootcafile)
+    comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcafile))
 
     ams = geni.AggregateManagerServer((opts.host, opts.port),
                                       delegate=delegate,
-                                      keyfile=opts.keyfile,
-                                      certfile=opts.certfile,
+                                      keyfile=getAbsPath(opts.keyfile),
+                                      certfile=getAbsPath(opts.certfile),
                                       ca_certs=comboCertsFile)
     logging.getLogger('gam').info('GENI AM Listening on port %d...' % (opts.port))
     ams.serve_forever()

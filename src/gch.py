@@ -36,7 +36,21 @@ elif sys.version_info >= (3,):
 
 import logging
 import optparse
+import os
 import geni
+
+def getAbsPath(path):
+    """Return None or a normalized absolute path version of the argument string.
+    Does not check that the path exists."""
+    if path is None:
+        return None
+    if path.strip() == "":
+        return None
+    path = os.path.normcase(os.path.expanduser(path))
+    if os.path.isabs(path):
+        return path
+    else:
+        return os.path.abspath(path)
 
 class CommandHandler(object):
     
@@ -52,7 +66,7 @@ class CommandHandler(object):
         # address is a tuple in python socket servers
         addr = (opts.host, opts.port)
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
-        ch.runserver(addr, opts.keyfile, opts.certfile, opts.rootcafile, opts.usercertfile, opts.aggfile)
+        ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), getAbsPath(opts.rootcafile), getAbsPath(opts.usercertfile), getAbsPath(opts.aggfile))
 
 def parse_args(argv):
     parser = optparse.OptionParser()

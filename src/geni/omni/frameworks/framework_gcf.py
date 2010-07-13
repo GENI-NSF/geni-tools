@@ -61,7 +61,11 @@ class Framework(Framework_Base):
         self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
-        sites = self.ch.ListAggregates()
+        sites = []
+        try:
+            sites = self.ch.ListAggregates()
+        except Exception as exc:
+            raise Exception("Using GCF Failed to do CH.ListAggregates on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
         aggs = {}
         for (urn, url) in sites:
             aggs[urn] = url

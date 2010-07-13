@@ -204,6 +204,9 @@ class Clearinghouse(object):
         if urn_req and self.slices.has_key(urn_req):
             return self.slices[urn_req].save_to_string()
         
+        # FIXME: Validate urn_req has the right form
+        # to be issued by this CH
+
         # Create a random uuid for the slice
         slice_uuid = uuid.uuid4()
         # Where was the slice created?
@@ -287,6 +290,8 @@ class Clearinghouse(object):
         return self.aggs
     
     def create_slice_gid(self, subject, slice_urn):
+        # FIXME: Validate the slice_urn has the right prefix
+        # FIXME: subject is ignored?
         newgid = gid.GID(create=True, subject=SLICE_GID_SUBJ, uuid=gid.create_uuid(), urn=slice_urn)
         keys = cert.Keypair(create=True)
         newgid.set_pubkey(keys)
@@ -300,6 +305,8 @@ class Clearinghouse(object):
     
     def CreateUserCredential(self, user_gid):
         self.logger.info("Called CreateUserCredential for GID %s" % gid.GID(string=user_gid).get_hrn())
+        # FIXME: Validate that this user_gid represents a user
+        # from my CH?
         ucred = cred.Credential()
         user_gid = gid.GID(string=user_gid)
         ucred.set_gid_caller(user_gid)
@@ -314,6 +321,8 @@ class Clearinghouse(object):
     
     def create_slice_credential(self, user_gid, slice_gid):
         ucred = cred.Credential()
+        # FIXME: Validate the user_gid and slice_gid
+        # are my user and slice
         ucred.set_gid_caller(user_gid)
         ucred.set_gid_object(slice_gid)
         ucred.set_lifetime(SLICE_CRED_LIFE)

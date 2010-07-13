@@ -39,12 +39,26 @@ import base64
 import datetime
 import logging
 import optparse
+import os
 import random
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 
 import sfa.trust.credential as cred
+
+def getAbsPath(path):
+    """Return None or a normalized absolute path version of the argument string.
+    Does not check that the path exists."""
+    if path is None:
+        return None
+    if path.strip() == "":
+        return None
+    path = os.path.normcase(os.path.expanduser(path))
+    if os.path.isabs(path):
+        return path
+    else:
+        return os.path.abspath(path)
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
@@ -262,11 +276,13 @@ def main(argv=None):
     if not opts.keyfile or not opts.certfile:
         sys.exit('Missing required arguments -k for Key file and -c for cert file')
 
-    logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, opts.keyfile, opts.certfile)
-    ch_server = make_server(opts.ch, opts.keyfile, opts.certfile,
+    keyf = getAbsPath(opts.keyfile)
+    certf = getAbsPath(opts.certfile)
+    logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
+    ch_server = make_server(opts.ch, keyf, certf,
                             opts.debug_rpc)
-    logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, opts.keyfile, opts.certfile)
-    am_server = make_server(opts.am, opts.keyfile, opts.certfile,
+    logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
+    am_server = make_server(opts.am, keyf, certf,
                             opts.debug_rpc)
     exercise_am(ch_server, am_server)
     return 0

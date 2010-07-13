@@ -63,6 +63,19 @@ from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
 
+def getAbsPath(path):
+    """Return None or a normalized absolute path version of the argument string.
+    Does not check that the path exists."""
+    if path is None:
+        return None
+    if path.strip() == "":
+        return None
+    path = os.path.normcase(os.path.expanduser(path))
+    if os.path.isabs(path):
+        return path
+    else:
+        return os.path.abspath(path)
+
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
@@ -74,11 +87,11 @@ class CallHandler(object):
         self.framework = framework    
         self.frame_config = frame_config
         self.omni_config = omni_config
-        frame_config['cert'] = os.path.expanduser(frame_config['cert'])
+        frame_config['cert'] = getAbsPath(frame_config['cert'])
         if not os.path.exists(frame_config['cert']):
             sys.exit('Frameworks certfile %s doesnt exist' % frame_config['cert'])
 
-        frame_config['key'] = os.path.expanduser(frame_config['key'])
+        frame_config['key'] = getAbsPath(frame_config['key'])
         if not os.path.exists(frame_config['key']):
             sys.exit('Frameworks keyfile %s doesnt exist' % frame_config['key'])
 
@@ -162,6 +175,10 @@ class CallHandler(object):
             sys.exit('createsliver requires 2 args: slicename and rspec filename')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
 
@@ -181,7 +198,11 @@ class CallHandler(object):
         for user in slice_users:
             newkeys = []
             for f in user['keys']:
-                newkeys.append(file(os.path.expanduser(f)).read())
+                try:
+                    newkeys.append(file(os.path.expanduser(f)).read())
+                except Exception, exc:
+                    logger = logging.getLogger('omni')
+                    logger.debug("Failed to read user key from %s: %s", f, exc)
             user['keys'] = newkeys
         
         # Anything we need to allocate?
@@ -212,6 +233,10 @@ class CallHandler(object):
             sys.exit('deletesliver requires arg of slice name')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         # Connect to each available GENI AM 
@@ -228,6 +253,10 @@ class CallHandler(object):
             sys.exit('renewsliver requires arg of slice name')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         time = dateutil.parser.parse(args[1])
@@ -244,6 +273,10 @@ class CallHandler(object):
             sys.exit('sliverstatus requires arg of slice name')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self._getclients():
@@ -261,6 +294,10 @@ class CallHandler(object):
             sys.exit('shutdown requires arg of slice name')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self._getclients():
@@ -277,8 +314,14 @@ class CallHandler(object):
                 print "Failed to get version information for %s at (%s)" % (client.urn, client.url)
                                 
     def createslice(self, args):
-        # FIXME: Require slice name?
+        if len(args) == 0:
+            sys.exit('createslice requires arg of slice name')
+
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         self.framework.create_slice(urn)
         
@@ -287,12 +330,22 @@ class CallHandler(object):
             sys.exit('deleteslice requires arg of slice name')
 
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         self.framework.delete_slice(urn)
 
     def getslicecred(self, args):
-        # FIXME: Require slice name?
+        if len(args) == 0:
+            sys.exit('getslicecred requires arg of slice name')
+
         name = args[0]
+
+        # FIXME: Validate the slice name starts with
+        # PREFIX+slice+
+
         urn = self.framework.slice_name_to_urn(name)
         cred = self.framework.get_slice_cred(urn)
         print cred

@@ -55,8 +55,11 @@ CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
 
+# URN prefix for the CA certificate
 # Substitute eg openflow:stanford
 GPO_CA_CERT_PREFIX = "geni.net:gpo"
+# URN prefix for the CH/AM/Experimenter certificates
+# Slice names must be <CERT_PREFIX>+slice+<your slice name>
 GCF_CERT_PREFIX = "geni.net:gpo:gcf"
 
 USER_CERT_LIFE=3600
@@ -117,6 +120,7 @@ def create_user_credential(user_gid, issuer_keyfile, issuer_certfile):
 
 def make_ca_cert(dir):
     '''Create the CA cert and save it to given dir and return them'''
+    # Create a cert like geni.net:gpo+authority+sa
     (ca_cert, ca_key) = create_cert(GPO_CA_CERT_PREFIX,AUTHORITY_CERT_TYPE,CA_CERT_SUBJ)
     ca_cert.save_to_file(os.path.join(dir, CA_CERT_FILE))
     ca_key.save_to_file(os.path.join(dir, CA_KEY_FILE))
@@ -126,6 +130,7 @@ def make_ca_cert(dir):
 def make_ch_cert(dir, ca_cert, ca_key):
     '''Make a cert for the clearinghouse signed by given CA saved to 
     given directory and returned.'''
+    # Create a cert with urn like  geni.net:gpo:gcf+authority+ch
     (ch_gid, ch_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ, ca_key, ca_cert, True)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
@@ -135,6 +140,7 @@ def make_ch_cert(dir, ca_cert, ca_key):
 def make_am_cert(dir, ca_cert, ca_key):
     '''Make a cert for the aggregate manager signed by given CA cert/key
     and saved in given dir. NOT RETURNED.'''
+    # Create a cert with urn like geni.net:gpo:gcf+authority+am
     (am_gid, am_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ca_key, ca_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
@@ -143,6 +149,8 @@ def make_am_cert(dir, ca_cert, ca_key):
 def make_user_cert(dir, username, ch_keys, ch_gid):
     '''Make a GID/Cert for given username signed by given CH GID/keys, 
     saved in given directory. Not returned.'''
+    # Create a cert like PREFIX+TYPE+name
+    # ie geni.net:gpo:gcf+user+alice
     (alice_gid, alice_keys) = create_cert(GCF_CERT_PREFIX,USER_CERT_TYPE,username, ch_keys, ch_gid)
     alice_gid.save_to_file(os.path.join(dir, ('%s-cert.pem' % username)))
     alice_keys.save_to_file(os.path.join(dir, ('%s-key.pem' % username)))
