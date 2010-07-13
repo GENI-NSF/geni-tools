@@ -54,6 +54,7 @@ Running Omni -
 
   Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
   based on the GCF_CERT_PREFIX constant in init-ca.py
+  (also see ch.py SLICEPUBID_PREFIX)
 
 
 ** deleteslice
@@ -69,8 +70,12 @@ Running Omni -
 
   This command will list the rspecs of all geni aggregates available
   through your chosen framework, and present them in omnispec form.
-  If a slice urn is supplied, then resources for that slice will be
-  displayed.
+  Save the result to a file and edit the allocate value to true
+  to set up a reservation RSpec, suitable for use in a call to
+  createsliver.
+  If a slice urn is supplied, then resources for that slice only 
+  will be displayed.
+
 
 
 ** createsliver
