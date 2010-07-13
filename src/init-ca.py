@@ -55,10 +55,6 @@ CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
 
-# URN prefix for the CA certificate
-# Substitute eg openflow:stanford
-# Be sure that URNs are globally unique to support peering.
-GPO_CA_CERT_PREFIX = "geni.net:gpo"
 # URN prefix for the CH(SA)/AM/Experimenter certificates
 # Be sure that URNs are globally unique to support peering.
 # Slice names must be <CERT_PREFIX>+slice+<your slice name>
@@ -74,8 +70,8 @@ USER_CERT_TYPE = 'user'
 # For CHs and AMs. EG gcf+authority+am
 # See sfa/util/namespace.py eg
 AUTHORITY_CERT_TYPE = 'authority'
-CA_CERT_SUBJ = 'sa' # FIXME: Should be ca 
-CH_CERT_SUBJ = 'ch' # FIXME: For PG interoperability, should this be sa?
+CA_CERT_SUBJ = 'ca' # FIXME: Should be ca 
+CH_CERT_SUBJ = 'sa' # FIXME: For PG interoperability, should this be sa?
 AM_CERT_SUBJ = 'am'
 
 # Prefix is like geni.net:gpo
@@ -124,7 +120,7 @@ def create_user_credential(user_gid, issuer_keyfile, issuer_certfile):
 def make_ca_cert(dir):
     '''Create the CA cert and save it to given dir and return them'''
     # Create a cert like geni.net:gpo+authority+sa
-    (ca_cert, ca_key) = create_cert(GPO_CA_CERT_PREFIX,AUTHORITY_CERT_TYPE,CA_CERT_SUBJ)
+    (ca_cert, ca_key) = create_cert(GCF_CERT_PREFIX,AUTHORITY_CERT_TYPE,CA_CERT_SUBJ)
     ca_cert.save_to_file(os.path.join(dir, CA_CERT_FILE))
     ca_key.save_to_file(os.path.join(dir, CA_KEY_FILE))
     print "Created CA Cert/keys in %s/%s and %s" % (dir, CA_CERT_FILE, CA_KEY_FILE)
@@ -178,6 +174,7 @@ def parse_args(argv):
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
                       help="Create experimenter cert/keys")
+    parser.add_option("--urn", default=None, help="The Authority of the URN (such as 'geni.net:gpo:gcf')")
     return parser.parse_args()
 
 def main(argv=None):
@@ -193,6 +190,11 @@ def main(argv=None):
 
     ca_cert = None
     ca_key = None
+
+    if opts.urn:
+        global GCF_CERT_PREFIX
+        GCF_CERT_PREFIX = opts.urn
+        
     if not opts.notAll or opts.ca:
         (ca_cert, ca_key) = make_ca_cert(dir)
     else:
