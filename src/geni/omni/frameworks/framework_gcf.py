@@ -71,3 +71,31 @@ class Framework(Framework_Base):
             aggs[urn] = url
         
         return aggs
+
+    
+    def slice_name_to_urn(self, name):
+        """Convert a slice name to a slice urn."""
+        base = 'urn:publicid:IDN+'
+
+        # Old OMNI configs did not have authority specified,
+        # all we can do with those is append the name to the base        
+        if not self.config.has_key('authority'):
+            if name.startswith(base):
+                return name
+            else:
+                return base + name
+        
+        auth = self.config['authority']
+
+        if name.startswith(base):
+            if not name.startswith(base+auth+"+slice+"):
+                raise Exception("Incorrect slice name")
+            return name
+        
+        if name.startswith(auth):
+            return base + name
+
+        if '+' in name:
+            raise Exception("Incorrect slice name")
+                            
+        return base + auth + "+slice+" + name

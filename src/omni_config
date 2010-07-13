@@ -18,9 +18,10 @@
 		"slicemgr": "http://128.89.81.175:12347"
 	},
 	"gcf": {
-        "ch": "http://localhost:8000",
+    "authority": "geni.net:gpo:gcf"
+    "ch": "http://localhost:8000",
 		"cert": "~/.omni/gcf.jkarlin.cert",
-		"key":	"~/.omni/gcf.jkarlin.pkey"    	
+		"key":	"~/.omni/gcf.jkarlin.pkey",
 	},
 	"pg": {
         "xxxverbose": true,

@@ -169,3 +169,23 @@ class Framework(Framework_Base):
             aggs[site['urn']] = url
 
         return aggs
+
+
+    def slice_name_to_urn(self, name):
+        """Convert a slice name to a slice urn."""
+        base = 'urn:publicid:IDN+'
+        auth = self.config['authority'].replace('.',':')
+
+        if name.startswith(base):
+            if not name.startswith(base+auth+"+slice+"):
+                raise Exception("Incorrect slice name")
+            return name
+        
+        if name.startswith(auth):
+            return base + name
+
+        if '+' in name:
+            raise Exception("Incorrect slice name")
+                            
+        return base + auth + "+slice+" + name
+        

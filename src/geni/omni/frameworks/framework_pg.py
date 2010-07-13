@@ -130,11 +130,25 @@ class Framework(Framework_Base):
         #   urn:publicid:IDN+pgeni3.gpolab.bbn.com+slice+tom1
         #   urn:publicid:IDN+elabinelab.geni.emulab.net+slice+tom1
         #
+        base = 'urn:publicid:IDN+'
         url = urlparse(self.config['sa'])
         sa_host = url.hostname
-        pg_site = sa_host[sa_host.index('.')+1:]
-        slice_name = '%s+slice+%s' % (pg_site, name)
-        return namespace.long_urn(slice_name)
+        auth = sa_host[sa_host.index('.')+1:]
+        if name.startswith(base):
+            if not name.startswith(base+auth+"+slice+"):
+                raise Exception("Incorrect slice name")
+            return name
+        
+        if name.startswith(auth):            
+            return base + name
+
+        if '+' in name:
+            raise Exception("Incorrect slice name")
+        
+        return base + auth + "+slice+" + name
+        
+        #slice_name = '%s+slice+%s' % (pg_site, name)
+        #return namespace.long_urn(slice_name)
     
     def create_slice(self, urn):
         """Create a slice at the PG Slice Authority.
