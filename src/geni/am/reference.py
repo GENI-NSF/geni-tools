@@ -194,10 +194,10 @@ class CredentialVerifier(object):
 
             try:
                 if not cred.verify(self.root_cert_files):
-                    failure = "Couldn't validate cert %s with known root certs" % cred.get_gid_caller().get_urn()
+                    failure = "Couldn't validate cert %s with any of %d known root certs" % (cred.get_gid_caller().get_urn(), len(self.root_cert_files))
                     continue
             except Exception, exc:
-                failure = "Couldn't validate cert %s with known root certs: %s" % (cred.get_gid_caller().get_urn(), exc)
+                failure = "Couldn't validate cert %s with any of %d known root certs: %s" % (cred.get_gid_caller().get_urn(), len(self.root_cert_files), exc)
                 self.logger.info(failure)
                 continue
             # If got here it verified
