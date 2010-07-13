@@ -196,7 +196,6 @@ class GID(Certificate):
     # for a principal that is not a member of that authority. For example,
     # planetlab.us.arizona cannot sign a GID for planetlab.us.princeton.foo.
 
-
     def verify_chain(self, trusted_certs = None):
         # do the normal certificate verification stuff
         trusted_root = Certificate.verify_chain(self, trusted_certs)        
@@ -218,5 +217,3 @@ class GID(Certificate):
                 raise GidParentHrn(trusted_hrn + " " + self.get_hrn())
 
         return
-
-

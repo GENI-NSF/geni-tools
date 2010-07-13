@@ -47,19 +47,21 @@ SLICE_GID_SUBJ = "gcf.slice"
 USER_CRED_LIFE = 86400
 SLICE_CRED_LIFE = 3600
 
-# This is the list of Aggregates that this Clearinghouse knows about.
+# The list of Aggregates that this Clearinghouse knows about
+# should be defined in the geni_aggregates file
 # ListResources will refer the client to these aggregates
-# Clearinghouse.init currently does the register_aggregate_pair,
+# Clearinghouse.runserver currently does the register_aggregate_pair
+# calls for each row in that file
 # but this should be doable dynamically
-# FIXME: This should be a dynamically modifiable list
-GPOMYPLC = ('urn:publicid:IDN+plc:gpo1+authority+sa',
-            'http://myplc1.gpolab.bbn.com:12348')
-TESTGCFAM = ('urn:publicid:IDN+geni.net:gpo+authority+gcf', 
-             'http://127.0.0.1:8001') 
-OTHERGPOMYPLC = ('urn:publicid:IDN+plc:gpo+authority+site2',
-                   'http://128.89.81.74:12348')
-ELABINELABAM = ('urn:publicid:IDN+elabinelab.geni.emulab.net',
-                'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am')
+# Some sample pairs:
+# GPOMYPLC = ('urn:publicid:IDN+plc:gpo1+authority+sa',
+#             'http://myplc1.gpolab.bbn.com:12348')
+# TESTGCFAM = ('urn:publicid:IDN+geni.net:gpo+authority+gcf', 
+#              'http://127.0.0.1:8001') 
+# OTHERGPOMYPLC = ('urn:publicid:IDN+plc:gpo+authority+site2',
+#                    'http://128.89.81.74:12348')
+# ELABINELABAM = ('urn:publicid:IDN+elabinelab.geni.emulab.net',
+#                 'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am')
 
 class ClearinghouseServer(object):
     """The public API for the Clearinghouse.  This class provides the
@@ -106,9 +108,6 @@ class Clearinghouse(object):
         self.logger = logging.getLogger('gch')
         self.slices = {}
         self.aggs = []
-        # FIXME: Shouldnt be hard coding these...
-        #self.register_aggregate_pair(GPOMYPLC)
-        #self.register_aggregate_pair(TESTGCFAM)
 
     def register_aggregate_pair(self, aggpair):
         '''Add an aggregate URN and URL pair to the known set. URL is unverified'''
@@ -160,6 +159,7 @@ class Clearinghouse(object):
                 spl = line.strip().split(',')
                 if len(spl) == 2:
                     self.register_aggregate_pair((spl[0].strip(),spl[1].strip()))
+        self.logger.info("%d Aggregate Managers registered", len(self.aggs))
 
         # This is the arg to _make_server
         ca_certs_onefname = CredentialVerifier.getCAsFileFromDir(ca_certs)

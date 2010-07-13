@@ -91,7 +91,8 @@ explanation).
 2. Start the clearinghouse server:
 
  $ src/gch.py -r <ca-cert.pem or trusted_chs_and_cas_dir/> \
-   	      -c ch-cert.pem -k ch-key.pem -u alice-cert.pem
+   	      -c ch-cert.pem -k ch-key.pem -u alice-cert.pem \
+	      -g geni_aggregates
 
  Note the requirement to supply (-u arg) a user credential (a test CH
  artifact). If the trusted certificates directory doesn't include the
@@ -102,13 +103,15 @@ explanation).
  to support federation, it should be a directory with all trusted / federated
  CH and CA certificates or certificate chains (PEM format). 
 
+ The geni_aggregates file lists the Aggregate Managers that have
+ federated with this Clearinghouse. For some other examples 
+ see src/geni/ch.py.  This is how a single gch can contact multiple
+ AM API compliant agggregate managers from whatever control framework.
+
  Optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8000, and --debug for debugging output.
 
- See geni/ch.py constants to change the known Aggregates, slice URNs,
- etc. EG by adding other known federated aggregates, a single gch
- instance can point a client at multiple GENI AM API compliant
- Aggregate Managers from whatever control framework.
+ See geni/ch.py constants to change the slice URNs, etc. 
  
 3. Start the aggregate manager server:
 
@@ -152,7 +155,9 @@ explanation).
  aggregate manager has a list of trusted root certificates for each
  federated control framework.
 
- -- Step 1) Sharing keys -- Do this for each control framework
+ -- Step 1) Sharing keys -- Do this for each Aggregate Manager
+ For each Aggregate Manager that should accept credentials from your
+ Clearinghouse:
 
  To add your GCF certificate to an SFA based aggregate manager, copy the 
  ca-cert.pem file to /etc/sfa/trusted_roots/ on the AM's server.
@@ -162,14 +167,14 @@ explanation).
  trusted roots directory created in steps 2 and 3 above.
 
 
- -- Step 2) Listing Aggregates -- Do this on all aggregate managers
+ -- Step 2) Listing Aggregates -- Do this on all peered clearinghouses
 
  To list your GCF AM to SFA users, add your GCF address to /etc/sfa/geni_aggregates.xml.
  The form is <aggregate addr="hostname" hrn="hrn" port="port" url="hostname:port"/>
 
-   URL and addr/port are redundant, but fill in both.  The hrn can be anything, but its intent
-   is to be a shorthand dotted notation of your URN, such as 'plc.princeton' or 'geni.gpo.bbn'
-
+   URL and addr/port are redundant, but fill in both.  The hrn can be 
+   anything, but its intent is to be a shorthand dotted notation of your 
+   URN, such as 'plc.princeton' or 'geni.gpo.bbn'
 
 
  To list your SFA aggregate manager in your GCF clearinghouse, edit
