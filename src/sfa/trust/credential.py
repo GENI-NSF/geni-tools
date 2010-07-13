@@ -631,7 +631,19 @@ class Credential(object):
     def verify(self, trusted_certs):
         if not self.xml:
             self.decode()        
-        trusted_cert_objects = [GID(filename=f) for f in trusted_certs]
+
+#        trusted_cert_objects = [GID(filename=f) for f in trusted_certs]
+        trusted_cert_objects = []
+        ok_trusted_certs = []
+        for f in trusted_certs:
+            try:
+                # Failures here include unreadable files
+                # or non PEM files
+                trusted_cert_objects.append(GID(filename=f))
+                ok_trusted_certs.append(f)
+            except Exception, exc:
+                logger.error("Failed to load trusted cert from %s: %r", f, exc)
+        trusted_certs = ok_trusted_certs
 
         # Use legacy verification if this is a legacy credential
         if self.legacy:
