@@ -254,11 +254,18 @@ class Clearinghouse(object):
                 pass
             
         if serverstr == "":
-            self.logger.error('Failed to generate complete user cert using trusted CAs. For user %s didnt find issuer %s cert', user_cert.get_subject(), user_cert.get_issuer())            
+            self.logger.error('Failed to generate complete user cert using trusted CAs. For user %s didnt find issuer %s cert.', user_cert.get_subject(), user_cert.get_issuer())            
 
             # use the commandline user cert for test purposes? Raise an exception?
             # HACK!
-            user_gid = gid.GID(filename=self.usercert)
+            self.logger.error('Falling back on getting slice credentials using usercert %s' % self.usercert)
+            user_gid = None
+            try:
+                user_gid = gid.GID(filename=self.usercert)
+            except:
+                import traceback
+                self.logger.error("Couldnt get GID from usercert %s: %s" % (self.usercert, traceback.format_exc()))
+                raise Exception("Couldnt get GID from usercert %s: %s" % (self.usercert, traceback.format_exc()))
         else:
             user_gid = gid.GID(string=str(self._server.pem_cert + serverstr))
 
@@ -267,7 +274,7 @@ class Clearinghouse(object):
                                                       slice_gid)
         except Exception:
             import traceback
-            self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid, slice_gid, traceback.print_exc())
+            self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid, slice_gid, traceback.format_exc())
             raise
         self.logger.info('Created slice %r' % (urn))
         
