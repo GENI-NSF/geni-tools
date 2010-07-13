@@ -52,6 +52,9 @@ Running Omni -
 
   Creates the slice in your chosen control framework.
 
+  Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
+  based on the GCF_CERT_PREFIX constant in init-ca.py
+
 
 ** deleteslice
 - format:  omni.py deleteslice <slice urn>
