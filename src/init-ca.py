@@ -174,7 +174,7 @@ def parse_args(argv):
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
                       help="Create experimenter cert/keys")
-    parser.add_option("--urn", default=None, help="The Authority of the URN (such as 'geni.net:gpo:gcf')")
+    parser.add_option("--authority", default=None, help="The Authority of the URN (such as 'geni.net:gpo:gcf')")
     return parser.parse_args()
 
 def main(argv=None):
@@ -191,9 +191,9 @@ def main(argv=None):
     ca_cert = None
     ca_key = None
 
-    if opts.urn:
+    if opts.authority:
         global GCF_CERT_PREFIX
-        GCF_CERT_PREFIX = opts.urn
+        GCF_CERT_PREFIX = opts.authority
         
     if not opts.notAll or opts.ca:
         (ca_cert, ca_key) = make_ca_cert(dir)
