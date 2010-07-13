@@ -86,7 +86,8 @@ Instructions
 
  Note that you should customize the certificates generated at your
  site using the constants at the top of this file, if you will use
- these certificates to interact with any other GENI site.
+ these certificates to interact with any other GENI site. In particular, 
+ URNs must be globally unique.
 
 Optional: Create a directory containing all known and trusted (federated)
 clearinghouse and certificate authority certificates (see below for an 
@@ -115,9 +116,15 @@ explanation).
  AM API compliant agggregate managers from whatever control framework.
 
  Optional arguments include -H to specify a full hostname, -p to
- listen on a port other than 8000, and --debug for debugging output.
+ listen on a port other than 8000, and --debug for debugging output. 
+ Note that listening on localhost/127.0.0.1 (the default) is not the same 
+ as listening on a real hostname / IP address. Be sure to listen on the
+ desired interface and address the Aggregate Manager / Clearinghouse
+ consistently.
 
- See geni/ch.py constants to change the slice URNs, etc. 
+ See geni/ch.py constants to change the slice URNs, etc. Note that slice URNs
+ are globally unique, and constrained to be proper children of their
+ Clearinghouse (Slice Authority).
  
 3. Start the aggregate manager server:
 
@@ -132,6 +139,10 @@ explanation).
 
  Optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8001, and --debug for debugging output.
+ Note that listening on localhost/127.0.0.1 (the default) is not the same 
+ as listening on a real hostname / IP address. Be sure to listen on the
+ desired interface and address the Aggregate Manager / Clearinghouse
+ consistently.
 
 4. Run the GCF installation testing client:
 
