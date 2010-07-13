@@ -41,6 +41,7 @@ import sfa.trust.credential as cred
 import sfa.trust.rights as rights
 
 # Substitute eg "openflow//stanford ch"
+# Be sure this matches init-ca.py:GCF_CERT_PREFIX !!
 SLICEPUBID_PREFIX = "geni.net//gpo//gcf"
 SLICE_GID_SUBJ = "gcf.slice"
 

@@ -62,6 +62,7 @@ GPO_CA_CERT_PREFIX = "geni.net:gpo"
 # URN prefix for the CH(SA)/AM/Experimenter certificates
 # Be sure that URNs are globally unique to support peering.
 # Slice names must be <CERT_PREFIX>+slice+<your slice name>
+# Be sure the below matches geni/ch.py: SLICEPUBID_PREFIX
 GCF_CERT_PREFIX = "geni.net:gpo:gcf"
 
 USER_CERT_LIFE=3600

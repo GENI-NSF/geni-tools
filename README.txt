@@ -87,7 +87,8 @@ Instructions
  Note that you should customize the certificates generated at your
  site using the constants at the top of this file, if you will use
  these certificates to interact with any other GENI site. In particular, 
- URNs must be globally unique.
+ URNs must be globally unique. If you change the cert prefix, be sure
+ to make corresponding edits to geni/ch.py SLICEPUBID_PREFIX.
 
 Optional: Create a directory containing all known and trusted (federated)
 clearinghouse and certificate authority certificates (see below for an 
