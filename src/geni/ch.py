@@ -153,13 +153,13 @@ class Clearinghouse(object):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
 
         # Load up the aggregates
-        print aggfile
+        #print aggfile
         if os.path.isfile(aggfile):
             for line in file(aggfile):
                 spl = line.strip().split(',')
                 if len(spl) == 2:
                     self.register_aggregate_pair((spl[0].strip(),spl[1].strip()))
-        self.logger.info("%d Aggregate Managers registered", len(self.aggs))
+        self.logger.info("%d Aggregate Managers registered from aggregates file %r", len(self.aggs), aggfile)
 
         # This is the arg to _make_server
         ca_certs_onefname = CredentialVerifier.getCAsFileFromDir(ca_certs)
