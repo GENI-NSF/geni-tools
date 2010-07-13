@@ -70,8 +70,8 @@ USER_CERT_TYPE = 'user'
 # For CHs and AMs. EG gcf+authority+am
 # See sfa/util/namespace.py eg
 AUTHORITY_CERT_TYPE = 'authority'
-CA_CERT_SUBJ = 'ca' # FIXME: Should be ca 
-CH_CERT_SUBJ = 'sa' # FIXME: For PG interoperability, should this be sa?
+CA_CERT_SUBJ = 'ca' 
+CH_CERT_SUBJ = 'sa' 
 AM_CERT_SUBJ = 'am'
 
 # Prefix is like geni.net:gpo
