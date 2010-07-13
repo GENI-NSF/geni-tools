@@ -57,8 +57,10 @@ AM_KEY_FILE = 'am-key.pem'
 
 # URN prefix for the CA certificate
 # Substitute eg openflow:stanford
+# Be sure that URNs are globally unique to support peering.
 GPO_CA_CERT_PREFIX = "geni.net:gpo"
-# URN prefix for the CH/AM/Experimenter certificates
+# URN prefix for the CH(SA)/AM/Experimenter certificates
+# Be sure that URNs are globally unique to support peering.
 # Slice names must be <CERT_PREFIX>+slice+<your slice name>
 GCF_CERT_PREFIX = "geni.net:gpo:gcf"
 
@@ -71,13 +73,13 @@ USER_CERT_TYPE = 'user'
 # For CHs and AMs. EG gcf+authority+am
 # See sfa/util/namespace.py eg
 AUTHORITY_CERT_TYPE = 'authority'
-CA_CERT_SUBJ = 'sa' # Note that others might call this a CA
-CH_CERT_SUBJ = 'ch'
+CA_CERT_SUBJ = 'sa' # FIXME: Should be ca 
+CH_CERT_SUBJ = 'ch' # FIXME: For PG interoperability, should this be sa?
 AM_CERT_SUBJ = 'am'
 
 # Prefix is like geni.net:gpo
 # type is authority or user
-# subj is sa or am or ch, or the username
+# subj is ca or am or sa, or the username
 def create_cert(prefix, type, subj, issuer_key=None, issuer_cert=None, intermediate=False):
     '''Create a new certificate and return it and the associated keys.
     If issure cert and key are given, they sign the certificate. Otherwise
@@ -107,7 +109,7 @@ def create_cert(prefix, type, subj, issuer_key=None, issuer_cert=None, intermedi
 
 # unused method
 def create_user_credential(user_gid, issuer_keyfile, issuer_certfile):
-    ''' Given user GID andd CH cert and key, create a user credential.'''
+    ''' Given user GID and CH cert and key, create a user credential.'''
     ucred = cred.Credential()
     ucred.set_gid_caller(user_gid)
     ucred.set_gid_object(user_gid)
@@ -130,7 +132,7 @@ def make_ca_cert(dir):
 def make_ch_cert(dir, ca_cert, ca_key):
     '''Make a cert for the clearinghouse signed by given CA saved to 
     given directory and returned.'''
-    # Create a cert with urn like  geni.net:gpo:gcf+authority+ch
+    # Create a cert with urn like  geni.net:gpo:gcf+authority+sa
     (ch_gid, ch_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ, ca_key, ca_cert, True)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
@@ -170,7 +172,7 @@ def parse_args(argv):
     parser.add_option("--ca", action="store_true", default=False,
                       help="Create CA cert/keys")
     parser.add_option("--ch", action="store_true", default=False,
-                      help="Create CH cert/keys")
+                      help="Create CH (SA) cert/keys")
     parser.add_option("--am", action="store_true", default=False,
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
@@ -210,7 +212,7 @@ def main(argv=None):
                 ch_gid = gid.GID(filename=os.path.join(dir,CH_CERT_FILE))
                 ch_keys = cert.Keypair(filename=os.path.join(dir,CH_KEY_FILE))
             except Exception, exc:
-                sys.exit("Failed to read CH cert/key from %s/%s and %s: %s" % (dir, CHCERT_FILE, CH_KEY_FILE, exc))
+                sys.exit("Failed to read CH(SA) cert/key from %s/%s and %s: %s" % (dir, CHCERT_FILE, CH_KEY_FILE, exc))
 
     if not opts.notAll or opts.am:
         make_am_cert(dir, ca_cert, ca_key)

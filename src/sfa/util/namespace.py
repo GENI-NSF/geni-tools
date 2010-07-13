@@ -117,7 +117,7 @@ def hrn_to_urn(hrn, type=None):
      
     if type == 'authority':
         authority = hrn
-        name = 'sa'   
+        name = 'sa'   # For PG interoperability
     
     if authority.startswith("plc"):
         if type == None:
