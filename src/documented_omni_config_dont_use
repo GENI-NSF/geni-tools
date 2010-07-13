@@ -57,8 +57,10 @@
 	},
 
 	"gcf": {
+    # The authority part of the GCF URN
+    "authority": "geni.net:gpo:gcf",
 		# where gch is listening
-                "ch": "http://localhost:8000",
+    "ch": "http://localhost:8000",
 		# User certificate and key.
 		# Note that these can be certificates from any
 		# trusted clearinghouse (that is, the CH's certificate

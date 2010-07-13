@@ -47,19 +47,23 @@ Running Omni -
 == The following commands are supported: ==
 
 ** createslice
-- format:  omni.py createslice <slice urn>
-- example: omni.py createslice <plc:gpo:site+slice+foobar>
+- format:  omni.py createslice <slice name>
+- example: omni.py createslice <plc:gpo:site+slice+foobar> 
+           Shorthand notation is also available (e.g., 'foobar')
 
   Creates the slice in your chosen control framework.
 
   Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
-  based on the GCF_CERT_PREFIX constant in init-ca.py
+  based on the GCF_CERT_PREFIX constant in init-ca.py.  The shorthand notation
+  is available for SFA and PG.  Shorthand works if your control framework is GCF
+  only if you have configured the 'authority' line in the gcf section of omni_config.
   (also see ch.py SLICEPUBID_PREFIX)
 
 
 ** deleteslice
 - format:  omni.py deleteslice <slice urn>
 - example: omni.py deleteslice <plc:gpo:site+slice+foobar>
+           Shorthand notation is also available (e.g., 'foobar')
 
   Deletes the slice in your chosen control framework
 
@@ -81,6 +85,8 @@ Running Omni -
 ** createsliver
 - format:  omni.py createsliver <slice urn> <omnispec file>
 - example: omni.py createsliver plc:gpo:site+slice+foobar ospec
+           Shorthand notation is also available (e.g., 'foobar')
+
 - argument: the omnispec file should have been created by a call to 
             listresources (e.g. omni.py listresources > ospec)
             Then, edit the file and set "allocate": true, for each
@@ -95,6 +101,7 @@ Running Omni -
 ** deletesliver
 - format:  omni.py deletesliver <slice urn>
 - example: omni.py deletesliver plc:gpo:site+slice+foobar
+           Shorthand notation is also available (e.g., 'foobar')
 
 	This command will free any resources associated with your slice.  
 
@@ -104,6 +111,7 @@ Running Omni -
 - format:  omni.py renewsliver <slice urn> "<time>"
 - example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 4:15pm"
 - example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 16:15"
+           Shorthand notation is also available (e.g., 'foobar')
 
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
@@ -114,6 +122,8 @@ Running Omni -
 ** sliverstatus
 - format: omni.py sliverstatus <slice urn>
 - example: omni.py sliverstatus plc:gpo:site+slice+foobar
+           Shorthand notation is also available (e.g., 'foobar')
+
 
 	This command will get information from each aggregate about the
 	status of the specified slice
@@ -123,6 +133,7 @@ Running Omni -
 ** shutdown
 - format:  omni.py shutdown <slice urn> 
 - example: omni.py shutdown plc:gpo:site+slice+foobar
+           Shorthand notation is also available (e.g., 'foobar')
 
   This command will stop the resources from running, but not delete
 	their state.  This command should not be needed by most users.
