@@ -58,12 +58,14 @@
 
 	"sfa": {
 	       # urn of your MyPLC or PL Central
-	       # You can find this by running:
+	       # This is SFA_INTERFACE_HRN:site_name
+	       # You can find this in practice by running:
 	       # openssl x509 -in [user plc cert file] -text
 	       # and then look at the Issuer CN
 		"authority": "plc.gpo.site2",
 
 		# urn and cert of the user
+		# This is the authority above.<username from myplc email>
 		# Subject CN in your cert (see above)
 	    	"user": "plc.gpo.site2.jkarlin",
 		"cert": "~/.omni/jkarlin.cert",

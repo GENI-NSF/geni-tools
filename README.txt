@@ -115,6 +115,7 @@ explanation).
  federated with this Clearinghouse. For some other examples 
  see src/geni/ch.py.  This is how a single gch can contact multiple
  AM API compliant agggregate managers from whatever control framework.
+ Aggregate URNs here are for human consumption and need not be accurate.
 
  Optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8000, and --debug for debugging output. 
@@ -178,7 +179,10 @@ explanation).
  Clearinghouse:
 
  To add your GCF certificate to an SFA based aggregate manager, copy the 
- ca-cert.pem file to /etc/sfa/trusted_roots/ on the AM's server.
+ CA certificate file (ca-cert.pem) to /etc/sfa/trusted_roots/ on the 
+ AM's server. 
+ 
+ After adding your certificates, restart sfa (sudo /etc/init.d/sfa restart).
 
  To add an SFA certificate to a GCF based aggregate manager, copy your
  SFA key from /etc/sfa/trusted_roots/<should be a .gid file> to your GCF
@@ -201,7 +205,9 @@ explanation).
  such entry per line. An example is: 
  'urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
 
- The URN should be unique.
+ The URN should be unique. While it need not be fully accurate, that
+ is useful. You can find the URN using the openssl commandline:
+      openssl x509 -in [gid] -text | grep "Subject Alternative" 
 
 
 Further Reading

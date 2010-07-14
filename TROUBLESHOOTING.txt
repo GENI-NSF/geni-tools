@@ -1,0 +1,129 @@
+Troubleshooting Guide for Installing GCF and Running Omni
+=========================================================
+
+1) Slice URNs and CH URNs and AM URNs need to match each other and the 
+appropriate credentials.
+All the URNs that come out of a Control Framework have a common root 
+(eg openflow:stanford) and all URNs need to be unique (geni.net:gpo and 
+geni.net:gpo2 for my 2 parallel instances).
+Getting this right means ensuring you have the right strings
+- in init-ca.py, See GPO_CERT_PREFIX
+- in geni/ch.py. See SLICEPUBID_PREFIX
+- in geni_aggregates or equivalent (the AM's URN)
+- in the Slice names you provide via the Client (omni)
+
+And then of course use the right certificates for each Clearinghouse 
+and Aggregate Manager.
+
+If your CH cert is for openflow:stanford:authority+ch
+Then your slices should be named
+openflow:stanford:slice+<slice name>
+
+You may get multiple kinds of errors when these don't match.
+
+Often it's a cryptic SSL doHandshake error. Sometimes it looks like 
+an error about Credential Verification.
+
+EG when the MyPLC doesn't have the right trusted certificate:
+>  ERROR:omni:Failed to List Resources from
+>  urn:publicid:IDN+plc:gpo1+authority+sa
+>  (http://myplc1.gpolab.bbn.com:12348): <Fault 108: ": ListResources:
+>  Insufficient rights: Access denied: <class
+>  'sfa.util.faults.CredentialNotVerifiable'> -- 'xmlsec1 error:
+>
+func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=360:obj=x509-store:subj=X509_verify_cert:error=4:crypto
+>  library function
+>  failed:subj=/CN=geni.net:gpo2:gcf+authority+ch;err=7;msg=certificate
+>  signature
+>
+failure\\nfunc=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=408:obj=x509-store:subj=unknown:error=71:certificate
+>  verification failed:err=7;msg=certificate signature
+>  failure\\nOK\\nSignedInfo References (ok/all): 1/1\\nManifests
+>  References (ok/all): 0/0\\n'">
+
+When the slice name is wrong:
+>  ERROR:omni:Failed to List Resources from
+>  urn:publicid:IDN+geni.net:gpo3+authority+gcf (http://127.0.0.1:8005):
+>  <Fault Insufficient privileges: "No credential was found with
+>  appropriate privileges. Tried
+>  urn:publicid:IDN+geni.net:gpo3:gcf+user+Aaron2. Last failure: Couldn't
+>  validate cert urn:publicid:IDN+geni.net:gpo3:gcf+user+Aaron2 with known
+>  root certs: 'This cert geni.net.gpo.gcf.foo3 HRN doesnt start with
+>  parent HRN geni.net.gpo3.gcf'">
+
+And failing to get the constants right can look like this:
+>  INFO:cred-verifier:Couldn't validate cert
+>  urn:publicid:IDN+geni.net:gpo2:gcf+user+Aaron with known root certs:
+>  'This cert geni.net.gpo.gcf.c4f3-7cc.127.0.0.1%3A8002 HRN doesnt start
+>  with parent HRN geni.net.gpo2.gcf'
+>  ERROR:cred-verifier:No credential was found with appropriate privileges.
+>  Tried urn:publicid:IDN+geni.net:gpo2:gcf+user+Aaron. Last failure:
+>  Couldn't validate cert urn:publicid:IDN+geni.net:gpo2:gcf+user+Aaron
+>  with known root certs: 'This cert
+>  geni.net.gpo.gcf.c4f3-7cc.127.0.0.1%3A8002 HRN doesnt start with parent
+>  HRN geni.net.gpo2.gcf'
+
+
+
+If you see:
+'Unable to allocate from:'
+This is an error from your Aggregate Manager (eg gam). Check the logs there.
+
+If you see:
+
+ERROR:gch:Failed to generate complete user cert using trusted CAs. For user 
+geni.net:gpo:gcf+user+alice didnt find issuer geni.net:gpo:gcf+authority+ch cert
+> INFO:gch:Created slice 'urn:publicid:IDN+geni.net:gpo:gcf+slice+foobar'
+
+This means the GCH -r argument didn't contain the CH certificate for your 
+user. 
+But because you see the second INFO message that the slice was created it 
+means it went ahead and issued the Slice in the name of the user whose 
+certificate was on the commandline. If you only have the one 'alice' user 
+in your setup this is fine. But if you were using a different user then 
+you will have trouble once you get to the Aggregate Manager 
+-- solvable by adding the CH certificate to the -r argument of GCH.
+
+If at Omni startup you get a Traceback that ends with something like:
+
+   File "/usr/lib/python2.6/json/decoder.py", line 193, in JSONObject
+>>>>>      raise ValueError(errmsg("Expecting , delimiter", s, end - 1))
+>>>>> ValueError: Expecting , delimiter: line 8 column 5 (char 147)
+>>>>>
+
+Then you have a typo in your omni_config file.  EG above it is complaining 
+about a missing comma at the end of a line.
+
+If you get this:
+
+[root@localhost src]# python ./omni.py listresources
+INFO:omni:Using control framework gcf
+Traceback (most recent call last):
+  File "./omni.py", line 354, in <module>
+...
+Exception: Using GCF Failed to do CH.CreateUserCredentials on CH
+http://localhost:8000 from cert file /root/.omni/seethara.cert:
+Traceback (most recent call last):
+  File "/root/gcf-20100712/src/geni/omni/frameworks/framework_gcf.py",
+line 49, in get_user_cred
+    self.user_cred = self.ch.CreateUserCredential(self.cert_string)
+...
+  File "/usr/local/lib/python2.6/ssl.py", line 293, in do_handshake
+    self._sslobj.do_handshake()
+SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
+
+
+Or similar 'do_handshake' error then you should check that you are using a 
+consistent set of certificates at the CH and client (ie all gcf certificates 
+and keys etc).
+
+In general when things go wrong
+- make sure your -r argument has exactly the ch-cert.pem and ca-cert.pem 
+files for all your CHs.
+- supply the --debug argument to all programs
+- ensure all machines can ping each other
+- try manual telnet to the host/ip and port as shown (for Aggregate Managers
+and Clearinghouses)
+- verify your omni config lists right cert/keys in your chosen framework area
+- ensure you are using the cert/key pair for a user generated by the 
+Clearinghouse you are trying to reach

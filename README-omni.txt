@@ -32,6 +32,58 @@ different RSpec formats requires adding a new omnispec/rspec conversion file.
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension class.
 
+Omni workflow
+=============
+- Pick a Clearinghouse you want to use. That is the control framework you
+ will use.
+
+- Be sure the appropriate section of omni config for your framework 
+(sfa/gcf/pg) has appropriate settings for contacting that Clearinghouse, 
+and user credentials that are valid for that Clearinghouse.
+
+- Run omni listresources > avail-resources.omnispec
+a) When you do this, Omni will contact your designated Clearinghouse, using 
+your framework-specific user credentials.
+b) The clearinghouse will list the Aggregates it knows about.
+EG for GCF, the contents of geni_aggregates. For SFA, it will return the
+contents of /etc/sfa/geni_aggregates.xml.
+c) Omni will then contact each of the Aggregates that the Clearinghouse told
+it about, and use the GENI AM API to ask each for its resources.
+Again, it will use your user credentials. So each Aggregate Manager must 
+trust the signer of your user credentials, in order for you to talk
+to it. This is why you add the CH certificate to /etc/sfa/trusted_roots or to
+the -r argument of your GCF gam.py.
+d) Omni will then convert the proprietary RSPecs into a single 'omnispec'.
+
+- Save this to a file. You can then edit this file to reserve resources, 
+by changing 'allocate: false' to 'allocate: true' wherever the resource
+is not already allocated ('allocated: true').
+
+- Create a Slice.
+Slices are created at your Clearinghouse. Slices are named based on
+the Clearinghouse authority that signs for them. Using the shorthand
+(just the name of your slice within PG, for example) allows Omni to
+ensure your Slice is named correctly. So run:
+omni.py createslice MyGreatTestSlice
+
+- Allocate your Resources
+Given a slice, and your edited omnispec file, you are ready to allocate
+resources by creating slivers at each of the Aggregate Managers.
+Omni will contact your Clearinghouse again, to get the credentials
+for your slice. It will parse your omnispec file, converting it back
+into framework specific RSpec format as necessary.
+It will then contact each Aggregate Manager in your
+omnispec where you are reserving resources, calling the GENI AM API
+CreateSliver call on each. It will supply your Slice Credentials 
+(from the Clearinghouse) plus your own user certificate, and the RSpec.
+
+At this point, you have resources and can do your experiment.
+
+- Renew or Delete
+After a while you may want to Renew your Sliver that is expiring, or 
+Delete it. Omni will contact the Clearinghouse, get a list of all
+Aggregates, and invoke RenewSliver or DeleteSliver on each, for 
+your slice name.
 
 Running Omni -
 
@@ -56,8 +108,8 @@ Running Omni -
   Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
   based on the GCF_CERT_PREFIX constant in init-ca.py.  The shorthand notation
   is available for SFA and PG.  Shorthand works if your control framework is GCF
-  only if you have configured the 'authority' line in the gcf section of omni_config.
-  (also see ch.py SLICEPUBID_PREFIX)
+  only if you have configured the 'authority' line in the gcf section of 
+  omni_config. (also see ch.py SLICEPUBID_PREFIX)
 
 
 ** deleteslice
