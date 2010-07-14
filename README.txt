@@ -180,7 +180,7 @@ explanation).
 
  To add your GCF certificate to an SFA based aggregate manager, copy the 
  CA certificate file (ca-cert.pem) to /etc/sfa/trusted_roots/ on the 
- AM's server. 
+ AM's server. The CH certificate is not necessary though it doesn't hurt.
  
  After adding your certificates, restart sfa (sudo /etc/init.d/sfa restart).
 
