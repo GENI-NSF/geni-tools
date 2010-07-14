@@ -1,11 +1,21 @@
 # Commented sample omni_config -- NOT USABLE
 # This copy of omni_config is included for documentation.
-# Lines beginnign with '#' should be removed for runtime
+# Lines beginning with '#' should be removed for runtime.
+# Note that the parser is very sensitive.
 
 # This is a sample Omni config file
-# This file is in JSON format
+# This file is in JSON format.
 # It tells Omni how to talk to various Clearinghouses.
 # And by extension, which Experimenter credentials to use.
+
+# At runtime, Omni will only use the general 'omni' section,
+# and the section for the Control Framework you have chosen
+# (via commandline -f or the default_cf setting below).
+# EG in the example below, only the gcf settings are relevant,
+# and the sfa/pg settings would be ignored.
+# Picking a Control Framework also picks which Clearinghouse
+# you will contact to generate Slices and get a list
+# of known Aggregates.
 
 # All certs below should be in pem format.
 # All keys are private keys for signing things.
@@ -31,10 +41,16 @@
 		"slice_users": [ 
 		    {
 				"name": "Alice",
+				# Be sure this is the right URN in your cert
+				# EG run openssl x509 -in [user cert file] -text
+				# and then look at the Subject: CN field
 				"urn": "urn:publicid:IDN+geni.net:gpo:gcf+user+alice"
 
 				 # Keys is a comma separated list of names of user
-				 # Public Key files (not private)
+				 # Public SSH Key files (not private)
+				 # These are arguments to CreateSliver,
+				 # and may be installed by the framework
+				 # on reserved resources to allow access.
 				"keys": ["~/.omni/jkarlin.pub"]
 			}
 		]
@@ -42,9 +58,13 @@
 
 	"sfa": {
 	       # urn of your MyPLC or PL Central
+	       # You can find this by running:
+	       # openssl x509 -in [user plc cert file] -text
+	       # and then look at the Issuer CN
 		"authority": "plc.gpo.site2",
 
 		# urn and cert of the user
+		# Subject CN in your cert (see above)
 	    	"user": "plc.gpo.site2.jkarlin",
 		"cert": "~/.omni/jkarlin.cert",
 
@@ -52,15 +72,16 @@
 		"key":	"~/.omni/jkarlin.pkey",
 
 		# URLs of your PL registry and slice manager
+		# Be sure these are reachable
 		"registry": "http://128.89.81.175:12345",
 		"slicemgr": "http://128.89.81.175:12347"
 	},
 
 	"gcf": {
-    # The authority part of the GCF URN
-    "authority": "geni.net:gpo:gcf",
+	        # The authority part of the GCF URN
+    		"authority": "geni.net:gpo:gcf",
 		# where gch is listening
-    "ch": "http://localhost:8000",
+    		"ch": "http://localhost:8000",
 		# User certificate and key.
 		# Note that these can be certificates from any
 		# trusted clearinghouse (that is, the CH's certificate
@@ -77,7 +98,6 @@
 
 	     # The sa is the slice authority. 
              "sa": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
-             "sa-bbn": "https://boss.pgeni3.gpolab.bbn.com:443/protogeni/xmlrpc/sa",
              "cert": "~/.omni/encrypted.pem",
              "key":  "~/.omni/pgcert.pem"
 	}
