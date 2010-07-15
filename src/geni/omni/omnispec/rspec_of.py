@@ -54,8 +54,14 @@ def rspec_to_omnispec(urn, rspec):
             switchname = net_name + ':' + urn.split('+')[1]
             s = OmniResource(switchname, "OpenFlow Switch" ,'switch') 
 
-            s['options']['flowspace'] = 'nw_src=128.8.0.0/16-*,tp_dst=80-85'      
+            options=['port','dl_src', 'dl_dst', 'dl_type', 'vlan_id', 'nw_src',\
+                    'nw_dst', 'nw_proto', 'tp_src', 'tp_dst']
+            
+            for opt in options:
+                s['options'][opt] = 'from=*, to=*'
+
             ospec.add_resource(urn, s)
+            
         for link in network.findall('link'):
             # convert:
             #       <link
@@ -99,16 +105,16 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             # Okay, consider this switch part of a flowspace
             flowspace = {}
             flowspace['switch'] = urn
+            
             flowspace['options'] = []
-            for opt in r['options']['flowspace'].split(','):
-                name,val = opt.split('=')
-                spl = val.split('-')
-                vto = '*'
-                vfrom = spl[0]
-                if len(spl) > 1:
-                    vto = spl[1]
-
-                flowspace['options'].append((name,vfrom,vto))
+            
+            for (key,val) in r['options'].items():
+                vfrom,vto = val.split(",")
+                vfrom = vfrom.strip().replace("from=",'')
+                vto = vto.strip().replace("to=",'')
+                
+                flowspace['options'].append((key,vfrom,vto))
+                
 
             flowspaces[urn] = flowspace
             
