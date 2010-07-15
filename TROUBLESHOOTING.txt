@@ -168,3 +168,31 @@ install xmlsec1-openssl-devel and xmlsec1
 Finally make sure that your GCH includes in its trusted_certs (-r argument) 
 the relevant CH certificate(s).
 
+8) Running across machines
+Anytime you run across machines (Clearinghouse and Aggregate Manager on different machines)
+you may run in to this:
+You programmatically (eg via Omni) get a Slice credential from your Clearinghouse
+and then  use it to call ListResources on an Aggregate Manager:
+
+>>> am.ListResources([cred], {})
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/usr/lib/python2.6/xmlrpclib.py", line 1199, in __call__
+    return self.__send(self.__name, args)
+  File "/usr/lib/python2.6/xmlrpclib.py", line 1489, in __request
+    verbose=self.__verbose
+  File "/usr/lib/python2.6/xmlrpclib.py", line 1253, in request
+    return self._parse_response(h.getfile(), sock)
+  File "/usr/lib/python2.6/xmlrpclib.py", line 1392, in _parse_response
+    return u.close()
+  File "/usr/lib/python2.6/xmlrpclib.py", line 838, in close
+    raise Fault(**self._stack[0])
+xmlrpclib.Fault: <Fault 108: ": ListResources: Insufficient rights: Access denied: <class 'sfa.util.faults.CredentialNotVerifiable'> -- 'xmlsec1 error verifying cert: func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=360:obj=x509-store:subj=X509_verify_cert:error=4:crypto library function failed:subj=/CN=expedient:stanford+authority+ca;err=9;msg=certificate is not yet valid\\nfunc=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=391:obj=x509-store:subj=unknown:error=75:certificate is not yet valid:err=9;msg=certificate is not yet valid\\nOK\\nSignedInfo References (ok/all): 1/1\\nManifests References (ok/all): 0/0\\n'">
+
+If you look carefully at the reported Fault at the end it tells you that 'certificate is
+not yet valid'. 
+This indicates there may be a time synchronization problem: The Clearinghouse clock is behind 
+the Aggregate Manager machine's clock.
+Retrying with the same credentials later may work. Or synchronize the clocks if you have control
+over them.
+
