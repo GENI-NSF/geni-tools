@@ -89,5 +89,4 @@ def omnispec_to_rspec(omnispec, filter_allocated):
                 ET.SubElement(xnode, 'hostname').text = node['hostname']
                 if node['allocate']:
                     ET.SubElement(xnode,'sliver')
-    print ET.tostring(root)
     return ET.tostring(root)
