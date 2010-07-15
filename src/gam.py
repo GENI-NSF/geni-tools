@@ -46,6 +46,8 @@ def parse_args(argv):
                       help="AM key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
                       help="AM certificate file name (PEM format)", metavar="FILE")
+    # Note: The trusted CH certificates are _not_ enough here.
+    # It needs self signed certificates. EG CA certificates.
     parser.add_option("-r", "--rootcafile",
                       help="Root CA certificates file or directory name (PEM format)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback

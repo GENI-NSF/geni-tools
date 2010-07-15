@@ -74,8 +74,11 @@ def parse_args(argv):
                       help="CH key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
                       help="CH certificate file name (PEM format)", metavar="FILE")
+    # Note: A CH that only wants to talk to its own users doesn't need
+    # this argument. It works if it just trusts its own cert
     parser.add_option("-r", "--rootcafile",
                       help="Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
+    # FIXME: Drop this arg
     parser.add_option("-u", "--usercertfile", 
                       help="Cert file of the CH's test User (eg alice) (PEM format)", metavar="FILE")
     parser.add_option("-g", "--aggfile", default="geni_aggregates",

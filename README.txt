@@ -105,8 +105,10 @@ explanation).
  CH cert for the user contacting this CH, then we default to issuing
  Slice credentials in the name of this command-line user. A testing artifact.
 
- The -r argument could be a file with the GCF CA certificate. However
- to support federation, it should be a directory with all trusted / federated
+ The -r argument could be a file with the GCF CH certificate. 
+ If you want to allow users from other Clearinghouses to make
+ calls on this clearinghouse, install their root certificates too.
+ To support this, it should be a directory with all trusted / federated
  CH and CA certificates or certificate chains (PEM format). 
  Note that the CH certificate is used in generating slice credentials.
  And any cert not in PEM format may cause cryptic errors.
@@ -138,6 +140,8 @@ explanation).
  This is the 1 or many certs that should be trusted to sign slice
  credentials, or listResources requests. IE to federate, put the CA
  (and maybe CH) certs from all federates into a directory.
+ Self signed root certificates are necessary. IE if you only want 
+ to accept users of your GCF Clearinghouse, then just supply ca-cert.pem
 
  Optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8001, and --debug for debugging output.
@@ -186,7 +190,9 @@ explanation).
 
  To add an SFA certificate to a GCF based aggregate manager, copy your
  SFA key from /etc/sfa/trusted_roots/<should be a .gid file> to your GCF
- trusted roots directory created in steps 2 and 3 above.
+ trusted roots directory created in steps 2 and 3 above. This is
+ not particularly necessary for the Clearinghouse (gch), but is 
+ necessary for the Aggregate Manager (gam).
 
 
  -- Step 2) Listing Aggregates -- Do this on all peered clearinghouses
