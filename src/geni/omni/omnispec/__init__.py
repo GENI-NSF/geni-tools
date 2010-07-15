@@ -23,4 +23,5 @@
 
 all = ['rspec_sfa',
        'rspec_gcf',
-       'rspec_pg']
+       'rspec_pg',
+       'rspec_of']
