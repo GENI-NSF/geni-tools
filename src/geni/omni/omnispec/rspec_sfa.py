@@ -82,10 +82,12 @@ def omnispec_to_rspec(omnispec, filter_allocated):
         for site_id, nodes in sites.items():
             xsite = ET.SubElement(xnet, 'site', id=site_id)
 
+            ET.SubElement(xsite, 'name').text = node['site_name']
+
             for node_id, node in nodes.items():
-                ET.SubElement(xsite, 'name').text = node['site_name']
                 xnode = ET.SubElement(xsite, 'node', id = node_id)
                 ET.SubElement(xnode, 'hostname').text = node['hostname']
                 if node['allocate']:
                     ET.SubElement(xnode,'sliver')
+    print ET.tostring(root)
     return ET.tostring(root)

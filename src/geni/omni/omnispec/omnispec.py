@@ -114,6 +114,8 @@ class OmniResource(dict):
         return self['name']
     def set_description(self, description):
         self['description'] = description
+    def get_description(self):
+        return self['description']
     def set_type(self, type):
         self['type'] = type
     def get_type(self):
@@ -122,7 +124,7 @@ class OmniResource(dict):
     def add_option(self, name, defValue=None):
         if not defValue:
             defValue = ''
-        self['option'][name] = defValue
+        self['options'][name] = defValue
     def set_allocated(self, value):
         self['allocated'] = value
     def get_allocated(self):
