@@ -149,7 +149,9 @@ class CallHandler(object):
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
+                import traceback
                 logger.error("Failed to List Resources from %s (%s): %s" % (client.urn, client.url, exc))
+                logger.debug(traceback.format_exc())
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
@@ -172,7 +174,7 @@ class CallHandler(object):
     
     def createsliver(self, args):
         if len(args) < 2:
-            sys.exit('createsliver requires 2 args: slicename and rspec filename')
+            sys.exit('createsliver requires 2 args: slicename and omnispec filename')
 
         name = args[0]
 
@@ -187,7 +189,12 @@ class CallHandler(object):
         if not os.path.isfile(specfile):
             sys.exit('omnispec file of resources to request missing: %s' % specfile)
 
-        jspecs = json.loads(file(specfile,'r').read())
+        jspecs = dict()
+        try:
+            jspecs = json.loads(file(specfile,'r').read())
+        except Exception, exc:
+             sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
+
         omnispecs = {}
         for url, spec_dict in jspecs.items():
             omnispecs[url] = OmniSpec('','',dictionary=spec_dict)
@@ -212,6 +219,9 @@ class CallHandler(object):
         
         # Anything we need to allocate?
         for (url, ospec) in omnispecs.items():
+            if url is None or url.strip() == "":
+                print 'omnispec format error: Empty URL'
+                continue
             allocate = False
             for (_, r) in ospec.get_resources().items():
                 if r.get_allocate():
@@ -223,12 +233,15 @@ class CallHandler(object):
                 try:
                     client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
                     rspec = omnispec_to_rspec(ospec, True)
+#                    print "Rspec to send to %s:" % url
+#                    print rspec
                     result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
-                    print result
+                    print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 except Exception, exc:
-                    print "Unable to allocate from: %s" % (url)
+                    import traceback
                     logger = logging.getLogger('omni')
-                    logger.debug(str(exc))
+                    logger.error("Unable to allocate from %s: %s" % (url, exc))
+                    logger.debug(traceback.format_exc())
             else:
                 logger = logging.getLogger('omni')
                 logger.debug('Nothing to allocate at %r', url)
@@ -254,8 +267,8 @@ class CallHandler(object):
                 logger.debug(str(exc))
             
     def renewsliver(self, args):
-        if len(args) == 0:
-            sys.exit('renewsliver requires arg of slice name')
+        if len(args) < 2:
+            sys.exit('renewsliver requires arg of slice name and new expiration time')
 
         name = args[0]
 
@@ -265,13 +278,14 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
         time = dateutil.parser.parse(args[1])
-        print time        
+
+        print 'Renewing Sliver %s until %r' % (urn, time)
 
         for client in self._getclients():
             try:
                 client.RenewSliver(urn, [slice_cred], time.isoformat())
-            except:
-                print "Failed to renew sliver %s on %s" % (urn, client.urn)
+            except Exception, exc:
+                print "Failed to renew sliver %s on %s: %s" % (urn, client.urn, exc)
     
     def sliverstatus(self, args):
         if len(args) == 0:
