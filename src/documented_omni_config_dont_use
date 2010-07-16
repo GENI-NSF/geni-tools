@@ -81,6 +81,9 @@
 
 	"gcf": {
 	        # The authority part of the GCF URN
+		# where the last word may be used in 
+		# generated slice login usernames.
+		# Another example: openflow:bbn
     		"authority": "geni.net:gpo:gcf",
 		# where gch is listening
     		"ch": "http://localhost:8000",
