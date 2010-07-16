@@ -124,11 +124,11 @@ def omnispec_to_rspec(omnispec, filter_allocated):
      
     root = ET.Element('resv_rspec')
     ET.SubElement(root, 'user', firstname=user['firstname'],lastname=user['lastname'], \
-                           email=user['email'], fv_password=user['fv_password'])
-    ET.SubElement(root, 'project', project_name=project['project_name'], \
-                              project_description=project['project_description'])
-    ET.SubElement(root, 'slice', slice_name=slice['slice_name'],\
-                            slice_description=slice['slice_description'],\
+                           email=user['email'], password=user['fv_password'])
+    ET.SubElement(root, 'project', name=project['project_name'], \
+                              description=project['project_description'])
+    ET.SubElement(root, 'slice', name=slice['slice_name'],\
+                            description=slice['slice_description'],\
                             controller_url=slice['controller_url'])
     
     for (urn,flowspace) in flowspaces.items():
