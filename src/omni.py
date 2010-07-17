@@ -146,6 +146,7 @@ class CallHandler(object):
             try:
                 if cred is None:
                     logger.debug("Have null credentials in call to ListResources!")
+		logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
