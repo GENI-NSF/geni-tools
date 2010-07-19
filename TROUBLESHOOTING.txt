@@ -196,3 +196,16 @@ the Aggregate Manager machine's clock.
 Retrying with the same credentials later may work. Or synchronize the clocks if you have control
 over them.
 
+9) Expired credentials:
+By default, GENI sample Clearinghouse slices last only 3600 seconds, per
+the constant SLICE_CRED_LIFE in ch.py. To actually use allocated resources,
+you will likely want to extend that. The symptom of this problem is error text like:
+Failed to retrieve status of
+urn:publicid:IDN+openflow:bbn+authority+ch+slice+slicename at
+urn:publicid:IDN+openflow:bbn+authority+am
+DEBUG:omni:<Fault Insufficient privileges: "No credential was found
+with appropriate privileges. Tried
+urn:publicid:IDN+openflow:bbn+user+experimenter. Last failure:
+Couldn't validate cert urn:publicid:IDN+openflow:bbn+user+experimenter
+with known root certs: 'Credential expired at 2010-07-16T00:26:16'"> 
+

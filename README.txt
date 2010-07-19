@@ -129,6 +129,9 @@ explanation).
  See geni/ch.py constants to change the slice URNs, etc. Note that slice URNs
  are globally unique, and constrained to be proper children of their
  Clearinghouse (Slice Authority).
+ Another constant you may want to change is the lifetime of Slice
+ credentials. By default they last 3600 seconds. That is likely too
+ short to actually use any allocated resources.
  
 3. Start the aggregate manager server:
 

@@ -45,6 +45,8 @@ import sfa.trust.rights as rights
 SLICEPUBID_PREFIX = "geni.net//gpo//gcf"
 SLICE_GID_SUBJ = "gcf.slice"
 
+# Credential lifetimes in seconds
+# Extend slice lifetimes to actually use the resources
 USER_CRED_LIFE = 86400
 SLICE_CRED_LIFE = 3600
 
@@ -132,20 +134,16 @@ class Clearinghouse(object):
         
         # ca_certs is a file of 1 ca cert possibly, preferably a dir of several
     def runserver(self, addr, keyfile=None, certfile=None,
-                  ca_certs=None, user_cert=None, aggfile=None):
+                  ca_certs=None, aggfile=None):
         """Run the clearinghouse server."""
         self.keyfile = keyfile
         self.certfile = certfile
-        self.usercert = user_cert
-        
 
-        # Error check the keyfile, certfile, usercert all exist
+        # Error check the keyfile, certfile all exist
         if keyfile is None or not os.path.isfile(os.path.expanduser(keyfile)):
             raise Exception("Missing CH key file %s" % keyfile)
         if certfile is None or not os.path.isfile(os.path.expanduser(certfile)):
             raise Exception("Missing CH cert file %s" % certfile)
-        if user_cert is None or not os.path.isfile(os.path.expanduser(user_cert)):
-            raise Exception("Missing user cert file %s" % user_cert)
 
         if ca_certs is None:
             raise Exception("Missing CA cert(s) arg")
@@ -209,6 +207,8 @@ class Clearinghouse(object):
     def CreateSlice(self, urn_req = None):
         self.logger.info("Called CreateSlice URN REQ %r" % urn_req)
         if urn_req and self.slices.has_key(urn_req):
+            # FIXME: If the Slice has expired, treat this as
+            # a request to renew
             return self.slices[urn_req].save_to_string()
         
         # FIXME: Validate urn_req has the right form
@@ -232,11 +232,6 @@ class Clearinghouse(object):
 
         # Get the creator info from the peer certificate
 
-#        # We only know of one user cert, passed in at command line
-#        user_gid = gid.GID(filename=self.usercert)
-
-#        user_gid = gid.GID(string=str(self._server.pem_cert))
-
         # The problem with self._server.pem_cert is it doesn't
         # include the chain! But we accepted it, so it is signed
         # by one of our trusted certs. If the trusted certs includes
@@ -248,34 +243,44 @@ class Clearinghouse(object):
 
         user_cert = cert.Certificate(string=self._server.pem_cert)
         serverstr = ""
-        for cafname in self.ca_cert_fnames:
-            try:
-                cacert = cert.Certificate(filename=cafname)
-                if user_cert.is_signed_by_cert(cacert):
-                    serverstr = cacert.save_to_string(True)
-                    break
-                else:
-#                    print 'user cert not signed by that server'
-                    pass
-            except Exception, exc:
-                pass
-            
-        if serverstr == "":
-            self.logger.error('Failed to generate complete user cert using trusted CAs. For user %s didnt find issuer %s cert.', user_cert.get_subject(), user_cert.get_issuer())            
 
-            # use the commandline user cert for test purposes? Raise an exception?
-            # HACK!
-            self.logger.error('Falling back on getting slice credentials using usercert %s' % self.usercert)
-            user_gid = None
-            try:
-                user_gid = gid.GID(filename=self.usercert)
-            except:
-                import traceback
-                self.logger.error("Couldnt get GID from usercert %s: %s" % (self.usercert, traceback.format_exc()))
-                raise Exception("Couldnt get GID from usercert %s: %s" % (self.usercert, traceback.format_exc()))
+        # If this CH signed the user, then use that
+        try:
+            cacert = cert.Certificate(filename=self.certfile)
+            if user_cert.is_signed_by_cert(cacert):
+                serverstr = cacert.save_to_string(True)
+        except:
+            self.logger.debug('This CH cert %s didnt sign the incoming user %s cert', self.certfile, user_cert.get_subject())
+            pass
+
+        # If that didnt do it try the trusted certs
+        if serverstr == "":
+            for cafname in self.ca_cert_fnames:
+                try:
+                    cacert = cert.Certificate(filename=cafname)
+                    if user_cert.is_signed_by_cert(cacert):
+                        serverstr = cacert.save_to_string(True)
+                        break
+                    else:
+#                    print 'user cert not signed by that server'
+                        pass
+                except Exception, exc:
+                    pass
+
+        # If that didn't do it we should see if the supplied user cert
+        # really is the user we got on the commandline
+        # If so then we have no error
+        # otherwise we have a problem
+        if serverstr == "":
+            self.logger.error('Failed to generate complete user cert using trusted CAs. For user %s didnt find issuer %s cert. Cant create a Slice', user_cert.get_subject(), user_cert.get_issuer())
+            raise Exception('Untrusted user %s cant create a slice. Issuer %s not trusted.' % (user_cert.get_subject(), user_cert.get_issuer()))
+
         else:
+            # Found the trusted issuer of the client cert
             user_gid = gid.GID(string=str(self._server.pem_cert + serverstr))
 
+
+        # OK have a user_gid so can get a slice credential
         try:
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid)

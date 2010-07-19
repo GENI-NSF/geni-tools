@@ -313,13 +313,21 @@ class ReferenceAggregateManager(object):
                                                         slice_urn,
                                                         privileges)
         if slice_urn in self._slivers:
+            self.logger.error('Sliver %s already exists.' % slice_urn)
             raise Exception('Sliver %s already exists.' % slice_urn)
 
-        rspec_dom = minidom.parseString(rspec)
+        rspec_dom = None
+        try:
+            rspec_dom = minidom.parseString(rspec)
+        except Exception, exc:
+            self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+            raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+
         resources = list()
         for elem in rspec_dom.documentElement.childNodes:
             resource = Resource.fromdom(elem)
             if resource not in self._resources:
+                self.logger.info("Requested resource %d not available" % resource._id)
                 raise Exception('Resource %d not available' % resource._id)
             resources.append(resource)
 
