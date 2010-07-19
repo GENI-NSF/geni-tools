@@ -32,6 +32,9 @@
 
 from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
+from sfa.util.sfalogging import logger
+from copy import deepcopy
+import sys
 
 def can_translate(urn, rspec):
     if urn.split('+')[1].lower().startswith('openflow'):
@@ -43,9 +46,11 @@ def rspec_to_omnispec(urn, rspec):
     ospec = OmniSpec("rspec_of", urn)
     ospec = make_skeleton_of_ospec(ospec)
     doc = ET.fromstring(rspec)
+    #sys.stderr.write(rspec)
     for network in doc.findall('network'):             
         net_name = network.get('name')
         switches = network.findall('switches')[0]
+        swmap = {}
         for switch in switches.findall('switch'):
             # convert:
             #       "<switch urn="urn:publicid:IDN+openflow:stanford+switch:0" />"
@@ -54,15 +59,17 @@ def rspec_to_omnispec(urn, rspec):
             switchname = net_name + ':' + urn.split('+')[1]
             s = OmniResource(switchname, "OpenFlow Switch" ,'switch') 
 
-            options=['port','dl_src', 'dl_dst', 'dl_type', 'vlan_id', 'nw_src',\
+            options=['dl_src', 'dl_dst', 'dl_type', 'vlan_id', 'nw_src',\
                     'nw_dst', 'nw_proto', 'tp_src', 'tp_dst']
             
             for opt in options:
                 s['options'][opt] = 'from=*, to=*'
 
+            swmap[urn] = s
             ospec.add_resource(urn, s)
             
-        for link in network.findall('link'):
+        links = network.findall('links')[0]
+        for link in links.findall('link'):
             # convert:
             #       <link
             #       src_urn="urn:publicid:IDN+openflow:stanford+switch:0+port:0
@@ -70,13 +77,14 @@ def rspec_to_omnispec(urn, rspec):
             #       />
             _,domain,src_switch,src_port = link.get('src_urn').split('+')
             _,_,dst_switch,dst_port = link.get('dst_urn').split('+')
-            urn = "urn:publicid:IDN+%s+%s+%s+%s+%s" % ( domain, 
-                                                        src_switch, src_port,
-                                                        dst_switch, dst_port)
-            link_name = "%s %s --> %s %s" % ( src_switch, src_port,
-                                                        dst_switch, dst_port )
-            r = OmniResource(link_name, link_name, 'link') 
-            ospec.add_resource(urn, r)
+            
+            switch_urn = "urn:publicid:IDN+" + domain + "+" + src_switch
+            swmap[switch_urn]['options'][src_port] = dst_switch + " " + dst_port
+            #sw_ports = swmap[switch_urn]['misc'].setdefault('ports', {})
+            #sw_ports[src_port] = dst_switch + " " + dst_port
+            
+            #swmap[switch_urn]['options'][src_port] = "from=%s, to=%s" % (src_port.split(":")[-1], src_port.split(":")[-1])
+
     return ospec
 
 def omnispec_to_rspec(omnispec, filter_allocated):
@@ -84,9 +92,14 @@ def omnispec_to_rspec(omnispec, filter_allocated):
     user = {}
     project = {}
     slice = {}
-    flowspaces = {}
+    flowspaces = []
+
+    ports={}
     
+    # parse though each item; collecting ports as we go
     for urn, r in omnispec.get_resources().items():
+        # not sure about matching on urn here: 
+        # why not type?  - Rob
         if '+user+sliceinfo' in urn:            
             user['firstname'] = r['options']['firstname']
             user['lastname'] = r['options']['lastname']
@@ -99,9 +112,20 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             slice['slice_name'] = r['options']['slice_name']
             slice['slice_description'] = r['options']['slice_description']
             slice['controller_url'] = r['options']['controller_url']
-        if '+switch' in urn:
+
+
+        if r['type'] == 'switch':
             if not r.get_allocate():
                 continue       
+            
+            ports = []
+            for (key,val) in r['options'].items():
+                if key.startswith("port:"):
+                    ports.append(key)
+            for port in ports:
+                r['options'].pop(port)
+            
+            
             # Okay, consider this switch part of a flowspace
             flowspace = {}
             flowspace['switch'] = urn
@@ -109,17 +133,19 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             flowspace['options'] = []
             
             for (key,val) in r['options'].items():
+                sys.stderr.write("val = %s \n" % val)
                 vfrom,vto = val.split(",")
                 vfrom = vfrom.strip().replace("from=",'')
                 vto = vto.strip().replace("to=",'')
-                
                 flowspace['options'].append((key,vfrom,vto))
                 
+            for port in ports:                
+                curspace = deepcopy(flowspace)
+                curspace['options'].append(('port', port.split(':')[-1], port.split(':')[-1]))
+                flowspaces.append(curspace)
 
-            flowspaces[urn] = flowspace
-            
-            
-            
+
+
     # Now build the rspec
      
     root = ET.Element('resv_rspec')
@@ -131,7 +157,8 @@ def omnispec_to_rspec(omnispec, filter_allocated):
                             description=slice['slice_description'],\
                             controller_url=slice['controller_url'])
     
-    for (urn,flowspace) in flowspaces.items():
+    for flowspace in flowspaces:
+        urn = flowspace['switch']
         flow = ET.SubElement(root, 'flowspace')
         switches = ET.SubElement(flow, 'switches')
         ET.SubElement(switches, 'switch', urn=urn)
@@ -140,7 +167,8 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             opt.attrib['from'] = vfrom
             opt.attrib['to'] = vto
             
-    return ET.tostring(root)
+    xml = ET.tostring(root)
+    return xml
 
 def make_skeleton_of_ospec(ospec):
     ''' Add resources for the client to reserve.
@@ -167,6 +195,13 @@ def make_skeleton_of_ospec(ospec):
     ospec.add_resource(user_urn, user)
     return ospec
 
+def set_dpid_port(ports,dpid, port):
+        if not dpid in ports:
+                sys.stderr.write("Adding switch %s\n" % ( dpid))
+                ports['dpid'] = {}
+        if not port in ports['dpid']:
+                sys.stderr.write("Adding port %s to switch %s\n" % ( port, dpid))
+                ports['dpid'][port]=True
     
 
 ##### Example OpenFlow rspec from expedient
