@@ -132,10 +132,10 @@ class CallHandler(object):
         options['geni_compressed'] = True;
 
         # Get the credential for this query
-        if len(args) == 0:
+        if len(args) == 0 or args[0] is None or args[0].strip() == "":
             cred = self.framework.get_user_cred()
         else:
-            name = args[0]
+            name = args[0].strip()
             urn = self.framework.slice_name_to_urn(name)
             cred = self.framework.get_slice_cred(urn)
             options['geni_slice_urn'] = urn
@@ -178,16 +178,18 @@ class CallHandler(object):
             sys.exit('createsliver requires 2 args: slicename and omnispec filename')
 
         name = args[0]
+        if name is None or name.strip() == "":
+            sys.exit('createsliver got empty slicename')
 
         # FIXME: Validate the slice name starts with
         # PREFIX+slice+
 
-        urn = self.framework.slice_name_to_urn(name)
+        urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self.framework.get_slice_cred(urn)
 
         # Load up the user's edited omnispec
         specfile = args[1]
-        if not os.path.isfile(specfile):
+        if specfile is None or not os.path.isfile(specfile):
             sys.exit('omnispec file of resources to request missing: %s' % specfile)
 
         jspecs = dict()
@@ -252,6 +254,8 @@ class CallHandler(object):
             sys.exit('deletesliver requires arg of slice name')
 
         name = args[0]
+        if name is None or name.strip() == "":
+            sys.exit('deletesliver got empty slicename')
 
         # FIXME: Validate the slice name starts with
         # PREFIX+slice+
@@ -272,13 +276,19 @@ class CallHandler(object):
             sys.exit('renewsliver requires arg of slice name and new expiration time')
 
         name = args[0]
+        if name is None or name.strip() == "":
+            sys.exit('renewsliver got empty slicename')
 
         # FIXME: Validate the slice name starts with
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self.framework.get_slice_cred(urn)
-        time = dateutil.parser.parse(args[1])
+        time = None
+        try:
+            time = dateutil.parser.parse(args[1])
+        except Exception, exc:
+            sys.exit('renewsliver couldnt parse new expiration time from %s: %r', args[1], exc)
 
         print 'Renewing Sliver %s until %r' % (urn, time)
 
@@ -293,6 +303,8 @@ class CallHandler(object):
             sys.exit('sliverstatus requires arg of slice name')
 
         name = args[0]
+        if name is None or name.strip() == "":
+            sys.exit('sliverstatus got empty slicename')
 
         # FIXME: Validate the slice name starts with
         # PREFIX+slice+
@@ -314,6 +326,8 @@ class CallHandler(object):
             sys.exit('shutdown requires arg of slice name')
 
         name = args[0]
+        if name is None or name.strip() == "":
+            sys.exit('shutdown got empty slicename')
 
         # FIXME: Validate the slice name starts with
         # PREFIX+slice+
