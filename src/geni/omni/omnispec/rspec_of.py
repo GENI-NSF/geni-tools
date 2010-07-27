@@ -133,7 +133,7 @@ def omnispec_to_rspec(omnispec, filter_allocated):
             flowspace['options'] = []
             
             for (key,val) in r['options'].items():
-                sys.stderr.write("val = %s \n" % val)
+                #sys.stderr.write("val = %s \n" % val)
                 vfrom,vto = val.split(",")
                 vfrom = vfrom.strip().replace("from=",'')
                 vto = vto.strip().replace("to=",'')
