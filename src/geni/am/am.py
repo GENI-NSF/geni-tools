@@ -41,31 +41,47 @@ class AggregateManager(object):
         self._delegate = delegate
         
     def GetVersion(self):
+        '''Specify version information about this AM. That could 
+        include API version information, RSpec format and version
+        information, etc. Return a dict.'''
         return self._delegate.GetVersion()
 
     def ListResources(self, credentials, options):
-        """List all managed resources"""
+        '''Return an RSpec of resources managed at this AM. 
+        If a geni_slice_urn
+        is given in the options, then only return resources assigned 
+        to that slice. If geni_available is specified in the options,
+        then only report available resources. And if geni_compressed
+        option is specified, then compress the result.'''
         return self._delegate.ListResources(credentials, options)
 
     def CreateSliver(self, slice_urn, credentials, rspec, users):
-        """Create a sliver with the given URN from the resources in the given RSpec."""
+        """Create a sliver with the given URN from the resources in 
+        the given RSpec.
+        Return an RSpec of the actually allocated resources.
+        users argument provides extra information on configuring the resources
+        for runtime access.
+        """
         return self._delegate.CreateSliver(slice_urn, credentials, rspec, users)
 
     def DeleteSliver(self, slice_urn, credentials):
-        """Delete the given sliver."""
+        """Delete the given sliver. Return true on success."""
         return self._delegate.DeleteSliver(slice_urn, credentials)
 
     def SliverStatus(self, slice_urn, credentials):
-        """Get the status of the given sliver"""
+        '''Report as much as is known about the status of the resources
+        in the sliver. The AM may not know.'''
         return self._delegate.SliverStatus(slice_urn, credentials)
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
-        """Excent the life of the given sliver"""
+        """Extend the life of the given sliver until the given
+        expiration time. Return False on error."""
         return self._delegate.RenewSliver(slice_urn, credentials,
                                           expiration_time)
 
     def Shutdown(self, slice_urn, credentials):
-        """Emergency shutdown of the given sliver"""
+        '''For Management Authority / operator use: shut down a badly
+        behaving sliver, without deleting it to allow for forensics.'''
         return self._delegate.Shutdown(slice_urn, credentials)
 
 class PrintingAggregateManager(object):
@@ -132,4 +148,6 @@ class AggregateManagerServer(object):
         self._server.serve_forever()
 
     def register_instance(self, instance):
+        # Pass the AM instance to the generic XMLRPC server,
+        # which lets it know what XMLRPC methods to expose
         self._server.register_instance(instance)

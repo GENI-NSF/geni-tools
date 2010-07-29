@@ -42,18 +42,24 @@ import sfa.trust.credential as cred
 import sfa.trust.gid as gid
 
 # See sfa/trust/rights.py
+# These are names of operations
+# from the rights.py privilege_table
+# Credentials may list privileges that
+# map to these operations, giving the caller permission
+# to perform the functions
 RENEWSLIVERPRIV = 'renewsliver'
-RESOURCEPUBLICIDPREFIX = 'geni.net'
 CREATESLIVERPRIV = 'createsliver'
 DELETESLIVERPRIV = 'deleteslice'
 SLIVERSTATUSPRIV = 'getsliceresources'
+SHUTDOWNSLIVERPRIV = 'shutdown'
 
+RESOURCEPUBLICIDPREFIX = 'geni.net'
 REFAM_MAXLEASE_DAYS = 365
 
 
 class CredentialVerifier(object):
     """Utilities to verify signed credentials from a given set of 
-    root certificates. Will compare target and source URNs, and privilages.
+    root certificates. Will compare target and source URNs, and privileges.
     See verify and verify_from_strings methods in particular."""
 
     CATEDCERTSFNAME = 'CATedCACerts.pem'
@@ -126,6 +132,9 @@ class CredentialVerifier(object):
 
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
                             privileges):
+        '''Create Credential and GID objects from the given strings,
+        and then verify the GID has the right privileges according 
+        to the given credentials on the given target.'''
         def make_cred(cred_string):
             return cred.Credential(string=cred_string)
         return self.verify(gid.GID(string=gid_string),
@@ -134,6 +143,9 @@ class CredentialVerifier(object):
                            privileges)
         
     def verify_source(self, source_gid, credential):
+        '''Ensure the credential is giving privileges to the caller/client.
+        Return True iff the given source (client) GID's URN
+        is == the given credential's Caller (Owner) URN'''
         source_urn = source_gid.get_urn()
         cred_source_urn = credential.get_gid_caller().get_urn()
         #self.logger.debug('Verifying source %r against credential source %r (cred target %s)',
@@ -147,6 +159,10 @@ class CredentialVerifier(object):
         return result
     
     def verify_target(self, target_urn, credential):
+        '''Ensure the credential is giving privileges on the right subject/target.
+        Return True if no target is specified, or the target URN
+        matches the credential's Object's (target's) URN, else return False.
+        No target is required, for example, to ListResources.'''
         if not target_urn:
 #            self.logger.debug('No target specified, considering it a match.')
             return True
@@ -163,6 +179,13 @@ class CredentialVerifier(object):
             return result
 
     def verify_privileges(self, privileges, credential):
+        ''' Return True iff the given credential gives the privilege
+        to perform ALL of the privileges (actions) in the given list.
+        In particular, the given list of 'privileges' is really a list
+        of names of operations. The privileges in credentials are
+        each turned in to Rights objects (see sfa/trust/rights.py).
+        And the SFA rights table is used to map from names of privileges
+        as specified in credentials, to names of operations.'''
         result = True
         privs = credential.get_privileges()
         for priv in privileges:
@@ -172,6 +195,14 @@ class CredentialVerifier(object):
         return result
 
     def verify(self, gid, credentials, target_urn, privileges):
+        '''Verify that the given Source GID supplied at least one credential
+        in the given list of credentials that has all the privileges required 
+        in the privileges list on the given target.
+        IE if any of the supplied credentials has a caller that matches gid 
+        and a target that matches target_urn, and has all the privileges in 
+        the given list, then return the list of credentials that were ok.
+        Throw an Exception if we fail to verify any credential.'''
+
         self.logger.debug('Verifying privileges')
         result = list()
         failure = ""
@@ -205,6 +236,8 @@ class CredentialVerifier(object):
 
         
         if result and result != list():
+            # At least one credential verified ok and was added to the list
+            # return that list
             return result
         else:
             # We did not find any credential with sufficient privileges
@@ -245,7 +278,7 @@ class Resource(object):
         return Resource(id, type)
 
 class Sliver(object):
-    """A sliver has a URN, a list of resoruces, and an expiration time."""
+    """A sliver has a URN, a list of resources, and an expiration time."""
 
     def __init__(self, urn, expiration=datetime.datetime.now()):
         self.urn = urn
@@ -253,8 +286,10 @@ class Sliver(object):
         self.expiration = expiration
 
 class ReferenceAggregateManager(object):
+    '''A reference Aggregate Manager that manages fake resources.'''
     
     # root_cert is a single cert or dir of multiple certs
+    # that are trusted to sign credentials
     def __init__(self, root_cert):
         self._slivers = dict()
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
@@ -263,16 +298,39 @@ class ReferenceAggregateManager(object):
         self.logger = logging.getLogger('gam.reference')
 
     def GetVersion(self):
+        '''Specify version information about this AM. That could 
+        include API version information, RSpec format and version
+        information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
         return dict(geni_api=1)
 
     def ListResources(self, credentials, options):
+        '''Return an RSpec of resources managed at this AM. 
+        If a geni_slice_urn
+        is given in the options, then only return resources assigned 
+        to that slice. If geni_available is specified in the options,
+        then only report available resources. And if geni_compressed
+        option is specified, then compress the result.'''
         self.logger.info('ListResources(%r)' % (options))
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
+
+        # could require list or listnodes?
         privileges = ()
+        # Note that verify throws an exception on failure.
+        # Use the client PEM format cert as retrieved
+        # from the https connection by the SecureXMLRPCServer
+        # to identify the caller.
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 None,
                                                 privileges)
+        # If we get here, the credentials give the caller
+        # all needed privileges to act on the given target.
 
         if not options:
             options = dict()
@@ -306,12 +364,30 @@ class ReferenceAggregateManager(object):
         return result
 
     def CreateSliver(self, slice_urn, credentials, rspec, users):
+        """Create a sliver with the given URN from the resources in 
+        the given RSpec.
+        Return an RSpec of the actually allocated resources.
+        users argument provides extra information on configuring the resources
+        for runtime access.
+        """
         self.logger.info('CreateSliver(%r)' % (slice_urn))
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
         privileges = (CREATESLIVERPRIV,)
+        # Note that verify throws an exception on failure.
+        # Use the client PEM format cert as retrieved
+        # from the https connection by the SecureXMLRPCServer
+        # to identify the caller.
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         slice_urn,
                                                         privileges)
+        # If we get here, the credentials give the caller
+        # all needed privileges to act on the given target.
         if slice_urn in self._slivers:
             self.logger.error('Sliver %s already exists.' % slice_urn)
             raise Exception('Sliver %s already exists.' % slice_urn)
@@ -352,12 +428,25 @@ class ReferenceAggregateManager(object):
                 + '</rspec>')
 
     def DeleteSliver(self, slice_urn, credentials):
+        '''Stop and completely delete the named sliver, and return True.'''
         self.logger.info('DeleteSliver(%r)' % (slice_urn))
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
         privileges = (DELETESLIVERPRIV,)
+        # Note that verify throws an exception on failure.
+        # Use the client PEM format cert as retrieved
+        # from the https connection by the SecureXMLRPCServer
+        # to identify the caller.
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 slice_urn,
                                                 privileges)
+        # If we get here, the credentials give the caller
+        # all needed privileges to act on the given target.
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
             # return the resources to the pool
@@ -371,8 +460,18 @@ class ReferenceAggregateManager(object):
             self.no_such_slice(slice_urn)
 
     def SliverStatus(self, slice_urn, credentials):
+        '''Report as much as is known about the status of the resources
+        in the sliver. The AM may not know.
+        Return a dict of sliver urn, status, and a list of dicts resource
+        statuses.'''
         # Loop over the resources in a sliver gathering status.
         self.logger.info('SliverStatus(%r)' % (slice_urn))
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
         privileges = (SLIVERSTATUSPRIV,)
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
@@ -380,20 +479,30 @@ class ReferenceAggregateManager(object):
                                                 privileges)
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
+            # Now calculate the status of the sliver
             res_status = list()
             for res in sliver.resources:
+                # Gather the status of all the resources
+                # in the sliver. This could be actually
+                # communicating with the resources, or simply
+                # reporting the state of initialized, started, stopped, ...
                 res_status.append(dict(geni_urn=res.urn(),
                                        geni_status='ready',
                                        geni_error=''))
             self.logger.info("Calculated and returning sliver %r status" % slice_urn)
             return dict(geni_urn=sliver.urn,
                         # TODO: need to calculate sliver status
+                        # as some kind of sum of the resource status
                         geni_status='ready',
                         geni_resources=res_status)
         else:
             self.no_such_slice(slice_urn)
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
+        '''Renew the local sliver that is part of the named Slice
+        until the given expiration time.
+        Return False on any error, True on success.'''
+
         self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
         privileges = (RENEWSLIVERPRIV,)
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
@@ -417,14 +526,18 @@ class ReferenceAggregateManager(object):
             self.no_such_slice(slice_urn)
 
     def Shutdown(self, slice_urn, credentials):
+        '''For Management Authority / operator use: shut down a badly
+        behaving sliver, without deleting it to allow for forensics.'''
         self.logger.info('Shutdown(%r)' % (slice_urn))
-        # TODO: No permission for Shutdown currently exists.
-        privileges = ()
+        privileges = (SHUTDOWNSLIVERPRIV,)
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         slice_urn,
                                                         privileges)
         if slice_urn in self._slivers:
+            # FIXME: Could change the status to stopped
+            # and actually honor that elsewhere
+            # FIXME: Should return True on success
             return False
         else:
             self.no_such_slice(slice_urn)
