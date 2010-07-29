@@ -86,7 +86,7 @@
 		# Another example: openflow:bbn
     		"authority": "geni.net:gpo:gcf",
 		# where gch is listening
-    		"ch": "http://localhost:8000",
+    		"ch": "https://localhost:8000",
 		# User certificate and key.
 		# Note that these can be certificates from any
 		# trusted clearinghouse (that is, the CH's certificate

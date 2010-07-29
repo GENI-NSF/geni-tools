@@ -44,7 +44,7 @@ failure\\nfunc=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=408:obj=x509-sto
 
 When the slice name is wrong:
 >  ERROR:omni:Failed to List Resources from
->  urn:publicid:IDN+geni.net:gpo3+authority+gcf (http://127.0.0.1:8005):
+>  urn:publicid:IDN+geni.net:gpo3+authority+gcf (https://127.0.0.1:8005):
 >  <Fault Insufficient privileges: "No credential was found with
 >  appropriate privileges. Tried
 >  urn:publicid:IDN+geni.net:gpo3:gcf+user+Aaron2. Last failure: Couldn't
@@ -103,7 +103,7 @@ Traceback (most recent call last):
   File "./omni.py", line 354, in <module>
 ...
 Exception: Using GCF Failed to do CH.CreateUserCredentials on CH
-http://localhost:8000 from cert file /root/.omni/seethara.cert:
+https://localhost:8000 from cert file /root/.omni/seethara.cert:
 Traceback (most recent call last):
   File "/root/gcf-20100712/src/geni/omni/frameworks/framework_gcf.py",
 line 49, in get_user_cred

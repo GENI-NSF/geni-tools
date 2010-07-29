@@ -60,7 +60,7 @@ SLICE_CRED_LIFE = 3600
 # GPOMYPLC = ('urn:publicid:IDN+plc:gpo1+authority+sa',
 #             'http://myplc1.gpolab.bbn.com:12348')
 # TESTGCFAM = ('urn:publicid:IDN+geni.net:gpo+authority+gcf', 
-#              'http://127.0.0.1:8001') 
+#              'https://127.0.0.1:8001') 
 # OTHERGPOMYPLC = ('urn:publicid:IDN+plc:gpo+authority+site2',
 #                    'http://128.89.81.74:12348')
 # ELABINELABAM = ('urn:publicid:IDN+elabinelab.geni.emulab.net',
