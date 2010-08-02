@@ -34,14 +34,13 @@ import os
 import uuid
 
 from SecureXMLRPCServer import SecureXMLRPCServer
-from am import CredentialVerifier
+from credential import CredentialVerifier, create_credential, publicid_to_urn
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
-import sfa.trust.credential as cred
-import sfa.trust.rights as rights
 
 # Substitute eg "openflow//stanford ch"
-# Be sure this matches init-ca.py:GCF_CERT_PREFIX !!
+# Be sure this matches init-ca.py:GCF_CERT_PREFIX 
+#   with // -> :
 SLICEPUBID_PREFIX = "geni.net//gpo//gcf"
 SLICE_GID_SUBJ = "gcf.slice"
 
@@ -225,11 +224,27 @@ class Clearinghouse(object):
         if urn_req:
             urn = urn_req
         else:
+            # this func adds the urn:publicid:
+            # and converts spaces to +'s, and // to :
             urn = publicid_to_urn(public_id)
 
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
 
+        # Get client x509 cert from the SSL connection
+        # It doesnt have the chain but should be signed
+        # by this CHs cert, which should also be a trusted
+        # root at any federated AM. So everyone can verify it as is.
+        # Note that if a user from a different CH (installed
+        # as trusted by this CH for some reason) called this method,
+        # that user would be used here - and should still work.
+        # If there are problems, the fix would be
+        # If cert.Certificate(string=server.pem_cert).is_signed_by_cert(cert.Certificate(self.certfile))
+        # do nothing
+        # else for cafname in self.ca_Cert_fnames
+        # do same for those
+        # user_gid = gid.GID (string=str(self.pem_Cert+serverstr))
+        # But I really dont think its all needed
         user_gid = gid.GID(string=self._server.pem_cert)
 
         # OK have a user_gid so can get a slice credential
@@ -275,61 +290,18 @@ class Clearinghouse(object):
         return newgid, keys
     
     def CreateUserCredential(self, user_gid):
-        self.logger.info("Called CreateUserCredential for GID %s" % gid.GID(string=user_gid).get_hrn())
-        # FIXME: Validate that this user_gid represents a user
-        # from my CH?
-        ucred = cred.Credential()
+        '''Return string representation of a user credential
+        issued by this CH with caller/object this user_gid (string)
+        with user privileges'''
+        # FIXME: Validate arg - non empty, my user
         user_gid = gid.GID(string=user_gid)
-        ucred.set_gid_caller(user_gid)
-        ucred.set_gid_object(user_gid)
-        ucred.set_lifetime(USER_CRED_LIFE)
-        privileges = rights.determine_rights('user', None)
-        ucred.set_privileges(privileges)
-        ucred.encode()
-        ucred.set_issuer_keys(self.keyfile, self.certfile)
-        ucred.sign()
+        self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
+        ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile)
         return ucred.save_to_string()
     
     def create_slice_credential(self, user_gid, slice_gid):
-        ucred = cred.Credential()
+        '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        ucred.set_gid_caller(user_gid)
-        ucred.set_gid_object(slice_gid)
-        ucred.set_lifetime(SLICE_CRED_LIFE)
-        privileges = rights.determine_rights('slice', None)
-        ucred.set_privileges(privileges)
-        ucred.encode()
-        ucred.set_issuer_keys(self.keyfile, self.certfile)
-        ucred.sign()
-        return ucred
+        return create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile)
 
-# We could probably define a list of transformations (replacements)
-# and run it forwards to go to a publicid. Then we could run it
-# backwards to go from a publicid.
-
-# Perform proper escaping. The order of these rules matters
-# because we want to catch things like double colons before we
-# translate single colons. This is only a subset of the rules.
-publicid_xforms = [(' ', '+'),
-                   ('::', ';'),
-                   (':', '%3A'),
-                   ('//', ':')]
-
-publicid_urn_prefix = 'urn:publicid:'
-
-def urn_to_publicid(urn):
-    # Remove prefix
-    if not urn.startswith(publicid_urn_prefix):
-        # Erroneous urn for conversion
-        raise ValueError('Invalid urn: ' + urn)
-    publicid = urn[len(publicid_urn_prefix):]
-    for a, b in reversed(publicid_xforms):
-        publicid = publicid.replace(b, a)
-    return publicid
-
-def publicid_to_urn(id):
-    for a, b in publicid_xforms:
-        id = id.replace(a, b)
-    # prefix with 'urn:publicid:'
-    return publicid_urn_prefix + id

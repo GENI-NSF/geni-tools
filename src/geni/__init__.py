@@ -21,7 +21,6 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from ca import CertificateAuthority
 from ch import Clearinghouse
-from ch import publicid_to_urn, urn_to_publicid
-from am import ReferenceAggregateManager, AggregateManagerServer, CredentialVerifier
+from am import ReferenceAggregateManager, AggregateManagerServer
+from credential import CredentialVerifier, publicid_to_urn, urn_to_publicid, string_to_urn_format, urn_to_string_format
