@@ -71,15 +71,14 @@ license, can be found in src/sfa/README.txt.
 Instructions
 ============
 
-1. Initialize the certificate authority and generate keys and certificates:
+1. Generate keys and certificates for your users, clearinghouse, and aggregate manager.
 
  $ src/init-ca.py
 
- This creates a certificate authority key and certificate and then
- creates keys and certificates for a clearinghouse (ch), an aggregate
+ This  creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
  The directory for the output, the researcher name, and which keys to
- generate are configurable via commandline options. Cert URNs and
+ generate are configurable via command line options. Cert URNs and
  some privileges are modifiable via constants. 
  Note you can generate multiple AM credentials and multiple user
  credentials using this script.
@@ -91,12 +90,11 @@ Instructions
  to make corresponding edits to geni/ch.py SLICEPUBID_PREFIX.
 
 Optional: Create a directory containing all known and trusted (federated)
-clearinghouse and certificate authority certificates (see below for an 
-explanation).
+ certificates (see below for an explanation).
 
 2. Start the clearinghouse server:
 
- $ src/gch.py -r <ca-cert.pem or trusted_chs_and_cas_dir/> \
+ $ src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
    	      -c ch-cert.pem -k ch-key.pem -u alice-cert.pem \
 	      -g geni_aggregates
 
@@ -109,9 +107,9 @@ explanation).
  If you want to allow users from other Clearinghouses to make
  calls on this clearinghouse, install their root certificates too.
  To support this, it should be a directory with all trusted / federated
- CH and CA certificates or certificate chains (PEM format). 
+ certificates (PEM format). 
  Note that the CH certificate is used in generating slice credentials.
- And any cert not in PEM format may cause cryptic errors.
+
 
  The geni_aggregates file lists the Aggregate Managers that have
  federated with this Clearinghouse. For some other examples 
@@ -135,16 +133,13 @@ explanation).
  
 3. Start the aggregate manager server:
 
- $ src/gam.py -r <ca-cert.pem or trusted_chs_and_cas_dir/> \
+ $ src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
    	      -c am-cert.pem -k am-key.pem
 
- NOTE: The -r ca-cert.pem is a file name with the AMs' CA cert, or
- better still, a directory with all trusted CH and CA certs.
- This is the 1 or many certs that should be trusted to sign slice
- credentials, or listResources requests. IE to federate, put the CA
- (and maybe CH) certs from all federates into a directory.
- Self signed root certificates are necessary. IE if you only want 
- to accept users of your GCF Clearinghouse, then just supply ca-cert.pem
+ NOTE: The -r ch-cert.pem is a file name with the CH cert, or
+ better still, a directory with all trusted root certs.
+ These certs will be used to verify slices and resource requests from the control
+ frameworks that you have federated with.
 
  Optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8001, and --debug for debugging output.
@@ -164,7 +159,7 @@ explanation).
  Optional arguments --debug and --debug-rpc enable more debug output.
 
  Note that you can use user credentials from any federated control 
- framework, as long as the appropriate CH and CA PEM certificates 
+ framework, as long as the appropriate CH certificates 
  were supplied to the -r arguments to gch and gam above.
 
 5. See README-omni.txt for instructions on running the OMNI GENI
@@ -186,7 +181,7 @@ explanation).
  Clearinghouse:
 
  To add your GCF certificate to an SFA based aggregate manager, copy the 
- CA certificate file (ca-cert.pem) to /etc/sfa/trusted_roots/ on the 
+ CH certificate file (ch-cert.pem) to /etc/sfa/trusted_roots/ on the 
  AM's server. The CH certificate is not necessary though it doesn't hurt.
  
  After adding your certificates, restart sfa (sudo /etc/init.d/sfa restart).

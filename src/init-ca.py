@@ -24,12 +24,7 @@
 #----------------------------------------------------------------------
 
 """
-Create a certificate authority and some basic certs and keys.
-
-A CA is created, as well as certificates and keys for two authorities:
-a clearinghouse and an aggregate manager. Finally, a user cert and
-key is created for a user (named Alice by default). Options allow
-controlling which certs are created.
+Create a certificate authority for the CH, a user cert, and an intermediate CA cert for the AM.
 """
 
 import sys
@@ -48,8 +43,6 @@ import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 import sfa.trust.credential as cred
 
-CA_CERT_FILE = 'ca-cert.pem'
-CA_KEY_FILE = 'ca-key.pem'
 CH_CERT_FILE = 'ch-cert.pem'
 CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
@@ -61,7 +54,7 @@ AM_KEY_FILE = 'am-key.pem'
 # Be sure the below matches geni/ch.py: SLICEPUBID_PREFIX
 GCF_CERT_PREFIX = "geni.net:gpo:gcf"
 
-USER_CERT_LIFE=3600
+USER_CERT_LIFE=10000
 # See sfa/trust/rights.py
 USER_CERT_PRIVS = "embed:1, bind:1"
 
@@ -70,7 +63,6 @@ USER_CERT_TYPE = 'user'
 # For CHs and AMs. EG gcf+authority+am
 # See sfa/util/namespace.py eg
 AUTHORITY_CERT_TYPE = 'authority'
-CA_CERT_SUBJ = 'ca' 
 CH_CERT_SUBJ = 'sa' 
 AM_CERT_SUBJ = 'am'
 
@@ -117,30 +109,21 @@ def create_user_credential(user_gid, issuer_keyfile, issuer_certfile):
     ucred.sign()
     return ucred
 
-def make_ca_cert(dir):
-    '''Create the CA cert and save it to given dir and return them'''
-    # Create a cert like geni.net:gpo+authority+sa
-    (ca_cert, ca_key) = create_cert(GCF_CERT_PREFIX,AUTHORITY_CERT_TYPE,CA_CERT_SUBJ)
-    ca_cert.save_to_file(os.path.join(dir, CA_CERT_FILE))
-    ca_key.save_to_file(os.path.join(dir, CA_KEY_FILE))
-    print "Created CA Cert/keys in %s/%s and %s" % (dir, CA_CERT_FILE, CA_KEY_FILE)
-    return (ca_cert, ca_key)
-
-def make_ch_cert(dir, ca_cert, ca_key):
+def make_ch_cert(dir):
     '''Make a cert for the clearinghouse signed by given CA saved to 
     given directory and returned.'''
     # Create a cert with urn like  geni.net:gpo:gcf+authority+sa
-    (ch_gid, ch_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ, ca_key, ca_cert, True)
+    (ch_gid, ch_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     print "Created CH cert/keys in %s/%s and %s" % (dir, CH_CERT_FILE, CH_KEY_FILE)
     return (ch_keys, ch_gid)
 
-def make_am_cert(dir, ca_cert, ca_key):
+def make_am_cert(dir, ch_cert, ch_key):
     '''Make a cert for the aggregate manager signed by given CA cert/key
     and saved in given dir. NOT RETURNED.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+am
-    (am_gid, am_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ca_key, ca_cert, True)
+    (am_gid, am_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
@@ -166,8 +149,6 @@ def parse_args(argv):
                       help="Experimenter username")
     parser.add_option("--notAll", action="store_true", default=False,
                       help="Do NOT create all cert/keys: Supply other options to generate particular certs.")
-    parser.add_option("--ca", action="store_true", default=False,
-                      help="Create CA cert/keys")
     parser.add_option("--ch", action="store_true", default=False,
                       help="Create CH (SA) cert/keys")
     parser.add_option("--am", action="store_true", default=False,
@@ -188,40 +169,28 @@ def main(argv=None):
     if opts.directory:
         dir = opts.directory
 
-    ca_cert = None
-    ca_key = None
-
     if opts.authority:
         global GCF_CERT_PREFIX
         GCF_CERT_PREFIX = opts.authority
         
-    if not opts.notAll or opts.ca:
-        (ca_cert, ca_key) = make_ca_cert(dir)
-    else:
-        if not opts.notAll or opts.ch or opts.am:
-            try:
-                ca_cert = gid.GID(filename=os.path.join(dir,CA_CERT_FILE))
-                ca_key = cert.Keypair(filename=os.path.join(dir,CA_KEY_FILE))
-            except Exception, exc:
-                sys.exit("Failed to read CA Cert/key from %s/%s and %s: %s" % (dir, CA_CERT_FILE, CA_KEY_FILE, exc))
 
     ch_keys = None
-    ch_gid = None
+    ch_cert = None
     if not opts.notAll or opts.ch:
-        (ch_keys, ch_gid) = make_ch_cert(dir, ca_cert, ca_key)
+        (ch_keys, ch_cert) = make_ch_cert(dir)
     else:
         if not opts.notAll or opts.exp:
             try:
-                ch_gid = gid.GID(filename=os.path.join(dir,CH_CERT_FILE))
+                ch_cert = gid.GID(filename=os.path.join(dir,CH_CERT_FILE))
                 ch_keys = cert.Keypair(filename=os.path.join(dir,CH_KEY_FILE))
             except Exception, exc:
                 sys.exit("Failed to read CH(SA) cert/key from %s/%s and %s: %s" % (dir, CHCERT_FILE, CH_KEY_FILE, exc))
 
     if not opts.notAll or opts.am:
-        make_am_cert(dir, ca_cert, ca_key)
+        make_am_cert(dir, ch_cert, ch_keys)
 
     if not opts.notAll or opts.exp:
-        make_user_cert(dir, username, ch_keys, ch_gid)
+        make_user_cert(dir, username, ch_keys, ch_cert)
 
     return 0
 

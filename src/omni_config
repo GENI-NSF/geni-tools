@@ -1,34 +1,99 @@
+# This is a sample Omni config file
+# It tells Omni how to talk to various Clearinghouses.
+# And by extension, which Experimenter credentials to use.
+
+# Omni always reads the 'omni' section and will use a single
+# framework (e.g., sfa, or pg (protogeni)) to create slices 
+# in your user's name and to list available aggregates.  The 
+# default framework is specified by 'default_cf' in the omni 
+# section.
+
+# This file is in JSON format + comments. 
+
+
 {
-	"omni": {
-		"default_cf": "gcf",
-		"slice_users": [ 
-		    {
-				"name": "Alice",
-				"urn": "urn:publicid:IDN+geni.net:gpo:gcf+user+alice"
-				"keys": ["~/.omni/jkarlin.pub"]
-			}
-		]
-	},
-	"sfa": {
-		"authority": "plc.gpo.site2",
-    	"user": "plc.gpo.site2.jkarlin",
-		"cert": "~/.omni/jkarlin.cert",
-		"key":	"~/.omni/jkarlin.pkey",
-		"registry": "http://128.89.81.175:12345",
-		"slicemgr": "http://128.89.81.175:12347"
-	},
-	"gcf": {
-    	        "authority": "geni.net:gpo:gcf"
-    	        "ch": "https://localhost:8000",
-		"cert": "~/.omni/gcf.jkarlin.cert",
-		"key":	"~/.omni/gcf.jkarlin.pkey",
-	},
-	"pg": {
-              "xxxverbose": true,
-              "ch": "https://www.emulab.net:443/protogeni/xmlrpc/ch",
-              "sa": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
-              "sa-bbn": "https://boss.pgeni3.gpolab.bbn.com:443/protogeni/xmlrpc/sa",
-              "cert": "~/.omni/encrypted.pem",
-              "key":  "~/.omni/pgcert.pem"
-	}
+
+    # The omni section specifies general omni features such as 
+    # the default control framework to allocate slices from
+    # and the users that you want to be able to login to your
+    # allocated resources (slivers).
+
+    "omni": {    
+        # The default control framework (override with -f at command line)
+        # Valid values are gcf, sfa, or pg      
+        "default_cf": "gcf",
+
+        # slice_users is used in createsliver.  This is where omni
+        # informs any allocated resources (slivers) of the users and their keys
+        # that can login to the resource. 
+        # Note that multiple users can be specified in the array
+        "slice_users": [ 
+    	    {
+                "name": "Alice", # Can be any name
+                # Be sure this is the right URN in your cert
+                # EG run openssl x509 -in [user cert file] -text
+                # and then look at the Subject: CN field
+                "urn": "urn:publicid:IDN+geni.net:gpo:gcf+user+alice",
+
+                # Keys is a comma separated list of names of user
+                # public SSH key files (not private)
+                "keys": ["~/.omni/jkarlin.pub"]
+            }
+        ]
+    },
+
+    "sfa": {
+            # hrn of your MyPLC or PL Central (e.g., plc.princeton)
+            # This is SFA_INTERFACE_HRN:site_name
+            # You can find this in practice by running:
+            # openssl x509 -in [user plc cert file] -text
+            # and then look at the Issuer CN
+            "authority": "plc.gpo4.gpolab14",
+
+            # Your PlanetLab user 
+            # This is the authority above.<username from myplc email>
+            "user": "plc.gpo4.gpolab14.jkarlin",
+
+            # Your SFA certificate is obtained by running 'sfi.py gid'
+            # and grabbing the ~/.sfi/<username>.gid file that results.
+            # SFI is a tool that comes with the SFA package from PlanetLab.
+            "cert": "~/.omni/jkarlin.gid.myplc4",
+
+            # your private key for the planetlab public key you uploaded
+            # to planetlab's website
+            "key":	"~/.omni/jkarlin.pkey",
+
+            # URLs of your PL registry and slice manager
+            # Be sure these are reachable
+            "registry": "http://myplc4.gpolab.bbn.com:12345",
+            "slicemgr": "http://myplc4.gpolab.bbn.com:12347"
+    },
+
+    "gcf": {
+        # The authority part of the GCF URN
+        # where the last word may be used in 
+        # generated slice login usernames.
+        # Another example: openflow:bbn
+        "authority": "geni.net:gpo:gcf",
+
+        # where gch is listening
+        "ch": "https://localhost:8000",
+
+        # User certificate and key.
+        # Note that these can be certificates from any
+        # trusted clearinghouse (that is, the CH's certificate
+        # must be trusted at the GENI CH and AM)
+        "cert": "~/.omni/gcf.jkarlin.cert",
+        "key":	"~/.omni/gcf.jkarlin.pkey"    	
+    },
+
+    "pg": {
+        "verbose": false, # for debugging
+        "ch": "https://www.emulab.net:443/protogeni/xmlrpc/ch",
+
+        # The sa is the slice authority. 
+        "sa": "https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa",
+        "cert": "~/.omni/encrypted.pem",
+        "key":  "~/.omni/pgcert.pem"
+    }
 }

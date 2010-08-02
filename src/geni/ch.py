@@ -230,55 +230,7 @@ class Clearinghouse(object):
         # Create a credential authorizing this user to use this slice.
         slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
 
-        # Get the creator info from the peer certificate
-
-        # The problem with self._server.pem_cert is it doesn't
-        # include the chain! But we accepted it, so it is signed
-        # by one of our trusted certs. If the trusted certs includes
-        # the CH that issued that user cert, then we are still OK.
-
-        # So this block of code tries all the trusted certs to see if any of these
-        # signed this user's cert. If so, we append that cert
-        # to the user cert, in hopes of having enough info
-
-        user_cert = cert.Certificate(string=self._server.pem_cert)
-        serverstr = ""
-
-        # If this CH signed the user, then use that
-        try:
-            cacert = cert.Certificate(filename=self.certfile)
-            if user_cert.is_signed_by_cert(cacert):
-                serverstr = cacert.save_to_string(True)
-        except:
-            self.logger.debug('This CH cert %s didnt sign the incoming user %s cert', self.certfile, user_cert.get_subject())
-            pass
-
-        # If that didnt do it try the trusted certs
-        if serverstr == "":
-            for cafname in self.ca_cert_fnames:
-                try:
-                    cacert = cert.Certificate(filename=cafname)
-                    if user_cert.is_signed_by_cert(cacert):
-                        serverstr = cacert.save_to_string(True)
-                        break
-                    else:
-#                    print 'user cert not signed by that server'
-                        pass
-                except Exception, exc:
-                    pass
-
-        # If that didn't do it we should see if the supplied user cert
-        # really is the user we got on the commandline
-        # If so then we have no error
-        # otherwise we have a problem
-        if serverstr == "":
-            self.logger.error('Failed to generate complete user cert using trusted CAs. For user %s didnt find issuer %s cert. Cant create a Slice', user_cert.get_subject(), user_cert.get_issuer())
-            raise Exception('Untrusted user %s cant create a slice. Issuer %s not trusted.' % (user_cert.get_subject(), user_cert.get_issuer()))
-
-        else:
-            # Found the trusted issuer of the client cert
-            user_gid = gid.GID(string=str(self._server.pem_cert + serverstr))
-
+        user_gid = gid.GID(string=self._server.pem_cert)
 
         # OK have a user_gid so can get a slice credential
         try:

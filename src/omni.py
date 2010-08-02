@@ -417,7 +417,18 @@ def main(argv=None):
         sys.exit('Missing omni config file %s' % filename)
 
     logger.debug("Loading config file %s", filename)
-    config = json.loads(file(filename, 'r').read())
+
+    # Filter comments out of the config file
+    lines = file(filename,'r').readlines()
+    buffer = ''
+    for line in lines:        
+        if '#' in line:
+            # If the '#' is past the last quote, then we consider it a comment
+            if line.rfind('#') > line.rfind('"'):
+                line = line[0:line.rfind('#')] + '\n'
+        buffer += line
+    config = json.loads(buffer)
+        
         
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
