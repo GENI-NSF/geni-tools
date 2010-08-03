@@ -20,6 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''
+Sample code showing how to use openssl libraries to generate certificates.
+Obsolete and unused, but useful reference code.
+'''
 
 import os.path
 import subprocess
