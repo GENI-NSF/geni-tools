@@ -8,7 +8,7 @@ All the URNs that come out of a Control Framework have a common root
 (eg openflow:stanford) and all URNs need to be unique (geni.net:gpo and 
 geni.net:gpo2 for my 2 parallel instances).
 Getting this right means ensuring you have the right strings
-- in init-ca.py, See GPO_CERT_PREFIX
+- in gen-certs.py, See CERT_AUTHORITY
 - in geni/ch.py. See SLICEPUBID_PREFIX
 - in geni_aggregates or equivalent (the AM's URN)
 - in the Slice names you provide via the Client (omni)

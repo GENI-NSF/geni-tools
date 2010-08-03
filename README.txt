@@ -49,10 +49,17 @@ available via their native package management suite (eg. yum or apt).
 
   The XML Security Library provides implementations of XML Digital
   Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
-  from this package is used to sign credentials.  On rpm systems the
-  required packages are 'xmlsec1 and xmlsec1-openssl-devel'.  On
-  debian systems the packages are 'libxmlsec1, xmlsec1,
-  libxmlsec1-openssl, and libxmlsec1-dev'.
+  from this package is used to sign credentials.  
+
+  On rpm systems the required packages are 
+     	 xmlsec1
+	 xmlsec1-openssl-devel
+
+  On debian systems the packages are 
+     	 libxmlsec1
+	 xmlsec1
+	 libxmlsec1-openssl
+	 libxmlsec1-dev
 
   More information is available at:
     http://www.aleksey.com/xmlsec/
@@ -73,7 +80,7 @@ Instructions
 
 1. Generate keys and certificates for your users, clearinghouse, and aggregate manager.
 
- $ src/init-ca.py
+ $ src/gen-certs.py
 
  This  creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
@@ -97,7 +104,7 @@ Optional: Create a directory containing all known and trusted (federated)
  $ src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
    	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
- The -r argument could be a file with the GCF CH certificate. 
+ The optional -r argument could be a file with the GCF CH certificate. 
  If you want to allow users from other Clearinghouses to make
  calls on this clearinghouse, install their root certificates too.
  To support this, it should be a directory with all trusted / federated
@@ -111,7 +118,7 @@ Optional: Create a directory containing all known and trusted (federated)
  AM API compliant agggregate managers from whatever control framework.
  Aggregate URNs here are for human consumption and need not be accurate.
 
- Optional arguments include -H to specify a full hostname, -p to
+ Other optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8000, and --debug for debugging output. 
  Note that listening on localhost/127.0.0.1 (the default) is not the same 
  as listening on a real hostname / IP address. Be sure to listen on the

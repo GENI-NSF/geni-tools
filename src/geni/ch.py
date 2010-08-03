@@ -133,7 +133,8 @@ class Clearinghouse(object):
         self.logger.info("Registering AM %r", aggpair)
         self.aggs.append(aggpair)
         
-        # ca_certs is a file of 1 ch cert possibly (itself), preferably a dir of several
+        # ca_certs is a file of 1 ch cert possibly (itself), or a dir of several for peering
+        # If not supplied just use the certfile as the only trusted root
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, aggfile=None):
         """Run the clearinghouse server."""
@@ -241,14 +242,7 @@ class Clearinghouse(object):
         # root at any federated AM. So everyone can verify it as is.
         # Note that if a user from a different CH (installed
         # as trusted by this CH for some reason) called this method,
-        # that user would be used here - and should still work.
-        # If there are problems, the fix would be
-        # If cert.Certificate(string=server.pem_cert).is_signed_by_cert(cert.Certificate(self.certfile))
-        # do nothing
-        # else for cafname in self.ca_Cert_fnames
-        # do same for those
-        # user_gid = gid.GID (string=str(self.pem_Cert+serverstr))
-        # But I really dont think its all needed
+        # that user would be used here - and can still get a valid slice.
         user_gid = gid.GID(string=self._server.pem_cert)
 
         # OK have a user_gid so can get a slice credential

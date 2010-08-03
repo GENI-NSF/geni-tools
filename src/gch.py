@@ -70,14 +70,15 @@ class CommandHandler(object):
 
 def parse_args(argv):
     parser = optparse.OptionParser()
-    parser.add_option("-k", "--keyfile",
+    parser.add_option("-k", "--keyfile", default="ch-key.pem",
                       help="CH key file name", metavar="FILE")
-    parser.add_option("-c", "--certfile",
+    parser.add_option("-c", "--certfile", default="ch-cert.pem",
                       help="CH certificate file name (PEM format)", metavar="FILE")
     # Note: A CH that only wants to talk to its own users doesn't need
-    # this argument. It works if it just trusts its own cert
-    parser.add_option("-r", "--rootcafile",
-                      help="Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
+    # this argument. It works if it just trusts its own cert.
+    # Supplying this arg allows users of other frameworks to create slices on this CH.
+    parser.add_option("-r", "--rootcafile", default=None
+                      help="Optional Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
     parser.add_option("-g", "--aggfile", default="geni_aggregates",
                       help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
@@ -101,9 +102,6 @@ def main(argv=None):
     if not args:
         args = ('runserver',)
 
-    if opts.rootcafile is None:
-        sys.exit('Missing path to Root CAs file or directory (-r argument)')
-    
     handler = '_'.join((args[0], 'handler'))
     ch = CommandHandler()
     if hasattr(ch, handler):

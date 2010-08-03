@@ -105,7 +105,7 @@ Running Omni -
   Creates the slice in your chosen control framework.
 
   Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
-  based on the GCF_CERT_PREFIX constant in init-ca.py.  The shorthand notation
+  based on the CERT_AUTHORITY constant in gen-certs.py.  The shorthand notation
   is available for SFA and PG.  Shorthand works if your control framework is GCF
   only if you have configured the 'authority' line in the gcf section of 
   omni_config. (also see ch.py SLICEPUBID_PREFIX)
