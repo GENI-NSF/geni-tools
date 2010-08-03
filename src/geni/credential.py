@@ -273,21 +273,13 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     ucred.sign()
     return ucred
 
-# We could probably define a list of transformations (replacements)
-# and run it forwards to go to a publicid. Then we could run it
-# backwards to go from a publicid.
-
-# Perform proper escaping. The order of these rules matters
+# Translate publicids to URN format.
+# The order of these rules matters
 # because we want to catch things like double colons before we
 # translate single colons. This is only a subset of the rules.
 # See the GENI Wiki: GAPI_Identifiers
 # See http://www.faqs.org/rfcs/rfc3151.html
-publicid_xforms = [(' ',  '+'  ), # Note you must collapse and trim WS
-                   ('::', ';'  ),
-                   (':',  '%3A'),
-                   ('//', ':'  )]
-
-new_publicid_xforms = [('%',  '%25'),
+publicid_xforms = [('%',  '%25'),
                    (';',  '%3B'),
                    ('+',  '%2B'),
                    (' ',  '+'  ), # note you must first collapse WS
