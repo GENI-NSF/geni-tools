@@ -59,10 +59,13 @@ AM_KEY_FILE = 'am-key.pem'
 # URN prefix for the CH(SA)/AM/Experimenter certificates
 # Be sure that URNs are globally unique to support peering.
 # Slice names must be <CERT_PREFIX>+slice+<your slice name>
-# Be sure the below matches geni/ch.py: SLICEPUBID_PREFIX
-# With : -> // 
+# Note this is in publicid format and will be converted to 
+# URN format for encoding in certificates. EG
+# ' ' -> '+'
+# '//' -> ':'
 # authority commandline arg over-rides this value
-GCF_CERT_PREFIX = "geni.net:gpo:gcf"
+# Be sure the below matches geni/ch.py: SLICEPUBID_PREFIX
+CERT_AUTHORITY = "geni.net//gpo//gcf"
 
 # For the subject of user/experiments certs, eg gcf+user+<username>
 # cert types match constants in sfa/trust/rights.py
@@ -85,6 +88,8 @@ def create_cert(prefix, type, subj, issuer_key=None, issuer_cert=None, intermedi
     it is a self-signed certificate. If intermediate then mark this 
     as an intermediate CA certiciate (can sign).
     Subject of the cert is prefix+type+subj
+    Note that prefix, type and subject are in publicid format and
+    will be converted to URN format.
     '''
     
     # Validate each of prefix, type, subj per rules
@@ -125,7 +130,7 @@ def make_ch_cert(dir):
     '''Make a self-signed cert for the clearinghouse saved to 
     given directory and returned.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+sa
-    (ch_gid, ch_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ)
+    (ch_gid, ch_keys) = create_cert(CERT_AUTHORITY, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     print "Created CH cert/keys in %s/%s and %s" % (dir, CH_CERT_FILE, CH_KEY_FILE)
@@ -135,7 +140,7 @@ def make_am_cert(dir, ch_cert, ch_key):
     '''Make a cert for the aggregate manager signed by given CH cert/key
     and saved in given dir. NOT RETURNED.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+am
-    (am_gid, am_keys) = create_cert(GCF_CERT_PREFIX, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
+    (am_gid, am_keys) = create_cert(CERT_AUTHORITY, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
@@ -145,7 +150,7 @@ def make_user_cert(dir, username, ch_keys, ch_gid):
     saved in given directory. Not returned.'''
     # Create a cert like PREFIX+TYPE+name
     # ie geni.net:gpo:gcf+user+alice
-    (alice_gid, alice_keys) = create_cert(GCF_CERT_PREFIX, USER_CERT_TYPE, username, ch_keys, ch_gid)
+    (alice_gid, alice_keys) = create_cert(CERT_AUTHORITY, USER_CERT_TYPE, username, ch_keys, ch_gid)
     alice_gid.save_to_file(os.path.join(dir, ('%s-cert.pem' % username)))
     alice_keys.save_to_file(os.path.join(dir, ('%s-key.pem' % username)))
 # Make a Credential for Alice
@@ -167,7 +172,7 @@ def parse_args(argv):
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
                       help="Create experimenter cert/keys")
-    parser.add_option("--authority", default=None, help="The Authority of the URN (such as 'geni.net:gpo:gcf')")
+    parser.add_option("--authority", default=None, help="The Authority of the URN in publicid format (such as 'geni.net//gpo//gcf')")
     return parser.parse_args()
 
 def main(argv=None):
@@ -182,8 +187,8 @@ def main(argv=None):
         dir = opts.directory
 
     if opts.authority:
-        global GCF_CERT_PREFIX
-        GCF_CERT_PREFIX = opts.authority
+        global CERT_AUTHORITY
+        CERT_AUTHORITY = opts.authority
         
 
     ch_keys = None
