@@ -1,3 +1,14 @@
+       - Dropped the CA certificate. The CH certificate is the self-signed root. Install only the CH
+       certificate at all federated AMs to allow peering.
+       - Dropped the -u user certificate argument to the GENI Clearinghouse - not needed.
+       - Refactored common functionality for manipulating Credentials into new src/geni/credential.py
+       - Shutdown now requires the shutdown privilege (which proper user credentials will have)
+       - Omni supports OpenFlow Aggregate Managers and RSpecs (not yet the OpenFlow Clearinghouse)
+       - More error checking of arguments and more helpful error messages 
+       - omni_config now accepts # started comments
+       - Comments and documentation
+       - 
+
 7/12/10:
 	Much more documentation, error checking, logging, and clearer error
 	reporting.

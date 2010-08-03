@@ -1,4 +1,12 @@
 
-Things to do:
+Things to potentially do:
 
  * Implement client and server sides of RenewSliver
+ * More error checking
+ * Better SliverStatus in the reference AM
+ * Allow specifying an AM from which to ListResources in Omni
+ * Add more functions to the GENI API
+ * Stitching
+ * Third party authentication and authorization libraries (eg Shibboleth & ABAC)
+ * Support ORCA and Orbit Aggregate Managers and Clearinghouses when they are GENI API compliant
+

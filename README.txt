@@ -95,13 +95,7 @@ Optional: Create a directory containing all known and trusted (federated)
 2. Start the clearinghouse server:
 
  $ src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
-   	      -c ch-cert.pem -k ch-key.pem -u alice-cert.pem \
-	      -g geni_aggregates
-
- Note the requirement to supply (-u arg) a user credential (a test CH
- artifact). If the trusted certificates directory doesn't include the
- CH cert for the user contacting this CH, then we default to issuing
- Slice credentials in the name of this command-line user. A testing artifact.
+   	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
  The -r argument could be a file with the GCF CH certificate. 
  If you want to allow users from other Clearinghouses to make
@@ -182,7 +176,7 @@ Optional: Create a directory containing all known and trusted (federated)
 
  To add your GCF certificate to an SFA based aggregate manager, copy the 
  CH certificate file (ch-cert.pem) to /etc/sfa/trusted_roots/ on the 
- AM's server. The CH certificate is not necessary though it doesn't hurt.
+ AM's server. 
  
  After adding your certificates, restart sfa (sudo /etc/init.d/sfa restart).
 
@@ -216,6 +210,9 @@ Optional: Create a directory containing all known and trusted (federated)
 
 Further Reading
 ===============
+
+The GENI API pages on the GENI wiki have full details on GENI identifiers,
+credentials and certificates. See www.geni.net
 
 See FIXME
 <Wiki on the GENI AM API, RSpecs, ?>

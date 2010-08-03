@@ -9,12 +9,11 @@ enumerate available GENI Aggregate Managers.
 To configure Omni, please copy the src/omni_config file to your ~/.omni
 directory and fill in the parameters for at least one control
 framework.  The "omni" section should be filled in with the
-certificate and key that you use in your control framework.
+certificate and key that you use in your control framework. Embedded
+comments describe the meaning of each field.
 
-See src/documented_omni_config_dont_use for commentary explaining how to
-customize your omni_config file.
-
-The currently supported control frameworks are SFA, PG and GCF.
+The currently supported control frameworks are SFA, PG and GCF. OpenFlow
+Aggregate Managers are also supported.
 
 Omni works by 
 - The Framework classes know the API for each clearinghouse

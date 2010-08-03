@@ -70,21 +70,6 @@ And failing to get the constants right can look like this:
 'Unable to allocate from:'
 This is an error from your Aggregate Manager (eg gam). Check the logs there.
 
-3) If you see:
-
-ERROR:gch:Failed to generate complete user cert using trusted CAs. For user 
-geni.net:gpo:gcf+user+alice didnt find issuer geni.net:gpo:gcf+authority+ch cert
-> INFO:gch:Created slice 'urn:publicid:IDN+geni.net:gpo:gcf+slice+foobar'
-
-This means the GCH -r argument didn't contain the CH certificate for your 
-user. 
-But because you see the second INFO message that the slice was created it 
-means it went ahead and issued the Slice in the name of the user whose 
-certificate was on the commandline. If you only have the one 'alice' user 
-in your setup this is fine. But if you were using a different user then 
-you will have trouble once you get to the Aggregate Manager 
--- solvable by adding the CH certificate to the -r argument of GCH.
-
 4) If at Omni startup you get a Traceback that ends with something like:
 
    File "/usr/lib/python2.6/json/decoder.py", line 193, in JSONObject
@@ -119,7 +104,7 @@ consistent set of certificates at the CH and client (ie all gcf certificates
 and keys etc).
 
 6) In general when things go wrong
-- make sure your -r argument has exactly the ch-cert.pem and ca-cert.pem 
+- make sure your -r argument has exactly the ch-cert.pem 
 files for all your CHs.
 - supply the --debug argument to all programs
 - ensure all machines can ping each other
