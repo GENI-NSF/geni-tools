@@ -22,10 +22,9 @@
 #----------------------------------------------------------------------
 """
 Reference GENI GCF Clearinghouse. Uses SFA Certificate and credential objects.
-NOTE it requires a user cert at startup to get the full certificate chain.
 Run from gch.py
 Will produce signed user credentials from a GID, return a
-(hard coded) list of aggregates, and create a new Slice Credential.
+list of aggregates read from a config file, and create a new Slice Credential.
 
 """
 
@@ -39,9 +38,12 @@ import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 
 # Substitute eg "openflow//stanford ch"
-# Be sure this matches init-ca.py:GCF_CERT_PREFIX 
-#   with // -> :
+# Be sure this matches init-ca.py:CERT_AUTHORITY 
+# This is in publicid format
 SLICEPUBID_PREFIX = "geni.net//gpo//gcf"
+
+# FIXME: Explain relationship of this name to above
+# Subject of the Slice credential in URN notation
 SLICE_GID_SUBJ = "gcf.slice"
 
 # Credential lifetimes in seconds
@@ -131,7 +133,7 @@ class Clearinghouse(object):
         self.logger.info("Registering AM %r", aggpair)
         self.aggs.append(aggpair)
         
-        # ca_certs is a file of 1 ca cert possibly, preferably a dir of several
+        # ca_certs is a file of 1 ch cert possibly (itself), preferably a dir of several
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, aggfile=None):
         """Run the clearinghouse server."""
@@ -145,7 +147,8 @@ class Clearinghouse(object):
             raise Exception("Missing CH cert file %s" % certfile)
 
         if ca_certs is None:
-            raise Exception("Missing CA cert(s) arg")
+            ca_certs = certfile
+            self.logger.info("Using only my CH cert as a trusted root cert")
 
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
@@ -215,15 +218,16 @@ class Clearinghouse(object):
 
         # Create a random uuid for the slice
         slice_uuid = uuid.uuid4()
-        # Where was the slice created?
-        (ipaddr, port) = self._server.socket._sock.getsockname()
-        # FIXME: Get public_id start from a properties file
-        public_id = 'IDN %s slice %s//%s:%d' % (SLICEPUBID_PREFIX, slice_uuid.__str__()[4:12],
-                                                                   ipaddr,
-                                                                   port)
+
         if urn_req:
             urn = urn_req
         else:
+            # Where was the slice created?
+            (ipaddr, port) = self._server.socket._sock.getsockname()
+            # FIXME: Get public_id start from a properties file
+            public_id = 'IDN %s slice %s//%s:%d' % (SLICEPUBID_PREFIX, slice_uuid.__str__()[4:12],
+                                                                   ipaddr,
+                                                                   port)
             # this func adds the urn:publicid:
             # and converts spaces to +'s, and // to :
             urn = publicid_to_urn(public_id)
