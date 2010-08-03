@@ -38,7 +38,7 @@ def rspec_to_omnispec(urn, rspec):
     mod = None
     for translator in translators:
         mod = __import__(mod_name + '.' + translator, fromlist=[mod_name])
-        if mod.can_translate(urn, rspec):
+        if mod.can_translate(rspec):
             break
         else:
             mod = None

@@ -106,15 +106,22 @@ class CallHandler(object):
             sys.exit('Unknown function: %s' % call)
         getattr(self,call)(args[1:])
 
-    def _getclients(self):
+    def _getclients(self, ams=None):
         ''' Ask FW CH for known aggregates (_listaggregates) and construct 
-        an XMLRPC client for each.'''
+        an XMLRPC client for each.  If 'am' is not none, connect to that URL instead'''
         clients = []
-        for (urn, url) in self._listaggregates([]).items():
-            client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
-            client.urn = urn
-            client.url = url
-            clients.append(client)
+        if ams:
+            for am in ams:
+                client = make_client(am, self.frame_config['key'], self.frame_config['cert'])
+                client.url = am
+                client.urn = am
+                clients.append(client)
+        else:
+            for (urn, url) in self._listaggregates([]).items():
+                client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
+                client.urn = urn
+                client.url = url
+                clients.append(client)
         return clients    
         
     def _listaggregates(self, args):
@@ -129,24 +136,32 @@ class CallHandler(object):
         options = {}
         logger = logging.getLogger('omni')
 
+        ams = None
+        urn_name = None
+        if len(args) > 0:
+            if args[0].startswith('http'):
+                ams = args
+            else:
+                urn_name = args[0].strip()
+                ams = args[1:]
+
         options['geni_compressed'] = True;
 
         # Get the credential for this query
-        if len(args) == 0 or args[0] is None or args[0].strip() == "":
+        if urn_name is None:
             cred = self.framework.get_user_cred()
         else:
-            name = args[0].strip()
-            urn = self.framework.slice_name_to_urn(name)
+            urn = self.framework.slice_name_to_urn(urn_name)
             cred = self.framework.get_slice_cred(urn)
             options['geni_slice_urn'] = urn
 
         
         # Connect to each available GENI AM to list their resources
-        for client in self._getclients():
+        for client in self._getclients(ams):
             try:
                 if cred is None:
                     logger.debug("Have null credentials in call to ListResources!")
-		logger.debug("Connecting to AM: %s" % client)
+                logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
@@ -391,6 +406,7 @@ def parse_args(argv):
                       help="config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="control framework to use for creation/deletion of slices")
+    
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
     return parser.parse_args()

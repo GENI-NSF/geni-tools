@@ -121,14 +121,14 @@ class PrintingAggregateManager(object):
             compressed  = options['geni_compressed']
         print 'ListResources(compressed=%r)' % (compressed)
         # return an empty rspec
-        result = '<rspec/>'
+        result = '<rspec type="GCF"/>'
         if compressed:
             result = xmlrpclib.Binary(zlib.compress(result))
         return result
 
     def CreateSliver(self, slice_urn, credentials, rspec, users):
         print 'CreateSliver(%r)' % (slice_urn)
-        return '<rspec/>'
+        return '<rspec type="GCF"/>'
 
     def DeleteSliver(self, slice_urn, credentials):
         print 'DeleteSliver(%r)' % (slice_urn)
@@ -271,21 +271,21 @@ class ReferenceAggregateManager(object):
             slice_urn = options['geni_slice_urn']
             if slice_urn in self._slivers:
                 sliver = self._slivers[slice_urn]
-                result = ('<rspec>'
+                result = ('<rspec type="GCF">'
                           + ''.join([x.toxml() for x in sliver.resources])
                           + '</rspec>')
             else:
                 # return an empty rspec
-                result = '<rspec/>'
+                result = '<rspec type="GCF"/>'
         elif 'geni_available' in options and options['geni_available']:
-            result = ('<rspec>' + ''.join([x.toxml() for x in self._resources])
+            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources])
                       + '</rspec>')
         else:
             all_resources = list()
             all_resources.extend(self._resources)
             for sliver in self._slivers:
                 all_resources.extend(self._slivers[sliver].resources)
-            result = ('<rspec>' + ''.join([x.toxml() for x in all_resources])
+            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in all_resources])
                       + '</rspec>')
 
 #        self.logger.debug('Returning resource list %s', result)
@@ -356,7 +356,7 @@ class ReferenceAggregateManager(object):
         self._slivers[slice_urn] = sliver
 
         self.logger.info("Created new sliver for slice %s" % slice_urn)
-        return ('<rspec>' + ''.join([x.toxml() for x in sliver.resources])
+        return ('<rspec type="GCF">' + ''.join([x.toxml() for x in sliver.resources])
                 + '</rspec>')
 
     def DeleteSliver(self, slice_urn, credentials):
