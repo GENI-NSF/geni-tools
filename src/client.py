@@ -163,7 +163,7 @@ def test_renew_sliver(server, slice_urn, credentials, expiration_time):
     print 'Testing RenewSliver...',
     result = server.RenewSliver(slice_urn, credentials, expiration_time)
     if result is True or result is False:
-        print 'passed'
+        print 'passed. (Result: %r)' % (result)
     else:
         print 'failed'
         print 'returned %r instead of boolean value' % (result)
