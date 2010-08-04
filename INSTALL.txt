@@ -1,0 +1,65 @@
+1) Software Dependencies
+========================
+
+Debian/Ubuntu:
+sudo apt-get install python-m2crypto python-dateutil python-pyopenssl libxmlsec1 xmlsec1 libxmlsec1-openssl libxmlsec1-dev
+
+
+RedHat/Fedora:
+sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
+
+
+MAC OS X:
+You must have macports already installed.
+% sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
+% cd /opt/local/lib
+% sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
+% echo'export DYLD_LIBRARY_PATH=/opt/local/lib' > ~/.bash_profile
+Then open a new terminal
+
+
+Windows/Cygwin: 
+The necessary libraries are likely available but we have no experience
+running in this environment.
+
+
+
+2) Test Run
+===========
+
+# Create certificates and run the GENI Clearinghouse
+# in terminal one:
+% cd gcf
+% src/gen-certs.py
+% src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
+   	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
+
+# Run the GENI Aggregate Manager in a second terminal:
+%  src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
+   	      -c am-cert.pem -k am-key.pem
+
+
+# Run the client test script in a third terminal window:
+% src/client.py -c alice-cert.pem -k alice-key.pem \
+     --ch https://localhost:8000/ --am https://localhost:8001/
+
+
+You should see something like this:
+
+jkarlin@rabbit:~/dev/gcf$ src/client.py -c alice-cert.pem -k alice-key.pem \
+>      --ch https://localhost:8000/ --am https://localhost:8001/
+INFO:client:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
+INFO:client:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
+Slice Creation SUCCESS: URN = urn:publicid:IDN+geni.net:gpo:gcf+slice+1468-659:127.0.0.1%3A8000
+Testing GetVersion... passed
+Testing ListResources... passed
+Testing CreateSliver... passed
+Testing SliverStatus... passed
+Testing ListResources... passed
+Testing RenewSliver... passed
+Testing DeleteSliver... passed
+Testing ListResources... passed
+Second Slice URN = urn:publicid:IDN+geni.net:gpo:gcf+slice+065e-c63:127.0.0.1%3A8000
+Testing ListResources... passed
+Testing CreateSliver... passed
+Testing Shutdown... passed
