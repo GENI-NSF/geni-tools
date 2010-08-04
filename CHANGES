@@ -1,4 +1,8 @@
-       - Dropped the CA certificate. The CH certificate is the self-signed root. Install only the CH
+	- omni_config is now a Python properties file format
+	- omni listresources takes optional AggregateManager URLs to contact
+        - Drop CH.Resolve - not used
+
+	- Dropped the CA certificate. The CH certificate is the self-signed root. Install only the CH
        certificate at all federated AMs to allow peering.
        - Dropped the -u user certificate argument to the GENI Clearinghouse - not needed.
        - Refactored common functionality for manipulating Credentials into new src/geni/credential.py
