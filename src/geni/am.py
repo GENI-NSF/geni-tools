@@ -52,7 +52,6 @@ DELETESLIVERPRIV = 'deleteslice'
 SLIVERSTATUSPRIV = 'getsliceresources'
 SHUTDOWNSLIVERPRIV = 'shutdown'
 
-RESOURCEPUBLICIDPREFIX = 'geni.net'
 REFAM_MAXLEASE_DAYS = 365
 
 
@@ -191,10 +190,6 @@ class Resource(object):
                     + '<available>%r</available></resource>')
         return template % (self._type, self._id, self.available)
 
-    def urn(self):
-        publicid = 'IDN %s//resource//%s_%s' % (RESOURCEPUBLICIDPREFIX, self._type, str(self._id))
-        return geni.publicid_to_urn(publicid)
-
     def __eq__(self, other):
         return self._id == other._id
 
@@ -236,6 +231,10 @@ class ReferenceAggregateManager(object):
         self.logger.info("Called GetVersion")
         return dict(geni_api=1)
 
+    # The list of credentials are options - some single cred
+    # must give the caller required permissions.
+    # The semantics of the API are unclear on this point, so 
+    # this is just the current implementation
     def ListResources(self, credentials, options):
         '''Return an RSpec of resources managed at this AM. 
         If a geni_slice_urn
@@ -295,6 +294,10 @@ class ReferenceAggregateManager(object):
             result = base64.b64encode(zlib.compress(result))
         return result
 
+    # The list of credentials are options - some single cred
+    # must give the caller required permissions.
+    # The semantics of the API are unclear on this point, so 
+    # this is just the current implementation
     def CreateSliver(self, slice_urn, credentials, rspec, users):
         """Create a sliver with the given URN from the resources in 
         the given RSpec.
@@ -359,6 +362,10 @@ class ReferenceAggregateManager(object):
         return ('<rspec>' + ''.join([x.toxml() for x in sliver.resources])
                 + '</rspec>')
 
+    # The list of credentials are options - some single cred
+    # must give the caller required permissions.
+    # The semantics of the API are unclear on this point, so 
+    # this is just the current implementation
     def DeleteSliver(self, slice_urn, credentials):
         '''Stop and completely delete the named sliver, and return True.'''
         self.logger.info('DeleteSliver(%r)' % (slice_urn))
@@ -433,6 +440,7 @@ class ReferenceAggregateManager(object):
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         '''Renew the local sliver that is part of the named Slice
         until the given expiration time.
+        Requires at least one credential that is valid until then.
         Return False on any error, True on success.'''
 
         self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
@@ -441,19 +449,27 @@ class ReferenceAggregateManager(object):
                                                         credentials,
                                                         slice_urn,
                                                         privileges)
+        # All the credentials we just got are valid
         if slice_urn in self._slivers:
+            # If any credential will still be valid at the newly 
+            # requested time, then we can do this.
             sliver = self._slivers.get(slice_urn)
             requested = dateutil.parser.parse(str(expiration_time))
+            lastexp = 0
             for cred in creds:
-                # FIXME Should this fail if 1 cred will have expired? Or only if all will be expired?
-                # Or in practics is this always a list of 1?
-                if cred.expiration < requested:
-                    self.logger.debug("Cant renew sliver %r until %r cause one of %d credential(s) (%r) expires before then", slice_urn, expiration_time, len(creds), cred.get_gid_object().get_hrn())
-                    return False
+                lastexp = cred.expiration
+                if cred.expiration >= requested:
+                    sliver.expiration = requested
+                    self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
+                    return True
+                else:
+                    self.logger.debug("Valid cred %r expires at %r before %r", cred, cred.expiration, requested)
 
-            sliver.expiration = requested
-            self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
-            return True
+            # Fell through then no credential expires at or after
+            # newly requested expiration time
+            self.logger.info("Cant renew sliver %r until %r cause none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
+            return False
+
         else:
             self.no_such_slice(slice_urn)
 

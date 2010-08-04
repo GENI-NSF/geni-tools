@@ -180,6 +180,10 @@ class CredentialVerifier(object):
         the given list, then return the list of credentials that were ok.
         Throw an Exception if we fail to verify any credential.'''
 
+        # Note that here we treat a list of credentials as being options
+        # Alternatively could accumulate privileges for example
+        # The semantics of the list of credentials is under specified.
+
         self.logger.debug('Verifying privileges')
         result = list()
         failure = ""
