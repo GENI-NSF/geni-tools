@@ -167,7 +167,7 @@ Running Omni -
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
 	available to the slice.
-
+	Times are in UTC.
 
 
 ** sliverstatus

@@ -52,6 +52,12 @@ DELETESLIVERPRIV = 'deleteslice'
 SLIVERSTATUSPRIV = 'getsliceresources'
 SHUTDOWNSLIVERPRIV = 'shutdown'
 
+# Publicid format resource namespace. EG Resource URNs
+# will be <namespace>:resource:<resourcetype>_<resourceid>
+# This is something like the name of your AM
+# See gen-certs.CERT_AUTHORITY
+RESOURCE_NAMESPACE = 'geni.net//gpo//gcf'
+
 REFAM_MAXLEASE_DAYS = 365
 
 
@@ -185,6 +191,11 @@ class Resource(object):
         self._type = type
         self.available = True
 
+    def urn(self):
+        # User in SliverStatus
+        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self._type, str(self._id))
+        return geni.publicid_to_urn(publicid)
+
     def toxml(self):
         template = ('<resource><type>%s</type><id>%s</id>'
                     + '<available>%r</available></resource>')
@@ -204,9 +215,9 @@ class Resource(object):
         return Resource(id, type)
 
 class Sliver(object):
-    """A sliver has a URN, a list of resources, and an expiration time."""
+    """A sliver has a URN, a list of resources, and an expiration time in UTC."""
 
-    def __init__(self, urn, expiration=datetime.datetime.now()):
+    def __init__(self, urn, expiration=datetime.datetime.utcnow()):
         self.urn = urn
         self.resources = list()
         self.expiration = expiration
@@ -343,7 +354,7 @@ class ReferenceAggregateManager(object):
             resources.append(resource)
 
         # determine max expiration time from credentials
-        expiration = datetime.datetime.now() + self.max_lease
+        expiration = datetime.datetime.utcnow() + self.max_lease
         for cred in creds:
             if cred.expiration < expiration:
                 expiration = cred.expiration
@@ -439,7 +450,7 @@ class ReferenceAggregateManager(object):
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         '''Renew the local sliver that is part of the named Slice
-        until the given expiration time.
+        until the given expiration time (in UTC).
         Requires at least one credential that is valid until then.
         Return False on any error, True on success.'''
 
@@ -468,6 +479,8 @@ class ReferenceAggregateManager(object):
             # Fell through then no credential expires at or after
             # newly requested expiration time
             self.logger.info("Cant renew sliver %r until %r cause none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
+            # FIXME: raise an exception so the client knows what
+            # really went wrong?
             return False
 
         else:
@@ -489,6 +502,7 @@ class ReferenceAggregateManager(object):
             self.logger.info('FIXME: Shutdown not implemented')
             return False
         else:
+            self.logger.info("Cant shutdown sliver %s that doesnt exist", slice_urn)
             self.no_such_slice(slice_urn)
 
     def no_such_slice(self, slice_urn):

@@ -132,6 +132,7 @@ class Framework(Framework_Base):
             # Slice doesn't exist, create it
             user_cred = self.get_user_cred()
             auth_cred = self.registry.get_credential(user_cred, "authority", self.config['authority'])
+            # Note this is in UTC
             expiration = int(time.time()) + 60 * 60 * 24
             authority = self.config['authority']
             user = self.config['user']

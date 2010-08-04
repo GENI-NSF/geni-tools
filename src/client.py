@@ -159,6 +159,7 @@ def test_sliver_status(server, slice_urn, credentials):
     else:
         print 'passed'
         
+    # Note expiration_time is in UTC
 def test_renew_sliver(server, slice_urn, credentials, expiration_time):
     print 'Testing RenewSliver...',
     result = server.RenewSliver(slice_urn, credentials, expiration_time)
@@ -220,7 +221,7 @@ def exercise_am(ch_server, am_server):
     test_sliver_status(am_server, slice_urn, credentials)
     test_list_resources(am_server, credentials, slice_urn=slice_urn)
     
-    expiration = datetime.datetime.now() + datetime.timedelta(days=1)
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(days=1)
     test_renew_sliver(am_server, slice_urn, credentials, expiration)
     
     test_delete_sliver(am_server, slice_urn, credentials)

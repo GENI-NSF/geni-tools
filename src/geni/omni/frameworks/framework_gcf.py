@@ -23,7 +23,6 @@
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.frameworks.framework_base import Framework_Base
 import os
-import time
 import traceback
 import sys
 
@@ -58,7 +57,7 @@ class Framework(Framework_Base):
         return self.get_slice_cred(urn)
     
     def delete_slice(self, urn):
-        self.ch.DeleteSlice(urn)
+        return self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
         sites = []

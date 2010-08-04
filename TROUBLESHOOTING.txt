@@ -9,7 +9,7 @@ All the URNs that come out of a Control Framework have a common root
 geni.net:gpo2 for my 2 parallel instances).
 Getting this right means ensuring you have the right strings
 - in gen-certs.py, See CERT_AUTHORITY
-- in geni/ch.py. See SLICEPUBID_PREFIX
+- in geni/ch.py. See SLICE_AUTHORITY
 - in geni_aggregates or equivalent (the AM's URN)
 - in the Slice names you provide via the Client (omni)
 

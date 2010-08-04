@@ -94,7 +94,7 @@ Instructions
  site using the constants at the top of this file, if you will use
  these certificates to interact with any other GENI site. In particular, 
  URNs must be globally unique. If you change the cert prefix, be sure
- to make corresponding edits to geni/ch.py SLICEPUBID_PREFIX.
+ to make corresponding edits to geni/ch.py SLICE_AUTHORITY.
 
 Optional: Create a directory containing all known and trusted (federated)
  certificates (see below for an explanation).

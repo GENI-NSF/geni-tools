@@ -273,7 +273,7 @@ class CallHandler(object):
             
     def renewsliver(self, args):
         if len(args) < 2:
-            sys.exit('renewsliver requires arg of slice name and new expiration time')
+            sys.exit('renewsliver requires arg of slice name and new expiration time in UTC')
 
         name = args[0]
         if name is None or name.strip() == "":
@@ -288,13 +288,18 @@ class CallHandler(object):
         try:
             time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            sys.exit('renewsliver couldnt parse new expiration time from %s: %r', args[1], exc)
+            sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
         print 'Renewing Sliver %s until %r' % (urn, time)
 
         for client in self._getclients():
             try:
-                client.RenewSliver(urn, [slice_cred], time.isoformat())
+                # Note that the time arg includes UTC offset as needed
+                res = client.RenewSliver(urn, [slice_cred], time.isoformat())
+                if not res:
+                    print "FAILed to renew sliver %s on %s" % (urn, client.urn)
+                else:
+                    print "Renewed sliver %s at %s until %s" % (urn, client.urn, time.isoformat())
             except Exception, exc:
                 print "Failed to renew sliver %s on %s: %s" % (urn, client.urn, exc)
     
@@ -337,8 +342,8 @@ class CallHandler(object):
         for client in self._getclients():
             try:
                 client.Shutdown(urn, [slice_cred])
-            except:
-                print "Failed to shutdown %s: %s at %s" % (urn, client.urn, client.url)
+            except Exception, exc:
+                print "Failed to shutdown %s on AM %s at %s: %s" % (urn, client.urn, client.url, exc)
     
     def getversion(self, args):
         for client in self._getclients():
@@ -369,7 +374,8 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        self.framework.delete_slice(urn)
+        res = self.framework.delete_slice(urn)
+        print "Delete Slice %s result: %r" % (name, res)
 
     def getslicecred(self, args):
         if len(args) == 0:

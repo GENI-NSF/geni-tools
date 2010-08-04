@@ -64,7 +64,7 @@ AM_KEY_FILE = 'am-key.pem'
 # ' ' -> '+'
 # '//' -> ':'
 # authority commandline arg over-rides this value
-# Be sure the below matches geni/ch.py: SLICEPUBID_PREFIX
+# Be sure the below matches geni/ch.py: SLICE_AUTHORITY
 CERT_AUTHORITY = "geni.net//gpo//gcf"
 
 # For the subject of user/experiments certs, eg gcf+user+<username>

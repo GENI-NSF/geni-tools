@@ -26,6 +26,7 @@ Credential creation and verification utilities.
 
 import os
 import logging
+import re
 import xmlrpclib
 
 import sfa.trust.credential as cred
@@ -277,6 +278,27 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     ucred.sign()
     return ucred
 
+def create_gid(gid_subject, gid_urn, issuer_keyfile, issuer_certfile):
+    '''Create a GID for given subject and URN issued by given key/cert,
+    generating new keys.
+    Return newgid, keys'''
+    import sfa.trust.certificate as cert
+    # FIXME: Validate the gid_urn has the right prefix
+    # to be a URN and match the issuer
+    # FIXME: Validate the issuer key/cert exist and match and are valid
+    if not is_valid_urn(gid_urn):
+        raise ValueError("Invalid GID URN %s" % gid_urn)
+    newgid = gid.GID(create=True, subject=gid_subject, urn=gid_urn)
+    keys = cert.Keypair(create=True)
+    newgid.set_pubkey(keys)
+    issuer_key = cert.Keypair(filename=issuer_keyfile)
+    issuer_cert = gid.GID(filename=issuer_certfile)
+    newgid.set_issuer(issuer_key, cert=issuer_cert)
+    newgid.set_parent(issuer_cert)
+    newgid.encode()
+    newgid.sign()
+    return newgid, keys
+
 # Translate publicids to URN format.
 # The order of these rules matters
 # because we want to catch things like double colons before we
@@ -298,10 +320,27 @@ publicid_xforms = [('%',  '%25'),
 # FIXME: See sfa/util/namespace/URN_PREFIX which is ...:IDN
 publicid_urn_prefix = 'urn:publicid:'
 
+# validate urn
+# Note that this is not sufficient but it is necessary
+def is_valid_urn_string(instr):
+    '''Could this string be part of a URN'''
+    if instr is None or not isinstance(instr, str):
+        return False
+    #No whitespace
+    # no # or ? or /
+    if re.search("[\s|\?\/\#]", instr) is None:
+        return True
+    return False
+
+# Note that this is not sufficient but it is necessary
+def is_valid_urn(inurn):
+    ''' Check that this string is a valid URN'''
+    return is_valid_urn_string(inurn) and inurn.startswith(publicid_urn_prefix)
+
 def urn_to_publicid(urn):
     '''Convert a URN like urn:publicid:... to a publicid'''
     # Remove prefix
-    if urn is None or not urn.startswith(publicid_urn_prefix):
+    if urn is None or not is_valid_urn(urn):
         # Erroneous urn for conversion
         raise ValueError('Invalid urn: ' + urn)
     publicid = urn[len(publicid_urn_prefix):]
@@ -327,6 +366,7 @@ def urn_to_string_format(urnstr):
     '''Turn a part of a URN into publicid format, undoing transforms'''
     if urnstr is None or urnstr.strip() == '':
         return urnstr
+    # Validate it is reasonable URN string?
     for a, b in reversed(publicid_xforms):
         publicid = urnstr.replace(b, a)
     return publicid

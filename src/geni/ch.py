@@ -28,23 +28,19 @@ list of aggregates read from a config file, and create a new Slice Credential.
 
 """
 
+import datetime
 import logging
 import os
 import uuid
 
 from SecureXMLRPCServer import SecureXMLRPCServer
-from credential import CredentialVerifier, create_credential, publicid_to_urn
+from credential import CredentialVerifier, create_credential, publicid_to_urn, is_valid_urn, string_to_urn_format, create_gid
 import sfa.trust.gid as gid
-import sfa.trust.certificate as cert
 
-# Substitute eg "openflow//stanford ch"
+# Substitute eg "openflow//stanford"
 # Be sure this matches init-ca.py:CERT_AUTHORITY 
 # This is in publicid format
-SLICEPUBID_PREFIX = "geni.net//gpo//gcf"
-
-# FIXME: Explain relationship of this name to above
-# Subject of the Slice credential in URN notation
-SLICE_GID_SUBJ = "gcf.slice"
+SLICE_AUTHORITY = "geni.net//gpo//gcf"
 
 # Credential lifetimes in seconds
 # Extend slice lifetimes to actually use the resources
@@ -207,52 +203,83 @@ class Clearinghouse(object):
         result['urn'] = urn
         return result
 
+    # FIXME: Change that URN to be a name and non-optional
+    # Currently client.py doesnt supply it, and
+    # Omni takes a name and constructs a URN to supply
     def CreateSlice(self, urn_req = None):
         self.logger.info("Called CreateSlice URN REQ %r" % urn_req)
+        slice_gid = None
+
         if urn_req and self.slices.has_key(urn_req):
-            # FIXME: If the Slice has expired, treat this as
+            # If the Slice has expired, treat this as
             # a request to renew
-            return self.slices[urn_req].save_to_string()
+            slice_cred = self.slices[urn_req]
+            if slice_cred.expiration <= datetime.datetime.utcnow():
+                # Need to renew this slice
+                self.logger.info("CreateSlice on %r found existing cred that expired at %r - will renew", urn_req, slice_cred.expiration)
+                slice_gid = slice_cred.get_gid_object()
+            else:
+                self.logger.debug("Slice cred is still valid at %r until %r - return it", datetime.datetime.utcnow(), slice_cred.expiration)
+                return slice_cred.save_to_string()
         
-        # FIXME: Validate urn_req has the right form
-        # to be issued by this CH
-
-        # Create a random uuid for the slice
-        slice_uuid = uuid.uuid4()
-
+        # First ensure we have a slice_urn
         if urn_req:
-            urn = urn_req
+            # FIXME: Validate urn_req has the right form
+            # to be issued by this CH
+            if not is_valid_urn(urn_req):
+                # FIXME: make sure it isnt empty, etc...
+                urn = publicid_to_urn(urn_req)
+            else:
+                urn = urn_req
         else:
+            # Generate a unique URN for the slice
+            # based on this CH location and a UUID
+
             # Where was the slice created?
             (ipaddr, port) = self._server.socket._sock.getsockname()
             # FIXME: Get public_id start from a properties file
-            public_id = 'IDN %s slice %s//%s:%d' % (SLICEPUBID_PREFIX, slice_uuid.__str__()[4:12],
+            # Create a unique name for the slice based on uuid
+            slice_name = uuid.uuid4().__str__()[4:12]
+            public_id = 'IDN %s slice %s//%s:%d' % (SLICE_AUTHORITY, slice_name,
                                                                    ipaddr,
                                                                    port)
             # this func adds the urn:publicid:
             # and converts spaces to +'s, and // to :
             urn = publicid_to_urn(public_id)
 
-        # Create a credential authorizing this user to use this slice.
-        slice_gid = self.create_slice_gid(slice_uuid, urn)[0]
+        # Now create a GID for the slice (signed credential)
+        if slice_gid is None:
+            try:
+                slice_gid = create_gid(string_to_urn_format(SLICE_AUTHORITY + " slice"), urn, self.keyfile, self.certfile)[0]
+            except Exception, exc:
+                import traceback
+                self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
+                raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)
 
+        # Now get the user GID which will have permissions on this slice.
         # Get client x509 cert from the SSL connection
         # It doesnt have the chain but should be signed
         # by this CHs cert, which should also be a trusted
         # root at any federated AM. So everyone can verify it as is.
         # Note that if a user from a different CH (installed
         # as trusted by this CH for some reason) called this method,
-        # that user would be used here - and can still get a valid slice.
-        user_gid = gid.GID(string=self._server.pem_cert)
+        # that user would be used here - and can still get a valid slice
+        try:
+            user_gid = gid.GID(string=self._server.pem_cert)
+        except Exception, exc:
+            import traceback
+            self.logger.error("CreateSlice failed to create user_gid from SSL client cert: %s", traceback.format_exc())
+            raise Exception("Failed to create slice %s. Cant get user GID from SSL client certificate." % urn, exc)
 
         # OK have a user_gid so can get a slice credential
+        # authorizing this user on the slice
         try:
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid)
-        except Exception:
+        except Exception, exc:
             import traceback
-            self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid, slice_gid, traceback.format_exc())
-            raise
+            self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid.get_hrn(), slice_gid.get_hrn(), traceback.format_exc())
+            raise Exception('CreateSlice failed to get slice credential for user %r, slice %r' % (user_gid.get_hrn(), slice_gid.get_hrn()), exc)
         self.logger.info('Created slice %r' % (urn))
         
         self.slices[urn] = slice_cred
@@ -263,29 +290,17 @@ class Clearinghouse(object):
         self.logger.info("Called DeleteSlice %r" % urn_req)
         if self.slices.has_key(urn_req):
             self.slices.pop(urn_req)
+            self.logger.info("Deleted slice")
             return True
         self.logger.info('Slice was not found')
         # Slice not found!
+        # FIXME: Raise an error so client knows why this failed?
         return False
 
     def ListAggregates(self):
         self.logger.info("Called ListAggregates")
         # TODO: Allow dynamic registration of aggregates
         return self.aggs
-    
-    def create_slice_gid(self, subject, slice_urn):
-        # FIXME: Validate the slice_urn has the right prefix
-        # FIXME: subject is ignored?
-        newgid = gid.GID(create=True, subject=SLICE_GID_SUBJ, uuid=gid.create_uuid(), urn=slice_urn)
-        keys = cert.Keypair(create=True)
-        newgid.set_pubkey(keys)
-        issuer_key = cert.Keypair(filename=self.keyfile)
-        issuer_cert = gid.GID(filename=self.certfile)
-        newgid.set_issuer(issuer_key, cert=issuer_cert)
-        newgid.set_parent(issuer_cert)
-        newgid.encode()
-        newgid.sign()
-        return newgid, keys
     
     def CreateUserCredential(self, user_gid):
         '''Return string representation of a user credential
@@ -294,7 +309,12 @@ class Clearinghouse(object):
         # FIXME: Validate arg - non empty, my user
         user_gid = gid.GID(string=user_gid)
         self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
-        ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile)
+        try:
+            ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile)
+        except Exception, exc:
+            import traceback
+            self.logger.error("Failed to create user credential for %s: %s", user_gid.get_hrn(), traceback.format_exc())
+            raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
         return ucred.save_to_string()
     
     def create_slice_credential(self, user_gid, slice_gid):
