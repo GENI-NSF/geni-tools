@@ -302,7 +302,13 @@ class ReferenceAggregateManager(object):
 
         # Optionally compress the result
         if 'geni_compressed' in options and options['geni_compressed']:
-            result = base64.b64encode(zlib.compress(result))
+            try:
+                result = base64.b64encode(zlib.compress(result))
+            except Exception, exc:
+                import traceback
+                self.logger.error("Error compressing and encoding resource list: %s", traceback.format_exc())
+                raise Exception("Server error compressing resource list", exc)
+
         return result
 
     # The list of credentials are options - some single cred
@@ -347,7 +353,14 @@ class ReferenceAggregateManager(object):
 
         resources = list()
         for elem in rspec_dom.documentElement.childNodes:
-            resource = Resource.fromdom(elem)
+            resource = None
+            try:
+                resource = Resource.fromdom(elem)
+            except Exception, exc:
+                import traceback
+                self.logger.warning("Failed to parse resource from RSpec dom: %s", traceback.format_exc())
+                raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+
             if resource not in self._resources:
                 self.logger.info("Requested resource %d not available" % resource._id)
                 raise Exception('Resource %d not available' % resource._id)
