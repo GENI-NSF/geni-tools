@@ -80,7 +80,7 @@ Instructions
 
 1. Generate keys and certificates for your users, clearinghouse, and aggregate manager.
 
- $ src/gen-certs.py
+ $ python src/gen-certs.py
 
  This  creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
@@ -101,7 +101,7 @@ Optional: Create a directory containing all known and trusted (federated)
 
 2. Start the clearinghouse server:
 
- $ src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
+ $ python src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
    	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
  The optional -r argument could be a file with the GCF CH certificate. 
@@ -134,7 +134,7 @@ Optional: Create a directory containing all known and trusted (federated)
  
 3. Start the aggregate manager server:
 
- $ src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
+ $ python src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
    	      -c am-cert.pem -k am-key.pem
 
  NOTE: The -r ch-cert.pem is a file name with the CH cert, or
@@ -151,7 +151,7 @@ Optional: Create a directory containing all known and trusted (federated)
 
 4. Run the GCF installation testing client:
 
- $ src/client.py -c alice-cert.pem -k alice-key.pem \
+ $ python src/client.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/
 
  The output should show some basic API testing, and possibly some

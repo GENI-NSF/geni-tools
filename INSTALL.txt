@@ -14,7 +14,7 @@ You must have macports already installed.
 % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
 % cd /opt/local/lib
 % sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
-% echo'export DYLD_LIBRARY_PATH=/opt/local/lib' > ~/.bash_profile
+% echo 'export DYLD_LIBRARY_PATH=/opt/local/lib' >> ~/.bash_profile
 Then open a new terminal
 
 
@@ -31,16 +31,14 @@ running in this environment.
 # in terminal one:
 % cd gcf
 % src/gen-certs.py
-% src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
-   	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
+% python src/gch.py -r ch-cert.pem -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
 # Run the GENI Aggregate Manager in a second terminal:
-%  src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
-   	      -c am-cert.pem -k am-key.pem
+% python src/gam.py -r ch-cert.pem -c am-cert.pem -k am-key.pem
 
 
 # Run the client test script in a third terminal window:
-% src/client.py -c alice-cert.pem -k alice-key.pem \
+% python src/client.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/
 
 
