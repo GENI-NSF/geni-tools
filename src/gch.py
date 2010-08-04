@@ -77,7 +77,7 @@ def parse_args(argv):
     # Note: A CH that only wants to talk to its own users doesn't need
     # this argument. It works if it just trusts its own cert.
     # Supplying this arg allows users of other frameworks to create slices on this CH.
-    parser.add_option("-r", "--rootcafile", default=None
+    parser.add_option("-r", "--rootcafile", default=None,
                       help="Optional Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
     parser.add_option("-g", "--aggfile", default="geni_aggregates",
                       help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
