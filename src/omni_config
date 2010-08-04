@@ -11,16 +11,20 @@
 
 
 [omni]
-# The default control framework for omni to use
+# The default control framework for omni to use.
+# Override on the commandline with -f argument.
 # This should be the name of a section that you define below
+# Note you could have multiple instances of the same type
+# configured, EG for different MyPLC instances.
 default_cf = my_sfa
 
 # The slice_users argument in "CreateSliver".  It uploads
 # names and public ssh keys to allocated resources for login.
+# Details on users should be defined in sections below
 users = Alice, Bob
 
-
-
+# ==================================
+# Configure Control Frameworks here
 
 # At least one framework section (sfa/pg/gcf) needs to be filled out
 # and pointed to by default_cf
@@ -54,8 +58,6 @@ slicemgr=http://www.planet-lab.org:12347
 
 
 
-
-
 [my_gcf]
 type=gcf
 
@@ -67,10 +69,6 @@ ch=https://localhost:8000
 
 cert=~/.omni/alice-cert.pem
 key=~/.omni/alice-key.pem
-
-
-
-
 
 
 
@@ -86,7 +84,12 @@ cert=~/.omni/encrypted.pem
 key=~/.omni/pgcert.pem
 
 
+# ===================================
+# Define users here.
 
+# Per above, these are the users of the slices, to tell
+# aggregates who care who will be logging in and how
+# See CreateSliver API call.
 
 
 
@@ -94,6 +97,10 @@ key=~/.omni/pgcert.pem
 name=Alice Person
 # The URN given to Alice by her control framework
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
+# The SSH public key to install for Alice to allow
+# Alice to log in to the allocated resource.
+# This field can be empty for many control frameworks,
+# but should be supplied.
 key=~/.omni/alice.pub
 
 
