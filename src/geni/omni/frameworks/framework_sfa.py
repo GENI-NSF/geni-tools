@@ -27,8 +27,10 @@ import os
 import time
 import sys
 
+# FIXME: Use the constant from namespace
 URN_PREFIX = "urn:publicid:IDN"
 
+# FIXME: Use sfa util code!
 def urn_to_hrn(urn):
     """
     convert a urn to hrn
@@ -173,6 +175,8 @@ class Framework(Framework_Base):
 
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
+        # FIXME: Use constant from SFA util code
+        # FIXME: use something like credential.publicid_to_urn
         base = 'urn:publicid:IDN+'
         auth = self.config['authority'].replace('.',':')
 

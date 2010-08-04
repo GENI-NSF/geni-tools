@@ -75,7 +75,9 @@ class Framework(Framework_Base):
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
+        # FIXME: Use constants
         base = 'urn:publicid:IDN+'
+        # FIXME: Validate name from credential.publicid_to_urn
 
         # Old OMNI configs did not have authority specified,
         # all we can do with those is append the name to the base        

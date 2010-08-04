@@ -130,6 +130,10 @@ class Framework(Framework_Base):
         #   urn:publicid:IDN+pgeni3.gpolab.bbn.com+slice+tom1
         #   urn:publicid:IDN+elabinelab.geni.emulab.net+slice+tom1
         #
+
+        # FIXME: Use credential.publicid_to_urn or similar
+        # and take out this base constant - ugly
+
         base = 'urn:publicid:IDN+'
         url = urlparse(self.config['sa'])
         sa_host = url.hostname
