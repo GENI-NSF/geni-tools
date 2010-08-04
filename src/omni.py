@@ -280,9 +280,12 @@ class CallHandler(object):
         # Connect to each available GENI AM 
         for client in self._getclients():
             try:
-                client.DeleteSliver(urn, [slice_cred])
+                if client.DeleteSliver(urn, [slice_cred]):
+                    print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
+                else:
+                    print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
-                print "Failed to delete sliver %s on %s (%s)" %(urn, client.urn, client.url)
+                print "Failed to delete sliver %s on %s (%s)" % (urn, client.urn, client.url)
                 logger = logging.getLogger('omni')
                 logger.debug(str(exc))
             
@@ -356,9 +359,13 @@ class CallHandler(object):
         slice_cred = self.framework.get_slice_cred(urn)
         for client in self._getclients():
             try:
-                client.Shutdown(urn, [slice_cred])
+                if client.Shutdown(urn, [slice_cred]):
+                    print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
+                else:
+                    print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
                 print "Failed to shutdown %s on AM %s at %s: %s" % (urn, client.urn, client.url, exc)
+
     
     def getversion(self, args):
         for client in self._getclients():
@@ -377,7 +384,11 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        self.framework.create_slice(urn)
+        slice_cred = self.framework.create_slice(urn)
+        if slice_cred:
+            print "Created slice with Name %s, URN %s" % (name, urn)
+        else:
+            print "Create Slice failed"
         
     def deleteslice(self, args):
         if len(args) == 0:
