@@ -65,8 +65,8 @@ authority=geni.net:gpo:gcf
 # Where the gch server is listening
 ch=https://localhost:8000
 
-cert=~/.omni/gcf.jkarlin.cert
-key=~/.omni/gcf.jkarlin.pkey
+cert=~/.omni/alice-cert.pem
+key=~/.omni/alice-key.pem
 
 
 
