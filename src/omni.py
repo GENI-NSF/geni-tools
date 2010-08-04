@@ -58,7 +58,7 @@ import sys
 import zlib
 
 import dateutil.parser
-
+from ConfigParser import RawConfigParser
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
@@ -83,17 +83,19 @@ class CallHandler(object):
     renewsliver, sliverstatus, shutdown
     """
 
-    def __init__(self, framework, frame_config, omni_config):
+    def __init__(self, framework, config):
         self.framework = framework    
-        self.frame_config = frame_config
-        self.omni_config = omni_config
-        frame_config['cert'] = getAbsPath(frame_config['cert'])
-        if not os.path.exists(frame_config['cert']):
-            sys.exit('Frameworks certfile %s doesnt exist' % frame_config['cert'])
+        self.frame_config = config['selected_framework']
+        self.omni_config = config['omni']
+        self.config = config
+        
+        self.frame_config['cert'] = getAbsPath(self.frame_config['cert'])
+        if not os.path.exists(self.frame_config['cert']):
+            sys.exit("Frameworks certfile %s doesn't exist" % self.frame_config['cert'])
 
-        frame_config['key'] = getAbsPath(frame_config['key'])
-        if not os.path.exists(frame_config['key']):
-            sys.exit('Frameworks keyfile %s doesnt exist' % frame_config['key'])
+        self.frame_config['key'] = getAbsPath(self.frame_config['key'])
+        if not os.path.exists(self.frame_config['key']):
+            sys.exit("Frameworks keyfile %s doesn't exist" % self.frame_config['key'])
 
     def _handle(self, args):
         if len(args) == 0:
@@ -219,20 +221,21 @@ class CallHandler(object):
         
         
         # Copy the user config and read the keys from the files into the structure
-        slice_users = copy(self.omni_config['slice_users'])
+        slice_users = copy(self.config['users'])
+
+        #slice_users = copy(self.omni_config['slice_users'])
         for user in slice_users:
             newkeys = []
-            required = ['name', 'urn', 'keys']
+            required = ['name', 'urn', 'key']
             for req in required:
                 if not req in user:
                     raise Exception("%s in omni_config is not specified for user %s" % (req,user))
 
-            for f in user['keys']:
-                try:
-                    newkeys.append(file(os.path.expanduser(f)).read())
-                except Exception, exc:
-                    logger = logging.getLogger('omni')
-                    logger.debug("Failed to read user key from %s: %s", f, exc)
+            try:
+                newkeys.append(file(os.path.expanduser(user['key']).read()))
+            except Exception, exc:
+                logger = logging.getLogger('omni')
+                logger.debug("Failed to read user key from %s: %s" %(user['key'], exc))
             user['keys'] = newkeys
         
         # Anything we need to allocate?
@@ -443,7 +446,8 @@ def main(argv=None):
     configure_logging(opts)
 
     logger = logging.getLogger('omni')
-    # Load up the JSON formatted config file
+
+    # Load up the config file
     filename = os.path.expanduser(opts.configfile)
 
     if not os.path.exists(filename):
@@ -451,33 +455,48 @@ def main(argv=None):
 
     logger.debug("Loading config file %s", filename)
 
-    # Filter comments out of the config file
-    lines = file(filename,'r').readlines()
-    buffer = ''
-    for line in lines:        
-        if '#' in line:
-            # If the '#' is past the last quote, then we consider it a comment
-            if line.rfind('#') > line.rfind('"'):
-                line = line[0:line.rfind('#')] + '\n'
-        buffer += line
-    config = json.loads(buffer)
+    confparser = RawConfigParser()
+    confparser.read(filename)
+
+    config = {}
+    
+
+    # Load up the omni options
+    config['omni'] = {}
+    for (key,val) in confparser.items('omni'):
+        config['omni'][key] = val
         
-        
+    # Load up the users the user wants us to see        
+    config['users'] = []
+    for user in config['omni']['users'].split(','):
+        d = {}
+        for (key,val) in confparser.items(user.strip()):
+            d[key] = val
+        config['users'].append(d)
+
+    # Load up the framework section
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
 
-    logger.info( 'Using control framework %s' % opts.framework)
-        
-    # Dynamically load the selected control framework
-    cf = opts.framework.lower()
-    if config[cf] is None:
-        sys.exit('Missing config for CF %s' % cf)
+    logger.info("Using control framework %s" % opts.framework)
 
-    framework_mod = __import__('geni.omni.frameworks.framework_%s' % cf, fromlist=['geni.omni.frameworks'])
-    framework = framework_mod.Framework(config[cf])
+    # Find the control framework
+    cf = opts.framework.strip()
+    if not confparser.has_section(cf):
+        sys.exit('Missing framework %s in configuration file' % cf)
+    
+    # Copy the control framework into a dictionary
+    config['selected_framework'] = {}
+    for (key,val) in confparser.items(cf):
+        config['selected_framework'][key] = val
+        
+    cf_type = config['selected_framework']['type']
+
+    framework_mod = __import__('geni.omni.frameworks.framework_%s' % cf_type, fromlist=['geni.omni.frameworks'])
+    framework = framework_mod.Framework(config['selected_framework'])
         
     # Process the user's call
-    handler = CallHandler(framework, config[cf], config['omni'])    
+    handler = CallHandler(framework, config)    
     handler._handle(args)
         
         

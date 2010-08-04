@@ -90,8 +90,8 @@ Running Omni -
 
 -c FILE -- location of your config file (default ~/.omni/omni_config)
 
--f FRAMEWORK -- control framework to use (e.g. sfa), overiding default
- in config file
+-f FRAMEWORK -- control framework to use (e.g. my_sfa), overiding default
+ in config file.  The framework is a section named in the config file.
 
 --debug -- Enable debug output
 
