@@ -63,11 +63,8 @@ SLICE_CRED_LIFE = 3600
 # ELABINELABAM = ('urn:publicid:IDN+elabinelab.geni.emulab.net',
 #                 'https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/am')
 
-class ClearinghouseServer(object):
-    """The public API for the Clearinghouse.  This class provides the
-    XMLRPC interface and invokes a delegate for all the operations.
-
-    """
+class SampleClearinghouseServer(object):
+    """A sample clearinghouse with barebones functionality."""
 
     def __init__(self, delegate):
         self._delegate = delegate
@@ -75,20 +72,6 @@ class ClearinghouseServer(object):
     def GetVersion(self):
         return self._delegate.GetVersion()
 
-    def Resolve(self, urn):
-        return self._delegate.Resolve(urn)
-    
-
-
-class SampleClearinghouseServer(ClearinghouseServer):
-    """Add Additional functionality that is not part of the geni API
-    specification.
-
-    """
-
-    def __init__(self, delegate):
-        self._delegate = delegate
-        
     def CreateSlice(self, urn=None):
         return self._delegate.CreateSlice(urn_req=urn)
 
@@ -192,16 +175,8 @@ class Clearinghouse(object):
     def GetVersion(self):
         self.logger.info("Called GetVersion")
         version = dict()
-        version['geni_api'] = 1
-        version['pg_api'] = 2
-        version['geni_stitching'] = False
+        version['gch_api'] = 1
         return version
-
-    def Resolve(self, urn):
-        self.logger.info("Called Resolve URN %s" % urn)
-        result = dict()
-        result['urn'] = urn
-        return result
 
     # FIXME: Change that URN to be a name and non-optional
     # Currently client.py doesnt supply it, and

@@ -112,7 +112,7 @@ Running Omni -
 
 
 ** deleteslice
-- format:  omni.py deleteslice <slice urn>
+- format:  omni.py deleteslice <slice urn> 
 - example: omni.py deleteslice <plc:gpo:site+slice+foobar>
            Shorthand notation is also available (e.g., 'foobar')
 
@@ -120,9 +120,12 @@ Running Omni -
 
 
 ** listresources
-- format:  omni.py listresources <optional slice urn>
-- example: omni.py listresources <plc:gpo:site+slice+foobar>
-
+- format:  omni.py listresources <optional slice urn> <optional AM URL 1> <AM URL 2> ... <AM URL n>
+- example: omni.py listresources
+		   omni.py listresources plc:gpo:site+slice+foobar
+  		   omni.py listresources foobar http://localhost:12348
+  		   omni.py listresources http://localhost:12348 http://myplc4.gpolab.bbn.com:12348
+  		   
   This command will list the rspecs of all geni aggregates available
   through your chosen framework, and present them in omnispec form.
   Save the result to a file and edit the allocate value to true
@@ -130,6 +133,8 @@ Running Omni -
   createsliver.
   If a slice urn is supplied, then resources for that slice only 
   will be displayed.
+  If one or more Aggregate Manager URLs are supplied, only resources
+  from those AMs will be listed.
 
 
 

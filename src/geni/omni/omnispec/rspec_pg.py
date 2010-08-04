@@ -35,7 +35,7 @@ ONE_NODE_RSPEC = """
 </rspec>
 """
 
-def can_translate(urn, rspec):
+def can_translate(rspec):
     """Determine if I can translate the given rspec from the aggregate
     manager with the given URN.
      
@@ -43,7 +43,6 @@ def can_translate(urn, rspec):
     
     """
     logger = logging.getLogger('omni.omnispec.rspec.pg')
-    logger.debug('urn = %r', urn)
     # The URN is not sufficiently distinguished so we have to look at
     # the rspec itself. We should really parse it and pull some
     # information out of the 'rspec' tag. But that is probably expensive

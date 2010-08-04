@@ -25,10 +25,8 @@ import xml.etree.ElementTree as ET
 
 # FIXME: extract geni.net:gpo constant, others
 
-def can_translate(urn, rspec):
-    if urn.split('+')[1].lower().startswith('geni.net:gpo'):
-        return True
-    return False
+def can_translate(rspec):
+    return rspec.startswith('<rspec type="GCF"')
 
 
 

@@ -24,10 +24,8 @@ from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
 
 
-def can_translate(urn, rspec):
-    if urn.split('+')[1].lower().startswith('plc'):
-        return True
-    return False
+def can_translate(rspec):
+    return '<RSpec type="SFA">' in rspec
 
 
 def rspec_to_omnispec(urn, rspec):

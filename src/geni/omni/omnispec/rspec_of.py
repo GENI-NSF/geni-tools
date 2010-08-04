@@ -36,8 +36,8 @@ from sfa.util.sfalogging import logger
 from copy import deepcopy
 import sys
 
-def can_translate(urn, rspec):
-    if urn.split('+')[1].lower().startswith('openflow'):
+def can_translate(rspec):
+    if rspec.startswith('<rspec>') and 'openflow' in rspec and '<switches>' in rspec:
         return True
     return False
 
