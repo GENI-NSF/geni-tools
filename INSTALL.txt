@@ -29,22 +29,22 @@ running in this environment.
 
 # Create certificates and run the GENI Clearinghouse
 # in terminal one:
-% cd gcf
-% src/gen-certs.py
-% python src/gch.py -r ch-cert.pem -c ch-cert.pem -k ch-key.pem -g geni_aggregates
+$ cd gcf
+$ python src/gen-certs.py
+$ python src/gch.py -r ch-cert.pem -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
 # Run the GENI Aggregate Manager in a second terminal:
-% python src/gam.py -r ch-cert.pem -c am-cert.pem -k am-key.pem
+$ python src/gam.py -r ch-cert.pem -c am-cert.pem -k am-key.pem
 
 
 # Run the client test script in a third terminal window:
-% python src/client.py -c alice-cert.pem -k alice-key.pem \
+$ python src/client.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/
 
 
 You should see something like this:
 
-jkarlin@rabbit:~/dev/gcf$ src/client.py -c alice-cert.pem -k alice-key.pem \
+$ python src/client.py -c alice-cert.pem -k alice-key.pem \
 >      --ch https://localhost:8000/ --am https://localhost:8001/
 INFO:client:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
 INFO:client:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
