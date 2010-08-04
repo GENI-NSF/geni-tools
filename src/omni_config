@@ -38,6 +38,7 @@ users = Alice, Bob
 type=sfa
 
 # HRN of your MyPLC or PLC (e.g., plc.princeton) site
+# Available in the Issuer CN of your user cert
 authority=plc.bbn
 
 # Your planetlab username
@@ -94,8 +95,10 @@ key=~/.omni/pgcert.pem
 
 
 [Alice]
+# Name of the user - anything
 name=Alice Person
 # The URN given to Alice by her control framework
+# EG run openssl x509 -in [user cert file] -text and look at the Subject CN
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 # The SSH public key to install for Alice to allow
 # Alice to log in to the allocated resource.
