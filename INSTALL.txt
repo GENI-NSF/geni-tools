@@ -14,9 +14,9 @@ You must have macports already installed.
 % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
 % cd /opt/local/lib
 % sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
-% echo 'export DYLD_LIBRARY_PATH=/opt/local/lib' >> ~/.bash_profile
-Then open a new terminal
 
+# In each terminal that you wish to run GCF, run this command first for xmlsec1:
+% export DYLD_LIBRARY_PATH=/opt/local/lib
 
 Windows/Cygwin: 
 The necessary libraries are likely available but we have no experience
