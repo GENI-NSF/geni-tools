@@ -28,6 +28,7 @@ import os
 import logging
 import re
 import xmlrpclib
+import sys
 
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
@@ -97,7 +98,7 @@ class CredentialVerifier(object):
             files = os.listdir(root_cert_file)
             self.root_cert_files = []
             for file in files:
-                # FIXME: exclude files that arent cert files? The combo cert file?
+                # FIXME: exclude files that aren't cert files? The combo cert file?
                 if file == CredentialVerifier.CATEDCERTSFNAME:
                     continue
                 self.root_cert_files.append(os.path.expanduser(os.path.join(root_cert_file, file)))
@@ -230,7 +231,7 @@ class CredentialVerifier(object):
             raise xmlrpclib.Fault(fault_code, fault_string)
 
 
-def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfile, issuer_certfile):
+def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfile, issuer_certfile, trusted_roots):
     '''Create and Return a Credential object issued by given key/cert for the given caller
     and object GID objects, given life in seconds, and given type.
     Privileges are determined by type per sfa/trust/rights.py'''
@@ -243,6 +244,8 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
         raise ValueError("Missing Object GID")
     if life_secs is None or life_secs < 1:
         raise ValueError("Credential life in seconds was 0")
+    if trusted_roots is None:
+        raise ValueError("Missing list of trusted roots")
 
     if typename is None or typename.strip() == '':
         raise ValueError("Missing credential type")
@@ -276,6 +279,10 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     ucred.encode()
     ucred.set_issuer_keys(issuer_keyfile, issuer_certfile)
     ucred.sign()
+    
+    if not ucred.verify(trusted_roots):
+        raise Exception("Created credential does not verify.  Perhaps the target URN is not in the authority's namespace?")
+
     return ucred
 
 def create_gid(gid_subject, gid_urn, issuer_keyfile, issuer_certfile):

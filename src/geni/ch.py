@@ -130,6 +130,8 @@ class Clearinghouse(object):
             ca_certs = certfile
             self.logger.info("Using only my CH cert as a trusted root cert")
 
+        self.trusted_root_files = CredentialVerifier(ca_certs).root_cert_files
+            
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
 
@@ -285,7 +287,7 @@ class Clearinghouse(object):
         user_gid = gid.GID(string=user_gid)
         self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
         try:
-            ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile)
+            ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile, self.trusted_root_files)
         except Exception, exc:
             import traceback
             self.logger.error("Failed to create user credential for %s: %s", user_gid.get_hrn(), traceback.format_exc())
@@ -296,5 +298,5 @@ class Clearinghouse(object):
         '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        return create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile)
+        return create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
 
