@@ -664,8 +664,14 @@ class Credential(object):
 
         # Verify the gids of this cred and of its parents
         for cur_cred in self.get_credential_list():
-            cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
-            cur_cred.get_gid_caller().verify_chain(trusted_cert_objects) 
+            try:
+                cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
+            except:
+                raise Exception("Target Certificate of Credential is not verifiable with given certificates")
+            try:
+                cur_cred.get_gid_caller().verify_chain(trusted_cert_objects) 
+            except:
+                raise Exception("Owner Certificate of Credential is not verifiable with given certificates")
 
         refs = []
         refs.append("Sig_%s" % self.get_refid())

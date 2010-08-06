@@ -259,6 +259,17 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     if not os.path.isfile(issuer_certfile):
         raise ValueError("Cant read issuer cert file %s" % issuer_certfile)
 
+    issuer_gid = gid.GID(filename=issuer_certfile)
+    
+    if not (object_gid.get_urn() == issuer_gid.get_urn() or 
+        (issuer_gid.get_type() == 'authority' and 
+         object_gid.get_urn().split('+')[1].startswith(issuer_gid.get_urn().split('+')[1]))):
+        raise ValueError("Issuer not authorized to issue credential: Issuer=%s  Target=%s" % (issuer_gid.get_urn(), object_gid.get_urn()))
+    
+
+
+
+
     ucred = cred.Credential()
     # FIXME: Validate the caller_gid and object_gid
     # are my user and slice
@@ -280,8 +291,10 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     ucred.set_issuer_keys(issuer_keyfile, issuer_certfile)
     ucred.sign()
     
-    if not ucred.verify(trusted_roots):
-        raise Exception("Created credential does not verify.  Perhaps the target URN is not in the authority's namespace?")
+    try:
+        ucred.verify(trusted_roots)
+    except Exception, exc:
+        raise Exception("Create Credential failed: %s" % exc)
 
     return ucred
 
