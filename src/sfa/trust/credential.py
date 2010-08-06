@@ -745,7 +745,8 @@ class Credential(object):
 
         # Give up, credential does not pass issuer verification
 
-        raise CredentialNotVerifiable("Could not verify credential owned by %s for object %s. Cred signer %s not the trusted authority for Cred target %s" % (self.gidCaller.get_urn(), self.gidObject.get_urn(), root_cred_signer.get_hrn(), root_target_gid.get_hrn()))
+        raise Exception("Credential issuer (%s) not allowed to issue credential for target (%s)." % (root_cred_signer.get_urn(),root_target_gid.get_urn()))
+        #raise CredentialNotVerifiable("Could not verify credential owned by %s for object %s. Cred signer %s not the trusted authority for Cred target %s" % (self.gidCaller.get_urn(), self.gidObject.get_urn(), root_cred_signer.get_hrn(), root_target_gid.get_hrn()))
 
 
     ##
