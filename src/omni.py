@@ -481,7 +481,7 @@ def main(argv=None):
         for (key,val) in confparser.items(user.strip()):
             d[key] = val
         config['users'].append(d)
-
+    print config['users']
     # Load up the framework section
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
