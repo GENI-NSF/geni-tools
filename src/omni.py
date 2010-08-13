@@ -418,6 +418,11 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         cred = self.framework.get_slice_cred(urn)
         print cred
+        
+    def listaggregates(self, args):
+        """Print the aggregates federated with the control framework."""
+        for (urn, url) in self._listaggregates([]).items():
+            print "%s: %s" % (urn, url)
 
 
 def parse_args(argv):
