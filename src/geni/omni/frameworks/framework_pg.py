@@ -180,7 +180,7 @@ class Framework(Framework_Base):
             return response['value']
 
     def delete_slice(self, urn):
-        raise Exception("delete_slice is not implemented.")
+        raise Exception("ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.")
 
     def list_aggregates(self):
         if self.aggs:
