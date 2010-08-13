@@ -69,6 +69,9 @@ class Framework(Framework_Base):
         self.sa = make_client(self.config['sa'], self.config['key'],
                               self.config['cert'], self.config['verbose'])
         self.user_cred = None
+        
+        # For now, no override aggregates.
+        self.aggs = None
         # Hardcode the PG in ELab instance because it does not
         # show up in the clearinghouse.
         #self.aggs = {
@@ -180,7 +183,8 @@ class Framework(Framework_Base):
             return response['value']
 
     def delete_slice(self, urn):
-        raise Exception("ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.")
+        # It appears that delete_slice should return something. I'll return a string.
+        return 'ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.'
 
     def list_aggregates(self):
         if self.aggs:
