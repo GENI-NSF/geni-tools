@@ -123,6 +123,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
     manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
                                          request_rspec.toxml(), users)
     # TODO: verify manifest_rspec
+    logging.getLogger('client').debug(manifest_rspec)
     print 'passed'
 
 def test_delete_sliver(server, slice_urn, slice_credential):

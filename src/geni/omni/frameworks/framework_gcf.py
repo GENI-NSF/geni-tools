@@ -46,7 +46,7 @@ class Framework(Framework_Base):
         if self.user_cred == None:
             try:
                 self.user_cred = self.ch.CreateUserCredential(self.cert_string)
-            except Exception as exc:
+            except Exception:
                 raise Exception("Using GCF Failed to do CH.CreateUserCredentials on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
         return self.user_cred
     
@@ -63,7 +63,7 @@ class Framework(Framework_Base):
         sites = []
         try:
             sites = self.ch.ListAggregates()
-        except Exception as exc:
+        except Exception:
             raise Exception("Using GCF Failed to do CH.ListAggregates on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
         aggs = {}
         for (urn, url) in sites:

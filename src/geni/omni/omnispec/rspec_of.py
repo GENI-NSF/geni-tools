@@ -32,7 +32,6 @@
 
 from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
-from sfa.util.sfalogging import logger
 from copy import deepcopy
 import sys
 

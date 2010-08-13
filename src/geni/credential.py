@@ -131,7 +131,7 @@ class CredentialVerifier(object):
         #              source_urn, cred_source_urn, credential.get_gid_object().get_urn())
         result = (cred_source_urn == source_urn)
         if result:
-         #   self.logger.debug('Source URNs match')
+            #   self.logger.debug('Source URNs match')
             pass
         else:
             self.logger.debug('Source URNs do not match. Source URN %r != credential source URN %r', source_urn, cred_source_urn)
@@ -147,8 +147,8 @@ class CredentialVerifier(object):
             return True
         else:
             cred_target_urn = credential.get_gid_object().get_urn()
-           # self.logger.debug('Verifying target %r against credential target %r',
-           #               target_urn, cred_target_urn)
+            # self.logger.debug('Verifying target %r against credential target %r',
+            #               target_urn, cred_target_urn)
             result = target_urn == cred_target_urn
             if result:
             #    self.logger.debug('Target URNs match.')

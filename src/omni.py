@@ -213,7 +213,7 @@ class CallHandler(object):
         try:
             jspecs = json.loads(file(specfile,'r').read())
         except Exception, exc:
-             sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
+            sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
 
         omnispecs = {}
         for url, spec_dict in jspecs.items():

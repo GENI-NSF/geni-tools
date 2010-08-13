@@ -31,6 +31,7 @@ list of aggregates read from a config file, and create a new Slice Credential.
 import datetime
 import logging
 import os
+import traceback
 import uuid
 
 from SecureXMLRPCServer import SecureXMLRPCServer
@@ -229,7 +230,6 @@ class Clearinghouse(object):
             try:
                 slice_gid = create_gid(string_to_urn_format(SLICE_AUTHORITY + " slice"), urn, self.keyfile, self.certfile)[0]
             except Exception, exc:
-                import traceback
                 self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
                 raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)
 
@@ -244,7 +244,6 @@ class Clearinghouse(object):
         try:
             user_gid = gid.GID(string=self._server.pem_cert)
         except Exception, exc:
-            import traceback
             self.logger.error("CreateSlice failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to create slice %s. Cant get user GID from SSL client certificate." % urn, exc)
 
@@ -254,7 +253,6 @@ class Clearinghouse(object):
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid)
         except Exception, exc:
-            import traceback
             self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid.get_hrn(), slice_gid.get_hrn(), traceback.format_exc())
             raise Exception('CreateSlice failed to get slice credential for user %r, slice %r' % (user_gid.get_hrn(), slice_gid.get_hrn()), exc)
         self.logger.info('Created slice %r' % (urn))
@@ -289,7 +287,6 @@ class Clearinghouse(object):
         try:
             ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile, self.trusted_root_files)
         except Exception, exc:
-            import traceback
             self.logger.error("Failed to create user credential for %s: %s", user_gid.get_hrn(), traceback.format_exc())
             raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
         return ucred.save_to_string()
