@@ -59,16 +59,12 @@ class Framework_Base():
         """
         raise NotImplementedError('create_slice')
 
-        return self.get_slice_cred(urn)
-    
     def delete_slice(self, urn):
         """
         Removes the slice from the control framework.
         """
         raise NotImplementedError('delete_slice')
 
-        self.ch.DeleteSlice(urn)
-     
     def list_aggregates(self):
         """
         Get a list of available GENI Aggregates from the control framework.
@@ -79,4 +75,4 @@ class Framework_Base():
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
         # Default implementation just converts to generic URN.
-        return namespace.long_urn(name)
+        raise NotImplementedError('slice_name_to_urn')
