@@ -21,9 +21,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import logging
 import xml.etree.ElementTree as ET
-from .omnispec import OmniSpec, OmniResource
+from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
 
 # This is an Unbound Request RSpec for testing.
 ONE_NODE_RSPEC = """
@@ -42,7 +41,6 @@ def can_translate(rspec):
     Returns True if it can be translated, False otherwise.
     
     """
-    logger = logging.getLogger('omni.omnispec.rspec.pg')
     # The URN is not sufficiently distinguished so we have to look at
     # the rspec itself. We should really parse it and pull some
     # information out of the 'rspec' tag. But that is probably expensive

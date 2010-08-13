@@ -29,9 +29,8 @@ import sys
 from urlparse import urlparse
 import xmlrpclib
 
-from ..xmlrpc.client import make_client
-from ..util import namespace
-from framework_base import Framework_Base
+from geni.omni.xmlrpc.client import make_client
+from geni.omni.frameworks.framework_base import Framework_Base
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded

@@ -21,7 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from ..util import namespace
+from geni.omni.util import namespace
 
 class Framework_Base():
     """
