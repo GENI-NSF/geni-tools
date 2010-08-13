@@ -21,8 +21,6 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from geni.omni.util import namespace
-
 class Framework_Base():
     """
     Framework_Base is an abstract class that identifies the minimal set of functions
