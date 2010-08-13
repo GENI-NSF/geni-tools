@@ -56,9 +56,9 @@ import os
 import pprint
 import sys
 import zlib
+import ConfigParser
 
 import dateutil.parser
-from ConfigParser import RawConfigParser
 from geni.omni.xmlrpc.client import make_client
 from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from geni.omni.omnispec.omnispec import OmniSpec
@@ -455,13 +455,15 @@ def main(argv=None):
 
     logger.debug("Loading config file %s", filename)
 
-    confparser = RawConfigParser()
-    confparser.read(filename)
-
-    config = {}
-    
+    confparser = ConfigParser.RawConfigParser()
+    try:
+        confparser.read(filename)
+    except ConfigParser.Error as exc:
+        sys.exit("Config file %s could not be parsed: %s"
+                 % (filename, str(exc)))
 
     # Load up the omni options
+    config = {}
     config['omni'] = {}
     for (key,val) in confparser.items('omni'):
         config['omni'][key] = val
