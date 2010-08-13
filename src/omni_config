@@ -100,14 +100,13 @@ name=Alice Person
 # The URN given to Alice by her control framework
 # EG run openssl x509 -in [user cert file] -text and look at the Subject CN
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
-# The SSH public key to install for Alice to allow
+# The SSH public keys to install for Alice to allow
 # Alice to log in to the allocated resource.
-# This field can be empty for many control frameworks,
-# but should be supplied.
-key=~/.omni/alice.pub
+# Comma delimited.
+keys=~/.omni/alice.pub, ~/.omni/alice2.pub
 
 
 [Bob]
 name=Bob Sanders
 urn=urn:publicid:IDN+plc.bbn+user+bob
-key=~/.omni/bob.pub
+keys=~/.omni/bob.pub

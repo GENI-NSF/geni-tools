@@ -226,16 +226,17 @@ class CallHandler(object):
         #slice_users = copy(self.omni_config['slice_users'])
         for user in slice_users:
             newkeys = []
-            required = ['name', 'urn', 'key']
+            required = ['name', 'urn', 'keys']
             for req in required:
                 if not req in user:
                     raise Exception("%s in omni_config is not specified for user %s" % (req,user))
 
             try:
-                newkeys.append(file(os.path.expanduser(user['key']).read()))
+                for key in user['keys'].split(','):        
+                    newkeys.append(file(os.path.expanduser(key.strip())).read())
             except Exception, exc:
                 logger = logging.getLogger('omni')
-                logger.debug("Failed to read user key from %s: %s" %(user['key'], exc))
+                logger.debug("Failed to read user key from %s: %s" %(user['keys'], exc))
             user['keys'] = newkeys
         
         # Anything we need to allocate?
