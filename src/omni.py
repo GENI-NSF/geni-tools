@@ -165,6 +165,8 @@ class CallHandler(object):
                     logger.debug("Have null credentials in call to ListResources!")
                 logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
+                if options['geni_compressed']:
+                    rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
                 import traceback
