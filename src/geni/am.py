@@ -185,11 +185,18 @@ class AggregateManagerServer(object):
 
 class Resource(object):
     """A Resource has an id, a type, and a boolean indicating availability."""
+    
+    STATUS_CONFIGURING = 'configuring'
+    STATUS_READY = 'ready'
+    STATUS_FAILED = 'failed'
+    STATUS_UNKNOWN = 'unknown'
+    STATUS_SHUTDOWN = 'shutdown'
 
     def __init__(self, id, type):
         self._id = id
         self._type = type
         self.available = True
+        self.status = Resource.STATUS_UNKNOWN
 
     def urn(self):
         # User in SliverStatus
@@ -221,7 +228,28 @@ class Sliver(object):
         self.urn = urn
         self.resources = list()
         self.expiration = expiration
-
+        
+    def status(self):
+        """Determine the status of the sliver by examining the status
+        of each resource in the sliver.
+        """
+        # If any resource is 'shutdown', the sliver is 'shutdown'
+        # Else if any resource is 'failed', the sliver is 'failed'
+        # Else if any resource is 'configuring', the sliver is 'configuring'
+        # Else if all resources are 'ready', the sliver is 'ready'
+        # Else the sliver is 'unknown'
+        rstat = [res.status for res in self.resources]
+        if Resource.STATUS_SHUTDOWN in rstat:
+            return Resource.STATUS_SHUTDOWN
+        elif Resource.STATUS_FAILED in rstat:
+            return Resource.STATUS_FAILED
+        elif Resource.STATUS_CONFIGURING in rstat:
+            return Resource.STATUS_CONFIGURING
+        elif rstat == [Resource.STATUS_READY for res in self.resources]:
+            # All resources report status of ready
+            return Resource.STATUS_READY
+        else:
+            return Resource.STATUS_UNKNOWN
 
 class ReferenceAggregateManager(object):
     '''A reference Aggregate Manager that manages fake resources.'''
@@ -379,6 +407,7 @@ class ReferenceAggregateManager(object):
             sliver.resources.append(resource)
             self._resources.remove(resource)
             resource.available = False
+            resource.status = Resource.STATUS_READY
 
         self._slivers[slice_urn] = sliver
 
@@ -416,6 +445,7 @@ class ReferenceAggregateManager(object):
             self._resources.extend(sliver.resources)
             for resource in sliver.resources:
                 resource.available = True
+                resource.status = Resource.STATUS_UNKNOWN
             del self._slivers[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
             return True
@@ -450,13 +480,11 @@ class ReferenceAggregateManager(object):
                 # communicating with the resources, or simply
                 # reporting the state of initialized, started, stopped, ...
                 res_status.append(dict(geni_urn=res.urn(),
-                                       geni_status='ready',
+                                       geni_status=res.status,
                                        geni_error=''))
             self.logger.info("Calculated and returning sliver %r status" % slice_urn)
             return dict(geni_urn=sliver.urn,
-                        # TODO: need to calculate sliver status
-                        # as some kind of sum of the resource status
-                        geni_status='ready',
+                        geni_status=sliver.status(),
                         geni_resources=res_status)
         else:
             self.no_such_slice(slice_urn)
