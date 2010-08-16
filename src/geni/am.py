@@ -441,6 +441,10 @@ class ReferenceAggregateManager(object):
         # all needed privileges to act on the given target.
         if slice_urn in self._slivers:
             sliver = self._slivers[slice_urn]
+            if sliver.status() == Resource.STATUS_SHUTDOWN:
+                self.logger.info("Sliver %s not deleted because it is shutdown",
+                                 slice_urn)
+                return False
             # return the resources to the pool
             self._resources.extend(sliver.resources)
             for resource in sliver.resources:
@@ -506,6 +510,10 @@ class ReferenceAggregateManager(object):
             # If any credential will still be valid at the newly 
             # requested time, then we can do this.
             sliver = self._slivers.get(slice_urn)
+            if sliver.status() == Resource.STATUS_SHUTDOWN:
+                self.logger.info("Sliver %s not renewed because it is shutdown",
+                                 slice_urn)
+                return False
             requested = dateutil.parser.parse(str(expiration_time))
             lastexp = 0
             for cred in creds:
@@ -519,7 +527,7 @@ class ReferenceAggregateManager(object):
 
             # Fell through then no credential expires at or after
             # newly requested expiration time
-            self.logger.info("Cant renew sliver %r until %r cause none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
+            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
             # FIXME: raise an exception so the client knows what
             # really went wrong?
             return False
@@ -537,13 +545,13 @@ class ReferenceAggregateManager(object):
                                                         slice_urn,
                                                         privileges)
         if slice_urn in self._slivers:
-            # FIXME: Could change the status to stopped
-            # and actually honor that elsewhere
-            # FIXME: Should return True on success
-            self.logger.info('FIXME: Shutdown not implemented')
-            return False
+            sliver = self._slivers[slice_urn]
+            for resource in sliver.resources:
+                resource.status = Resource.STATUS_SHUTDOWN
+            self.logger.info("Sliver %r shut down" % slice_urn)
+            return True
         else:
-            self.logger.info("Cant shutdown sliver %s that doesnt exist", slice_urn)
+            self.logger.info("Shutdown: No such slice: %s.", slice_urn)
             self.no_such_slice(slice_urn)
 
     def no_such_slice(self, slice_urn):
