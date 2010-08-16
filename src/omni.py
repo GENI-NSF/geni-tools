@@ -165,8 +165,13 @@ class CallHandler(object):
                     logger.debug("Have null credentials in call to ListResources!")
                 logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
-                if options['geni_compressed']:
-                    rspec = zlib.decompress(rspec.decode('base64'))
+                if 'geni_compressed' in options and options['geni_compressed']:
+                    try:
+                        rspec = zlib.decompress(rspec.decode('base64'))
+                    except:
+                        logger.debug("Failed to decompress resources list.  In PG Framework this is okay.")
+                        pass
+                    
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
                 import traceback
@@ -177,13 +182,6 @@ class CallHandler(object):
         omnispecs = {}
         for ((urn,url), rspec) in rspecs.items():                        
             logger.debug("Getting RSpec items for urn %s", urn)
-            if 'geni_compressed' in options and options['geni_compressed']:
-                # Yuck. Apparently PG ignores the compressed flag? At least sometimes?
-                try:
-                    rspec = zlib.decompress(base64.b64decode(rspec))
-                except:
-                    logger.debug("Failed to decompress resource list. In PG framework this is ok.")
-                    pass
             omnispecs[url] = rspec_to_omnispec(urn,rspec)
 
         if omnispecs and omnispecs != {}:
