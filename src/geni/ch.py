@@ -93,31 +93,50 @@ class Clearinghouse(object):
         self.slices = {}
         self.aggs = []
 
-    def register_aggregate_pair(self, aggpair):
-        '''Add an aggregate URN and URL pair to the known set. URL is unverified'''
-        if aggpair is None:
-            self.logger.debug('Null aggpair ignored')
-            return
-        if len(aggpair) != 2:
-            self.logger.debug('Len %d aggpair ignored', len(aggpair))
-            return
-        if aggpair[0] is None or aggpair[0].strip() == "":
-            self.logger.debug('Empty URN in Aggpair - ignore')
-            return
-        if aggpair[1] is None or aggpair[1].strip() == "":
-            self.logger.debug('Empty URL in Aggpair for URN %s: ignore', aggpair[0])
-            return
-
-        # TODO: Avoid dupes, confirm the AM is reachable, ?
-        # Real CH would require an AM contact, AM cert, ?
-        self.logger.info("Registering AM %r", aggpair)
-        self.aggs.append(aggpair)
+    def load_aggregates(self, aggfile):
+        """Loads aggregates from a file.
         
-        # ca_certs is a file of 1 ch cert possibly (itself), or a dir of several for peering
-        # If not supplied just use the certfile as the only trusted root
+        The file has one aggregate per line. Each line contains a URN
+        and a URL separated by a comma.
+           
+        Returns True if aggregates were loaded, False otherwise.
+        """
+        if not os.path.isfile(aggfile):
+            self.logger.warn('Aggregate file %r does not exist.', aggfile)
+            return
+        
+        line_num = 0
+        for line in file(aggfile):
+            line_num += 1
+            spl = line.split(',')
+            if len(spl) != 2:
+                msg = ('File %s, line %d is malformed.'
+                       + ' Expected "URN, URL", found %r')
+                self.logger.warn(msg, aggfile, line_num, line)
+                continue
+            (urn, url) = spl
+            urn = urn.strip()
+            url = url.strip()
+            if not urn:
+                self.logger.warn('Empty URN on line %d of %s',
+                                 line_num, aggfile)
+                continue
+            if not url:
+                self.logger.warn('Empty URL on line %d of %s',
+                                 line_num, aggfile)
+                continue
+            if urn in [x for (x, _) in self.aggs]:
+                self.logger.warn('Duplicate URN %s at line %d of %s',
+                                 urn, line_num, aggfile)
+                continue
+            self.logger.info("Registering AM %s at %s", urn, url)
+            self.aggs.append((urn, url))
+        
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, aggfile=None):
         """Run the clearinghouse server."""
+        # ca_certs is a file of 1 ch cert possibly (itself), or a dir of several for peering
+        # If not supplied just use the certfile as the only trusted root
         self.keyfile = keyfile
         self.certfile = certfile
 
@@ -137,18 +156,8 @@ class Clearinghouse(object):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
 
         # Load up the aggregates
-        if os.path.isfile(aggfile):
-            for line in file(aggfile):
-                spl = line.strip().split(',')
-                if len(spl) == 2:
-                    if spl[0].strip() == "":
-                        self.logger.info("Empty URN for AM URL %s" % spl[1])
-                        continue
-                    elif spl[1].strip() == "":
-                        self.logger.info("Empty URL for AM URN %s" % spl[0])
-                        continue
-                    # FIXME: Check to see if that URN is known? That URL?
-                    self.register_aggregate_pair((spl[0].strip(),spl[1].strip()))
+        self.load_aggregates(aggfile)
+        # FIXME: if there are no aggregates, should we continue?
         self.logger.info("%d Aggregate Managers registered from aggregates file %r", len(self.aggs), aggfile)
 
         # This is the arg to _make_server
