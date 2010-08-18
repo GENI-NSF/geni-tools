@@ -159,17 +159,10 @@ class Framework(Framework_Base):
     
     def list_aggregates(self):
         user_cred = self.get_user_cred()
-        sites = self.registry.get_geni_aggregates(user_cred)
+        sites = self.registry.get_aggregates(user_cred)
         aggs = {}
-        
         for site in sites:
-            if not site.has_key('url'):
-                url = site['addr'] + ":" + str(site['port'])
-                if not url.startswith('http://'):
-                    url = 'http://' + url
-            else:
-                url = site['url']
-            aggs[site['urn']] = url
+            aggs[site['urn']] = site['url']
 
         return aggs
 

@@ -165,7 +165,7 @@ class CallHandler(object):
                     logger.debug("Have null credentials in call to ListResources!")
                 logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
-                if 'geni_compressed' in options and options['geni_compressed']:
+                if options.get('geni_compressed',False):
                     try:
                         rspec = zlib.decompress(rspec.decode('base64'))
                     except:
@@ -186,7 +186,6 @@ class CallHandler(object):
 
         if omnispecs and omnispecs != {}:
             jspecs = json.dumps(omnispecs, indent=4)
-            print jspecs
         return omnispecs
     
     
