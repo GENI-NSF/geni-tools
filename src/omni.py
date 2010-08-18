@@ -186,6 +186,7 @@ class CallHandler(object):
 
         if omnispecs and omnispecs != {}:
             jspecs = json.dumps(omnispecs, indent=4)
+            print jspecs
         return omnispecs
     
     
