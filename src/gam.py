@@ -49,8 +49,8 @@ def parse_args(argv):
                       help="AM certificate file name (PEM format)", metavar="FILE")
     # Note: The trusted CH certificates are _not_ enough here.
     # It needs self signed certificates. EG CA certificates.
-    parser.add_option("-r", "--rootcafile",
-                      help="Root CA certificates file or directory name (PEM format)", metavar="FILE")
+    parser.add_option("-r", "--rootcadir",
+                      help="Trusted Root certificates directory (files in PEM format)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", 
@@ -92,15 +92,15 @@ def main(argv=None):
         if not hasattr(opts,key):
             setattr(opts,key,val)            
 
-    if opts.rootcafile is None:
-        sys.exit('Missing path to Root CAs file or directory (-r argument)')
+    if opts.rootcadir is None:
+        sys.exit('Missing path to trusted root certificate directory (-r argument)')
     
-    # rootcafile is a single cert in 1 file or a dir of multiple such files
-    delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcafile))
+    # rootcadir is  dir of multiple certificates
+    delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
-    # here rootcafile is supposed to be a single file with multiple
+    # here rootcadir is supposed to be a single file with multiple
     # certs possibly concatenated together
-    comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcafile))
+    comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
     ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
                                       delegate=delegate,

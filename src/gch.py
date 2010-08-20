@@ -70,7 +70,7 @@ class CommandHandler(object):
         addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
-                     getAbsPath(opts.rootcafile), getAbsPath(opts.aggfile), config['global']['base_name'])
+                     getAbsPath(opts.rootcadir), getAbsPath(opts.aggfile), config['global']['base_name'])
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -81,8 +81,8 @@ def parse_args(argv):
     # Note: A CH that only wants to talk to its own users doesn't need
     # this argument. It works if it just trusts its own cert.
     # Supplying this arg allows users of other frameworks to create slices on this CH.
-    parser.add_option("-r", "--rootcafile", 
-                      help="Optional Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
+    parser.add_option("-r", "--rootcadir", 
+                      help="Root certificate directory name (files in PEM format)", metavar="FILE")
     parser.add_option("-g", "--aggfile",
                       help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback

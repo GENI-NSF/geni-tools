@@ -16,7 +16,7 @@ host=127.0.0.1
 port=8000
 keyfile=ch-key.pem
 certfile=ch-cert.pem
-rootcafile=trusted_roots
+rootcadir=trusted_roots
 aggfile=geni_aggregates
 
 
@@ -28,7 +28,7 @@ host=127.0.0.1
 port=8001
 keyfile=am-key.pem
 certfile=am-cert.pem
-rootcafile=trusted_roots
+rootcadir=trusted_roots
 trusted_root_dir=trusted_roots
 
 
