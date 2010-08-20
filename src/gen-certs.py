@@ -50,11 +50,14 @@ import geni
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 import sfa.util.namespace
+from geni.config import read_config
 
 CH_CERT_FILE = 'ch-cert.pem'
 CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
+
+config = None
 
 # URN prefix for the CH(SA)/AM/Experimenter certificates
 # Be sure that URNs are globally unique to support peering.
@@ -63,9 +66,9 @@ AM_KEY_FILE = 'am-key.pem'
 # URN format for encoding in certificates. EG
 # ' ' -> '+'
 # '//' -> ':'
+# This value is configured in gcf_config and
 # authority commandline arg over-rides this value
-# Be sure the below matches geni/ch.py: SLICE_AUTHORITY
-CERT_AUTHORITY = "geni.net//gpo//gcf"
+CERT_AUTHORITY = None # configured in gcf_config
 
 # For the subject of user/experiments certs, eg gcf+user+<username>
 # cert types match constants in sfa/trust/rights.py
@@ -179,6 +182,10 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
+    global config
+    config = read_config()
+    global CERT_AUTHORITY
+    CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
     if opts.username:
         username = opts.username
@@ -187,7 +194,6 @@ def main(argv=None):
         dir = opts.directory
 
     if opts.authority:
-        global CERT_AUTHORITY
         CERT_AUTHORITY = opts.authority
         
 
