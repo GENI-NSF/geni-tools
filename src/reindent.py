@@ -71,7 +71,7 @@ def main():
     except getopt.error, msg:
         usage(msg)
         return
-    for o, a in opts:
+    for o, _ in opts:
         if o in ('-d', '--dryrun'):
             dryrun += 1
         elif o in ('-r', '--recurse'):
@@ -210,8 +210,8 @@ class Reindenter:
                                 if have == getlspace(lines[jline]):
                                     want = jlevel * 4
                                 break
-                    if want < 0:           # Maybe it's a hanging
-                                           # comment like this one,
+                    if want < 0:            # Maybe it's a hanging
+                                            # comment like this one,
                         # in which case we should shift it like its base
                         # line got shifted.
                         for j in xrange(i-1, -1, -1):

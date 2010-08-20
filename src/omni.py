@@ -48,7 +48,6 @@
 """
 
 from copy import copy
-import base64
 import json
 import logging
 import optparse
