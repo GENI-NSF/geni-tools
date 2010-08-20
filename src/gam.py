@@ -39,6 +39,7 @@ import logging
 import optparse
 import os
 import geni
+from geni.config import read_config
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -52,9 +53,9 @@ def parse_args(argv):
                       help="Root CA certificates file or directory name (PEM format)", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
-    parser.add_option("-H", "--host", default='127.0.0.1',
+    parser.add_option("-H", "--host", 
                       help="server ip", metavar="HOST")
-    parser.add_option("-p", "--port", type=int, default=8001,
+    parser.add_option("-p", "--port", type=int, 
                       help="server port", metavar="PORT")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
@@ -82,6 +83,15 @@ def main(argv=None):
         level = logging.DEBUG
     logging.basicConfig(level=level)
 
+    # Read in config file options, command line gets priority
+    config = read_config()   
+        
+    for (key,val) in config['aggregate_manager'].items():                  
+        if hasattr(opts,key) and getattr(opts,key) is None:
+            setattr(opts,key,val)
+        if not hasattr(opts,key):
+            setattr(opts,key,val)            
+
     if opts.rootcafile is None:
         sys.exit('Missing path to Root CAs file or directory (-r argument)')
     
@@ -92,12 +102,12 @@ def main(argv=None):
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcafile))
 
-    ams = geni.AggregateManagerServer((opts.host, opts.port),
+    ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
                                       delegate=delegate,
                                       keyfile=getAbsPath(opts.keyfile),
                                       certfile=getAbsPath(opts.certfile),
                                       ca_certs=comboCertsFile)
-    logging.getLogger('gam').info('GENI AM Listening on port %d...' % (opts.port))
+    logging.getLogger('gam').info('GENI AM Listening on port %s...' % (opts.port))
     ams.serve_forever()
 
 if __name__ == "__main__":

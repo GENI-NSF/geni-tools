@@ -38,6 +38,9 @@ import logging
 import optparse
 import os
 import geni
+from geni.config import read_config
+
+
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -64,37 +67,40 @@ class CommandHandler(object):
         # XXX Verify that opts.directory exists
         ch = geni.Clearinghouse()
         # address is a tuple in python socket servers
-        addr = (opts.host, opts.port)
+        addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), getAbsPath(opts.rootcafile), getAbsPath(opts.aggfile))
 
 def parse_args(argv):
     parser = optparse.OptionParser()
-    parser.add_option("-k", "--keyfile", default="ch-key.pem",
+    parser.add_option("-k", "--keyfile", 
                       help="CH key file name", metavar="FILE")
-    parser.add_option("-c", "--certfile", default="ch-cert.pem",
+    parser.add_option("-c", "--certfile", 
                       help="CH certificate file name (PEM format)", metavar="FILE")
     # Note: A CH that only wants to talk to its own users doesn't need
     # this argument. It works if it just trusts its own cert.
     # Supplying this arg allows users of other frameworks to create slices on this CH.
-    parser.add_option("-r", "--rootcafile", default=None,
+    parser.add_option("-r", "--rootcafile", 
                       help="Optional Root CA certificate(s) file or directory name (PEM format)", metavar="FILE")
-    parser.add_option("-g", "--aggfile", default="geni_aggregates",
+    parser.add_option("-g", "--aggfile",
                       help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
-    parser.add_option("-H", "--host", default='127.0.0.1',
+    parser.add_option("-H", "--host", 
                       help="server ip", metavar="HOST")
-    parser.add_option("-p", "--port", type=int, default=8000,
+    parser.add_option("-p", "--port", type=int, 
                       help="server port", metavar="PORT")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
     return parser.parse_args()
 
-def main(argv=None):
+def main(argv=None): 
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
+    
+
+    
     level = logging.INFO
     if opts.debug:
         level = logging.DEBUG
@@ -103,7 +109,17 @@ def main(argv=None):
         args = ('runserver',)
 
     handler = '_'.join((args[0], 'handler'))
-    ch = CommandHandler()
+
+    # Read in config file options, command line gets priority
+    config = read_config()   
+        
+    for (key,val) in config['clearinghouse'].items():
+        if hasattr(opts,key) and getattr(opts,key) is None:
+            setattr(opts,key,val)
+        if not hasattr(opts,key):
+            setattr(opts,key,val)        
+            
+    ch = CommandHandler()        
     if hasattr(ch, handler):
         return getattr(ch, handler)(opts)
     else:

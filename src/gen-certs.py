@@ -143,7 +143,8 @@ def make_am_cert(dir, ch_cert, ch_key):
     '''Make a cert for the aggregate manager signed by given CH cert/key
     and saved in given dir. NOT RETURNED.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+am
-    (am_gid, am_keys) = create_cert(CERT_AUTHORITY, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
+    auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
+    (am_gid, am_keys) = create_cert(auth_name, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
