@@ -137,7 +137,7 @@ def make_ch_cert(dir):
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     os.popen('mkdir %s' % (os.path.join(dir, 'trusted_roots')))
-    ch_keys.save_to_file(os.path.join(os.path.join(dir, 'trusted_roots'), CH_CERT_FILE))
+    ch_gid.save_to_file(os.path.join(os.path.join(dir, 'trusted_roots'), CH_CERT_FILE))
     print "Created CH cert/keys in %s/%s, %s, and %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, 
                                                          dir + "/trusted_roots/" + CH_CERT_FILE)
     return (ch_keys, ch_gid)
