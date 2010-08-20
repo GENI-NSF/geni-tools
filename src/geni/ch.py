@@ -41,7 +41,7 @@ import sfa.trust.gid as gid
 # Substitute eg "openflow//stanford"
 # Be sure this matches init-ca.py:CERT_AUTHORITY 
 # This is in publicid format
-SLICE_AUTHORITY = "geni.net//gpo//gcf"
+SLICE_AUTHORITY = "geni//gpo//gcf"
 
 # Credential lifetimes in seconds
 # Extend slice lifetimes to actually use the resources
