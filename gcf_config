@@ -1,0 +1,39 @@
+# This is an INI style configuration file for the GENI Control Framework
+# clearinghouse and aggregate manager
+
+
+[global]
+# The Public ID of your testbed's domain (this can be made up)
+# It is used to create URN identifiers: urn:publicid:IDN+<transcribed_base_name>
+# Your CH will be urn:publicid:IDN+<transcribed_base_name>+authority+sa
+# Separate hierarchy using the '//' string which gets transcribed to ':' in URNs
+base_name=geni//gpo//gcf
+
+
+
+[clearinghouse]
+host=127.0.0.1
+port=8000
+keyfile=ch-key.pem
+certfile=ch-cert.pem
+rootcafile=trusted_roots
+aggfile=geni_aggregates
+
+
+[aggregate_manager]
+# name is the name of your aggregate manager.  It gets appended to base_name
+# when creating a URN for your aggregate manager
+name=am1
+host=127.0.0.1
+port=8001
+keyfile=am-key.pem
+certfile=am-cert.pem
+rootcafile=trusted_roots
+trusted_root_dir=trusted_roots
+
+
+
+
+
+
+

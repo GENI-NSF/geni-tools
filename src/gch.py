@@ -40,7 +40,7 @@ import os
 import geni
 from geni.config import read_config
 
-
+config = None
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -69,7 +69,8 @@ class CommandHandler(object):
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
-        ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), getAbsPath(opts.rootcafile), getAbsPath(opts.aggfile))
+        ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
+                     getAbsPath(opts.rootcafile), getAbsPath(opts.aggfile), config['global']['base_name'])
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -111,6 +112,7 @@ def main(argv=None):
     handler = '_'.join((args[0], 'handler'))
 
     # Read in config file options, command line gets priority
+    global config
     config = read_config()   
         
     for (key,val) in config['clearinghouse'].items():
