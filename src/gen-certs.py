@@ -197,7 +197,7 @@ def main(argv=None):
     if opts.directory:
         dir = opts.directory
 
-    if opts.authority:
+    if not opts.authority is None:
         CERT_AUTHORITY = opts.authority
         
 

@@ -41,6 +41,7 @@ import os
 import geni
 from geni.config import read_config
 
+
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
@@ -108,7 +109,8 @@ def main(argv=None):
                                       delegate=delegate,
                                       keyfile=getAbsPath(opts.keyfile),
                                       certfile=getAbsPath(opts.certfile),
-                                      ca_certs=comboCertsFile)
+                                      ca_certs=comboCertsFile,
+                                      base_name=config['global']['base_name'])
     logging.getLogger('gam').info('GENI AM Listening on port %s...' % (opts.port))
     ams.serve_forever()
 
