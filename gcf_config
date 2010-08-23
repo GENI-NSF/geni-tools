@@ -2,6 +2,7 @@
 # clearinghouse and aggregate manager
 
 
+
 [global]
 # The Public ID of your testbed's domain (this can be made up)
 # It is used to create URN identifiers: urn:publicid:IDN+<transcribed_base_name>
@@ -33,7 +34,9 @@ trusted_root_dir=trusted_roots
 
 
 
-
-
+[client]
+# Used for testing that the CH and AM are properly running
+keyfile=alice-key.pem
+certfile=alice-cert.pem
 
 

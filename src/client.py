@@ -44,7 +44,7 @@ import random
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
-
+from geni.config import read_config
 import sfa.trust.credential as cred
 
 def getAbsPath(path):
@@ -256,9 +256,9 @@ def parse_args(argv):
                       help="experimenter key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
                       help="experimenter certificate file name", metavar="FILE")
-    parser.add_option("--ch", default='https://localhost:8000/',
+    parser.add_option("--ch", 
                       help="clearinghouse URL")
-    parser.add_option("--am", default='https://localhost:8001/',
+    parser.add_option("--am",
                       help="aggregate manager URL")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
@@ -273,6 +273,36 @@ def main(argv=None):
     level = logging.INFO
     if opts.debug:
         level = logging.DEBUG
+        
+    # Read in config file options, command line gets priority
+    global config
+    config = read_config()   
+        
+    for (key,val) in config['client'].items():
+        if hasattr(opts,key) and getattr(opts,key) is None:
+            setattr(opts,key,val)
+        if not hasattr(opts,key):
+            setattr(opts,key,val)      
+    
+    # Determine the AM and CH hostnames from the config file
+    if getattr(opts,'ch') is None:
+        host = config['clearinghouse']['host']
+        port = config['clearinghouse']['port']
+        if not host.startswith('http'):
+            host = 'https://%s' % host.strip('/')
+        url = "%s:%s/" % (host,port)
+        setattr(opts,'ch',url)
+        
+    if getattr(opts,'am') is None:
+        host = config['aggregate_manager']['host']
+        port = config['aggregate_manager']['port']
+        if not host.startswith('http'):
+            host = 'https://%s' % host.strip('/')
+        url = "%s:%s/" % (host,port)
+        setattr(opts,'am',url)
+
+            
+                    
     logging.basicConfig(level=level)
     logger = logging.getLogger('client')
     if not opts.keyfile or not opts.certfile:
