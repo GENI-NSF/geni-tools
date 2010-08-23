@@ -4,11 +4,19 @@
 
 
 [global]
-# The Public ID of your testbed's domain (this can be made up)
-# It is used to create URN identifiers: urn:publicid:IDN+<transcribed_base_name>
-# Your CH will be urn:publicid:IDN+<transcribed_base_name>+authority+sa
-# Separate hierarchy using the '//' string which gets transcribed to ':' in URNs
+# GENI uses URNs to identify experimenters and resources
+# The URN format is specified in the GENI AM document available at: http://www.geni.net/
+# A URN is of form: urn:publicid:IDN+<domain>+<type>+<name>
+# The base_name variable is where you specify the domain of your CH/AM/Users.
+# Examples include plc//princeton, geni//gpo//gcf, and emulab.net
+
 base_name=geni//gpo//gcf
+
+
+
+# The directory that stores the trusted roots of your CH/AM 
+# and those you have federated with
+rootcadir=trusted_roots
 
 
 
@@ -17,8 +25,9 @@ host=127.0.0.1
 port=8000
 keyfile=ch-key.pem
 certfile=ch-cert.pem
-rootcadir=trusted_roots
 aggfile=geni_aggregates
+user_cred_duration=86400
+slice_duration=7200
 
 
 [aggregate_manager]
@@ -29,9 +38,6 @@ host=127.0.0.1
 port=8001
 keyfile=am-key.pem
 certfile=am-cert.pem
-rootcadir=trusted_roots
-trusted_root_dir=trusted_roots
-
 
 
 [client]

@@ -133,7 +133,8 @@ class Clearinghouse(object):
             self.aggs.append((urn, url))
         
     def runserver(self, addr, keyfile=None, certfile=None,
-                  ca_certs=None, aggfile=None, authority=None):
+                  ca_certs=None, aggfile=None, authority=None,
+                  user_len=None, slice_len=None):
         """Run the clearinghouse server."""
         # ca_certs is a dir of several certificates for peering
         # If not supplied just use the certfile as the only trusted root
@@ -155,8 +156,10 @@ class Clearinghouse(object):
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
 
-        global SLICE_AUTHORITY
+        global SLICE_AUTHORITY, USER_CRED_LIFE, SLICE_CRED_LIFE
         SLICE_AUTHORITY = authority
+        USER_CRED_LIFE = int(user_len)
+        SLICE_CRED_LIFE = int(slice_len)
 
         # Load up the aggregates
         self.load_aggregates(aggfile)

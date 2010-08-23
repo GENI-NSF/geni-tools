@@ -70,7 +70,8 @@ class CommandHandler(object):
         addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
-                     getAbsPath(opts.rootcadir), getAbsPath(opts.aggfile), config['global']['base_name'])
+                     getAbsPath(opts.rootcadir), getAbsPath(opts.aggfile), config['global']['base_name'],
+                     opts.user_cred_duration, opts.slice_duration)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -119,7 +120,9 @@ def main(argv=None):
         if hasattr(opts,key) and getattr(opts,key) is None:
             setattr(opts,key,val)
         if not hasattr(opts,key):
-            setattr(opts,key,val)        
+            setattr(opts,key,val)
+    if getattr(opts,'rootcadir') is None:
+        setattr(opts,'rootcadir',config['global']['rootcadir'])        
             
     ch = CommandHandler()        
     if hasattr(ch, handler):

@@ -91,6 +91,8 @@ def main(argv=None):
             setattr(opts,key,val)
         if not hasattr(opts,key):
             setattr(opts,key,val)            
+    if getattr(opts,'rootcadir') is None:
+        setattr(opts,'rootcadir',config['global']['rootcadir'])        
 
     if opts.rootcadir is None:
         sys.exit('Missing path to trusted root certificate directory (-r argument)')
