@@ -27,6 +27,8 @@ running in this environment.
 2) Test Run
 ===========
 
+# Edit gcf-config if you want to change settings from the default (for a test run there is no need)
+
 # Create certificates and run the GENI Clearinghouse
 # in terminal one:
 $ cd gcf

@@ -78,6 +78,11 @@ license, can be found in src/sfa/README.txt.
 Instructions
 ============
 
+0. Edit gcf_config to configure your clearinghouse and aggregate manager.  The default values should
+   be fine for most settings, but you should change the base_name to be specific to you.  The keys and
+   certificates will be generated in src/gen-certs.py in Step 1.  After Step 1 be sure to return
+   and enter in the appropriate filenames for your keys and certs.
+
 1. Generate keys and certificates for your users, clearinghouse, and aggregate manager.
 
  $ python src/gen-certs.py
@@ -101,7 +106,10 @@ Optional: Create a directory containing all known and trusted (federated)
 
 2. Start the clearinghouse server:
 
- $ python src/gch.py -r <ch-cert.pem or trusted_roots_dir/> \
+ $ python src/gch.py   
+ 
+ To override the settings in gcf_config, you can use these command line options:
+ $ python -r <ch-cert.pem or trusted_roots_dir/> \
    	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
 
  The optional -r argument could be a file with the GCF CH certificate. 
@@ -134,6 +142,9 @@ Optional: Create a directory containing all known and trusted (federated)
  
 3. Start the aggregate manager server:
 
+ $ python src/gam.py
+ 
+ To override the settings in gcf_config, you can use these command line options:
  $ python src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
    	      -c am-cert.pem -k am-key.pem
 
@@ -151,6 +162,9 @@ Optional: Create a directory containing all known and trusted (federated)
 
 4. Run the GCF installation testing client:
 
+ $ python src/client.py
+ 
+ To override the settings in gcf_config, you can use these command line options:
  $ python src/client.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/
 
