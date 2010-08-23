@@ -211,7 +211,7 @@ def main(argv=None):
                 ch_cert = gid.GID(filename=os.path.join(dir,CH_CERT_FILE))
                 ch_keys = cert.Keypair(filename=os.path.join(dir,CH_KEY_FILE))
             except Exception, exc:
-                sys.exit("Failed to read CH(SA) cert/key from %s/%s and %s: %s" % (dir, CHCERT_FILE, CH_KEY_FILE, exc))
+                sys.exit("Failed to read CH(SA) cert/key from %s/%s and %s: %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, exc))
 
     if not opts.notAll or opts.am:
         make_am_cert(dir, ch_cert, ch_keys)
