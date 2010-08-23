@@ -395,6 +395,7 @@ class ReferenceAggregateManager(object):
             resources.append(resource)
 
         # determine max expiration time from credentials
+        # do not create a sliver that will outlive the slice!
         expiration = datetime.datetime.utcnow() + self.max_lease
         for cred in creds:
             if cred.expiration < expiration:
