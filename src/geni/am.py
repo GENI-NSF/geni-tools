@@ -229,7 +229,7 @@ class Sliver(object):
     """A sliver has a URN, a list of resources, and an expiration time in UTC."""
 
     def __init__(self, urn, expiration=datetime.datetime.utcnow()):
-        self.urn = urn
+        self.urn = urn.replace("+slice+", "+sliver+")
         self.resources = list()
         self.expiration = expiration
         
