@@ -56,6 +56,8 @@ CH_CERT_FILE = 'ch-cert.pem'
 CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
 AM_KEY_FILE = 'am-key.pem'
+USER_KEY_FILE = 'alice-key.pem'
+USER_CERT_FILE = 'alice-cert.pem'
 
 config = None
 
@@ -137,7 +139,7 @@ def make_ch_cert(dir):
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     os.popen('mkdir %s' % (os.path.join(dir, 'trusted_roots')))
-    ch_gid.save_to_file(os.path.join(os.path.join(dir, 'trusted_roots'), CH_CERT_FILE))
+    ch_gid.save_to_file(os.path.join(config['global']['rootcadir'], CH_CERT_FILE))
     print "Created CH cert/keys in %s/%s, %s, and %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, 
                                                          dir + "/trusted_roots/" + CH_CERT_FILE)
     return (ch_keys, ch_gid)
@@ -158,8 +160,9 @@ def make_user_cert(dir, username, ch_keys, ch_gid):
     # Create a cert like PREFIX+TYPE+name
     # ie geni.net:gpo:gcf+user+alice
     (alice_gid, alice_keys) = create_cert(CERT_AUTHORITY, USER_CERT_TYPE, username, ch_keys, ch_gid)
-    alice_gid.save_to_file(os.path.join(dir, ('%s-cert.pem' % username)))
-    alice_keys.save_to_file(os.path.join(dir, ('%s-key.pem' % username)))
+    alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
+    alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
+    
 # Make a Credential for Alice
 #alice_cred = create_user_credential(alice_gid, CH_KEY_FILE, CH_CERT_FILE)
 #alice_cred.save_to_file('../alice-user-cred.xml')
@@ -186,9 +189,8 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
-    global config
+    global config, CERT_AUTHORITY
     config = read_config()
-    global CERT_AUTHORITY
     CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
     if opts.username:
@@ -200,6 +202,13 @@ def main(argv=None):
     if not opts.authority is None:
         CERT_AUTHORITY = opts.authority
         
+    global CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE
+    CH_CERT_FILE = config['clearinghouse']['certfile']
+    CH_KEY_FILE = config['clearinghouse']['keyfile']
+    AM_CERT_FILE = config['aggregate_manager']['certfile']
+    AM_KEY_FILE = config['aggregate_manager']['keyfile']
+    USER_CERT_FILE = config['client']['certfile']
+    USER_KEY_FILE = config['client']['keyfile']
 
     ch_keys = None
     ch_cert = None

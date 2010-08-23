@@ -58,7 +58,7 @@ certfile=am-cert.pem
 
 [client]
 # Used for testing that the CH and AM are properly running
-# This is the User' key and cert.
+# This is the user key and cert.
 keyfile=alice-key.pem
 certfile=alice-cert.pem
 
