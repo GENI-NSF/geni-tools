@@ -63,7 +63,7 @@ slicemgr=http://www.planet-lab.org:12347
 type=gcf
 
 # Authority part of the control frameworks URN
-authority=geni.net:gpo:gcf
+authority=geni:gpo:gcf
 
 # Where the gch server is listening
 ch=https://localhost:8000

@@ -56,7 +56,7 @@ SHUTDOWNSLIVERPRIV = 'shutdown'
 # will be <namespace>:resource:<resourcetype>_<resourceid>
 # This is something like the name of your AM
 # See gen-certs.CERT_AUTHORITY
-RESOURCE_NAMESPACE = 'geni.net//gpo//gcf'
+RESOURCE_NAMESPACE = 'geni//gpo//gcf'
 
 REFAM_MAXLEASE_DAYS = 365
 
@@ -157,7 +157,7 @@ class AggregateManagerServer(object):
     or the default printing AM."""
 
     def __init__(self, addr, delegate=None, keyfile=None, certfile=None,
-                 ca_certs=None):
+                 ca_certs=None, base_name=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -172,6 +172,10 @@ class AggregateManagerServer(object):
         # Set the server on the delegate so it can access the
         # client certificate.
         delegate._server = self._server
+        
+        if not base_name is None:
+            global RESOURCE_NAMESPACE
+            RESOURCE_NAMESPACE = base_name
 
     def serve_forever(self):
         self._server.serve_forever()
@@ -225,7 +229,7 @@ class Sliver(object):
     """A sliver has a URN, a list of resources, and an expiration time in UTC."""
 
     def __init__(self, urn, expiration=datetime.datetime.utcnow()):
-        self.urn = urn
+        self.urn = urn.replace("+slice+", "+sliver+")
         self.resources = list()
         self.expiration = expiration
         
