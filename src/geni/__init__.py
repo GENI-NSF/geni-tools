@@ -23,4 +23,6 @@
 
 from ch import Clearinghouse
 from am import ReferenceAggregateManager, AggregateManagerServer
-from credential import CredentialVerifier, publicid_to_urn, urn_to_publicid, string_to_urn_format, urn_to_string_format, is_valid_urn, is_valid_urn_string, create_gid
+from util.cred_util import *
+from util.urn_util import *
+from util.cert_util import *

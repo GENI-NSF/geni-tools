@@ -50,6 +50,7 @@ import geni
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
 import sfa.util.namespace
+from geni.util.cert_util import create_cert
 from geni.config import read_config
 
 CH_CERT_FILE = 'ch-cert.pem'
@@ -84,58 +85,14 @@ AUTHORITY_CERT_TYPE = 'authority'
 CH_CERT_SUBJ = 'sa' 
 AM_CERT_SUBJ = 'am'
 
-# Prefix is like geni.net:gpo
-# type is authority or user
-# subj is am or sa, or the username
-def create_cert(prefix, type, subj, issuer_key=None, issuer_cert=None, intermediate=False):
-    '''Create a new certificate and return it and the associated keys.
-    If issure cert and key are given, they sign the certificate. Otherwise
-    it is a self-signed certificate. If intermediate then mark this 
-    as an intermediate CA certiciate (can sign).
-    Subject of the cert is prefix+type+subj
-    Note that prefix, type and subject are in publicid format and
-    will be converted to URN format.
-    '''
-    
-    # Validate each of prefix, type, subj per rules
-    # in credential.py
-    if prefix is None or prefix.strip() == '':
-        raise ValueError("Missing cert subject prefix")
-    if type is None or type.strip() == '':
-        raise ValueError("Missing cert subject type")
-    if subj is None or subj.strip() == '':
-        raise ValueError("Missing cert subject subj")
-    prefix = geni.string_to_urn_format(prefix)
-    type = geni.string_to_urn_format(type)
-    subj = geni.string_to_urn_format(subj)
-
-    # FIXME: Could use credential.publicid_to_urn...
-    subject = "%s+%s+%s" % (prefix, type, subj)
-    urn = '%s+%s' % (sfa.util.namespace.URN_PREFIX, subject)
-
-    newgid = gid.GID(create=True, subject=subject,
-                     urn=urn)
-    keys = cert.Keypair(create=True)
-    newgid.set_pubkey(keys)
-    if intermediate:
-        newgid.set_intermediate_ca(intermediate)
-        
-    if issuer_key and issuer_cert:
-        newgid.set_issuer(issuer_key, cert=issuer_cert)
-        newgid.set_parent(issuer_cert)
-    else:
-        # create a self-signed cert
-        newgid.set_issuer(keys, subject=subject)
-
-    newgid.encode()
-    newgid.sign()
-    return newgid, keys
 
 def make_ch_cert(dir):
     '''Make a self-signed cert for the clearinghouse saved to 
     given directory and returned.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+sa
-    (ch_gid, ch_keys) = create_cert(CERT_AUTHORITY, AUTHORITY_CERT_TYPE,CH_CERT_SUBJ)
+    urn = geni.URN(CERT_AUTHORITY, AUTHORITY_CERT_TYPE, CH_CERT_SUBJ).urn_string()
+    
+    (ch_gid, ch_keys) = create_cert(urn)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
     os.popen('mkdir %s' % (os.path.join(dir, 'trusted_roots')))
@@ -149,7 +106,8 @@ def make_am_cert(dir, ch_cert, ch_key):
     and saved in given dir. NOT RETURNED.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+am
     auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
-    (am_gid, am_keys) = create_cert(auth_name, AUTHORITY_CERT_TYPE,AM_CERT_SUBJ, ch_key, ch_cert, True)
+    urn = geni.URN(auth_name, AUTHORITY_CERT_TYPE, AM_CERT_SUBJ).urn_string()
+    (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
@@ -159,7 +117,8 @@ def make_user_cert(dir, username, ch_keys, ch_gid):
     saved in given directory. Not returned.'''
     # Create a cert like PREFIX+TYPE+name
     # ie geni.net:gpo:gcf+user+alice
-    (alice_gid, alice_keys) = create_cert(CERT_AUTHORITY, USER_CERT_TYPE, username, ch_keys, ch_gid)
+    urn = geni.URN(CERT_AUTHORITY, USER_CERT_TYPE, username).urn_string()
+    (alice_gid, alice_keys) = create_cert(urn, ch_keys, ch_gid)
     alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
     alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
     
