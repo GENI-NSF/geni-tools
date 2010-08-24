@@ -79,6 +79,7 @@ def parse_args(argv):
                       help="CH key file name", metavar="FILE")
     parser.add_option("-c", "--certfile", 
                       help="CH certificate file name (PEM format)", metavar="FILE")
+    parser.add_option("-f", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
     # Note: A CH that only wants to talk to its own users doesn't need
     # this argument. It works if it just trusts its own cert.
     # Supplying this arg allows users of other frameworks to create slices on this CH.
@@ -114,7 +115,8 @@ def main(argv=None):
 
     # Read in config file options, command line gets priority
     global config
-    config = read_config()   
+    configpath = os.path.expanduser(opts.configfile)
+    config = read_config(configpath)   
         
     for (key,val) in config['clearinghouse'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:
