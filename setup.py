@@ -1,0 +1,10 @@
+from distutils.core import setup
+setup(name='gcf',
+      version='1.0',
+      package_dir={'': 'src'},                   
+      packages=['sfa','geni','sfa.trust','sfa.util'],
+      author='gpo',
+      author_email='help@geni.net',
+      url='http://www.geni.net',
+      )
+      
