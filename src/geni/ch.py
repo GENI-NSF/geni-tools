@@ -35,7 +35,7 @@ import traceback
 import uuid
 
 from SecureXMLRPCServer import SecureXMLRPCServer
-from credential import CredentialVerifier, create_credential, publicid_to_urn, is_valid_urn, string_to_urn_format, create_gid
+from geni.credential import *
 import sfa.trust.gid as gid
 
 # Substitute eg "openflow//stanford"
