@@ -20,9 +20,32 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''
+Certificate (GID in SFA terms) creation and verification utilities.
+'''
 
-from ch import Clearinghouse
-from am import ReferenceAggregateManager, AggregateManagerServer
-from util.cred_util import *
-from util.urn_util import *
-from util.cert_util import *
+
+from sfa.trust.gid import GID
+from geni.util.urn_util import is_valid_urn
+
+def create_cert(subject, urn, issuer_keyfile, issuer_certfile):
+    '''Create a GID for given subject and URN issued by given key/cert,
+    generating new keys.
+    Return newgid, keys'''
+    import sfa.trust.certificate as cert
+    # FIXME: Validate the gid_urn has the right prefix
+    # to be a URN and match the issuer
+    # FIXME: Validate the issuer key/cert exist and match and are valid
+    if not is_valid_urn(urn):
+        raise ValueError("Invalid GID URN %s" % urn)
+    newgid = GID(create=True, subject=subject, urn=urn)
+    keys = cert.Keypair(create=True)
+    newgid.set_pubkey(keys)
+    issuer_key = cert.Keypair(filename=issuer_keyfile)
+    issuer_cert = GID(filename=issuer_certfile)
+    newgid.set_issuer(issuer_key, cert=issuer_cert)
+    newgid.set_parent(issuer_cert)
+    newgid.encode()
+    newgid.sign()
+    return newgid, keys
+

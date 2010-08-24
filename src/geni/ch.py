@@ -29,13 +29,13 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
-import logging
-import os
 import traceback
 import uuid
 
 from SecureXMLRPCServer import SecureXMLRPCServer
-from geni.credential import *
+from geni.util.cred_util import *
+from geni.util.cert_util import *
+from geni.util.urn_util import *
 import sfa.trust.gid as gid
 
 # Substitute eg "openflow//stanford"
@@ -243,7 +243,7 @@ class Clearinghouse(object):
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
             try:
-                slice_gid = create_gid(string_to_urn_format(SLICE_AUTHORITY + " slice"), urn, self.keyfile, self.certfile)[0]
+                slice_gid = create_cert(string_to_urn_format(SLICE_AUTHORITY + " slice"), urn, self.keyfile, self.certfile)[0]
             except Exception, exc:
                 self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
                 raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)
