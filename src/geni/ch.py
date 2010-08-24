@@ -243,7 +243,7 @@ class Clearinghouse(object):
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
             try:
-                slice_gid = create_cert(string_to_urn_format(SLICE_AUTHORITY + " slice"), urn, self.keyfile, self.certfile)[0]
+                slice_gid = create_cert(urn, self.keyfile, self.certfile)[0]
             except Exception, exc:
                 self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
                 raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)

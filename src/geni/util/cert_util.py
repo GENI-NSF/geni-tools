@@ -26,26 +26,44 @@ Certificate (GID in SFA terms) creation and verification utilities.
 
 
 from sfa.trust.gid import GID
-from geni.util.urn_util import is_valid_urn
+from sfa.trust.certificate import Keypair
+from geni.util.urn_util import URN, is_valid_urn
 
-def create_cert(subject, urn, issuer_keyfile, issuer_certfile):
-    '''Create a GID for given subject and URN issued by given key/cert,
-    generating new keys.
-    Return newgid, keys'''
-    import sfa.trust.certificate as cert
-    # FIXME: Validate the gid_urn has the right prefix
-    # to be a URN and match the issuer
-    # FIXME: Validate the issuer key/cert exist and match and are valid
-    if not is_valid_urn(urn):
-        raise ValueError("Invalid GID URN %s" % urn)
-    newgid = GID(create=True, subject=subject, urn=urn)
-    keys = cert.Keypair(create=True)
+def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
+    '''Create a new certificate and return it and the associated keys.
+    If issure cert and key are given, they sign the certificate. Otherwise
+    it is a self-signed certificate. 
+    
+    If intermediate then mark this 
+    as an intermediate CA certificate (can sign).
+    
+    Subject of the cert is what is eventually placed in the subject common name (CN) of the certificate 
+    Note that prefix, type and subject are in publicid format and
+    will be converted to URN format.
+    '''
+    c_urn = URN(urn=urn)
+    dotted = '%s.%s.%s' % (c_urn.getAuthority(), c_urn.getType(), c_urn.getName())
+    
+
+    newgid = GID(create=True, subject=dotted[:64],
+                     urn=urn)
+    
+    keys = Keypair(create=True)
     newgid.set_pubkey(keys)
-    issuer_key = cert.Keypair(filename=issuer_keyfile)
-    issuer_cert = GID(filename=issuer_certfile)
-    newgid.set_issuer(issuer_key, cert=issuer_cert)
-    newgid.set_parent(issuer_cert)
+    if intermediate:
+        newgid.set_intermediate_ca(intermediate)
+        
+    if issuer_key and issuer_cert:
+        if isinstance(issuer_key,str):
+            issuer_key = Keypair(filename=issuer_key)
+        if isinstance(issuer_cert,str):
+            issuer_cert = GID(filename=issuer_cert)
+        newgid.set_issuer(issuer_key, cert=issuer_cert)
+        newgid.set_parent(issuer_cert)
+    else:
+        # create a self-signed cert
+        newgid.set_issuer(keys, subject=dotted)
+
     newgid.encode()
     newgid.sign()
     return newgid, keys
-

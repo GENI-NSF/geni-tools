@@ -25,7 +25,57 @@ URN creation and verification utilities.
 '''
 
 import re
+from sfa.util.namespace import URN_PREFIX
 
+
+
+class URN(object):
+    """ 
+    A class that creates and extracts values from URNs
+    """
+    def __init__(self, authority=None, type=None, name=None, urn=None):
+        if not urn is None:
+            if not is_valid_urn(urn):
+                raise ValueError("Invalid URN")
+        
+            spl = urn.split('+')
+            self.authority = urn_to_string_format(spl[1])
+            self.type = urn_to_string_format(spl[2])
+            self.name = urn_to_string_format('+'.join(spl[3:]))
+            self.urn = urn
+        else:
+            if not authority or not type or not name:
+                raise ValueError("Must provide either all of authority, type, and name, or a urn must be provided")
+            
+            
+            for i in [authority, type, name]:
+                if i.strip() == '':
+                    raise ValueError("Parameter to create_urn was empty string")
+            
+            self.authority = authority
+            self.type = type
+            self.name = name
+    
+            authority = string_to_urn_format(authority)
+            type = string_to_urn_format(type)
+            name = string_to_urn_format(name)
+            
+            self.urn = '%s+%s+%s+%s' % (URN_PREFIX, authority, type, name)
+    
+    def __str__(self):
+        return self.urn_string()
+    
+    def urn_string(self):
+        return self.urn
+    
+    def getAuthority(self):
+        return self.authority
+    def getType(self):
+        return self.type
+    def getName(self):
+        return self.name
+    
+    
 # Translate publicids to URN format.
 # The order of these rules matters
 # because we want to catch things like double colons before we
@@ -45,8 +95,8 @@ publicid_xforms = [('%',  '%25'),
                    ('/',  '%2F')]
 
 # FIXME: See sfa/util/namespace/URN_PREFIX which is ...:IDN
-publicid_urn_prefix = 'urn:publicid:'
-
+publicid_urn_prefix = 'urn:publicid:'    
+    
 # validate urn
 # Note that this is not sufficient but it is necessary
 def is_valid_urn_string(instr):
@@ -93,7 +143,8 @@ def urn_to_string_format(urnstr):
     '''Turn a part of a URN into publicid format, undoing transforms'''
     if urnstr is None or urnstr.strip() == '':
         return urnstr
+    publicid = urnstr
     # Validate it is reasonable URN string?
     for a, b in reversed(publicid_xforms):
-        publicid = urnstr.replace(b, a)
+        publicid = publicid.replace(b, a)
     return publicid
