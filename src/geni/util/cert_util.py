@@ -31,16 +31,16 @@ from geni.util.urn_util import URN, is_valid_urn
 
 def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
     '''Create a new certificate and return it and the associated keys.
-    If issure cert and key are given, they sign the certificate. Otherwise
+    If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
     
     If intermediate then mark this 
     as an intermediate CA certificate (can sign).
     
-    Subject of the cert is what is eventually placed in the subject common name (CN) of the certificate 
-    Note that prefix, type and subject are in publicid format and
-    will be converted to URN format.
+    Certificate URN must be supplied.
+    CN of the cert will be dotted notation authority.type.name from the URN.
     '''
+    # Note the below throws a ValueError if it wasnt a valid URN
     c_urn = URN(urn=urn)
     dotted = '%s.%s.%s' % (c_urn.getAuthority(), c_urn.getType(), c_urn.getName())
     
@@ -51,9 +51,11 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
     keys = Keypair(create=True)
     newgid.set_pubkey(keys)
     if intermediate:
+        # This cert will be able to sign certificates
         newgid.set_intermediate_ca(intermediate)
         
     if issuer_key and issuer_cert:
+        # the given issuer will issue this cert
         if isinstance(issuer_key,str):
             issuer_key = Keypair(filename=issuer_key)
         if isinstance(issuer_cert,str):
