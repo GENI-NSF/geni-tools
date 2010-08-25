@@ -26,3 +26,4 @@ from am import ReferenceAggregateManager, AggregateManagerServer
 from util.cred_util import *
 from util.urn_util import *
 from util.cert_util import *
+from util.secure_xmlrpc_client import *

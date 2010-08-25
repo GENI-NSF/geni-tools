@@ -45,7 +45,7 @@ import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 from geni.config import read_config
-from geni.util import make_client
+from geni.util.secure_xmlrpc_client import make_client
 import sfa.trust.credential as cred
 
 def getAbsPath(path):
