@@ -27,8 +27,6 @@ URN creation and verification utilities.
 import re
 from sfa.util.namespace import URN_PREFIX
 
-
-
 class URN(object):
     """ 
     A class that creates and extracts values from URNs
@@ -43,13 +41,20 @@ class URN(object):
         
     ch_urn = URN("gcf//gpo//bbn", "authority", "sa").urn_string() for a clearinghouse URN
     am1_urn = URN("gcf//gpo//bbn//site1", "authority", "am").urn_string() for an AM at this authority
+        Looks like urn:publicid:IDN+gcf.gpo.bbn.site1+authority+am
     am2_urn = URN("gcf//gpo//bbn//site2", "authority", "am").urn_string() for a second AM at this authority
+        Looks like urn:publicid:IDN+gcf.gpo.bbn.site2+authority+am
     user_urn = URN("gcf//gpo//bbn", "user", "jane").urn_string() for a user made by the clearinghouse    
+        Looks like urn:publicid:IDN+gcf.gpo.bbn+user+jane
+    slice_urn = URN("gcf//gpo//bbn", "slice", "my-great-experiment").urn_string()
+        Looks like urn:publicid:IDN+gcf.gpo.bbn+slice+my-great-experiment
+    resource_at_am1_urn = URN("gcf//gpo//bbn/site1", "node", "LinuxBox23").urn_string() for Linux Machine 23 managed by AM1 (at site 1)
+        Looks like urn:publicid:IDN+gcf.gpo.bbn.site1+node+LinuxBox23
     """
     def __init__(self, authority=None, type=None, name=None, urn=None):
         if not urn is None:
             if not is_valid_urn(urn):
-                raise ValueError("Invalid URN")
+                raise ValueError("Invalid URN %s" % urn)
         
             spl = urn.split('+')
             self.authority = urn_to_string_format(spl[1])
@@ -68,12 +73,15 @@ class URN(object):
             self.authority = authority
             self.type = type
             self.name = name
-    
+
+            # FIXME: check these are valid more?
             authority = string_to_urn_format(authority)
             type = string_to_urn_format(type)
             name = string_to_urn_format(name)
             
             self.urn = '%s+%s+%s+%s' % (URN_PREFIX, authority, type, name)
+            if not is_valid_urn(self.urn):
+                raise ValueError("Failed to create valid URN from args %s, %s, %s" % (self.authority, self.type, self.name))
     
     def __str__(self):
         return self.urn_string()
@@ -82,10 +90,13 @@ class URN(object):
         return self.urn
     
     def getAuthority(self):
+        '''Get the authority in un-escaped publicid format'''
         return self.authority
     def getType(self):
+        '''Get the URN type in un-escaped publicid format'''
         return self.type
     def getName(self):
+        '''Get the name in un-escaped publicid format'''
         return self.name
     
     
