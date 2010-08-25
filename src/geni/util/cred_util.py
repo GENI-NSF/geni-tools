@@ -41,8 +41,8 @@ class CredentialVerifier(object):
     CATEDCERTSFNAME = 'CATedCACerts.pem'
 
 
-    # root_cert_file is a file or directory of files
-    # these are trusted roots for verifying credentials
+    # root_cert_file is a trusted root file file or directory of 
+    # trusted roots for verifying credentials
     def __init__(self, root_cert_fileordir):
         self.logger = logging.getLogger('cred-verifier')
         if root_cert_fileordir is None:

@@ -32,6 +32,19 @@ from sfa.util.namespace import URN_PREFIX
 class URN(object):
     """ 
     A class that creates and extracts values from URNs
+    URN Convention:
+    urn:publicid:IDN+<authority>+<type>+<name>
+    Authority, type, and name are public ids transcribed into URN format
+    By convention a CH's name should be "ch" and an AM's should be "am"
+    The authority of the CH should be the prefix for all of your AM and user authorities
+    For instance: CH authority = "gcf//gpo//bbn", AM authority = "gcf//gpo/bbn//am1", user authority = "gcf//gpo//bbn"
+    
+    EXAMPLES:
+        
+    ch_urn = URN("gcf//gpo//bbn", "authority", "sa").urn_string() for a clearinghouse URN
+    am1_urn = URN("gcf//gpo//bbn//site1", "authority", "am").urn_string() for an AM at this authority
+    am2_urn = URN("gcf//gpo//bbn//site2", "authority", "am").urn_string() for a second AM at this authority
+    user_urn = URN("gcf//gpo//bbn", "user", "jane").urn_string() for a user made by the clearinghouse    
     """
     def __init__(self, authority=None, type=None, name=None, urn=None):
         if not urn is None:
