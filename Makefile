@@ -8,6 +8,8 @@ rpm:
 	python setup.py bdist_rpm
 
 src:
+	rm MANIFEST
+	rm -rf build/
 	python setup.py sdist
 
 deb:
