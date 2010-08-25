@@ -269,8 +269,6 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     
 
 
-
-
     ucred = cred.Credential()
     # FIXME: Validate the caller_gid and object_gid
     # are my user and slice
@@ -295,7 +293,7 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     try:
         ucred.verify(trusted_roots)
     except Exception, exc:
-        raise Exception("Create Credential failed: %s" % exc)
+        raise Exception("Create Credential failed to verify new credential from trusted roots: %s" % exc)
 
     return ucred
 
