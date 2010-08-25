@@ -78,12 +78,14 @@ license, can be found in src/sfa/README.txt.
 Instructions
 ============
 
-0. Edit gcf_config to configure your clearinghouse and aggregate manager.  The default values should
-   be fine for most settings, but you should change the base_name to be specific to you.  The keys and
-   certificates will be generated in src/gen-certs.py in Step 1.  After Step 1 be sure to return
-   and enter in the appropriate filenames for your keys and certs.
+0. Edit gcf_config to configure your clearinghouse and aggregate manager.  
+ The default values should be fine for most settings, but you should change 
+ the base_name (URN) to be specific to you.  The keys and certificates will be 
+ generated in src/gen-certs.py in Step 1.  After Step 1 be sure to return
+ and enter in the appropriate filenames for your keys and certs.
 
-1. Generate keys and certificates for your users, clearinghouse, and aggregate manager.
+1. Generate keys and certificates for your users, clearinghouse, and 
+  aggregate manager.
 
  $ python src/gen-certs.py
 
@@ -235,6 +237,8 @@ Further Reading
 The GENI API pages on the GENI wiki have full details on GENI identifiers,
 credentials and certificates. See www.geni.net
 
-See FIXME
-<Wiki on the GENI AM API, RSpecs, ?>
+In particular, under the GENI API page there are details on URNs,
+certificates, credentials, and the API calls.
+See http://groups.geni.net/geni/wiki/GeniApi
+
 
