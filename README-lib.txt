@@ -37,5 +37,19 @@ Please see the source files themselves for further documentation.
 
 Example usage after installation:
 
+# To create a URN
 from geni.util.urn_util import URN
-urn = URN("gcf//gpo//bbn1","authority","sa").urn_string()
+ch_urn = URN("gcf//gpo//bbn1","authority","sa").urn_string()
+am_urn = URN("gcf//gpo//bbn1//am1","authority","am").urn_string()
+
+
+# To create a certificate:
+from geni.util.urn_util import URN
+from geni.util.cert_util import create_cert
+
+urn = URN("gcf//gpo//bbn1", "user", "alice").urn_string()
+alice_cert = create_cert(urn, issuer_key, issuer_certificate).save_to_string()
+
+
+Further examples can be found in the GENI Control Framework distribution in the 
+GENI Clearinghouse and GENI Aggregate Manager implementations.
