@@ -40,6 +40,29 @@ class CredentialVerifier(object):
 
     CATEDCERTSFNAME = 'CATedCACerts.pem'
 
+
+    # root_cert_file is a file or directory of files
+    # these are trusted roots for verifying credentials
+    def __init__(self, root_cert_fileordir):
+        self.logger = logging.getLogger('cred-verifier')
+        if root_cert_fileordir is None:
+            raise Exception("Missing Root certs argument")
+        elif os.path.isdir(root_cert_fileordir):
+            files = os.listdir(root_cert_fileordir)
+            self.root_cert_files = []
+            for file in files:
+                # FIXME: exclude files that aren't cert files? The combo cert file?
+                if file == CredentialVerifier.CATEDCERTSFNAME:
+                    continue
+                self.root_cert_files.append(os.path.expanduser(os.path.join(root_cert_fileordir, file)))
+            self.logger.info('Will accept credentials signed by any of %d root certs found in %s: %r' % (len(self.root_cert_files), root_cert_fileordir, self.root_cert_files))
+        elif os.path.isfile(root_cert_fileordir):
+            self.logger.info('Will accept credentials signed by the single root cert %s' % root_cert_fileordir)
+            self.root_cert_files = [root_cert_fileordir]
+        else:
+            raise Exception("Couldn't find Root certs in %s" % root_cert_fileordir)
+
+
     @classmethod
     def getCAsFileFromDir(cls, caCerts):
         '''Take a directory of CA certificates and concatenate them into a single
@@ -86,27 +109,6 @@ class CredentialVerifier(object):
         else:
             logger.info('Combined dir of %d trusted certs %s into file %s for Python SSL support', okFileCount, caCerts, comboFullPath)
         return comboFullPath
-
-    # root_cert_file is a file or directory of files
-    # these are trusted roots for verifying credentials
-    def __init__(self, root_cert_file):
-        self.logger = logging.getLogger('cred-verifier')
-        if root_cert_file is None:
-            raise Exception("Missing Root certs argument")
-        elif os.path.isdir(root_cert_file):
-            files = os.listdir(root_cert_file)
-            self.root_cert_files = []
-            for file in files:
-                # FIXME: exclude files that aren't cert files? The combo cert file?
-                if file == CredentialVerifier.CATEDCERTSFNAME:
-                    continue
-                self.root_cert_files.append(os.path.expanduser(os.path.join(root_cert_file, file)))
-            self.logger.info('Will accept credentials signed by any of %d root certs found in %s: %r' % (len(self.root_cert_files), root_cert_file, self.root_cert_files))
-        elif os.path.isfile(root_cert_file):
-            self.logger.info('Will accept credentials signed by the single root cert %s' % root_cert_file)
-            self.root_cert_files = [root_cert_file]
-        else:
-            raise Exception("Couldn't find Root certs in %s" % root_cert_file)
 
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
                             privileges):
