@@ -23,7 +23,8 @@
 import xmlrpclib
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
-
+    '''Sample client for talking XMLRPC over SSL supplying
+    a client X509 identity certificate.'''
     def __init__(self, use_datetime=0, keyfile=None, certfile=None,
                  timeout=None):
         xmlrpclib.SafeTransport.__init__(self, use_datetime)
