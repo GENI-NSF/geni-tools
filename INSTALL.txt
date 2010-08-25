@@ -1,3 +1,9 @@
+This file documents how to install the full 'gcf' package.
+
+Note there is also an RPM for installing just the library functions
+for handling URNS, certificates, credentials, and XMLRPC over SSL
+clients.
+
 1) Software Dependencies
 ========================
 
@@ -27,39 +33,37 @@ running in this environment.
 2) Test Run
 ===========
 
-# Edit gcf-config if you want to change settings from the default (for a test run there is no need)
+# Edit gcf-config if you want to change settings from the default 
+(for a test run there is no need)
 
 # Create certificates and run the GENI Clearinghouse
 # in terminal one:
 $ cd gcf
 $ python src/gen-certs.py
-$ python src/gch.py -r ch-cert.pem -c ch-cert.pem -k ch-key.pem -g geni_aggregates
+$ python src/gch.py
 
 # Run the GENI Aggregate Manager in a second terminal:
-$ python src/gam.py -r ch-cert.pem -c am-cert.pem -k am-key.pem
-
+$ python src/gam.py
 
 # Run the client test script in a third terminal window:
-$ python src/client.py -c alice-cert.pem -k alice-key.pem \
-     --ch https://localhost:8000/ --am https://localhost:8001/
+$ python src/client.py 
 
 
 You should see something like this:
 
-$ python src/client.py -c alice-cert.pem -k alice-key.pem \
->      --ch https://localhost:8000/ --am https://localhost:8001/
+$ python src/client.py 
 INFO:client:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
 INFO:client:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
-Slice Creation SUCCESS: URN = urn:publicid:IDN+geni.net:gpo:gcf+slice+1468-659:127.0.0.1%3A8000
+Slice Creation SUCCESS: URN = urn:publicid:IDN+geni:gpo:gcf+slice+1468-659:127.0.0.1%3A8000
 Testing GetVersion... passed
 Testing ListResources... passed
 Testing CreateSliver... passed
 Testing SliverStatus... passed
 Testing ListResources... passed
-Testing RenewSliver... passed
+Testing RenewSliver... passed. (Result: False)
 Testing DeleteSliver... passed
 Testing ListResources... passed
-Second Slice URN = urn:publicid:IDN+geni.net:gpo:gcf+slice+065e-c63:127.0.0.1%3A8000
+Second Slice URN = urn:publicid:IDN+geni:gpo:gcf+slice+065e-c63:127.0.0.1%3A8000
 Testing ListResources... passed
 Testing CreateSliver... passed
 Testing Shutdown... passed

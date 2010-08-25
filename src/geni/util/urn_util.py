@@ -41,15 +41,15 @@ class URN(object):
         
     ch_urn = URN("gcf//gpo//bbn", "authority", "sa").urn_string() for a clearinghouse URN
     am1_urn = URN("gcf//gpo//bbn//site1", "authority", "am").urn_string() for an AM at this authority
-        Looks like urn:publicid:IDN+gcf.gpo.bbn.site1+authority+am
+        Looks like urn:publicid:IDN+gcf:gpo:bbn:site1+authority+am
     am2_urn = URN("gcf//gpo//bbn//site2", "authority", "am").urn_string() for a second AM at this authority
-        Looks like urn:publicid:IDN+gcf.gpo.bbn.site2+authority+am
+        Looks like urn:publicid:IDN+gcf:gpo:bbn:site2+authority+am
     user_urn = URN("gcf//gpo//bbn", "user", "jane").urn_string() for a user made by the clearinghouse    
-        Looks like urn:publicid:IDN+gcf.gpo.bbn+user+jane
+        Looks like urn:publicid:IDN+gcf:gpo:bbn+user+jane
     slice_urn = URN("gcf//gpo//bbn", "slice", "my-great-experiment").urn_string()
-        Looks like urn:publicid:IDN+gcf.gpo.bbn+slice+my-great-experiment
+        Looks like urn:publicid:IDN+gcf:gpo:bbn+slice+my-great-experiment
     resource_at_am1_urn = URN("gcf//gpo//bbn/site1", "node", "LinuxBox23").urn_string() for Linux Machine 23 managed by AM1 (at site 1)
-        Looks like urn:publicid:IDN+gcf.gpo.bbn.site1+node+LinuxBox23
+        Looks like urn:publicid:IDN+gcf:gpo:bbn:site1+node+LinuxBox23
     """
     def __init__(self, authority=None, type=None, name=None, urn=None):
         if not urn is None:

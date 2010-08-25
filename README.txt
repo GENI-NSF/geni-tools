@@ -1,3 +1,5 @@
+GENI Control Framework
+   Reference Clearinghouse and Aggregate Manager with library functions.
 
 Description
 ===========
@@ -6,6 +8,10 @@ This software implements a sample GENI Aggregate Manager. It also
 includes a sample GENI Clearinghouse and command line client. This
 software is intended to demonstrate the GENI Aggregate Manager API.
 
+Installation & Getting Started
+============
+See INSTALL.txt for instructions on installing this package, and
+the 4 step test run using the test client.
 
 Software Dependencies
 =====================
@@ -89,7 +95,7 @@ Instructions
 
  $ python src/gen-certs.py
 
- This  creates keys and certificates for a clearinghouse (ch), an aggregate
+ This creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
  The directory for the output, the researcher name, and which keys to
  generate are configurable via command line options. Cert URNs and
@@ -98,13 +104,15 @@ Instructions
  credentials using this script.
 
  Note that you should customize the certificates generated at your
- site using the constants at the top of this file, if you will use
+ site using the constants in gcf_config, if you will use
  these certificates to interact with any other GENI site. In particular, 
- URNs must be globally unique. If you change the cert prefix, be sure
- to make corresponding edits to geni/ch.py SLICE_AUTHORITY.
+ URNs must be globally unique. 
 
-Optional: Create a directory containing all known and trusted (federated)
- certificates (see below for an explanation).
+ By default the gcf_config file is found in the local directory. Override
+ that by specifying the -f argument.
+
+ A directory for trusted_roots is used or created, and your CH
+ certificate is copied there. This is used in Federation (see below).
 
 2. Start the clearinghouse server:
 
@@ -112,7 +120,7 @@ Optional: Create a directory containing all known and trusted (federated)
  
  To override the settings in gcf_config, you can use these command line options:
  $ python -r <ch-cert.pem or trusted_roots_dir/> \
-   	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates
+   	      -c ch-cert.pem -k ch-key.pem -g geni_aggregates -f <path-to-gcf_config-file>
 
  The optional -r argument could be a file with the GCF CH certificate. 
  If you want to allow users from other Clearinghouses to make
@@ -128,6 +136,9 @@ Optional: Create a directory containing all known and trusted (federated)
  AM API compliant agggregate managers from whatever control framework.
  Aggregate URNs here are for human consumption and need not be accurate.
 
+ By default the gcf_config file is found in the local directory. Override
+ that by specifying the -f argument.
+
  Other optional arguments include -H to specify a full hostname, -p to
  listen on a port other than 8000, and --debug for debugging output. 
  Note that listening on localhost/127.0.0.1 (the default) is not the same 
@@ -135,9 +146,9 @@ Optional: Create a directory containing all known and trusted (federated)
  desired interface and address the Aggregate Manager / Clearinghouse
  consistently.
 
- See geni/ch.py constants to change the slice URNs, etc. Note that slice URNs
- are globally unique, and constrained to be proper children of their
- Clearinghouse (Slice Authority).
+ See gcf_config clearinghouse section for relevant constants.
+ Note that slice URNs are globally unique, and constrained to be proper 
+ children of their Clearinghouse (Slice Authority).
  Another constant you may want to change is the lifetime of Slice
  credentials. By default they last 3600 seconds. That is likely too
  short to actually use any allocated resources.
@@ -148,7 +159,13 @@ Optional: Create a directory containing all known and trusted (federated)
  
  To override the settings in gcf_config, you can use these command line options:
  $ python src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
-   	      -c am-cert.pem -k am-key.pem
+   	      -c am-cert.pem -k am-key.pem -f <path-to-gcf_config-file>
+
+ By default the gcf_config file is found in the local directory. Override
+ that by specifying the -f argument. See the aggregate_manager section.
+ Note in particular that you name your aggregate manager, and could
+ generate multiple aggregate manager certificates be editing gcf_config
+ and re-running gen-certs.
 
  NOTE: The -r ch-cert.pem is a file name with the CH cert, or
  better still, a directory with all trusted root certs.
@@ -168,10 +185,14 @@ Optional: Create a directory containing all known and trusted (federated)
  
  To override the settings in gcf_config, you can use these command line options:
  $ python src/client.py -c alice-cert.pem -k alice-key.pem \
-     --ch https://localhost:8000/ --am https://localhost:8001/
+     --ch https://localhost:8000/ --am https://localhost:8001/ \
+     -f <path-to-gcf_config-file>
 
  The output should show some basic API testing, and possibly some
  debug output. Errors will be marked by exception traces or 'failed'.
+
+ By default the gcf_config file is found in the local directory. Override
+ that by specifying the -f argument.
 
  Optional arguments --debug and --debug-rpc enable more debug output.
 
@@ -212,8 +233,10 @@ Optional: Create a directory containing all known and trusted (federated)
 
  -- Step 2) Listing Aggregates -- Do this on all peered clearinghouses
 
- To list your GCF AM to SFA users, add your GCF address to /etc/sfa/geni_aggregates.xml.
- The form is <aggregate addr="hostname" hrn="hrn" port="port" url="hostname:port"/>
+ To list your GCF AM to SFA users, add your GCF address to 
+    	 /etc/sfa/geni_aggregates.xml.
+ The form is 
+     <aggregate addr="hostname" hrn="hrn" port="port" url="hostname:port"/>
 
    URL and addr/port are redundant, but fill in both.  The hrn can be 
    anything, but its intent is to be a shorthand dotted notation of your 
