@@ -7,7 +7,7 @@ rpm:
 	rm MANIFEST
 	python setup.py bdist_rpm
 
-src:
+source:
 	rm MANIFEST
 	rm -rf build/
 	python setup.py sdist
