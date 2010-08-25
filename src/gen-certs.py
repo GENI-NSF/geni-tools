@@ -24,7 +24,7 @@
 #----------------------------------------------------------------------
 
 """
-Create a certificate authority and some basic certs and keys.
+Create some basic x509 identity certificates and keys.
 
 Certificates and keys are created for two authorities:
 a clearinghouse and an intermediate CA - an aggregate manager. 
@@ -32,7 +32,8 @@ Finally, a user cert and
 key is created for a user (named Alice by default). Options allow
 controlling which certs are created.
 This file shows how to constructe GAPI compliant certificates.
-See sfa.trust.certificate for the class definition.
+See sfa.trust.certificate for the class definition and
+geni.util.cert_util for the utility create_cert function.
 """
 
 import sys
@@ -53,6 +54,7 @@ import sfa.util.namespace
 from geni.util.cert_util import create_cert
 from geni.config import read_config
 
+# Default paths to files. Overridden by values in gcf_config
 CH_CERT_FILE = 'ch-cert.pem'
 CH_KEY_FILE = 'ch-key.pem'
 AM_CERT_FILE = 'am-cert.pem'
@@ -86,6 +88,19 @@ CH_CERT_SUBJ = 'sa'
 AM_CERT_SUBJ = 'am'
 
 
+def getAbsPath(path):
+    """Return None or a normalized absolute path version of the argument string.
+    Does not check that the path exists."""
+    if path is None:
+        return None
+    if path.strip() == "":
+        return None
+    path = os.path.normcase(os.path.expanduser(path))
+    if os.path.isabs(path):
+        return path
+    else:
+        return os.path.abspath(path)
+
 def make_ch_cert(dir):
     '''Make a self-signed cert for the clearinghouse saved to 
     given directory and returned.'''
@@ -95,16 +110,25 @@ def make_ch_cert(dir):
     (ch_gid, ch_keys) = create_cert(urn)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
-    os.popen('mkdir %s' % (os.path.join(dir, 'trusted_roots')))
-    ch_gid.save_to_file(os.path.join(config['global']['rootcadir'], CH_CERT_FILE))
-    print "Created CH cert/keys in %s/%s, %s, and %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, 
-                                                         dir + "/trusted_roots/" + CH_CERT_FILE)
+
+    # Create the rootcadir / trusted_roots dir if necessary
+    rootcapath = getAbsPath(config['global']['rootcadir'])
+    if rootcapath is not None:
+        if not os.path.exists(rootcapath):
+            # Throws an exception on error
+            os.makedirs(rootcapath)
+        # copy the CH cert to the trusted_roots dir
+        ch_gid.save_to_file(os.path.join(config['global']['rootcadir'], CH_CERT_FILE))
+
+    print "Created CH cert/keys in %s/%s, %s, and in %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, 
+                                                         config['global']['rootcadir'] + "/" + CH_CERT_FILE)
     return (ch_keys, ch_gid)
 
 def make_am_cert(dir, ch_cert, ch_key):
     '''Make a cert for the aggregate manager signed by given CH cert/key
-    and saved in given dir. NOT RETURNED.'''
-    # Create a cert with urn like geni.net:gpo:gcf+authority+am
+    and saved in given dir. NOT RETURNED.
+    AM publicid will be from gcf_config base_name//am-name'''
+    # Create a cert with urn like geni.net:gpo:gcf:am1+authority+am
     auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
     urn = geni.URN(auth_name, AUTHORITY_CERT_TYPE, AM_CERT_SUBJ).urn_string()
     (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, True)
@@ -142,7 +166,7 @@ def parse_args(argv):
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
                       help="Create experimenter cert/keys")
-    parser.add_option("--authority", default=None, help="The Authority of the URN in publicid format (such as 'geni.net//gpo//gcf')")
+    parser.add_option("--authority", default=None, help="The Authority of the URN in publicid format (such as 'geni.net//gpo//gcf'). Overrides base_name from gcf_config file.")
     return parser.parse_args()
 
 def main(argv=None):
@@ -155,12 +179,14 @@ def main(argv=None):
     CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
     if opts.username:
+        # FIXME: Check it's legal?
         username = opts.username
     dir = "."
     if opts.directory:
         dir = opts.directory
 
     if not opts.authority is None:
+        # FIXME: Check it's legal?
         CERT_AUTHORITY = opts.authority
         
     global CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE
