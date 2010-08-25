@@ -45,6 +45,7 @@ import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 from geni.config import read_config
+from geni.util import make_client
 import sfa.trust.credential as cred
 
 def getAbsPath(path):
@@ -60,28 +61,11 @@ def getAbsPath(path):
     else:
         return os.path.abspath(path)
 
-class SafeTransportWithCert(xmlrpclib.SafeTransport):
-
-    def __init__(self, use_datetime=0, keyfile=None, certfile=None):
-        xmlrpclib.SafeTransport.__init__(self, use_datetime)
-        self.__x509 = dict()
-        if keyfile:
-            self.__x509['key_file'] = keyfile
-        if certfile:
-            self.__x509['cert_file'] = certfile
-
-    def make_connection(self, host):
-        host_tuple = (host, self.__x509)
-        return xmlrpclib.SafeTransport.make_connection(self, host_tuple)
-
-
 def exercise_ch(host, port, keyfile, certfile):
-    cert_transport = SafeTransportWithCert(keyfile=keyfile, certfile=certfile)
     url = 'https://%s' % (host)
     if port:
         url = '%s:%s' % (url, port)
-    server = xmlrpclib.ServerProxy(url, transport=cert_transport,
-                                   verbose=False)
+    server = make_client(url, keyfile, certfile)
     print server
     try:
         print server.GetVersion()
@@ -242,14 +226,6 @@ def exercise_am(ch_server, am_server):
     test_create_sliver(am_server, slice_urn, credentials, dom)
     test_shutdown(am_server, slice_urn, credentials)
 
-def make_server(url, keyfile, certfile, verbose=False):
-    """Create an SSL connection to an XML RPC server.
-    Returns the XML RPC server proxy.
-    """
-    cert_transport = SafeTransportWithCert(keyfile=keyfile, certfile=certfile)
-    return xmlrpclib.ServerProxy(url, transport=cert_transport,
-                                 verbose=verbose)
-    
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
@@ -314,10 +290,10 @@ def main(argv=None):
     keyf = getAbsPath(opts.keyfile)
     certf = getAbsPath(opts.certfile)
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
-    ch_server = make_server(opts.ch, keyf, certf,
+    ch_server = make_client(opts.ch, keyf, certf,
                             opts.debug_rpc)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
-    am_server = make_server(opts.am, keyf, certf,
+    am_server = make_client(opts.am, keyf, certf,
                             opts.debug_rpc)
     exercise_am(ch_server, am_server)
     return 0
