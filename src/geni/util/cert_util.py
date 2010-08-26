@@ -27,7 +27,7 @@ Certificate (GID in SFA terms) creation and verification utilities.
 
 from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair
-from geni.util.urn_util import URN, is_valid_urn
+from geni.util.urn_util import URN
 
 def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
     '''Create a new certificate and return it and the associated keys.

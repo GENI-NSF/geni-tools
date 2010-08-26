@@ -31,11 +31,12 @@ list of aggregates read from a config file, and create a new Slice Credential.
 import datetime
 import traceback
 import uuid
+import os
 
 from SecureXMLRPCServer import SecureXMLRPCServer
-from geni.util.cred_util import *
-from geni.util.cert_util import *
-from geni.util.urn_util import *
+import geni.util.cred_util as cred_util
+import geni.util.cert_util as cert_util
+import geni.util.urn_util as urn_util
 import sfa.trust.gid as gid
 
 # Substitute eg "openflow//stanford"
@@ -89,7 +90,7 @@ class SampleClearinghouseServer(object):
 class Clearinghouse(object):
 
     def __init__(self):
-        self.logger = logging.getLogger('gch')
+        self.logger = cred_util.logging.getLogger('gch')
         self.slices = {}
         self.aggs = []
 
@@ -151,7 +152,7 @@ class Clearinghouse(object):
             ca_certs = certfile
             self.logger.info("Using only my CH cert as a trusted root cert")
 
-        self.trusted_root_files = CredentialVerifier(ca_certs).root_cert_files
+        self.trusted_root_files = cred_util.CredentialVerifier(ca_certs).root_cert_files
             
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
@@ -167,14 +168,14 @@ class Clearinghouse(object):
         self.logger.info("%d Aggregate Managers registered from aggregates file %r", len(self.aggs), aggfile)
 
         # This is the arg to _make_server
-        ca_certs_onefname = CredentialVerifier.getCAsFileFromDir(ca_certs)
+        ca_certs_onefname = cred_util.CredentialVerifier.getCAsFileFromDir(ca_certs)
 
         # This is used below by CreateSlice
         self.ca_cert_fnames = []
         if os.path.isfile(os.path.expanduser(ca_certs)):
             self.ca_cert_fnames = [os.path.expanduser(ca_certs)]
         elif os.path.isdir(os.path.expanduser(ca_certs)):
-            self.ca_cert_fnames = [os.path.join(os.path.expanduser(ca_certs), name) for name in os.listdir(os.path.expanduser(ca_certs)) if name != CredentialVerifier.CATEDCERTSFNAME]
+            self.ca_cert_fnames = [os.path.join(os.path.expanduser(ca_certs), name) for name in os.listdir(os.path.expanduser(ca_certs)) if name != cred_util.CredentialVerifier.CATEDCERTSFNAME]
 
         # Create the xmlrpc server, load the rootkeys and do the ssl thing.
         self._server = self._make_server(addr, keyfile, certfile,
@@ -219,9 +220,9 @@ class Clearinghouse(object):
         if urn_req:
             # FIXME: Validate urn_req has the right form
             # to be issued by this CH
-            if not is_valid_urn(urn_req):
+            if not urn_util.is_valid_urn(urn_req):
                 # FIXME: make sure it isnt empty, etc...
-                urn = publicid_to_urn(urn_req)
+                urn = urn_util.publicid_to_urn(urn_req)
             else:
                 urn = urn_req
         else:
@@ -238,12 +239,12 @@ class Clearinghouse(object):
                                                                    port)
             # this func adds the urn:publicid:
             # and converts spaces to +'s, and // to :
-            urn = publicid_to_urn(public_id)
+            urn = urn_util.publicid_to_urn(public_id)
 
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
             try:
-                slice_gid = create_cert(urn, self.keyfile, self.certfile)[0]
+                slice_gid = cert_util.create_cert(urn, self.keyfile, self.certfile)[0]
             except Exception, exc:
                 self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
                 raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)
@@ -300,7 +301,7 @@ class Clearinghouse(object):
         user_gid = gid.GID(string=user_gid)
         self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
         try:
-            ucred = create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile, self.trusted_root_files)
+            ucred = cred_util.create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile, self.trusted_root_files)
         except Exception, exc:
             self.logger.error("Failed to create user credential for %s: %s", user_gid.get_hrn(), traceback.format_exc())
             raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
@@ -310,5 +311,5 @@ class Clearinghouse(object):
         '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        return create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
+        return cred_util.create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
 
