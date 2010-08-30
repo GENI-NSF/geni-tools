@@ -265,7 +265,11 @@ class CallHandler(object):
                 your Clearinghouse or it is not in the optionally provided list of aggregates in
                 your configuration file.  By creating this sliver, you will be unable to check its
                 status or delete it.""" % (url))
-            
+                
+                res = raw_input("Would you like to continue? (y/N) ")
+                if not res.lower().startswith('y'):
+                    return
+                
             # Okay, send a message to the AM this resource came from
             if allocate:
                 try:
