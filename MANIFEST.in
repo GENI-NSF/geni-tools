@@ -1,3 +1,2 @@
-exclude README.txt
-include README-lib.txt
-include LICENSE.txt
+exclude README.txt 
+include README-lib.txt LICENSE.txt

@@ -8,8 +8,8 @@ rpm:
 	python setup.py bdist_rpm
 
 source:
-	rm MANIFEST
-	rm -rf build/
+	rm MANIFEST ;\
+	rm -rf build/ ;\
 	python setup.py sdist
 
 deb: rpm
@@ -24,12 +24,4 @@ deb: rpm
 	dpkg-buildpackage -rfakeroot;\
 	cd ..;\
 	cp *.deb ../dist/ ;\
-
-		#cp dist/gcf-*.noarch.rpm build/
-		#cd build;
-		#alien --generate --scripts *.rpm;
-		
-			
-	#		dpkg-buildpackage
-	# More to go here...
 
