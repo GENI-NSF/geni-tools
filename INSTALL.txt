@@ -43,13 +43,13 @@ running in this environment.
 # in terminal one:
 $ cd gcf
 $ python src/gen-certs.py
-$ python src/gch.py
+$ python src/gcf-ch.py
 
 # Run the GENI Aggregate Manager in a second terminal:
-$ python src/gam.py
+$ python src/gcf-am.py
 
 # Run the client test script in a third terminal window:
-$ python src/client.py 
+$ python src/gcf-test.py 
 
 
 You should see something like this:

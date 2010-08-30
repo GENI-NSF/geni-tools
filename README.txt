@@ -116,7 +116,7 @@ Instructions
 
 2. Start the clearinghouse server:
 
- $ python src/gch.py   
+ $ python src/gcf-ch.py   
  
  To override the settings in gcf_config, you can use these command line options:
  $ python -r <ch-cert.pem or trusted_roots_dir/> \
@@ -132,7 +132,7 @@ Instructions
 
  The geni_aggregates file lists the Aggregate Managers that have
  federated with this Clearinghouse. For some other examples 
- see src/geni/ch.py.  This is how a single gch can contact multiple
+ see src/geni/ch.py.  This is how a single gcf-ch can contact multiple
  AM API compliant agggregate managers from whatever control framework.
  Aggregate URNs here are for human consumption and need not be accurate.
 
@@ -155,10 +155,10 @@ Instructions
  
 3. Start the aggregate manager server:
 
- $ python src/gam.py
+ $ python src/gcf-am.py
  
  To override the settings in gcf_config, you can use these command line options:
- $ python src/gam.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
+ $ python src/gcf-am.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
    	      -c am-cert.pem -k am-key.pem -f <path-to-gcf_config-file>
 
  By default the gcf_config file is found in the local directory. Override
@@ -181,10 +181,10 @@ Instructions
 
 4. Run the GCF installation testing client:
 
- $ python src/client.py
+ $ python src/gcf-test.py
  
  To override the settings in gcf_config, you can use these command line options:
- $ python src/client.py -c alice-cert.pem -k alice-key.pem \
+ $ python src/gcf-test.py -c alice-cert.pem -k alice-key.pem \
      --ch https://localhost:8000/ --am https://localhost:8001/ \
      -f <path-to-gcf_config-file>
 
@@ -198,7 +198,7 @@ Instructions
 
  Note that you can use user credentials from any federated control 
  framework, as long as the appropriate CH certificates 
- were supplied to the -r arguments to gch and gam above.
+ were supplied to the -r arguments to gcf-ch and gcf-am above.
 
 5. See README-omni.txt for instructions on running the OMNI GENI
  Client. Omni is a sample command line interface for doing arbitrary
@@ -227,8 +227,8 @@ Instructions
  To add an SFA certificate to a GCF based aggregate manager, copy your
  SFA key from /etc/sfa/trusted_roots/<should be a .gid file> to your GCF
  trusted roots directory created in steps 2 and 3 above. This is
- not particularly necessary for the Clearinghouse (gch), but is 
- necessary for the Aggregate Manager (gam).
+ not particularly necessary for the Clearinghouse (gcf-ch), but is 
+ necessary for the Aggregate Manager (gcf-am).
 
 
  -- Step 2) Listing Aggregates -- Do this on all peered clearinghouses

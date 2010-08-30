@@ -113,7 +113,7 @@ def main(argv=None):
                                       certfile=getAbsPath(opts.certfile),
                                       ca_certs=comboCertsFile,
                                       base_name=config['global']['base_name'])
-    logging.getLogger('gam').info('GENI AM Listening on port %s...' % (opts.port))
+    logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
     ams.serve_forever()
 
 if __name__ == "__main__":

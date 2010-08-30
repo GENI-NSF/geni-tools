@@ -23,7 +23,7 @@
 """
 The GPO Reference Aggregate Manager, showing how to implement
 the GENI AM API. This AggregateManager has only fake resources.
-Invoked from gam.py
+Invoked from gcf-am.py
 The GENI AM API is defined in the AggregateManager class.
 """
 
@@ -265,7 +265,7 @@ class ReferenceAggregateManager(object):
         self._resources = [Resource(x, 'Nothing') for x in range(10)]
         self._cred_verifier = geni.CredentialVerifier(root_cert)
         self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
-        self.logger = logging.getLogger('gam.reference')
+        self.logger = logging.getLogger('gcf-am.reference')
 
     def GetVersion(self):
         '''Specify version information about this AM. That could 

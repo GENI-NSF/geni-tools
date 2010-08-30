@@ -65,7 +65,7 @@ type=gcf
 # Authority part of the control frameworks URN
 authority=geni:gpo:gcf
 
-# Where the gch server is listening
+# Where the gcf-ch server is listening
 ch=https://localhost:8000
 
 cert=~/.omni/alice-cert.pem

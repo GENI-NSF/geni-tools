@@ -22,7 +22,7 @@
 #----------------------------------------------------------------------
 """
 Reference GENI GCF Clearinghouse. Uses SFA Certificate and credential objects.
-Run from gch.py
+Run from gcf-ch.py
 Will produce signed user credentials from a GID, return a
 list of aggregates read from a config file, and create a new Slice Credential.
 
@@ -90,7 +90,7 @@ class SampleClearinghouseServer(object):
 class Clearinghouse(object):
 
     def __init__(self):
-        self.logger = cred_util.logging.getLogger('gch')
+        self.logger = cred_util.logging.getLogger('gcf-ch')
         self.slices = {}
         self.aggs = []
 
@@ -194,7 +194,7 @@ class Clearinghouse(object):
     def GetVersion(self):
         self.logger.info("Called GetVersion")
         version = dict()
-        version['gch_api'] = 1
+        version['gcf-ch_api'] = 1
         return version
 
     # FIXME: Change that URN to be a name and non-optional

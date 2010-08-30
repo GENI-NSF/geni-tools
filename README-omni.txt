@@ -51,7 +51,7 @@ it about, and use the GENI AM API to ask each for its resources.
 Again, it will use your user credentials. So each Aggregate Manager must 
 trust the signer of your user credentials, in order for you to talk
 to it. This is why you add the CH certificate to /etc/sfa/trusted_roots or to
-the -r argument of your GCF gam.py.
+the -r argument of your GCF gcf-am.py.
 d) Omni will then convert the proprietary RSPecs into a single 'omnispec'.
 
 - Save this to a file. You can then edit this file to reserve resources, 

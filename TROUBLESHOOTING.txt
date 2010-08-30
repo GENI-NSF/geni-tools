@@ -68,7 +68,7 @@ And failing to get the constants right can look like this:
 
 2) If you see:
 'Unable to allocate from:'
-This is an error from your Aggregate Manager (eg gam). Check the logs there.
+This is an error from your Aggregate Manager (eg gcf-am). Check the logs there.
 
 4) If at Omni startup you get a Traceback that ends with something like:
 
@@ -150,7 +150,7 @@ libraries path (LD_LIBRARY_PATH)\\nenvornment variable or use
 This indicates that you are missing 2 packages:
 install xmlsec1-openssl-devel and xmlsec1
 
-Finally make sure that your GCH includes in its trusted_certs (-r argument) 
+Finally make sure that your GCF-CH includes in its trusted_certs (-r argument) 
 the relevant CH certificate(s).
 
 8) Running across machines

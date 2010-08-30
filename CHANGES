@@ -24,11 +24,11 @@ gcf 1.0 8/25/10:
 	Support credentials from multiple control frameworks / CAs
 	without restarting.
 
-	gam and gch want the -r argument to be a directory of all
+	gcf-am and gcf-ch want the -r argument to be a directory of all
 	trusted (federated) CA and Clearinghouse certificates, to be
 	able to validate and accept certificates from multiple control
 	frameworks at once.
 
-	gch takes a user certificate argument for test purposes
+	gcf-ch takes a user certificate argument for test purposes
 
 	
