@@ -255,6 +255,17 @@ class CallHandler(object):
                     allocate = True
                     break
                 
+                
+            # Is this AM listed in the CH or our list of aggregates?
+            # If not we won't be able to check its status and delete it later
+            print self._listaggregates(args)
+            if not url in self._listaggregates(args).values():
+                logger = logging.getLogger('omni')
+                logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
+                your Clearinghouse or it is not in the optionally provided list of aggregates in
+                your configuration file.  By creating this sliver, you will be unable to check its
+                status or delete it.""" % (url))
+            
             # Okay, send a message to the AM this resource came from
             if allocate:
                 try:
