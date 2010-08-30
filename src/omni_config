@@ -23,6 +23,14 @@ default_cf = my_sfa
 # Details on users should be defined in sections below
 users = Alice, Bob
 
+
+# Omni will by default contact every Aggregate Manager listed
+# by your control framework's registry/clearinghouse.  If you would
+# like to provide a specific list of aggregates to contact, do so 
+# here in a comma delimited list of of urls.
+# e.g., aggregates = http://www.planet-lab.org:12347/, http://myplc2.gpolab.bbn.com:8001/
+aggregates =
+
 # ==================================
 # Configure Control Frameworks here
 

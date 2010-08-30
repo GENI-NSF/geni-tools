@@ -126,9 +126,15 @@ class CallHandler(object):
         return clients    
         
     def _listaggregates(self, args):
-        '''Ask Framework CH for known aggregates'''
-        aggs = self.framework.list_aggregates()
-        return aggs
+        '''Use aggregates listed in config file's aggregates key or, if empty, ask the framework CH for known aggregates'''
+        if not self.omni_config.get('aggregates', '').strip() == '':
+            aggs = {}
+            for url in self.omni_config['aggregates'].strip().split(','):
+                aggs[url] = url
+            return aggs                
+        else:
+            aggs = self.framework.list_aggregates()
+            return aggs
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
