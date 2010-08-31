@@ -1,2 +1,2 @@
-include README.txt LICENSE.txt src/geni-ch.py src/geni-am.py src/geni-test.py src/gen-certs.py
+include README.txt LICENSE.txt src/geni-ch.py src/geni-am.py src/geni-test.py src/gen-certs.py gcf_config
 exclude src/geni/__init__.py

@@ -30,21 +30,17 @@ GCF_CONFIG_FILE='gcf_config'
 # of the config is its own sub-dictionary
 def read_config(path=None):
     confparser = ConfigParser.RawConfigParser()
-    try:
-        if path:
-            conf = path
-            confparser.read(path)
-        else:
-            conf = GCF_CONFIG_FILE
-            confparser.read(GCF_CONFIG_FILE)
-            
-    except ConfigParser.Error as exc:
-        sys.exit("Config file %s could not be parsed (or possibly not found): %s"
-                 % (conf, str(exc)))    
-    
+    paths = ['gcf_config', '/etc/gcf-servers/gcf_config']
+    if path:
+        paths.insert(0,path)
+
+    confparser.read(paths)
+    if confparser.sections() == []:
+        raise Exception("Config file could not be found or was not properly formatted (%s)" % paths)
+        
     
     config = {}
-    
+  
     for section in confparser.sections():
         config[section] = {}
         for (key,val) in confparser.items(section):
