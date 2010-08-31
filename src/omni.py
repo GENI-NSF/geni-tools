@@ -180,8 +180,8 @@ class CallHandler(object):
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
                 import traceback
-                logger.error("Failed to List Resources from %s (%s): %s.  Run with --debug to view stack trace." % (client.urn, client.url, exc))
-                logger.debug(traceback.format_exc())
+                logger.error("Failed to List Resources from %s (%s): %s" % (client.urn, client.url, exc))
+                logger.error(traceback.format_exc())
             
         # Convert the rspecs to omnispecs
         omnispecs = {}
@@ -310,8 +310,8 @@ class CallHandler(object):
                     print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
                 logger = logging.getLogger('omni')
-                logger.error("Error occured. Failed to delete sliver %s on %s (%s). Please run with --debug to see stack trace." % (urn, client.urn, client.url))
-                logger.debug(str(exc))
+                logger.error("Error occured. Failed to delete sliver %s on %s (%s)." % (urn, client.urn, client.url))
+                logger.error(str(exc))
             
     def renewsliver(self, args):
         if len(args) < 2:
@@ -344,8 +344,8 @@ class CallHandler(object):
                     print "Renewed sliver %s at %s until %s" % (urn, client.urn, time.isoformat())
             except Exception, exc:
                 logger = logging.getLogger('omni')
-                logger.error("Failed to renew sliver %s on %s.  Please run with --debug to view the stack trace." % (urn, client.urn))
-                logger.debug(str(exc))
+                logger.error("Failed to renew sliver %s on %s." % (urn, client.urn))
+                logger.error(str(exc))
     
     def sliverstatus(self, args):
         if len(args) == 0:
@@ -367,8 +367,8 @@ class CallHandler(object):
                 pprint.pprint(status)
             except Exception, exc:
                 logger = logging.getLogger('omni')
-                logger.error("Failed to retrieve status of %s at %s.  Run with --debug to view stack trace." % (urn, client.urn))
-                logger.debug(str(exc))
+                logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
+                logger.error(str(exc))
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -391,8 +391,8 @@ class CallHandler(object):
                     print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
                 logger = logging.getLogger('omni')                
-                logger.error("Failed to shutdown %s on AM %s at %s.  Run with --debug to view the stack trace." % (urn, client.urn, client.url))
-                logger.debug(str(exc))                
+                logger.error("Failed to shutdown %s on AM %s at %s." % (urn, client.urn, client.url))
+                logger.error(str(exc))                
     
     def getversion(self, args):
         for client in self._getclients():
@@ -400,8 +400,8 @@ class CallHandler(object):
                 print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
             except Exception, exc:
                 logger = logging.getLogger('omni')                
-                logger.error("Failed to get version information for %s at (%s). Run with --debug to view stack trace." % (client.urn, client.url))
-                logger.debug(str(exc))                                
+                logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
+                logger.error(str(exc))                                
                                 
     def createslice(self, args):
         if len(args) == 0:
