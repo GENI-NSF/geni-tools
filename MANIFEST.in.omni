@@ -1,0 +1,2 @@
+exclude README.txt 
+include README-lib.txt LICENSE.txt
