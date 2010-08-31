@@ -7,4 +7,5 @@ setup(name='gcf-servers',
       author_email='help@geni.net',
       url='http://www.geni.net',
       requires=['gcf_lib',],
+      provides=['gcf_servers'],
       )

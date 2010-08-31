@@ -1,4 +1,4 @@
-install: servers-install lib-install
+install: servers-install lib-install omni-install
 
 servers-install: clean
 	python setup-servers.py install
@@ -6,9 +6,11 @@ servers-install: clean
 lib-install: clean
 	python setup-lib.py install
 
+omni-install: clean
+	python setup-omni.py install
 
 
-clean: servers-clean lib-clean
+clean: servers-clean lib-clean omni-clean
 	rm MANIFEST ;\
 	rm -rf build/ ;\
 
@@ -18,7 +20,8 @@ servers-clean:
 lib-clean:
 	python setup-lib.py clean
 	
-
+omni-clean:
+	python setup-omni.py clean
 
 
 
@@ -26,20 +29,21 @@ lib-clean:
 
 
 
-source: servers-source lib-source
+source: servers-source lib-source omni-source
 
 servers-source: clean
-	python setup-servers.py sdist
+	python setup-servers.py sdist -t MANIFEST.in.servers
 
 lib-source: clean
 	python setup-lib.py sdist -t MANIFEST.in.lib
 
+omni-source: clean
+	python setup-omni.py sdist -t MANIFEST.in.omni
 
 
 
 
-
-rpm: lib-rpm servers-rpm
+rpm: lib-rpm servers-rpm omni-rpm
 
 servers-rpm: clean
 	cp MANIFEST.in.servers MANIFEST.in ;\
@@ -50,11 +54,16 @@ lib-rpm: clean
 	cp MANIFEST.in.lib MANIFEST.in ;\
 	python setup-lib.py bdist_rpm --requires="python=2.6 m2crypto xmlsec1-openssl-devel libxslt-python python-ZSI python-lxml python-setuptools python-dateutil" ;\
 	rm MANIFEST.in
+	
+omni-rpm: clean
+	cp MANIFEST.in.omni MANIFEST.in ;\
+	python setup-omni.py bdist_rpm --requires="gcf-lib";\
+	rm MANIFEST.in
 
 
 
 	
-deb: lib-deb servers-deb
+deb: lib-deb servers-deb omni-deb
 
 lib-deb: lib-rpm
 	VER=`perl -n -e 'print $$1 if /version="(.*)",/ ' setup-lib.py` ; \
@@ -82,3 +91,15 @@ servers-deb: servers-rpm
 	cd ..;\
 	cp *.deb ../dist/ ;\
 	
+omni-deb: omni-rpm
+	VER=`perl -n -e 'print $$1 if /version="(.*)",/ ' setup-omni.py` ; \
+	cp dist/omni-$$VER-1.noarch.rpm build/ ;\
+	cd build ;\
+	rm -rf omni-$$VER ;\
+	alien --generate --scripts omni-$$VER-1.noarch.rpm ;\
+	cd omni-$$VER/debian ;\
+	perl -p -i -e 's/Depends.*/Depends: gcf-lib/' control ;\
+	cd .. ;\
+	dpkg-buildpackage -rfakeroot;\
+	cd ..;\
+	cp *.deb ../dist/ ;\
