@@ -1,2 +1,2 @@
-include README-omni.txt LICENSE.txt 
+include README-omni.txt LICENSE.txt src/omni.py 
 exclude README.txt
