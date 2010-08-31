@@ -1,18 +1,59 @@
-install:
-	rm -rf build/
-	python setup.py install
+install: servers-install lib-install
 
-rpm:
-	rm -rf build/ ;\
-	rm MANIFEST;\
-	python setup.py bdist_rpm
+servers-install: clean
+	python setup-servers.py install
 
-source:
+lib-install: clean
+	python setup-lib.py install
+
+
+
+clean: servers-clean lib-clean
 	rm MANIFEST ;\
 	rm -rf build/ ;\
-	python setup.py sdist
 
-deb: rpm
+servers-clean:
+	python setup-servers.py clean
+
+lib-clean:
+	python setup-lib.py clean
+	
+
+
+
+
+
+rpm: lib-rpm servers-rpm
+
+servers-rpm: clean
+	cp MANIFEST.in.servers MANIFEST.in ;\
+	python setup-servers.py bdist_rpm --requires="gcf-lib" ;\
+	rm MANIFEST.in
+
+lib-rpm: clean
+	cp MANIFEST.in.lib MANIFEST.in ;\
+	python setup-lib.py bdist_rpm --requires="python=2.6 m2crypto xmlsec1-openssl-devel libxslt-python python-ZSI python-lxml python-setuptools python-dateutil" ;\
+	rm MANIFEST.in
+
+	
+
+
+
+source: servers-source lib-source
+
+servers-source: clean
+	python setup-servers.py sdist
+
+lib-source: clean
+	python setup-lib.py sdist -t MANIFEST.in.lib
+
+
+
+
+	
+deb: lib-deb
+
+lib-deb: rpm
 	VER=`perl -n -e 'print $$1 if /version="(.*)",/ ' setup.py` ; \
 	cp dist/gcf-$$VER-1.noarch.rpm build/ ;\
 	cd build ;\
