@@ -57,7 +57,7 @@ lib-rpm: clean
 	
 omni-rpm: clean
 	cp MANIFEST.in.omni MANIFEST.in ;\
-	python setup-omni.py bdist_rpm --requires="gcf-lib";\
+	python setup-omni.py bdist_rpm --requires="python=2.6 python-dateutil";\
 	rm MANIFEST.in
 
 
@@ -98,7 +98,7 @@ omni-deb: omni-rpm
 	rm -rf omni-$$VER ;\
 	alien --generate --scripts omni-$$VER-1.noarch.rpm ;\
 	cd omni-$$VER/debian ;\
-	perl -p -i -e 's/Depends.*/Depends: gcf-lib/' control ;\
+	perl -p -i -e 's/Depends.*/Depends: python2.6, python-dateutil/' control ;\
 	cd .. ;\
 	dpkg-buildpackage -rfakeroot;\
 	cd ..;\
