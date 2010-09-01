@@ -1,7 +1,7 @@
 # This is an INI style configuration file for the GENI Control Framework
 # clearinghouse and aggregate manager
 
-# This config is used by gen-certs, gam.py, gch.py, and client.py
+# This config is used by gen-certs, gcf-am.py, gcf-ch.py, and gcf-test.py
 
 [global]
 # GENI uses URNs to identify experimenters and resources
