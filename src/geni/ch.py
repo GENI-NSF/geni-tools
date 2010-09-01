@@ -198,7 +198,7 @@ class Clearinghouse(object):
         return version
 
     # FIXME: Change that URN to be a name and non-optional
-    # Currently client.py doesnt supply it, and
+    # Currently gcf-test.py doesnt supply it, and
     # Omni takes a name and constructs a URN to supply
     def CreateSlice(self, urn_req = None):
         self.logger.info("Called CreateSlice URN REQ %r" % urn_req)

@@ -48,7 +48,7 @@ $ python src/gcf-ch.py
 # Run the GENI Aggregate Manager in a second terminal:
 $ python src/gcf-am.py
 
-# Run the client test script in a third terminal window:
+# Run the gcf client test script in a third terminal window:
 $ python src/gcf-test.py 
 
 

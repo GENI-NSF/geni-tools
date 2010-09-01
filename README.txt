@@ -5,7 +5,7 @@ Description
 ===========
 
 This software implements a sample GENI Aggregate Manager. It also
-includes a sample GENI Clearinghouse and command line client. This
+includes a sample GENI Clearinghouse and command line test client. This
 software is intended to demonstrate the GENI Aggregate Manager API.
 
 Installation & Getting Started
