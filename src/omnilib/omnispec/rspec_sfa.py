@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
+from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
 
 

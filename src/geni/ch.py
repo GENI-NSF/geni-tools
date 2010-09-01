@@ -103,7 +103,10 @@ class Clearinghouse(object):
         Returns True if aggregates were loaded, False otherwise.
         """
         if not os.path.isfile(aggfile):
-            self.logger.warn('Aggregate file %r does not exist.', aggfile)
+            self.logger.warn('Aggregate file %r does not exist, using localhost as default.', aggfile)
+            urn = urn_util.URN(SLICE_AUTHORITY+'//am', 'authority', 'am').urn_string()
+            addr = "http://127.0.0.1:8001/"
+            self.aggs.append((urn,addr))
             return
         
         line_num = 0

@@ -58,9 +58,9 @@ import zlib
 import ConfigParser
 
 import dateutil.parser
-from geni.omni.xmlrpc.client import make_client
-from geni.omni.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
-from geni.omni.omnispec.omnispec import OmniSpec
+from omnilib.xmlrpc.client import make_client
+from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
+from omnilib.omnispec.omnispec import OmniSpec
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -525,7 +525,7 @@ def main(argv=None):
         
     cf_type = config['selected_framework']['type']
 
-    framework_mod = __import__('geni.omni.frameworks.framework_%s' % cf_type, fromlist=['geni.omni.frameworks'])
+    framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     framework = framework_mod.Framework(config['selected_framework'])
         
     # Process the user's call

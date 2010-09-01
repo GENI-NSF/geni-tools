@@ -22,7 +22,6 @@
 #----------------------------------------------------------------------
 
 import ConfigParser
-import sys
 
 GCF_CONFIG_FILE='gcf_config'
 

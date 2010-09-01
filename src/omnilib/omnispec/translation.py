@@ -28,7 +28,7 @@
 """
 
 
-mod_name = 'geni.omni.omnispec'
+mod_name = 'omnilib.omnispec'
 
 
 def rspec_to_omnispec(urn, rspec):        

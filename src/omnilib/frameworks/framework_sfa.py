@@ -20,8 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-from geni.omni.xmlrpc.client import make_client
-from geni.omni.frameworks.framework_base import Framework_Base
+from omnilib.xmlrpc.client import make_client
+from omnilib.frameworks.framework_base import Framework_Base
 import logging
 import os
 import time

@@ -22,7 +22,7 @@
 #----------------------------------------------------------------------
 
 import xml.etree.ElementTree as ET
-from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
+from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 
 # This is an Unbound Request RSpec for testing.
 ONE_NODE_RSPEC = """

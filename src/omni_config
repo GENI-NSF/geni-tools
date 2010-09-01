@@ -76,8 +76,8 @@ authority=geni:gpo:gcf
 # Where the gcf-ch server is listening
 ch=https://localhost:8000
 
-cert=~/.omni/alice-cert.pem
-key=~/.omni/alice-key.pem
+cert=~/.gcf-servers/alice-cert.pem
+key=~/.gcf-servers/alice-key.pem
 
 
 

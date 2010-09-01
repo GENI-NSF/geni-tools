@@ -30,7 +30,7 @@
 # advertising or publicity pertaining to the Software or any
 # derivatives without specific, written prior permission.
 
-from geni.omni.omnispec.omnispec import OmniSpec, OmniResource
+from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
 from copy import deepcopy
 import sys
