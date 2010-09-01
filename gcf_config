@@ -58,7 +58,7 @@ keyfile=~/.gcf-servers/am-key.pem
 certfile=~/.gcf-servers/am-cert.pem
 
 
-[client]
+[gcf-test]
 # Used for testing that the CH and AM are properly running
 # This is the user key and cert.
 keyfile=~/.gcf-servers/alice-key.pem

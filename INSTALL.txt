@@ -55,8 +55,8 @@ $ python src/gcf-test.py
 You should see something like this:
 
 $ python src/gcf-test.py 
-INFO:client:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
-INFO:client:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
+INFO:gcf-test:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
+INFO:gcf-test:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
 Slice Creation SUCCESS: URN = urn:publicid:IDN+geni:gpo:gcf+slice+1468-659:127.0.0.1%3A8000
 Testing GetVersion... passed
 Testing ListResources... passed

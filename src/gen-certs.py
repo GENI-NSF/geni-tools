@@ -199,8 +199,8 @@ def main(argv=None):
     CH_KEY_FILE = getAbsPath(config['clearinghouse']['keyfile'])
     AM_CERT_FILE = getAbsPath(config['aggregate_manager']['certfile'])
     AM_KEY_FILE =getAbsPath(config['aggregate_manager']['keyfile'])
-    USER_CERT_FILE = getAbsPath(config['client']['certfile'])
-    USER_KEY_FILE = getAbsPath(config['client']['keyfile'])
+    USER_CERT_FILE = getAbsPath(config['gcf-test']['certfile'])
+    USER_KEY_FILE = getAbsPath(config['gcf-test']['keyfile'])
     
     try:
         for p in [CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE]:

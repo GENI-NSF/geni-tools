@@ -107,7 +107,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
     manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
                                          request_rspec.toxml(), users)
     # TODO: verify manifest_rspec
-    logging.getLogger('client').debug(manifest_rspec)
+    logging.getLogger('gcf-test').debug(manifest_rspec)
     print 'passed'
 
 def test_delete_sliver(server, slice_urn, slice_credential):
@@ -181,7 +181,7 @@ def test_list_resources(server, credentials, compressed=False, available=True,
     rspec = server.ListResources(credentials, options)
     if compressed:
         rspec = zlib.decompress(base64.b64decode(rspec))
-    logging.getLogger('client').debug(rspec)
+    logging.getLogger('gcf-test').debug(rspec)
     dom = verify_rspec(rspec)
     if dom:
         print 'passed'
@@ -257,7 +257,7 @@ def main(argv=None):
     configpath = os.path.expanduser(opts.configfile)
     config = read_config(configpath) 
         
-    for (key,val) in config['client'].items():
+    for (key,val) in config['gcf-test'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:
             setattr(opts,key,val)
         if not hasattr(opts,key):
@@ -283,7 +283,7 @@ def main(argv=None):
             
                     
     logging.basicConfig(level=level)
-    logger = logging.getLogger('client')
+    logger = logging.getLogger('gcf-test')
     if not opts.keyfile or not opts.certfile:
         sys.exit('Missing required arguments -k for Key file and -c for cert file')
 
