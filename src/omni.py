@@ -491,7 +491,10 @@ def main(argv=None):
         for dst in [OMNI_CONFIG_TEMPLATE, 'omni_config']:
             if os.path.exists(dst):
                 from shutil import copyfile
-                copyfile(dst, filename)
+                if '/' in filename:
+                    os.mkdir(filename[:filename.rfind('/')])
+                os.mkdir(filename[:])
+                copyfile(dst, filename)                
                 logger.info("Copied omni_config from %s" % dst)
                 found = True
                 break
