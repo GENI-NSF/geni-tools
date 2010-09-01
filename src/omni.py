@@ -62,6 +62,8 @@ from omnilib.xmlrpc.client import make_client
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 
+OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
+
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
     Does not check that the path exists."""
@@ -469,6 +471,7 @@ def configure_logging(opts):
         level = logging.DEBUG
     logger = logging.getLogger("omni")
     logger.setLevel(level)
+    
 
 def main(argv=None):
     if argv is None:
@@ -480,9 +483,22 @@ def main(argv=None):
 
     # Load up the config file
     filename = os.path.expanduser(opts.configfile)
-
+    
     if not os.path.exists(filename):
-        sys.exit('Missing omni config file %s' % filename)
+
+        logger.info('Missing omni config file %s' % filename)
+        found = False
+        for dst in [OMNI_CONFIG_TEMPLATE, 'omni_config']:
+            if os.path.exists(dst):
+                from shutil import copyfile
+                copyfile(dst, filename)
+                logger.info("Copied omni_config from %s" % dst)
+                found = True
+                break
+        if not found:
+            sys.exit("Could not find a template omni_config to copy to %s" % filename)
+            
+            
 
     logger.debug("Loading config file %s", filename)
 
