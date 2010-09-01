@@ -6,10 +6,11 @@ known as the omnispec.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.
 
-To configure Omni, please copy the src/omni_config file to your ~/.omni
-directory and fill in the parameters for at least one control
+To configure Omni, please copy src/omni_config or /etc/omni/templates/omni_config 
+to your ~/.omni directory and fill in the parameters for at least one control
 framework.  The "omni" section should be filled in with the
-certificate and key that you use in your control framework. Embedded
+certificate and key that you use in your control framework.  Note that keys
+for the GCF framework are by default stored in ~/.gcf-servers. Embedded
 comments describe the meaning of each field.
 
 The currently supported control frameworks are SFA, PG and GCF. OpenFlow
