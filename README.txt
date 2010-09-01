@@ -84,12 +84,12 @@ license, can be found in src/sfa/README.txt.
 Instructions
 ============
 
-0. Edit gcf_config to configure your clearinghouse and aggregate manager.  
+0. Edit gcf_config (installed to /etc/gcf-servers/omni_config or can also be read from
+ the current directory) to configure your clearinghouse and aggregate manager.  
  The default values should be fine for most settings, but you should change 
  the base_name (URN) to be specific to you.  The keys and certificates will be 
- generated in src/gen-certs.py in Step 1.  After Step 1 be sure to return
- and enter in the appropriate filenames for your keys and certs.
-
+ generated in src/gen-certs.py in Step 1 to the destinations you enter in gcf_config.
+ 
 1. Generate keys and certificates for your users, clearinghouse, and 
   aggregate manager.
 
@@ -97,8 +97,7 @@ Instructions
 
  This creates keys and certificates for a clearinghouse (ch), an aggregate
  manager (am), and a researcher (alice).
- The directory for the output, the researcher name, and which keys to
- generate are configurable via command line options. Cert URNs and
+ Cert URNs and
  some privileges are modifiable via constants. 
  Note you can generate multiple AM credentials and multiple user
  credentials using this script.
@@ -108,8 +107,8 @@ Instructions
  these certificates to interact with any other GENI site. In particular, 
  URNs must be globally unique. 
 
- By default the gcf_config file is found in the local directory. Override
- that by specifying the -f argument.
+ By default the gcf_config file is found in the local directory or /etc/gcf-servers/.
+ Override the default locations by specifying the -f argument.
 
  A directory for trusted_roots is used or created, and your CH
  certificate is copied there. This is used in Federation (see below).
