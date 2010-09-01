@@ -52,12 +52,12 @@ servers-rpm: clean
 
 lib-rpm: clean
 	cp MANIFEST.in.lib MANIFEST.in ;\
-	python setup-lib.py bdist_rpm --requires="python=2.6 m2crypto xmlsec1-openssl-devel libxslt-python python-ZSI python-lxml python-setuptools python-dateutil" ;\
+	python setup-lib.py bdist_rpm --requires="python >= 2.6 m2crypto xmlsec1-openssl-devel libxslt-python python-ZSI python-lxml python-setuptools python-dateutil" ;\
 	rm MANIFEST.in
 	
 omni-rpm: clean
 	cp MANIFEST.in.omni MANIFEST.in ;\
-	python setup-omni.py bdist_rpm --requires="python=2.6 python-dateutil";\
+	python setup-omni.py bdist_rpm --requires="python >= 2.6 python-dateutil";\
 	rm MANIFEST.in
 
 
