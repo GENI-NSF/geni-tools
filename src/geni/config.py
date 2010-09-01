@@ -35,7 +35,8 @@ def read_config(path=None):
 
     confparser.read(paths)
     if confparser.sections() == []:
-        raise Exception("Config file could not be found or was not properly formatted (%s)" % paths)
+        import sys
+        sys.exit("Config file could not be found or was not properly formatted (I searched in paths: %s)" % paths)
         
     
     config = {}
