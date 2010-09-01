@@ -493,7 +493,7 @@ def main(argv=None):
                 from shutil import copyfile
                 if '/' in filename:
                     os.mkdir(filename[:filename.rfind('/')])
-                os.mkdir(filename[:])
+                    logger.info("Created directory %s" % filename[:filename.rfind('/')])
                 copyfile(dst, filename)                
                 logger.info("Copied omni_config from %s" % dst)
                 found = True
