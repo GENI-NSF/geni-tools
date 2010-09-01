@@ -117,11 +117,16 @@ def make_ch_cert(dir):
         if not os.path.exists(rootcapath):
             # Throws an exception on error
             os.makedirs(rootcapath)
-        # copy the CH cert to the trusted_roots dir
-        ch_gid.save_to_file(os.path.join(config['global']['rootcadir'], CH_CERT_FILE))
+        # copy the CH cert to the trusted_roots dir'
+        if '/' in CH_CERT_FILE:
+            fname = CH_CERT_FILE[CH_CERT_FILE.rfind('/')+1:]
+        else:
+            fname = CH_CERT_FILE
+        
+        ch_gid.save_to_file(os.path.join(getAbsPath(config['global']['rootcadir']), fname))
 
     print "Created CH cert/keys in %s/%s, %s, and in %s" % (dir, CH_CERT_FILE, CH_KEY_FILE, 
-                                                         config['global']['rootcadir'] + "/" + CH_CERT_FILE)
+                                                         getAbsPath(config['global']['rootcadir']) + "/" + fname)
     return (ch_keys, ch_gid)
 
 def make_am_cert(dir, ch_cert, ch_key):
@@ -149,7 +154,7 @@ def make_user_cert(dir, username, ch_keys, ch_gid):
 # Make a Credential for Alice
 #alice_cred = create_user_credential(alice_gid, CH_KEY_FILE, CH_CERT_FILE)
 #alice_cred.save_to_file('../alice-user-cred.xml')
-    print "Created Experimenter %s cert/keys in %s" % (username, dir)
+    print "Created Experimenter %s cert/keys in %s" % (username, os.path.join(dir, USER_CERT_FILE))
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -174,7 +179,7 @@ def main(argv=None):
         argv = sys.argv
     opts, args = parse_args(argv)
     global config, CERT_AUTHORITY
-    configpath = os.path.expanduser(opts.configfile)
+    configpath = getAbsPath(opts.configfile)
     config = read_config(configpath)  
     CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
@@ -190,13 +195,20 @@ def main(argv=None):
         CERT_AUTHORITY = opts.authority
         
     global CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE
-    CH_CERT_FILE = config['clearinghouse']['certfile']
-    CH_KEY_FILE = config['clearinghouse']['keyfile']
-    AM_CERT_FILE = config['aggregate_manager']['certfile']
-    AM_KEY_FILE = config['aggregate_manager']['keyfile']
-    USER_CERT_FILE = config['client']['certfile']
-    USER_KEY_FILE = config['client']['keyfile']
-
+    CH_CERT_FILE = getAbsPath(config['clearinghouse']['certfile'])
+    CH_KEY_FILE = getAbsPath(config['clearinghouse']['keyfile'])
+    AM_CERT_FILE = getAbsPath(config['aggregate_manager']['certfile'])
+    AM_KEY_FILE =getAbsPath(config['aggregate_manager']['keyfile'])
+    USER_CERT_FILE = getAbsPath(config['client']['certfile'])
+    USER_KEY_FILE = getAbsPath(config['client']['keyfile'])
+    
+    try:
+        for p in [CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE]:
+            if '/' in p:
+                os.mkdir(p[:p.rfind('/')])
+    except:
+        pass
+    
     ch_keys = None
     ch_cert = None
     if not opts.notAll or opts.ch:
