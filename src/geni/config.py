@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 
 import ConfigParser
+import os
 
 GCF_CONFIG_FILE='gcf_config'
 
@@ -29,7 +30,7 @@ GCF_CONFIG_FILE='gcf_config'
 # of the config is its own sub-dictionary
 def read_config(path=None):
     confparser = ConfigParser.RawConfigParser()
-    paths = ['gcf_config', '/etc/gcf-servers/gcf_config']
+    paths = ['gcf_config', os.path.expanduser('~/.gcf/gcf_config'), '/etc/gcf-servers/gcf_config']
     if path:
         paths.insert(0,path)
 
@@ -38,7 +39,6 @@ def read_config(path=None):
         import sys
         sys.exit("Config file could not be found or was not properly formatted (I searched in paths: %s)" % paths)
         
-    
     config = {}
   
     for section in confparser.sections():

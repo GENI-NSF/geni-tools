@@ -16,7 +16,7 @@
 # This should be the name of a section that you define below
 # Note you could have multiple instances of the same type
 # configured, EG for different MyPLC instances.
-default_cf = my_sfa
+default_cf = my_gcf
 
 # The slice_users argument in "CreateSliver".  It uploads
 # names and public ssh keys to allocated resources for login.
@@ -54,10 +54,10 @@ user=plc.bbn.jkarlin
 
 # Your PL certificate (obtain by running 'sfi.py gid')
 # and copying ~/.sfi/<your username>.gid here
-cert=~/.omni/jkarlin.gid
+cert=~/.gcf/jkarlin.gid
 
 # Your planetlab private key
-key=~/.omni/id_rsa_planetlab
+key=~/.gcf/id_rsa_planetlab
 
 # URLs of your PL registry and slice manager					
 # Be sure these are reachable
@@ -76,8 +76,8 @@ authority=geni:gpo:gcf
 # Where the gcf-ch server is listening
 ch=https://localhost:8000
 
-cert=~/.gcf-servers/alice-cert.pem
-key=~/.gcf-servers/alice-key.pem
+cert=~/.gcf/alice-cert.pem
+key=~/.gcf/alice-key.pem
 
 
 
@@ -89,8 +89,8 @@ verbose=false
 ch=https://www.emulab.net:443/protogeni/xmlrpc/ch
 # The address of the PG slice authority
 sa=https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa
-cert=~/.omni/encrypted.pem
-key=~/.omni/pgcert.pem
+cert=~/.gcf/encrypted.pem
+key=~/.gcf/pgcert.pem
 
 
 # ===================================
@@ -111,10 +111,10 @@ urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 # The SSH public keys to install for Alice to allow
 # Alice to log in to the allocated resource.
 # Comma delimited.
-keys=~/.omni/alice.pub, ~/.omni/alice2.pub
+keys=~/.gcf/alice.pub, ~/.gcf/alice2.pub
 
 
 [Bob]
 name=Bob Sanders
 urn=urn:publicid:IDN+plc.bbn+user+bob
-keys=~/.omni/bob.pub
+keys=~/.gcf/bob.pub

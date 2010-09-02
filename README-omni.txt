@@ -7,7 +7,7 @@ control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.
 
 To configure Omni, please copy src/omni_config or /etc/omni/templates/omni_config 
-to your ~/.omni directory and fill in the parameters for at least one control
+to your ~/.gcf directory and fill in the parameters for at least one control
 framework.  The "omni" section should be filled in with the
 certificate and key that you use in your control framework.  Note that keys
 for the GCF framework are by default stored in ~/.gcf-servers. Embedded
@@ -89,7 +89,7 @@ Running Omni -
 
 == The following options are supported: ==
 
--c FILE -- location of your config file (default ~/.omni/omni_config)
+-c FILE -- location of your config file (default ~/.gcf/omni_config)
 
 -f FRAMEWORK -- control framework to use (e.g. my_sfa), overiding default
  in config file.  The framework is a section named in the config file.

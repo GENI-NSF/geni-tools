@@ -30,7 +30,7 @@
     control frameworks.
     See README-omni.txt
 
-    Be sure to create an omni config file (typically ~/.omni/omni_config)
+    Be sure to create an omni config file (typically ~/.gcf/omni_config)
     and supply valid paths to your per control framework user certs and keys.
 
     Typical usage:
@@ -455,7 +455,7 @@ class CallHandler(object):
 
 def parse_args(argv):
     parser = optparse.OptionParser()
-    parser.add_option("-c", "--configfile", default="~/.omni/omni_config",
+    parser.add_option("-c", "--configfile", 
                       help="config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="control framework to use for creation/deletion of slices")
@@ -482,26 +482,23 @@ def main(argv=None):
     logger = logging.getLogger('omni')
 
     # Load up the config file
-    filename = os.path.expanduser(opts.configfile)
+    configfiles = ['omni_config','~/.gcf/omni_config']
     
-    if not os.path.exists(filename):
+    if not opts.configfile is None:
+        configfiles.insert(0,opts.configfile)
 
-        logger.info('Missing omni config file %s' % filename)
-        found = False
-        for dst in [OMNI_CONFIG_TEMPLATE, 'omni_config']:
-            if os.path.exists(dst):
-                from shutil import copyfile
-                if '/' in filename:
-                    os.mkdir(filename[:filename.rfind('/')])
-                    logger.info("Created directory %s" % filename[:filename.rfind('/')])
-                copyfile(dst, filename)                
-                logger.info("Copied omni_config from %s" % dst)
-                found = True
-                break
-        if not found:
-            sys.exit("Could not find a template omni_config to copy to %s" % filename)
-            
-            
+    print configfiles
+
+    # Find the first valid config file
+    for cf in configfiles:         
+        filename = os.path.expanduser(cf)
+        if os.path.exists(filename):
+            break
+    
+    # Did we find a valid config file?
+    if not os.path.exists(filename):
+        sys.exit(""" Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
+                     An example config file can be found in the source tarball or in /etc/omni/templates/""")            
 
     logger.debug("Loading config file %s", filename)
 

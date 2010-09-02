@@ -42,7 +42,7 @@ omni-source: clean
 
 
 
-
+# To make rpm files on Fedora, first install python-dev and rpm-build
 rpm: lib-rpm servers-rpm omni-rpm
 
 servers-rpm: clean
@@ -61,7 +61,7 @@ omni-rpm: clean
 	rm MANIFEST.in
 
 
-
+# To make deb files on an ubuntu install, first install python-dev, alien, and dh-make  
 	
 deb: lib-deb servers-deb omni-deb
 
