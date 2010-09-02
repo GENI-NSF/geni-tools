@@ -39,6 +39,7 @@ import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
 import sfa.trust.gid as gid
 
+
 # Substitute eg "openflow//stanford"
 # Be sure this matches init-ca.py:CERT_AUTHORITY 
 # This is in publicid format
@@ -94,57 +95,52 @@ class Clearinghouse(object):
         self.slices = {}
         self.aggs = []
 
-    def load_aggregates(self, aggfile):
-        """Loads aggregates from a file.
+    def load_aggregates(self):
+        """Loads aggregates from the clearinghouse section of the config file.
         
-        The file has one aggregate per line. Each line contains a URN
-        and a URL separated by a comma.
+        In the config section there are keys for each am, am_1, am_2, ..., am_n
+        
+        The value for each key is the urn and url of the aggregate separated by a comma
            
         Returns True if aggregates were loaded, False otherwise.
         """
-        if not os.path.isfile(aggfile):
-            self.logger.warn('Aggregate file %r does not exist, using localhost as default.', aggfile)
-            urn = urn_util.URN(SLICE_AUTHORITY+'//am', 'authority', 'am').urn_string()
-            addr = "http://127.0.0.1:8001/"
-            self.aggs.append((urn,addr))
-            return
         
-        line_num = 0
-        for line in file(aggfile):
-            line_num += 1
-            spl = line.split(',')
-            if len(spl) != 2:
-                msg = ('File %s, line %d is malformed.'
-                       + ' Expected "URN, URL", found %r')
-                self.logger.warn(msg, aggfile, line_num, line)
+        for (key, val) in self.config['clearinghouse'].items():
+            if not key.startswith('am_'):
                 continue
-            (urn, url) = spl
+            
+            (urn,url) = val.split(',')
             urn = urn.strip()
             url = url.strip()
             if not urn:
-                self.logger.warn('Empty URN on line %d of %s',
-                                 line_num, aggfile)
+                self.logger.warn('Empty URN for aggregate %s in gcf_config' % key)
                 continue
+            
             if not url:
-                self.logger.warn('Empty URL on line %d of %s',
-                                 line_num, aggfile)
+                self.logger.warn('Empty URL for aggregate %s in gcf_config' % key)
                 continue
             if urn in [x for (x, _) in self.aggs]:
-                self.logger.warn('Duplicate URN %s at line %d of %s',
-                                 urn, line_num, aggfile)
+                self.logger.warn('Duplicate URN %s in gcf_config' % key)
                 continue
+            
             self.logger.info("Registering AM %s at %s", urn, url)
             self.aggs.append((urn, url))
+            
+        
+        
+        
         
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, aggfile=None, authority=None,
-                  user_len=None, slice_len=None):
+                  user_len=None, slice_len=None, config=None):
         """Run the clearinghouse server."""
         # ca_certs is a dir of several certificates for peering
         # If not supplied just use the certfile as the only trusted root
         self.keyfile = keyfile
         self.certfile = certfile
 
+        self.config = config
+        
         # Error check the keyfile, certfile all exist
         if keyfile is None or not os.path.isfile(os.path.expanduser(keyfile)):
             raise Exception("Missing CH key file %s" % keyfile)
@@ -166,9 +162,8 @@ class Clearinghouse(object):
         SLICE_CRED_LIFE = int(slice_len)
 
         # Load up the aggregates
-        self.load_aggregates(aggfile)
-        # FIXME: if there are no aggregates, should we continue?
-        self.logger.info("%d Aggregate Managers registered from aggregates file %r", len(self.aggs), aggfile)
+        self.load_aggregates()
+        
 
         # This is the arg to _make_server
         ca_certs_onefname = cred_util.CredentialVerifier.getCAsFileFromDir(ca_certs)

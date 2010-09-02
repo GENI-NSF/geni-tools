@@ -48,7 +48,7 @@ def parse_args(argv):
                       help="AM key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
                       help="AM certificate file name (PEM format)", metavar="FILE")
-    parser.add_option("-f", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
+    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
     # Note: The trusted CH certificates are _not_ enough here.
     # It needs self signed certificates. EG CA certificates.
     parser.add_option("-r", "--rootcadir",
@@ -86,8 +86,11 @@ def main(argv=None):
     logging.basicConfig(level=level)
 
     # Read in config file options, command line gets priority
-    configpath = os.path.expanduser(opts.configfile)
-    config = read_config(configpath)   
+    optspath = None
+    if not opts.configfile is None:
+        optspath = os.path.expanduser(opts.configfile)
+
+    config = read_config(optspath)   
         
     for (key,val) in config['aggregate_manager'].items():                  
         if hasattr(opts,key) and getattr(opts,key) is None:

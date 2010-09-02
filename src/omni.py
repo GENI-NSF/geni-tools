@@ -487,7 +487,6 @@ def main(argv=None):
     if not opts.configfile is None:
         configfiles.insert(0,opts.configfile)
 
-    print configfiles
 
     # Find the first valid config file
     for cf in configfiles:         

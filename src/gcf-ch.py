@@ -71,7 +71,7 @@ class CommandHandler(object):
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
                      getAbsPath(opts.rootcadir), getAbsPath(opts.aggfile), config['global']['base_name'],
-                     opts.user_cred_duration, opts.slice_duration)
+                     opts.user_cred_duration, opts.slice_duration, config)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -115,8 +115,11 @@ def main(argv=None):
 
     # Read in config file options, command line gets priority
     global config
-    configpath = os.path.expanduser(opts.configfile)
-    config = read_config(configpath)   
+    optspath = None
+    if not opts.configfile is None:
+        optspath = os.path.expanduser(opts.configfile)
+
+    config = read_config(optspath)   
         
     for (key,val) in config['clearinghouse'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:

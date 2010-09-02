@@ -160,7 +160,7 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-d", "--directory", default='.',
                       help="directory for created cert files", metavar="DIR")
-    parser.add_option("-f", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
+    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
     parser.add_option("-u", "--username", default='alice',
                       help="Experimenter username")
     parser.add_option("--notAll", action="store_true", default=False,
@@ -179,8 +179,11 @@ def main(argv=None):
         argv = sys.argv
     opts, args = parse_args(argv)
     global config, CERT_AUTHORITY
-    configpath = getAbsPath(opts.configfile)
-    config = read_config(configpath)  
+    optspath = None
+    if not opts.configfile is None:
+        optspath = os.path.expanduser(opts.configfile)
+
+    config = read_config(optspath)  
     CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
     if opts.username:

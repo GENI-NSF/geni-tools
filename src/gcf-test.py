@@ -232,7 +232,7 @@ def parse_args(argv):
                       help="experimenter key file name", metavar="FILE")
     parser.add_option("-c", "--certfile",
                       help="experimenter certificate file name", metavar="FILE")
-    parser.add_option("-f", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
+    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
     
     parser.add_option("--ch", 
                       help="clearinghouse URL")
@@ -254,8 +254,11 @@ def main(argv=None):
         
     # Read in config file options, command line gets priority
     global config
-    configpath = os.path.expanduser(opts.configfile)
-    config = read_config(configpath) 
+    optspath = None
+    if not opts.configfile is None:
+        optspath = os.path.expanduser(opts.configfile)
+
+    config = read_config(optspath)  
         
     for (key,val) in config['gcf-test'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:

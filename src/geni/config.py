@@ -33,12 +33,17 @@ def read_config(path=None):
     paths = ['gcf_config', os.path.expanduser('~/.gcf/gcf_config'), '/etc/gcf-servers/gcf_config']
     if path:
         paths.insert(0,path)
+    
+    foundFile = ''
+    for file in paths:
+        foundFile = confparser.read(file)
+        if foundFile != '':
+            break
 
-    confparser.read(paths)
-    if confparser.sections() == []:
+    if foundFile == '':
         import sys
         sys.exit("Config file could not be found or was not properly formatted (I searched in paths: %s)" % paths)
-        
+
     config = {}
   
     for section in confparser.sections():
