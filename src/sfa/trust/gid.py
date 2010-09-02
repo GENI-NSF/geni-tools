@@ -25,7 +25,7 @@
 # descendant of the certificate class.
 ##
 
-### $Id: gid.py 18227 2010-06-09 18:30:58Z tmack $
+### $Id: gid.py 18510 2010-07-13 18:32:48Z tmack $
 ### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/trust/gid.py $
 import xmlrpclib
 import uuid

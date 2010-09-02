@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 ##
 # This Module implements rights and lists of rights for the SFA. Rights
 # are implemented by two classes:
@@ -57,7 +58,7 @@ privilege_table = {"authority": ["register", "remove", "update", "resolve", "lis
 
 
 ##
-# Determine the rights that an object should have. The rights are entirely
+# Determine tje rights that an object should have. The rights are entirely
 # dependent on the type of the object. For example, users automatically
 # get "refresh", "resolve", and "info".
 #
@@ -100,6 +101,8 @@ def determine_rights(type, name):
 
 ##
 # The Right class represents a single privilege.
+
+
 
 class Right:
     ##

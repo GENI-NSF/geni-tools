@@ -20,7 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
-### $Id: namespace.py 18245 2010-06-10 20:29:16Z tmack $
+
+### $Id: namespace.py 18515 2010-07-15 20:41:59Z tmack $
 ### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/util/namespace.py $
 
 from sfa.util.faults import *
@@ -88,8 +89,7 @@ def urn_to_hrn(urn):
     name = urn[len(URN_PREFIX):]
     hrn_parts = name.split("+")
     
-    # type is always the second to last element in the list
-    type = hrn_parts.pop(-2)
+    type = hrn_parts.pop(2)
 
     # convert hrn_parts (list) into hrn (str) by doing the following    
     # remove blank elements
@@ -97,9 +97,9 @@ def urn_to_hrn(urn):
     # join list elements using '.'
     hrn = '.'.join([part.replace(':', '.') for part in hrn_parts if part]) 
     
+    # Remove the authority name (e.g. '.sa')
     if type == 'authority':
-        hrn = hrn[:hrn.rindex('.')]
-        #hrn = hrn.replace ('.sa', '')
+        hrn = hrn[:hrn.rindex('.')]        
    
     return str(hrn), str(type) 
     
@@ -117,7 +117,7 @@ def hrn_to_urn(hrn, type=None):
      
     if type == 'authority':
         authority = hrn
-        name = 'sa'   # For PG interoperability
+        name = 'sa'   
     
     if authority.startswith("plc"):
         if type == None:

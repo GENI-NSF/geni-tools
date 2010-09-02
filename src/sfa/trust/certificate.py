@@ -34,7 +34,7 @@
 # This module exports two classes: Keypair and Certificate.
 ##
 #
-### $Id: certificate.py 18182 2010-06-02 20:42:30Z tmack $
+### $Id: certificate.py 18513 2010-07-14 17:00:23Z tmack $
 ### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/trust/certificate.py $
 #
 
@@ -51,7 +51,7 @@ from sfa.util.namespace import urn_to_hrn
 from sfa.util.faults import *
 
 def convert_public_key(key):
-    keyconvert_path = "/usr/bin/keyconvert"
+    keyconvert_path = "/usr/bin/keyconvert.py"
     if not os.path.isfile(keyconvert_path):
         raise IOError, "Could not find keyconvert in %s" % keyconvert_path
 

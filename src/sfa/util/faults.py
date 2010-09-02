@@ -20,12 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 #
 # SFA API faults
 #
 #
 
-### $Id: faults.py 18182 2010-06-02 20:42:30Z tmack $
+### $Id: faults.py 18586 2010-08-05 23:33:41Z tmack $
 ### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/util/faults.py $
 
 import xmlrpclib
@@ -77,8 +78,10 @@ class SfaPermissionDenied(SfaFault):
         SfaFault.__init__(self, 108, faultString, extra)
 
 class SfaNotImplemented(SfaFault):
-    def __init__(self, extra = None):
-        faultString = "Not fully implemented"
+    def __init__(self, interface=None, extra = None):
+        faultString = "Not implemented"
+        if interface:
+            faultString += " at interface " + interface 
         SfaFault.__init__(self, 109, faultString, extra)
 
 class SfaAPIError(SfaFault):
