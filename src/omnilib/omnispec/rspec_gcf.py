@@ -23,36 +23,23 @@
 from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
 
-# FIXME: extract geni.net:gpo constant, others
-
 def can_translate(rspec):
     return rspec.startswith('<rspec type="GCF"')
-
-
 
 def rspec_to_omnispec(urn, rspec):
     ospec = OmniSpec("rspec_gcf", urn)
     doc = ET.fromstring(rspec)
-    
+
     for res in doc.findall('resource'):        
         type = res.find('type').text
         id = res.find('id').text
-        available = res.find('')
-        
+        rurn = res.find('urn').text
+        available = res.find('available').text
+        available = available.lower() == 'true'
+
         r = OmniResource(id, 'node ' + id, type)
-        
-        if available:
-            r.set_allocated(False)
-            
-        spl = urn.split('+')
-        spl[1] += ':' + spl[-1]
-        spl[-2] = 'node'
-        spl[-1] = id
-            
-        rurn = '+'.join(spl)
-        
+        r.set_allocated(not available)
         ospec.add_resource(rurn, r)
-        
     return ospec
 
 def omnispec_to_rspec(omnispec, filter_allocated):
@@ -61,11 +48,10 @@ def omnispec_to_rspec(omnispec, filter_allocated):
     for _, r in omnispec.get_resources().items():
         if filter_allocated and not r.get_allocate():
             continue
-        
+
         res = ET.SubElement(root, 'resource')
         ET.SubElement(res, 'type').text = r.get_type()
         ET.SubElement(res, 'id').text = r.get_name()
         ET.SubElement(res, 'available').text = str(not r.get_allocated())
 
     return ET.tostring(root)
-    
