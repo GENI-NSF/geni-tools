@@ -86,7 +86,8 @@ class CallHandler(object):
     """
 
     def __init__(self, framework, config, opts):
-        self.framework = framework    
+        self.framework = framework
+        self.logger = config['logger']
         self.frame_config = config['selected_framework']
         self.omni_config = config['omni']
         self.config = config
@@ -202,17 +203,53 @@ class CallHandler(object):
                 jspecs = json.dumps(omnispecs, indent=4)
                 print jspecs
     
-    
+    def _ospec_to_rspecs(self, specfile):
+        """Convert the given omnispec file into a dict of url => rspec."""
+        jspecs = {}
+        try:
+            jspecs = json.loads(file(specfile,'r').read())
+        except Exception, exc:
+            sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
+
+        # Extract the individual omnispecs from the JSON dict
+        omnispecs = {}
+        for url, spec_dict in jspecs.items():
+            omnispecs[url] = OmniSpec('', '', dictionary=spec_dict)
+        
+        # Only keep omnispecs that have a resource marked 'allocate'
+        rspecs = {}
+        for (url, ospec) in omnispecs.items():
+            if url is None or url.strip() == "":
+                self.logger.warn('omnispec format error: Empty URL')
+                continue
+            allocate = False
+            for r in ospec.get_resources().values():
+                if r.get_allocate():
+                    allocate = True
+                    break
+            print 'For %s allocate = %r' % (url, allocate)
+            if allocate:
+                rspecs[url] = omnispec_to_rspec(ospec, True)
+            else:
+                self.logger.debug('Nothing to allocate at %r', url)
+        print rspecs
+        return rspecs
+
     def createsliver(self, args):
         if len(args) < 2:
             sys.exit('createsliver requires 2 args: slicename and omnispec filename')
 
+        # check command line args
+        if self.opts.native and not self.opts.aggregate:
+            # If native is requested, the user must supply an aggregate.
+            msg = 'Specifying a native RSpec requires specifying an aggregate.'
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            sys.exit(msg)
+
         name = args[0]
         if name is None or name.strip() == "":
             sys.exit('createsliver got empty slicename')
-
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self.framework.get_slice_cred(urn)
@@ -220,18 +257,20 @@ class CallHandler(object):
         # Load up the user's edited omnispec
         specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
-            sys.exit('omnispec file of resources to request missing: %s' % specfile)
+            sys.exit('File of resources to request missing: %s' % specfile)
 
-        jspecs = dict()
-        try:
-            jspecs = json.loads(file(specfile,'r').read())
-        except Exception, exc:
-            sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
-
-        omnispecs = {}
-        for url, spec_dict in jspecs.items():
-            omnispecs[url] = OmniSpec('','',dictionary=spec_dict)
-        
+        rspecs = None
+        if self.opts.native:
+            # read the native rspec into a string, and add it to the rspecs dict
+            rspecs = {}
+            try:
+                rspec = file(specfile).read()
+                rspecs[self.opts.aggregate] = rspec
+            except Exception, exc:
+                sys.exit('Unable to read rspec file %s: %s'
+                         % (specfile, str(exc)))
+        else:
+            rspecs = self._ospec_to_rspecs(specfile)
         
         # Copy the user config and read the keys from the files into the structure
         slice_users = copy(self.config['users'])
@@ -248,27 +287,17 @@ class CallHandler(object):
                 for key in user['keys'].split(','):        
                     newkeys.append(file(os.path.expanduser(key.strip())).read())
             except Exception, exc:
-                logger = logging.getLogger('omni')
-                logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
+                self.logger.warn("Failed to read user key from %s: %s" %(user['keys'], exc))
             user['keys'] = newkeys
         
-        # Anything we need to allocate?
-        for (url, ospec) in omnispecs.items():
-            if url is None or url.strip() == "":
-                print 'omnispec format error: Empty URL'
-                continue
-            allocate = False
-            for (_, r) in ospec.get_resources().items():
-                if r.get_allocate():
-                    allocate = True
-                    break
-                
+        # Perform the allocations
+        aggregate_urls = self._listaggregates().values()
+        for (url, rspec) in rspecs.items():
                 
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
-            if not url in self._listaggregates().values():
-                logger = logging.getLogger('omni')
-                logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
+            if not url in aggregate_urls:
+                self.logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
                 your Clearinghouse or it is not in the optionally provided list of aggregates in
                 your configuration file.  By creating this sliver, you will be unable to check its
                 status or delete it.""" % (url))
@@ -278,21 +307,15 @@ class CallHandler(object):
                     return
                 
             # Okay, send a message to the AM this resource came from
-            if allocate:
-                try:
-                    client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
-                    rspec = omnispec_to_rspec(ospec, True)
-#                    print "Rspec to send to %s:" % url
-#                    print rspec
-                    result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
-                    print 'Asked %s to reserve resources. Result: %s' % (url, result)
-                except Exception, exc:
-                    logger = logging.getLogger('omni')
-                    logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
-                    logger.debug(traceback.format_exc())
-            else:
-                logger = logging.getLogger('omni')
-                logger.debug('Nothing to allocate at %r', url)
+            try:
+                client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
+#               print "Rspec to send to %s:" % url
+#               print rspec
+                result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
+                print 'Asked %s to reserve resources. Result: %s' % (url, result)
+            except Exception, exc:
+                self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
+                self.logger.debug(traceback.format_exc())
 
     def deletesliver(self, args):
         if len(args) == 0:
@@ -516,6 +539,7 @@ def main(argv=None):
 
     # Load up the omni options
     config = {}
+    config['logger'] = logger
     config['omni'] = {}
     for (key,val) in confparser.items('omni'):
         config['omni'][key] = val
