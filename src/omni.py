@@ -314,7 +314,7 @@ class CallHandler(object):
                 print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 if '<RSpec type="SFA">' in rspec:
                     # Figure out the login name
-                    hrn = urn.split('+')[1].replace(':','.')
+                    hrn = urn.split('+')[1].replace(':','.')[:20]
                     name = urn.split('+')[3]
                     self.logger.info("Your login name for Planetlab resources will be: %s_%s" % (hrn,name))                
             except Exception, exc:
