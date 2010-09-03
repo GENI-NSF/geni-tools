@@ -208,9 +208,9 @@ class Resource(object):
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
-        template = ('<resource><type>%s</type><id>%s</id>'
+        template = ('<resource><urn>%s</urn><type>%s</type><id>%s</id>'
                     + '<available>%r</available></resource>')
-        return template % (self._type, self._id, self.available)
+        return template % (self.urn(), self._type, self._id, self.available)
 
     def __eq__(self, other):
         return self._id == other._id
