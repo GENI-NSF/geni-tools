@@ -149,7 +149,6 @@ class CallHandler(object):
         on all aggregates and prints the omnispec/rspec to stdout.'''
         rspecs = {}
         options = {}
-        logger = logging.getLogger('omni')
 
         options['geni_compressed'] = True;
         
@@ -178,16 +177,16 @@ class CallHandler(object):
         # Connect to each available GENI AM to list their resources
         for client in self._getclients():
             if cred is None:
-                logger.debug("Have null credentials in call to ListResources!")
-            logger.debug("Connecting to AM: %s", client)
+                self.logger.debug("Have null credentials in call to ListResources!")
+            self.logger.debug("Connecting to AM: %s", client)
             try:
                 rspec = client.ListResources([cred], options)
                 if options.get('geni_compressed', False):
                     rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
-                logger.error("Failed to List Resources from %s (%s): %s",
-                             client.urn, client.url, exc)
+                self.logger.error("Failed to List Resources from %s (%s): %s",
+                                  client.urn, client.url, exc)
         if self.opts.native:
             # If native, return the one native rspec. There is only
             # one because we checked for that at the beginning.
@@ -196,7 +195,7 @@ class CallHandler(object):
             # Convert the rspecs to omnispecs
             omnispecs = {}
             for ((urn,url), rspec) in rspecs.items():                        
-                logger.debug("Getting RSpec items for urn %s", urn)
+                self.logger.debug("Getting RSpec items for urn %s", urn)
                 omnispecs[url] = rspec_to_omnispec(urn,rspec)
 
             if omnispecs and omnispecs != {}:
@@ -338,9 +337,8 @@ class CallHandler(object):
                 else:
                     print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
-                logger = logging.getLogger('omni')
-                logger.error("Error occured. Failed to delete sliver %s on %s (%s)." % (urn, client.urn, client.url))
-                logger.error(str(exc))
+                self.logger.error("Error occured. Failed to delete sliver %s on %s (%s)." % (urn, client.urn, client.url))
+                self.logger.error(str(exc))
             
     def renewsliver(self, args):
         if len(args) < 2:
@@ -372,9 +370,8 @@ class CallHandler(object):
                 else:
                     print "Renewed sliver %s at %s until %s" % (urn, client.urn, time.isoformat())
             except Exception, exc:
-                logger = logging.getLogger('omni')
-                logger.error("Failed to renew sliver %s on %s." % (urn, client.urn))
-                logger.error(str(exc))
+                self.logger.error("Failed to renew sliver %s on %s." % (urn, client.urn))
+                self.logger.error(str(exc))
     
     def sliverstatus(self, args):
         if len(args) == 0:
@@ -395,9 +392,8 @@ class CallHandler(object):
                 print "%s (%s):" % (client.urn, client.url)
                 pprint.pprint(status)
             except Exception, exc:
-                logger = logging.getLogger('omni')
-                logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
-                logger.error(str(exc))
+                self.logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
+                self.logger.error(str(exc))
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -419,18 +415,16 @@ class CallHandler(object):
                 else:
                     print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
             except Exception, exc:
-                logger = logging.getLogger('omni')                
-                logger.error("Failed to shutdown %s on AM %s at %s." % (urn, client.urn, client.url))
-                logger.error(str(exc))                
+                self.logger.error("Failed to shutdown %s on AM %s at %s." % (urn, client.urn, client.url))
+                self.logger.error(str(exc))                
     
     def getversion(self, args):
         for client in self._getclients():
             try:
                 print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
             except Exception, exc:
-                logger = logging.getLogger('omni')                
-                logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
-                logger.error(str(exc))                                
+                self.logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
+                self.logger.error(str(exc))                                
                                 
     def createslice(self, args):
         if len(args) == 0:
@@ -501,15 +495,13 @@ def configure_logging(opts):
         level = logging.DEBUG
     logger = logging.getLogger("omni")
     logger.setLevel(level)
-    
+    return logger
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
-    configure_logging(opts)
-
-    logger = logging.getLogger('omni')
+    logger = configure_logging(opts)
 
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
