@@ -384,7 +384,7 @@ class ReferenceAggregateManager(object):
             raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
 
         resources = list()
-        for elem in rspec_dom.documentElement.childNodes:
+        for elem in rspec_dom.documentElement.getElementsByTagName('resource'):
             resource = None
             try:
                 resource = Resource.fromdom(elem)
