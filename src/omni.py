@@ -310,8 +310,13 @@ class CallHandler(object):
                 client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
 #               print "Rspec to send to %s:" % url
 #               print rspec
-                result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
+                result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)                
                 print 'Asked %s to reserve resources. Result: %s' % (url, result)
+                if '<RSpec type="SFA">' in rspec:
+                    # Figure out the login name
+                    hrn = urn.split('+')[1].replace(':','.')
+                    name = urn.split('+')[3]
+                    self.logger.info("Your login name for Planetlab resources will be: %s_%s" % (hrn,name))                
             except Exception, exc:
                 self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
                 self.logger.debug(traceback.format_exc())
