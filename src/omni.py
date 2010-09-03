@@ -54,6 +54,7 @@ import optparse
 import os
 import pprint
 import sys
+import traceback
 import zlib
 import ConfigParser
 
@@ -84,11 +85,12 @@ class CallHandler(object):
     renewsliver, sliverstatus, shutdown
     """
 
-    def __init__(self, framework, config):
+    def __init__(self, framework, config, opts):
         self.framework = framework    
         self.frame_config = config['selected_framework']
         self.omni_config = config['omni']
         self.config = config
+        self.opts = opts
         
         self.frame_config['cert'] = getAbsPath(self.frame_config['cert'])
         if not os.path.exists(self.frame_config['cert']):
@@ -110,26 +112,29 @@ class CallHandler(object):
         getattr(self,call)(args[1:])
 
     def _getclients(self, ams=None):
-        ''' Ask FW CH for known aggregates (_listaggregates) and construct 
-        an XMLRPC client for each.  If 'am' is not none, connect to that URL instead'''
+        """Create XML-RPC clients for each aggregate and return them
+        as a sequence.
+        """
         clients = []
-        if ams:
-            for am in ams:
-                client = make_client(am, self.frame_config['key'], self.frame_config['cert'])
-                client.url = am
-                client.urn = am
-                clients.append(client)
-        else:
-            for (urn, url) in self._listaggregates([]).items():
-                client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
-                client.urn = urn
-                client.url = url
-                clients.append(client)
-        return clients    
+        for (urn, url) in self._listaggregates().items():
+            client = make_client(url, self.frame_config['key'],
+                                 self.frame_config['cert'])
+            client.urn = urn
+            client.url = url
+            clients.append(client)
+        return clients
         
-    def _listaggregates(self, args):
-        '''Use aggregates listed in config file's aggregates key or, if empty, ask the framework CH for known aggregates'''
-        if not self.omni_config.get('aggregates', '').strip() == '':
+    def _listaggregates(self):
+        """List the aggregates that can be used for the current operation.
+        If an aggregate was specified on the command line, use only that one.
+        Else if aggregates are specified in the config file, use that set.
+        Else ask the framework for the list of aggregates.
+        Returns the aggregates as a dict of urn => url pairs.
+        """
+        if self.opts.aggregate:
+            # No URN is specified, so put in 'unknown'
+            return dict(unknown=self.opts.aggregate)
+        elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
             for url in self.omni_config['aggregates'].strip().split(','):
                 aggs[url] = url
@@ -140,61 +145,62 @@ class CallHandler(object):
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
-        on all AMs known by the FW CH, and return the omnispecs found.'''
+        on all aggregates and prints the omnispec/rspec to stdout.'''
         rspecs = {}
         options = {}
         logger = logging.getLogger('omni')
 
-        ams = None
-        urn_name = None
-        if len(args) > 0:
-            if args[0].startswith('http'):
-                ams = args
-            else:
-                urn_name = args[0].strip()
-                ams = args[1:]
-
         options['geni_compressed'] = True;
+        
+        # check command line args
+        if self.opts.native and not self.opts.aggregate:
+            # If native is requested, the user must supply an aggregate.
+            msg = 'Specifying a native RSpec requires specifying an aggregate.'
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            sys.exit(msg)
+
+        # An optional slice name might be specified.
+        slicename = None
+        if len(args) > 0:
+            slicename = args[0].strip()
 
         # Get the credential for this query
-        if urn_name is None:
+        if slicename is None:
             cred = self.framework.get_user_cred()
         else:
-            urn = self.framework.slice_name_to_urn(urn_name)
+            urn = self.framework.slice_name_to_urn(slicename)
             cred = self.framework.get_slice_cred(urn)
             options['geni_slice_urn'] = urn
 
         
         # Connect to each available GENI AM to list their resources
-        for client in self._getclients(ams):
+        for client in self._getclients():
+            if cred is None:
+                logger.debug("Have null credentials in call to ListResources!")
+            logger.debug("Connecting to AM: %s", client)
             try:
-                if cred is None:
-                    logger.debug("Have null credentials in call to ListResources!")
-                logger.debug("Connecting to AM: %s" % client)
                 rspec = client.ListResources([cred], options)
-                if options.get('geni_compressed',False):
-                    try:
-                        rspec = zlib.decompress(rspec.decode('base64'))
-                    except:
-                        logger.debug("Failed to decompress resources list.  In PG Framework this is okay.")
-                        pass
-                    
+                if options.get('geni_compressed', False):
+                    rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
             except Exception, exc:
-                import traceback
-                logger.error("Failed to List Resources from %s (%s): %s" % (client.urn, client.url, exc))
-                logger.error(traceback.format_exc())
-            
-        # Convert the rspecs to omnispecs
-        omnispecs = {}
-        for ((urn,url), rspec) in rspecs.items():                        
-            logger.debug("Getting RSpec items for urn %s", urn)
-            omnispecs[url] = rspec_to_omnispec(urn,rspec)
+                logger.error("Failed to List Resources from %s (%s): %s",
+                             client.urn, client.url, exc)
+        if self.opts.native:
+            # If native, return the one native rspec. There is only
+            # one because we checked for that at the beginning.
+            print rspecs.values()[0]
+        else:
+            # Convert the rspecs to omnispecs
+            omnispecs = {}
+            for ((urn,url), rspec) in rspecs.items():                        
+                logger.debug("Getting RSpec items for urn %s", urn)
+                omnispecs[url] = rspec_to_omnispec(urn,rspec)
 
-        if omnispecs and omnispecs != {}:
-            jspecs = json.dumps(omnispecs, indent=4)
-            print jspecs
-        return omnispecs
+            if omnispecs and omnispecs != {}:
+                jspecs = json.dumps(omnispecs, indent=4)
+                print jspecs
     
     
     def createsliver(self, args):
@@ -260,8 +266,7 @@ class CallHandler(object):
                 
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
-            print self._listaggregates(args)
-            if not url in self._listaggregates(args).values():
+            if not url in self._listaggregates().values():
                 logger = logging.getLogger('omni')
                 logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
                 your Clearinghouse or it is not in the optionally provided list of aggregates in
@@ -282,7 +287,6 @@ class CallHandler(object):
                     result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
                     print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 except Exception, exc:
-                    import traceback
                     logger = logging.getLogger('omni')
                     logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
                     logger.debug(traceback.format_exc())
@@ -449,7 +453,7 @@ class CallHandler(object):
         
     def listaggregates(self, args):
         """Print the aggregates federated with the control framework."""
-        for (urn, url) in self._listaggregates([]).items():
+        for (urn, url) in self._listaggregates().items():
             print "%s: %s" % (urn, url)
 
 
@@ -459,7 +463,10 @@ def parse_args(argv):
                       help="config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="control framework to use for creation/deletion of slices")
-    
+    parser.add_option("-n", "--native", default=False, action="store_true",
+                      help="use native RSpecs")
+    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
+                      help="communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
     return parser.parse_args()
@@ -483,10 +490,9 @@ def main(argv=None):
 
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
-    
-    if not opts.configfile is None:
-        configfiles.insert(0,opts.configfile)
 
+    if opts.configfile:
+        configfiles.insert(0, opts.configfile)
 
     # Find the first valid config file
     for cf in configfiles:         
@@ -544,7 +550,7 @@ def main(argv=None):
     framework = framework_mod.Framework(config['selected_framework'])
         
     # Process the user's call
-    handler = CallHandler(framework, config)    
+    handler = CallHandler(framework, config, opts)    
     handler._handle(args)
         
         
