@@ -104,9 +104,8 @@ Running Omni -
 == The following commands are supported: ==
 
 ** createslice
-- format:  omni.py createslice <slice name>
-- example: omni.py createslice <plc:gpo:site+slice+foobar> 
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py createslice <slice-name>
+- example: omni.py createslice myslice
 
   Creates the slice in your chosen control framework.
 
@@ -118,62 +117,62 @@ Running Omni -
 
 
 ** deleteslice
-- format:  omni.py deleteslice <slice urn> 
-- example: omni.py deleteslice <plc:gpo:site+slice+foobar>
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py deleteslice <slice-name> 
+- example: omni.py deleteslice myslice
 
   Deletes the slice in your chosen control framework
 
 
 ** listresources
-- format:  omni.py listresources <optional slice urn> <optional AM URL 1> <AM URL 2> ... <AM URL n>
+- format:  omni.py listresources [slice-name] [-a AM-URL] [-n]
 - example: omni.py listresources
-		   omni.py listresources plc:gpo:site+slice+foobar
-  		   omni.py listresources foobar http://localhost:12348
-  		   omni.py listresources http://localhost:12348 http://myplc4.gpolab.bbn.com:12348
+	   omni.py listresources myslice
+	   omni.py listresources myslice -a http://localhost:12348
+           omni.py listresources myslice -a http://localhost:12348 -n
   		   
   This command will list the rspecs of all geni aggregates available
   through your chosen framework, and present them in omnispec form.
   Save the result to a file and edit the allocate value to true
   to set up a reservation RSpec, suitable for use in a call to
   createsliver.
-  If a slice urn is supplied, then resources for that slice only 
+  If a slice name is supplied, then resources for that slice only 
   will be displayed.
-  If one or more Aggregate Manager URLs are supplied, only resources
-  from those AMs will be listed.
-
+  If an Aggregate Manager URL is supplied, only resources
+  from that AM will be listed.
+  If the "-n" flag s used the native RSpec is returned instead of an
+  omnispec. The "-n" flag requires the "-a" flag also be used to
+  specify an aggregate manager.
 
 
 ** createsliver
-- format:  omni.py createsliver <slice urn> <omnispec file>
-- example: omni.py createsliver plc:gpo:site+slice+foobar ospec
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py createsliver <slice-name> [-a AM-URL -n] <spec file>
+- example: omni.py createsliver myslice resources.ospec
+           omni.py createsliver myslice -a http://localhost:12348 -n resources.rspec
 
-- argument: the omnispec file should have been created by a call to 
-            listresources (e.g. omni.py listresources > ospec)
+- argument: the spec file should have been created by a call to 
+            listresources (e.g. omni.py listresources > resources.ospec)
             Then, edit the file and set "allocate": true, for each
 			resource that you want to allocate.
 
   This command will allocate the requested resources (those marked
   with allocate: true in the rspec).  It will send an rspec to each
   aggregate manager that a resource is requested for.
-
+  This command can also operate in native mode "-n" by sending a
+  native rspec to a single aggregate specified by the "-a" command.
 
 
 ** deletesliver
-- format:  omni.py deletesliver <slice urn>
-- example: omni.py deletesliver plc:gpo:site+slice+foobar
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py deletesliver <slice-name>
+- example: omni.py deletesliver myslice
 
 	This command will free any resources associated with your slice.  
 
 
 
 ** renewsliver
-- format:  omni.py renewsliver <slice urn> "<time>"
-- example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 4:15pm"
-- example: omni.py renewsliver plc:gpo:site+slice+foobar "12/12/10 16:15"
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py renewsliver <slice-name> "<time>"
+- example: omni.py renewsliver myslice "12/12/10 4:15pm"
+- example: omni.py renewsliver myslice "12/12/10 16:15"
 
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
@@ -182,20 +181,16 @@ Running Omni -
 
 
 ** sliverstatus
-- format: omni.py sliverstatus <slice urn>
-- example: omni.py sliverstatus plc:gpo:site+slice+foobar
-           Shorthand notation is also available (e.g., 'foobar')
-
+- format: omni.py sliverstatus <slice-name>
+- example: omni.py sliverstatus myslice
 
 	This command will get information from each aggregate about the
 	status of the specified slice
 
 
-
 ** shutdown
-- format:  omni.py shutdown <slice urn> 
-- example: omni.py shutdown plc:gpo:site+slice+foobar
-           Shorthand notation is also available (e.g., 'foobar')
+- format:  omni.py shutdown <slice-name> 
+- example: omni.py shutdown myslice
 
   This command will stop the resources from running, but not delete
 	their state.  This command should not be needed by most users.
