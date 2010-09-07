@@ -1,24 +1,41 @@
+Installing GCF from source
+
 This file documents how to install the full 'gcf' package.
 
 Note there is also an RPM for installing just the library functions
 for handling URNS, certificates, credentials, and XMLRPC over SSL
-clients.
+clients. Other RPMs install the sample GCF clearinghouse and aggregate 
+manager, and the Omni client.
+
+See README.txt for details on the usage of the gcf package.
 
 1) Software Dependencies
 ========================
 
-Debian/Ubuntu:
+The GCF package is intended to be run on a modern Linux distribution
+(circa 2010 or 2009). Python 2.6 is required. This software is not
+Python 3 compatible.
+
+This software requires a number of readily available software
+packages. Most modern Linux distributions should have these packages
+available via their native package management suite (eg. yum or apt).
+
+Debian/Ubuntu
+-------------
 sudo apt-get install python-m2crypto python-dateutil python-pyopenssl libxmlsec1 xmlsec1 libxmlsec1-openssl libxmlsec1-dev
 
 
-RedHat/Fedora:
+RedHat/Fedora
+-------------
 sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
 
-CentOS:
+CentOS
+------
 Please see INSTALL.centos
 
 
-MAC OS X:
+MAC OS X
+--------
 You must have macports already installed.
 % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
 % cd /opt/local/lib
@@ -27,31 +44,84 @@ You must have macports already installed.
 # In each terminal that you wish to run GCF, run this command first for xmlsec1:
 % export DYLD_LIBRARY_PATH=/opt/local/lib
 
-Windows/Cygwin: 
+Windows/Cygwin
+--------------
 The necessary libraries are likely available but we have no experience
 running in this environment.
+
+Details on required packages:
+
+1. Python M2Crypto package
+
+  The M2Crypto package provides utilities for handling X.509
+  certificates and SSL connections. M2Crypto is required by the
+  certificate class in sfa/trust. M2Crypto should be readily available
+  on most Linux distributions.
+
+  More information is available at:
+    http://chandlerproject.org/bin/view/Projects/MeTooCrypto
+
+2. Python dateutil package
+
+  The dateutil package provides date parsing routines to Python. It
+  should be readily available on most Linux distributions.
+
+  More information is available at:
+    http://labix.org/python-dateutil
+
+3. Python OpenSSL package
+
+  The OpenSSL package provides a python API to the OpenSSL
+  package. There is an implicit dependency on OpenSSL, but that
+  should be handled by the Linux package manager (yum, apt, etc.)
+
+  More information is available at:
+    https://launchpad.net/pyopenssl
+
+4. xmlsec1 package
+
+  The XML Security Library provides implementations of XML Digital
+  Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
+  from this package is used to sign credentials.  
+
+  On rpm systems the required packages are 
+     	 xmlsec1
+	 xmlsec1-openssl-devel
+
+  On debian systems the packages are 
+     	 libxmlsec1
+	 xmlsec1
+	 libxmlsec1-openssl
+	 libxmlsec1-dev
+
+  More information is available at:
+    http://www.aleksey.com/xmlsec/
+    http://www.w3.org/TR/xmlenc-core/
+    http://www.ietf.org/rfc/rfc3275.txt
 
 
 
 2) Test Run
 ===========
+Here is a 4 step test install of this software. Full usage instructions 
+for each step are in README.txt
 
-# Edit gcf_config if you want to change settings from the default 
-# For a test run edits are not needed.
+a) Optional: Edit gcf_config if you want to change settings from the default 
+For a test run edits are not needed.
 
-# gcf_config is in /etc/gcf-servers/ if you ran make install, otherwise
-# gcf_config is searched for in the current directory.
+gcf_config is in /etc/gcf-servers/ if you ran make install, otherwise
+gcf_config is searched for in the current directory.
 
-# Create certificates and run the GENI Clearinghouse
-# in terminal one:
+b) Create certificates and run the GENI Clearinghouse
+In terminal one:
 $ cd gcf
 $ python src/gen-certs.py
 $ python src/gcf-ch.py
 
-# Run the GENI Aggregate Manager in a second terminal:
+c) Run the GENI Aggregate Manager in a second terminal:
 $ python src/gcf-am.py
 
-# Run the gcf client test script in a third terminal window:
+d) Run the gcf client test script in a third terminal window:
 $ python src/gcf-test.py 
 
 
@@ -73,3 +143,20 @@ Second Slice URN = urn:publicid:IDN+geni:gpo:gcf+slice+065e-c63:127.0.0.1%3A8000
 Testing ListResources... passed
 Testing CreateSliver... passed
 Testing Shutdown... passed
+
+3) Next Steps
+=============
+If you ran in to issues or your output looks different
+- Confirm you followed the install instructions including dependencies
+- See the TROUBLESHOOTING.txt
+
+Look at the source for the reference aggregate manager to understand
+how the API and credentials are used, or to implement your own AM.
+
+See README-omni to try the Omni client for talking to multiple
+aggregate managers and control frameworks.
+
+Try federating your test GCF aggregate manager with another clearinghouse. 
+For details, see README.txt
+
+Further reading is on the GENI Wiki, as listed in README.txt.

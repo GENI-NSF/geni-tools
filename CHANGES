@@ -1,7 +1,10 @@
-gcf 1.0 8/25/10:
+gcf 1.0 9/10:
         - RPM library install available, with dependencies
         - Refactored URN, certificate and credential utilities into library functions
+	- Renamed gam -> gcf-am, gch, client
+	- Refactored omni support files to parallel directory
         - gcf_config configures URNs, file locations, etc.
+	- geni_aggregates incorporated into gcf_config
 	- omni_config is now a Python properties file format
 	- omni listresources takes optional AggregateManager URLs to contact
         - Drop CH.Resolve - not used

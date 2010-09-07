@@ -1,4 +1,4 @@
-CentOS 5.5:
+Install instructions for CentOS 5.5:
 
 GCF requires Python 2.6.  It is possible that overriding Python 2.4 with 2.6 could cause
 problems on CentOS 5.5, so we provide these directions for a parallel install of Python:
@@ -34,4 +34,3 @@ $ sudo easy_install m2crypto
 Edit src/gen-certs.py, src/gcf-ch.py and src/gcf-am.py line 1:
 
 #!/usr/bin/env python26
-

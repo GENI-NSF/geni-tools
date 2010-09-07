@@ -24,54 +24,7 @@ This software requires a number of readily available software
 packages. Most modern Linux distributions should have these packages
 available via their native package management suite (eg. yum or apt).
 
-1. Python M2Crypto package
-
-  The M2Crypto package provides utilities for handling X.509
-  certificates and SSL connections. M2Crypto is required by the
-  certificate class in sfa/trust. M2Crypto should be readily available
-  on most Linux distributions.
-
-  More information is available at:
-    http://chandlerproject.org/bin/view/Projects/MeTooCrypto
-
-2. Python dateutil package
-
-  The dateutil package provides date parsing routines to Python. It
-  should be readily available on most Linux distributions.
-
-  More information is available at:
-    http://labix.org/python-dateutil
-
-3. Python OpenSSL package
-
-  The OpenSSL package provides a python API to the OpenSSL
-  package. There is an implicit dependency on OpenSSL, but that
-  should be handled by the Linux package manager (yum, apt, etc.)
-
-  More information is available at:
-    https://launchpad.net/pyopenssl
-
-4. xmlsec1 package
-
-  The XML Security Library provides implementations of XML Digital
-  Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
-  from this package is used to sign credentials.  
-
-  On rpm systems the required packages are 
-     	 xmlsec1
-	 xmlsec1-openssl-devel
-
-  On debian systems the packages are 
-     	 libxmlsec1
-	 xmlsec1
-	 libxmlsec1-openssl
-	 libxmlsec1-dev
-
-  More information is available at:
-    http://www.aleksey.com/xmlsec/
-    http://www.w3.org/TR/xmlenc-core/
-    http://www.ietf.org/rfc/rfc3275.txt
-
+For details, see INSTALL.txt
 
 Included Software
 =================
@@ -81,8 +34,11 @@ software is in the src/sfa directory. More information, including the
 license, can be found in src/sfa/README.txt.
 
 
-Instructions
+Usage Instructions
 ============
+Basic install & running instructions are in INSTALL.txt.
+
+Full details on options for each step are described below.
 
 0. Edit gcf_config (installed to /etc/gcf-servers/omni_config or can also be read from
  the current directory) to configure your clearinghouse and aggregate manager.  

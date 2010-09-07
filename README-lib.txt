@@ -1,3 +1,5 @@
+GCF Geni Library Package
+
 Description
 ===========
 
@@ -7,6 +9,7 @@ GENI AM API compatible services.
 
 Software Dependencies
 =====================
+Dependencies should be handled by the package install.
 On RPM based systems:
 
 python 2.6
@@ -53,3 +56,4 @@ alice_cert = create_cert(urn, issuer_key, issuer_certificate).save_to_string()
 
 Further examples can be found in the GENI Control Framework distribution in the 
 GENI Clearinghouse and GENI Aggregate Manager implementations.
+This includes examples of creating and verifying credentials.

@@ -5,6 +5,7 @@ Managers and presents their resources with a uniform specification,
 known as the omnispec.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.
+Note that Omni also supports using control framework native RSpecs.
 
 To configure Omni, please copy src/omni_config or /etc/omni/templates/omni_config 
 to your ~/.gcf directory and fill in the parameters for at least one control
@@ -22,10 +23,14 @@ Omni works by
 - RSpecs are converted to a very simple common 'omnispec'
 format. Users (hand) edit these and supply these to createsliver calls.
 
+Omnispecs
+---------
 Each OmniResource has a name, a description, a type, booleans
 indicating whether the resource is allocated and whether the request
 wants to allocate it, and then hashes for options and misc fields.
 
+Extending Omni
+--------------
 Extending Omni to support additional types of Aggregate Managers with
 different RSpec formats requires adding a new omnispec/rspec conversion file.
 
@@ -45,7 +50,7 @@ and user credentials that are valid for that Clearinghouse.
 a) When you do this, Omni will contact your designated Clearinghouse, using 
 your framework-specific user credentials.
 b) The clearinghouse will list the Aggregates it knows about.
-EG for GCF, the contents of geni_aggregates. For SFA, it will return the
+EG for GCF, the am_* entries in gcf_config. For SFA, it will return the
 contents of /etc/sfa/geni_aggregates.xml.
 c) Omni will then contact each of the Aggregates that the Clearinghouse told
 it about, and use the GENI AM API to ask each for its resources.
@@ -91,7 +96,7 @@ Running Omni -
 
 -c FILE -- location of your config file (default ~/.gcf/omni_config)
 
--f FRAMEWORK -- control framework to use (e.g. my_sfa), overiding default
+-f FRAMEWORK -- control framework to use (e.g. my_sfa), overriding default
  in config file.  The framework is a section named in the config file.
 
 --debug -- Enable debug output
@@ -106,10 +111,10 @@ Running Omni -
   Creates the slice in your chosen control framework.
 
   Default GCF certs require a slice named geni.net:gpo:gcf+slice+<name>
-  based on the CERT_AUTHORITY constant in gen-certs.py.  The shorthand notation
+  based on the base_name section of gcf_config.  The shorthand notation
   is available for SFA and PG.  Shorthand works if your control framework is GCF
   only if you have configured the 'authority' line in the gcf section of 
-  omni_config. (also see ch.py SLICEPUBID_PREFIX)
+  omni_config.
 
 
 ** deleteslice
