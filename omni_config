@@ -21,7 +21,7 @@ default_cf = my_gcf
 # The slice_users argument in "CreateSliver".  It uploads
 # names and public ssh keys to allocated resources for login.
 # Details on users should be defined in sections below
-users = Alice, Bob
+# users = Alice, Bob
 
 
 # Omni will by default contact every Aggregate Manager listed

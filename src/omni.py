@@ -543,11 +543,12 @@ def main(argv=None):
         
     # Load up the users the user wants us to see        
     config['users'] = []
-    for user in config['omni']['users'].split(','):
-        d = {}
-        for (key,val) in confparser.items(user.strip()):
-            d[key] = val
-        config['users'].append(d)
+    if 'users' in config['omni']:
+        for user in config['omni']['users'].split(','):
+            d = {}
+            for (key,val) in confparser.items(user.strip()):
+                d[key] = val
+            config['users'].append(d)
 
     # Load up the framework section
     if not opts.framework:
