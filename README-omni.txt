@@ -1,4 +1,4 @@
-The Omni GENI Client -
+= The Omni GENI Client =
 
 Omni is an end-user GENI client that communicates with GENI Aggregate
 Managers and presents their resources with a uniform specification,
@@ -17,82 +17,77 @@ comments describe the meaning of each field.
 The currently supported control frameworks are SFA, PG and GCF. OpenFlow
 Aggregate Managers are also supported.
 
-Omni works by 
-- The Framework classes know the API for each clearinghouse
-- Aggregate Managers are contacted via the GENI API
-- RSpecs are converted to a very simple common 'omnispec'
-format. Users (hand) edit these and supply these to createsliver calls.
+Omni performs the following functions:
+ * Talks to each clearinghouse in its native API
+ * Contacts Aggregate Managers via the GENI API
+ * Converts RSpects into (and from) native RSpec form to  a common 'omnispec'.
 
-Omnispecs
----------
+== Omnispecs ==
 Each OmniResource has a name, a description, a type, booleans
 indicating whether the resource is allocated and whether the request
 wants to allocate it, and then hashes for options and misc fields.
 
-Extending Omni
---------------
+== Extending Omni ==
 Extending Omni to support additional types of Aggregate Managers with
 different RSpec formats requires adding a new omnispec/rspec conversion file.
 
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension class.
 
-Omni workflow
-=============
-- Pick a Clearinghouse you want to use. That is the control framework you
- will use.
+== Omni workflow ==
+ 1. Pick a Clearinghouse you want to use. That is the control framework you
+  will use.
 
-- Be sure the appropriate section of omni config for your framework 
-(sfa/gcf/pg) has appropriate settings for contacting that Clearinghouse, 
-and user credentials that are valid for that Clearinghouse.
+ 2. Be sure the appropriate section of omni config for your framework 
+  (sfa/gcf/pg) has appropriate settings for contacting that Clearinghouse, 
+  and user credentials that are valid for that Clearinghouse.
 
-- Run omni listresources > avail-resources.omnispec
-a) When you do this, Omni will contact your designated Clearinghouse, using 
-your framework-specific user credentials.
-b) The clearinghouse will list the Aggregates it knows about.
-EG for GCF, the am_* entries in gcf_config. For SFA, it will return the
-contents of /etc/sfa/geni_aggregates.xml.
-c) Omni will then contact each of the Aggregates that the Clearinghouse told
-it about, and use the GENI AM API to ask each for its resources.
-Again, it will use your user credentials. So each Aggregate Manager must 
-trust the signer of your user credentials, in order for you to talk
-to it. This is why you add the CH certificate to /etc/sfa/trusted_roots or to
-the -r argument of your GCF gcf-am.py.
-d) Omni will then convert the proprietary RSPecs into a single 'omnispec'.
+ 3. Run omni listresources > avail-resources.omnispec
+  a. When you do this, Omni will contact your designated Clearinghouse, using
+   your framework-specific user credentials.
+  b. The clearinghouse will list the Aggregates it knows about. EG for GCF,
+   the am_* entries in gcf_config. For SFA, it will
+   return the contents of /etc/sfa/geni_aggregates.xml.
+  c. Omni will then contact each of the Aggregates that the Clearinghouse
+   told it about, and use the GENI AM API to ask each for its resources. Again, 
+   it will use your user credentials. So each Aggregate Manager must  trust the 
+   signer of your user credentials, in order for you to talk to it. This is why
+   you add the CH certificate to /etc/sfa/trusted_roots or to the -r argument of 
+   your GCF gcf-am.py.
+  d. Omni will then convert the proprietary RSPecs into a single 'omnispec'.
 
-- Save this to a file. You can then edit this file to reserve resources, 
-by changing 'allocate: false' to 'allocate: true' wherever the resource
-is not already allocated ('allocated: true').
+ 4. Save this to a file. You can then edit this file to reserve resources, by changing 
+  'allocate: false' to 'allocate: true' wherever the resource is not already allocated 
+  ('allocated: true').
 
-- Create a Slice.
-Slices are created at your Clearinghouse. Slices are named based on
-the Clearinghouse authority that signs for them. Using the shorthand
-(just the name of your slice within PG, for example) allows Omni to
-ensure your Slice is named correctly. So run:
-omni.py createslice MyGreatTestSlice
+ 5. Create a Slice.
+  Slices are created at your Clearinghouse. Slices are named based on the 
+  Clearinghouse authority that signs for them. Using the shorthand (just 
+  the name of your slice within PG, for example) allows Omni to ensure 
+  your Slice is named correctly. So run: omni.py createslice MyGreatTestSlice
 
-- Allocate your Resources
-Given a slice, and your edited omnispec file, you are ready to allocate
-resources by creating slivers at each of the Aggregate Managers.
-Omni will contact your Clearinghouse again, to get the credentials
-for your slice. It will parse your omnispec file, converting it back
-into framework specific RSpec format as necessary.
-It will then contact each Aggregate Manager in your
-omnispec where you are reserving resources, calling the GENI AM API
-CreateSliver call on each. It will supply your Slice Credentials 
-(from the Clearinghouse) plus your own user certificate, and the RSpec.
+ 6. Allocate your Resources
+  Given a slice, and your edited omnispec file, you are ready to allocate
+  resources by creating slivers at each of the Aggregate Managers.
+  Omni will contact your Clearinghouse again, to get the credentials
+  for your slice. It will parse your omnispec file, converting it back
+  into framework specific RSpec format as necessary.
+  It will then contact each Aggregate Manager in your
+  omnispec where you are reserving resources, calling the GENI AM API
+  CreateSliver call on each. It will supply your Slice Credentials 
+  (from the Clearinghouse) plus your own user certificate, and the RSpec.
 
-At this point, you have resources and can do your experiment.
+  At this point, you have resources and can do your experiment.
 
-- Renew or Delete
-After a while you may want to Renew your Sliver that is expiring, or 
-Delete it. Omni will contact the Clearinghouse, get a list of all
-Aggregates, and invoke RenewSliver or DeleteSliver on each, for 
-your slice name.
+ 7. Renew or Delete
+  After a while you may want to Renew your Sliver that is expiring, or 
+  Delete it. Omni will contact the Clearinghouse, get a list of all
+  Aggregates, and invoke RenewSliver or DeleteSliver on each, for 
+  your slice name.
 
-Running Omni -
+== Running Omni ==
 
-== The following options are supported: ==
+=== The following options are supported: ===
 
 -c FILE -- location of your config file (default ~/.gcf/omni_config)
 
@@ -101,11 +96,11 @@ Running Omni -
 
 --debug -- Enable debug output
 
-== The following commands are supported: ==
+=== The following commands are supported: ===
 
-** createslice
-- format:  omni.py createslice <slice-name>
-- example: omni.py createslice myslice
+==== createslice ====
+ * format:  omni.py createslice <slice-name>
+ * example: omni.py createslice myslice
 
   Creates the slice in your chosen control framework.
 
@@ -115,17 +110,16 @@ Running Omni -
   only if you have configured the 'authority' line in the gcf section of 
   omni_config.
 
-
-** deleteslice
-- format:  omni.py deleteslice <slice-name> 
-- example: omni.py deleteslice myslice
+==== deleteslice ====
+ * format:  omni.py deleteslice <slice-name> 
+ * example: omni.py deleteslice myslice
 
   Deletes the slice in your chosen control framework
 
 
-** listresources
-- format:  omni.py listresources [slice-name] [-a AM-URL] [-n]
-- example: omni.py listresources
+==== listresources ====
+ * format:  omni.py listresources [slice-name] [-a AM-URL] [-n]
+ * example: omni.py listresources
 	   omni.py listresources myslice
 	   omni.py listresources myslice -a http://localhost:12348
            omni.py listresources myslice -a http://localhost:12348 -n
@@ -144,12 +138,12 @@ Running Omni -
   specify an aggregate manager.
 
 
-** createsliver
-- format:  omni.py createsliver <slice-name> [-a AM-URL -n] <spec file>
-- example: omni.py createsliver myslice resources.ospec
+==== createsliver ====
+ * format:  omni.py createsliver <slice-name> [-a AM-URL -n] <spec file>
+ * example: omni.py createsliver myslice resources.ospec
            omni.py createsliver myslice -a http://localhost:12348 -n resources.rspec
 
-- argument: the spec file should have been created by a call to 
+ * argument: the spec file should have been created by a call to 
             listresources (e.g. omni.py listresources > resources.ospec)
             Then, edit the file and set "allocate": true, for each
 			resource that you want to allocate.
@@ -160,19 +154,18 @@ Running Omni -
   This command can also operate in native mode "-n" by sending a
   native rspec to a single aggregate specified by the "-a" command.
 
-
-** deletesliver
-- format:  omni.py deletesliver <slice-name>
-- example: omni.py deletesliver myslice
+==== deletesliver ====
+ * format:  omni.py deletesliver <slice-name>
+ * example: omni.py deletesliver myslice
 
 	This command will free any resources associated with your slice.  
 
 
 
-** renewsliver
-- format:  omni.py renewsliver <slice-name> "<time>"
-- example: omni.py renewsliver myslice "12/12/10 4:15pm"
-- example: omni.py renewsliver myslice "12/12/10 16:15"
+==== renewsliver ====
+ * format:  omni.py renewsliver <slice-name> "<time>"
+ * example: omni.py renewsliver myslice "12/12/10 4:15pm"
+ * example: omni.py renewsliver myslice "12/12/10 16:15"
 
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
@@ -180,17 +173,17 @@ Running Omni -
 	Times are in UTC.
 
 
-** sliverstatus
-- format: omni.py sliverstatus <slice-name>
-- example: omni.py sliverstatus myslice
+==== sliverstatus ====
+ * format: omni.py sliverstatus <slice-name>
+ * example: omni.py sliverstatus myslice
 
 	This command will get information from each aggregate about the
 	status of the specified slice
 
 
-** shutdown
-- format:  omni.py shutdown <slice-name> 
-- example: omni.py shutdown myslice
+==== shutdown ====
+ * format:  omni.py shutdown <slice-name> 
+ * example: omni.py shutdown myslice
 
   This command will stop the resources from running, but not delete
 	their state.  This command should not be needed by most users.

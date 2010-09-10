@@ -204,15 +204,17 @@ class CredentialVerifier(object):
                 failure = "Cred %s on %s fails: Target URNs dont match" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
                 continue
             if not self.verify_privileges(privileges, cred):
-                failure = "Cert %s doesnt have sufficient privileges" % cred.get_gid_caller().get_urn()
+                failure = "Cert %s doesn't have sufficient privileges" % cred.get_gid_caller().get_urn()
                 continue
 
+
+            print 
             try:
                 if not cred.verify(self.root_cert_files):
-                    failure = "Couldn't validate cert %s with any of %d known root certs" % (cred.get_gid_caller().get_urn(), len(self.root_cert_files))
+                    failure = "Couldn't validate credential for caller %s with target %s with any of %d known root certs" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn(), len(self.root_cert_files))
                     continue
             except Exception, exc:
-                failure = "Couldn't validate cert %s with any of %d known root certs: %s" % (cred.get_gid_caller().get_urn(), len(self.root_cert_files), exc)
+                failure = "Couldn't validate credential for caller %s with target %s with any of %d known root certs: %s" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn(), len(self.root_cert_files), exc)
                 self.logger.info(failure)
                 continue
             # If got here it verified
