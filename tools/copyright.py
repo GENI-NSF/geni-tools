@@ -53,30 +53,45 @@ copyright = """#----------------------------------------------------------------
 
 logger = None
 
-def do_report(top):
-    logger.debug('Reporting from %s', top)
-    for (dirpath, dirnames, filenames) in os.walk(top):
+def find_grep():
+    for dir in os.getenv('PATH', '/bin:/usr/bin').split(':'):
+        candidate = os.path.join(dir, 'grep')
+        if os.path.exists(candidate):
+            return candidate
+
+def report_file(path, exceptions):
+    # Only report if the file is not empty?
+    if not path in exceptions and os.path.getsize(path):
+        print('No copyright in %r' % (path))
+
+def report_dir(dir, grep, exceptions):
+    logger.debug('Reporting from %s', dir)
+    for (dirpath, dirnames, filenames) in os.walk(dir):
         for filename in filenames:
             if filename.endswith('.py'):
                 path = os.path.join(dirpath, filename)
-                logger.debug('Checking %s', path)
                 # Need to send the output somewhere...
-                status = os.system('/bin/grep -q -L -i copyright %s' % (path))
+                cmd = '%s -q -L -i copyright %s' % (grep, path)
+                logger.debug('Checking %s', cmd)
+                status = os.system(cmd)
                 logger.debug('\t==> %d', status)
                 if status:
-                    # Only report if the file is not empty?
-                    if os.path.getsize(path):
-                        print('No copyright in %r' % (path))
+                    report_file(path, exceptions)
 
+
+def do_report(dirs, exceptions):
+    grep = find_grep()
+    for dir in dirs:
+        report_dir(dir, grep, exceptions)
+                        
 def parse_args(argv):
-    parser = optparse.OptionParser()
+    usage = "usage: %prog [options] dir1 dir2"
+    parser = optparse.OptionParser(usage=usage)
     parser.add_option("--debug", action="store_true", default=False,
-                       help="enable debugging output")
+                      help="enable debugging output")
+    parser.add_option("-e", "--exception", action="append", default=[],
+                      metavar="FILE", help="add a FILE exception")
     return parser.parse_args()
-
-commands = {
-    'report': do_report
-}
 
 def main(argv=None):
     if argv is None:
@@ -84,15 +99,14 @@ def main(argv=None):
     opts, args = parse_args(argv)
     level = logging.INFO
     logging.basicConfig(level=level)
-    logging.debug('bar')
     if opts.debug:
         level = logging.DEBUG
     global logger
     logger = logging.getLogger("copyright")
     logger.setLevel(level)
     if not args:
-        args = ('report',)
-    commands[args[0]](*args[1:])
+        args = ('.')
+    do_report(args, exceptions=opts.exception)
 
 if __name__ == "__main__":
     sys.exit(main())
