@@ -116,32 +116,42 @@ clearinghouse APIs requires adding a new Framework extension class.
 
   Deletes the slice in your chosen control framework
 
+==== getversion ====
+ * format:  omni.py getversion [-a AM-URL]
+ * examples:
+  * omni.py getversion
+  * omni.py getversion -a http://localhost:12348
 
 ==== listresources ====
- * format:  omni.py listresources [slice-name] [-a AM-URL] [-n]
- * example: omni.py listresources
-	   omni.py listresources myslice
-	   omni.py listresources myslice -a http://localhost:12348
-           omni.py listresources myslice -a http://localhost:12348 -n
+ * format:  omni.py listresources [-a AM-URL [-n]] [slice-name]
+ * examples:
+  * omni.py listresources
+  * omni.py listresources myslice
+  * omni.py listresources -a http://localhost:12348 myslice
+  * omni.py listresources -a http://localhost:12348 -n myslice
   		   
   This command will list the rspecs of all geni aggregates available
   through your chosen framework, and present them in omnispec form.
   Save the result to a file and edit the allocate value to true
   to set up a reservation RSpec, suitable for use in a call to
   createsliver.
+
   If a slice name is supplied, then resources for that slice only 
   will be displayed.
+
   If an Aggregate Manager URL is supplied, only resources
   from that AM will be listed.
+
   If the "-n" flag s used the native RSpec is returned instead of an
   omnispec. The "-n" flag requires the "-a" flag also be used to
   specify an aggregate manager.
 
 
 ==== createsliver ====
- * format:  omni.py createsliver <slice-name> [-a AM-URL -n] <spec file>
- * example: omni.py createsliver myslice resources.ospec
-           omni.py createsliver myslice -a http://localhost:12348 -n resources.rspec
+ * format:  omni.py createsliver [-a AM-URL [-n]] <slice-name> <spec file>
+ * examples:
+  * omni.py createsliver myslice resources.ospec
+  * omni.py createsliver -a http://localhost:12348 -n myslice resources.rspec
 
  * argument: the spec file should have been created by a call to 
             listresources (e.g. omni.py listresources > resources.ospec)
@@ -155,17 +165,20 @@ clearinghouse APIs requires adding a new Framework extension class.
   native rspec to a single aggregate specified by the "-a" command.
 
 ==== deletesliver ====
- * format:  omni.py deletesliver <slice-name>
- * example: omni.py deletesliver myslice
+ * format:  omni.py deletesliver [-a AM-URL] <slice-name>
+ * examples:
+  * omni.py deletesliver myslice
+  * omni.py deletesliver -a http://localhost:12348 myslice
 
 	This command will free any resources associated with your slice.  
 
 
-
 ==== renewsliver ====
- * format:  omni.py renewsliver <slice-name> "<time>"
- * example: omni.py renewsliver myslice "12/12/10 4:15pm"
- * example: omni.py renewsliver myslice "12/12/10 16:15"
+ * format:  omni.py renewsliver [-a AM-URL] <slice-name> "<time>"
+ * examples:
+  * omni.py renewsliver myslice "12/12/10 4:15pm"
+  * omni.py renewsliver myslice "12/12/10 16:15"
+  * omni.py renewsliver -a http://localhost:12348 myslice "12/12/10 16:15"
 
 	This command will renew your resources at each aggregate up to the
 	specified time.  This time must be less than or equal to the time
@@ -174,16 +187,20 @@ clearinghouse APIs requires adding a new Framework extension class.
 
 
 ==== sliverstatus ====
- * format: omni.py sliverstatus <slice-name>
- * example: omni.py sliverstatus myslice
+ * format: omni.py sliverstatus [-a AM-URL] <slice-name>
+ * examples:
+  * omni.py sliverstatus myslice
+  * omni.py sliverstatus -a http://localhost:12348 myslice
 
 	This command will get information from each aggregate about the
 	status of the specified slice
 
 
 ==== shutdown ====
- * format:  omni.py shutdown <slice-name> 
- * example: omni.py shutdown myslice
+ * format:  omni.py shutdown [-a AM-URL] <slice-name>
+ * examples:
+  * omni.py shutdown myslice
+  * omni.py shutdown -a http://localhost:12348 myslice
 
   This command will stop the resources from running, but not delete
 	their state.  This command should not be needed by most users.
