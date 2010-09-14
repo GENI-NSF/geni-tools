@@ -24,7 +24,9 @@
 #----------------------------------------------------------------------
 """
 Simple test client for testing the GENI GCF Clearinghouse and 
-AggregateManager. exercise_am is main method
+AggregateManager.
+
+Run with "-h" flag to see usage and command line options.
 """
 
 import sys

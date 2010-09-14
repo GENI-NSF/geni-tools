@@ -25,6 +25,8 @@
 """
 Framework to run a GENI Aggregate Manager. See geni/am for the 
 Reference Aggregate Manager that this runs.
+
+Run with "-h" flag to see usage and command line options.
 """
 
 import sys
