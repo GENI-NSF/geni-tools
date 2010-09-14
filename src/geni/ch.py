@@ -131,7 +131,7 @@ class Clearinghouse(object):
         
         
     def runserver(self, addr, keyfile=None, certfile=None,
-                  ca_certs=None, aggfile=None, authority=None,
+                  ca_certs=None, authority=None,
                   user_len=None, slice_len=None, config=None):
         """Run the clearinghouse server."""
         # ca_certs is a dir of several certificates for peering

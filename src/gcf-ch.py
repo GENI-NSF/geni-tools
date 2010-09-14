@@ -23,7 +23,10 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Run the GENI GCF Clearinghouse. See geni/ch.py
+Framework to run a GENI Clearinghouse. See geni/ch.py for the 
+Reference Clearinghouse that this runs.
+
+Run with "-h" flag to see usage and command line options.
 """
 
 import sys
@@ -70,7 +73,7 @@ class CommandHandler(object):
         addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
-                     getAbsPath(opts.rootcadir), getAbsPath(opts.aggfile), config['global']['base_name'],
+                     getAbsPath(opts.rootcadir), config['global']['base_name'],
                      opts.user_cred_duration, opts.slice_duration, config)
 
 def parse_args(argv):
@@ -85,8 +88,6 @@ def parse_args(argv):
     # Supplying this arg allows users of other frameworks to create slices on this CH.
     parser.add_option("-r", "--rootcadir", 
                       help="Root certificate directory name (files in PEM format)", metavar="FILE")
-    parser.add_option("-g", "--aggfile",
-                      help="List of Aggregate Managers this CH is affiliated with", metavar="FILE")
     # Could try to determine the real IP Address instead of the loopback
     # using socket.gethostbyname(socket.gethostname())
     parser.add_option("-H", "--host", 
@@ -101,9 +102,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     opts, args = parse_args(argv)
-    
 
-    
     level = logging.INFO
     if opts.debug:
         level = logging.DEBUG
@@ -120,7 +119,7 @@ def main(argv=None):
         optspath = os.path.expanduser(opts.configfile)
 
     config = read_config(optspath)   
-        
+
     for (key,val) in config['clearinghouse'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:
             setattr(opts,key,val)
@@ -128,7 +127,7 @@ def main(argv=None):
             setattr(opts,key,val)
     if getattr(opts,'rootcadir') is None:
         setattr(opts,'rootcadir',config['global']['rootcadir'])        
-            
+
     ch = CommandHandler()        
     if hasattr(ch, handler):
         return getattr(ch, handler)(opts)
