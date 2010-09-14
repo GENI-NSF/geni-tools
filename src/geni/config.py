@@ -24,31 +24,31 @@
 import ConfigParser
 import os
 
-GCF_CONFIG_FILE='gcf_config'
-
-# Read the config file into a dictionary where each section
-# of the config is its own sub-dictionary
 def read_config(path=None):
+    """Read the config file into a dictionary where each section
+    of the config is its own sub-dictionary
+    """
     confparser = ConfigParser.RawConfigParser()
-    paths = ['gcf_config', os.path.expanduser('~/.gcf/gcf_config'), '/etc/gcf-servers/gcf_config']
+    paths = ['gcf_config', os.path.expanduser('~/.gcf/gcf_config'),
+             '/etc/gcf-servers/gcf_config']
     if path:
-        paths.insert(0,path)
-    
-    foundFile = ''
+        paths.insert(0, path)
+
+    foundFile = None
     for file in paths:
         foundFile = confparser.read(file)
-        if foundFile != '':
+        if foundFile:
             break
 
-    if foundFile == '':
+    if not foundFile:
         import sys
         sys.exit("Config file could not be found or was not properly formatted (I searched in paths: %s)" % paths)
 
     config = {}
-  
+
     for section in confparser.sections():
         config[section] = {}
         for (key,val) in confparser.items(section):
             config[section][key] = val
-    
+
     return config
