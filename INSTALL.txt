@@ -1,53 +1,10 @@
-Installing GCF from source
-
-This file documents how to install the full 'gcf' package.
-
-Note there is also an RPM for installing just the library functions
-for handling URNS, certificates, credentials, and XMLRPC over SSL
-clients. Other RPMs install the sample GCF clearinghouse and aggregate 
-manager, and the Omni client.
+This file documents how to install and run the gcf package.
 
 See README.txt for details on the usage of the gcf package.
 
+
 1) Software Dependencies
 ========================
-
-The GCF package is intended to be run on a modern Linux distribution
-(circa 2010 or 2009). Python 2.6 is required. This software is not
-Python 3 compatible.
-
-This software requires a number of readily available software
-packages. Most modern Linux distributions should have these packages
-available via their native package management suite (eg. yum or apt).
-
-Debian/Ubuntu
--------------
-sudo apt-get install python-m2crypto python-dateutil python-pyopenssl libxmlsec1 xmlsec1 libxmlsec1-openssl libxmlsec1-dev
-
-
-RedHat/Fedora
--------------
-sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
-
-CentOS
-------
-Please see INSTALL.centos
-
-
-MAC OS X
---------
-You must have macports already installed.
-% sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
-% cd /opt/local/lib
-% sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
-
-# In each terminal that you wish to run GCF, run this command first for xmlsec1:
-% export DYLD_LIBRARY_PATH=/opt/local/lib
-
-Windows/Cygwin
---------------
-The necessary libraries are likely available but we have no experience
-running in this environment.
 
 Details on required packages:
 
@@ -100,32 +57,83 @@ Details on required packages:
     http://www.ietf.org/rfc/rfc3275.txt
 
 
+2) Platform Installation
+========================
 
-2) Test Run
+The GCF package is intended to be run on a modern Unix distribution
+(circa 2010 or 2009). Python 2.6 is required. This software is not
+Python 3 compatible.
+
+This software requires a number of readily available software
+packages. Most modern Linux distributions should have these packages
+available via their native package management suite (eg. yum or apt).
+
+
+Debian/Ubuntu
+-------------
+sudo apt-get install python-m2crypto python-dateutil \
+                     python-pyopenssl libxmlsec1 xmlsec1 \
+                     libxmlsec1-openssl libxmlsec1-dev
+
+
+RedHat/Fedora
+-------------
+sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 \
+                 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
+
+
+CentOS
+------
+Please see INSTALL.centos
+
+
+MAC OS X
+--------
+You must have macports already installed.
+
+  % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
+  % cd /opt/local/lib
+  % sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
+
+In each terminal that you wish to run GCF, run this command first for
+xmlsec1:
+
+  % export DYLD_LIBRARY_PATH=/opt/local/lib
+
+
+Windows/Cygwin
+--------------
+The necessary libraries are likely available but we have no experience
+running in this environment.
+
+
+3) Test Run
 ===========
 Here is a 4 step test install of this software. Full usage instructions 
 for each step are in README.txt
 
-a) Optional: Edit gcf_config if you want to change settings from the default 
-For a test run edits are not needed.
+1. Optional: Edit gcf_config if you want to change settings from the default 
 
-gcf_config is in /etc/gcf-servers/ if you ran make install, otherwise
-gcf_config is searched for in the current directory.
+  For a test run edits are not needed.
 
-b) Create certificates and run the GENI Clearinghouse
-In terminal one:
-$ cd gcf
-$ python src/gen-certs.py
-$ python src/gcf-ch.py
+  gcf_config is in /etc/gcf-servers/ if you ran make install, otherwise
+  gcf_config is searched for in the current directory.
 
-c) Run the GENI Aggregate Manager in a second terminal:
-$ python src/gcf-am.py
+2. Create certificates and run the GENI Clearinghouse
 
-d) Run the gcf client test script in a third terminal window:
-$ python src/gcf-test.py 
+  In terminal one:
+    $ cd gcf
+    $ python src/gen-certs.py
+    $ python src/gcf-ch.py
+
+3. Run the GENI Aggregate Manager in a second terminal:
+    $ python src/gcf-am.py
+
+4. Run the gcf client test script in a third terminal window:
+    $ python src/gcf-test.py 
 
 
-You should see something like this:
+You should see output like this:
 
 $ python src/gcf-test.py 
 INFO:gcf-test:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/dev/gcf/alice-key.pem, certfile /home/jkarlin/dev/gcf/alice-cert.pem
@@ -144,16 +152,17 @@ Testing ListResources... passed
 Testing CreateSliver... passed
 Testing Shutdown... passed
 
-3) Next Steps
+
+4) Next Steps
 =============
 If you ran in to issues or your output looks different
 - Confirm you followed the install instructions including dependencies
-- See the TROUBLESHOOTING.txt
+- See TROUBLESHOOTING.txt for more detailed help
 
 Look at the source for the reference aggregate manager to understand
 how the API and credentials are used, or to implement your own AM.
 
-See README-omni to try the Omni client for talking to multiple
+See README-omni.txt to try the Omni client for talking to multiple
 aggregate managers and control frameworks.
 
 Try federating your test GCF aggregate manager with another clearinghouse. 

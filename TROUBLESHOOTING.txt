@@ -1,5 +1,5 @@
-Troubleshooting Guide for Installing GCF and Running Omni
-=========================================================
+Troubleshooting Guide for GCF and Omni
+======================================
 
 1) Slice URNs and CH URNs and AM URNs need to match each other and the 
 appropriate credentials.
