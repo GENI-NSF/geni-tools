@@ -67,6 +67,11 @@ def rspec_to_omnispec(urn, rspec):
             swmap[urn] = s
             ospec.add_resource(urn, s)
             
+            for port in switch.findall('port'):
+                port_urn = port.get('urn')
+                port = 'port:' + port_urn.split('port:')[-1]
+                swmap[urn]['options'][port] = "switch:* port:*"
+                
         links = network.findall('links')[0]
         for link in links.findall('link'):
             # convert:
