@@ -316,5 +316,5 @@ at the Princeton network
     Any missing fields from the flowspace mean wildcard. All '*' means any
     value.
     
-    All integers can by specified as hex or decimal.
+    All integers can be specified as hex or decimal.
     '''
