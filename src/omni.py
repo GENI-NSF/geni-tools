@@ -190,7 +190,8 @@ class CallHandler(object):
         if self.opts.native:
             # If native, return the one native rspec. There is only
             # one because we checked for that at the beginning.
-            print rspecs.values()[0]
+            if rspecs and rspecs != {}:
+                print rspecs.values()[0]
         else:
             # Convert the rspecs to omnispecs
             omnispecs = {}
