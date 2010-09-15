@@ -190,7 +190,8 @@ class CallHandler(object):
         if self.opts.native:
             # If native, return the one native rspec. There is only
             # one because we checked for that at the beginning.
-            print rspecs.values()[0]
+            if rspecs and rspecs != {}:
+                print rspecs.values()[0]
         else:
             # Convert the rspecs to omnispecs
             omnispecs = {}
@@ -305,6 +306,9 @@ class CallHandler(object):
                 if not res.lower().startswith('y'):
                     return
                 
+            if not self.opts.native:
+                self.logger.debug("Native RSpec for %s is:\n%s", url, rspec)
+
             # Okay, send a message to the AM this resource came from
             try:
                 client = make_client(url, self.frame_config['key'], self.frame_config['cert'])

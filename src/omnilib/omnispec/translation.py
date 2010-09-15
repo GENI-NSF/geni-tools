@@ -46,7 +46,7 @@ def rspec_to_omnispec(urn, rspec):
     if mod:
         return mod.rspec_to_omnispec(urn, rspec)
     
-    raise Exception('Unknown RSpec Type')
+    raise Exception('Unknown RSpec Type. Cant translate RSpec:\n%s' % rspec)
     
     
 
