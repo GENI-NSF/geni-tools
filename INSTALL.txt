@@ -116,9 +116,6 @@ for each step are in README.txt
 
   For a test run edits are not needed.
 
-  gcf_config is in /etc/gcf-servers/ if you ran make install, otherwise
-  gcf_config is searched for in the current directory.
-
 2. Create certificates and run the GENI Clearinghouse
 
   In terminal one:
