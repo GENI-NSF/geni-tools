@@ -145,7 +145,7 @@ def omnispec_to_rspec(omnispec, filter_allocated):
                 
             for port in ports:                
                 curspace = deepcopy(flowspace)
-                curspace['options'].append(('port', port.split(':')[-1], port.split(':')[-1]))
+                curspace['options'].append(('port_num', port.split(':')[-1], port.split(':')[-1]))
                 flowspaces.append(curspace)
 
 
