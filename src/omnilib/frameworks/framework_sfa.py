@@ -89,17 +89,62 @@ def hrn_to_urn(hrn, type=None):
         
     return URN_PREFIX + urn
 
+def create_selfsigned_cert(filename, user, key):
+    config = """[ req ]
+            distinguished_name = req_distinguished_name
+            attributes = req_attributes
+            prompt = no
+            
+            [ req_distinguished_name ]
+            C = US
+            ST = .
+            L = .
+            O = GENI
+            OU = GENI
+            CN = %s
+            emailAddress = .
+            
+            [ req_attributes ]
+            unstructuredName =""" % user
+    
+    f = open("/tmp/tmp_openssl_config",'w')
+    f.write(config)
+    f.close()
+    os.popen('openssl req -new -x509 -nodes -sha1 -config /tmp/tmp_openssl_config -key %s > %s' % (key, filename))
+    os.remove("/tmp/tmp_openssl_config")
+    
+
 class Framework(Framework_Base):
     def __init__(self, config):
         config['cert'] = os.path.expanduser(config['cert'])
-        if not os.path.exists(config['cert']):
-            sys.exit('SFA Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
+
+        self.config = config
+
+        # Download a cert from PLC if necessary
+        if not os.path.exists(config['cert']):
+            res = raw_input("Your certificate file (%s) was not found, would you like me to download it for you to %s? (Y/n)" % (config['cert'],config['cert']))
+            if not res.lower().startswith('n'):
+                # Create a self-signed cert to talk to the registry with
+                create_selfsigned_cert(config['cert'], config['user'], config['key'])
+                # use the self signed cert to get the gid
+                self.registry = make_client(config['registry'], config['key'], config['cert'])
+                self.user_cred = None
+                self.cert_string = file(config['cert'],'r').read()
+                cred = self.get_user_cred()
+                gid = self.registry.Resolve(config['user'], cred)[0]['gid']
+                # Finally, copy the gid to the cert location
+                f = open(self.config['cert'],'w')
+                f.write(gid)
+                f.close()
+            else:            
+                sys.exit("SFA Framework certfile %s doesn't exist" % config['cert'])
+                
+                
         if not os.path.exists(config['key']):
             sys.exit('SFA Framework keyfile %s doesnt exist' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
-        self.config = config
         logger = logging.getLogger('omni.sfa')
         logger.info('SFA Registry: %s', config['registry'])
         self.registry = make_client(config['registry'], config['key'], config['cert'])
