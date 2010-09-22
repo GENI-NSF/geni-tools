@@ -193,7 +193,7 @@ def make_skeleton_of_ospec(ospec):
     # goes in <slice>
     user['options']['slice_name'] = 'Crazy Load Balancing Experiment'
     user['options']['slice_description'] = 'Does crazy load balancing and plate spinning'
-    user['options']['controller_url'] = 'tcp:localhost:6633'
+    user['options']['controller_url'] = 'tcp:unknown:6633'
     user_urn = 'urn:publicid:IDN+openflow:stanford+user+' + user.get_name()
 
     ospec.add_resource(user_urn, user)
