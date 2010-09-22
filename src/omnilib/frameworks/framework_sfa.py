@@ -89,6 +89,34 @@ def hrn_to_urn(hrn, type=None):
         
     return URN_PREFIX + urn
 
+def create_selfsigned_cert2(filename, user, key):
+    """ Creates a self-signed cert with CN of issuer and subject = user.
+    The file is stored in 'filename' and the public/private key is found in key """
+    
+    from OpenSSL import crypto
+    # Create a self-signed cert to talk to the registry with
+    cert = crypto.X509()
+    cert.set_serial_number(3)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(60*60*24*365*5) # five years
+
+    req = crypto.X509Req()
+    subj = req.get_subject()
+    setattr(subj, "CN", user)
+    cert.set_subject(subj)
+    
+    key = crypto.load_privatekey(crypto.FILETYPE_PEM, file(key).read())
+    cert.set_pubkey(key)
+
+    cert.set_issuer(subj)
+    cert.sign(key, "md5")
+    
+        
+    f = open(filename,'w')
+    f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+    f.close()
+    
+
 def create_selfsigned_cert(filename, user, key):
     config = """[ req ]
             distinguished_name = req_distinguished_name
@@ -126,7 +154,7 @@ class Framework(Framework_Base):
             res = raw_input("Your certificate file (%s) was not found, would you like me to download it for you to %s? (Y/n)" % (config['cert'],config['cert']))
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
-                create_selfsigned_cert(config['cert'], config['user'], config['key'])
+                create_selfsigned_cert2(config['cert'], config['user'], config['key'])
                 # use the self signed cert to get the gid
                 self.registry = make_client(config['registry'], config['key'], config['cert'])
                 self.user_cred = None
