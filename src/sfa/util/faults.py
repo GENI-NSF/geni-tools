@@ -21,13 +21,14 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+
 #
 # SFA API faults
 #
 #
 
-### $Id: faults.py 18586 2010-08-05 23:33:41Z tmack $
-### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/util/faults.py $
+### $Id$
+### $URL$
 
 import xmlrpclib
 
@@ -311,3 +312,10 @@ class CredentialNotVerifiable(SfaFault):
         SfaFault.__init__(self, 115, faultString, extra)
     def __str__(self):
         return repr(self.value)
+
+class CertExpired(SfaFault):
+    def __init__(self, value, extra=None):
+        self.value = value
+        faultString = "%s cert is expired" % value
+        SfaFault.__init__(self, 102, faultString, extra)
+   

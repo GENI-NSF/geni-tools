@@ -26,8 +26,8 @@
 # Credentials are signed XML files that assign a subject gid privileges to an object gid
 ##
 
-### $Id: credential.py 18654 2010-08-23 18:54:57Z tmack $
-### $URL: http://svn.planet-lab.org/svn/sfa/trunk/sfa/trust/credential.py $
+### $Id$
+### $URL$
 
 import os
 import datetime
