@@ -55,6 +55,27 @@ def pg_tag(tag):
     # TODO: use a different xml parser or some other way of preserving xmlns
     return '{http://www.protogeni.net/resources/rspec/0.2}' + tag
 
+def add_options(ospec, root):
+    onode = OmniResource("RandomNode", "Let Protogeni select available nodes for you", "RandomPC")
+    misc = onode['misc']
+    free = 0
+    used = 0
+    for res in root.findall(pg_tag('node')):
+        if res.find(pg_tag('disk_image')) is None:
+            continue
+        if res.find(pg_tag('available')).text.lower() == 'false':
+            used += 1
+        else:
+            free += 1
+            
+    misc['free nodes'] = free
+    misc['used nodes'] = used
+    options = onode['options']
+    options['startup command'] = '/bin/ls > /dev/null'
+    options['virtual'] = True
+    options['number'] = 1
+    ospec.add_resource('RandomNode', onode)
+
 def add_nodes(ospec, root):
     for res in root.findall(pg_tag('node')):
         name = res.attrib['component_name']
@@ -65,6 +86,7 @@ def add_nodes(ospec, root):
         available = res.find(pg_tag('available')).text.lower() == 'true'
         omni_res.set_allocated(not(available))
         omni_res['orig_xml'] = ET.tostring(res)
+        
         id = res.attrib['component_uuid']
         ospec.add_resource(id, omni_res)
         
@@ -85,8 +107,9 @@ def add_links(ospec, root):
 def rspec_to_omnispec(urn, rspec):
     ospec = OmniSpec("rspec_pg", urn)
     doc = ET.fromstring(rspec)
-    add_nodes(ospec, doc)
-    add_links(ospec, doc)
+    #add_nodes(ospec, doc)
+    #add_links(ospec, doc)
+    add_options(ospec, doc)
     return ospec
 
 def add_node(root, onode):
@@ -111,6 +134,26 @@ def wannabe_omnispec_to_rspec(omnispec, filter_allocated):
 
     return ET.tostring(root)
 
+def get_options_rspec(omnispec, filter_allocated):
+    # Convert it to XML
+    root = ET.Element('rspec')
+    root.set('xmlns', "http://protogeni.net/resources/rspec/0.2")
+    
+        
+    for id, r in omnispec.get_resources().items():
+        if filter_allocated and not r.get_allocate():
+            continue
+        res_type = r.get_type()
+        if res_type == 'RandomPC':
+            for i in range(0, r['options']['number']):
+                ET.SubElement(root, 'node', virtual_id='geni%s'%i, virtualization_type='emulab_vnode',startup_command=r['options']['startup command'])
+                
+        else:
+            raise(Exception('Unknown resource type ' + res_type))
+
+    return ET.tostring(root)
+
 def omnispec_to_rspec(omnispec, filter_allocated):
     """Return a static rspec for testing."""
-    return ONE_NODE_RSPEC
+    return get_options_rspec(omnispec, filter_allocated)
+    #return ONE_NODE_RSPEC
