@@ -74,6 +74,7 @@ def add_options(ospec, root):
     options['startup command'] = '/bin/ls > /dev/null'
     options['virtual'] = True
     options['number'] = 1
+    options['os'] = 'FEDORA10-STD'
     ospec.add_resource('RandomNode', onode)
 
 def add_nodes(ospec, root):
@@ -146,7 +147,10 @@ def get_options_rspec(omnispec, filter_allocated):
         res_type = r.get_type()
         if res_type == 'RandomPC':
             for i in range(0, r['options']['number']):
-                ET.SubElement(root, 'node', virtual_id='geni%s'%i, virtualization_type='emulab_vnode',startup_command=r['options']['startup command'])
+                node = ET.SubElement(root, 'node', virtual_id='geni%s'%i, virtualization_type='emulab_vnode',
+                              startup_command=r['options']['startup command'] )
+                if r['options']['os'] != '':
+                    ET.SubElement(node, 'disk_image', name='urn:publicid:IDN+emulab.net+image+emulab-ops//%s' % r['options']['os'])
                 
         else:
             raise(Exception('Unknown resource type ' + res_type))

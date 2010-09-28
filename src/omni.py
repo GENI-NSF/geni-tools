@@ -318,7 +318,7 @@ class CallHandler(object):
                 print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 if '<RSpec type="SFA">' in rspec:
                     # Figure out the login name
-                    hrn = urn.split('+')[1].replace(':','.')[:20]
+                    hrn = urn.split('+')[1].replace('.','').replace(':','.')[:20]
                     authhrn = urn.split('+')[1].split(':')[-1]
                     name = urn.split('+')[3]
                     self.logger.info("Your login name for PL resources will be either %s_%s or %s_%s" % (authhrn,name,hrn,name))
