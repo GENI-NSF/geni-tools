@@ -156,16 +156,20 @@ class Framework(Framework_Base):
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
                 create_selfsigned_cert2(config['cert'], config['user'], config['key'])
-                # use the self signed cert to get the gid
-                self.registry = make_client(config['registry'], config['key'], config['cert'])
-                self.user_cred = None
-                self.cert_string = file(config['cert'],'r').read()
-                cred = self.get_user_cred()
-                gid = self.registry.Resolve(config['user'], cred)[0]['gid']
-                # Finally, copy the gid to the cert location
-                f = open(self.config['cert'],'w')
-                f.write(gid)
-                f.close()
+                try:
+                    # use the self signed cert to get the gid
+                    self.registry = make_client(config['registry'], config['key'], config['cert'])
+                    self.user_cred = None
+                    self.cert_string = file(config['cert'],'r').read()
+                    cred = self.get_user_cred()
+                    gid = self.registry.Resolve(config['user'], cred)[0]['gid']
+                    # Finally, copy the gid to the cert location
+                    f = open(self.config['cert'],'w')
+                    f.write(gid)
+                    f.close()
+                except Exception, exc:
+                    os.remove(self.config['cert'])
+                    sys.exit("Failed to download a user certificate from the PL registry: %s" % exc)
             else:            
                 sys.exit("SFA Framework certfile %s doesn't exist" % config['cert'])
                 
