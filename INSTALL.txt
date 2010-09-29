@@ -2,6 +2,8 @@ This file documents how to install and run the gcf package.
 
 See README.txt for details on the usage of the gcf package.
 
+Omni users may start here to ensure software dependencies are met.
+
 
 1) Software Dependencies
 ========================

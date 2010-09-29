@@ -42,6 +42,7 @@ certfile=~/.gcf/ch-cert.pem
 # format: agg_n = urn, url
 # am_1 = urn:publicid:IDN+geni:gpo:gcf:am1+authority+am, http://am1.gpolab.bbn.com:8001
 # am_2 = urn:publicid:IDN+geni:gpo:gcf:am2+authority+am, http://am2.gpolab.bbn.com:8001
+# am_3 = urn:publicid:IDN+openflow:stanford+authority+am, http://128.89.77.103:443/openflow/gapi/
 # am_n = ...
 
 # Begin with our own AM

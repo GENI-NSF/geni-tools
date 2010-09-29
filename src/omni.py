@@ -553,7 +553,7 @@ def main(argv=None):
         sys.exit(""" Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
                      An example config file can be found in the source tarball or in /etc/omni/templates/""")            
 
-    logger.debug("Loading config file %s", filename)
+    logger.info("Loading config file %s", filename)
 
     confparser = ConfigParser.RawConfigParser()
     try:

@@ -16,7 +16,8 @@ Installation & Getting Started
 
 See INSTALL.txt for instructions on installing this package, and
 the 4 step test run using the test client.
-
+Omni users should follow those instructions to ensure software 
+dependencies are met.
 
 Software Dependencies
 =====================
@@ -97,7 +98,7 @@ Full details on options for each step are described below.
    all trusted / federated certificates (PEM format).  Note that the
    CH certificate is used in generating slice credentials.
 
-   The geni_aggregates file lists the Aggregate Managers that have
+   The gcf_config file am_* properties lists the Aggregate Managers that have
    federated with this Clearinghouse. For some other examples see
    src/geni/ch.py.  This is how a single gcf-ch can contact multiple
    AM API compliant agggregate managers from whatever control
@@ -208,6 +209,14 @@ Full details on options for each step are described below.
    above. This is not particularly necessary for the Clearinghouse
    (gcf-ch), but is necessary for the Aggregate Manager (gcf-am).
 
+   To add a any root certificate to an OpenFlow (Expedient) aggregate manager, 
+   copy the file to
+     /etc/expedient/gcf-x509.crt as [something].crt
+   In /etc/expedient/apache/ca-certs, do:
+     sudo make
+   This should run the local Makefile, creating a symlink [something].0
+   to the .crt file in the gcf-x509.crt directory.
+
 6.2 Listing Aggregates -- Do this on all peered clearinghouses
 
    To list your GCF AM to SFA users, add your GCF address to 
@@ -222,11 +231,12 @@ Full details on options for each step are described below.
    unique.
 
    To list your SFA aggregate manager in your GCF clearinghouse, edit
-   the 'geni_aggregates' file in your root gcf/ directory and add an
-   entry for the SFA AM. The form is "URN,URL" (without quotes) with
+   the 'gcf_config' file in your root gcf/ directory and add an
+   entry for the SFA AM. The form is documented in the sample file.
+   Enter a new am_# property with a value like "URN,URL" (without quotes) with
    one such entry per line. An example is:
 
-     'urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
+     'am_5 = urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
 
    The URN should be unique. While it need not be fully accurate, that
    is useful. You can find the URN using the openssl commandline:
