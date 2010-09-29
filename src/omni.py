@@ -483,6 +483,30 @@ class CallHandler(object):
         for (urn, url) in self._listaggregates().items():
             print "%s: %s" % (urn, url)
 
+    def renewslice(self, args):
+        """Renew the slice at the clearinghouse so that the slivers can be
+        renewed.
+        """
+        if len(args) != 2:
+            sys.exit('renewslice <slice name> <expiration date>')
+        name = args[0]
+        expire_str = args[1]
+        # convert the slice name to a framework urn
+        urn = self.framework.slice_name_to_urn(name)
+        # convert the desired expiration to a python datetime
+        try:
+            in_expiration = dateutil.parser.parse(expire_str)
+        except:
+            msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
+            msg = msg % (expire_str)
+            sys.exit(msg)
+        # Try to renew the slice
+        out_expiration = self.framework.renew_slice(urn, in_expiration)
+        if out_expiration:
+            print "Slice %s now expires at %s" % (name, out_expiration)
+        else:
+            print "Failed to renew slice %s" % (name)
+
 
 def parse_args(argv):
     parser = optparse.OptionParser()

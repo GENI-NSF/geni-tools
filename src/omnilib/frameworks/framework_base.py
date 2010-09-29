@@ -74,3 +74,14 @@ class Framework_Base():
         """Convert a slice name to a slice urn."""
         # Default implementation just converts to generic URN.
         raise NotImplementedError('slice_name_to_urn')
+
+    def renew_slice(self, urn, requested_expiration):
+        """Renew a slice.
+
+        urn is framework urn, already converted via slice_name_to_urn.
+        requested_expiration is a datetime object.
+
+        Returns the expiration date as a datetime. If there is an error,
+        print it and return None.
+        """
+        raise NotImplementedError('renew_slice')
