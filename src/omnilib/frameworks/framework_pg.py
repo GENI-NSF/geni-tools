@@ -26,6 +26,7 @@ import os
 import socket
 import ssl
 import sys
+import time
 from urlparse import urlparse
 import xmlrpclib
 
@@ -198,6 +199,37 @@ class Framework(Framework_Base):
         for key, value in result.items():
             self.logger.debug('Found aggregate %r: %r', key, value)
         return result
+
+    def renew_slice(self, urn, expiration_dt):
+        """See framework_base for doc.
+        """
+        mycred = self.get_user_cred()
+        # Note: params is used again below through either code path.
+        params = {'credential': mycred,
+                  'type': 'Slice',
+                  'urn': urn}
+        response = self.sa.GetCredential(params)
+        if response['code']:
+            msg = "Unable to get slice credential for slice %s: %s"
+            msg = msg % (urn, response['output'])
+            self.logger.warning(msg)
+            return None
+        else:
+            slice_cred = response['value']
+            expiration = expiration_dt.isoformat()
+            self.logger.info('requesting new expiration %r', expiration)
+            params = {'credential': slice_cred,
+                      'expiration': expiration}
+            response = self.sa.RenewSlice(params)
+            if response['code']:
+                # request failed, print a message and return None
+                msg = "Failed to renew slice %s: %s"
+                msg = msg % (urn, response['output'])
+                self.logger.warning(msg)
+                return None
+            else:
+                # Success. requested expiration worked, return it.
+                return expiration_dt
 
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI

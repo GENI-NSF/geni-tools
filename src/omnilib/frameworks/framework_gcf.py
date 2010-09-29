@@ -25,6 +25,7 @@ from omnilib.frameworks.framework_base import Framework_Base
 import os
 import traceback
 import sys
+import time
 
 class Framework(Framework_Base):
     def __init__(self, config):
@@ -100,3 +101,12 @@ class Framework(Framework_Base):
             raise Exception("Incorrect slice name")
                             
         return base + auth + "+slice+" + name
+
+    def renew_slice(self, urn, expiration_dt):
+        """See framework_base for doc.
+        """
+        expiration = expiration_dt.isoformat()
+        if self.ch.RenewSlice(urn, expiration):
+            return expiration_dt
+        else:
+            return None

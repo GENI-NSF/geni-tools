@@ -33,6 +33,7 @@ import traceback
 import uuid
 import os
 
+import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCServer
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
@@ -49,6 +50,9 @@ SLICE_AUTHORITY = "geni//gpo//gcf"
 # Extend slice lifetimes to actually use the resources
 USER_CRED_LIFE = 86400
 SLICE_CRED_LIFE = 3600
+
+# Make the max life of a slice 30 days (an arbitrary length).
+SLICE_MAX_LIFE_SECS = 30 * 24 * 60 * 60
 
 # The list of Aggregates that this Clearinghouse knows about
 # should be defined in the geni_aggregates file
@@ -77,6 +81,13 @@ class SampleClearinghouseServer(object):
 
     def CreateSlice(self, urn=None):
         return self._delegate.CreateSlice(urn_req=urn)
+    
+    def RenewSlice(self, urn, expire_str):
+        try:
+            return self._delegate.RenewSlice(urn, expire_str)
+        except:
+            self._delegate.logger.error(traceback.format_exc())
+            raise
 
     def DeleteSlice(self, urn):
         return self._delegate.DeleteSlice(urn)
@@ -265,7 +276,8 @@ class Clearinghouse(object):
         # authorizing this user on the slice
         try:
             slice_cred = self.create_slice_credential(user_gid,
-                                                      slice_gid)
+                                                      slice_gid,
+                                                      SLICE_CRED_LIFE)
         except Exception, exc:
             self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid.get_hrn(), slice_gid.get_hrn(), traceback.format_exc())
             raise Exception('CreateSlice failed to get slice credential for user %r, slice %r' % (user_gid.get_hrn(), slice_gid.get_hrn()), exc)
@@ -274,6 +286,39 @@ class Clearinghouse(object):
         self.slices[urn] = slice_cred
         
         return slice_cred.save_to_string()
+    
+    def RenewSlice(self, slice_urn, expire_str):
+        self.logger.info("Called RenewSlice(%s, %s)", slice_urn, expire_str)
+        if not self.slices.has_key(slice_urn):
+            self.logger.warning('Slice %s was not found', slice_urn)
+            return False
+        try:
+            in_expiration = dateutil.parser.parse(expire_str)
+        except:
+            self.logger.warning('Unable to parse date "%s"', expire_str)
+            return False
+        # Is requested expiration valid? It must be in the future,
+        # but not too far into the future.
+        now = datetime.datetime.utcnow()
+        now = now.replace(tzinfo=in_expiration.tzinfo)
+        if in_expiration < now:
+            self.logger.warning('Expiration "%s" is in the past.', expire_str)
+            return False
+        duration = in_expiration - now
+        max_duration = datetime.timedelta(seconds=SLICE_MAX_LIFE_SECS)
+        if duration > max_duration:
+            self.logger.warning('Expiration %s is too far in the future.',
+                                expire_str)
+            return False
+        # Everything checks out, so create a new slice cred and tuck it away.
+        user_gid = gid.GID(string=self._server.pem_cert)
+        slice_cred = self.slices[slice_urn]
+        slice_gid = slice_cred.get_gid_object()
+        duration_secs = duration.seconds + duration.days * 24 * 3600
+        slice_cred = self.create_slice_credential(user_gid, slice_gid,
+                                                  duration_secs)
+        self.logger.info("Slice %s renewed to %s", slice_urn, expire_str)
+        return True
 
     def DeleteSlice(self, urn_req):
         self.logger.info("Called DeleteSlice %r" % urn_req)
@@ -305,9 +350,9 @@ class Clearinghouse(object):
             raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
         return ucred.save_to_string()
     
-    def create_slice_credential(self, user_gid, slice_gid):
+    def create_slice_credential(self, user_gid, slice_gid, duration):
         '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        return cred_util.create_credential(user_gid, slice_gid, SLICE_CRED_LIFE, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
+        return cred_util.create_credential(user_gid, slice_gid, duration, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
 

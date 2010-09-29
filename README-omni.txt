@@ -115,6 +115,21 @@ default in config file.  The framework is a section named in the config file.
   omni_config.
 
 
+==== renewslice ====
+ * format:  omni.py renewslice <slice-name> <date-time>
+ * example: omni.py renewslice myslice 20100928T15:00:00Z
+
+  Renews the slice at your chosen control framework.
+
+  ** Note: This is only implemented for the ProtoGENI control framework.
+
+  The date-time argument takes a standard form
+  "YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
+  trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
+  would like the time to be in local time at the control framework you
+  can leave off the trailing 'Z'.
+
+
 ==== deleteslice ====
  * format:  omni.py deleteslice <slice-name> 
  * example: omni.py deleteslice myslice

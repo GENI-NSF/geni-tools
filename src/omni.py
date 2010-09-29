@@ -318,10 +318,9 @@ class CallHandler(object):
                 print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 if '<RSpec type="SFA">' in rspec:
                     # Figure out the login name
-                    hrn = urn.split('+')[1].replace(':','.')[:20]
-                    authhrn = urn.split('+')[1].split(':')[-1]
+                    hrn = urn.split('+')[1].replace('.','').replace(':','.').split('.')[-1]
                     name = urn.split('+')[3]
-                    self.logger.info("Your login name for PL resources will be either %s_%s or %s_%s" % (authhrn,name,hrn,name))
+                    self.logger.info("Your login name for PL resources will be %s_%s" % (hrn,name))
             except Exception, exc:
                 self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
                 self.logger.debug(traceback.format_exc())
@@ -482,6 +481,30 @@ class CallHandler(object):
         """Print the aggregates federated with the control framework."""
         for (urn, url) in self._listaggregates().items():
             print "%s: %s" % (urn, url)
+
+    def renewslice(self, args):
+        """Renew the slice at the clearinghouse so that the slivers can be
+        renewed.
+        """
+        if len(args) != 2:
+            sys.exit('renewslice <slice name> <expiration date>')
+        name = args[0]
+        expire_str = args[1]
+        # convert the slice name to a framework urn
+        urn = self.framework.slice_name_to_urn(name)
+        # convert the desired expiration to a python datetime
+        try:
+            in_expiration = dateutil.parser.parse(expire_str)
+        except:
+            msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
+            msg = msg % (expire_str)
+            sys.exit(msg)
+        # Try to renew the slice
+        out_expiration = self.framework.renew_slice(urn, in_expiration)
+        if out_expiration:
+            print "Slice %s now expires at %s" % (name, out_expiration)
+        else:
+            print "Failed to renew slice %s" % (name)
 
 
 def parse_args(argv):
