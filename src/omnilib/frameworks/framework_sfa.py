@@ -27,6 +27,7 @@ import os
 import time
 import sys
 
+
 # FIXME: Use the constant from namespace
 URN_PREFIX = "urn:publicid:IDN"
 
@@ -175,7 +176,7 @@ class Framework(Framework_Base):
             config['verbose'] = False
         logger = logging.getLogger('omni.sfa')
         logger.info('SFA Registry: %s', config['registry'])
-        self.registry = make_client(config['registry'], config['key'], config['cert'])
+        self.registry = make_client(config['registry'], config['key'], config['cert'], allow_none=True)
         logger.info('SFA Slice Manager: %s', config['slicemgr'])
         self.slicemgr = make_client(config['slicemgr'], config['key'], config['cert'])
         self.cert_string = file(config['cert'],'r').read()
@@ -229,7 +230,27 @@ class Framework(Framework_Base):
      
         return self.registry.remove(auth_cred, 'slice', urn)
  
-    
+    def renew_slice(self, urn, requested_expiration):
+        """Renew a slice.
+        
+        urn is framework urn, already converted via slice_name_to_urn.
+        requested_expiration is a datetime object.
+        
+        Returns the expiration date as a datetime. If there is an error,
+        print it and return None.
+        """
+        slice_cred = self.get_slice_cred(urn)
+        user_cred = self.get_user_cred()
+        slice_record = self.registry.Resolve(urn, user_cred)[0]
+        slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
+        res = self.registry.Update(slice_record, slice_cred)
+        if res == 1:
+            return requested_expiration
+        else:
+            self.logger.warning("Failed to renew slice %s" % urn)
+            return None
+       
+       
     def list_aggregates(self):
         user_cred = self.get_user_cred()
         sites = self.registry.get_aggregates(user_cred)
