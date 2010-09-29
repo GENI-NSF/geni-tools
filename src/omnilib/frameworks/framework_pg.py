@@ -221,7 +221,6 @@ class Framework(Framework_Base):
             params = {'credential': slice_cred,
                       'expiration': expiration}
             response = self.sa.RenewSlice(params)
-            print "RenewSlice response: %r" % (response)
             if response['code']:
                 # request failed, print a message and return None
                 msg = "Failed to renew slice %s: %s"
