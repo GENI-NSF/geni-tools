@@ -318,10 +318,9 @@ class CallHandler(object):
                 print 'Asked %s to reserve resources. Result: %s' % (url, result)
                 if '<RSpec type="SFA">' in rspec:
                     # Figure out the login name
-                    hrn = urn.split('+')[1].replace('.','').replace(':','.')[:20]
-                    authhrn = urn.split('+')[1].split(':')[-1]
+                    hrn = urn.split('+')[1].replace('.','').replace(':','.').split('.')[-1]
                     name = urn.split('+')[3]
-                    self.logger.info("Your login name for PL resources will be either %s_%s or %s_%s" % (authhrn,name,hrn,name))
+                    self.logger.info("Your login name for PL resources will be %s_%s" % (hrn,name))
             except Exception, exc:
                 self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
                 self.logger.debug(traceback.format_exc())
