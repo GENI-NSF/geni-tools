@@ -16,7 +16,8 @@ Installation & Getting Started
 
 See INSTALL.txt for instructions on installing this package, and
 the 4 step test run using the test client.
-
+Omni users should follow those instructions to ensure software 
+dependencies are met.
 
 Software Dependencies
 =====================
@@ -207,6 +208,14 @@ Full details on options for each step are described below.
    your GCF trusted roots directory created in steps 2 and 3
    above. This is not particularly necessary for the Clearinghouse
    (gcf-ch), but is necessary for the Aggregate Manager (gcf-am).
+
+   To add a any root certificate to an OpenFlow (Expedient) aggregate manager, 
+   copy the file to
+     /etc/expedient/gcf-x509.crt as [something].crt
+   In /etc/expedient/apache/ca-certs, do:
+     sudo make
+   This should run the local Makefile, creating a symlink [something].0
+   to the .crt file in the gcf-x509.crt directory.
 
 6.2 Listing Aggregates -- Do this on all peered clearinghouses
 
