@@ -2,6 +2,11 @@
 # It tells Omni how to talk to various Clearinghouses.
 # And by extension, which Experimenter credentials to use.
 
+# Omni looks for this file in 3 locations, using the first found
+# 1) The location given by the -c command line arg
+# 2) The current directory
+# 3) ~/.gcf/omni_config
+
 # Any given instance of omni makes calls to a framework 
 # (e.g., SFA, ProtoGENI, etc..) to create slices, get slice
 # credentials, and to find a list of authorized aggregates.
@@ -28,8 +33,8 @@ default_cf = my_gcf
 # by your control framework's registry/clearinghouse.  If you would
 # like to provide a specific list of aggregates to contact, do so 
 # here in a comma delimited list of of urls.
-# e.g., aggregates = http://www.planet-lab.org:12347/, http://myplc2.gpolab.bbn.com:8001/
-aggregates =
+# e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and an OpenFlow/Expedient AM in the GPO lab would be: 
+# aggregates = http://www.planet-lab.org:12347/, https://www.emulab.net/protogeni/xmlrpc/am, http://myplc2.gpolab.bbn.com:8001/, https://masada.gpolab.bbn.com:443/openflow/gapi/
 
 # ==================================
 # Configure Control Frameworks here
@@ -46,7 +51,7 @@ aggregates =
 type=sfa
 
 # HRN of your MyPLC or PLC (e.g., plc.princeton) site
-# Available in the Issuer CN of your user cert
+# Available in the Issuer CN of your user cert in some form
 authority=plc.bbn
 
 # Your planetlab username
@@ -85,10 +90,13 @@ key=~/.gcf/alice-key.pem
 type=pg
 # For debugging
 verbose=false
-# The address of the PG clearinghouse
+# The address of the PG clearinghouse. Here we use tha main CH in Utah.
 ch=https://www.emulab.net:443/protogeni/xmlrpc/ch
-# The address of the PG slice authority
+# The address of the PG slice authority. Here for comparison we show
+# using a different slice authority. The port and relative URI are significant.
 sa=https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa
+# When you log in to PG you can download your cert and key in 1 file.
+# That combined .pem file can be used as both cert and key here.
 cert=~/.gcf/encrypted.pem
 key=~/.gcf/pgcert.pem
 
@@ -106,7 +114,7 @@ key=~/.gcf/pgcert.pem
 # Name of the user - anything
 name=Alice Person
 # The URN given to Alice by her control framework
-# EG run openssl x509 -in [user cert file] -text and look at the Subject CN
+# EG run openssl x509 -in [user cert file] -text and look at the Subject Alternative Name URI
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 # The SSH public keys to install for Alice to allow
 # Alice to log in to the allocated resource.
