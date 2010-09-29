@@ -217,6 +217,9 @@ Full details on options for each step are described below.
    This should run the local Makefile, creating a symlink [something].0
    to the .crt file in the gcf-x509.crt directory.
 
+   Then restart Apache:
+     sudo service apache2 restart
+
 6.2 Listing Aggregates -- Do this on all peered clearinghouses
 
    To list your GCF AM to SFA users, add your GCF address to 
