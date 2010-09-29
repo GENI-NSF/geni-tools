@@ -55,7 +55,7 @@ SLICE_CRED_LIFE = 3600
 SLICE_MAX_LIFE_SECS = 30 * 24 * 60 * 60
 
 # The list of Aggregates that this Clearinghouse knows about
-# should be defined in the geni_aggregates file
+# should be defined in the gcf_config file in the am_* properties.
 # ListResources will refer the client to these aggregates
 # Clearinghouse.runserver currently does the register_aggregate_pair
 # calls for each row in that file
