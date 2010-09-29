@@ -216,8 +216,7 @@ class Framework(Framework_Base):
             return None
         else:
             slice_cred = response['value']
-            expiration = time.strftime("%Y%m%dT%H:%M:%S%Z",
-                                       expiration_dt.timetuple())
+            expiration = expiration_dt.isoformat()
             self.logger.info('requesting new expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
