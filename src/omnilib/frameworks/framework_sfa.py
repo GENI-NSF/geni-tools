@@ -27,6 +27,7 @@ import os
 import time
 import sys
 
+
 # FIXME: Use the constant from namespace
 URN_PREFIX = "urn:publicid:IDN"
 
@@ -155,16 +156,20 @@ class Framework(Framework_Base):
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
                 create_selfsigned_cert2(config['cert'], config['user'], config['key'])
-                # use the self signed cert to get the gid
-                self.registry = make_client(config['registry'], config['key'], config['cert'])
-                self.user_cred = None
-                self.cert_string = file(config['cert'],'r').read()
-                cred = self.get_user_cred()
-                gid = self.registry.Resolve(config['user'], cred)[0]['gid']
-                # Finally, copy the gid to the cert location
-                f = open(self.config['cert'],'w')
-                f.write(gid)
-                f.close()
+                try:
+                    # use the self signed cert to get the gid
+                    self.registry = make_client(config['registry'], config['key'], config['cert'])
+                    self.user_cred = None
+                    self.cert_string = file(config['cert'],'r').read()
+                    cred = self.get_user_cred()
+                    gid = self.registry.Resolve(config['user'], cred)[0]['gid']
+                    # Finally, copy the gid to the cert location
+                    f = open(self.config['cert'],'w')
+                    f.write(gid)
+                    f.close()
+                except Exception, exc:
+                    os.remove(self.config['cert'])
+                    sys.exit("Failed to download a user certificate from the PL registry: %s" % exc)
             else:            
                 sys.exit("SFA Framework certfile %s doesn't exist" % config['cert'])
                 
@@ -175,7 +180,7 @@ class Framework(Framework_Base):
             config['verbose'] = False
         logger = logging.getLogger('omni.sfa')
         logger.info('SFA Registry: %s', config['registry'])
-        self.registry = make_client(config['registry'], config['key'], config['cert'])
+        self.registry = make_client(config['registry'], config['key'], config['cert'], allow_none=True)
         logger.info('SFA Slice Manager: %s', config['slicemgr'])
         self.slicemgr = make_client(config['slicemgr'], config['key'], config['cert'])
         self.cert_string = file(config['cert'],'r').read()
@@ -229,7 +234,30 @@ class Framework(Framework_Base):
      
         return self.registry.remove(auth_cred, 'slice', urn)
  
-    
+    def renew_slice(self, urn, requested_expiration):
+        """Renew a slice.
+        
+        urn is framework urn, already converted via slice_name_to_urn.
+        requested_expiration is a datetime object.
+        
+        Returns the expiration date as a datetime. If there is an error,
+        print it and return None.
+        """
+        slice_cred = self.get_slice_cred(urn)
+        user_cred = self.get_user_cred()
+        try:
+            slice_record = self.registry.Resolve(urn, user_cred)[0]
+            slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
+            res = self.registry.Update(slice_record, slice_cred)
+            if res == 1:
+                return requested_expiration
+            else:
+                self.logger.warning("Failed to renew slice %s" % urn)
+
+        except Exception, exc:
+            self.logger.warning("Failed to renew slice %s: %s" % urn, exc)
+            return None            
+       
     def list_aggregates(self):
         user_cred = self.get_user_cred()
         sites = self.registry.get_aggregates(user_cred)
