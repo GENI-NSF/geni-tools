@@ -278,7 +278,7 @@ class CallHandler(object):
         #slice_users = copy(self.omni_config['slice_users'])
         for user in slice_users:
             newkeys = []
-            required = ['name', 'urn', 'keys']
+            required = ['urn', 'keys']
             for req in required:
                 if not req in user:
                     raise Exception("%s in omni_config is not specified for user %s" % (req,user))

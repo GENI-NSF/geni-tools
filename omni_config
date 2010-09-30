@@ -111,11 +111,11 @@ key=~/.gcf/pgcert.pem
 
 
 [Alice]
-# Name of the user - anything
-name=Alice Person
 # The URN given to Alice by her control framework
-# EG run openssl x509 -in [user cert file] -text and look at the Subject Alternative Name URI
+# Run openssl x509 -in [user cert file] -text and look at the
+# Subject Alternative Name URI
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
+
 # The SSH public keys to install for Alice to allow
 # Alice to log in to the allocated resource.
 # Comma delimited.
@@ -123,6 +123,5 @@ keys=~/.gcf/alice.pub, ~/.gcf/alice2.pub
 
 
 [Bob]
-name=Bob Sanders
 urn=urn:publicid:IDN+plc.bbn+user+bob
 keys=~/.gcf/bob.pub
