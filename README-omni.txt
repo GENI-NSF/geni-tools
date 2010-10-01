@@ -121,8 +121,6 @@ default in config file.  The framework is a section named in the config file.
 
   Renews the slice at your chosen control framework.
 
-  ** Note: This is only implemented for the ProtoGENI control framework.
-
   The date-time argument takes a standard form
   "YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
   trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
