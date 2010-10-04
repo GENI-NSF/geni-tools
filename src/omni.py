@@ -197,7 +197,12 @@ class CallHandler(object):
             omnispecs = {}
             for ((urn,url), rspec) in rspecs.items():                        
                 self.logger.debug("Getting RSpec items for urn %s", urn)
-                omnispecs[url] = rspec_to_omnispec(urn,rspec)
+                # Throws exception if unparsable
+                # No catch means 1 bad Agg and we lose all ospecs
+                try:
+                    omnispecs[url] = rspec_to_omnispec(urn,rspec)
+                except Exception, e:
+                    self.logger.error("Failed to parse RSpec from AM %s: %s", urn, e)
 
             if omnispecs and omnispecs != {}:
                 jspecs = json.dumps(omnispecs, indent=4)
