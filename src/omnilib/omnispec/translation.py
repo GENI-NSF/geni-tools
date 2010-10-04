@@ -32,6 +32,9 @@ mod_name = 'omnilib.omnispec'
 
 
 def rspec_to_omnispec(urn, rspec):        
+    '''Translate the given RSpec from the given AM URN to an OSpec and
+    return it, or throw an Exception if we cannot'''
+
     trans_mod = __import__(mod_name,fromlist=[mod_name])
     translators = trans_mod.all
     
@@ -46,7 +49,7 @@ def rspec_to_omnispec(urn, rspec):
     if mod:
         return mod.rspec_to_omnispec(urn, rspec)
     
-    raise Exception('Unknown RSpec Type. Cant translate RSpec:\n%s' % rspec)
+    raise Exception('Unknown RSpec Type from AM %s. Cant translate RSpec:\n%s' % (urn, rspec))
     
     
 
