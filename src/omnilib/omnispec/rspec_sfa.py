@@ -29,6 +29,7 @@ def can_translate(rspec):
 
 
 def rspec_to_omnispec(urn, rspec):
+    # URN is that of the AM
     ospec = OmniSpec("rspec_sfa", urn)
     doc = ET.fromstring(rspec)
     for network in doc.findall('network'):

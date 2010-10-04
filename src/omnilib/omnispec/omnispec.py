@@ -35,6 +35,7 @@ class OmniSpec(dict):
     in the rspec is converted into an OmniResource, and the omnispec keeps a list of OmniResources.
     """
     def __init__(self, type, urn, filename = None, dictionary = None):
+        # URN is that of the AM whose resources these are
         dict.__init__(self, {})    
 
         if filename:

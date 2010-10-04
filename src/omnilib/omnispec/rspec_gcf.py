@@ -27,6 +27,7 @@ def can_translate(rspec):
     return rspec.startswith('<rspec type="GCF"')
 
 def rspec_to_omnispec(urn, rspec):
+    # URN is that of the AM
     ospec = OmniSpec("rspec_gcf", urn)
     doc = ET.fromstring(rspec)
 
