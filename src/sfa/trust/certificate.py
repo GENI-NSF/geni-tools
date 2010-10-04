@@ -298,9 +298,21 @@ class Certificate:
 
         string = string.strip()
 
+        # if the string has no BEGIN C... then wrap in begin/end
+        # old behavior was to wrap if it didnt _start_ with BEGIN
+        # if the string does not start with BEGIN
+        # then ignore everything before the begin
 
-        if not string.startswith('-----'):
+#        if not string.startswith('-----'):
+        if string.count('-----BEGIN CERTIFICATE') == 0:
             string = '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----' % string
+            logger.debug("Wrapping string for cert in BEGIN/END")
+
+        beg = string.find('-----BEGIN CERTIFICATE')
+        if beg > 0:
+            # skipping over non cert beginning
+            logger.debug("Skipping non PEM start of cert from string ('%s ...\n... %s'). Skipping to char #%d", string[:25], string[beg-15:beg], beg)
+            string = string[beg:]
 
         parts = []
 
