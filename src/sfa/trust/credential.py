@@ -661,7 +661,9 @@ class Credential(object):
                 trusted_cert_objects.append(GID(filename=f))
                 ok_trusted_certs.append(f)
             except Exception, exc:
+                import traceback
                 logger.error("Failed to load trusted cert from %s: %r", f, exc)
+                logger.debug(traceback.format_exc(exc))
         trusted_certs = ok_trusted_certs
 
         # Use legacy verification if this is a legacy credential
