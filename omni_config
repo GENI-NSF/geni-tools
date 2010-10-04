@@ -33,8 +33,12 @@ default_cf = my_gcf
 # by your control framework's registry/clearinghouse.  If you would
 # like to provide a specific list of aggregates to contact, do so 
 # here in a comma delimited list of of urls.
-# e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and an OpenFlow/Expedient AM in the GPO lab would be: 
-# aggregates = http://www.planet-lab.org:12347/, https://www.emulab.net/protogeni/xmlrpc/am, http://myplc2.gpolab.bbn.com:8001/, https://masada.gpolab.bbn.com:443/openflow/gapi/
+# e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and 
+#  an OpenFlow/Expedient AM in the GPO lab would be: 
+# aggregates = http://www.planet-lab.org:12347/, \
+#  https://www.emulab.net/protogeni/xmlrpc/am, \
+#  http://myplc2.gpolab.bbn.com:8001/, \
+#  https://masada.gpolab.bbn.com:443/openflow/gapi/
 
 # ==================================
 # Configure Control Frameworks here
@@ -116,8 +120,9 @@ key=~/.gcf/pgcert.pem
 
 [Alice]
 # The URN given to Alice by her control framework
-# Run openssl x509 -in [user cert file] -text and look at the
-# Subject Alternative Name URI
+# EG run openssl x509 -in [user cert file] -text and 
+# look at the Subject Alternative Name URI. 
+# Take the bit after "URI:" and before the comma.
 urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 
 # The SSH public keys to install for Alice to allow
