@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Openflow / Expedient as CH. Follows GCF model. https://server:443/expedient_geni/clearinghouse/rpc/'''
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
 import os
