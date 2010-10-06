@@ -94,11 +94,15 @@ key=~/.gcf/alice-key.pem
 type=pg
 # For debugging
 verbose=false
-# The address of the PG clearinghouse. Here we use tha main CH in Utah.
+# The address of the PG clearinghouse. Here we use tha main CH in Utah,
+# with authority name: emulab.net
 ch=https://www.emulab.net:443/protogeni/xmlrpc/ch
+
 # The address of the PG slice authority. Here for comparison we show
-# using a different slice authority. The port and relative URI are significant.
-sa=https://myboss.elabinelab.geni.emulab.net:443/protogeni/xmlrpc/sa
+# using a different slice authority for the PG authority
+# pgeni.gpolab.bbn.com
+sa=https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+
 # When you log in to PG you can download your cert and key in 1 file.
 # That combined .pem file can be used as both cert and key here.
 cert=~/.gcf/encrypted.pem
