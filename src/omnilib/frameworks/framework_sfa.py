@@ -189,14 +189,14 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         if self.user_cred is None:
             try:
-                self.user_cred = self.registry.get_self_credential(self.cert_string, "user", self.config['user'])
+                self.user_cred = self.registry.GetSelfCredential(self.cert_string, self.config['user'], "user")
             except Exception as exc:
                 raise Exception("Using SFA Failed to get User credentials from registry %s cert file %s, user %s: %s" % (self.config['registry'], self.config['cert'], self.config['user'], exc))
         return self.user_cred
     
     def get_slice_cred(self, urn):
         user_cred = self.get_user_cred()
-        return self.registry.get_credential(user_cred, 'slice', urn)
+        return self.registry.GetCredential(user_cred, urn, 'slice')
     
     def create_slice(self, urn):    
         ''' Gets the credential for a slice, creating the slice 
@@ -209,7 +209,7 @@ class Framework(Framework_Base):
         except:
             # Slice doesn't exist, create it
             user_cred = self.get_user_cred()
-            auth_cred = self.registry.get_credential(user_cred, "authority", self.config['authority'])
+            auth_cred = self.registry.GetCredential(user_cred, self.config['authority'], "authority")
             # Note this is in UTC
             expiration = int(time.time()) + 60 * 60 * 24
             authority = self.config['authority']
@@ -221,7 +221,7 @@ class Framework(Framework_Base):
                       'hrn': u'%s' % hrn, u'PI': [u'%s' % user], 'type': u'slice', \
                       u'name': u'%s' % hrn}
     
-            self.registry.register(auth_cred, record)
+            self.registry.Register(record, auth_cred)
             slice_cred = self.get_slice_cred(urn)
 
         return slice_cred
@@ -230,9 +230,9 @@ class Framework(Framework_Base):
     def delete_slice(self, urn):
         ''' Deletes the slice '''
         user_cred = self.get_user_cred()
-        auth_cred = self.registry.get_credential(user_cred, "authority", self.config['authority'])
+        auth_cred = self.registry.GetCredential(user_cred, self.config['authority'], 'authority')
      
-        return self.registry.remove(auth_cred, 'slice', urn)
+        return self.registry.Remove(urn, auth_cred, 'slice')
  
     def renew_slice(self, urn, requested_expiration):
         """Renew a slice.
