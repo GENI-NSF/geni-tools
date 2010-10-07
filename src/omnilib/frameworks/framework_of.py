@@ -62,6 +62,9 @@ class Framework(Framework_Base):
         return self.ch.DeleteSlice(urn)
      
     def list_aggregates(self):
+        # 10/7/10: We believe ListAggregates is not implemented yet.
+        # So either we log an error and return an empty list, or we just raise the exception
+        # I choose to leave it alone - raise the exception. And when it works, it will work.
         sites = []
         try:
             sites = self.ch.ListAggregates()
