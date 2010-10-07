@@ -81,7 +81,7 @@ def getAbsPath(path):
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
-    getslicecred, listresouces, createsliver, deletesliver,
+    getslicecred, listresources, createsliver, deletesliver,
     renewsliver, sliverstatus, shutdown
     """
 
@@ -123,6 +123,8 @@ class CallHandler(object):
             client.urn = urn
             client.url = url
             clients.append(client)
+        if clients == []:
+            print 'No aggregates found'
         return clients
         
     def _listaggregates(self):
@@ -141,8 +143,24 @@ class CallHandler(object):
                 aggs[url] = url
             return aggs                
         else:
-            aggs = self.framework.list_aggregates()
-            return aggs
+            attempt = 0
+            while (attempt < 2):
+                try:
+                    attempt += 1
+                    aggs = self.framework.list_aggregates()
+                    return aggs
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot list aggregates')
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error('Failed to list aggregates: %s', exc)
+            return {}
+            
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
@@ -167,10 +185,28 @@ class CallHandler(object):
 
         # Get the credential for this query
         if slicename is None:
-            cred = self.framework.get_user_cred()
+            cred = None
+            attempt = 0
+            while (attempt < 2):
+                try:
+                    attempt += 1
+                    cred = self.framework.get_user_cred()
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot get user credential to list resources')
+                        self.logger.debug(exc)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        else:
+                            sys.exit()
+                    else:
+                        raise Exception('Failed to get user credential to be able to list resources', exc)
+
         else:
             urn = self.framework.slice_name_to_urn(slicename)
-            cred = self.framework.get_slice_cred(urn)
+            cred = self._get_slice_cred(urn)
             options['geni_slice_urn'] = urn
 
         
@@ -179,19 +215,37 @@ class CallHandler(object):
             if cred is None:
                 self.logger.debug("Have null credentials in call to ListResources!")
             self.logger.debug("Connecting to AM: %s", client)
-            try:
-                rspec = client.ListResources([cred], options)
-                if options.get('geni_compressed', False):
-                    rspec = zlib.decompress(rspec.decode('base64'))
-                rspecs[(client.urn, client.url)] = rspec
-            except Exception, exc:
-                self.logger.error("Failed to List Resources from %s (%s): %s",
-                                  client.urn, client.url, exc)
+            attempt = 0
+            while(attempt < 2):
+                try:
+                    attempt += 1
+                    rspec = client.ListResources([cred], options)
+                    if options.get('geni_compressed', False):
+                        rspec = zlib.decompress(rspec.decode('base64'))
+                    rspecs[(client.urn, client.url)] = rspec
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot list resources from %s (%s)', client.urn, client.url)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Failed to List Resources from %s (%s): %s",
+                                          client.urn, client.url, exc)
         if self.opts.native:
             # If native, return the one native rspec. There is only
             # one because we checked for that at the beginning.
             if rspecs and rspecs != {}:
-                print rspecs.values()[0]
+                try:
+                    import xml.dom.minidom as md
+                    print md.parseString(rspecs.values()[0]).toprettyxml(indent=' '*2)
+                except:
+                    print rspecs.values()[0]
+            else:
+                print 'No resources available'
         else:
             # Convert the rspecs to omnispecs
             omnispecs = {}
@@ -207,6 +261,13 @@ class CallHandler(object):
             if omnispecs and omnispecs != {}:
                 jspecs = json.dumps(omnispecs, indent=4)
                 print jspecs
+            else:
+                if rspecs and rspecs != {}:
+                    print 'No parsable resources available.'
+                    #print 'Unparsable responses:'
+                    #pprint.pprint(rspecs)
+                else:
+                    print 'No resources available'
     
     def _ospec_to_rspecs(self, specfile):
         """Convert the given omnispec file into a dict of url => rspec."""
@@ -237,7 +298,7 @@ class CallHandler(object):
                 rspecs[url] = omnispec_to_rspec(ospec, True)
             else:
                 self.logger.debug('Nothing to allocate at %r', url)
-        print rspecs
+#        print rspecs
         return rspecs
 
     def createsliver(self, args):
@@ -257,7 +318,7 @@ class CallHandler(object):
             sys.exit('createsliver got empty slicename')
 
         urn = self.framework.slice_name_to_urn(name.strip())
-        slice_cred = self.framework.get_slice_cred(urn)
+        slice_cred = self._get_slice_cred(urn)
 
         # Load up the user's edited omnispec
         specfile = args[1]
@@ -312,23 +373,47 @@ class CallHandler(object):
                     return
                 
             if not self.opts.native:
-                self.logger.debug("Native RSpec for %s is:\n%s", url, rspec)
+                try:
+                    import xml.dom.minidom as md
+                    self.logger.debug("Native RSpec for %s is:\n%s", url, md.parseString(rspec).toprettyxml(indent=' '*2))
+                except:
+                    self.logger.debug("Native RSpec for %s is:\n%s", url, rspec)
 
             # Okay, send a message to the AM this resource came from
-            try:
-                client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
-#               print "Rspec to send to %s:" % url
-#               print rspec
-                result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)                
-                print 'Asked %s to reserve resources. Result: %s' % (url, result)
-                if '<RSpec type="SFA">' in rspec:
-                    # Figure out the login name
-                    hrn = urn.split('+')[1].replace('.','').replace(':','.').split('.')[-1]
-                    name = urn.split('+')[3]
-                    self.logger.info("Your login name for PL resources will be %s_%s" % (hrn,name))
-            except Exception, exc:
-                self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
-                self.logger.debug(traceback.format_exc())
+            attempt = 0
+            while(attempt < 2):
+                try:
+                    attempt += 1
+                    client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
+                    #               print "Rspec to send to %s:" % url
+                    #               print rspec
+                    result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
+                    if result != None and instanceof(result, string) and result.startswith('<rspec'):
+                        try:
+                            import xml.dom.minidom as md
+                            print 'Asked %s to reserve resources. Result\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2))
+                        except:
+                            print 'Asked %s to reserve resources. Result: %s' % (url, result)
+                    else:
+                        print 'Asked %s to reserve resources. Result: %s' % (url, result)
+
+                    if '<RSpec type="SFA">' in rspec:
+                        # Figure out the login name
+                        hrn = urn.split('+')[1].replace('.','').replace(':','.').split('.')[-1]
+                        name = urn.split('+')[3]
+                        self.logger.info("Your login name for PL resources will be %s_%s" % (hrn,name))
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot allocate from %s', url)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Error occurred. Unable to allocate from %s: %s.  Please run --debug to see stack trace." % (url, exc))
+                        self.logger.debug(traceback.format_exc())
 
     def deletesliver(self, args):
         if len(args) == 0:
@@ -342,17 +427,29 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self.framework.get_slice_cred(urn)
+        slice_cred = self._get_slice_cred(urn)
         # Connect to each available GENI AM 
         for client in self._getclients():
-            try:
-                if client.DeleteSliver(urn, [slice_cred]):
-                    print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
-                else:
-                    print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
-            except Exception, exc:
-                self.logger.error("Error occured. Failed to delete sliver %s on %s (%s)." % (urn, client.urn, client.url))
-                self.logger.error(str(exc))
+            attempt = 0
+            while(attempt < 2):
+                attempt += 1
+                try:
+                    if client.DeleteSliver(urn, [slice_cred]):
+                        print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
+                    else:
+                        print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot delete sliver %s from %s', urn, client.url)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Error occured. Failed to delete sliver %s on %s (%s)." % (urn, client.urn, client.url))
+                        self.logger.error(str(exc))
             
     def renewsliver(self, args):
         if len(args) < 2:
@@ -366,7 +463,7 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self.framework.get_slice_cred(urn)
+        slice_cred = self._get_slice_cred(urn)
         time = None
         try:
             time = dateutil.parser.parse(args[1])
@@ -376,16 +473,28 @@ class CallHandler(object):
         print 'Renewing Sliver %s until %r' % (urn, time)
 
         for client in self._getclients():
-            try:
-                # Note that the time arg includes UTC offset as needed
-                res = client.RenewSliver(urn, [slice_cred], time.isoformat())
-                if not res:
-                    print "FAILed to renew sliver %s on %s" % (urn, client.urn)
-                else:
-                    print "Renewed sliver %s at %s until %s" % (urn, client.urn, time.isoformat())
-            except Exception, exc:
-                self.logger.error("Failed to renew sliver %s on %s." % (urn, client.urn))
-                self.logger.error(str(exc))
+            attempt = 0
+            while (attempt < 2):
+                attempt += 1
+                try:
+                    # Note that the time arg includes UTC offset as needed
+                    res = client.RenewSliver(urn, [slice_cred], time.isoformat())
+                    if not res:
+                        print "FAILed to renew sliver %s on %s" % (urn, client.urn)
+                    else:
+                        print "Renewed sliver %s at %s until %s" % (urn, client.urn, time.isoformat())
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot renew sliver %s from %s', urn, client.urn)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Failed to renew sliver %s on %s." % (urn, client.urn))
+                        self.logger.error(str(exc))
     
     def sliverstatus(self, args):
         if len(args) == 0:
@@ -399,15 +508,27 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self.framework.get_slice_cred(urn)
+        slice_cred = self._get_slice_cred(urn)
         for client in self._getclients():
-            try:
-                status = client.SliverStatus(urn, [slice_cred])
-                print "%s (%s):" % (client.urn, client.url)
-                pprint.pprint(status)
-            except Exception, exc:
-                self.logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
-                self.logger.error(str(exc))
+            attempt = 0
+            while(attempt < 2):
+                attempt += 1
+                try:
+                    status = client.SliverStatus(urn, [slice_cred])
+                    print "%s (%s):" % (client.urn, client.url)
+                    pprint.pprint(status)
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot get sliver status on %s from %s', urn, client.url)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
+                        self.logger.error(str(exc))
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -421,7 +542,7 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self.framework.get_slice_cred(urn)
+        slice_cred = self._get_slice_cred(urn)
         for client in self._getclients():
             try:
                 if client.Shutdown(urn, [slice_cred]):
@@ -434,11 +555,23 @@ class CallHandler(object):
     
     def getversion(self, args):
         for client in self._getclients():
-            try:
-                print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
-            except Exception, exc:
-                self.logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
-                self.logger.error(str(exc))                                
+            attempt = 0
+            while(attempt < 2):
+                attempt += 1
+                try:
+                    print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
+                    break
+                except Exception, exc:
+                    import ssl
+                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                        self.logger.error('Wrong pass phrase for private key! Cannot do GetVersion from %s', client.url)
+                        if attempt < 2:
+                            self.logger.info('.... please retry.')
+                        self.logger.debug(exc)
+                    else:
+                        attempt += 2
+                        self.logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
+                        self.logger.error(str(exc))                                
                                 
     def createslice(self, args):
         if len(args) == 0:
@@ -450,11 +583,28 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self.framework.create_slice(urn)
+        
+        attempt = 0
+        slice_cred = None
+        while(attempt < 2):
+            attempt += 1
+            try:
+                slice_cred = self.framework.create_slice(urn)
+                break
+            except Exception, exc:
+                import ssl
+                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                    self.logger.error('Wrong pass phrase for private key! Cannot create slice %s', urn)
+                    if attempt < 2:
+                        self.logger.info('.... please retry.')
+                    self.logger.debug(exc)
+                else:
+                    attempt += 2
+                    self.logger.error("Error occured. Failed to create slice %s: %s" % (urn, exc))
         if slice_cred:
             print "Created slice with Name %s, URN %s" % (name, urn)
         else:
-            print "Create Slice failed"
+            print "Create Slice failed for slice name %s" % (name)
         
     def deleteslice(self, args):
         if len(args) == 0:
@@ -466,7 +616,25 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        res = self.framework.delete_slice(urn)
+
+        attempt = 0
+        res = None
+        while(attempt < 2):
+            attempt += 1
+            try:
+                res = self.framework.delete_slice(urn)
+                break
+            except Exception, exc:
+                import ssl
+                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                    self.logger.error('Wrong pass phrase for private key! Cannot delete slice %s', urn)
+                    if attempt < 2:
+                        self.logger.info('.... please retry.')
+                    self.logger.debug(exc)
+                else:
+                    attempt += 2
+                    self.logger.error("Error occured. Failed to delete slice %s: %s" % (urn, exc))
+
         print "Delete Slice %s result: %r" % (name, res)
 
     def getslicecred(self, args):
@@ -479,9 +647,25 @@ class CallHandler(object):
         # PREFIX+slice+
 
         urn = self.framework.slice_name_to_urn(name)
-        cred = self.framework.get_slice_cred(urn)
+        cred = self._get_slice_cred(urn)
         print cred
         
+    def _get_slice_cred(self, urn):
+        attempt = 0
+        while (attempt < 2):
+            attempt += 1
+            try:
+                return self.framework.get_slice_cred(urn)
+            except Exception, exc:
+                import ssl
+                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                    self.logger.error('Wrong pass phrase for private key! Cannot get slice credential for slice %s', urn)
+                    if attempt < 2:
+                        self.logger.info('.... please retry.')
+                    self.logger.debug(exc)
+                else:
+                    raise Exception('Failed to get slice credential for slice %s' % urn, exc)
+
     def listaggregates(self, args):
         """Print the aggregates federated with the control framework."""
         for (urn, url) in self._listaggregates().items():
@@ -504,8 +688,26 @@ class CallHandler(object):
             msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
             msg = msg % (expire_str)
             sys.exit(msg)
+
         # Try to renew the slice
-        out_expiration = self.framework.renew_slice(urn, in_expiration)
+        attempt = 0
+        out_expiration = None
+        while(attempt < 2):
+            attempt += 1
+            try:
+                out_expiration = self.framework.renew_slice(urn, in_expiration)
+                break
+            except Exception, exc:
+                import ssl
+                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                    self.logger.error('Wrong pass phrase for private key! Cannot renew slice %s', urn)
+                    if attempt < 2:
+                        self.logger.info('.... please retry.')
+                    self.logger.debug(exc)
+                else:
+                    attempt += 2
+                    self.logger.error("Error occured. Failed to renew slice %s: %s" % (urn, exc))
+
         if out_expiration:
             print "Slice %s now expires at %s" % (name, out_expiration)
         else:
