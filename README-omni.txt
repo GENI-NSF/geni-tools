@@ -7,7 +7,7 @@ control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.  Note that Omni also
 supports using control framework native RSpecs.
 
-To configure Omni, please copy src/omni_config to your ~/.gcf
+To configure Omni, please copy omni_config to your ~/.gcf
 directory and fill in the parameters for at least one control
 framework.  The "omni" section should be filled in with the
 certificate and key that you use in your control framework.  Note that
