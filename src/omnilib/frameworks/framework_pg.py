@@ -98,7 +98,8 @@ class Framework(Framework_Base):
                 pg_response = self.sa.GetCredential()
             except Exception as exc:
                 self.logger.error('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
-                raise Exception('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
+                raise exc
+#                raise Exception('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
                                   
             code = pg_response['code']
             if code:
