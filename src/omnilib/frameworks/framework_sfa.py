@@ -25,11 +25,14 @@ from omnilib.frameworks.framework_base import Framework_Base
 import logging
 import os
 import time
+import datetime
 import sys
 
 
 # FIXME: Use the constant from namespace
 URN_PREFIX = "urn:publicid:IDN"
+
+DEFAULT_SLICE_TIME = 86400 * 14 # 2 weeks in seconds
 
 # FIXME: Use sfa util code!
 def urn_to_hrn(urn):
@@ -211,19 +214,22 @@ class Framework(Framework_Base):
             user_cred = self.get_user_cred()
             auth_cred = self.registry.GetCredential(user_cred, self.config['authority'], "authority")
             # Note this is in UTC
-            expiration = int(time.time()) + 60 * 60 * 24
+            expiration =  int(time.mktime(time.gmtime())) + DEFAULT_SLICE_TIME 
             authority = self.config['authority']
             user = self.config['user']
                            
             record = {'peer_authority': '', u'description': u'a slice', u'url': \
-                      u'http://www.testslice.com', u'expires': u'%s' % expiration, \
+                      u'http://www.testslice.com', 'expires': "%d" % expiration, \
                       u'authority': u'%s' % authority, u'researcher': [u'%s' % user], \
                       'hrn': u'%s' % hrn, u'PI': [u'%s' % user], 'type': u'slice', \
                       u'name': u'%s' % hrn}
     
             self.registry.Register(record, auth_cred)
+            # For some reason the slice doesn't seem to have the correct expiration time, 
+            # so call renew_slice
+            #self.renew_slice(urn, datetime.datetime.utcnow() + datetime.timedelta(seconds=DEFAULT_SLICE_TIME))            
             slice_cred = self.get_slice_cred(urn)
-
+        #print slice_cred
         return slice_cred
         
     

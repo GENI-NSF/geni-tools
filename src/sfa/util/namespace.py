@@ -20,11 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
-
-
 ### $Id$
 ### $URL$
-
+import re
 from sfa.util.faults import *
 URN_PREFIX = "urn:publicid:IDN"
 
@@ -41,16 +39,24 @@ def get_authority(xrn):
     return ".".join(parts[:-1])
 
 def hrn_to_pl_slicename(hrn):
+    # remove any escaped no alpah numeric characters
+    #hrn = re.sub('\\\[^a-zA-Z0-9]', '', hrn)
+    # remove any escaped '.' (i.e. '\.')
+    hrn = hrn.replace('\\.', '')
     parts = hrn.split(".")
     return parts[-2] + "_" + parts[-1]
 
 # assuming hrn is the hrn of an authority, return the plc authority name
 def hrn_to_pl_authname(hrn):
+    # remove any escaped '.' (i.e. '\.')
+    hrn = hrn.replace('\\.', '')
     parts = hrn.split(".")
     return parts[-1]
 
 # assuming hrn is the hrn of an authority, return the plc login_base
 def hrn_to_pl_login_base(hrn):
+    # remove any escaped '.' (i.e. '\.')
+    hrn = hrn.replace('\\.', '')
     return hrn_to_pl_authname(hrn)
 
 def hostname_to_hrn(auth_hrn, login_base, hostname):
@@ -90,16 +96,18 @@ def urn_to_hrn(urn):
     name = urn[len(URN_PREFIX):]
     hrn_parts = name.split("+")
     type = hrn_parts.pop(2)
-
+    
+         
     # Remove the authority name (e.g. '.sa')
     if type == 'authority':
         hrn_parts = hrn_parts[:-1]
 
-    # convert hrn_parts (list) into hrn (str) by doing the following    
-    # remove blank elements
-    # replace ':' with '.'
-    # join list elements using '.'
-    hrn = '.'.join([part.replace(':', '.') for part in hrn_parts if part]) 
+    # convert hrn_parts (list) into hrn (str) by doing the following
+    # 1. remove blank elements
+    # 2. escape '.'            # '.' exists in protogeni object names and are not delimiters
+    # 3. replace ':' with '.'  # ':' is the urn hierarchy delimiter
+    # 4. join list elements using '.' 
+    hrn = '.'.join([part.replace('.', '\\.').replace(':', '.') for part in hrn_parts if part]) 
     
     return str(hrn), str(type) 
     
@@ -112,20 +120,27 @@ def hrn_to_urn(hrn, type=None):
     if not hrn or hrn.startswith(URN_PREFIX):
         return hrn
 
-    authority = get_authority(hrn)
-    name = get_leaf(hrn)
-     
     if type == 'authority':
         authority = hrn
         name = 'sa'   
+    else:
+        authority = get_authority(hrn)
+        name = get_leaf(hrn)   
+   
+    # We have to do the following conversion
+    # '\\.'  -> '.'    # where '.' belongs in the urn name
+    # '.'    -> ':"    # where ':' is the urn hierarchy delimiter
+    # by doing the following
+    # 1. split authority around '\\.'
+    # 2. replace '.' with ':' in all parts
+    # 3. join parts around '.'  
+    parts = authority.split('\\.')
+    authority = '.'.join([part.replace('.', ':') for part in parts])
     
-    if authority.startswith("plc"):
-        if type == None:
-            urn = "+".join(['',authority.replace('.',':'),name])
-        else:
-            urn = "+".join(['',authority.replace('.',':'),type,name])
-
+    if type == None:
+        urn = "+".join(['',authority,name])
     else:
         urn = "+".join(['',authority,type,name])
+
         
     return URN_PREFIX + urn

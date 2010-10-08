@@ -42,11 +42,13 @@ import os
 import tempfile
 import base64
 import traceback
+from tempfile import mkstemp
+
 from OpenSSL import crypto
 import M2Crypto
 from M2Crypto import X509
-from tempfile import mkstemp
-from sfa.util.sfalogging import logger
+
+from sfa.util.sfalogging import sfa_logger
 from sfa.util.namespace import urn_to_hrn
 from sfa.util.faults import *
 
@@ -77,7 +79,7 @@ def convert_public_key(key):
     try:
         k.load_pubkey_from_file(ssl_fn)
     except:
-        traceback.print_exc()
+        sfa_logger.log_exc("convert_public_key caught exception")
         k = None
 
     # remove the temporary files
@@ -297,21 +299,16 @@ class Certificate:
         # load it (support for the ---parent--- tag as well as normal chained certs)
 
         string = string.strip()
-
-        # if the string has no BEGIN C... then wrap in begin/end
-        # old behavior was to wrap if it didnt _start_ with BEGIN
-        # if the string does not start with BEGIN
-        # then ignore everything before the begin
-
-#        if not string.startswith('-----'):
+        
+        # If it's not in proper PEM format, wrap it
         if string.count('-----BEGIN CERTIFICATE') == 0:
             string = '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----' % string
-            logger.debug("Wrapping string for cert in BEGIN/END")
 
+        # If there is a PEM cert in there, but there is some other text first
+        # such as the text of the certificate, skip the text
         beg = string.find('-----BEGIN CERTIFICATE')
         if beg > 0:
-            # skipping over non cert beginning
-            logger.debug("Skipping non PEM start of cert from string ('%s ...\n... %s'). Skipping to char #%d", string[:25], string[beg-15:beg], beg)
+            # skipping over non cert beginning                                                                                                              
             string = string[beg:]
 
         parts = []
@@ -595,21 +592,21 @@ class Certificate:
         # if this cert is signed by a trusted_cert, then we are set
         for trusted_cert in trusted_certs:
             if self.is_signed_by_cert(trusted_cert):
-                logger.debug("Cert %s signed by trusted cert %s", self.get_subject(), trusted_cert.get_subject())
+                sfa_logger.debug("Cert %s signed by trusted cert %s", self.get_subject(), trusted_cert.get_subject())
                 # verify expiration of trusted_cert ?
                 if not trusted_cert.cert.has_expired():
                     return trusted_cert
                 else:
-                    logger.debug("Trusted cert %s is expired", trusted_cert.get_subject())       
+                    sfa_logger.debug("Trusted cert %s is expired", trusted_cert.get_subject())       
 
         # if there is no parent, then no way to verify the chain
         if not self.parent:
-            #print self.get_subject(), "has no parent"
+            sfa_logger.debug("%r has no parent"%self.get_subject())
             raise CertMissingParent(self.get_subject())
 
         # if it wasn't signed by the parent...
         if not self.is_signed_by_cert(self.parent):
-            #print self.get_subject(), "is not signed by parent"
+            sfa_logger.debug("%r is not signed by parent"%self.get_subject())
             return CertNotSignedByParent(self.get_subject())
 
         # if the parent isn't verified...

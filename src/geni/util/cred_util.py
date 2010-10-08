@@ -28,6 +28,7 @@ import os
 import logging
 import xmlrpclib
 import sys
+import datetime
 
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
@@ -278,7 +279,7 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     # Or do gid.is_signed_by_cert(issuer_certfile)?
     ucred.set_gid_caller(caller_gid)
     ucred.set_gid_object(object_gid)
-    ucred.set_lifetime(life_secs)
+    ucred.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(seconds=life_secs))
     # Use sfa/trust/rights.py to figure out what privileges
     # the credential should have.
     # user means refresh, resolve, info
