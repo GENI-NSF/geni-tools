@@ -20,15 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
-
-
 ##
 # This Module implements rights and lists of rights for the SFA. Rights
 # are implemented by two classes:
 #
 # Right - represents a single right
 #
-# RightList - represents a list of rights
+# Rights - represents a list of rights
 #
 # A right may allow several different operations. For example, the "info" right
 # allows "listslices", "listcomponentresources", etc.
@@ -48,9 +46,11 @@ privilege_table = {"authority": ["register", "remove", "update", "resolve", "lis
                    "sa": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "deleteslice", "deletesliver", "updateslice",
                           "getsliceresources", "getticket", "loanresources", "stopslice", "startslice", "renewsliver",
                           "deleteslice", "deletesliver", "resetslice", "listslices", "listnodes", "getpolicy", "sliverstatus"],
-                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "renewsliver", "deleteslice", "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
+                   "embed": ["getticket", "redeemslice", "redeemticket", "createslice", "createsliver", "renewsliver", "deleteslice", 
+                             "deletesliver", "updateslice", "sliverstatus", "getsliceresources", "shutdown"],
                    "bind": ["getticket", "loanresources", "redeemticket"],
-                   "control": ["updateslice", "createslice", "createsliver", "renewsliver", "sliverstatus", "stopslice", "startslice", "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
+                   "control": ["updateslice", "createslice", "createsliver", "renewsliver", "sliverstatus", "stopslice", "startslice", 
+                               "deleteslice", "deletesliver", "resetslice", "getsliceresources", "getgids"],
                    "info": ["listslices", "listnodes", "getpolicy"],
                    "ma": ["setbootstate", "getbootstate", "reboot", "getgids", "gettrustedcerts"],
                    "operator": ["gettrustedcerts", "getgids"],                   
@@ -59,17 +59,17 @@ privilege_table = {"authority": ["register", "remove", "update", "resolve", "lis
 
 
 ##
-# Determine tje rights that an object should have. The rights are entirely
+# Determine the rights that an object should have. The rights are entirely
 # dependent on the type of the object. For example, users automatically
 # get "refresh", "resolve", and "info".
 #
 # @param type the type of the object (user | sa | ma | slice | node)
 # @param name human readable name of the object (not used at this time)
 #
-# @return RightList object containing rights
+# @return Rights object containing rights
 
 def determine_rights(type, name):
-    rl = RightList()
+    rl = Rights()
 
     # rights seem to be somewhat redundant with the type of the credential.
     # For example, a "sa" credential implies the authority right, because
@@ -156,9 +156,9 @@ class Right:
         return True
 
 ##
-# A RightList object represents a list of privileges.
+# A Rights object represents a list of privileges.
 
-class RightList:
+class Rights:
     ##
     # Create a new rightlist object, containing no rights.
     #
@@ -276,10 +276,10 @@ class RightList:
     # @param type the type of the object (user | sa | ma | slice | node)
     # @param name human readable name of the object (not used at this time)
     #
-    # @return RightList object containing rights
+    # @return Rights object containing rights
 
     def determine_rights(self, type, name):
-        rl = RightList()
+        rl = Rights()
 
         # rights seem to be somewhat redundant with the type of the credential.
         # For example, a "sa" credential implies the authority right, because

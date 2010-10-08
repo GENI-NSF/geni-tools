@@ -7,8 +7,8 @@ directory is subject to the PlanetLab license (see "License"
 below). There are a small number of modifications to the code. These
 modifications are documented in the "Modifications" section below.
 
-This code is based on revision a47009da40674dd0a91b37c75eaf605c2de76330 
-(Sept. 21, 2010) of the master branch of the  PlanetLab Git repository
+This code is based on revision 7c982c37858ad4500fc4c1b71896e2f6efe4a065 
+(Oct. 8, 2010) of the master branch of the PlanetLab Git repository
 (git.planet-lab.org/git/sfa.git).
 
 
@@ -40,18 +40,7 @@ IN THE WORK.
 Modifications
 =============
 
-1. util/sfalogging.py was modified so that it does not use the root
-   logger. Instead, it uses a logger named 'sfa'.
-
-   Old:
-
-     logger=logging.getLogger()
-
-   New:
-
-     logger=logging.getLogger('sfa')
-
-2. All Python source files were modified to include the following
+1. All Python source files were modified to include the following
 Princeton copyright notice:
 
 #----------------------------------------------------------------------

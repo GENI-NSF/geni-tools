@@ -20,8 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
-
-
 ##
 # Implements SFA Credentials
 #
@@ -34,11 +32,10 @@
 
 import xmlrpclib
 
-from sfa.trust.certificate import Certificate
-from sfa.trust.rights import *
-from sfa.trust.gid import *
 from sfa.util.faults import *
-from sfa.util.sfalogging import *
+from sfa.trust.certificate import Certificate
+from sfa.trust.rights import Right,Rights
+from sfa.trust.gid import GID
 
 ##
 # Credential is a tuple:
@@ -135,16 +132,16 @@ class CredentialLegacy(Certificate):
     ##
     # set the privileges
     #
-    # @param privs either a comma-separated list of privileges of a RightList object
+    # @param privs either a comma-separated list of privileges of a Rights object
 
     def set_privileges(self, privs):
         if isinstance(privs, str):
-            self.privileges = RightList(string = privs)
+            self.privileges = Rights(string = privs)
         else:
             self.privileges = privs
 
     ##
-    # return the privileges as a RightList object
+    # return the privileges as a Rights object
 
     def get_privileges(self):
         if not self.privileges:
@@ -201,7 +198,7 @@ class CredentialLegacy(Certificate):
 
         privStr = dict.get("privileges", None)
         if privStr:
-            self.privileges = RightList(string = privStr)
+            self.privileges = Rights(string = privStr)
         else:
             self.privileges = None
 
