@@ -388,7 +388,7 @@ class CallHandler(object):
                     #               print "Rspec to send to %s:" % url
                     #               print rspec
                     result = client.CreateSliver(urn, [slice_cred], rspec, slice_users)
-                    if result != None and instanceof(result, string) and result.startswith('<rspec'):
+                    if result != None and isinstance(result, string) and result.startswith('<rspec'):
                         try:
                             import xml.dom.minidom as md
                             print 'Asked %s to reserve resources. Result\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2))
