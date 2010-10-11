@@ -127,7 +127,9 @@ urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 
 # The SSH public keys to install for Alice to allow
 # Alice to log in to the allocated resource.
-# Comma delimited.
+# Comma delimited list of SSH public key file names.
+# Note that these could be keys for a list of collaborators,
+# all of whom will get to log in to the same account.
 keys=~/.gcf/alice.pub, ~/.gcf/alice2.pub
 
 
