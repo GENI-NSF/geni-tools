@@ -32,12 +32,10 @@
 
 from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 import xml.etree.ElementTree as ET
-from copy import deepcopy
 import sys
 
 def can_translate(rspec):
-    return '<rspec type="openflow">' in rspec
-
+    return '<rspec type="openflow"' in rspec
 
 def rspec_to_omnispec(urn, rspec):
     ospec = OmniSpec("rspec_of", urn)
