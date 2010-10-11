@@ -53,8 +53,10 @@ import logging
 import optparse
 import os
 import pprint
+import ssl
 import sys
 import traceback
+import xmlrpclib
 import zlib
 import ConfigParser
 
@@ -64,6 +66,9 @@ from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
+
+class InvalidSSLPasswordException(Exception):
+    pass
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -510,25 +515,16 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         for client in self._getclients():
-            attempt = 0
-            while(attempt < 2):
-                attempt += 1
-                try:
-                    status = client.SliverStatus(urn, [slice_cred])
-                    print "%s (%s):" % (client.urn, client.url)
-                    pprint.pprint(status)
-                    break
-                except Exception, exc:
-                    import ssl
-                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
-                        self.logger.error('Wrong pass phrase for private key! Cannot get sliver status on %s from %s', urn, client.url)
-                        if attempt < 2:
-                            self.logger.info('.... please retry.')
-                        self.logger.debug(exc)
-                    else:
-                        attempt += 2
-                        self.logger.error("Failed to retrieve status of %s at %s." % (urn, client.urn))
-                        self.logger.error(str(exc))
+            try:
+                status = self._do_ssl(client.SliverStatus, urn, [slice_cred])
+                print "%s:" % (client.url)
+                pprint.pprint(status)
+            except InvalidSSLPasswordException, exc:
+                self.logger.error("Failed to retrieve status of %s at %s.",
+                                  urn, client.url)
+            except xmlrpclib.Fault, fault:
+                self.logger.error('Failed to retrieve status of %s at %s: %s',
+                                  urn, client.url, str(fault))
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -553,26 +549,34 @@ class CallHandler(object):
                 self.logger.error("Failed to shutdown %s on AM %s at %s." % (urn, client.urn, client.url))
                 self.logger.error(str(exc))                
     
+    def _do_ssl(self, fn, *args):
+        max_attempts = 2
+        attempt = 0
+        while(attempt < max_attempts):
+            attempt += 1
+            try:
+                result = fn(*args)
+                return result
+            except Exception, exc:
+                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
+                    self.logger.debug(exc)
+                    self.logger.error('Wrong pass phrase for private key.')
+                    if attempt < max_attempts:
+                        self.logger.info('.... please retry.')
+                    else:
+                        raise InvalidSSLPasswordException()
+                else:
+                    raise
+
     def getversion(self, args):
         for client in self._getclients():
-            attempt = 0
-            while(attempt < 2):
-                attempt += 1
-                try:
-                    print "%s (%s) %s" % (client.urn, client.url, client.GetVersion())
-                    break
-                except Exception, exc:
-                    import ssl
-                    if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
-                        self.logger.error('Wrong pass phrase for private key! Cannot do GetVersion from %s', client.url)
-                        if attempt < 2:
-                            self.logger.info('.... please retry.')
-                        self.logger.debug(exc)
-                    else:
-                        attempt += 2
-                        self.logger.error("Failed to get version information for %s at (%s). " % (client.urn, client.url))
-                        self.logger.error(str(exc))                                
-                                
+            try:
+                version = self._do_ssl(client.GetVersion)
+                print "%s (%s) %s" % (client.urn, client.url, version)
+            except InvalidSSLPasswordException, exc:
+                msg = "Failed to get version information for %s at (%s)."
+                self.logger.error(msg, client.urn, client.url)
+
     def createslice(self, args):
         if len(args) == 0:
             sys.exit('createslice requires arg of slice name')
