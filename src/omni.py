@@ -514,6 +514,10 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot get sliver status for %s: No slice credential'
+                     % (urn))
+
         for client in self._getclients():
             try:
                 status = self._do_ssl(client.SliverStatus, urn, [slice_cred])
