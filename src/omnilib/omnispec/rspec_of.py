@@ -112,6 +112,7 @@ def omnispec_to_rspec(omnispec, filter_allocated):
         if '+user+sliceinfo' in urn:            
             user['firstname'] = r['options']['firstname']
             user['lastname'] = r['options']['lastname']
+            user['affiliation'] = r['options']['affiliation']
             user['email'] = r['options']['email']
             user['fv_password'] = r['options']['fv_password']
             
@@ -176,7 +177,8 @@ def omnispec_to_rspec(omnispec, filter_allocated):
      
     root = ET.Element('resv_rspec')
     ET.SubElement(root, 'user', firstname=user['firstname'],lastname=user['lastname'], \
-                           email=user['email'], password=user['fv_password'])
+                           affiliation=user['affiliation'], email=user['email'], \
+                      password=user['fv_password'])
     ET.SubElement(root, 'project', name=project['project_name'], \
                               description=project['project_description'])
     ET.SubElement(root, 'slice', name=slice['slice_name'],\
@@ -253,8 +255,10 @@ def make_skeleton_of_ospec(ospec):
     # goes in <user>
     user['options']['firstname'] = 'John'
     user['options']['lastname'] = 'Doe'
+    user['options']['affiliation'] = 'My University'
     user['options']['email'] = 'jdoe@geni.net'
     user['options']['fv_password'] = 'slice_pass'
+
     # goes in <project>
     user['options']['project_name'] = 'Stanford Networking Group'
     user['options']['project_description'] = 'Internet performance research to ...'
@@ -455,6 +459,7 @@ at the Princeton network
                     "project_name": "Stanford Networking Group", 
                     "fv_password": "slice_pass", 
                     "slice_description": "Does crazy load balancing and plate spinning", 
+                    "affiliation": "My University",
                     "email": "jdoe@geni.net"
                 }, 
                 "description": "Slice information for FlowVisor Access"
@@ -503,6 +508,7 @@ switch 3 port 0
         <user
             firstname="John"
             lastname="Doe"
+            affiliation="My University"
             email="john.doe@geni.net"
             password="slice_pass"
         />
@@ -651,6 +657,7 @@ switch 3 port 0
                     "project_name": "Stanford Networking Group",
                     "fv_password": "slice_pass",
                     "slice_description": "Does this and that...",
+                    "affiliation": "My University",
                     "email": "john.doe@geni.net"
                 },
                 "description": "Slice information for FlowVisor Access"
