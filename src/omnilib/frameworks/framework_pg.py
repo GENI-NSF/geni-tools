@@ -181,11 +181,15 @@ class Framework(Framework_Base):
             self.logger.debug("Creating new slice %s", urn)
             response = self.sa.Register(params)
             self.logger.debug("Got register response %r", response)
+            if response['code']:
+                self.logger.error('Failed to create new PG slice %s: %s (code %d)', urn, response['output'], response['code'])
             return response['value']
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
             response = self.sa.GetCredential(params)
+            if response['code']:
+                self.logger.error('Failed to get credential for existing PG slice %s: %s (code %d)', urn, response['output'], response['code'])
             return response['value']
 
     def delete_slice(self, urn):

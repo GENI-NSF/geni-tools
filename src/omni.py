@@ -608,7 +608,9 @@ class CallHandler(object):
         if slice_cred:
             print "Created slice with Name %s, URN %s" % (name, urn)
         else:
-            print "Create Slice failed for slice name %s" % (name)
+            print "Create Slice failed for slice name %s." % (name)
+            if not self.logger.isEnabledFor(logging.DEBUG):
+                print "   Try re-running with --debug for more information."
         
     def deleteslice(self, args):
         if len(args) == 0:
