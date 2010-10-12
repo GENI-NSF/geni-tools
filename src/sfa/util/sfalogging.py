@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 #----------------------------------------------------------------------
 # Copyright (c) 2008 Board of Trustees, Princeton University
 #
@@ -20,7 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
 # IN THE WORK.
 #----------------------------------------------------------------------
-#!/usr/bin/python
 
 import os
 import traceback

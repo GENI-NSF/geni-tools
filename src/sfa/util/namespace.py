@@ -26,37 +26,53 @@ import re
 from sfa.util.faults import *
 URN_PREFIX = "urn:publicid:IDN"
 
+def __get_hierarchy_delim_indexes(hrn):
+    # find all non escaped '.'
+    hierarchy_delim = '([a-zA-Z0-9][\.])'
+    parts = re.findall(hierarchy_delim, hrn)
+    # list of indexes for every  hierarchy delimieter
+    indexes = []
+    for part in parts:
+        indexes.append(hrn.index(part) + 1)
+    return indexes 
+
 def get_leaf(hrn):
-    parts = hrn.split(".")
-    return ".".join(parts[-1:])
+    delim_indexes = __get_hierarchy_delim_indexes(hrn)
+    if not delim_indexes:
+        return hrn
+    
+    last_delim_index = delim_indexes[-1:][0] + 1
+    return hrn[last_delim_index:] 
 
 def get_authority(xrn):
     hrn, type = urn_to_hrn(xrn)
     if type and type == 'authority':
         return hrn
+  
+    delim_indexes = __get_hierarchy_delim_indexes(hrn)
+    if not delim_indexes:
+        return ''
+    last_delim_index = delim_indexes[-1:][0] 
+    return hrn[:last_delim_index] 
     
-    parts = hrn.split(".")
-    return ".".join(parts[:-1])
-
 def hrn_to_pl_slicename(hrn):
     # remove any escaped no alpah numeric characters
     #hrn = re.sub('\\\[^a-zA-Z0-9]', '', hrn)
-    # remove any escaped '.' (i.e. '\.')
-    hrn = hrn.replace('\\.', '')
+    hrn = re.sub(r'\\(.)', '', hrn)
     parts = hrn.split(".")
     return parts[-2] + "_" + parts[-1]
 
 # assuming hrn is the hrn of an authority, return the plc authority name
 def hrn_to_pl_authname(hrn):
-    # remove any escaped '.' (i.e. '\.')
-    hrn = hrn.replace('\\.', '')
+    # remove any escaped no alpah numeric characters
+    hrn = re.sub(r'\\(.)', '', hrn)
     parts = hrn.split(".")
     return parts[-1]
 
 # assuming hrn is the hrn of an authority, return the plc login_base
 def hrn_to_pl_login_base(hrn):
-    # remove any escaped '.' (i.e. '\.')
-    hrn = hrn.replace('\\.', '')
+    # remove any escaped no alpah numeric characters
+    hrn = re.sub(r'\\(.)', '', hrn)
     return hrn_to_pl_authname(hrn)
 
 def hostname_to_hrn(auth_hrn, login_base, hostname):
@@ -94,20 +110,21 @@ def urn_to_hrn(urn):
         return urn, None
 
     name = urn[len(URN_PREFIX):]
-    hrn_parts = name.split("+")
-    type = hrn_parts.pop(2)
+    urn_parts = name.split("+")
+    type = urn_parts.pop(2)
     
          
     # Remove the authority name (e.g. '.sa')
     if type == 'authority':
-        hrn_parts = hrn_parts[:-1]
+        urn_parts = urn_parts[:-1]
 
     # convert hrn_parts (list) into hrn (str) by doing the following
     # 1. remove blank elements
-    # 2. escape '.'            # '.' exists in protogeni object names and are not delimiters
-    # 3. replace ':' with '.'  # ':' is the urn hierarchy delimiter
+    # 2. escape all non alpha numeric chars (excluding ':')
+    # 3. replace ':' with '.'  (':' is the urn hierarchy delimiter)
     # 4. join list elements using '.' 
-    hrn = '.'.join([part.replace('.', '\\.').replace(':', '.') for part in hrn_parts if part]) 
+    #hrn = '.'.join([part.replace('.', '\\.').replace(':', '.') for part in hrn_parts if part]) 
+    hrn = '.'.join([re.sub(r'([^a-zA-Z0-9\:])', r'\\\1', part).replace(':', '.') for part in urn_parts if part]) 
     
     return str(hrn), str(type) 
     
@@ -126,16 +143,11 @@ def hrn_to_urn(hrn, type=None):
     else:
         authority = get_authority(hrn)
         name = get_leaf(hrn)   
-   
-    # We have to do the following conversion
-    # '\\.'  -> '.'    # where '.' belongs in the urn name
-    # '.'    -> ':"    # where ':' is the urn hierarchy delimiter
-    # by doing the following
-    # 1. split authority around '\\.'
-    # 2. replace '.' with ':' in all parts
-    # 3. join parts around '.'  
-    parts = authority.split('\\.')
-    authority = '.'.join([part.replace('.', ':') for part in parts])
+  
+    # convert from hierarchy delimiter from '.' to ':'   
+    authority = re.sub(r'([a-zA-Z0-9])[\.]', r'\1:', authority) 
+    # unescape escaped characters
+    authority = re.sub(r'\\(.)', r'\1', authority)
     
     if type == None:
         urn = "+".join(['',authority,name])
