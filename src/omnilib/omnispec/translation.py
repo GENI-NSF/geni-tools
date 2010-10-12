@@ -51,7 +51,10 @@ def rspec_to_omnispec(urn, rspec):
     
     try:
         import xml.dom.minidom as md
-        rstr = md.parseString(rspec).toprettyxml(indent=' '*2)
+        newl = ''
+        if '\n' not in rspec:
+            newl = '\n'
+        rstr = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
     except:
         rstr=rspec
     raise Exception('Unknown RSpec Type from AM %s. Cant translate RSpec:\n%s' % (urn, rstr))

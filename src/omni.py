@@ -212,13 +212,17 @@ class CallHandler(object):
         else:
             urn = self.framework.slice_name_to_urn(slicename)
             cred = self._get_slice_cred(urn)
+            if cred is None:
+                sys.exit('Cannot list resources for slice %s: No slice credential'
+                         % (urn))
+
             options['geni_slice_urn'] = urn
 
         
         # Connect to each available GENI AM to list their resources
         for client in self._getclients():
             if cred is None:
-                self.logger.debug("Have null credentials in call to ListResources!")
+                self.logger.debug("Have null credential in call to ListResources!")
             self.logger.debug("Connecting to AM: %s", client)
             attempt = 0
             while(attempt < 2):
@@ -246,7 +250,11 @@ class CallHandler(object):
             if rspecs and rspecs != {}:
                 try:
                     import xml.dom.minidom as md
-                    print md.parseString(rspecs.values()[0]).toprettyxml(indent=' '*2)
+                    rspec = rspecs.values()[0]
+                    newl = ''
+                    if '\n' not in rspec:
+                        newl = '\n'
+                    print md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
                 except:
                     print rspecs.values()[0]
             else:
@@ -324,6 +332,9 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot create sliver %s: No slice credential'
+                     % (urn))
 
         # Load up the user's edited omnispec
         specfile = args[1]
@@ -380,7 +391,10 @@ class CallHandler(object):
             if not self.opts.native:
                 try:
                     import xml.dom.minidom as md
-                    self.logger.debug("Native RSpec for %s is:\n%s", url, md.parseString(rspec).toprettyxml(indent=' '*2))
+                    newl = ''
+                    if '\n' not in rspec:
+                        newl = '\n'
+                    self.logger.debug("Native RSpec for %s is:\n%s", url, md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl))
                 except:
                     self.logger.debug("Native RSpec for %s is:\n%s", url, rspec)
 
@@ -396,7 +410,10 @@ class CallHandler(object):
                     if result != None and isinstance(result, str) and result.startswith('<rspec'):
                         try:
                             import xml.dom.minidom as md
-                            print 'Asked %s to reserve resources. Result\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2))
+                            newl = ''
+                            if '\n' not in result:
+                                newl = '\n'
+                            print 'Asked %s to reserve resources. Result\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl))
                         except:
                             print 'Asked %s to reserve resources. Result: %s' % (url, result)
                     else:
@@ -433,6 +450,10 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot delete sliver %s: No slice credential'
+                     % (urn))
+
         # Connect to each available GENI AM 
         for client in self._getclients():
             attempt = 0
@@ -469,6 +490,10 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot renew sliver %s: No slice credential'
+                     % (urn))
+
         time = None
         try:
             time = dateutil.parser.parse(args[1])
@@ -514,17 +539,27 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot get sliver status for %s: No slice credential'
+                     % (urn))
+
         for client in self._getclients():
             try:
-                status = self._do_ssl(client.SliverStatus, urn, [slice_cred])
+                status = self._do_ssl("Sliver status of %s at %s" % (urn, client.urn), client.SliverStatus, urn, [slice_cred])
                 print "%s:" % (client.url)
                 pprint.pprint(status)
             except InvalidSSLPasswordException, exc:
                 self.logger.error("Failed to retrieve status of %s at %s.",
                                   urn, client.url)
             except xmlrpclib.Fault, fault:
+                # FIXME: string replace literal \n with actual \n
                 self.logger.error('Failed to retrieve status of %s at %s: %s',
                                   urn, client.url, str(fault))
+            except Exception, exc:
+                self.logger.error('Failed to retrieve status of %s at %s: %s.', urn, client.url, exc)
+                if not self.logger.isEnabledFor(logging.DEBUG):
+                    self.logger.error('    ..... Run with --debug for more information')
+                self.logger.debug(traceback.format_exc())
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -539,6 +574,10 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            sys.exit('Cannot shutdown slice %s: No slice credential'
+                     % (urn))
+
         for client in self._getclients():
             try:
                 if client.Shutdown(urn, [slice_cred]):
@@ -549,7 +588,8 @@ class CallHandler(object):
                 self.logger.error("Failed to shutdown %s on AM %s at %s." % (urn, client.urn, client.url))
                 self.logger.error(str(exc))                
     
-    def _do_ssl(self, fn, *args):
+    def _do_ssl(self, reason, fn, *args):
+        # Change exception name?
         max_attempts = 2
         attempt = 0
         while(attempt < max_attempts):
@@ -557,25 +597,31 @@ class CallHandler(object):
             try:
                 result = fn(*args)
                 return result
-            except Exception, exc:
-                if isinstance(exc, ssl.SSLError) and exc.errno == 336265225:
-                    self.logger.debug(exc)
+            except ssl.SSLError, exc:
+                if exc.errno == 336265225:
+                    self.logger.debug("Doing %s got %s", reason, exc)
                     self.logger.error('Wrong pass phrase for private key.')
                     if attempt < max_attempts:
                         self.logger.info('.... please retry.')
                     else:
-                        raise InvalidSSLPasswordException()
+                        raise InvalidSSLPasswordException('Wrong pass phrase after %d tries' % max_attempts)
                 else:
                     raise
 
     def getversion(self, args):
         for client in self._getclients():
             try:
-                version = self._do_ssl(client.GetVersion)
+                version = self._do_ssl("GetVersion at %s" % (client.urn), client.GetVersion)
                 print "%s (%s) %s" % (client.urn, client.url, version)
             except InvalidSSLPasswordException, exc:
                 msg = "Failed to get version information for %s at (%s)."
                 self.logger.error(msg, client.urn, client.url)
+            except Exception, exc:
+                msg = "Failed to get version information for %s at (%s): %s."
+                self.logger.error(msg, client.urn, client.url, exc)
+                if not self.logger.isEnabledFor(logging.DEBUG):
+                    self.logger.error('    ..... Run with --debug for more information')
+                self.logger.debug(traceback.format_exc())
 
     def createslice(self, args):
         if len(args) == 0:
@@ -654,9 +700,12 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
-        print cred
+        print "Slice cred for %s: %s" % (urn, cred)
         
     def _get_slice_cred(self, urn):
+        '''Try a couple times to get the given slice credential.
+        Retry on wrong pass phrase.'''
+
         attempt = 0
         while (attempt < 2):
             attempt += 1
