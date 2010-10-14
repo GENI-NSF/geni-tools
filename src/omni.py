@@ -268,7 +268,6 @@ class CallHandler(object):
 
             if omnispecs and omnispecs != {}:
                 jspecs = json.dumps(omnispecs, indent=4)
-                print 'Full resource listing:'
                 print jspecs
             else:
                 if rspecs and rspecs != {}:
