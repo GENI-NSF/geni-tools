@@ -205,7 +205,7 @@ class CallHandler(object):
             if cred is None:
                 sys.exit('Cannot list resources for slice %s: No slice credential'
                          % (urn))
-            print 'Gathering resources reserved for slice %s..' % slicename
+            self.logger.info('Gathering resources reserved for slice %s..' % slicename)
 
             options['geni_slice_urn'] = urn
 
@@ -239,9 +239,9 @@ class CallHandler(object):
             # If native, return the one native rspec. There is only
             # one because we checked for that at the beginning.
             if slicename != None:
-                print 'Resources at %s for slice %s:' % (self.opts.aggregate, slicename)
+                self.logger.info('Resources at %s for slice %s:' % (self.opts.aggregate, slicename))
             else:
-                print 'Resources at %s:' % (self.opts.aggregate, slicename)
+                self.logger.info('Resources at %s:' % (self.opts.aggregate))
             if rspecs and rspecs != {}:
                 rspec = rspecs.values()[0]
                 try:
@@ -268,6 +268,7 @@ class CallHandler(object):
 
             if omnispecs and omnispecs != {}:
                 jspecs = json.dumps(omnispecs, indent=4)
+                self.logger.info('Full resource listing:')
                 print jspecs
             else:
                 if rspecs and rspecs != {}:
@@ -402,7 +403,7 @@ class CallHandler(object):
                 self.logger.error("FAILed to create sliver for %s on %s", urn, url)
             except xmlrpclib.Fault, fault:
                 # FIXME: string replace literal \n with actual \n
-                self.logger.error('Failed to create sliver %s at %s: %s',
+                self.logger.error('FAILed to create sliver %s at %s: %s',
                                   urn, url, str(fault))
             except Exception, exc:
                 self.logger.error("FAILed to create sliver for %s on %s: %s", urn, url, exc)
@@ -416,7 +417,7 @@ class CallHandler(object):
                     newl = ''
                     if '\n' not in result:
                         newl = '\n'
-                    print 'Asked %s to reserve resources. Result\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl))
+                    print 'Asked %s to reserve resources. Result:\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl))
                 except:
                     print 'Asked %s to reserve resources. Result: %s' % (url, result)
             else:
