@@ -289,10 +289,11 @@ def set_dpid_port(ports,dpid, port):
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:0+port:0" />
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:0+port:1" />
             </switch>
-            <switch urn="urn:publicid:IDN+openflow:stanford+switch:1" />
+            <switch urn="urn:publicid:IDN+openflow:stanford+switch:1" >
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:1+port:0" />
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:1+port:1" />
-            <switch urn="urn:publicid:IDN+openflow:stanford+switch:2" />
+            </switch>
+            <switch urn="urn:publicid:IDN+openflow:stanford+switch:2" >
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:2+port:0" />
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:2+port:1" />
                 <port urn="urn:publicid:IDN+openflow:stanford+switch:2+port:2" />
