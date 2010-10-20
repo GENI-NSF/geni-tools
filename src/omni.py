@@ -141,11 +141,13 @@ class CallHandler(object):
         """
         if self.opts.aggregate:
             # No URN is specified, so put in 'unknown'
-            return dict(unspecified_AM_URN=self.opts.aggregate)
+            return dict(unspecified_AM_URN=self.opts.aggregate.strip())
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
             for url in self.omni_config['aggregates'].strip().split(','):
-                aggs[url] = url
+                url = url.strip()
+                if url != '':
+                    aggs[url] = url
             return aggs                
         else:
             try:
