@@ -427,9 +427,7 @@ class CallHandler(object):
 
             if '<RSpec type="SFA">' in rspec:
                 # Figure out the login name
-                hrn = urn.split('+')[1].replace('.','').replace(':','.').split('.')[-1]
-                name = urn.split('+')[3]
-                self.logger.info("Your login name for PL resources will be %s_%s" % (hrn,name))
+                self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
 
 
     def deletesliver(self, args):
