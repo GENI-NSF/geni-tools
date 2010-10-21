@@ -64,6 +64,7 @@ import dateutil.parser
 from omnilib.xmlrpc.client import make_client
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
+from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -154,6 +155,8 @@ class CallHandler(object):
                 return self._do_ssl("List Aggregates", self.framework.list_aggregates)
             except InvalidSSLPasswordException, exc:
                 self.logger.error("Failed to list aggregates")
+            except xmlrpclib.Fault, fault:
+                self.logger.error("Failed to list aggregates. CH Server says: %s", cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("Failed to list aggregates: %s", exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -191,6 +194,9 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("Failed to list resources")
                 sys.exit()
+            except xmlrpclib.Fault, fault:
+                self.logger.error("Failed to list resources. CH Server says: %s", cln_xmlrpclib_fault(fault))
+                sys.exit()
             except Exception, exc:
                 self.logger.error("Failed to list resources: can't get valid user credential: %s", exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -223,9 +229,8 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("Failed to list resources from %s (%s)", client.urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('Failed to list resources from %s (%s): %s',
-                                  client.urn, client.url, str(fault))
+                self.logger.error('Failed to list resources from %s (%s). Server says: %s',
+                                  client.urn, client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("Failed to list resources from %s (%s): %s", client.urn, client.url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -404,9 +409,8 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("FAILed to create sliver for %s on %s", urn, url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('FAILed to create sliver %s at %s: %s',
-                                  urn, url, str(fault))
+                self.logger.error('FAILed to create sliver %s at %s. Server says: %s',
+                                  urn, url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("FAILed to create sliver for %s on %s: %s", urn, url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -457,9 +461,8 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("FAILed to delete sliver %s on %s (%s)", urn, client.urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('Failed to delete sliver %s at %s: %s',
-                                  urn, client.url, str(fault))
+                self.logger.error('Failed to delete sliver %s at %s. Server says: %s',
+                                  urn, client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("FAILed to delete sliver %s on %s (%s): %s", urn, client.urn, client.url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -502,9 +505,8 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("FAILed to renew sliver for %s on %s (%s)", urn, client.urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('FAILed to renew sliver %s at %s: %s',
-                                  urn, client.url, str(fault))
+                self.logger.error('FAILed to renew sliver %s at %s. Server says: %s',
+                                  urn, client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("FAILed to renew sliver for %s on %s (%s): %s", urn, client.urn, client.url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -538,9 +540,8 @@ class CallHandler(object):
                 self.logger.error("Failed to retrieve status of %s at %s.",
                                   urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('Failed to retrieve status of %s at %s: %s',
-                                  urn, client.url, str(fault))
+                self.logger.error('Failed to retrieve status of %s at %s. Server says: %s',
+                                  urn, client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error('Failed to retrieve status of %s at %s: %s.', urn, client.url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -573,9 +574,8 @@ class CallHandler(object):
             except InvalidSSLPasswordException, exc:
                 self.logger.error("FAILed to shutdown sliver %s on %s (%s)", urn, client.urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('FAILed to shutdown sliver %s at %s: %s',
-                                  urn, client.url, str(fault))
+                self.logger.error('FAILed to shutdown sliver %s at %s. Server says: %s',
+                                  urn, client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 self.logger.error("FAILed to shutdown sliver %s on %s (%s): %s", urn, client.urn, client.url, exc)
                 if not self.logger.isEnabledFor(logging.DEBUG):
@@ -611,9 +611,8 @@ class CallHandler(object):
                 msg = "Failed to get version information for %s at (%s)."
                 self.logger.error(msg, client.urn, client.url)
             except xmlrpclib.Fault, fault:
-                # FIXME: string replace literal \n with actual \n
-                self.logger.error('Failed to get version of %s: %s',
-                                  client.url, str(fault))
+                self.logger.error('Failed to get version of %s. Server says: %s',
+                                  client.url, cln_xmlrpclib_fault(fault))
             except Exception, exc:
                 msg = "Failed to get version information for %s at (%s): %s."
                 self.logger.error(msg, client.urn, client.url, exc)
@@ -643,6 +642,8 @@ class CallHandler(object):
                     print "   Try re-running with --debug for more information."
         except InvalidSSLPasswordException, exc:
             self.logger.error("FAILed to create slice %s", urn)
+        except xmlrpclib.Fault, fault:
+            self.logger.error("FAILed to create slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
         except Exception, exc:
             self.logger.error("FAILed to create slice %s: %s", urn, exc)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -667,6 +668,8 @@ class CallHandler(object):
             print "Delete Slice %s result: %r" % (name, res)
         except InvalidSSLPasswordException, exc:
             self.logger.error("FAILed to delete slice %s", urn)
+        except xmlrpclib.Fault, fault:
+            self.logger.error("FAILed to delete slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault, fault)
         except Exception, exc:
             self.logger.error("FAILed to delete slice %s: %s", urn, exc)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -695,6 +698,8 @@ class CallHandler(object):
             return self._do_ssl("Get Slice Cred %s" % urn, self.framework.get_slice_cred, urn)
         except InvalidSSLPasswordException, exc:
             self.logger.error("FAILed to get slice credential for %s", urn)
+        except xmlrpclib.Fault, fault:
+            self.logger.error("FAILed to get slice credential for %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
         except Exception, exc:
             self.logger.error("FAILed to get slice credential for %s: %s", urn, exc)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -732,6 +737,8 @@ class CallHandler(object):
             out_expiration = self._do_ssl("Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
         except InvalidSSLPasswordException, exc:
             self.logger.error("FAILed to renew slice %s", urn)
+        except xmlrpclib.Fault, fault:
+            self.logger.error("FAILed to renew slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
         except Exception, exc:
             self.logger.error("FAILed to renew slice %s: %s", urn, exc)
             if not self.logger.isEnabledFor(logging.DEBUG):
