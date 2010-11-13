@@ -520,7 +520,7 @@ class CallHandler(object):
 
     def getversion(self, args):
         for client in self._getclients():
-            version = self._do_ssl("GetVersion at %s -- %s" % (client.url), client.GetVersion)
+            version = self._do_ssl("GetVersion at %s" % (str(client.url)), client.GetVersion)
             if not version is None:
                 print "%s (%s) %s" % (client.urn, client.url, version)
             
