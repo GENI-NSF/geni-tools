@@ -623,7 +623,7 @@ def parse_args(argv):
                       help="communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 def configure_logging(opts):
     level = logging.INFO
@@ -711,7 +711,7 @@ def load_framework(config):
     
 
 def main(argv=None):
-    opts, args = parse_args(sys.argv)    
+    opts, args = parse_args(sys.argv[1:])    
     logger = configure_logging(opts)
     config = load_config(opts, logger)        
     framework = load_framework(config)
