@@ -774,12 +774,7 @@ def configure_logging(opts):
     logger.setLevel(level)
     return logger
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-    opts, args = parse_args(argv)
-    logger = configure_logging(opts)
-
+def load_config(opts, logger):
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
 
@@ -798,7 +793,7 @@ def main(argv=None):
                      An example config file can be found in the source tarball or in /etc/omni/templates/""")            
 
     logger.info("Loading config file %s", filename)
-
+    
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
@@ -837,11 +832,24 @@ def main(argv=None):
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
         config['selected_framework'][key] = val
-        
+    
+    return config
+
+def load_framework(config):
     cf_type = config['selected_framework']['type']
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     framework = framework_mod.Framework(config['selected_framework'])
+    return framework    
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    opts, args = parse_args(argv)    
+    logger = configure_logging(opts)
+    config = load_config(opts, logger)        
+    framework = load_framework(config)
         
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
