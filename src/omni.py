@@ -779,7 +779,12 @@ def load_config(opts, logger):
     configfiles = ['omni_config','~/.gcf/omni_config']
 
     if opts.configfile:
-        configfiles.insert(0, opts.configfile)
+        # if configfile defined on commandline does not exist, fail
+        if os.path.exists( opts.configfile ):
+            configfiles.insert(0, opts.configfile)
+        else:
+            sys.exit("Config file '%s' does not exist"
+                     % (opts.configfile))
 
     # Find the first valid config file
     for cf in configfiles:         
