@@ -73,13 +73,6 @@ class InvalidSSLPasswordException(Exception):
 
 
 
-class AMAPI(object):
-    def __init__(self, framework, logger):
-        self.framework = framework
-        self.logger = logger
-    
-    
-
 
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
@@ -713,19 +706,6 @@ def load_framework(config):
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
-
-
-# The handler class performs four functions: it parses the command line (pre-processing), it communicates
-# with the framework to get the objects it needs, it makes AM API calls, and it checks/prints the results (post-processing)
-
-# The testing library needs to be able to make am api calls (and doesn't want to worry about the framework)
-# and then check the results.  So this means we need to separate out the parsing bits.  We need to be able to 
-# disable the printing and maybe even some of the checks.  So should the post-processing also be separated?  Or
-# just pass an argument to not print/log?
-
-# If we want an object that can be exported (e.g. more library like) we need to first separate
-# the command line parsing. 
-# For now I think the framework/AM API stuff can be kept 
 
     
     
