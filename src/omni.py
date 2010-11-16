@@ -65,7 +65,6 @@ from omnilib.xmlrpc.client import make_client
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
-from omnilib.util.paths import getAbsPath
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -487,6 +486,11 @@ class CallHandler(object):
                 print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
     
     def _do_ssl(self, reason, fn, *args):
+        """ Attempts to make an xmlrpc call, and will repeat the attempt
+        if it failed due to a bad passphrase for the ssl key.  Also does some
+        exception handling.  Returns the xmlrpc return if everything went okay, otherwise
+        returns None."""
+        
         # Change exception name?
         max_attempts = 2
         attempt = 0
