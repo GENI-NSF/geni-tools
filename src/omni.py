@@ -262,7 +262,7 @@ class CallHandler(object):
         return rspecs
 
     def createsliver(self, args):
-        if len(args) < 2:
+        if len(args) < 2 or args[0] == None or args[0].strip() == "":
             sys.exit('createsliver requires 2 args: slicename and omnispec filename')
 
         # check command line args
@@ -274,9 +274,7 @@ class CallHandler(object):
             sys.exit(msg)
 
         name = args[0]
-        if name is None or name.strip() == "":
-            sys.exit('createsliver got empty slicename')
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
@@ -368,16 +366,12 @@ class CallHandler(object):
 
 
     def deletesliver(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('deletesliver requires arg of slice name')
 
         name = args[0]
-        if name is None or name.strip() == "":
-            sys.exit('deletesliver got empty slicename')
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
@@ -392,16 +386,12 @@ class CallHandler(object):
                 print "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
             
     def renewsliver(self, args):
-        if len(args) < 2:
+        if len(args) < 2 or args[0] == None or args[0].strip() == "":
             sys.exit('renewsliver requires arg of slice name and new expiration time in UTC')
 
         name = args[0]
-        if name is None or name.strip() == "":
-            sys.exit('renewsliver got empty slicename')
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
@@ -425,16 +415,12 @@ class CallHandler(object):
                 print "Renewed sliver %s at %s (%s) until %s" % (urn, client.urn, client.url, time.isoformat())
     
     def sliverstatus(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('sliverstatus requires arg of slice name')
 
         name = args[0]
-        if name is None or name.strip() == "":
-            sys.exit('sliverstatus got empty slicename')
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
@@ -450,16 +436,12 @@ class CallHandler(object):
 
                 
     def shutdown(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('shutdown requires arg of slice name')
 
         name = args[0]
-        if name is None or name.strip() == "":
-            sys.exit('shutdown got empty slicename')
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
@@ -521,14 +503,12 @@ class CallHandler(object):
             
 
     def createslice(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('createslice requires arg of slice name')
 
         name = args[0]
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         
         slice_cred = self._do_ssl("Create Slice %s" % urn, self.framework.create_slice, urn)
@@ -541,14 +521,12 @@ class CallHandler(object):
 
         
     def deleteslice(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('deleteslice requires arg of slice name')
 
         name = args[0]
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
 
         res = self._do_ssl("Delete Slice %s" % urn, self.framework.delete_slice, urn)
@@ -556,14 +534,12 @@ class CallHandler(object):
 
 
     def getslicecred(self, args):
-        if len(args) == 0:
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('getslicecred requires arg of slice name')
 
         name = args[0]
 
-        # FIXME: Validate the slice name starts with
-        # PREFIX+slice+
-
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
         print "Slice cred for %s: %s" % (urn, cred)
@@ -583,11 +559,12 @@ class CallHandler(object):
         """Renew the slice at the clearinghouse so that the slivers can be
         renewed.
         """
-        if len(args) != 2:
+        if len(args) != 2 or args[0] == None or args[0].strip() == "":
             sys.exit('renewslice <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
         # convert the slice name to a framework urn
+        # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         # convert the desired expiration to a python datetime
         try:
