@@ -23,6 +23,7 @@
 '''Openflow / Expedient as CH. Follows GCF model. https://server:443/expedient_geni/clearinghouse/rpc/'''
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
 import traceback
 import sys
@@ -79,32 +80,27 @@ class Framework(Framework_Base):
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
-        # FIXME: Use constants
-        base = 'urn:publicid:IDN+'
-        # FIXME: Validate name from credential.publicid_to_urn
 
-        # Old OMNI configs did not have authority specified,
-        # all we can do with those is append the name to the base        
-        if not self.config.has_key('authority'):
-            if name.startswith(base):
-                return name
-            else:
-                return base + name
-        
-        auth = self.config['authority']
+        if name is None or name.strip() == '':
+            raise Exception('Empty slice name')
 
-        if name.startswith(base):
-            if not name.startswith(base+auth+"+slice+"):
-                raise Exception("Incorrect slice name")
+        if is_valid_urn(name):
+            urn = URN(None, None, None, name)
+            if not urn.getType() == "slice":
+                raise Exception("Invalid Slice name: got a non Slice URN %s", name)
+            # if config has an authority, make sure it matches
+            if self.config.has_key('authority'):
+                auth = self.config['authority']
+                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+                if urn_fmt_auth != auth:
+                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
             return name
-        
-        if name.startswith(auth):
-            return base + name
 
-        if '+' in name:
-            raise Exception("Incorrect slice name")
-                            
-        return base + auth + "+slice+" + name
+        if not self.config.has_key('authority'):
+            raise Exception("Invalid configuration: no authority defined")
+
+        auth = self.config['authority']
+        return URN(auth, "slice", name).urn_string()
 
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.

@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import logging
 import os
 import time
@@ -276,21 +277,26 @@ class Framework(Framework_Base):
 
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
-        # FIXME: Use constant from SFA util code
-        # FIXME: use something like credential.publicid_to_urn
-        base = 'urn:publicid:IDN+'
+
+        if name is None or name.strip() == '':
+            raise Exception('Empty slice name')
+
+        if is_valid_urn(name):
+            urn = URN(None, None, None, name)
+            if not urn.getType() == "slice":
+                raise Exception("Invalid Slice name: got a non Slice URN %s", name)
+            # if config has an authority, make sure it matches
+            if self.config.has_key('authority'):
+                auth = self.config['authority'].replace('.', ':')
+                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+                if urn_fmt_auth != auth:
+                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+            return name
+
+        if not self.config.has_key('authority'):
+            raise Exception("Invalid configuration: no authority defined")
+
         auth = self.config['authority'].replace('.',':')
 
-        if name.startswith(base):
-            if not name.startswith(base+auth+"+slice+"):
-                raise Exception("Incorrect slice name")
-            return name
-        
-        if name.startswith(auth):
-            return base + name
-
-        if '+' in name:
-            raise Exception("Incorrect slice name")
-                            
-        return base + auth + "+slice+" + name
+        return URN(auth, "slice", name).urn_string()
         

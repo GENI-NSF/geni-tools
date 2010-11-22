@@ -32,6 +32,7 @@ import xmlrpclib
 
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded
@@ -139,28 +140,31 @@ class Framework(Framework_Base):
         #   urn:publicid:IDN+elabinelab.geni.emulab.net+slice+tom1
         #
 
-        # FIXME: Use credential.publicid_to_urn or similar
-        # and take out this base constant - ugly
+        if name is None or name.strip() == '':
+            raise Exception('Empty slice name')
 
-        base = 'urn:publicid:IDN+'
+        if is_valid_urn(name):
+            urn = URN(None, None, None, name)
+            if not urn.getType() == "slice":
+                raise Exception("Invalid Slice name: got a non Slice URN %s", name)
+            # if config has an authority, make sure it matches
+            if self.config.has_key('sa'):
+                url = urlparse(self.config['sa'])
+                sa_host = url.hostname
+                auth = sa_host[sa_host.index('.')+1:]
+                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+                if urn_fmt_auth != auth:
+                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+            return name
+
+        if not self.config.has_key('sa'):
+            raise Exception("Invalid configuration: no slice authority (sa) defined")
+
         url = urlparse(self.config['sa'])
         sa_host = url.hostname
         auth = sa_host[sa_host.index('.')+1:]
-        if name.startswith(base):
-            if not name.startswith(base+auth+"+slice+"):
-                raise Exception("Incorrect slice name")
-            return name
-        
-        if name.startswith(auth):            
-            return base + name
 
-        if '+' in name:
-            raise Exception("Incorrect slice name")
-        
-        return base + auth + "+slice+" + name
-        
-        #slice_name = '%s+slice+%s' % (pg_site, name)
-        #return namespace.long_urn(slice_name)
+        return URN(auth, "slice", name).urn_string()
     
     def create_slice(self, urn):
         """Create a slice at the PG Slice Authority.
