@@ -68,12 +68,6 @@ from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
-class InvalidSSLPasswordException(Exception):
-    pass
-
-
-
-
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
@@ -123,7 +117,7 @@ class CallHandler(object):
         Returns the aggregates as a dict of urn => url pairs.
         """
         if self.opts.aggregate:
-            # No URN is specified, so put in 'unknown'
+            # No URN is specified, so put in 'unspecified_AM_URN'
             return dict(unspecified_AM_URN=self.opts.aggregate.strip())
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
@@ -426,7 +420,7 @@ class CallHandler(object):
             # Note that the time arg includes UTC offset as needed
             res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
             if not res:
-                print "FAILed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                print "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
             else:
                 print "Renewed sliver %s at %s (%s) until %s" % (urn, client.urn, client.url, time.isoformat())
     
@@ -476,13 +470,13 @@ class CallHandler(object):
             if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
                 print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
             else:
-                print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
+                print "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
     
     def _do_ssl(self, reason, fn, *args):
         """ Attempts to make an xmlrpc call, and will repeat the attempt
         if it failed due to a bad passphrase for the ssl key.  Also does some
-        exception handling.  Returns the xmlrpc return if everything went okay, otherwise
-        returns None."""
+        exception handling.  Returns the xmlrpc return if everything went okay, 
+        otherwise returns None."""
         
         # Change exception name?
         max_attempts = 2
@@ -504,10 +498,11 @@ class CallHandler(object):
                         self.logger.error("Wrong pass phrase after %d tries" % max_attempts)
                 else:
                     self.logger.error("%s: Unknown SSL error %s" % (failMsg, exc))
+                    if not self.logger.isEnabledFor(logging.DEBUG):
+                        self.logger.error('    ..... Run with --debug for more information')
+                    self.logger.debug(traceback.format_exc())
+
                     return None
-            except InvalidSSLPasswordException, exc:
-                self.logger.error(failMsg)
-                return None
             except xmlrpclib.Fault, fault:
                 self.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
                 return None
