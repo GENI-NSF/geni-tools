@@ -75,9 +75,12 @@ class URN(object):
             self.name = name
 
             # FIXME: check these are valid more?
-            authority = string_to_urn_format(authority)
-            type = string_to_urn_format(type)
-            name = string_to_urn_format(name)
+            if not is_valid_urn_string(authority):
+                authority = string_to_urn_format(authority)
+            if not is_valid_urn_string(type):
+                type = string_to_urn_format(type)
+            if not is_valid_urn_string(name):
+                name = string_to_urn_format(name)
             
             self.urn = '%s+%s+%s+%s' % (URN_PREFIX, authority, type, name)
             if not is_valid_urn(self.urn):
