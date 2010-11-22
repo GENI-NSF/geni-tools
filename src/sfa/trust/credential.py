@@ -697,7 +697,14 @@ class Credential(object):
             verified = os.popen('%s --verify --node-id "%s" %s %s 2>&1' \
                             % (self.xmlsec_path, ref, cert_args, filename)).read()
             if not verified.strip().startswith("OK"):
-                raise CredentialNotVerifiable("xmlsec1 error verifying cert: " + verified)
+                # xmlsec errors have a msg= which is the interesting bit.
+                mstart = verified.find("msg=")
+                msg = ""
+                if mstart > -1 and len(verified) > 4:
+                    mstart = mstart + 4
+                    mend = verified.find('\\', mstart)
+                    msg = verified[mstart:mend]
+                raise CredentialNotVerifiable("xmlsec1 error verifying cert: %s %s" % (msg, verified.strip()))
         os.remove(filename)
 
         # Verify the parents (delegation)
