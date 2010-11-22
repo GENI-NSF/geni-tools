@@ -46,7 +46,7 @@ certfile=~/.gcf/ch-cert.pem
 # am_n = ...
 
 # Begin with our own AM
-am_1 = urn:publicid:IDN+geni:gpo:gcf+am1+authority+am, http://localhost:8001
+am_1 = urn:publicid:IDN+geni:gpo:gcf:am1+authority+am, http://localhost:8001
 
 # Duration of User credentials in seconds
 user_cred_duration=86400
@@ -59,7 +59,7 @@ slice_duration=7200
 # when creating a URN for your aggregate manager
 # EG: urn:publicid:IDN+<base_name from above>.am1+authority+am
 # Resources managed by this AM be named relative to this, eg:
-# urn:publicid:IDN+<base_name>.am1+node+myLinuxGCFBox
+# urn:publicid:IDN+<base_name>:am1+node+myLinuxGCFBox
 name=am1
 
 # Address that the AM listens on
