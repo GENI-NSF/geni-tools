@@ -30,6 +30,7 @@ import time
 
 class Framework(Framework_Base):
     def __init__(self, config):
+        Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
             sys.exit('GCF Framework certfile %s doesnt exist' % config['cert'])

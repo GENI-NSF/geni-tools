@@ -149,6 +149,7 @@ def create_selfsigned_cert(filename, user, key):
 
 class Framework(Framework_Base):
     def __init__(self, config):
+        Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
 

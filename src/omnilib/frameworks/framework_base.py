@@ -20,6 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+import sys
+import os
+from omnilib.util.paths import getAbsPath
 
 class Framework_Base():
     """
@@ -38,6 +41,20 @@ class Framework_Base():
     the GENI Aggregate managers.
     
     """
+    
+    def __init__(self, config):
+        self.cert = None
+        self.key = None
+        self.cert = getAbsPath(config['cert'])
+        if not os.path.exists(self.cert):
+            sys.exit("Frameworks certfile %s doesn't exist" % self.cert)
+
+        self.key = getAbsPath(config['key'])
+        if not os.path.exists(self.key):
+            sys.exit("Frameworks keyfile %s doesn't exist" % self.key)
+
+
+        
     def get_user_cred(self):
         """
         Returns a user credential from the control framework as a string.

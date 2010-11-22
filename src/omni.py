@@ -68,22 +68,6 @@ from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
-class InvalidSSLPasswordException(Exception):
-    pass
-
-def getAbsPath(path):
-    """Return None or a normalized absolute path version of the argument string.
-    Does not check that the path exists."""
-    if path is None:
-        return None
-    if path.strip() == "":
-        return None
-    path = os.path.normcase(os.path.expanduser(path))
-    if os.path.isabs(path):
-        return path
-    else:
-        return os.path.abspath(path)
-
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
@@ -94,18 +78,10 @@ class CallHandler(object):
     def __init__(self, framework, config, opts):
         self.framework = framework
         self.logger = config['logger']
-        self.frame_config = config['selected_framework']
         self.omni_config = config['omni']
         self.config = config
         self.opts = opts
         
-        self.frame_config['cert'] = getAbsPath(self.frame_config['cert'])
-        if not os.path.exists(self.frame_config['cert']):
-            sys.exit("Frameworks certfile %s doesn't exist" % self.frame_config['cert'])
-
-        self.frame_config['key'] = getAbsPath(self.frame_config['key'])
-        if not os.path.exists(self.frame_config['key']):
-            sys.exit("Frameworks keyfile %s doesn't exist" % self.frame_config['key'])
 
     def _handle(self, args):
         if len(args) == 0:
@@ -124,8 +100,8 @@ class CallHandler(object):
         """
         clients = []
         for (urn, url) in self._listaggregates().items():
-            client = make_client(url, self.frame_config['key'],
-                                 self.frame_config['cert'])
+            client = make_client(url, self.framework.key,
+                                 self.framework.cert)
             client.urn = urn
             client.url = url
             clients.append(client)
@@ -141,7 +117,7 @@ class CallHandler(object):
         Returns the aggregates as a dict of urn => url pairs.
         """
         if self.opts.aggregate:
-            # No URN is specified, so put in 'unknown'
+            # No URN is specified, so put in 'unspecified_AM_URN'
             return dict(unspecified_AM_URN=self.opts.aggregate.strip())
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
@@ -151,18 +127,10 @@ class CallHandler(object):
                     aggs[url] = url
             return aggs                
         else:
-            try:
-                return self._do_ssl("List Aggregates", self.framework.list_aggregates)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("Failed to list aggregates")
-            except xmlrpclib.Fault, fault:
-                self.logger.error("Failed to list aggregates. CH Server says: %s", cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("Failed to list aggregates: %s", exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
-            return {}
+            aggs =  self._do_ssl("List Aggregates from control framework", self.framework.list_aggregates)
+            if aggs is  None:
+                return {}
+            return aggs
             
 
     def listresources(self, args):
@@ -189,20 +157,7 @@ class CallHandler(object):
         # Get the credential for this query
         if slicename is None or slicename == "":
             cred = None
-            try:
-                cred = self._do_ssl("Get User Credential", self.framework.get_user_cred)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("Failed to list resources")
-                sys.exit()
-            except xmlrpclib.Fault, fault:
-                self.logger.error("Failed to list resources. CH Server says: %s", cln_xmlrpclib_fault(fault))
-                sys.exit()
-            except Exception, exc:
-                self.logger.error("Failed to list resources: can't get valid user credential: %s", exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
-                sys.exit()
+            cred = self._do_ssl("Get User Credential from control framework", self.framework.get_user_cred)
 
             if cred is None:
                 sys.exit('Cannot list resources: no user credential')
@@ -224,20 +179,9 @@ class CallHandler(object):
                 self.logger.debug("Have null credential in call to ListResources!")
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
-            try:
-                rspec = self._do_ssl(("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("Failed to list resources from %s (%s)", client.urn, client.url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('Failed to list resources from %s (%s). Server says: %s',
-                                  client.urn, client.url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("Failed to list resources from %s (%s): %s", client.urn, client.url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+            rspec = self._do_ssl(("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
-            if rspec != None:
+            if not rspec is None:
                 if options.get('geni_compressed', False):
                     rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
@@ -403,19 +347,8 @@ class CallHandler(object):
 
             # Okay, send a message to the AM this resource came from
             result = None
-            client = make_client(url, self.frame_config['key'], self.frame_config['cert'])
-            try:
-                result = self._do_ssl(("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("FAILed to create sliver for %s on %s", urn, url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('FAILed to create sliver %s at %s. Server says: %s',
-                                  urn, url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("FAILed to create sliver for %s on %s: %s", urn, url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+            client = make_client(url, self.framework.key, self.framework.cert)
+            result = self._do_ssl(("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
                 try:
@@ -453,21 +386,10 @@ class CallHandler(object):
 
         # Connect to each available GENI AM 
         for client in self._getclients():
-            try:
-                if self._do_ssl(("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
-                    print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
-                else:
-                    print "FAILed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("FAILed to delete sliver %s on %s (%s)", urn, client.urn, client.url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('Failed to delete sliver %s at %s. Server says: %s',
-                                  urn, client.url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("FAILed to delete sliver %s on %s (%s): %s", urn, client.urn, client.url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+            if self._do_ssl(("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
+                print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
+            else:
+                print "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
             
     def renewsliver(self, args):
         if len(args) < 2:
@@ -495,23 +417,12 @@ class CallHandler(object):
         print 'Renewing Sliver %s until %r' % (urn, time)
 
         for client in self._getclients():
-            try:
-                # Note that the time arg includes UTC offset as needed
-                res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
-                if not res:
-                    print "FAILed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
-                else:
-                    print "Renewed sliver %s at %s (%s) until %s" % (urn, client.urn, client.url, time.isoformat())
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("FAILed to renew sliver for %s on %s (%s)", urn, client.urn, client.url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('FAILed to renew sliver %s at %s. Server says: %s',
-                                  urn, client.url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("FAILed to renew sliver for %s on %s (%s): %s", urn, client.urn, client.url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+            # Note that the time arg includes UTC offset as needed
+            res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
+            if not res:
+                print "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+            else:
+                print "Renewed sliver %s at %s (%s) until %s" % (urn, client.urn, client.url, time.isoformat())
     
     def sliverstatus(self, args):
         if len(args) == 0:
@@ -532,21 +443,11 @@ class CallHandler(object):
 
         print 'Status of Slice %s:' % urn
         for client in self._getclients():
-            try:
-                status = self._do_ssl("Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
+            status = self._do_ssl("Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
+            if status:
                 print "Sliver at %s:" % (client.url)
                 pprint.pprint(status)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("Failed to retrieve status of %s at %s.",
-                                  urn, client.url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('Failed to retrieve status of %s at %s. Server says: %s',
-                                  urn, client.url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error('Failed to retrieve status of %s at %s: %s.', urn, client.url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+
                 
     def shutdown(self, args):
         if len(args) == 0:
@@ -566,26 +467,22 @@ class CallHandler(object):
                      % (urn))
 
         for client in self._getclients():
-            try:
-                if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
-                    print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
-                else:
-                    print "FAILed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
-            except InvalidSSLPasswordException, exc:
-                self.logger.error("FAILed to shutdown sliver %s on %s (%s)", urn, client.urn, client.url)
-            except xmlrpclib.Fault, fault:
-                self.logger.error('FAILed to shutdown sliver %s at %s. Server says: %s',
-                                  urn, client.url, cln_xmlrpclib_fault(fault))
-            except Exception, exc:
-                self.logger.error("FAILed to shutdown sliver %s on %s (%s): %s", urn, client.urn, client.url, exc)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
+            if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
+                print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
+            else:
+                print "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
     
     def _do_ssl(self, reason, fn, *args):
+        """ Attempts to make an xmlrpc call, and will repeat the attempt
+        if it failed due to a bad passphrase for the ssl key.  Also does some
+        exception handling.  Returns the xmlrpc return if everything went okay, 
+        otherwise returns None."""
+        
         # Change exception name?
         max_attempts = 2
         attempt = 0
+        
+        failMsg = "Call for %s failed." % reason
         while(attempt < max_attempts):
             attempt += 1
             try:
@@ -598,27 +495,30 @@ class CallHandler(object):
                     if attempt < max_attempts:
                         self.logger.info('.... please retry.')
                     else:
-                        raise InvalidSSLPasswordException('Wrong pass phrase after %d tries' % max_attempts)
+                        self.logger.error("Wrong pass phrase after %d tries" % max_attempts)
                 else:
-                    raise
+                    self.logger.error("%s: Unknown SSL error %s" % (failMsg, exc))
+                    if not self.logger.isEnabledFor(logging.DEBUG):
+                        self.logger.error('    ..... Run with --debug for more information')
+                    self.logger.debug(traceback.format_exc())
 
-    def getversion(self, args):
-        for client in self._getclients():
-            try:
-                version = self._do_ssl("GetVersion at %s" % (client.url), client.GetVersion)
-                print "%s (%s) %s" % (client.urn, client.url, version)
-            except InvalidSSLPasswordException, exc:
-                msg = "Failed to get version information for %s at (%s)."
-                self.logger.error(msg, client.urn, client.url)
+                    return None
             except xmlrpclib.Fault, fault:
-                self.logger.error('Failed to get version of %s. Server says: %s',
-                                  client.url, cln_xmlrpclib_fault(fault))
+                self.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
+                return None
             except Exception, exc:
-                msg = "Failed to get version information for %s at (%s): %s."
-                self.logger.error(msg, client.urn, client.url, exc)
+                self.logger.error("%s: %s" % (failMsg, exc))
                 if not self.logger.isEnabledFor(logging.DEBUG):
                     self.logger.error('    ..... Run with --debug for more information')
                 self.logger.debug(traceback.format_exc())
+                return None
+
+    def getversion(self, args):
+        for client in self._getclients():
+            version = self._do_ssl("GetVersion at %s" % (str(client.url)), client.GetVersion)
+            if not version is None:
+                print "%s (%s) %s" % (client.urn, client.url, version)
+            
 
     def createslice(self, args):
         if len(args) == 0:
@@ -631,24 +531,13 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
         
-        slice_cred = None
-        try:
-            slice_cred = self._do_ssl("Create Slice %s" % urn, self.framework.create_slice, urn)
-            if slice_cred:
-                print "Created slice with Name %s, URN %s" % (name, urn)
-            else:
-                print "Create Slice FAILed for slice name %s." % (name)
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    print "   Try re-running with --debug for more information."
-        except InvalidSSLPasswordException, exc:
-            self.logger.error("FAILed to create slice %s", urn)
-        except xmlrpclib.Fault, fault:
-            self.logger.error("FAILed to create slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
-        except Exception, exc:
-            self.logger.error("FAILed to create slice %s: %s", urn, exc)
+        slice_cred = self._do_ssl("Create Slice %s" % urn, self.framework.create_slice, urn)
+        if slice_cred:
+            print "Created slice with Name %s, URN %s" % (name, urn)
+        else:
+            print "Create Slice Failed for slice name %s." % (name)
             if not self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.error('    ..... Run with --debug for more information')
-            self.logger.debug(traceback.format_exc())
+                print "   Try re-running with --debug for more information."
 
         
     def deleteslice(self, args):
@@ -662,19 +551,8 @@ class CallHandler(object):
 
         urn = self.framework.slice_name_to_urn(name)
 
-        res = None
-        try:
-            res = self._do_ssl("Delete Slice %s" % urn, self.framework.delete_slice, urn)
-            print "Delete Slice %s result: %r" % (name, res)
-        except InvalidSSLPasswordException, exc:
-            self.logger.error("FAILed to delete slice %s", urn)
-        except xmlrpclib.Fault, fault:
-            self.logger.error("FAILed to delete slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault, fault)
-        except Exception, exc:
-            self.logger.error("FAILed to delete slice %s: %s", urn, exc)
-            if not self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.error('    ..... Run with --debug for more information')
-            self.logger.debug(traceback.format_exc())
+        res = self._do_ssl("Delete Slice %s" % urn, self.framework.delete_slice, urn)
+        print "Delete Slice %s result: %r" % (name, res)
 
 
     def getslicecred(self, args):
@@ -694,19 +572,7 @@ class CallHandler(object):
         '''Try a couple times to get the given slice credential.
         Retry on wrong pass phrase.'''
 
-        try:
-            return self._do_ssl("Get Slice Cred %s" % urn, self.framework.get_slice_cred, urn)
-        except InvalidSSLPasswordException, exc:
-            self.logger.error("FAILed to get slice credential for %s", urn)
-        except xmlrpclib.Fault, fault:
-            self.logger.error("FAILed to get slice credential for %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
-        except Exception, exc:
-            self.logger.error("FAILed to get slice credential for %s: %s", urn, exc)
-            if not self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.error('    ..... Run with --debug for more information')
-            self.logger.debug(traceback.format_exc())
-
-        return None
+        return self._do_ssl("Get Slice Cred %s" % urn, self.framework.get_slice_cred, urn)
 
     def listaggregates(self, args):
         """Print the aggregates federated with the control framework."""
@@ -732,23 +598,12 @@ class CallHandler(object):
             sys.exit(msg)
 
         # Try to renew the slice
-        out_expiration = None
-        try:
-            out_expiration = self._do_ssl("Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
-        except InvalidSSLPasswordException, exc:
-            self.logger.error("FAILed to renew slice %s", urn)
-        except xmlrpclib.Fault, fault:
-            self.logger.error("FAILed to renew slice %s. CH Server says: %s", urn, cln_xmlrpclib_fault(fault))
-        except Exception, exc:
-            self.logger.error("FAILed to renew slice %s: %s", urn, exc)
-            if not self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.error('    ..... Run with --debug for more information')
-            self.logger.debug(traceback.format_exc())
+        out_expiration = self._do_ssl("Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
 
         if out_expiration:
             print "Slice %s now expires at %s" % (name, out_expiration)
         else:
-            print "FAILed to renew slice %s" % (name)
+            print "Failed to renew slice %s" % (name)
 
 
 def parse_args(argv):
@@ -763,7 +618,7 @@ def parse_args(argv):
                       help="communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 def configure_logging(opts):
     level = logging.INFO
@@ -774,17 +629,17 @@ def configure_logging(opts):
     logger.setLevel(level)
     return logger
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-    opts, args = parse_args(argv)
-    logger = configure_logging(opts)
-
+def load_config(opts, logger):
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
 
     if opts.configfile:
-        configfiles.insert(0, opts.configfile)
+        # if configfile defined on commandline does not exist, fail
+        if os.path.exists( opts.configfile ):
+            configfiles.insert(0, opts.configfile)
+        else:
+            sys.exit("Config file '%s' does not exist"
+                     % (opts.configfile))
 
     # Find the first valid config file
     for cf in configfiles:         
@@ -798,7 +653,7 @@ def main(argv=None):
                      An example config file can be found in the source tarball or in /etc/omni/templates/""")            
 
     logger.info("Loading config file %s", filename)
-
+    
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
@@ -837,11 +692,24 @@ def main(argv=None):
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
         config['selected_framework'][key] = val
-        
+    
+    return config
+
+def load_framework(config):
     cf_type = config['selected_framework']['type']
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     framework = framework_mod.Framework(config['selected_framework'])
+    return framework    
+
+    
+    
+
+def main(argv=None):
+    opts, args = parse_args(sys.argv[1:])    
+    logger = configure_logging(opts)
+    config = load_config(opts, logger)        
+    framework = load_framework(config)
         
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
