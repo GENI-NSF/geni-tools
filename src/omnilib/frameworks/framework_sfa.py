@@ -149,7 +149,6 @@ def create_selfsigned_cert(filename, user, key):
 
 class Framework(Framework_Base):
     def __init__(self, config):
-        Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
 
@@ -181,6 +180,9 @@ class Framework(Framework_Base):
                 
         if not os.path.exists(config['key']):
             sys.exit('SFA Framework keyfile %s doesnt exist' % config['key'])
+
+        Framework_Base.__init__(self,config)        
+
         if not config.has_key('verbose'):
             config['verbose'] = False
         logger = logging.getLogger('omni.sfa')
