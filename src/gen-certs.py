@@ -204,6 +204,10 @@ def main(argv=None):
     AM_KEY_FILE =getAbsPath(config['aggregate_manager']['keyfile'])
     USER_CERT_FILE = getAbsPath(config['gcf-test']['certfile'])
     USER_KEY_FILE = getAbsPath(config['gcf-test']['keyfile'])
+
+    # FIXME: If username != alice then substitute actual username
+    # in user_cert_file and user_key_file as appropriate 
+    # like USER_CERT_FILE = s/alice/$username/
     
     try:
         for p in [CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE]:
