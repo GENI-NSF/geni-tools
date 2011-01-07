@@ -161,6 +161,9 @@ class Keypair:
         ASN1.set_time(500)
         m2x509.set_not_before(ASN1)
         m2x509.set_not_after(ASN1)
+        # x509v3 so it can have extensions
+        # prob not necc since this cert itself is junk but still...
+        m2x509.set_version(2) 
         junk_key = Keypair(create=True)
         m2x509.sign(pkey=junk_key.get_m2_pkey(), md="sha1")
 
@@ -283,6 +286,7 @@ class Certificate:
         self.cert.set_serial_number(3)
         self.cert.gmtime_adj_notBefore(0)
         self.cert.gmtime_adj_notAfter(60*60*24*365*5) # five years
+        self.cert.set_version(2) # x509v3 so it can have extensions
 
     ##
     # Given a pyOpenSSL X509 object, store that object inside of this
