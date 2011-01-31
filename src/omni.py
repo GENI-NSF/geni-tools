@@ -61,10 +61,10 @@ import zlib
 import ConfigParser
 
 import dateutil.parser
-from omnilib.xmlrpc.client import make_client
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
+import omnilib.xmlrpc.client
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -100,8 +100,7 @@ class CallHandler(object):
         """
         clients = []
         for (urn, url) in self._listaggregates().items():
-            client = make_client(url, self.framework.key,
-                                 self.framework.cert)
+            client = make_client(url, self.framework, self.opts)
             client.urn = urn
             client.url = url
             clients.append(client)
@@ -139,7 +138,7 @@ class CallHandler(object):
         rspecs = {}
         options = {}
 
-        options['geni_compressed'] = True;
+        options['geni_compressed'] = False;
         
         # check command line args
         if self.opts.native and not self.opts.aggregate:
@@ -345,7 +344,7 @@ class CallHandler(object):
 
             # Okay, send a message to the AM this resource came from
             result = None
-            client = make_client(url, self.framework.key, self.framework.cert)
+            client = make_client(url, self.framework, self.opts)
             result = self._do_ssl(("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
@@ -595,6 +594,8 @@ def parse_args(argv):
                       help="communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
+    parser.add_option("--no-ssl", dest="ssl", action="store_false",
+                      default=True, help="do not use ssl")
     return parser.parse_args(argv)
 
 def configure_logging(opts):
@@ -679,8 +680,13 @@ def load_framework(config):
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
 
-    
-    
+def make_client(url, framework, opts):
+    if opts.ssl:
+        return omnilib.xmlrpc.client.make_client(url,
+                                                 framework.key,
+                                                 framework.cert)
+    else:
+        return omnilib.xmlrpc.client.make_client(url, None, None)
 
 def main(argv=None):
     opts, args = parse_args(sys.argv[1:])    
