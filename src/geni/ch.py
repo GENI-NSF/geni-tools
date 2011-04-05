@@ -318,6 +318,7 @@ class Clearinghouse(object):
         slice_cred = self.create_slice_credential(user_gid, slice_gid,
                                                   duration_secs)
         self.logger.info("Slice %s renewed to %s", slice_urn, expire_str)
+        self.slices[slice_urn] = slice_cred
         return True
 
     def DeleteSlice(self, urn_req):
