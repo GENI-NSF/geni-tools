@@ -139,8 +139,9 @@ def get_options_rspec(omnispec, filter_allocated):
     # Convert it to XML
     root = ET.Element('rspec')
     root.set('xmlns', "http://protogeni.net/resources/rspec/0.2")
+    root.set('type', "request")
     
-        
+    
     for id, r in omnispec.get_resources().items():
         if filter_allocated and not r.get_allocate():
             continue
@@ -150,6 +151,12 @@ def get_options_rspec(omnispec, filter_allocated):
                 node = ET.SubElement(root, 'node', virtual_id='geni%s'%i, virtualization_type='emulab_vnode',
                               startup_command=r['options']['startup command'] )
                 if r['options']['os'] != '':
+                    ET.SubElement(node, 'disk_image', name='urn:publicid:IDN+emulab.net+image+emulab-ops//%s' % r['options']['os'])
+        elif res_type == 'PC':
+            node = ET.SubElement(root, 'node', component_urn=id, component_manager_urn=omnispec.get_urn(), virtual_id='geni_%s'%r['name'],
+                                 virtualization_type='emulab_vnode', virtualization_subtype=r['options']['virtual subtype'], 
+                                 startup_command=r['options']['startup command'] )
+            if r['options']['os'] != '':
                     ET.SubElement(node, 'disk_image', name='urn:publicid:IDN+emulab.net+image+emulab-ops//%s' % r['options']['os'])
                 
         else:

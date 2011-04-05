@@ -40,14 +40,17 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         if self._timeout:
             conn._conn.timeout = self._timeout
         return conn
-    
 
-    
-def make_client(url, keyfile, certfile, verbose=False, timeout=None, allow_none=False):
+
+def make_client(url, keyfile, certfile, verbose=False, timeout=None,
+                allow_none=False):
     """Create an SSL connection to an XML RPC server.
     Returns the XML RPC server proxy.
     """
-    cert_transport = SafeTransportWithCert(keyfile=keyfile, certfile=certfile,
-                                           timeout=timeout)
+    cert_transport = None
+    if keyfile and certfile:
+        cert_transport = SafeTransportWithCert(keyfile=keyfile,
+                                               certfile=certfile,
+                                               timeout=timeout)
     return xmlrpclib.ServerProxy(url, transport=cert_transport,
                                  verbose=verbose, allow_none=allow_none)

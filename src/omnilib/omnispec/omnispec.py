@@ -54,6 +54,8 @@ class OmniSpec(dict):
         return self.get('resources')
     def get_type(self):
         return self.get('type')
+    def get_urn(self):
+        return self.get('urn')
     
     def __str__(self):
         return self.to_json()

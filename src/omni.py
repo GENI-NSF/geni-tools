@@ -61,10 +61,10 @@ import zlib
 import ConfigParser
 
 import dateutil.parser
-from omnilib.xmlrpc.client import make_client
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
+import omnilib.xmlrpc.client
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -100,8 +100,7 @@ class CallHandler(object):
         """
         clients = []
         for (urn, url) in self._listaggregates().items():
-            client = make_client(url, self.framework.key,
-                                 self.framework.cert)
+            client = make_client(url, self.framework, self.opts)
             client.urn = urn
             client.url = url
             clients.append(client)
@@ -139,7 +138,7 @@ class CallHandler(object):
         rspecs = {}
         options = {}
 
-        options['geni_compressed'] = True;
+        options['geni_compressed'] = False;
         
         # check command line args
         if self.opts.native and not self.opts.aggregate:
@@ -351,7 +350,7 @@ class CallHandler(object):
 
             # Okay, send a message to the AM this resource came from
             result = None
-            client = make_client(url, self.framework.key, self.framework.cert)
+            client = make_client(url, self.framework, self.opts)
             result = self._do_ssl(("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
@@ -384,6 +383,9 @@ class CallHandler(object):
             sys.exit('Cannot delete sliver %s: No slice credential'
                      % (urn))
 
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
         # Connect to each available GENI AM 
         for client in self._getclients():
             if self._do_ssl(("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
@@ -412,6 +414,9 @@ class CallHandler(object):
 
         print 'Renewing Sliver %s until %r' % (urn, time)
 
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
         for client in self._getclients():
             # Note that the time arg includes UTC offset as needed
             res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
@@ -433,7 +438,9 @@ class CallHandler(object):
             sys.exit('Cannot get sliver status for %s: No slice credential'
                      % (urn))
 
-        print 'Status of Slice %s:' % urn
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
         for client in self._getclients():
             status = self._do_ssl("Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
             if status:
@@ -454,6 +461,9 @@ class CallHandler(object):
             sys.exit('Cannot shutdown slice %s: No slice credential'
                      % (urn))
 
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
         for client in self._getclients():
             if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
                 print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
@@ -603,6 +613,10 @@ def parse_args(argv):
                       help="communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
+    parser.add_option("--no-ssl", dest="ssl", action="store_false",
+                      default=True, help="do not use ssl")
+    parser.add_option("--orca-slice-id",
+                      help="use the given orca slice id")
     return parser.parse_args(argv)
 
 def configure_logging(opts):
@@ -687,8 +701,13 @@ def load_framework(config):
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
 
-    
-    
+def make_client(url, framework, opts):
+    if opts.ssl:
+        return omnilib.xmlrpc.client.make_client(url,
+                                                 framework.key,
+                                                 framework.cert)
+    else:
+        return omnilib.xmlrpc.client.make_client(url, None, None)
 
 def main(argv=None):
     opts, args = parse_args(sys.argv[1:])    
