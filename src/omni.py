@@ -47,6 +47,7 @@
     clearinghouse APIs requires adding a new Framework extension class.
 """
 
+import datetime
 from copy import copy
 import json
 import logging
@@ -65,6 +66,8 @@ from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 import omnilib.xmlrpc.client
+
+import sfa.trust.credential as cred
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -281,6 +284,8 @@ class CallHandler(object):
             sys.exit('Cannot create sliver %s: No slice credential'
                      % (urn))
 
+        self._print_slice_expiration(urn)
+
         # Load up the user's edited omnispec
         specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
@@ -412,7 +417,16 @@ class CallHandler(object):
         except Exception, exc:
             sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
-        print 'Renewing Sliver %s until %r' % (urn, time)
+        slicecred_obj = cred.Credential(string=slice_cred)
+        self._print_slice_expiration(urn, slice_cred)
+        if time > slicecred_obj.expiration:
+            sys.exit('Cannot renew sliver %s until %s which is after slice expiration time %s' % (urn, time, slicecred_obj.expiration))
+        elif time <= datetime.datetime.utcnow():
+            self.logger.info('Sliver %s will be set to expire now' % urn)
+        else:
+            self.logger.debug('Slice expires at %s after requested time %s' % (slicecred_obj.expiration, time))
+
+        print 'Renewing Sliver %s until %s' % (urn, time)
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -558,10 +572,41 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
+
+        self._print_slice_expiration(urn)
+
         # FIXME: Print the non slice cred bit to STDERR so
         # capturing just stdout givs just the cred?
         print "Slice cred for %s: %s" % (urn, cred)
         
+    def _print_slice_expiration(self, urn, string=None):
+        '''Check when the slice expires and print out to STDOUT'''
+        # FIXME: push this to config?
+        shorthours = 3
+        middays = 1
+
+        if string is None:
+            if urn is None or urn == '':
+                return
+            string = self._get_slice_cred(urn)
+        if string is None:
+            # failed to get a slice string. Can't check
+            return
+
+        slicecred_obj = cred.Credential(string=string)
+        sliceexp = slicecred_obj.expiration
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            print 'Slice %s has expired at %s' % (urn, sliceexp)
+        elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
+            print 'Slice %s expires in <= %d hours' % (urn, shorthours)
+            self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
+            self.logger.debug('It is now %s' % (datetime.datetime.now()))
+        elif sliceexp - datetime.timedelta(days=middays) <= now:
+            print 'Slice %s expires within %d day' % (urn, middays)
+        else:
+            self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
+
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.
         Retry on wrong pass phrase.'''
@@ -599,6 +644,7 @@ class CallHandler(object):
             print "Slice %s now expires at %s" % (name, out_expiration)
         else:
             print "Failed to renew slice %s" % (name)
+        self._print_slice_expiration(urn)
 
 
 def parse_args(argv):
