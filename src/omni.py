@@ -179,6 +179,7 @@ class CallHandler(object):
                 self.logger.debug("Have null credential in call to ListResources!")
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
+            self.logger.debug("Doing listresources with options %r", options)
             rspec = self._do_ssl(("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
             if not rspec is None:
@@ -324,10 +325,15 @@ class CallHandler(object):
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
             if not url in aggregate_urls:
-                self.logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
-                your Clearinghouse or it is not in the optionally provided list of aggregates in
-                your configuration file.  By creating this sliver, you will be unable to check its
-                status or delete it.""" % (url))
+                self.logger.info("""Be sure to remember (write down) AM URL %s. You are reserving
+                    resources there, and your clearinghouse and config file won't remind you
+                    to check that sliver later. Future listresources/sliverstatus/deletesliver 
+                    calls need to include the '-a %s' arguments again to act on this sliver.""" % (url, url))
+
+#                self.logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
+#                your Clearinghouse or it is not in the optionally provided list of aggregates in
+#                your configuration file.  By creating this sliver, you will be unable to check its
+#                status or delete it.""" % (url))
                 
                 res = raw_input("Would you like to continue? (y/N) ")
                 if not res.lower().startswith('y'):
@@ -542,6 +548,8 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
+        # FIXME: Print the non slice cred bit to STDERR so
+        # capturing just stdout givs just the cred?
         print "Slice cred for %s: %s" % (urn, cred)
         
     def _get_slice_cred(self, urn):
