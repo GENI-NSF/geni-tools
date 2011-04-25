@@ -87,6 +87,13 @@ class Framework_Base():
         """
         raise NotImplementedError('list_aggregates')
 
+    def list_my_slices(self, username):
+        """
+        Get a list of slices for this user.
+        Returns: a list of slice names
+        """
+        raise NotImplementedError('list_my_slices')
+
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
         # Default implementation just converts to generic URN.

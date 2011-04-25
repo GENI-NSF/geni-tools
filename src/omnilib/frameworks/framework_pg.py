@@ -201,6 +201,10 @@ class Framework(Framework_Base):
         # It appears that delete_slice should return something. I'll return a string.
         return 'ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.'
 
+    def list_my_slices(self, user):
+        slice_list = self._list_my_slices( user )
+        return slice_list
+
     def list_aggregates(self):
         if self.aggs:
             return self.aggs
@@ -244,7 +248,43 @@ class Framework(Framework_Base):
             else:
                 # Success. requested expiration worked, return it.
                 return expiration_dt
+    # def _get_slices(self):
+    #     """Gets the ProtoGENI slices from the ProtoGENI
+    #     Clearinghouse. Returns a list of dictionaries as documented
+    #     in https://www.protogeni.net/trac/protogeni/wiki/ClearingHouseAPI2#List
+    #     """
+    #     cred = self.get_user_cred()
+    #     if not cred:
+    #         raise Exception("No user credential available.")
+    #     pg_response = self.ch.List({'credential': cred, 'type': 'Slices'})
 
+    #     code = pg_response['code']
+    #     if code:
+    #         self.logger.error("Received error code: %d", code)
+    #         output = pg_response['output']
+    #         self.logger.error("Received error message: %s", output)
+    #         # Return an empty list.
+    #         return list()
+    #     # value is a list of dicts, each containing info about an aggregate
+    #     return pg_response['value']
+
+    def _list_my_slices(self, user):
+        """Gets the ProtoGENI slices from the ProtoGENI Slice Authority. """
+        cred = self.get_user_cred()
+        if not cred:
+            raise Exception("No user credential available.")        
+        pg_response = self.sa.Resolve({'credential': cred, 'type': 'User', 'hrn': user})
+        code = pg_response['code']
+        if code:
+            self.logger.error("Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            # Return an empty list.
+            return list()
+        # value is a dict, containing a list of slices
+        return pg_response['value']['slices']
+
+        
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI
         Clearinghouse. Returns a list of dictionaries as documented

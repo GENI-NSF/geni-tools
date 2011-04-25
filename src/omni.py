@@ -130,7 +130,31 @@ class CallHandler(object):
             if aggs is  None:
                 return {}
             return aggs
-            
+
+
+    def listmyslices(self, args):
+        """Provides a list of slices of user provided as first argument """
+        if len(args) > 0:
+            username = args[0].strip()
+        else:
+            sys.exit('listmyslices requires 1 arg: user')
+
+        retStr = ""
+        slices=None
+        slices = self._listmyslices( username )
+        if slices is None:
+            slices = []
+        elif len(slices) > 0:
+            retStr += "User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices))
+        else:
+            retStr += "User '%s' has NO slices.\n"%username
+
+        return retStr, slices
+
+
+    def _listmyslices( self, username ):
+        slices =  self._do_ssl("List Slices from Slice Authority", self.framework.list_my_slices, username)
+        return slices
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
@@ -498,6 +522,13 @@ class CallHandler(object):
             except xmlrpclib.Fault, fault:
                 self.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
                 return None
+
+            except NotImplementedError, exc:
+                self.logger.error("%s: %s" % (failMsg, exc))
+                self.logger.error("Command NOT IMPLEMENTED on this control framework.")
+                self.logger.debug(traceback.format_exc())
+                return None                
+
             except Exception, exc:
                 self.logger.error("%s: %s" % (failMsg, exc))
                 if not self.logger.isEnabledFor(logging.DEBUG):
