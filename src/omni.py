@@ -68,6 +68,7 @@ from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 import omnilib.xmlrpc.client
 
 import sfa.trust.credential as cred
+#import sfa.trust.gid as gid
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -321,6 +322,27 @@ class CallHandler(object):
             except Exception, exc:
                 self.logger.warn("Failed to read user key from %s: %s" %(user['keys'], exc))
             user['keys'] = newkeys
+            if len(newkeys) == 0:
+                self.logger.warn("Empty keys for user %s", user['urn'])
+            else:
+                self.logger.debug("Newkeys: %r", newkeys)
+
+#            # Now error check the URN. It has to match that in the cert
+#            # for AMs of type pg with tag < Tag v4.240? or stable-20110420?
+#            # FIXME: Complain if NO urn is that in the cert?
+#            # Only do the complaint if there is a PG AM that is old?
+#            # Or somehow hold of complaining until per AM we have an issue?
+#            certurn = ''
+#            try:
+#                certurn = gid.GID(filename=self.framework.cert).get_urn()
+#            except Exception, exc:
+#                self.logger.warn("Failed to get URN from cert %s: %s", self.framework.cert, exc)
+#            if certurn != user['urn']:
+#                self.logger.warn("Keys MAY not be installed for user %s. In PG prior to stable-20110420, the user URN must match that in your certificate. Your cert has urn %s but you specified that user %s has URN %s. Try making your omni_config user have a matching URN.", user, certurn, user, user['urn'])
+#                # FIXME: if len(slice_users) == 1 then use the certurn?
+
+#        if len(slice_users) < 1:
+#            self.logger.warn("No user keys found to be uploaded")
         
         # Perform the allocations
         aggregate_urls = self._listaggregates().values()
@@ -508,6 +530,22 @@ class CallHandler(object):
                         self.logger.info('.... please retry.')
                     else:
                         self.logger.error("Wrong pass phrase after %d tries" % max_attempts)
+                elif exc.errno == 1 and exc.strerror.find("error:14094418") > -1:
+                    # Handle SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
+                    import sfa.trust.gid as gid
+                    certiss = ''
+                    certsubj = ''
+                    try:
+                        certObj = gid.GID(filename=self.framework.cert)
+                        certiss = certObj.get_issuer()
+                        certsubj = certObj.get_urn()
+                    except:
+                        pass
+                    self.logger.error("Server does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another server. Can't do %s.", certiss, certsubj, reason)
+                    if not self.logger.isEnabledFor(logging.DEBUG):
+                        self.logger.error('    ..... Run with --debug for more information')
+                    self.logger.debug(traceback.format_exc())
+                    return None
                 else:
                     self.logger.error("%s: Unknown SSL error %s" % (failMsg, exc))
                     if not self.logger.isEnabledFor(logging.DEBUG):
