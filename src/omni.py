@@ -721,8 +721,14 @@ def load_config(opts, logger):
         if os.path.exists( opts.configfile ):
             configfiles.insert(0, opts.configfile)
         else:
-            sys.exit("Config file '%s' does not exist"
-                     % (opts.configfile))
+            # Check maybe the default directory for the file
+            configfile = os.path.join( '~/.gcf', opts.configfile )
+            configfile = os.path.expanduser( configfile )
+            if os.path.exists( configfile ):
+                configfiles.insert(0, configfile)
+            else:
+                sys.exit("Config file '%s'or '%s' does not exist"
+                     % (opts.configfile, configfile))
 
     # Find the first valid config file
     for cf in configfiles:         
