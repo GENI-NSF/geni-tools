@@ -57,6 +57,7 @@ import pprint
 import ssl
 import sys
 import traceback
+import xml.dom.minidom as md
 import xmlrpclib
 import zlib
 import ConfigParser
@@ -200,7 +201,6 @@ class CallHandler(object):
             if rspecs and rspecs != {}:
                 rspec = rspecs.values()[0]
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
@@ -367,7 +367,6 @@ class CallHandler(object):
                 
             if not self.opts.native:
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
@@ -382,7 +381,6 @@ class CallHandler(object):
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in result:
                         newl = '\n'
