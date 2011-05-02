@@ -26,7 +26,6 @@ import os
 import socket
 import ssl
 import sys
-import time
 from urlparse import urlparse
 import xmlrpclib
 

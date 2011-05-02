@@ -26,7 +26,6 @@ from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
 import traceback
 import sys
-import time
 
 class Framework(Framework_Base):
     def __init__(self, config):
