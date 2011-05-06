@@ -11,8 +11,9 @@ import tempfile
 import xml.etree.ElementTree as ET
 from omnilib.xmlrpc.client import make_client
 
-SLICE_NAME='test_monitor2'
+SLICE_NAME='test_monitor'
 TMP_DIR = '/tmp'
+
  #  292  ./omni.py getversion
  #  293  ./omni.py listresources 
  #  294  ./omni.py createslice    
@@ -204,7 +205,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_renewsliver_success(self):
-      newtime = (datetime.datetime.now()+datetime.timedelta(hours=12)).isoformat()
+      newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
       text, retTime = self.call('renewsliver', [SLICE_NAME, newtime])
       if retTime is None:
          successFail = False
