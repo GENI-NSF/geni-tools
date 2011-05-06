@@ -272,10 +272,16 @@ class ReferenceAggregateManager(object):
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
+        # FIXME: Fill in correct values for others
+        # url
+        # urn
+        # hostname
+        # code_tag
+        # hrn
         defad = dict(type="GCF", version=0.1)
         reqver = [dict(type="GCF", version=0.1, schema="", namespace="", extensions=[])]
         adver = [dict(type="GCF", version=0.1, schema="", namespace="", extensions=[])]
-        versions = dict(default_ad_rspec=defad, geni_api=1, request_rspec_versions=reqver, ad_rspec_versions=adver)
+        versions = dict(default_ad_rspec=defad, geni_api=1, request_rspec_versions=reqver, ad_rspec_versions=adver, interface='aggregate', url='FIXME', urn='FIXME', hostname='FIXME', code_tag='FIXME', hrn='FIXME')
         return versions
 
     # The list of credentials are options - some single cred
