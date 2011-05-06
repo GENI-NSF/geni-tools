@@ -46,6 +46,7 @@ elif sys.version_info >= (3,):
 
 import optparse
 import os.path
+import string
 
 import geni
 import sfa.trust.gid as gid
@@ -154,7 +155,7 @@ def make_user_cert(dir, username, ch_keys, ch_gid):
 # Make a Credential for Alice
 #alice_cred = create_user_credential(alice_gid, CH_KEY_FILE, CH_CERT_FILE)
 #alice_cred.save_to_file('../alice-user-cred.xml')
-    print "Created Experimenter %s cert/keys in %s" % (username, os.path.join(dir, USER_CERT_FILE))
+    print "Created Experimenter %s cert/keys in %s and %s" % (username, os.path.join(dir, USER_CERT_FILE), os.path.join(dir, USER_KEY_FILE))
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -205,9 +206,14 @@ def main(argv=None):
     USER_CERT_FILE = getAbsPath(config['gcf-test']['certfile'])
     USER_KEY_FILE = getAbsPath(config['gcf-test']['keyfile'])
 
-    # FIXME: If username != alice then substitute actual username
+    # If username != alice then substitute actual username
     # in user_cert_file and user_key_file as appropriate 
     # like USER_CERT_FILE = s/alice/$username/
+    # Of course if the user edits the file to have something
+    # other than alice in the filename then this does something odd
+    if username != 'alice':
+        USER_CERT_FILE = string.replace(USER_CERT_FILE, 'alice', username)
+        USER_KEY_FILE = string.replace(USER_KEY_FILE, 'alice', username)
     
     try:
         for p in [CH_CERT_FILE, CH_KEY_FILE, AM_CERT_FILE, AM_KEY_FILE, USER_CERT_FILE, USER_KEY_FILE]:

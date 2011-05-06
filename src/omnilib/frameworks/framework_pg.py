@@ -26,7 +26,6 @@ import os
 import socket
 import ssl
 import sys
-import time
 from urlparse import urlparse
 import xmlrpclib
 
@@ -62,10 +61,10 @@ class Framework(Framework_Base):
             sys.exit('PG Framework keyfile %s doesnt exist' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
-	else:
-	    config['verbose'] = config['verbose'].lower() in ['true', '1', 't', 'yes', 'on']
-	if config['verbose']:
-		self.logger.info('Verbose logging is on')
+        else:
+            config['verbose'] = config['verbose'].lower() in ['true', '1', 't', 'yes', 'on']
+        if config['verbose']:
+            self.logger.info('Verbose logging is on')
         self.config = config
         self.logger.debug("Configured with key file %s", config['key'])
         

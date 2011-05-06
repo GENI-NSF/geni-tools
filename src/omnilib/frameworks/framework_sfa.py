@@ -26,7 +26,6 @@ from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import logging
 import os
 import time
-import datetime
 import sys
 
 

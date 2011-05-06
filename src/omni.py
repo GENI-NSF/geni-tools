@@ -63,6 +63,7 @@
     
 """
 
+import datetime
 from copy import copy
 import json
 import logging
@@ -72,6 +73,7 @@ import pprint
 import ssl
 import sys
 import traceback
+import xml.dom.minidom as md
 import xmlrpclib
 import zlib
 import ConfigParser
@@ -81,6 +83,9 @@ from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 import omnilib.xmlrpc.client
+
+import sfa.trust.credential as cred
+#import sfa.trust.gid as gid
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 
@@ -218,6 +223,7 @@ class CallHandler(object):
                 self.logger.debug("Have null credential in call to ListResources!")
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
+            self.logger.debug("Doing listresources with options %r", options)
             rspec = self._do_ssl(("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
             if not rspec is None:
@@ -235,7 +241,6 @@ class CallHandler(object):
             if rspecs and rspecs != {}:
                 rspec = rspecs.values()[0]
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
@@ -323,6 +328,8 @@ class CallHandler(object):
             sys.exit('Cannot create sliver %s: No slice credential'
                      % (urn))
 
+        retVal += self._print_slice_expiration(urn)
+
         # Load up the user's edited omnispec
         specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
@@ -358,6 +365,27 @@ class CallHandler(object):
             except Exception, exc:
                 self.logger.warn("Failed to read user key from %s: %s" %(user['keys'], exc))
             user['keys'] = newkeys
+            if len(newkeys) == 0:
+                self.logger.warn("Empty keys for user %s", user['urn'])
+            else:
+                self.logger.debug("Newkeys: %r", newkeys)
+
+#            # Now error check the URN. It has to match that in the cert
+#            # for AMs of type pg with tag < Tag v4.240? or stable-20110420?
+#            # FIXME: Complain if NO urn is that in the cert?
+#            # Only do the complaint if there is a PG AM that is old?
+#            # Or somehow hold of complaining until per AM we have an issue?
+#            certurn = ''
+#            try:
+#                certurn = gid.GID(filename=self.framework.cert).get_urn()
+#            except Exception, exc:
+#                self.logger.warn("Failed to get URN from cert %s: %s", self.framework.cert, exc)
+#            if certurn != user['urn']:
+#                self.logger.warn("Keys MAY not be installed for user %s. In PG prior to stable-20110420, the user URN must match that in your certificate. Your cert has urn %s but you specified that user %s has URN %s. Try making your omni_config user have a matching URN.", user, certurn, user, user['urn'])
+#                # FIXME: if len(slice_users) == 1 then use the certurn?
+
+#        if len(slice_users) < 1:
+#            self.logger.warn("No user keys found to be uploaded")
         
         # Perform the allocations
         aggregate_urls = self._listaggregates().values()
@@ -366,10 +394,15 @@ class CallHandler(object):
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
             if not url in aggregate_urls:
-                self.logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
-                your Clearinghouse or it is not in the optionally provided list of aggregates in
-                your configuration file.  By creating this sliver, you will be unable to check its
-                status or delete it.""" % (url))
+                self.logger.info("""Be sure to remember (write down) AM URL %s. You are reserving
+                    resources there, and your clearinghouse and config file won't remind you
+                    to check that sliver later. Future listresources/sliverstatus/deletesliver 
+                    calls need to include the '-a %s' arguments again to act on this sliver.""" % (url, url))
+
+#                self.logger.warning("""You're creating a sliver in an AM (%s) that is either not listed by
+#                your Clearinghouse or it is not in the optionally provided list of aggregates in
+#                your configuration file.  By creating this sliver, you will be unable to check its
+#                status or delete it.""" % (url))
                 
                 res = raw_input("Would you like to continue? (y/N) ")
                 if not res.lower().startswith('y'):
@@ -377,7 +410,6 @@ class CallHandler(object):
                 
             if not self.opts.native:
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
@@ -392,7 +424,6 @@ class CallHandler(object):
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
                 try:
-                    import xml.dom.minidom as md
                     newl = ''
                     if '\n' not in result:
                         newl = '\n'
@@ -449,7 +480,19 @@ class CallHandler(object):
         except Exception, exc:
             sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
-        retVal = 'Renewing Sliver %s until %r\n' % (urn, time)
+
+        retVal = ''
+        slicecred_obj = cred.Credential(string=slice_cred)
+        retVal += self._print_slice_expiration(urn, slice_cred)
+        if time > slicecred_obj.expiration:
+            sys.exit('Cannot renew sliver %s until %s which is after slice expiration time %s' % (urn, time, slicecred_obj.expiration))
+        elif time <= datetime.datetime.utcnow():
+            self.logger.info('Sliver %s will be set to expire now' % urn)
+        else:
+            self.logger.debug('Slice expires at %s after requested time %s' % (slicecred_obj.expiration, time))
+
+#        print 'Renewing Sliver %s until %s' % (urn, time)
+        retVal += 'Renewing Sliver %s until %r\n' % (urn, time)
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -545,6 +588,22 @@ class CallHandler(object):
                         self.logger.info('.... please retry.')
                     else:
                         self.logger.error("Wrong pass phrase after %d tries" % max_attempts)
+                elif exc.errno == 1 and exc.strerror.find("error:14094418") > -1:
+                    # Handle SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
+                    import sfa.trust.gid as gid
+                    certiss = ''
+                    certsubj = ''
+                    try:
+                        certObj = gid.GID(filename=self.framework.cert)
+                        certiss = certObj.get_issuer()
+                        certsubj = certObj.get_urn()
+                    except:
+                        pass
+                    self.logger.error("Server does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another server. Can't do %s.", certiss, certsubj, reason)
+                    if not self.logger.isEnabledFor(logging.DEBUG):
+                        self.logger.error('    ..... Run with --debug for more information')
+                    self.logger.debug(traceback.format_exc())
+                    return None
                 else:
                     self.logger.error("%s: Unknown SSL error %s" % (failMsg, exc))
                     if not self.logger.isEnabledFor(logging.DEBUG):
@@ -628,8 +687,42 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
+
+        print self._print_slice_expiration(urn)
+
+        # FIXME: Print the non slice cred bit to STDERR so
+        # capturing just stdout givs just the cred?
+        print "Slice cred for %s: %s" % (urn, cred)
         self.logger.info( "Slice cred for %s: %s" % (urn, cred))
         
+    def _print_slice_expiration(self, urn, string=None):
+        '''Check when the slice expires and print out to STDOUT'''
+        # FIXME: push this to config?
+        shorthours = 3
+        middays = 1
+
+        if string is None:
+            if urn is None or urn == '':
+                return
+            string = self._get_slice_cred(urn)
+        if string is None:
+            # failed to get a slice string. Can't check
+            return
+
+        slicecred_obj = cred.Credential(string=string)
+        sliceexp = slicecred_obj.expiration
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            retVal = 'Slice %s has expired at %s' % (urn, sliceexp)
+        elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
+            retVal = 'Slice %s expires in <= %d hours' % (urn, shorthours)
+            self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
+            self.logger.debug('It is now %s' % (datetime.datetime.now()))
+        elif sliceexp - datetime.timedelta(days=middays) <= now:
+            retVal = 'Slice %s expires within %d day' % (urn, middays)
+        else:
+            self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
+        return retVal
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.
         Retry on wrong pass phrase.'''
@@ -673,6 +766,7 @@ class CallHandler(object):
         else:
             retVal = "Failed to renew slice %s" % (name)
             retTime = None
+        retVal += self._print_slice_expiration(urn)
         return retVal, retTime
 
 def parse_args(argv):
@@ -711,8 +805,14 @@ def load_config(opts, logger):
         if os.path.exists( opts.configfile ):
             configfiles.insert(0, opts.configfile)
         else:
-            sys.exit("Config file '%s' does not exist"
-                     % (opts.configfile))
+            # Check maybe the default directory for the file
+            configfile = os.path.join( '~/.gcf', opts.configfile )
+            configfile = os.path.expanduser( configfile )
+            if os.path.exists( configfile ):
+                configfiles.insert(0, configfile)
+            else:
+                sys.exit("Config file '%s'or '%s' does not exist"
+                     % (opts.configfile, configfile))
 
     # Find the first valid config file
     for cf in configfiles:         
