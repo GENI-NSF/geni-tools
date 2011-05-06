@@ -47,8 +47,9 @@
     clearinghouse APIs requires adding a new Framework extension class.
 """
 
-import datetime
 from copy import copy
+import datetime
+import dateutil.parser
 import json
 import logging
 import optparse
@@ -57,18 +58,18 @@ import pprint
 import ssl
 import sys
 import traceback
+import xml.dom
 import xml.dom.minidom as md
 import xmlrpclib
 import zlib
 import ConfigParser
 
-import dateutil.parser
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
+from omnilib.util.dossl import _do_ssl
 import omnilib.xmlrpc.client
 
-import sfa.trust.credential as cred
 #import sfa.trust.gid as gid
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
@@ -131,7 +132,7 @@ class CallHandler(object):
                     aggs[url] = url
             return aggs                
         else:
-            aggs =  self._do_ssl("List Aggregates from control framework", self.framework.list_aggregates)
+            aggs =  _do_ssl(self.framework, None, "List Aggregates from control framework", self.framework.list_aggregates)
             if aggs is  None:
                 return {}
             return aggs
@@ -161,7 +162,7 @@ class CallHandler(object):
         # Get the credential for this query
         if slicename is None or slicename == "":
             cred = None
-            cred = self._do_ssl("Get User Credential from control framework", self.framework.get_user_cred)
+            cred = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
 
             if cred is None:
                 sys.exit('Cannot list resources: no user credential')
@@ -184,7 +185,7 @@ class CallHandler(object):
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
             self.logger.debug("Doing listresources with options %r", options)
-            rspec = self._do_ssl(("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
+            rspec = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
             if not rspec is None:
                 if options.get('geni_compressed', False):
@@ -377,7 +378,7 @@ class CallHandler(object):
             # Okay, send a message to the AM this resource came from
             result = None
             client = make_client(url, self.framework, self.opts)
-            result = self._do_ssl(("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
+            result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
                 try:
@@ -413,7 +414,7 @@ class CallHandler(object):
             urn = self.opts.orca_slice_id
         # Connect to each available GENI AM 
         for client in self._getclients():
-            if self._do_ssl(("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
+            if _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
                 print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
             else:
                 print "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
@@ -437,14 +438,14 @@ class CallHandler(object):
         except Exception, exc:
             sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
-        slicecred_obj = cred.Credential(string=slice_cred)
+        slicecred_exp = self._get_slice_exp(slice_cred)
         self._print_slice_expiration(urn, slice_cred)
-        if time > slicecred_obj.expiration:
-            sys.exit('Cannot renew sliver %s until %s which is after slice expiration time %s' % (urn, time, slicecred_obj.expiration))
+        if time > slicecred_exp:
+            sys.exit('Cannot renew sliver %s until %s which is after slice expiration time %s' % (urn, time, slicecred_exp))
         elif time <= datetime.datetime.utcnow():
             self.logger.info('Sliver %s will be set to expire now' % urn)
         else:
-            self.logger.debug('Slice expires at %s after requested time %s' % (slicecred_obj.expiration, time))
+            self.logger.debug('Slice expires at %s after requested time %s' % (slicecred_exp, time))
 
         print 'Renewing Sliver %s until %s' % (urn, time)
 
@@ -453,7 +454,7 @@ class CallHandler(object):
             urn = self.opts.orca_slice_id
         for client in self._getclients():
             # Note that the time arg includes UTC offset as needed
-            res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
+            res = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
             if not res:
                 print "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
             else:
@@ -476,7 +477,7 @@ class CallHandler(object):
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
         for client in self._getclients():
-            status = self._do_ssl("Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
+            status = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
             if status:
                 print "Sliver at %s:" % (client.url)
                 pprint.pprint(status)
@@ -499,71 +500,14 @@ class CallHandler(object):
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
         for client in self._getclients():
-            if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
+            if _do_ssl(self.framework, None, "Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
                 print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
             else:
                 print "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
     
-    def _do_ssl(self, reason, fn, *args):
-        """ Attempts to make an xmlrpc call, and will repeat the attempt
-        if it failed due to a bad passphrase for the ssl key.  Also does some
-        exception handling.  Returns the xmlrpc return if everything went okay, 
-        otherwise returns None."""
-        
-        # Change exception name?
-        max_attempts = 2
-        attempt = 0
-        
-        failMsg = "Call for %s failed." % reason
-        while(attempt < max_attempts):
-            attempt += 1
-            try:
-                result = fn(*args)
-                return result
-            except ssl.SSLError, exc:
-                if exc.errno == 336265225:
-                    self.logger.debug("Doing %s got %s", reason, exc)
-                    self.logger.error('Wrong pass phrase for private key.')
-                    if attempt < max_attempts:
-                        self.logger.info('.... please retry.')
-                    else:
-                        self.logger.error("Wrong pass phrase after %d tries" % max_attempts)
-                elif exc.errno == 1 and exc.strerror.find("error:14094418") > -1:
-                    # Handle SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
-                    import sfa.trust.gid as gid
-                    certiss = ''
-                    certsubj = ''
-                    try:
-                        certObj = gid.GID(filename=self.framework.cert)
-                        certiss = certObj.get_issuer()
-                        certsubj = certObj.get_urn()
-                    except:
-                        pass
-                    self.logger.error("Server does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another server. Can't do %s.", certiss, certsubj, reason)
-                    if not self.logger.isEnabledFor(logging.DEBUG):
-                        self.logger.error('    ..... Run with --debug for more information')
-                    self.logger.debug(traceback.format_exc())
-                    return None
-                else:
-                    self.logger.error("%s: Unknown SSL error %s" % (failMsg, exc))
-                    if not self.logger.isEnabledFor(logging.DEBUG):
-                        self.logger.error('    ..... Run with --debug for more information')
-                    self.logger.debug(traceback.format_exc())
-
-                    return None
-            except xmlrpclib.Fault, fault:
-                self.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
-                return None
-            except Exception, exc:
-                self.logger.error("%s: %s" % (failMsg, exc))
-                if not self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.error('    ..... Run with --debug for more information')
-                self.logger.debug(traceback.format_exc())
-                return None
-
     def getversion(self, args):
         for client in self._getclients():
-            version = self._do_ssl("GetVersion at %s" % (str(client.url)), client.GetVersion)
+            version = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
             if not version is None:
                 print "%s (%s) %s" % (client.urn, client.url, version)
             
@@ -577,7 +521,7 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         
-        slice_cred = self._do_ssl("Create Slice %s" % urn, self.framework.create_slice, urn)
+        slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
             print "Created slice with Name %s, URN %s" % (name, urn)
         else:
@@ -595,7 +539,7 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
 
-        res = self._do_ssl("Delete Slice %s" % urn, self.framework.delete_slice, urn)
+        res = _do_ssl(self.framework, None, "Delete Slice %s" % urn, self.framework.delete_slice, urn)
         print "Delete Slice %s result: %r" % (name, res)
 
 
@@ -611,9 +555,10 @@ class CallHandler(object):
 
         self._print_slice_expiration(urn)
 
-        # FIXME: Print the non slice cred bit to STDERR so
-        # capturing just stdout givs just the cred?
-        print "Slice cred for %s: %s" % (urn, cred)
+        # Print the non slice cred bit to log stream so
+        # capturing just stdout givs just the cred hopefully
+        self.logger.info("Slice cred for slice %s", urn)
+        print cred
         
     def _print_slice_expiration(self, urn, string=None):
         '''Check when the slice expires and print out to STDOUT'''
@@ -629,25 +574,50 @@ class CallHandler(object):
             # failed to get a slice string. Can't check
             return
 
-        slicecred_obj = cred.Credential(string=string)
-        sliceexp = slicecred_obj.expiration
+        sliceexp = self._get_slice_exp(string)
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
-            print 'Slice %s has expired at %s' % (urn, sliceexp)
+            self.logger.info('Slice %s has expired at %s' % (urn, sliceexp))
         elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
-            print 'Slice %s expires in <= %d hours' % (urn, shorthours)
+            self.logger.info('Slice %s expires in <= %d hours' % (urn, shorthours))
             self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
             self.logger.debug('It is now %s' % (datetime.datetime.now()))
         elif sliceexp - datetime.timedelta(days=middays) <= now:
-            print 'Slice %s expires within %d day' % (urn, middays)
+            self.logger.info('Slice %s expires within %d day' % (urn, middays))
         else:
             self.logger.debug('Slice %s expires on %s' % (urn, sliceexp))
+
+    def _get_slice_exp(self, credString):
+        # Don't fully parse credential: grab the slice expiration from the string directly
+        sliceexp = 0
+
+        if credString is None:
+            # failed to get a slice string. Can't check
+            return sliceexp
+
+        try:
+            doc = md.parseString(credString)
+            signed_cred = doc.getElementsByTagName("signed-credential")
+
+            # Is this a signed-cred or just a cred?
+            if len(signed_cred) > 0:
+                cred = signed_cred[0].getElementsByTagName("credential")[0]
+            else:
+                cred = doc.getElementsByTagName("credential")[0]
+            expirnode = cred.getElementsByTagName("expires")[0]
+            if len(expirnode.childNodes) > 0:
+                sliceexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
+        except Exception, exc:
+            self.logger.error("Failed to parse credential for expiration time: %s", exc)
+            self.logger.debug(traceback.format_exc())
+
+        return sliceexp
 
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.
         Retry on wrong pass phrase.'''
 
-        return self._do_ssl("Get Slice Cred %s" % urn, self.framework.get_slice_cred, urn)
+        return _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
 
     def listaggregates(self, args):
         """Print the aggregates federated with the control framework."""
@@ -674,7 +644,7 @@ class CallHandler(object):
             sys.exit(msg)
 
         # Try to renew the slice
-        out_expiration = self._do_ssl("Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
+        out_expiration = _do_ssl(self.framework, None, "Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
 
         if out_expiration:
             print "Slice %s now expires at %s" % (name, out_expiration)
@@ -786,6 +756,7 @@ def load_framework(config):
     cf_type = config['selected_framework']['type']
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
+    config['selected_framework']['logger'] = config['logger']
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
 
