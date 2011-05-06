@@ -45,6 +45,22 @@
 
     Extending Omni to support additional frameworks with their own
     clearinghouse APIs requires adding a new Framework extension class.
+
+    Return Values of various omni commands:
+       [string dictionary] = omni.py getversion
+       [string xmldoc] = omni.py listresources -n
+       [string dictionary] = omni.py listresources
+       On success: [string sliceurnstring] = omni.py createslice SLICENAME
+       On fail: [string None] = omni.py createslice SLICENAME
+       [string successFailBoolean] = omni.py createsliver SLICENAME RSPEC_FILENAME
+       [string successFailBoolean] = omni.py deletesliver SLICENAME
+       [string successFailBoolean] = omni.py deleteslice SLICENAME
+       On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
+       On fail: [string None] = omni.py renewslice SLICENAME
+       On success: [string dateTimeRenewedTo] = omni.py renewsliver SLICENAME
+       On fail: [string None] = omni.py renewsliver SLICENAME
+       [string listOfSliceNames] = omni.py listmyslices USER
+    
 """
 
 from copy import copy
@@ -92,7 +108,7 @@ class CallHandler(object):
             return
         if not hasattr(self,call):
             sys.exit('Unknown function: %s' % call)
-        getattr(self,call)(args[1:])
+        return getattr(self,call)(args[1:])
 
     def _getclients(self, ams=None):
         """Create XML-RPC clients for each aggregate and return them
@@ -105,7 +121,7 @@ class CallHandler(object):
             client.url = url
             clients.append(client)
         if clients == []:
-            print 'No aggregates found'
+            self.logger.warn( 'No aggregates found' )
         return clients
         
     def _listaggregates(self):
@@ -223,11 +239,11 @@ class CallHandler(object):
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
-                    print md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
+                    return md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl), rspec
                 except:
-                    print rspec
+                    return rspec, rspec
             else:
-                print 'No resources available'
+                self.logger.info('No resources available')
         else:
             # Convert the rspecs to omnispecs
             omnispecs = {}
@@ -243,20 +259,23 @@ class CallHandler(object):
             if omnispecs and omnispecs != {}:
                 jspecs = json.dumps(omnispecs, indent=4)
                 self.logger.info('Full resource listing:')
-                print jspecs
+                # jspecs is a string, omnispecs is a dictionary
+                return jspecs, omnispecs
             else:
                 if rspecs and rspecs != {}:
-                    print 'No parsable resources available.'
+                    self.logger.info('No parsable resources available.')
                     #print 'Unparsable responses:'
                     #pprint.pprint(rspecs)
                 else:
-                    print 'No resources available'
-    
+                    self.logger.info('No resources available')
+            
     def _ospec_to_rspecs(self, specfile):
         """Convert the given omnispec file into a dict of url => rspec."""
         jspecs = {}
+
         try:
             jspecs = json.loads(file(specfile,'r').read())
+#            jspecs = json.loads(open(specfile,mode='r').read())
         except Exception, exc:
             sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
 
@@ -276,15 +295,15 @@ class CallHandler(object):
                 if r.get_allocate():
                     allocate = True
                     break
-            print 'For %s allocate = %r' % (url, allocate)
+            self.logger.debug( 'For %s allocate = %r' % (url, allocate))
             if allocate:
                 rspecs[url] = omnispec_to_rspec(ospec, True)
             else:
                 self.logger.debug('Nothing to allocate at %r', url)
-#        print rspecs
         return rspecs
 
     def createsliver(self, args):
+        retVal=''
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
             sys.exit('createsliver requires 2 args: slicename and omnispec filename')
 
@@ -377,16 +396,16 @@ class CallHandler(object):
                     newl = ''
                     if '\n' not in result:
                         newl = '\n'
-                    print 'Asked %s to reserve resources. Result:\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl))
+                    retVal = 'Asked %s to reserve resources. Result:\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl))
                 except:
-                    print 'Asked %s to reserve resources. Result: %s' % (url, result)
+                    retVal = 'Asked %s to reserve resources. Result: %s' % (url, result)
             else:
-                print 'Asked %s to reserve resources. Result: %s' % (url, result)
+                retVal = 'Asked %s to reserve resources. Result: %s' % (url, result)
 
             if '<RSpec type="SFA">' in rspec:
                 # Figure out the login name
                 self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
-
+        return retVal, result
 
     def deletesliver(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -407,9 +426,9 @@ class CallHandler(object):
         # Connect to each available GENI AM 
         for client in self._getclients():
             if self._do_ssl(("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
-                print "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url)
+                return "Deleted sliver %s on %s at %s" % (urn, client.urn, client.url), True
             else:
-                print "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                return "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url), False
             
     def renewsliver(self, args):
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
@@ -430,7 +449,7 @@ class CallHandler(object):
         except Exception, exc:
             sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
-        print 'Renewing Sliver %s until %r' % (urn, time)
+        retVal = 'Renewing Sliver %s until %r\n' % (urn, time)
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -439,10 +458,13 @@ class CallHandler(object):
             # Note that the time arg includes UTC offset as needed
             res = self._do_ssl(("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
             if not res:
-                print "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                retVal += "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                retTime = None
             else:
-                print "Renewed sliver %s at %s (%s) until %s" % (urn, client.urn, client.url, time.isoformat())
-    
+                retVal += "Renewed sliver %s at %s (%s) until %s\n" % (urn, client.urn, client.url, time.isoformat())
+                retTime = time.isoformat()
+        return retVal, retTime
+
     def sliverstatus(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('sliverstatus requires arg of slice name')
@@ -459,12 +481,19 @@ class CallHandler(object):
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
+
+        retVal = 'Status of Slice %s:' % urn
+        retItem = False
         for client in self._getclients():
             status = self._do_ssl("Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
             if status:
-                print "Sliver at %s:" % (client.url)
-                pprint.pprint(status)
-
+                retVal += "Sliver at %s:" % (client.url)
+                retVal += pprint.pformat(status)
+                retItem = status
+            else:
+                retItem = False
+# FIX ME: Check that status is the right thing to return here
+        return retVal, retItem
                 
     def shutdown(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -478,16 +507,20 @@ class CallHandler(object):
         if slice_cred is None:
             sys.exit('Cannot shutdown slice %s: No slice credential'
                      % (urn))
-
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
+
+        retVal = ""
+
         for client in self._getclients():
             if self._do_ssl("Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
-                print "Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url)
+                retVal += "Shutdown Sliver %s at %s on %s\n" % (urn, client.urn, client.url)
             else:
-                print "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
+                self.logger.warn( "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) )
     
+                retVal += "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url)
+        return retVal
     def _do_ssl(self, reason, fn, *args):
         """ Attempts to make an xmlrpc call, and will repeat the attempt
         if it failed due to a bad passphrase for the ssl key.  Also does some
@@ -537,13 +570,18 @@ class CallHandler(object):
                 return None
 
     def getversion(self, args):
+        retVal = ""
+        version = None
         for client in self._getclients():
             version = self._do_ssl("GetVersion at %s" % (str(client.url)), client.GetVersion)
             if not version is None:
-                print "%s (%s) %s" % (client.urn, client.url, version)
+                pp = pprint.PrettyPrinter(indent=4)
+                retVal += "urn: %s (url: %s) has version: \n\t%s\n\n" % (client.urn, client.url, pp.pformat(version))
+        return (retVal, version)
             
 
     def createslice(self, args):
+        retVal = ""
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             sys.exit('createslice requires arg of slice name')
 
@@ -554,12 +592,14 @@ class CallHandler(object):
         
         slice_cred = self._do_ssl("Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
-            print "Created slice with Name %s, URN %s" % (name, urn)
+            retVal += "Created slice with Name %s, URN %s" % (name, urn)
+            success = urn
         else:
-            print "Create Slice Failed for slice name %s." % (name)
+            retVal += "Create Slice Failed for slice name %s." % (name)
+            success = None
             if not self.logger.isEnabledFor(logging.DEBUG):
-                print "   Try re-running with --debug for more information."
-
+                retVal += "   Try re-running with --debug for more information."
+        return retVal, success
         
     def deleteslice(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -571,7 +611,12 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
 
         res = self._do_ssl("Delete Slice %s" % urn, self.framework.delete_slice, urn)
-        print "Delete Slice %s result: %r" % (name, res)
+        # return True if successfully deleted slice, else False
+        if res is None:
+            retVal = False
+        else:
+            retVal = True
+        return "Delete Slice %s result: %r" % (name, res), retVal
 
 
     def getslicecred(self, args):
@@ -583,7 +628,7 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
-        print "Slice cred for %s: %s" % (urn, cred)
+        self.logger.info( "Slice cred for %s: %s" % (urn, cred))
         
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.
@@ -593,8 +638,12 @@ class CallHandler(object):
 
     def listaggregates(self, args):
         """Print the aggregates federated with the control framework."""
+        retStr = ""
+        retVal = {}
         for (urn, url) in self._listaggregates().items():
-            print "%s: %s" % (urn, url)
+            retStr += "%s: %s" % (urn, url)
+            retVal[urn] = url
+        return retStr, retVal 
 
     def renewslice(self, args):
         """Renew the slice at the clearinghouse so that the slivers can be
@@ -619,10 +668,12 @@ class CallHandler(object):
         out_expiration = self._do_ssl("Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
 
         if out_expiration:
-            print "Slice %s now expires at %s" % (name, out_expiration)
+            retVal = "Slice %s now expires at %s" % (name, out_expiration)
+            retTime = out_expiration
         else:
-            print "Failed to renew slice %s" % (name)
-
+            retVal = "Failed to renew slice %s" % (name)
+            retTime = None
+        return retVal, retTime
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -732,16 +783,72 @@ def make_client(url, framework, opts):
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 
-def main(argv=None):
-    opts, args = parse_args(sys.argv[1:])    
+
+def initialize( argv ):
+    opts, args = parse_args(argv)    
     logger = configure_logging(opts)
     config = load_config(opts, logger)        
     framework = load_framework(config)
-        
+    return framework, config, args, opts
+
+def API_call( framework, config, args, opts, verbose=False ):
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
-    handler._handle(args)
-        
+#    Returns string, item
+    result = handler._handle(args)
+
+    if result is None:
+        retVal = None
+        retItem = None
+    elif len(result)==2:
+        retVal, retItem = result
+    else:
+        retVal = result
+        retItem = None
+    # Print the output
+    if verbose:
+        print_opts = ""
+        if opts.framework is not config['omni']['default_cf']:
+            print_opts += " -%s %s"%('f', str(opts.framework))
+        if opts.debug is True:
+            print_opts += " --%s %s"%('debug', str(opts.debug))
+        if opts.ssl is False:
+            print_opts += " --no-ssl"
+        if opts.aggregate is not None:
+            print_opts += " -%s %s"%('a', str(opts.aggregate))
+        if opts.native is not False:
+            print_opts += " -%s %s"%('n', str(opts.native))
+        if (opts.configfile is not None):
+            print_opts += " -%s %s"%('c', str(opts.configfile))
+        print_opts += " "
+
+        s = "Command 'omni.py"+print_opts+" ".join(args) + "' Returned"
+        headerLen = (80 - (len(s) + 2)) / 4
+        header = "- "*headerLen+" "+s+" "+"- "*headerLen
+        print "-"*80
+        print header
+        print retVal
+        print "="*80
+    
+    return retVal, retItem
+
+def call( cmd, opts, verbose=False ):
+    # create argv containing cmds and options
+    argv = [str(cmd)]
+    argv.extend(opts) 
+    
+    # do initial setup 
+    framework, config, args, opts = initialize(argv)
+    # process the user's call
+    result = API_call( framework, config, args, opts, verbose=verbose )
+    return result
+
+def main(argv=None):
+    # do initial setup & process the user's call
+    framework, config, args, opts = initialize(sys.argv[1:])
+    retVal = API_call(framework, config, args, opts, verbose=True)
+#    if retVal is not None:
+#        print retVal[0]
         
 if __name__ == "__main__":
     sys.exit(main())
