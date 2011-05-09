@@ -98,11 +98,12 @@ class Framework(Framework_Base):
             pg_response = dict()
             pg_response = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
             if pg_response is None:
+                self.logger.error("Failed to get your PG user credential")
                 return None
                                   
             code = pg_response['code']
             if code:
-                self.logger.error("Received error code: %d", code)
+                self.logger.error("Failed to get a PG user credential: Received error code: %d", code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
                 #return None
@@ -128,7 +129,7 @@ class Framework(Framework_Base):
             raise Exception("Failed to find PG slice %s", urn)
         if response['code']:
             # Unable to resolve, slice does not exist
-            raise Exception('Slice %s does not exist.' % (urn))
+            raise Exception('PG Slice %s does not exist.' % (urn))
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
@@ -191,7 +192,7 @@ class Framework(Framework_Base):
         self.logger.debug("Got resolve response %r", response)
         if response is None:
             #exception trying to resolve the slice is not the same as a PG error
-            self.logger.error("Failed to resolve slice %s at slice authority - fix that before creating a new slice", urn)
+            self.logger.error("Failed to resolve slice %s at PG slice authority", urn)
             return None
         elif response['code']:
             # Unable to resolve, create a new slice
@@ -284,7 +285,7 @@ class Framework(Framework_Base):
         """
         cred = self.get_user_cred()
         if not cred:
-            raise Exception("No user credential available.")
+            raise Exception("Cannot get PG comnponents - no user credential available.")
         pg_response = _do_ssl(self, None, "List Components at PG CH %s" % self.config['ch'], self.ch.ListComponents, {'credential': cred})
         code = pg_response['code']
         if pg_response is None or pg_response['code']:

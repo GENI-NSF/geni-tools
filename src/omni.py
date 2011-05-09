@@ -165,13 +165,13 @@ class CallHandler(object):
             cred = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
 
             if cred is None:
-                sys.exit('Cannot list resources: no user credential')
+                sys.exit('Cannot list resources: Could not get user credential')
 
         else:
             urn = self.framework.slice_name_to_urn(slicename)
             cred = self._get_slice_cred(urn)
             if cred is None:
-                sys.exit('Cannot list resources for slice %s: No slice credential'
+                sys.exit('Cannot list resources for slice %s: could not get slice credential'
                          % (urn))
             self.logger.info('Gathering resources reserved for slice %s..' % slicename)
 
@@ -283,7 +283,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot create sliver %s: No slice credential'
+            sys.exit('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
 
         self._print_slice_expiration(urn)
@@ -406,7 +406,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot delete sliver %s: No slice credential'
+            sys.exit('Cannot delete sliver %s: Could not get slice credential'
                      % (urn))
 
         if self.opts.orca_slice_id:
@@ -429,7 +429,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot renew sliver %s: No slice credential'
+            sys.exit('Cannot renew sliver %s: Could not get slice credential'
                      % (urn))
 
         time = None
@@ -470,7 +470,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot get sliver status for %s: No slice credential'
+            sys.exit('Cannot get sliver status for %s: Could not get slice credential'
                      % (urn))
 
         if self.opts.orca_slice_id:
@@ -493,7 +493,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot shutdown slice %s: No slice credential'
+            sys.exit('Cannot shutdown slice %s: Could not get slice credential'
                      % (urn))
 
         if self.opts.orca_slice_id:
@@ -523,7 +523,8 @@ class CallHandler(object):
         
         slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
-            print "Created slice with Name %s, URN %s" % (name, urn)
+            slice_exp = self._get_slice_exp(slice_cred)
+            print "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp)
         else:
             print "Create Slice Failed for slice name %s." % (name)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -552,7 +553,8 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         cred = self._get_slice_cred(urn)
-
+        if cred is None:
+            return
         self._print_slice_expiration(urn)
 
         # Print the non slice cred bit to log stream so

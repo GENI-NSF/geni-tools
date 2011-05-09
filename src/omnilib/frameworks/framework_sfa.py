@@ -224,12 +224,12 @@ class Framework(Framework_Base):
             # Slice doesn't exist, create it
             user_cred = self.get_user_cred()
             if user_cred is None:
-                self.logger.error("Cannot create the slice. Cannot get the authority credential without a user credential.")
+                self.logger.error("Cannot create the SFA slice - could not get your user credential.")
                 return None
 
             auth_cred = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
             if auth_cred is None:
-                self.loger.error("Cannot create SFA slice - could not get authority credential.")
+                self.loger.error("Cannot create SFA slice - could not get the authority credential.")
                 return None
 
             # Note this is in UTC
@@ -259,7 +259,7 @@ class Framework(Framework_Base):
         ''' Deletes the slice '''
         user_cred = self.get_user_cred()
         if user_cred is None:
-            self.logger.error("Cannot delete SFA slice - could not get user credential.")
+            self.logger.error("Cannot delete SFA slice - could not get your user credential.")
             return None
 
         auth_cred = _do_ssl(self, None, ("Get SFA authority cred for %s from registry %s" % (self.config['authority'], self.config['registry'])), self.registry.GetCredential, user_cred, self.config['authority'], 'authority')
