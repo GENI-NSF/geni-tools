@@ -11,7 +11,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 from omnilib.xmlrpc.client import make_client
 
-SLICE_NAME='test_monitor'
+SLICE_NAME='mon'
 TMP_DIR = '/tmp'
 
  #  292  ./omni.py getversion
@@ -81,6 +81,10 @@ class GENISetup(unittest.TestCase):
       # inspect.stack()[1][3] returns the name of the parent of the method being called
       print "MONITORING %s %s" % (inspect.stack()[1][3], resultStr)      
 
+   def create_slice_name( self ):
+      slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
+      return slice_name
+
 class Test(GENISetup):
    def test_getversion(self):
       self.sectionBreak()
@@ -115,46 +119,49 @@ class Test(GENISetup):
    def test_slicecreation(self):
       self.sectionBreak()
       successFail = True
+      slice_name = self.create_slice_name()
       try:
-         successFail = successFail and self.subtest_createslice()
-         successFail = successFail and self.subtest_renewslice_fail()
-         successFail = successFail and self.subtest_renewslice_success()
+         successFail = successFail and self.subtest_createslice( slice_name )
+         successFail = successFail and self.subtest_renewslice_fail( slice_name )
+         successFail = successFail and self.subtest_renewslice_success(  slice_name )
       finally:
-         successFail = successFail and self.subtest_deleteslice()
+         successFail = successFail and self.subtest_deleteslice(  slice_name )
       self.printMonitoring( successFail )
 
    def test_slivercreation(self):
       self.sectionBreak()
-
+      slice_name = self.create_slice_name()
       successFail = True
       try:
-         successFail = successFail and self.subtest_createslice()
-         successFail = successFail and self.subtest_createsliver()
-         successFail = successFail and self.subtest_sliverstatus()
-         successFail = successFail and self.subtest_renewsliver_fail()
-         successFail = successFail and self.subtest_renewslice_success()
-         successFail = successFail and self.subtest_renewsliver_success()
-         successFail = successFail and self.subtest_deletesliver()
+         successFail = successFail and self.subtest_createslice( slice_name )
+         successFail = successFail and self.subtest_createsliver( slice_name )
+         successFail = successFail and self.subtest_sliverstatus( slice_name )
+         successFail = successFail and self.subtest_renewsliver_fail( slice_name )
+         successFail = successFail and self.subtest_renewslice_success( slice_name )
+         successFail = successFail and self.subtest_renewsliver_success( slice_name )
+         successFail = successFail and self.subtest_deletesliver( slice_name )
       finally:
-         successFail = successFail and self.subtest_deleteslice()
+         successFail = successFail and self.subtest_deleteslice( slice_name )
 
       self.printMonitoring( successFail )
 
    def test_shutdown(self):
       self.sectionBreak()
+      slice_name = self.create_slice_name()
+
       successFail = True
       try:
-         successFail = successFail and self.subtest_createslice()
-         successFail = successFail and self.subtest_createsliver()
-         successFail = successFail and self.subtest_shutdown()
-         successFail = successFail and self.subtest_deletesliver()
+         successFail = successFail and self.subtest_createslice( slice_name )
+         successFail = successFail and self.subtest_createsliver( slice_name )
+         successFail = successFail and self.subtest_shutdown( slice_name )
+         successFail = successFail and self.subtest_deletesliver( slice_name )
       finally:
-         successFail = successFail and self.subtest_deleteslice()
+         successFail = successFail and self.subtest_deleteslice( slice_name )
       self.printMonitoring( successFail )
 
 
-   def subtest_createslice(self):
-      text, urn = self.call('createslice', [SLICE_NAME])
+   def subtest_createslice(self, slice_name ):
+      text, urn = self.call('createslice', [slice_name])
       msg = "Slice creation FAILED."
       if urn is None:
          successFail = False
@@ -164,25 +171,25 @@ class Test(GENISetup):
       self.assertTrue( successFail, msg)
       return successFail
 
-   def subtest_shutdown(self):
-      text = self.call('shutdown', [SLICE_NAME])
+   def subtest_shutdown(self, slice_name):
+      text = self.call('shutdown', [slice_name])
       msg = "Shutdown FAILED."
       successFail = ("Shutdown Sliver") in text
 #      self.assertTrue( successFail, msg)
 #      return successFail
       return True
 
-   def subtest_deleteslice(self):
-      text, successFail = self.call('deleteslice', [SLICE_NAME])
+   def subtest_deleteslice(self, slice_name):
+      text, successFail = self.call('deleteslice', [slice_name])
       msg = "Delete slice FAILED."
       # successFail = ("Delete Slice %s result:" % SLICE_NAME) in text
 #      self.assertTrue( successFail, msg)
 #      return successFail
       return True
 
-   def subtest_renewslice_success(self):
+   def subtest_renewslice_success(self, slice_name):
       newtime = (datetime.datetime.now()+datetime.timedelta(hours=12)).isoformat()
-      text, retTime = self.call('renewslice', [SLICE_NAME, newtime])
+      text, retTime = self.call('renewslice', [slice_name, newtime])
       msg = "Renew slice FAILED."
       if retTime is None:
          successFail = False
@@ -192,9 +199,9 @@ class Test(GENISetup):
       self.assertTrue( successFail, msg)
       return successFail
 
-   def subtest_renewslice_fail(self):
+   def subtest_renewslice_fail(self, slice_name):
       newtime = (datetime.datetime.now()+datetime.timedelta(days=-1)).isoformat()
-      text, retTime = self.call('renewslice', [SLICE_NAME, newtime])
+      text, retTime = self.call('renewslice', [slice_name, newtime])
       msg = "Renew slice FAILED."
       if retTime is None:
          successFail = True
@@ -204,9 +211,9 @@ class Test(GENISetup):
       self.assertTrue( successFail, msg)
       return successFail
 
-   def subtest_renewsliver_success(self):
+   def subtest_renewsliver_success(self, slice_name):
       newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
-      text, retTime = self.call('renewsliver', [SLICE_NAME, newtime])
+      text, retTime = self.call('renewsliver', [slice_name, newtime])
       if retTime is None:
          successFail = False
       else:
@@ -214,9 +221,9 @@ class Test(GENISetup):
       self.assertTrue( successFail )
       return successFail
 
-   def subtest_renewsliver_fail(self):
+   def subtest_renewsliver_fail(self, slice_name):
       newtime = (datetime.datetime.now()+datetime.timedelta(days=-1)).isoformat()
-      text, retTime = self.call('renewsliver', [SLICE_NAME, newtime])
+      text, retTime = self.call('renewsliver', [slice_name, newtime])
       if retTime is None:
          successFail = True
       else:
@@ -225,14 +232,14 @@ class Test(GENISetup):
       self.assertTrue( successFail )
       return successFail
 
-   def subtest_sliverstatus(self):
-      text, status = self.call('sliverstatus', [SLICE_NAME])
+   def subtest_sliverstatus(self, slice_name):
+      text, status = self.call('sliverstatus', [slice_name])
       successFail = ("Status of Slice ") in text
       self.assertTrue( successFail )
       return successFail
 
-   def subtest_createsliver(self):
-      self.subtest_createslice()
+   def subtest_createsliver(self, slice_name):
+      self.subtest_createslice( slice_name )
       text, resourcesDict = self.call('listresources',[''])
 
       # allocate the first resource in the rspec
@@ -242,7 +249,7 @@ class Test(GENISetup):
       filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.now(), "apitest_%Y%m%d%H%M%S"))
       with open(filename, mode='w') as rspec_file:
          rspec_file.write( resources )
-      text, result = self.call('createsliver', [SLICE_NAME, rspec_file.name] )
+      text, result = self.call('createsliver', [slice_name, rspec_file.name] )
       if result is None:
          successFail = False
       else:
@@ -253,8 +260,8 @@ class Test(GENISetup):
 
       self.assertTrue( successFail )
       return successFail
-   def subtest_deletesliver(self):
-      text, successFail = self.call('deletesliver', [SLICE_NAME])
+   def subtest_deletesliver(self, slice_name):
+      text, successFail = self.call('deletesliver', [slice_name])
       # ("Deleted sliver") in text
       self.assertTrue( successFail )
       return successFail

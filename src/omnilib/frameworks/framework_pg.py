@@ -31,6 +31,7 @@ import xmlrpclib
 
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
+from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
@@ -95,16 +96,14 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         if self.user_cred == None:
             pg_response = dict()
-            try:
-                pg_response = self.sa.GetCredential()
-            except Exception as exc:
-                self.logger.error('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
-                raise exc
-#                raise Exception('Using PG failed to call SA GetCredential using SA %s, cert %s: %s' % (self.config['sa'], self.config['cert'], exc))
+            pg_response = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
+            if pg_response is None:
+                self.logger.error("Failed to get your PG user credential")
+                return None
                                   
             code = pg_response['code']
             if code:
-                self.logger.error("Received error code: %d", code)
+                self.logger.error("Failed to get a PG user credential: Received error code: %d", code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
                 #return None
@@ -114,21 +113,29 @@ class Framework(Framework_Base):
     
     def get_slice_cred(self, urn):
         mycred = self.get_user_cred()
+        if mycred is None:
+            self.logger.error("Cannot get PG slice %s without a user credential", urn)
+            return None
+
         # Note params may be used again later in this method
         params = {'credential': mycred,
                   'type': 'Slice',
                   'urn': urn}
         self.logger.debug("Resolving %s at slice authority", urn)
-        response = self.sa.Resolve(params)
+        response = _do_ssl(self, None, ("Resolve PG slice %s at SA %s" % (urn, self.config['sa'])), self.sa.Resolve, params)
         # response is a dict with three keys: code, value and output
         self.logger.debug("Got resolve response %r", response)
+        if response is None:
+            raise Exception("Failed to find PG slice %s", urn)
         if response['code']:
             # Unable to resolve, slice does not exist
-            raise Exception('Slice %s does not exist.' % (urn))
+            raise Exception('PG Slice %s does not exist.' % (urn))
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
-            response = self.sa.GetCredential(params)
+            response = _do_ssl(self, None, ("Get PG slice credential for %s from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
+            if response is None:
+                raise Exception("Failed to get PG slice %s credential", urn)
             return response['value']
 
     
@@ -172,32 +179,46 @@ class Framework(Framework_Base):
         If the slice does not exist, create it and return a credential.
         """
         mycred = self.get_user_cred()
+        if mycred is None:
+            self.logger.error("Cannot create a PG slice without a valid user credential")
+            return None
         # Note: params is used again below through either code path.
         params = {'credential': mycred,
                   'type': 'Slice',
                   'urn': urn}
         self.logger.debug("Resolving %s at slice authority", urn)
-        response = self.sa.Resolve(params)
+        response = _do_ssl(self, None, ("Look up slice %s at PG slice authority %s" % (urn, self.config['sa'])), self.sa.Resolve, params)
         # response is a dict with three keys: code, value and output
         self.logger.debug("Got resolve response %r", response)
-        if response['code']:
+        if response is None:
+            #exception trying to resolve the slice is not the same as a PG error
+            self.logger.error("Failed to resolve slice %s at PG slice authority", urn)
+            return None
+        elif response['code']:
             # Unable to resolve, create a new slice
             self.logger.debug("Creating new slice %s", urn)
-            response = self.sa.Register(params)
+            response = _do_ssl(self, None, ("Create PG slice %s at SA %s" % (urn, self.config['sa'])), self.sa.Register, params)
             self.logger.debug("Got register response %r", response)
-            if response['code']:
+            if response is None:
+                self.logger.error("Failed to create new PG slice %s", urn)
+                return None
+            elif response['code']:
                 self.logger.error('Failed to create new PG slice %s: %s (code %d)', urn, response['output'], response['code'])
             return response['value']
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
-            response = self.sa.GetCredential(params)
-            if response['code']:
+            response = _do_ssl(self, None, ("Get PG slice %s credential from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
+            if response is None:
+                self.logger.error("Failed to get credential for existing PG slice %s", urn)
+                return None
+            elif response['code']:
                 self.logger.error('Failed to get credential for existing PG slice %s: %s (code %d)', urn, response['output'], response['code'])
             return response['value']
 
     def delete_slice(self, urn):
         # It appears that delete_slice should return something. I'll return a string.
+        # FIXME: could (a) confirm it exists, (b) get the slice credential, and then (c) extract the time when it does expire
         return 'ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.'
 
     def list_my_slices(self, user):
@@ -208,7 +229,11 @@ class Framework(Framework_Base):
         if self.aggs:
             return self.aggs
         cm_dicts = self._get_components()
+        if cm_dicts is None:
+            cm_dicts = []
         am_dicts = self._find_geni_ams(cm_dicts)
+        if am_dicts is None:
+            am_dicts = []
         result = dict()
         for am_dict in am_dicts:
             self.logger.debug("Keys: %r", am_dict.keys())
@@ -221,14 +246,20 @@ class Framework(Framework_Base):
         """See framework_base for doc.
         """
         mycred = self.get_user_cred()
+        if mycred is None:
+            self.logger.error("Cannot renew slice %s without a valid user credential", urn)
+            return None
         # Note: params is used again below through either code path.
         params = {'credential': mycred,
                   'type': 'Slice',
                   'urn': urn}
-        response = self.sa.GetCredential(params)
-        if response['code']:
-            msg = "Unable to get slice credential for slice %s: %s"
-            msg = msg % (urn, response['output'])
+        response = _do_ssl(self, None, ("Get PG Slice %s credential from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
+        if response is None or response['code']:
+            msg = "Cannot renew slice. Unable to get slice credential for slice %s: %s"
+            if response is None:
+                msg = msg % (urn, 'Exception')
+            else:
+                msg = msg % (urn, response['output'])
             self.logger.warning(msg)
             return None
         else:
@@ -237,11 +268,14 @@ class Framework(Framework_Base):
             self.logger.info('requesting new expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
-            response = self.sa.RenewSlice(params)
-            if response['code']:
+            response = _do_ssl(self, None, ("Renew slice %s at SA %s" % (urn, self.config['sa'])), self.sa.RenewSlice, params)
+            if response is None or response['code']:
                 # request failed, print a message and return None
                 msg = "Failed to renew slice %s: %s"
-                msg = msg % (urn, response['output'])
+                if response is None:
+                    msg = msg % (urn, 'Exception')
+                else:
+                    msg = msg % (urn, response['output'])
                 self.logger.warning(msg)
                 return None
             else:
@@ -291,13 +325,15 @@ class Framework(Framework_Base):
         """
         cred = self.get_user_cred()
         if not cred:
-            raise Exception("No user credential available.")
-        pg_response = self.ch.ListComponents({'credential': cred})
+            raise Exception("Cannot get PG comnponents - no user credential available.")
+        pg_response = _do_ssl(self, None, "List Components at PG CH %s" % self.config['ch'], self.ch.ListComponents, {'credential': cred})
         code = pg_response['code']
-        if code:
-            self.logger.error("Received error code: %d", code)
-            output = pg_response['output']
-            self.logger.error("Received error message: %s", output)
+        if pg_response is None or pg_response['code']:
+            self.logger.error("Cannot list PG components")
+            if pg_response:
+                self.logger.error("Received error code: %d", code)
+                output = pg_response['output']
+                self.logger.error("Received error message: %s", output)
             # Return an empty list.
             return list()
         # value is a list of dicts, each containing info about an aggregate
@@ -320,24 +356,18 @@ class Framework(Framework_Base):
                                      self.config['cert'],
                                      self.config['verbose'],
                                      timeout=5)
-                try:
-                    version = client.GetVersion()
-                    self.logger.debug('version = %r', version)
+                # This refactoring means we print verbose errors for 404 Not Found messages like
+                # we get when there is no AM for the CM
+                # Old version skipped xmlrpclib.ProtocolError, ssl.SSLError, socket.error
+                version = _do_ssl(self, "404 Not Found", "Test PG AM for GENI API compatibilitity at %s" % am_url, client.GetVersion)
+                self.logger.debug('version = %r', version)
+                if version is not None:
                     # Temporarily accept pg style result until pgeni3 is upgraded.
                     if version.has_key('output'):
                         version = version['value']
                     if version.has_key('geni_api'):
                         cm_dict['am_url'] = am_url
                         result.append(cm_dict)
-                except xmlrpclib.ProtocolError, err:
-                    self.logger.debug("Skipping %s due to xml rpc error: %s",
-                                      cm_url, err)
-                except ssl.SSLError, err:
-                    self.logger.debug("Skipping %s due to ssl error: %s",
-                                      cm_url, err)
-                except socket.error, err:
-                    self.logger.debug("Skipping %s due to socket error: %s",
-                                      cm_url, err)
         return result
 
     def _cm_to_am(self, url):

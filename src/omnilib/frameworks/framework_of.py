@@ -23,6 +23,7 @@
 '''Openflow / Expedient as CH. Follows GCF model. https://server:443/expedient_geni/clearinghouse/rpc/'''
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
+from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
 import traceback
@@ -44,33 +45,30 @@ class Framework(Framework_Base):
         self.ch = make_client(config['ch'], config['key'], config['cert'])
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = None
+        self.logger = config['logger']
         
     def get_user_cred(self):
         if self.user_cred == None:
-            try:
-                self.user_cred = self.ch.CreateUserCredential(self.cert_string)
-            except Exception:
-                raise Exception("Using OpenFlow Failed to do CH.CreateUserCredentials on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
+            self.user_cred = _do_ssl(self, None, ("Create user credential on OpenFlow CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
         return self.user_cred
     
     def get_slice_cred(self, urn):
-        return self.ch.CreateSlice(urn)
+        return _do_ssl(self, None, ("Create slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
     
     def create_slice(self, urn):    
         return self.get_slice_cred(urn)
     
     def delete_slice(self, urn):
-        return self.ch.DeleteSlice(urn)
+        return _do_ssl(self, None, ("Delete Slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
      
     def list_aggregates(self):
         # 10/7/10: We believe ListAggregates is not implemented yet.
         # So either we log an error and return an empty list, or we just raise the exception
         # I choose to leave it alone - raise the exception. And when it works, it will work.
         sites = []
-        try:
-            sites = self.ch.ListAggregates()
-        except Exception:
-            raise Exception("Using OpenFlow Failed to do CH.ListAggregates on CH %s from cert file %s: %s" % (self.config['ch'], self.config['cert'], traceback.format_exc()))
+        sites = _do_ssl(self, None, ("List Aggregates at OpenFlow CH %s" % self.config['ch']), self.ch.ListAggregates)
+        if sites is None:
+            sites = []
         aggs = {}
         for (urn, url) in sites:
             aggs[urn] = url
@@ -106,7 +104,7 @@ class Framework(Framework_Base):
         """See framework_base for doc.
         """
         expiration = expiration_dt.isoformat()
-        if self.ch.RenewSlice(urn, expiration):
+        if _do_ssl(self, None, ("Renew slice %s on OpenFlow CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration):
             return expiration_dt
         else:
             return None

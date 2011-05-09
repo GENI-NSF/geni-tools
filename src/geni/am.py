@@ -272,7 +272,17 @@ class ReferenceAggregateManager(object):
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
-        return dict(geni_api=1)
+        # FIXME: Fill in correct values for others
+        # url
+        # urn
+        # hostname
+        # code_tag
+        # hrn
+        defad = dict(type="GCF", version=0.1)
+        reqver = [dict(type="GCF", version=0.1, schema="", namespace="", extensions=[])]
+        adver = [dict(type="GCF", version=0.1, schema="", namespace="", extensions=[])]
+        versions = dict(default_ad_rspec=defad, geni_api=1, request_rspec_versions=reqver, ad_rspec_versions=adver, interface='aggregate', url='FIXME', urn='FIXME', hostname='FIXME', code_tag='FIXME', hrn='FIXME')
+        return versions
 
     # The list of credentials are options - some single cred
     # must give the caller required permissions.
@@ -308,6 +318,19 @@ class ReferenceAggregateManager(object):
 
         if not options:
             options = dict()
+
+        # Look to see what RSpec version the client requested
+        if 'rspec_version' in options:
+            # we only have one, so nothing to do here
+            # But an AM with multiple formats supported
+            # would use this to decide how to format the return.
+
+            # Can also error-check that the input value is supported.
+            rspec_type = options['rspec_version']['type']
+            rspec_version = options['rspec_version']['version']
+            if rspec_type is not 'GCF':
+                self.logger.warn("Returning GCF rspec even though request said %s", rspec_type)
+            self.logger.info("ListResources requested rspec %s (%d)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
@@ -394,6 +417,13 @@ class ReferenceAggregateManager(object):
         except Exception, exc:
             self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
             raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+
+
+        # Look at the version of the input request RSpec
+        # Make sure it is supported
+        # Then make sure that you return an RSpec in the same format
+        # EG if both V1 and V2 are supported, and the user gives V2 request,
+        # then you must return a V2 request and not V1
 
         resources = list()
         for elem in rspec_dom.documentElement.getElementsByTagName('resource'):
