@@ -175,7 +175,7 @@ class CallHandler(object):
 
 
     def _listmyslices( self, username ):
-        slices =  self._do_ssl("List Slices from Slice Authority", self.framework.list_my_slices, username)
+        slices =  _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
         return slices
 
     def listresources(self, args):
