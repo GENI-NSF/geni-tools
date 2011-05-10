@@ -109,7 +109,7 @@ def _do_ssl(framework, suppresserror, reason, fn, *args):
                 framework.logger.debug("Suppressing error doing %s: %s" % (failMsg, exc))
                 framework.logger.debug(traceback.format_exc())
                 return None
-            framework.logger.error("%s: %s" % (failMsg, exc))
+            framework.logger.error("%s: %s: %s" % (failMsg, exc.__class__.__name__, exc))
             if not framework.logger.isEnabledFor(logging.DEBUG):
                 framework.logger.error('    ..... Run with --debug for more information')
             framework.logger.debug(traceback.format_exc())

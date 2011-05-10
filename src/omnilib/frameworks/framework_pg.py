@@ -327,11 +327,11 @@ class Framework(Framework_Base):
         if not cred:
             raise Exception("Cannot get PG comnponents - no user credential available.")
         pg_response = _do_ssl(self, None, "List Components at PG CH %s" % self.config['ch'], self.ch.ListComponents, {'credential': cred})
-        code = pg_response['code']
-        if pg_response is None or pg_response['code']:
+
+        if (pg_response is None) or (pg_response['code']):
             self.logger.error("Cannot list PG components")
             if pg_response:
-                self.logger.error("Received error code: %d", code)
+                self.logger.error("Received error code: %d", pg_response['code'])
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
             # Return an empty list.
