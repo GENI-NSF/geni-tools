@@ -34,8 +34,7 @@
     and supply valid paths to your per control framework user certs and keys.
 
     Typical usage:
-    omni.py -f sfa listresources > sfa-resources.rspec
-
+    omni.py -f sfa listresources 
     
     The currently supported control frameworks are SFA, PG and GCF.
 
@@ -48,11 +47,10 @@
 
     Return Values of various omni commands:
        [string dictionary] = omni.py getversion # dict is keyed by AM url
-       [string xmldoc] = omni.py listresources -n
        [string dictionary] = omni.py listresources
        On success: [string sliceurnstring] = omni.py createslice SLICENAME
        On fail: [string None] = omni.py createslice SLICENAME
-       [string Boolean] = omni.py createsliver SLICENAME RSPEC_FILENAME
+       [string rspec] = omni.py createsliver SLICENAME RSPEC_FILENAME
        [string Boolean] = omni.py deletesliver SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
@@ -60,6 +58,8 @@
        On success: [string dateTimeRenewedTo] = omni.py renewsliver SLICENAME
        On fail: [string None] = omni.py renewsliver SLICENAME
        [string listOfSliceNames] = omni.py listmyslices USER
+       [string dictionary] = omni .py sliverstatus SLICENAME
+       [string Boolean] = omni.py shutdown SLICENAME
     
 """
 
@@ -104,16 +104,19 @@ class CallHandler(object):
         self.config = config
         self.opts = opts
         
+    def _raise_omni_error( self, msg ):
+        self.logger.error( msg )
+        raise OmniError, msg
 
     def _handle(self, args):
         if len(args) == 0:
-            sys.exit('Insufficient number of arguments - Missing command to run')
+            self._raise_omni_error('Insufficient number of arguments - Missing command to run')
         
         call = args[0].lower()
         if call.startswith('_'):
             return
         if not hasattr(self,call):
-            sys.exit('Unknown function: %s' % call)
+            self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
     def _getclients(self, ams=None):
@@ -159,7 +162,7 @@ class CallHandler(object):
         if len(args) > 0:
             username = args[0].strip()
         else:
-            sys.exit('listmyslices requires 1 arg: user')
+            self._raise_omni_error('listmyslices requires 1 arg: user')
 
         retStr = ""
         slices=None
@@ -167,7 +170,8 @@ class CallHandler(object):
         if slices is None:
             # only end up here if call to _do_ssl failed
             slices = []
-            self.logger.warn("Failed to list slices for user '%s'"%(username))
+            self.logger.error("Failed to list slices for user '%s'"%(username))
+            retStr += "Server error: "
         elif len(slices) > 0:
             self.logger.info("User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices)))
         else:
@@ -182,22 +186,25 @@ class CallHandler(object):
         slices =  _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
         return slices
 
-    def listresources(self, args):
-        '''Optional arg is a slice name limiting results. Call ListResources
-        on all aggregates and prints the omnispec/rspec to stdout.'''
+    def _listresources(self, args):
+        """Queries resources on various aggregates.
+        
+        Takes an optional slicename.
+        Uses optional aggregate option or omni_config aggregate param.
+
+        Doesn't care about omnispec vs native.
+        Doesn't care how many aggregates that you query.
+
+        Returns a dictionary of rspecs with the following format:
+           rspecs[(urn, url)] = decompressed native rspec        
+        """
+
+        # rspecs[(urn, url)] = decompressed native rspec
         rspecs = {}
         options = {}
 
         options['geni_compressed'] = False;
         
-        # check command line args
-        if self.opts.native and not self.opts.aggregate:
-            # If native is requested, the user must supply an aggregate.
-            msg = 'Specifying a native RSpec requires specifying an aggregate.'
-            # Calling exit here is a bit of a hammer.
-            # Maybe there's a gentler way.
-            sys.exit(msg)
-
         # An optional slice name might be specified.
         slicename = None
         if len(args) > 0:
@@ -210,18 +217,21 @@ class CallHandler(object):
             cred = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
 
             if cred is None:
-                sys.exit('Cannot list resources: Could not get user credential')
-
+                self.logger.error('Cannot list resources: Could not get user credential')
+                return None
         else:
             urn = self.framework.slice_name_to_urn(slicename)
             cred = self._get_slice_cred(urn)
             if cred is None:
-                sys.exit('Cannot list resources for slice %s: could not get slice credential'
-                         % (urn))
+                self.logger.error('Cannot list resources for slice %s: could not get slice credential' % (urn))
+                return None
             self.logger.info('Gathering resources reserved for slice %s..' % slicename)
 
             options['geni_slice_urn'] = urn
 
+        # We now have a credential
+
+        # Query each aggregate for resources
         successCnt = 0
         clientList = self._getclients()
         # Connect to each available GENI AM to list their resources
@@ -239,61 +249,148 @@ class CallHandler(object):
                     rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
 
-        # if slicename is not None:
-        # successCnt out of len(clientList) aggregates for slice slicename
-        #        rspecs[(client.urn, client.url)] = rspec
+        self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+        return rspecs
 
-        if self.opts.native:
-            # If native, return the one native rspec. There is only
-            # one because we checked for that at the beginning.
-            if slicename != None:
-                self.logger.info('Resources at %s for slice %s:' % (self.opts.aggregate, slicename))
+    def _printRspec(self, header, content, filename=None):
+        """Print header and content to stdout or given file."""
+
+        if filename is None:
+            if header is not None:
+                self.logger.info(header+":")
+            self.logger.info(content)
+        else:
+            with open(filename,'w') as file:
+                self.logger.info( "Writing to '%s'"%(filename))
+                if header is not None:
+                    file.write( header )
+                    file.write( "\n" )
+                file.write( content )
+                file.write( "\n" )
+
+    def listresources(self, args):
+        '''Optional arg is a slice name limiting results. Call ListResources
+        on all aggregates and prints the omnispec/rspec to stdout or to file.
+        
+        -n gives native format; otherwise print omnispec in json format
+        -o writes to file instead of stdout; omnispec written to 1 file, native format written to single file per aggregate.'''
+
+        # FIXME: filenames should be improved
+
+        # An optional slice name might be specified.
+        slicename = None
+        if len(args) > 0:
+            slicename = args[0].strip()
+
+        # check command line args
+        if self.opts.output:
+            self.logger.info("Saving output to a file.")
+
+        # Query the various aggregates for resources
+        # rspecs[(urn, url)] = decompressed native rspec
+        rspecs = self._listresources( args )
+        numAggs = len(rspecs.keys())
+        
+        # handle empty case
+        if not rspecs or rspecs == {}:
+            if slicename:
+                prtStr = "Got no resources on slice %s"%slicename 
             else:
-                self.logger.info('Resources at %s:' % (self.opts.aggregate))
-            if rspecs and rspecs != {}:
-                rspec = rspecs.values()[0]
+                prtStr = "Got no resources" 
+            self.logger.info( prtStr )
+            return prtStr, None
+
+ 
+        # Convert the rspecs to omnispecs
+        returnedRspecs = {}
+        omnispecs = {}
+        fileCtr = 0
+        for ((urn,url), rspec) in rspecs.items():                        
+            self.logger.debug("Getting RSpec items for urn %s (%s)", urn, url)
+
+            if self.opts.native:
+                # Create HEADER
+                if slicename is not None:
+                    header = "Resources for slice %s at %s [%s]" % (slicename, urn, url)
+                else:
+                    header = "Resources at %s [%s]" % (urn, url)
+                header = "<!-- "+header+" -->"
+
+                # Create BODY
+                returnedRspecs[(urn,url)] = rspec
                 try:
                     newl = ''
                     if '\n' not in rspec:
                         newl = '\n'
-                    prtStr = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
-                    self.logger.info( prtStr )
-                    retVal = prtStr
+                    content = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
                 except:
-                    self.logger.info( rspec )
-                    retVal = rspec
-                retItem = rspec
-            else:
-                self.logger.info('No resources available')
-                retVal = ""
-                retItem = None
+                    content = rspec
+                filename=None
+                # Create FILENAME
+                if self.opts.output:
+                    fileCtr += 1 
+                    if slicename:
+                        filename = slicename+"_rspec_"+str(fileCtr)+"_native.xml"
+                    else:
+                        filename = "rspec_"+str(fileCtr)+"_native.xml"
+                        
+                # Create FILE
+                self._printRspec( header, content, filename)
 
-            return retVal, retItem
-                
-        else:
-            # Convert the rspecs to omnispecs
-            omnispecs = {}
-            for ((urn,url), rspec) in rspecs.items():                        
-                self.logger.debug("Getting RSpec items for urn %s (%s)", urn, url)
+            else:
                 # Throws exception if unparsable
                 # No catch means 1 bad Agg and we lose all ospecs
                 try:
-                    omnispecs[url] = rspec_to_omnispec(urn,rspec)
+                    omnispecs[ url ] = rspec_to_omnispec(urn,rspec)
+                    returnedRspecs[(urn,url)] = omnispecs[url]
                 except Exception, e:
                     self.logger.error("Failed to parse RSpec from AM %s (%s): %s", urn, url, e)
 
-            if omnispecs and omnispecs != {}:
-                jspecs = json.dumps(omnispecs, indent=4)
-                self.logger.info('Full resource listing:')
-                # jspecs is a string, omnispecs is a dictionary
-                return jspecs, omnispecs
+        if not self.opts.native:
+            # Create HEADER
+            if slicename is not None:
+                header = "Resources for slice %s" % (slicename)
             else:
-                if rspecs and rspecs != {}:
-                    self.logger.info('No parsable resources available.')
-                    #print 'Unparsable responses:'
-                    #pprint.pprint(rspecs)
+                header = "Resources"
+            if self.opts.output:
+                header = None
+
+            # Create BODY
+            content = json.dumps(omnispecs, indent=4)
+
+            filename=None
+            # Create FILENAME
+            if self.opts.output:
+                if slicename:
+                    filename = slicename+"_rspec_omni.json"
                 else:
-                    self.logger.info('No resources available')
+                    filename = "rspec_omni.json"
+                        
+            # Create FILE
+            if numAggs>0:
+                self._printRspec( header, content, filename)
+
+
+        # Create RETURNS
+        if slicename:
+            retVal = "Retrieved resources for slice %s from %d aggregates."%(slicename, numAggs)
+        else:
+            retVal = "Retrieved resources from %d aggregates."%(numAggs)
+        if numAggs > 0:
+            retVal +="\n"
+            if self.opts.native:
+                retVal += "Wrote rspecs"
+                if self.opts.output:
+                    retVal +=" to %d files"% fileCtr
+            else:
+                retVal += "Wrote omnispecs"
+                if self.opts.output:
+                    retVal +=" to '%s' file"% filename
+            retVal +="."
+
+        retItem = returnedRspecs
+
+        return retVal, retItem
             
     def _ospec_to_rspecs(self, specfile):
         """Convert the given omnispec file into a dict of url => rspec."""
@@ -302,7 +399,7 @@ class CallHandler(object):
         try:
             jspecs = json.loads(file(specfile,'r').read())
         except Exception, exc:
-            sys.exit("Parse error reading omnispec %s: %s" % (specfile, exc))
+            self._raise_omni_error("Parse error reading omnispec %s: %s" % (specfile, exc))
 
         # Extract the individual omnispecs from the JSON dict
         omnispecs = {}
@@ -330,7 +427,7 @@ class CallHandler(object):
     def createsliver(self, args):
         retVal=''
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
-            sys.exit('createsliver requires 2 args: slicename and omnispec filename')
+            self._raise_omni_error('createsliver requires 2 args: slicename and omnispec filename')
 
         # check command line args
         if self.opts.native and not self.opts.aggregate:
@@ -338,14 +435,14 @@ class CallHandler(object):
             msg = 'Specifying a native RSpec requires specifying an aggregate.'
             # Calling exit here is a bit of a hammer.
             # Maybe there's a gentler way.
-            sys.exit(msg)
+            self._raise_omni_error(msg)
 
         name = args[0]
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name.strip())
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot create sliver %s: Could not get slice credential'
+            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
 
         retVal += self._print_slice_expiration(urn)+"\n"
@@ -353,7 +450,7 @@ class CallHandler(object):
         # Load up the user's edited omnispec
         specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
-            sys.exit('File of resources to request missing: %s' % specfile)
+            self._raise_omni_error('File of resources to request missing: %s' % specfile)
 
         rspecs = None
         if self.opts.native:
@@ -363,7 +460,7 @@ class CallHandler(object):
                 rspec = file(specfile).read()
                 rspecs[self.opts.aggregate] = rspec
             except Exception, exc:
-                sys.exit('Unable to read rspec file %s: %s'
+                self._raise_omni_error('Unable to read rspec file %s: %s'
                          % (specfile, str(exc)))
         else:
             rspecs = self._ospec_to_rspecs(specfile)
@@ -379,11 +476,11 @@ class CallHandler(object):
                 if not req in user:
                     raise Exception("%s in omni_config is not specified for user %s" % (req,user))
 
-            try:
-                for key in user['keys'].split(','):        
+            for key in user['keys'].split(','):        
+                try:
                     newkeys.append(file(os.path.expanduser(key.strip())).read())
-            except Exception, exc:
-                self.logger.warn("Failed to read user key from %s: %s" %(user['keys'], exc))
+                except Exception, exc:
+                    self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
             user['keys'] = newkeys
             if len(newkeys) == 0:
                 self.logger.warn("Empty keys for user %s", user['urn'])
@@ -456,7 +553,7 @@ class CallHandler(object):
 
     def deletesliver(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('deletesliver requires arg of slice name')
+            self._raise_omni_error('deletesliver requires arg of slice name')
 
         name = args[0]
 
@@ -464,7 +561,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot delete sliver %s: Could not get slice credential'
+            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential'
                      % (urn))
 
         if self.opts.orca_slice_id:
@@ -501,7 +598,7 @@ class CallHandler(object):
 
     def renewsliver(self, args):
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
-            sys.exit('renewsliver requires arg of slice name and new expiration time in UTC')
+            self._raise_omni_error('renewsliver requires arg of slice name and new expiration time in UTC')
 
         name = args[0]
 
@@ -509,20 +606,20 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot renew sliver %s: Could not get slice credential'
+            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential'
                      % (urn))
 
         time = None
         try:
             time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            sys.exit('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
+            self._raise_omni_error('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
         retVal = ''
         slicecred_exp = self._get_slice_exp(slice_cred)
         retVal += self._print_slice_expiration(urn, slice_cred) +"\n"
         if time > slicecred_exp:
-            sys.exit('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
+            self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
         elif time <= datetime.datetime.utcnow():
             self.logger.info('Sliver %s will be set to expire now' % urn)
             time = datetime.datetime.utcnow()
@@ -544,7 +641,7 @@ class CallHandler(object):
                 self.logger.warn("Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url))
                 retTime = None
             else:
-                self.logger.info("Renewed sliver %s at %s (%s) until %s UTC\n" % (urn, client.urn, client.url, time.isoformat()))
+                self.logger.info("Renewed sliver %s at %s (%s) until %s UTC" % (urn, client.urn, client.url, time.isoformat()))
                 successCnt += 1
                 retTime = time.isoformat()
         retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
@@ -552,7 +649,7 @@ class CallHandler(object):
 
     def sliverstatus(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('sliverstatus requires arg of slice name')
+            self._raise_omni_error('sliverstatus requires arg of slice name')
 
         name = args[0]
 
@@ -560,7 +657,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot get sliver status for %s: Could not get slice credential'
+            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential'
                      % (urn))
 
         if self.opts.orca_slice_id:
@@ -588,7 +685,7 @@ class CallHandler(object):
                 
     def shutdown(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('shutdown requires arg of slice name')
+            self._raise_omni_error('shutdown requires arg of slice name')
 
         name = args[0]
 
@@ -596,7 +693,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         slice_cred = self._get_slice_cred(urn)
         if slice_cred is None:
-            sys.exit('Cannot shutdown slice %s: Could not get slice credential'
+            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential'
                      % (urn))
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -608,7 +705,7 @@ class CallHandler(object):
         clientList = self._getclients()
         for client in clientList:
             if _do_ssl(self.framework, None, "Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
-                self.logger.info("Shutdown Sliver %s at %s on %s\n" % (urn, client.urn, client.url))
+                self.logger.info("Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url))
                 successCnt+=1
                 retCode = retCode and True
             else:
@@ -628,11 +725,11 @@ class CallHandler(object):
             thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
             version[ client.url ] = thisVersion
             if thisVersion is None:
-                self.logger.info( "URN: %s (url:%s) call FAILED.\n\n" % (client.urn, client.url) )
+                self.logger.warn( "URN: %s (url:%s) call FAILED.\n" % (client.urn, client.url) )
             else:
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
-                self.logger.info( "URN: %s (url: %s) has version: \n%s\n\n" % (client.urn, client.url, pp.pformat(thisVersion)) )
+                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, pp.pformat(thisVersion)) )
                 successCnt += 1
 
         if len(clients)==0:
@@ -646,7 +743,7 @@ class CallHandler(object):
     def createslice(self, args):
         retVal = ""
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('createslice requires arg of slice name')
+            self._raise_omni_error('createslice requires arg of slice name')
 
         name = args[0]
 
@@ -664,7 +761,7 @@ class CallHandler(object):
         else:
             printStr = "Create Slice Failed for slice name %s." % (name) 
             retVal += printStr+"\n"
-            self.logger.info( printStr )
+            self.logger.error( printStr )
             success = None
             if not self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.warn( "   Try re-running with --debug for more information." )
@@ -672,7 +769,7 @@ class CallHandler(object):
         
     def deleteslice(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('deleteslice requires arg of slice name')
+            self._raise_omni_error('deleteslice requires arg of slice name')
 
         name = args[0]
 
@@ -691,7 +788,7 @@ class CallHandler(object):
 
     def getslicecred(self, args):
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            sys.exit('getslicecred requires arg of slice name')
+            self._raise_omni_error('getslicecred requires arg of slice name')
 
         name = args[0]
 
@@ -801,7 +898,7 @@ class CallHandler(object):
         renewed.
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            sys.exit('renewslice <slice name> <expiration date>')
+            self._raise_omni_error('renewslice <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
         # convert the slice name to a framework urn
@@ -813,7 +910,7 @@ class CallHandler(object):
         except:
             msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
             msg = msg % (expire_str)
-            sys.exit(msg)
+            self._raise_omni_error(msg)
 
         # Try to renew the slice
         out_expiration = _do_ssl(self.framework, None, "Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
@@ -847,6 +944,9 @@ def parse_args(argv):
                       default=True, help="do not use ssl")
     parser.add_option("--orca-slice-id",
                       help="use the given orca slice id")
+    # Also need an option for filename prefix
+    parser.add_option("-o", "--output",  default=False, action="store_true",
+                      help="write output of listresources to a file")
     return parser.parse_args(argv)
 
 def configure_logging(opts):
@@ -873,7 +973,9 @@ def load_config(opts, logger):
             if os.path.exists( configfile ):
                 configfiles.insert(0, configfile)
             else:
-                sys.exit("Config file '%s'or '%s' does not exist"
+                logger.error("Config file '%s'or '%s' does not exist"
+                     % (opts.configfile, configfile))
+                raise (OmniError, "Config file '%s'or '%s' does not exist"
                      % (opts.configfile, configfile))
 
     # Find the first valid config file
@@ -884,8 +986,10 @@ def load_config(opts, logger):
     
     # Did we find a valid config file?
     if not os.path.exists(filename):
-        sys.exit(""" Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
-                     An example config file can be found in the source tarball or in /etc/omni/templates/""")            
+        prtStr = """ Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
+                     An example config file can be found in the source tarball or in /etc/omni/templates/"""
+        logger.error( prtStr )
+        raise OmniError, prtStr
 
     logger.info("Loading config file %s", filename)
     
@@ -893,8 +997,8 @@ def load_config(opts, logger):
     try:
         confparser.read(filename)
     except ConfigParser.Error as exc:
-        sys.exit("Config file %s could not be parsed: %s"
-                 % (filename, str(exc)))
+        logger.error("Config file %s could not be parsed: %s"% (filename, str(exc)))
+        raise OmniError, "Config file %s could not be parsed: %s"% (filename, str(exc))
 
     # Load up the omni options
     config = {}
@@ -921,7 +1025,8 @@ def load_config(opts, logger):
     # Find the control framework
     cf = opts.framework.strip()
     if not confparser.has_section(cf):
-        sys.exit('Missing framework %s in configuration file' % cf)
+        logger.error( 'Missing framework %s in configuration file' % cf )
+        raise OmniError, 'Missing framework %s in configuration file' % cf
     
     # Copy the control framework into a dictionary
     config['selected_framework'] = {}
@@ -947,6 +1052,7 @@ def make_client(url, framework, opts):
         return omnilib.xmlrpc.client.make_client(url, None, None)
 
 
+
 def initialize( argv ):
     opts, args = parse_args(argv)    
     logger = configure_logging(opts)
@@ -955,11 +1061,12 @@ def initialize( argv ):
     return framework, config, args, opts
 
 def API_call( framework, config, args, opts, verbose=False ):
+    """Call the function and print the summary.
+    """
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
 #    Returns string, item
     result = handler._handle(args)
-
 
     if result is None:
         retVal = None
@@ -969,24 +1076,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     else:
         retVal = result
         retItem = None
-    # Print the output
-    if verbose:
-        # print_opts = ""
-        # if opts.framework is not config['omni']['default_cf']:
-        #     print_opts += " -%s %s"%('f', str(opts.framework))
-        # if opts.debug is True:
-        #     print_opts += " --%s"%('debug')
-        # if opts.ssl is False:
-        #     print_opts += " --no-ssl"
-        # if opts.aggregate is not None:
-        #     print_opts += " -%s %s"%('a', str(opts.aggregate))
-        # if opts.native is not False:
-        #     print_opts += " -%s %s"%('n', str(opts.native))
-        # if (opts.configfile is not None):
-        #     print_opts += " -%s %s"%('c', str(opts.configfile))
-        # print_opts += " "
 
-        # s = "Command 'omni.py"+print_opts+" ".join(args) + "' Returned"
+    # Print the summary of the command result
+    if verbose:
         s = "Command '" + str(" ".join(sys.argv)) + "' Returned"
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
@@ -994,23 +1086,21 @@ def API_call( framework, config, args, opts, verbose=False ):
         logger = config['logger']
         logger.critical( "-"*70 )
         logger.critical( header )
+        # printed not logged so can redirect output to a file
         print retVal
-# Remove next two lines
-        logger.critical( "-"*80 )
-        logger.critical( retItem )
         logger.critical( "="*70 )
-
-#         print "-"*80
-#         print header
-#         print retVal
-# # Remove next two lines
-#         print "-"*80
-#         print retItem
-#         print "="*80
     
     return retVal, retItem
 
 def call( cmd, opts, verbose=False ):
+    """method to use when calling omni as a library
+
+    Can call like this:
+      import omni 
+      args = [slicename]
+      text, dict = omni.call('listresources', args)
+    This is equivalent to: ./omni.py listresources slicename
+      """
     # create argv containing cmds and options
     argv = [str(cmd)]
     argv.extend(opts) 
@@ -1021,12 +1111,18 @@ def call( cmd, opts, verbose=False ):
     result = API_call( framework, config, args, opts, verbose=verbose )
     return result
 
+class OmniError( Exception ):
+    pass
+
 def main(argv=None):
     # do initial setup & process the user's call
-    framework, config, args, opts = initialize(sys.argv[1:])
-    retVal = API_call(framework, config, args, opts, verbose=True)
-#    if retVal is not None:
-#        print retVal[0]
+    try:
+        framework, config, args, opts = initialize(sys.argv[1:])
+        retVal = API_call(framework, config, args, opts, verbose=True)
+    except OmniError, exc:
+        sys.exit()
+#        sys.exit("ERROR: "+str(exc))
+
         
 if __name__ == "__main__":
     sys.exit(main())
