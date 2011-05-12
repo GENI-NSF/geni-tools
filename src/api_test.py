@@ -82,19 +82,21 @@ class GENISetup(unittest.TestCase):
       print "MONITORING %s %s" % (inspect.stack()[1][3], resultStr)      
 
    def create_slice_name( self ):
-      slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
+      slice_name = SLICE_NAME
+#      slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
       return slice_name
 
 class Test(GENISetup):
    def test_getversion(self):
       self.sectionBreak()
-      (text, verDict) = self.call('getversion', list(''))
+      (text, retDict) = self.call('getversion', list(''))
       msg = "No geni_api version listed in result: \n%s" % text
       successFail = False
-      if type(verDict) == type({}):
-         if verDict.has_key('geni_api'):
-            successFail = True
-#      successFail = "'geni_api':" in text
+      if type(retDict) == type({}):
+         for key,verDict in retDict.items():
+            if verDict.has_key('geni_api'):
+               successFail = True
+               break
       self.assertTrue(successFail, msg)
       self.printMonitoring( successFail )
 
@@ -104,7 +106,9 @@ class Test(GENISetup):
       (text, rspec) = self.call('ListResources', ['-n', '-a http://myplc.gpolab.bbn.com:12346'])
       # Make sure we got an XML file back
       msg = "Returned rspec is not XML: %s" % rspec
-      successFail = ET.fromstring(text) is not None
+      successFail = True
+      for key, value in rspec.items():
+         successFail = successFail and (ET.fromstring(value) is not None)
       self.assertTrue(successFail, msg)
       self.printMonitoring( successFail )
 
@@ -214,10 +218,16 @@ class Test(GENISetup):
    def subtest_renewsliver_success(self, slice_name):
       newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
       text, retTime = self.call('renewsliver', [slice_name, newtime])
-      if retTime is None:
-         successFail = False
-      else:
-         successFail = True
+      # if retTime is None:
+      #    successFail = False
+      # else:
+      #    successFail = True
+      m = re.search(r"Renewed slivers on (\w+) out of (\w+) aggregates", text)
+      succNum = m.group(1)
+      possNum = m.group(2)
+      # we have reserved resources on exactly one aggregate
+      successFail = (int(succNum) == 1)
+
       self.assertTrue( successFail )
       return successFail
 
@@ -234,19 +244,28 @@ class Test(GENISetup):
 
    def subtest_sliverstatus(self, slice_name):
       text, status = self.call('sliverstatus', [slice_name])
-      successFail = ("Status of Slice ") in text
+      m = re.search(r"Returned status of slivers on (\w+) of (\w+) possible aggregates.", text)
+      succNum = m.group(1)
+      possNum = m.group(2)
+      # we have reserved resources on exactly one aggregate
+      successFail = (int(succNum) == 1)
       self.assertTrue( successFail )
       return successFail
 
    def subtest_createsliver(self, slice_name):
       self.subtest_createslice( slice_name )
-      text, resourcesDict = self.call('listresources',[''])
 
-      # allocate the first resource in the rspec
-      resources = re.sub('"allocate": false','"allocate": true',text, 1)
+      rspecfile = 'rspec_omni.json'
+      text, resourcesDict = self.call('listresources',['-o'])
 
+      with open(rspecfile) as file:
+         rspectext = file.readlines()
+         rspectext = "".join(rspectext)
+         # allocate the first resource in the rspec
+         resources = re.sub('"allocate": false','"allocate": true',rspectext, 1)
       # open a temporary named file for the rspec
       filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.now(), "apitest_%Y%m%d%H%M%S"))
+
       with open(filename, mode='w') as rspec_file:
          rspec_file.write( resources )
       text, result = self.call('createsliver', [slice_name, rspec_file.name] )
@@ -262,7 +281,11 @@ class Test(GENISetup):
       return successFail
    def subtest_deletesliver(self, slice_name):
       text, successFail = self.call('deletesliver', [slice_name])
-      # ("Deleted sliver") in text
+      m = re.search(r"Deleted slivers on (\w+) out of a possible (\w+) aggregates", text)
+      succNum = m.group(1)
+      possNum = m.group(2)
+      # we have reserved resources on exactly one aggregate
+      successFail = (int(succNum) == 1)
       self.assertTrue( successFail )
       return successFail
 
