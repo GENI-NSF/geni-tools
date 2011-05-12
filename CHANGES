@@ -1,3 +1,18 @@
+5/11:
+	GCF:
+	- Fix certificates to be marked V3, instead of erroneously V1
+	- Support additional options in the AM's GetVersion
+	- Bug fixes
+
+	Omni:
+	- Add options for temporary Orca compatibility
+	- Refactoring to allow re-use of omni functions as library calls
+	- Clean up error handling
+	- Check slice expiration, print for user
+	- Better config file searching
+	- From Ezra Kissel: Enable allocationg specific PG nodes from omnispecs
+	- Bug fixes
+
 gcf 1.0 9/10:
         - RPM library install available, with dependencies
         - Refactored URN, certificate and credential utilities into library functions
