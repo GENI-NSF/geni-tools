@@ -1226,6 +1226,13 @@ def initialize( argv ):
     framework = load_framework(config)
     return framework, config, args, opts
 
+def call_sys_argv( cmd, opts, verbose=False ):
+    """method to use when calling omni as a library.
+    Appends sys.argv[1:] to opts and then does call().
+    Result is to automatically pull in commands line options from the calling program.
+    """
+    return call( cmd, sys.argv[1:]+opts, verbose=verbose)
+
 def call( cmd, opts, verbose=False ):
     """method to use when calling omni as a library
 
