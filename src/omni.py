@@ -242,6 +242,7 @@ class CallHandler(object):
         on all aggregates and prints the omnispec/rspec to stdout or to file.
         
         -n gives native format; otherwise print omnispec in json format
+           Note: omnispecs are deprecated. Native format is preferred.
         -o writes to file instead of stdout; omnispec written to 1 file,
            native format written to single file per aggregate.
         -p gives filename prefix for each output file
@@ -249,6 +250,7 @@ class CallHandler(object):
         File names will indicate the slice name, file format, and either
         the number of Aggregates represented (omnispecs), or
         which aggregate is represented (native format).
+        EG: myprefix-myslice-rspec-localhost-8001.xml
 
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
@@ -454,7 +456,7 @@ class CallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
-        -n Use native format rspec. Requires -a
+        -n Use native format rspec. Requires -a. Native RSpecs are preferred, and omnispecs are deprecated.
         -a Contact only the aggregate at the given URL
 
         omni_config users section is used to get a set of SSH keys that should be loaded onto the
@@ -1291,23 +1293,23 @@ def configure_logging(opts):
 def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-c", "--configfile",
-                      help="config file name", metavar="FILE")
+                      help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
-                      help="control framework to use for creation/deletion of slices")
+                      help="Control framework to use for creation/deletion of slices")
     parser.add_option("-n", "--native", default=False, action="store_true",
-                      help="use native RSpecs")
+                      help="Use native RSpecs")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
-                      help="communicate with a specific aggregate")
+                      help="Communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
-                       help="enable debugging output")
+                       help="Enable debugging output")
     parser.add_option("--no-ssl", dest="ssl", action="store_false",
                       default=True, help="do not use ssl")
     parser.add_option("--orca-slice-id",
-                      help="use the given orca slice id")
+                      help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="write output of listresources to a file")
+                      help="Write output of listresources to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="rspec filename prefix")
+                      help="RSpec filename prefix")
     return parser.parse_args(argv)
 
 def main(argv=None):

@@ -48,7 +48,7 @@ Basic install & running instructions are in INSTALL.txt.
 
 Full details on options for each step are described below.
 
-0. Edit gcf_config (installed to /etc/gcf-servers/omni_config or can
+0. Edit gcf_config (installed to /etc/gcf-servers/gcf_config or can
    also be read from the current directory) to configure your
    clearinghouse and aggregate manager.  The default values should be
    fine for most settings, but you should change the base_name (URN)
@@ -254,3 +254,6 @@ The GENI API pages on the GENI wiki have full details on GENI identifiers,
 credentials and certificates.
 
 See http://groups.geni.net/geni/wiki/GeniApi
+
+Known issues and further documentation are on the GCF Wiki:
+http://trac.gpolab.bbn.com/gcf
