@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2011 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -63,6 +63,7 @@
     
 """
 
+import ConfigParser
 from copy import copy
 import datetime
 import dateutil.parser
@@ -72,13 +73,13 @@ import optparse
 import os
 import pprint
 import ssl
+import string
 import sys
 import traceback
 import xml.dom
 import xml.dom.minidom as md
 import xmlrpclib
 import zlib
-import ConfigParser
 
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
@@ -94,7 +95,7 @@ class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
     getslicecred, listresources, createsliver, deletesliver,
-    renewsliver, sliverstatus, shutdown
+    renewsliver, sliverstatus, shutdown, listmyslices, listaggregates, renewslice
     """
 
     def __init__(self, framework, config, opts):
@@ -113,84 +114,50 @@ class CallHandler(object):
             self._raise_omni_error('Insufficient number of arguments - Missing command to run')
         
         call = args[0].lower()
+        # disallow calling private methods
         if call.startswith('_'):
             return
         if not hasattr(self,call):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
-    def _getclients(self, ams=None):
-        """Create XML-RPC clients for each aggregate and return them
-        as a sequence.
-        """
-        clients = []
-        for (urn, url) in self._listaggregates().items():
-            client = make_client(url, self.framework, self.opts)
-            client.urn = urn
-            client.url = url
-            clients.append(client)
-        if clients == []:
-            self.logger.warn( 'No aggregates found' )
-        return clients
-        
-    def _listaggregates(self):
-        """List the aggregates that can be used for the current operation.
-        If an aggregate was specified on the command line, use only that one.
-        Else if aggregates are specified in the config file, use that set.
-        Else ask the framework for the list of aggregates.
-        Returns the aggregates as a dict of urn => url pairs.
-        """
-        if self.opts.aggregate:
-            # No URN is specified, so put in 'unspecified_AM_URN'
-            return dict(unspecified_AM_URN=self.opts.aggregate.strip())
-        elif not self.omni_config.get('aggregates', '').strip() == '':
-            aggs = {}
-            for url in self.omni_config['aggregates'].strip().split(','):
-                url = url.strip()
-                if url != '':
-                    aggs[url] = url
-            return aggs                
+    def getversion(self, args):
+        '''AM API GetVersion
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        '''
+        retVal = ""
+        version = {}
+        clients = self._getclients()
+        successCnt = 0
+
+        for client in clients:
+            thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+            version[ client.url ] = thisVersion
+            if thisVersion is None:
+                self.logger.warn( "URN: %s (url:%s) call FAILED.\n" % (client.urn, client.url) )
+            else:
+                # FIXME only print 'peers' on verbose
+                pp = pprint.PrettyPrinter(indent=4)
+                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, pp.pformat(thisVersion)) )
+                successCnt += 1
+
+        if len(clients)==0:
+            retVal += "No aggregates to query.\n\n"
         else:
-            aggs =  _do_ssl(self.framework, None, "List Aggregates from control framework", self.framework.list_aggregates)
-            if aggs is  None:
-                return {}
-            return aggs
+            retVal += "Got version for %d out of %d aggregates\n" % (successCnt,len(clients))
 
-
-    def listmyslices(self, args):
-        """Provides a list of slices of user provided as first argument """
-        if len(args) > 0:
-            username = args[0].strip()
-        else:
-            self._raise_omni_error('listmyslices requires 1 arg: user')
-
-        retStr = ""
-        slices=None
-        slices = self._listmyslices( username )
-        if slices is None:
-            # only end up here if call to _do_ssl failed
-            slices = []
-            self.logger.error("Failed to list slices for user '%s'"%(username))
-            retStr += "Server error: "
-        elif len(slices) > 0:
-            self.logger.info("User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices)))
-        else:
-            self.logger.info("User '%s' has NO slices."%username)
-
-        # summary
-        retStr += "Found %d slices for user '%s'.\n"%(len(slices), username)
-
-        return retStr, slices
-
-    def _listmyslices( self, username ):
-        slices =  _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
-        return slices
+        return (retVal, version)
 
     def _listresources(self, args):
         """Queries resources on various aggregates.
         
         Takes an optional slicename.
         Uses optional aggregate option or omni_config aggregate param.
+        (See _listaggregates)
 
         Doesn't care about omnispec vs native.
         Doesn't care how many aggregates that you query.
@@ -253,29 +220,41 @@ class CallHandler(object):
         return rspecs
 
     def _printRspec(self, header, content, filename=None):
-        """Print header and content to stdout or given file."""
-
+        """Print header string and content string to stdout, or given file."""
+        # used by listresources
         if filename is None:
             if header is not None:
                 self.logger.info(header+":")
-            self.logger.info(content)
+            if content is not None:
+                self.logger.info(content)
         else:
             with open(filename,'w') as file:
                 self.logger.info( "Writing to '%s'"%(filename))
                 if header is not None:
                     file.write( header )
                     file.write( "\n" )
-                file.write( content )
-                file.write( "\n" )
+                if content is not None:
+                    file.write( content )
+                    file.write( "\n" )
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
         on all aggregates and prints the omnispec/rspec to stdout or to file.
         
         -n gives native format; otherwise print omnispec in json format
-        -o writes to file instead of stdout; omnispec written to 1 file, native format written to single file per aggregate.'''
+        -o writes to file instead of stdout; omnispec written to 1 file,
+           native format written to single file per aggregate.
+        -p gives filename prefix for each output file
 
-        # FIXME: filenames should be improved
+        File names will indicate the slice name, file format, and either
+        the number of Aggregates represented (omnispecs), or
+        which aggregate is represented (native format).
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        '''
 
         # An optional slice name might be specified.
         slicename = None
@@ -301,7 +280,9 @@ class CallHandler(object):
             return prtStr, None
 
  
-        # Convert the rspecs to omnispecs
+        # Loop over RSpecs
+        # Native mode: print them
+        # Omnispec mode: convert them to omnispecs
         returnedRspecs = {}
         omnispecs = {}
         fileCtr = 0
@@ -325,27 +306,64 @@ class CallHandler(object):
                     content = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
                 except:
                     content = rspec
+
                 filename=None
                 # Create FILENAME
                 if self.opts.output:
                     fileCtr += 1 
-                    if slicename:
-                        filename = slicename+"_rspec_"+str(fileCtr)+"_native.xml"
+                    # Instead of fileCtr: if have a urn, then use that to produce an HRN. Else
+                    # remove all punctuation and use URL
+                    server = str(fileCtr)
+                    if urn and urn is not "unspecified_AM_URN" and (not urn.startswith("http")):
+                        # construct hrn
+                        # strip off any leading urn:publicid:IDN
+                        if urn.find("IDN+") > -1:
+                            urn = urn[(urn.find("IDN+") + 4):]
+                        urnParts = urn.split("+")
+                        server = urnParts.pop(0)
+                        server = server.translate(string.maketrans(' .:', '---'))
                     else:
-                        filename = "rspec_"+str(fileCtr)+"_native.xml"
+                        # remove all punctuation and use url
+                        server = url
+                        # strip leading protocol bit
+                        if url.find('://') > -1:
+                            server = url[(url.find('://') + 3):]
+                        # remove punctuation
+                        bad = ':/+%?&!@#^&*()[]{};"\'\\<>,.=_'
+                        server = server.translate(string.maketrans(bad, '-' * len(bad)))
+
+                        # strip standard url endings that dont tell us anything
+                        if server.endswith("xmlrpcam"):
+                            server = server[:(server.indexof("xmlrpcam"))]
+                        elif server.endswith("xmlrpc"):
+                            server = server[:(server.indexof("xmlrpc"))]
+                        elif server.endswith("openflowgapi"):
+                            server = server[:(server.indexof("openflowgapi"))]
+                        elif server.endswith("gapi"):
+                            server = server[:(server.indexof("gapi"))]
+                        elif server.endswith("12346"):
+                            server = server[:(server.indexof("12346"))]
+
+                    filename = "rspec-" + server+".xml"
+                    if slicename:
+                        filename = slicename+"-" + filename
+
+                    if self.opts.prefix and self.opts.prefix.strip() != "":
+                        filename  = self.opts.prefix.strip() + "-" + filename
                         
                 # Create FILE
                 self._printRspec( header, content, filename)
 
             else:
+                # Convert RSpec to omnispec
                 # Throws exception if unparsable
-                # No catch means 1 bad Agg and we lose all ospecs
                 try:
                     omnispecs[ url ] = rspec_to_omnispec(urn,rspec)
                     returnedRspecs[(urn,url)] = omnispecs[url]
                 except Exception, e:
                     self.logger.error("Failed to parse RSpec from AM %s (%s): %s", urn, url, e)
 
+        # Print omnispecs
         if not self.opts.native:
             # Create HEADER
             if slicename is not None:
@@ -361,10 +379,13 @@ class CallHandler(object):
             filename=None
             # Create FILENAME
             if self.opts.output:
+                # if this is only 1 AM, use its URN/URL in the filename?
+                # else use a count of AMs?
+                filename = "omnispec-" + str(numAggs) + "AMs.json"
                 if slicename:
-                    filename = slicename+"_rspec_omni.json"
-                else:
-                    filename = "rspec_omni.json"
+                    filename = slicename+"-" + filename
+                if self.opts.prefix and self.opts.prefix.strip() != "":
+                    filename  = self.opts.prefix.strip() + "-" + filename
                         
             # Create FILE
             if numAggs>0:
@@ -393,7 +414,9 @@ class CallHandler(object):
         return retVal, retItem
             
     def _ospec_to_rspecs(self, specfile):
-        """Convert the given omnispec file into a dict of url => rspec."""
+        """Convert the given omnispec file into a dict of url => rspec.
+        Drop any listed aggregates with nothing marked allocate = True """
+        # used by createsliver
         jspecs = {}
 
         try:
@@ -425,14 +448,30 @@ class CallHandler(object):
         return rspecs
 
     def createsliver(self, args):
+        '''AM API CreateSliver call
+        CreateSliver <slicename> <rspec file>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        -n Use native format rspec. Requires -a
+        -a Contact only the aggregate at the given URL
+
+        omni_config users section is used to get a set of SSH keys that should be loaded onto the
+        remote node to allow SSH login, if the remote resource and aggregate support this
+
+        Note you likely want to check SliverStatus to ensure your resource comes up.
+        And check the sliver expiration time: you may want to call RenewSliver
+        '''
+
         retVal=''
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('createsliver requires 2 args: slicename and omnispec filename')
+            self._raise_omni_error('createsliver requires 2 args: slicename and an omnispec or rspec filename')
 
         # check command line args
         if self.opts.native and not self.opts.aggregate:
             # If native is requested, the user must supply an aggregate.
-            msg = 'Specifying a native RSpec requires specifying an aggregate.'
+            msg = 'Missing -a argument: Specifying a native RSpec requires specifying an aggregate where you want the reservation.'
             # Calling exit here is a bit of a hammer.
             # Maybe there's a gentler way.
             self._raise_omni_error(msg)
@@ -515,7 +554,8 @@ class CallHandler(object):
                     resources there, and your clearinghouse and config file won't remind you
                     to check that sliver later. Future listresources/sliverstatus/deletesliver 
                     calls need to include the '-a %s' arguments again to act on this sliver.""" % (url, url))
-                
+
+            # On Debug print the native version of omnispecs
             if not self.opts.native:
                 try:
                     newl = ''
@@ -548,55 +588,24 @@ class CallHandler(object):
 
             if '<RSpec type="SFA">' in rspec:
                 # Figure out the login name
+                # We could of course do this for the user.
                 self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
         return retVal, result
 
-    def deletesliver(self, args):
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('deletesliver requires arg of slice name')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self._get_slice_cred(urn)
-        if slice_cred is None:
-            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential'
-                     % (urn))
-
-        if self.opts.orca_slice_id:
-            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
-            urn = self.opts.orca_slice_id
-
-        retVal = ""
-        retCode = True
-        successCnt = 0
-        clientList = self._getclients()
-
-        # Connect to each available GENI AM 
-        ## The AM API does not cleanly state how to deal with
-        ## aggregates which do not have a sliver in this slice.  We
-        ## know at least one aggregate (PG) returns an Exception in
-        ## this case.
-        ## FIX ME: May need to look at handling of this more in the future.
-        ## Also, if the user supplied the aggregate list, a failure is
-        ## more interesting.  We can figure out what the error strings
-        ## are at the various aggregates if they don't know about the
-        ## slice and make those more quiet.  Finally, we can try
-        ## sliverstatus at places where it fails to indicate places
-        ## where you still have resources.
-        for client in clientList:
-            if _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
-                self.logger.info("Deleted sliver %s on %s at %s" % (urn, client.urn, client.url))
-                successCnt += 1
-                retCode = retCode and True
-            else:
-                self.logger.warn("Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url))
-                retCode = False
-        retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
-        return retVal, retCode
-
     def renewsliver(self, args):
+        '''AM API RenewSliver <slicename> <new expiration time in UTC>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        Note that the expiration time cannot be past your slice expiration time (see renewslice). Some aggregates will
+        not allow you to _shorten_ your sliver expiration time.
+        '''
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('renewsliver requires arg of slice name and new expiration time in UTC')
 
@@ -616,7 +625,9 @@ class CallHandler(object):
             self._raise_omni_error('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
         retVal = ''
-        slicecred_exp = self._get_slice_exp(slice_cred)
+
+        # Compare requested time with slice expiration time
+        slicecred_exp = self._get_cred_exp(slice_cred)
         retVal += self._print_slice_expiration(urn, slice_cred) +"\n"
         if time > slicecred_exp:
             self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
@@ -648,6 +659,16 @@ class CallHandler(object):
         return retVal, retTime
 
     def sliverstatus(self, args):
+        '''AM API SliverStatus  <slice name>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        '''
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('sliverstatus requires arg of slice name')
 
@@ -666,6 +687,7 @@ class CallHandler(object):
 
         successCnt = 0
         retItem = {}
+        # Query status at each client
         clientList = self._getclients()
         if len(clientList) > 0:
             self.logger.info('Status of Slice %s:' % urn)
@@ -683,7 +705,72 @@ class CallHandler(object):
         retVal = "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
                 
+    def deletesliver(self, args):
+        '''AM API DeleteSliver <slicename>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        '''
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('deletesliver requires arg of slice name')
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+        slice_cred = self._get_slice_cred(urn)
+        if slice_cred is None:
+            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential'
+                     % (urn))
+
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
+
+        retVal = ""
+        retCode = True
+        successCnt = 0
+        clientList = self._getclients()
+
+        # Connect to each available GENI AM
+        ## The AM API does not cleanly state how to deal with
+        ## aggregates which do not have a sliver in this slice.  We
+        ## know at least one aggregate (PG) returns an Exception in
+        ## this case.
+        ## FIX ME: May need to look at handling of this more in the future.
+        ## Also, if the user supplied the aggregate list, a failure is
+        ## more interesting.  We can figure out what the error strings
+        ## are at the various aggregates if they don't know about the
+        ## slice and make those more quiet.  Finally, we can try
+        ## sliverstatus at places where it fails to indicate places
+        ## where you still have resources.
+        for client in clientList:
+            if _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
+                self.logger.info("Deleted sliver %s on %s at %s" % (urn, client.urn, client.url))
+                successCnt += 1
+                retCode = retCode and True
+            else:
+                self.logger.warn("Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url))
+                retCode = False
+        retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
+        return retVal, retCode
+
     def shutdown(self, args):
+        '''AM API Shutdown <slicename>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Aggregates queried:
+        - Single URL given in -a argument, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        '''
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('shutdown requires arg of slice name')
 
@@ -699,6 +786,7 @@ class CallHandler(object):
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
 
+        #Call shutdown on each AM
         retVal = ""
         successCnt = 0
         retCode = True
@@ -714,169 +802,17 @@ class CallHandler(object):
         retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
         return retVal, retCode
 
-    def getversion(self, args):
-        retVal = ""
-        version = {}
-        clients = self._getclients()
-        successCnt = 0
-
-
-        for client in clients:
-            thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
-            version[ client.url ] = thisVersion
-            if thisVersion is None:
-                self.logger.warn( "URN: %s (url:%s) call FAILED.\n" % (client.urn, client.url) )
-            else:
-                # FIXME only print 'peers' on verbose
-                pp = pprint.PrettyPrinter(indent=4)
-                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, pp.pformat(thisVersion)) )
-                successCnt += 1
-
-        if len(clients)==0:
-            retVal += "No aggregates to query.\n\n"
-        else:
-            retVal += "Got version for %d out of %d aggregates\n" % (successCnt,len(clients))
-
-        return (retVal, version)
-            
-
-    def createslice(self, args):
-        retVal = ""
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('createslice requires arg of slice name')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        
-        slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
-        if slice_cred:
-            slice_exp = self._get_slice_exp(slice_cred)
-            printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
-            retVal += printStr+"\n"
-            self.logger.info( printStr )
-            success = urn
-
-        else:
-            printStr = "Create Slice Failed for slice name %s." % (name) 
-            retVal += printStr+"\n"
-            self.logger.error( printStr )
-            success = None
-            if not self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.warn( "   Try re-running with --debug for more information." )
-        return retVal, success
-        
-    def deleteslice(self, args):
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('deleteslice requires arg of slice name')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-
-        res = _do_ssl(self.framework, None, "Delete Slice %s" % urn, self.framework.delete_slice, urn)
-        # return True if successfully deleted slice, else False
-        if (res is None) or (res is False):
-            retVal = False
-        else:
-            retVal = True
-        prtStr = "Delete Slice %s result: %r" % (name, res)
-        self.logger.info(prtStr)
-        return prtStr, retVal
-
-    def getslicecred(self, args):
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('getslicecred requires arg of slice name')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        cred = self._get_slice_cred(urn)
-
-        if cred is None:
-            retVal = "No slice credential returned for slice %s"%urn
-            return retVal, None
-        self._print_slice_expiration(urn)
-
-        # Print the non slice cred bit to log stream so
-        # capturing just stdout gives just the cred hopefully
-        self.logger.info("Retrieved slice cred for slice %s", urn)
-#VERBOSE ONLY        self.logger.info("Slice cred for slice %s", urn)
-#VERBOSE ONLY        self.logger.info(cred)
-#        print cred
-        return cred, cred
-
-        
-    def _print_slice_expiration(self, urn, sliceCred=None):
-        '''Check when the slice expires and print out to STDOUT'''
-        # FIXME: push this to config?
-        shorthours = 3
-        middays = 1
-
-        if sliceCred is None:
-            if urn is None or urn == '':
-                return ""
-            sliceCred = self._get_slice_cred(urn)
-        if sliceCred is None:
-            # failed to get a slice string. Can't check
-            return ""
-
-        sliceexp = self._get_slice_exp(sliceCred)
-        now = datetime.datetime.utcnow()
-        if sliceexp <= now:
-            retVal = 'Slice %s has expired at %s UTC' % (urn, sliceexp)
-            self.logger.info('Slice %s has expired at %s UTC' % (urn, sliceexp))
-        elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
-            retVal = 'Slice %s expires in <= %d hours' % (urn, shorthours)
-            self.logger.info('Slice %s expires in <= %d hours' % (urn, shorthours))
-            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
-            self.logger.debug('It is now %s UTC' % (datetime.datetime.utcnow()))
-        elif sliceexp - datetime.timedelta(days=middays) <= now:
-            retVal = 'Slice %s expires within %d day' % (urn, middays)
-            self.logger.info('Slice %s expires within %d day' % (urn, middays))
-        else:
-            retVal = 'Slice %s expires on %s UTC' % (urn, sliceexp)
-            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
-        return retVal
-
-    def _get_slice_exp(self, credString):
-        # Don't fully parse credential: grab the slice expiration from the string directly
-        sliceexp = 0
-
-        if credString is None:
-            # failed to get a slice string. Can't check
-            return sliceexp
-
-        try:
-            doc = md.parseString(credString)
-            signed_cred = doc.getElementsByTagName("signed-credential")
-
-            # Is this a signed-cred or just a cred?
-            if len(signed_cred) > 0:
-                cred = signed_cred[0].getElementsByTagName("credential")[0]
-            else:
-                cred = doc.getElementsByTagName("credential")[0]
-            expirnode = cred.getElementsByTagName("expires")[0]
-            if len(expirnode.childNodes) > 0:
-                sliceexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
-        except Exception, exc:
-            self.logger.error("Failed to parse credential for expiration time: %s", exc)
-            self.logger.debug(traceback.format_exc())
-
-        return sliceexp
-
-
-    def _get_slice_cred(self, urn):
-        '''Try a couple times to get the given slice credential.
-        Retry on wrong pass phrase.'''
-
-        return _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
+    # End of AM API operations
+    #########################################
+    # Start of control framework operations
 
     def listaggregates(self, args):
-        """Print the aggregates federated with the control framework."""
+        """Print the known aggregates URN and URL
+        Gets aggregates from:
+        - command line (one, no URN available), OR
+        - omni config (1+, no URNs available), OR
+        - Specified control framework (via remote query). This is the aggregates that registered with the framework.
+        """
         retStr = ""
         retVal = {}
         aggList = self._listaggregates().items()
@@ -891,19 +827,64 @@ class CallHandler(object):
             retStr = "No aggregates found."
         else:
             retStr = "Found %d aggregates." % len(aggList)
-        return retStr, retVal 
+        return retStr, retVal
 
+    def createslice(self, args):
+        '''Create a Slice at the given Slice Authority.
+        Arg: slice name
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Note that Slice Authorities typically limit this call to privileged users. EG PIs.
+
+        Note also that typical slice lifetimes are short. See RenewSlice.
+        '''
+        retVal = ""
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('createslice requires arg of slice name')
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+        
+        slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
+        if slice_cred:
+            slice_exp = self._get_cred_exp(slice_cred)
+            printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
+            retVal += printStr+"\n"
+            self.logger.info( printStr )
+            success = urn
+
+        else:
+            printStr = "Create Slice Failed for slice name %s." % (name) 
+            retVal += printStr+"\n"
+            self.logger.error( printStr )
+            success = None
+            if not self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.warn( "   Try re-running with --debug for more information." )
+        return retVal, success
+        
     def renewslice(self, args):
         """Renew the slice at the clearinghouse so that the slivers can be
         renewed.
+        Args: slicename, and expirationdate
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+
+        Return summary string, new slice expiration (string)
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewslice <slice name> <expiration date>')
+            self._raise_omni_error('renewslice missing args: Supply <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
+
         # convert the slice name to a framework urn
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
+
         # convert the desired expiration to a python datetime
         try:
             in_expiration = dateutil.parser.parse(expire_str)
@@ -928,37 +909,230 @@ class CallHandler(object):
         retVal +=self._print_slice_expiration(urn)
         return retVal, retTime
 
-def parse_args(argv):
-    parser = optparse.OptionParser()
-    parser.add_option("-c", "--configfile", 
-                      help="config file name", metavar="FILE")
-    parser.add_option("-f", "--framework", default="",
-                      help="control framework to use for creation/deletion of slices")
-    parser.add_option("-n", "--native", default=False, action="store_true",
-                      help="use native RSpecs")
-    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
-                      help="communicate with a specific aggregate")
-    parser.add_option("--debug", action="store_true", default=False,
-                       help="enable debugging output")
-    parser.add_option("--no-ssl", dest="ssl", action="store_false",
-                      default=True, help="do not use ssl")
-    parser.add_option("--orca-slice-id",
-                      help="use the given orca slice id")
-    # Also need an option for filename prefix
-    parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="write output of listresources to a file")
-    return parser.parse_args(argv)
+    def deleteslice(self, args):
+        '''Framework specific DeleteSlice call at the given Slice Authority
+        Arg: slice name
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
 
-def configure_logging(opts):
-    level = logging.INFO
-    logging.basicConfig(level=level)
-    if opts.debug:
-        level = logging.DEBUG
-    logger = logging.getLogger("omni")
-    logger.setLevel(level)
-    return logger
+        Delete all your slivers first! This does not free up resources at various aggregates.
+        '''
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('deleteslice requires arg of slice name')
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+
+        res = _do_ssl(self.framework, None, "Delete Slice %s" % urn, self.framework.delete_slice, urn)
+        # return True if successfully deleted slice, else False
+        if (res is None) or (res is False):
+            retVal = False
+        else:
+            retVal = True
+        prtStr = "Delete Slice %s result: %r" % (name, res)
+        self.logger.info(prtStr)
+        return prtStr, retVal
+
+    def listmyslices(self, args):
+        """Provides a list of slices of user provided as first argument.
+        Not supported by all frameworks."""
+        if len(args) > 0:
+            username = args[0].strip()
+        else:
+            self._raise_omni_error('listmyslices requires 1 arg: user')
+
+        retStr = ""
+        slices=None
+        slices = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
+        if slices is None:
+            # only end up here if call to _do_ssl failed
+            slices = []
+            self.logger.error("Failed to list slices for user '%s'"%(username))
+            retStr += "Server error: "
+        elif len(slices) > 0:
+            self.logger.info("User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices)))
+        else:
+            self.logger.info("User '%s' has NO slices."%username)
+
+        # summary
+        retStr += "Found %d slices for user '%s'.\n"%(len(slices), username)
+
+        return retStr, slices
+
+    def getslicecred(self, args):
+        '''Get the AM API compliant slice credential (signed XML document) and print to STDOUT.
+        Arg: slice name
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+        '''
+
+        # FIXME: Change this to use the -o option
+
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            self._raise_omni_error('getslicecred requires arg of slice name')
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+        cred = self._get_slice_cred(urn)
+
+        if cred is None:
+            retVal = "No slice credential returned for slice %s"%urn
+            return retVal, None
+        self._print_slice_expiration(urn)
+
+        # Print the non slice cred bit to log stream so
+        # capturing just stdout gives just the cred hopefully
+        self.logger.info("Retrieved slice cred for slice %s", urn)
+#VERBOSE ONLY        self.logger.info("Slice cred for slice %s", urn)
+#VERBOSE ONLY        self.logger.info(cred)
+#        print cred
+        return cred, cred
+
+    ####################
+    ## Various helper functions follow
+        
+    def _print_slice_expiration(self, urn, sliceCred=None):
+        '''Check when the slice expires and print out to STDOUT'''
+        # FIXME: push this to config?
+        shorthours = 3
+        middays = 1
+
+        # This could be used to print user credential expiration info too...
+
+        if sliceCred is None:
+            if urn is None or urn == '':
+                return ""
+            sliceCred = self._get_slice_cred(urn)
+        if sliceCred is None:
+            # failed to get a slice string. Can't check
+            return ""
+
+        sliceexp = self._get_cred_exp(sliceCred)
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            retVal = 'Slice %s has expired at %s UTC' % (urn, sliceexp)
+            self.logger.info('Slice %s has expired at %s UTC' % (urn, sliceexp))
+        elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
+            retVal = 'Slice %s expires in <= %d hours' % (urn, shorthours)
+            self.logger.info('Slice %s expires in <= %d hours' % (urn, shorthours))
+            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
+            self.logger.debug('It is now %s UTC' % (datetime.datetime.utcnow()))
+        elif sliceexp - datetime.timedelta(days=middays) <= now:
+            retVal = 'Slice %s expires within %d day' % (urn, middays)
+            self.logger.info('Slice %s expires within %d day' % (urn, middays))
+        else:
+            retVal = 'Slice %s expires on %s UTC' % (urn, sliceexp)
+            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
+        return retVal
+
+    def _get_cred_exp(self, credString):
+        '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
+
+        # Don't fully parse credential: grab the expiration from the string directly
+        credexp = 0
+
+        if credString is None:
+            # failed to get a credential string. Can't check
+            return credexp
+
+        try:
+            doc = md.parseString(credString)
+            signed_cred = doc.getElementsByTagName("signed-credential")
+
+            # Is this a signed-cred or just a cred?
+            if len(signed_cred) > 0:
+                cred = signed_cred[0].getElementsByTagName("credential")[0]
+            else:
+                cred = doc.getElementsByTagName("credential")[0]
+            expirnode = cred.getElementsByTagName("expires")[0]
+            if len(expirnode.childNodes) > 0:
+                credexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
+        except Exception, exc:
+            self.logger.error("Failed to parse credential for expiration time: %s", exc)
+            self.logger.debug(traceback.format_exc())
+
+        return credexp
+
+    def _get_slice_cred(self, urn):
+        '''Try a couple times to get the given slice credential.
+        Retry on wrong pass phrase.'''
+
+        return _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
+
+    def _getclients(self, ams=None):
+        """Create XML-RPC clients for each aggregate (from commandline, else from config file, else from framework)
+        Return them as a sequence.
+        Each client has a urn and url. See _listaggregates for details.
+        """
+        clients = []
+        for (urn, url) in self._listaggregates().items():
+            client = make_client(url, self.framework, self.opts)
+            client.urn = urn
+            client.url = url
+            clients.append(client)
+        if clients == []:
+            self.logger.warn( 'No aggregates found' )
+        return clients
+
+    def _listaggregates(self):
+        """List the aggregates that can be used for the current operation.
+        If an aggregate was specified on the command line, use only that one.
+        Else if aggregates are specified in the config file, use that set.
+        Else ask the framework for the list of aggregates.
+        Returns the aggregates as a dict of urn => url pairs.
+           If one URL was given on the commandline, AM URN is a constant
+           If multiple URLs were given in the omni config, URN is really the URL
+        """
+        # used by _getclients (above), createsliver, listaggregates
+        if self.opts.aggregate:
+            # No URN is specified, so put in 'unspecified_AM_URN'
+            return dict(unspecified_AM_URN=self.opts.aggregate.strip())
+        elif not self.omni_config.get('aggregates', '').strip() == '':
+            aggs = {}
+            for url in self.omni_config['aggregates'].strip().split(','):
+                url = url.strip()
+                if url != '':
+                    aggs[url] = url
+            return aggs
+        else:
+            aggs =  _do_ssl(self.framework, None, "List Aggregates from control framework", self.framework.list_aggregates)
+            if aggs is  None:
+                return {}
+            return aggs
+
+# End of CallHandler
+
+class OmniError( Exception ):
+    '''Simple Exception wrapper marking fatal but anticipated omni errors (EG missing arguments, error in input file).
+    Omni function callers typically catch these, then print the message but not the stack trace.
+    '''
+    pass
+
+def make_client(url, framework, opts):
+    ''' Create an xmlrpc client, skipping the client cert if not opts.ssl'''
+    if opts.ssl:
+        return omnilib.xmlrpc.client.make_client(url,
+                                                 framework.key,
+                                                 framework.cert)
+    else:
+        return omnilib.xmlrpc.client.make_client(url, None, None)
 
 def load_config(opts, logger):
+    '''Load the omni config file.
+    Search path:
+    - filename from commandline
+      - in current directory
+      - in ~/.gcf
+    - omni_config in current directory
+    - omni_config in ~/.gcf
+    '''
+
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
 
@@ -1043,16 +1217,6 @@ def load_framework(config):
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
 
-def make_client(url, framework, opts):
-    if opts.ssl:
-        return omnilib.xmlrpc.client.make_client(url,
-                                                 framework.key,
-                                                 framework.cert)
-    else:
-        return omnilib.xmlrpc.client.make_client(url, None, None)
-
-
-
 def initialize( argv ):
     opts, args = parse_args(argv)    
     logger = configure_logging(opts)
@@ -1060,8 +1224,30 @@ def initialize( argv ):
     framework = load_framework(config)
     return framework, config, args, opts
 
+def call( cmd, opts, verbose=False ):
+    """method to use when calling omni as a library
+
+    Can call functions like this:
+      import omni
+      args = [slicename]
+      text, dict = omni.call('listresources', args)
+    This is equivalent to: ./omni.py listresources slicename.
+    Verbose option allows printing the command and summary, or suppressing it.
+    Callers can control omni logs (suppressing console printing for example) using python logging.
+    """
+    # create argv containing cmds and options
+    argv = [str(cmd)]
+    argv.extend(opts)
+
+    # do initial setup
+    framework, config, args, opts = initialize(argv)
+    # process the user's call
+    result = API_call( framework, config, args, opts, verbose=verbose )
+    return result
+
 def API_call( framework, config, args, opts, verbose=False ):
-    """Call the function and print the summary.
+    """Call the function from the args. If verbose, print the command and the summary.
+    Return the summary and the result object.
     """
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
@@ -1084,35 +1270,45 @@ def API_call( framework, config, args, opts, verbose=False ):
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
         logger = config['logger']
-        logger.critical( "-"*70 )
+        logger.critical( " " + "-"*60 )
         logger.critical( header )
         # printed not logged so can redirect output to a file
         print retVal
-        logger.critical( "="*70 )
+        logger.critical( " " + "="*60 )
     
     return retVal, retItem
 
-def call( cmd, opts, verbose=False ):
-    """method to use when calling omni as a library
+def configure_logging(opts):
+    '''Configure logging. INFO level by defult, DEBUG level if opts.debug'''
+    level = logging.INFO
+    logging.basicConfig(level=level)
+    if opts.debug:
+        level = logging.DEBUG
+    logger = logging.getLogger("omni")
+    logger.setLevel(level)
+    return logger
 
-    Can call like this:
-      import omni 
-      args = [slicename]
-      text, dict = omni.call('listresources', args)
-    This is equivalent to: ./omni.py listresources slicename
-      """
-    # create argv containing cmds and options
-    argv = [str(cmd)]
-    argv.extend(opts) 
-    
-    # do initial setup 
-    framework, config, args, opts = initialize(argv)
-    # process the user's call
-    result = API_call( framework, config, args, opts, verbose=verbose )
-    return result
-
-class OmniError( Exception ):
-    pass
+def parse_args(argv):
+    parser = optparse.OptionParser()
+    parser.add_option("-c", "--configfile",
+                      help="config file name", metavar="FILE")
+    parser.add_option("-f", "--framework", default="",
+                      help="control framework to use for creation/deletion of slices")
+    parser.add_option("-n", "--native", default=False, action="store_true",
+                      help="use native RSpecs")
+    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
+                      help="communicate with a specific aggregate")
+    parser.add_option("--debug", action="store_true", default=False,
+                       help="enable debugging output")
+    parser.add_option("--no-ssl", dest="ssl", action="store_false",
+                      default=True, help="do not use ssl")
+    parser.add_option("--orca-slice-id",
+                      help="use the given orca slice id")
+    parser.add_option("-o", "--output",  default=False, action="store_true",
+                      help="write output of listresources to a file")
+    parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
+                      help="rspec filename prefix")
+    return parser.parse_args(argv)
 
 def main(argv=None):
     # do initial setup & process the user's call
@@ -1121,7 +1317,6 @@ def main(argv=None):
         retVal = API_call(framework, config, args, opts, verbose=True)
     except OmniError, exc:
         sys.exit()
-#        sys.exit("ERROR: "+str(exc))
 
         
 if __name__ == "__main__":
