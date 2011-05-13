@@ -2,10 +2,11 @@
 # It tells Omni how to talk to various Clearinghouses.
 # And by extension, which Experimenter credentials to use.
 
-# Omni looks for this file in 3 locations, using the first found
-# 1) The location given by the -c command line arg
-# 2) The current directory
-# 3) ~/.gcf/omni_config
+# Omni looks for this file in 4 locations, using the first found
+# 1) The location given by the -c command line arg - as a full path
+# 2) The -c command line arg as a file relative to ~/.gcf
+# 3) omni_config in the current directory
+# 4) ~/.gcf/omni_config
 
 # Any given instance of omni makes calls to a framework 
 # (e.g., SFA, ProtoGENI, etc..) to create slices, get slice
@@ -113,8 +114,8 @@ key=~/.gcf/pgcert.pem
 # Define users here.
 
 # Per above, these are the users of the slices, to tell
-# aggregates who care who will be logging in and how
-# See CreateSliver API call.
+# aggregates who care who will be logging in and how.
+# See the CreateSliver API call.
 
 
 
