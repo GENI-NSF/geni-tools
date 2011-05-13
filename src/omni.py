@@ -430,7 +430,7 @@ class CallHandler(object):
         omnispecs = {}
         for url, spec_dict in jspecs.items():
             omnispecs[url] = OmniSpec('', '', dictionary=spec_dict)
-        
+
         # Only keep omnispecs that have a resource marked 'allocate'
         rspecs = {}
         for (url, ospec) in omnispecs.items():
@@ -446,7 +446,7 @@ class CallHandler(object):
             if allocate:
                 rspecs[url] = omnispec_to_rspec(ospec, True)
             else:
-                self.logger.debug('Nothing to allocate at %r', url)
+                self.logger.info('Nothing to allocate at %r', url)
         return rspecs
 
     def createsliver(self, args):
@@ -505,7 +505,8 @@ class CallHandler(object):
                          % (specfile, str(exc)))
         else:
             rspecs = self._ospec_to_rspecs(specfile)
-        
+
+        result = None
         # Copy the user config and read the keys from the files into the structure
         slice_users = copy(self.config['users'])
 
@@ -548,7 +549,6 @@ class CallHandler(object):
         # Perform the allocations
         aggregate_urls = self._listaggregates().values()
         for (url, rspec) in rspecs.items():
-                
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
             if not url in aggregate_urls:
@@ -571,6 +571,7 @@ class CallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
+
 
             if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
                 try:
