@@ -1,4 +1,4 @@
-5/11:
+gcf 1.3 5/11:
 	GCF:
 	- Fix certificates to be marked V3, instead of erroneously V1
 	- Support additional options in the AM's GetVersion
@@ -6,12 +6,19 @@
 
 	Omni:
 	- Add options for temporary Orca compatibility
-	- Refactoring to allow re-use of omni functions as library calls
+	- new listmyslices command added to see what your framework'
+	registry has for you
+	- Refactoring to allow re-use of omni functions as library
+	calls
+	- User feedback clearer
+	- New -o and -p options controlling saving Ad RSpecs in files
+	(see listResources)
 	- Clean up error handling
 	- Check slice expiration, print for user
 	- Better config file searching
 	- From Ezra Kissel: Enable allocationg specific PG nodes from omnispecs
 	- Bug fixes
+	- New api_test script to test AM API compliance and server availability
 
 gcf 1.0 9/10:
         - RPM library install available, with dependencies
