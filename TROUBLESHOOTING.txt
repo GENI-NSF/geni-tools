@@ -1,6 +1,13 @@
 Troubleshooting Guide for GCF and Omni
 ======================================
 
+Note: This document contains some out-of-date output samples. More
+up-to-date documentation is on the GCF and Omni Wiki.
+See for example:
+http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot
+
+Issues and sample from Omni/GCF ~ V1.1:
+
 1) Slice URNs and CH URNs and AM URNs need to match each other and the 
 appropriate credentials.
 
@@ -68,11 +75,11 @@ And failing to get the constants right can look like this:
 
 
 
-2) If you see:
+2) Many errors are AM Server errors: If you see:
 'Unable to allocate from:'
 This is an error from your Aggregate Manager (eg gcf-am). Check the logs there.
 
-3) If you get this:
+3) SSL Errors are common: If you get this:
 
 [root@localhost src]# python ./omni.py listresources
 INFO:omni:Using control framework gcf
@@ -149,7 +156,7 @@ the relevant CH certificate(s).
 Anytime you run across machines (Clearinghouse and Aggregate Manager on different machines)
 you may run in to this:
 You programmatically (eg via Omni) get a Slice credential from your Clearinghouse
-and then  use it to call ListResources on an Aggregate Manager:
+and then use it to call ListResources on an Aggregate Manager:
 
 >>> am.ListResources([cred], {})
 Traceback (most recent call last):
