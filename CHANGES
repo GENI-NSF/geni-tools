@@ -7,7 +7,7 @@ gcf 1.3 5/11:
 
 	Omni:
 	- Add options for temporary Orca compatibility
-	- new listmyslices command added to see what your framework'
+	- new listmyslices command added to see what your framework's
 	registry has for you
 	- Refactoring to allow re-use of omni functions as library
 	calls (trac #37)
