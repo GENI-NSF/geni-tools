@@ -207,6 +207,11 @@ class CallHandler(object):
                 self.logger.debug("Have null credential in call to ListResources!")
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
+
+            # FIXME: Need to specify what rspec_version we want
+            # For PG non native mode what should be
+#            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
+
             self.logger.debug("Doing listresources with options %r", options)
             rspec = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
