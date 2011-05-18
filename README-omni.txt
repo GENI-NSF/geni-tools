@@ -124,7 +124,8 @@ clearinghouse APIs requires adding a new Framework extension class.
 -f FRAMEWORK   Control framework to use (e.g. my_sfa), overriding
 default in config file.  The framework is a section named in the config file.
 
--n, --native   Use native RSpecs
+-n, --native   Use native RSpecs (preferred)
+--omnispec     Use OmniSpec RSpecs (default, will be deprecated soon)
 -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
                 Communicate with a specific aggregate
 --debug   Enable debugging output

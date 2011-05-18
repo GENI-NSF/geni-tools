@@ -1275,13 +1275,33 @@ def configure_logging(opts):
     return logger
 
 def parse_args(argv):
-    parser = optparse.OptionParser()
+    usage = "omni.py [options] <command and arguments> \n\
+\n \t Commands and their arguments are: \n\
+ \t\tAM API functions: \n\
+ \t\t\t getversion \n\
+ \t\t\t listresources [optional: slicename] \n\
+ \t\t\t createsliver <slicename> <rspec file> \n\
+ \t\t\t sliverstatus <slicename> \n\
+ \t\t\t renewsliver <slicename> <new expiration time in UTC> \n\
+ \t\t\t deletesliver <slicename> \n\
+ \t\t\t shutdown <slicename> \n\
+ \t\tClearinghouse / Slice Authority functions: \n\
+ \t\t\t listaggregates \n\
+ \t\t\t createslice <slicename> \n\
+ \t\t\t getslicecred <slicename> \n\
+ \t\t\t renewslice <slicename> <new expiration time in UTC> \n\
+ \t\t\t deleteslice <slicename> \n\
+ \t\t\t listmyslices <username> \n\n\t See README-omni.txt for details."
+
+    parser = optparse.OptionParser(usage)
     parser.add_option("-c", "--configfile",
                       help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="Control framework to use for creation/deletion of slices")
     parser.add_option("-n", "--native", default=False, action="store_true",
-                      help="Use native RSpecs")
+                      help="Use native RSpecs (preferred)")
+    parser.add_option("--omnispec", default=False, action="store_true",
+                      help="Use OmniSpec RSpecs (default, will be deprecated soon)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
                       help="Communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
@@ -1294,7 +1314,14 @@ def parse_args(argv):
                       help="Write output of listresources to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="RSpec filename prefix")
-    return parser.parse_args(argv)
+    (options, args) = parser.parse_args(argv)
+    if options.native and options.omnispec:
+        #does sys.exit
+        parser.error("Select either native (-n) OR OmniSpecs (--omnispec) RSpecs")
+    elif not options.native and not options.omnispec:
+        options.omnispec = True
+
+    return options, args
 
 def main(argv=None):
     # do initial setup & process the user's call
