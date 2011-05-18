@@ -76,7 +76,6 @@ import ssl
 import string
 import sys
 import traceback
-import xml.dom
 import xml.dom.minidom as md
 import xmlrpclib
 import zlib
@@ -85,6 +84,7 @@ from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 from omnilib.util.dossl import _do_ssl
+import omnilib.util.credparsing as credutils
 import omnilib.xmlrpc.client
 
 #import sfa.trust.gid as gid
@@ -629,7 +629,7 @@ class CallHandler(object):
         retVal = ''
 
         # Compare requested time with slice expiration time
-        slicecred_exp = self._get_cred_exp(slice_cred)
+        slicecred_exp = credutils.get_cred_exp(self.logger, slice_cred)
         retVal += self._print_slice_expiration(urn, slice_cred) +"\n"
         if time > slicecred_exp:
             self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
@@ -853,7 +853,7 @@ class CallHandler(object):
         
         slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
-            slice_exp = self._get_cred_exp(slice_cred)
+            slice_exp = credutils.get_cred_exp(self.logger, slice_cred)
             printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
             retVal += printStr+"\n"
             self.logger.info( printStr )
@@ -1015,7 +1015,7 @@ class CallHandler(object):
             # failed to get a slice string. Can't check
             return ""
 
-        sliceexp = self._get_cred_exp(sliceCred)
+        sliceexp = credutils.get_cred_exp(self.logger, sliceCred)
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
             retVal = 'Slice %s has expired at %s UTC' % (urn, sliceexp)
@@ -1032,34 +1032,6 @@ class CallHandler(object):
             retVal = 'Slice %s expires on %s UTC' % (urn, sliceexp)
             self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
         return retVal
-
-    def _get_cred_exp(self, credString):
-        '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
-
-        # Don't fully parse credential: grab the expiration from the string directly
-        credexp = 0
-
-        if credString is None:
-            # failed to get a credential string. Can't check
-            return credexp
-
-        try:
-            doc = md.parseString(credString)
-            signed_cred = doc.getElementsByTagName("signed-credential")
-
-            # Is this a signed-cred or just a cred?
-            if len(signed_cred) > 0:
-                cred = signed_cred[0].getElementsByTagName("credential")[0]
-            else:
-                cred = doc.getElementsByTagName("credential")[0]
-            expirnode = cred.getElementsByTagName("expires")[0]
-            if len(expirnode.childNodes) > 0:
-                credexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
-        except Exception, exc:
-            self.logger.error("Failed to parse credential for expiration time: %s", exc)
-            self.logger.debug(traceback.format_exc())
-
-        return credexp
 
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.

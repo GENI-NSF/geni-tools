@@ -32,6 +32,7 @@ import xmlrpclib
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
+import omnilib.util.credparsing as credutils
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
@@ -217,9 +218,33 @@ class Framework(Framework_Base):
             return response['value']
 
     def delete_slice(self, urn):
-        # It appears that delete_slice should return something. I'll return a string.
-        # FIXME: could (a) confirm it exists, (b) get the slice credential, and then (c) extract the time when it does expire
-        return 'ProtoGENI does not support deleting slices. Slices are automatically removed when they expire.'
+        ''''Delete the PG Slice. PG doesn't do this though, so instead we
+        return a string including the slice expiration time.
+        '''
+        mycred = self.get_user_cred()
+        if mycred is None:
+            prtStr = "Cannot get a valid user credential. Regardless, ProtoGENI slices cannot be deleted - they expire automatically."
+            self.logger.error(prtStr)
+            return prtStr
+        # Note: params is used again below through either code path.
+        params = {'credential': mycred,
+                  'type': 'Slice',
+                  'urn': urn}
+        response = _do_ssl(self, None, ("Get PG Slice %s credential from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
+        if response is None or response['code']:
+            msg = "Cannot confirm PG slice exists. Regardless, ProtoGENI slices cannot be deleted - they expire automatically. Unable to get slice credential for slice %s: %s"
+            if response is None:
+                msg = msg % (urn, 'Exception')
+            else:
+                msg = msg % (urn, response['output'])
+            self.logger.warning(msg)
+            return msg
+        else:
+            slice_cred = response['value']
+
+        # If we get here the slice exists and we have the credential
+        slicecred_exp = credutils.get_cred_exp(self.logger, slice_cred)
+        return 'ProtoGENI does not support deleting slices. Slice %s will be automatically removed when it expires at %s UTC.' % (urn, slicecred_exp)
 
     def list_my_slices(self, user):
         slice_list = self._list_my_slices( user )
