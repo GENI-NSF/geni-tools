@@ -209,7 +209,7 @@ class CallHandler(object):
             rspec = None
 
             # FIXME: Need to specify what rspec_version we want
-            # For PG non native mode what should be
+            # For PG non native mode that should be
 #            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
 
             self.logger.debug("Doing listresources with options %r", options)
