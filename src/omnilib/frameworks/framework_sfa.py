@@ -104,6 +104,7 @@ def create_selfsigned_cert2(framework, filename, user, key):
     cert.set_serial_number(3)
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(60*60*24*365*5) # five years
+    cert.set_version(2)
 
     req = crypto.X509Req()
     subj = req.get_subject()
@@ -169,10 +170,12 @@ class Framework(Framework_Base):
                     self.cert_string = file(config['cert'],'r').read()
                     cred = self.get_user_cred()
                     if cred is None:
+                        os.remove(self.config['cert'])
                         sys.exit("Failed to download your user credential from the PL registry")
                     gid = 'Not found'
                     res = _do_ssl(self, None, ("Look up GID for user %s from SFA registry %s" % (config['user'], config['registry'])), self.registry.Resolve, config['user'], cred)
                     if res is None:
+                        os.remove(self.config['cert'])
                         sys.exit("Failed to download your user certificate from the PL registry")
                     gid = res[0]['gid']
                     # Finally, copy the gid to the cert location
