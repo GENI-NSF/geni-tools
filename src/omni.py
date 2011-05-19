@@ -164,7 +164,7 @@ class CallHandler(object):
         Doesn't care about omnispec vs native.
         Doesn't care how many aggregates that you query.
 
-        If you specify a required A RSpec type and version (-t)
+        If you specify a required Ad RSpec type and version (both strings. Use the -t option)
         then it skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
 
@@ -246,10 +246,10 @@ class CallHandler(object):
                         self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or version")
                         continue
                     # Tony&Jonathon agreed that types are case sensitive. Still, that's ugly
-                    # And I believe version is a float. But maybe it's a string?
-                    if availversion['type'].lower() == rtype.lower() and availversion['version'] == float(rver):
+                    # version is also a string
+                    if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
                         # success
-                        self.logger.debug("Found a matching supported type/ver: %s/%d", availversion['type'], availversion['version'])
+                        self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
                         match = True
                 # if no success
                 if match == False:
@@ -1404,6 +1404,7 @@ def getParser():
                       help="Write output of listresources to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="RSpec filename prefix")
+    # Note that type and version are strings. Nominally case-sensitive.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, EG 'ProtoGENI 2'")
     return parser

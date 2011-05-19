@@ -297,6 +297,7 @@ default in config file.  The framework is a section named in the config file.
   -t Requires the AM send RSpecs in the given type and version. If the
      AM does not speak that type and version, nothing is returned. Use
      GetVersion to see available types at that AM.
+     Type and version are case-sensitive strings.
 
   File names will indicate the slice name, file format, and either
   the number of Aggregates represented (omnispecs), or
