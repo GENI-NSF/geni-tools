@@ -48,18 +48,20 @@
     Return Values of various omni commands:
        [string dictionary] = omni.py getversion # dict is keyed by AM url
        [string dictionary] = omni.py listresources
-       On success: [string sliceurnstring] = omni.py createslice SLICENAME
-       On fail: [string None] = omni.py createslice SLICENAME
        [string rspec] = omni.py createsliver SLICENAME RSPEC_FILENAME
-       [string Boolean] = omni.py deletesliver SLICENAME
-       [string Boolean] = omni.py deleteslice SLICENAME
-       On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
-       On fail: [string None] = omni.py renewslice SLICENAME
+       [string dictionary] = omni .py sliverstatus SLICENAME
        On success: [string dateTimeRenewedTo] = omni.py renewsliver SLICENAME
        On fail: [string None] = omni.py renewsliver SLICENAME
-       [string listOfSliceNames] = omni.py listmyslices USER
-       [string dictionary] = omni .py sliverstatus SLICENAME
+       [string Boolean] = omni.py deletesliver SLICENAME
        [string Boolean] = omni.py shutdown SLICENAME
+       [string dictionary] = omni.py listaggregates
+       On success: [string sliceurnstring] = omni.py createslice SLICENAME
+       On fail: [string None] = omni.py createslice SLICENAME
+       On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
+       On fail: [string None] = omni.py renewslice SLICENAME
+       [string Boolean] = omni.py deleteslice SLICENAME
+       [string listOfSliceNames] = omni.py listmyslices USER
+       [stringCred stringCred] = omni.py getslicecred SLICENAME
     
 """
 
@@ -162,6 +164,10 @@ class CallHandler(object):
         Doesn't care about omnispec vs native.
         Doesn't care how many aggregates that you query.
 
+        If you specify a required A RSpec type and version (-t)
+        then it skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format.
+
         Returns a dictionary of rspecs with the following format:
            rspecs[(urn, url)] = decompressed native rspec        
         """
@@ -208,6 +214,52 @@ class CallHandler(object):
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
 
+            # If the user specified a specific rspec type and version,
+            # then we ONLY get rspecs from each AM that is capable
+            # of talking that type&version.
+            # Note an alternative would have been to let the AM just
+            # do whatever it likes to do if
+            # you ask it to give you something it doesnt understand.
+            # Also note this is independent of whether you asked for omnispecs.
+            # And that means you can request a format that can't be converted
+            # to omnispecs properly.
+            if self.opts.rspectype:
+                rtype = self.opts.rspectype[0]
+                rver = self.opts.rspectype[1]
+                self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
+                # call getversion
+                thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+                if thisVersion is None:
+                    self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+                    continue
+                elif not thisVersion.has_key('ad_rspec_versions'):
+                    self.logger.warning("AM getversion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
+                    continue
+
+                # get the ad_rspec_versions key
+                ad_rspec_version = thisVersion['ad_rspec_versions']
+                self.logger.debug("Got %d supported ad_rspec_versions", len(ad_rspec_version))
+                # foreach item in the list that is the val
+                match = False
+                for availversion in ad_rspec_version:
+                    if not availversion.has_key('type') and availversion.has_key('version'):
+                        self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or version")
+                        continue
+                    # Tony&Jonathon agreed that types are case sensitive. Still, that's ugly
+                    # And I believe version is a float. But maybe it's a string?
+                    if availversion['type'].lower() == rtype.lower() and availversion['version'] == float(rver):
+                        # success
+                        self.logger.debug("Found a matching supported type/ver: %s/%d", availversion['type'], availversion['version'])
+                        match = True
+                # if no success
+                if match == False:
+                    #   return error showing ad_rspec_versions
+                    pp = pprint.PrettyPrinter(indent=4)
+                    self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                    continue
+                # else
+                options['rspec_version'] = dict(type=rtype, version=rver)
+
             # FIXME: Need to specify what rspec_version we want
             # For PG non native mode that should be
 #            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
@@ -235,11 +287,16 @@ class CallHandler(object):
         else:
             with open(filename,'w') as file:
                 self.logger.info( "Writing to '%s'"%(filename))
+                cstart = 0
                 if header is not None:
+                    # if content starts with <?xml ..... ?> then put the header after that bit
+                    if content is not None and content.index("<?xml") > -1:
+                        cstart = content.find("?>", content.index("<?xml") + len("<?xml"))+2
+                    file.write (content[:cstart] + '\n')
                     file.write( header )
                     file.write( "\n" )
                 if content is not None:
-                    file.write( content )
+                    file.write( content[cstart:] )
                     file.write( "\n" )
 
     def listresources(self, args):
@@ -251,6 +308,9 @@ class CallHandler(object):
         -o writes to file instead of stdout; omnispec written to 1 file,
            native format written to single file per aggregate.
         -p gives filename prefix for each output file
+        -t <type version>: Specify a required A RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format.
 
         File names will indicate the slice name, file format, and either
         the number of Aggregates represented (omnispecs), or
@@ -335,22 +395,22 @@ class CallHandler(object):
                         # strip leading protocol bit
                         if url.find('://') > -1:
                             server = url[(url.find('://') + 3):]
-                        # remove punctuation
-                        bad = ':/+%?&!@#^&*()[]{};"\'\\<>,.=_'
-                        server = server.translate(string.maketrans(bad, '-' * len(bad)))
 
                         # strip standard url endings that dont tell us anything
                         if server.endswith("xmlrpcam"):
-                            server = server[:(server.indexof("xmlrpcam"))]
+                            server = server[:(server.index("xmlrpcam"))]
                         elif server.endswith("xmlrpc"):
-                            server = server[:(server.indexof("xmlrpc"))]
+                            server = server[:(server.index("xmlrpc"))]
                         elif server.endswith("openflowgapi"):
-                            server = server[:(server.indexof("openflowgapi"))]
+                            server = server[:(server.index("openflowgapi"))]
                         elif server.endswith("gapi"):
-                            server = server[:(server.indexof("gapi"))]
-                        elif server.endswith("12346"):
-                            server = server[:(server.indexof("12346"))]
+                            server = server[:(server.index("gapi"))]
+                        elif server.endswith(":12346"):
+                            server = server[:(server.index(":12346"))]
 
+                        # remove punctuation
+                        bad = ':/+%?&!@#^&*()[]{};"\'\\<>,.=_'
+                        server = server.translate(string.maketrans(bad, '-' * len(bad)))
                     filename = "rspec-" + server+".xml"
                     if slicename:
                         filename = slicename+"-" + filename
@@ -980,6 +1040,8 @@ class CallHandler(object):
         # FIXME: Change this to use the -o option
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            # could print help here but that's verbose
+            #parse_args(None)
             self._raise_omni_error('getslicecred requires arg of slice name')
 
         name = args[0]
@@ -1189,6 +1251,8 @@ def load_config(opts, logger):
     return config
 
 def load_framework(config):
+    """Select the Control Framework to use from the config, and instantiate the proper class."""
+
     cf_type = config['selected_framework']['type']
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
@@ -1196,43 +1260,66 @@ def load_framework(config):
     framework = framework_mod.Framework(config['selected_framework'])
     return framework    
 
-def initialize( argv ):
-    opts, args = parse_args(argv)    
+def initialize(argv, options=None ):
+    """Parse argv (list) into the given optional optparse.Values object options.
+    (Supplying an existing options object allows pre-setting certain values not in argv.)
+    Then configure logging per those options.
+    Then load the omni_config file
+    Then initialize the control framework.
+    Return the framework, config, args list, and optparse.Values struct."""
+
+    opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
-    config = load_config(opts, logger)        
+    config = load_config(opts, logger)
     framework = load_framework(config)
     return framework, config, args, opts
 
-def call_sys_argv( cmd, opts, verbose=False ):
-    """method to use when calling omni as a library.
-    Appends sys.argv[1:] to opts and then does call().
-    Result is to automatically pull in commands line options from the calling program.
-    """
-    return call( cmd, sys.argv[1:]+opts, verbose=verbose)
+def call(argv, options=None, verbose=False):
+    """Method to use when calling omni as a library
 
-def call( cmd, opts, verbose=False ):
-    """method to use when calling omni as a library
+    argv is a list ala sys.argv
+    options is an optional optparse.Values structure like you get from parser.parse_args
+      Use this to pre-set certain values, or allow your caller to get omni options from its commandline
 
     Can call functions like this:
+     User does:    myscript.py -f my_sfa --myScriptPrivateOption doNativeList slicename
+
+     Your myscript.py code does:
       import omni
-      args = [slicename]
-      text, dict = omni.call('listresources', args)
-    This is equivalent to: ./omni.py listresources slicename.
+      # Get a parser from omni that understands omni options
+      parser = omni.getParser()
+      # Add additional optparse.OptionParser style options for your script as needed
+      # Be sure not to re-use options already in use by omni for different meanings
+      # otherwise you'll raise an OptionConflictError
+      parser.add_option("--myScriptPrivateOption")
+      # options is an optparse.Values object, and args is a list
+      options, args = parser.parse_args(sys.argv)
+      if options.myScriptPrivateOption:
+          # do something special for your private script's options
+      # figure out doNativeList means to do listresources with the -n argument and parse out slicename arg
+      omniargs = ["-n", 'listresources', slicename]
+      # And now call omni, and omni sees your parsed options and arguments
+      text, dict = omni.call(omniargs, options)
+    This is equivalent to: ./omni.py -n listresources slicename.
+
     Verbose option allows printing the command and summary, or suppressing it.
     Callers can control omni logs (suppressing console printing for example) using python logging.
     """
-    # create argv containing cmds and options
-    argv = [str(cmd)]
-    argv.extend(opts)
 
-    # do initial setup
-    framework, config, args, opts = initialize(argv)
+    if options is not None and not options.__class__==optparse.Values:
+        raise OmniError("Invalid options argument to call: must be an optparse.Values object")
+
+    if argv is None or not type(argv) == list:
+        raise OmniError("Invalid arv argument to call: must be a list")
+
+    framework, config, args, opts = initialize(argv, options)
     # process the user's call
-    result = API_call( framework, config, args, opts, verbose=verbose )
-    return result
+    return API_call( framework, config, args, opts, verbose=verbose )
 
 def API_call( framework, config, args, opts, verbose=False ):
-    """Call the function from the args. If verbose, print the command and the summary.
+    """Call the function from the given args list. 
+    Apply the options from the given optparse.Values opts argument
+    If verbose, print the command and the summary.
     Return the summary and the result object.
     """
     # Process the user's call
@@ -1274,7 +1361,10 @@ def configure_logging(opts):
     logger.setLevel(level)
     return logger
 
-def parse_args(argv):
+def getParser():
+    """Construct an Options Parser for parsing omni arguments.
+    Do not actually parse anything"""
+
     usage = "omni.py [options] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
@@ -1314,9 +1404,30 @@ def parse_args(argv):
                       help="Write output of listresources to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="RSpec filename prefix")
-    (options, args) = parser.parse_args(argv)
+    parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
+                      help="Ad RSpec type and version to return, EG 'ProtoGENI 2'")
+    return parser
+
+def parse_args(argv, options=None):
+    """Parse the given argv list using the Omni optparse.OptionParser.
+    Fill options into the given option optparse.Values object
+    """
+    if options is not None and not options.__class__==optparse.Values:
+        raise OmniError("Invalid options argument to parse_args: must be an optparse.Values object")
+
+    parser = getParser()
+    if argv is None:
+        # prints to stderr
+        parser.print_help()
+        return
+
+    (options, args) = parser.parse_args(argv, options)
+
+    # Validate options here if we want to be careful that options are of the right types...
+    # particularly if the user passed in an options argument
+
     if options.native and options.omnispec:
-        #does sys.exit
+        #does sys.exit - should we catch this and raise OmniError instead?
         parser.error("Select either native (-n) OR OmniSpecs (--omnispec) RSpecs")
     elif not options.native and not options.omnispec:
         options.omnispec = True
@@ -1325,8 +1436,10 @@ def parse_args(argv):
 
 def main(argv=None):
     # do initial setup & process the user's call
+    if argv is None:
+        argv = sys.argv[1:]
     try:
-        framework, config, args, opts = initialize(sys.argv[1:])
+        framework, config, args, opts = initialize(argv)
         retVal = API_call(framework, config, args, opts, verbose=True)
     except OmniError, exc:
         sys.exit()
