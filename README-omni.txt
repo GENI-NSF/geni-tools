@@ -52,7 +52,7 @@ EG:
       # otherwise you'll raise an OptionConflictError
       parser.add_option("--myScriptPrivateOption", action="store_true", default=False)
       # options is an optparse.Values object, and args is a list
-      options, args = parser.parse_args(sys.argv)
+      options, args = parser.parse_args(sys.argv[1:])
       if options.myScriptPrivateOption:
           # do something special for your private script's options
 	  print "Got myScriptOption"

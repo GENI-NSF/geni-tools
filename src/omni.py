@@ -1293,7 +1293,7 @@ def call(argv, options=None, verbose=False):
       # otherwise you'll raise an OptionConflictError
       parser.add_option("--myScriptPrivateOption")
       # options is an optparse.Values object, and args is a list
-      options, args = parser.parse_args(sys.argv)
+      options, args = parser.parse_args(sys.argv[1:])
       if options.myScriptPrivateOption:
           # do something special for your private script's options
       # figure out doNativeList means to do listresources with the -n argument and parse out slicename arg
