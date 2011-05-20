@@ -278,10 +278,10 @@ class ReferenceAggregateManager(object):
         # hostname
         # code_tag
         # hrn
-        defad = dict(type="GCF", version=0.1)
-        # FIXME: Those schema/namespace values are bogus
-        reqver = [dict(type="GCF", version=0.1, schema="http://www.geni.net/resources/rspec/0.1/gcf-request.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
-        adver = [dict(type="GCF", version=0.1, schema="http://www.geni.net/resources/rspec/0.1/gcf-ad.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
+        defad = dict(type="GCF", version="0.1")
+        # FIXME: Those schema/namespace values are bogus. But the spec also says they are optional.
+        reqver = [dict(type="GCF", version="0.1", schema="http://www.geni.net/resources/rspec/0.1/gcf-request.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
+        adver = [dict(type="GCF", version="0.1", schema="http://www.geni.net/resources/rspec/0.1/gcf-ad.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
         versions = dict(default_ad_rspec=defad, geni_api=1, request_rspec_versions=reqver, ad_rspec_versions=adver, interface='aggregate', url='FIXME', urn='FIXME', hostname='FIXME', code_tag='FIXME', hrn='FIXME')
         return versions
 
