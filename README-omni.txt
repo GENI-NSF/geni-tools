@@ -41,13 +41,42 @@ The omni.py file can be imported as a library, allowing Omni to front
 for other user tools. To do so, import omni and use the omni.call
 function.
 EG:
-      import omni
-      args = [slicename]
-      text, dict = omni.call('listresources', args)
+     User does:    myscript.py -f my_sfa --myScriptPrivateOption doNativeList slicename
 
-This is equivalent to: ./omni.py listresources slicename.
-The verbose option allows printing the command and summary, or suppressing it.
-Callers can control omni logs (suppressing console printing for example) using python logging.
+     Your myscript.py code does:
+      import omni
+      # Get a parser from omni that understands omni options
+      parser = omni.getParser()
+      # Add additional optparse.OptionParser style options for your script as needed
+      # Be sure not to re-use options already in use by omni for different meanings
+      # otherwise you'll raise an OptionConflictError
+      parser.add_option("--myScriptPrivateOption", action="store_true", default=False)
+      # options is an optparse.Values object, and args is a list
+      options, args = parser.parse_args(sys.argv[1:])
+      if options.myScriptPrivateOption:
+          # do something special for your private script's options
+	  print "Got myScriptOption"
+      # figure out doNativeList means to do listresources with the -n argument and parse out slicename arg
+      omniargs = ["-n", 'listresources', slicename]
+      # And now call omni, and omni sees your parsed options and arguments
+      text, dict = omni.call(omniargs, options)
+      print text
+
+    This is equivalent to: 
+    	    	       ./omni.py -n listresources slicename
+    However, this allows your calling script to:
+    	     Have its own private options
+    	     Programmatically set other omni options (like inferring the "-n")
+	     Accept omni options (like "-f") in your script to pass
+    	    	       along to omni
+
+In the omni.call method:
+    argv is a list ala sys.argv
+    options is an optional optparse.Values structure like you get from parser.parse_args
+      Use this to pre-set certain values, or allow your caller to get omni options from its commandline
+
+    The verbose option allows printing the command and summary, or suppressing it.
+    Callers can control omni logs (suppressing console printing for example) using python logging.
 
 == Extending Omni ==
 
@@ -124,7 +153,8 @@ clearinghouse APIs requires adding a new Framework extension class.
 -f FRAMEWORK   Control framework to use (e.g. my_sfa), overriding
 default in config file.  The framework is a section named in the config file.
 
--n, --native   Use native RSpecs
+-n, --native   Use native RSpecs (preferred)
+--omnispec     Use OmniSpec RSpecs (default, will be deprecated soon)
 -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
                 Communicate with a specific aggregate
 --debug   Enable debugging output
@@ -134,6 +164,8 @@ default in config file.  The framework is a section named in the config file.
 -o, --output   Write output of listresources to a file
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
                   RSpec filename prefix
+-t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
+                  Ad RSpec type and version to return, EG 'ProtoGENI 2'
 
 === The following commands are supported: ===
 
@@ -224,9 +256,17 @@ default in config file.  The framework is a section named in the config file.
    	    	    		      	     [-o  [-p fileprefix]]
  * examples:
   * omni.py listresources
+    	    List resources at all AMs on your CH
   * omni.py listresources myslice
+    	    List resources in myslices from all AMs on your CH
   * omni.py listresources -a http://localhost:12348 myslice
+    	    List resources in myslice at the localhost AM
+  * omni.py listresources -a http://localhost:12348 -t ProtoGENI 2 myslice
+    	    List resources in myslice at the localhost AM requesting
+	    the AM send ProtoGENI V2 format.
   * omni.py listresources -a http://localhost:12348 -n myslice
+    	    List resources in myslice at the localhost AM, leaving
+	    them in native format
   * omni.py listresources -a http://localhost:12348 -n myslice \
     	    		  -o -p myprefix
   		   
@@ -250,9 +290,14 @@ default in config file.  The framework is a section named in the config file.
 
   -n gives native format; otherwise print omnispec in json format
      Note: omnispecs are deprecated. Native format is preferred.
+  --omnispec request OmniSpec translation. Deprecated
   -o writes to file instead of stdout; omnispec written to 1 file,
      native format written to single file per aggregate.
   -p gives filename prefix for each output file
+  -t Requires the AM send RSpecs in the given type and version. If the
+     AM does not speak that type and version, nothing is returned. Use
+     GetVersion to see available types at that AM.
+     Type and version are case-sensitive strings.
 
   File names will indicate the slice name, file format, and either
   the number of Aggregates represented (omnispecs), or
