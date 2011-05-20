@@ -161,9 +161,12 @@ default in config file.  The framework is a section named in the config file.
 --no-ssl   Do not use ssl
 --orca-slice-id=ORCA_SLICE_ID
                 Use the given Orca slice id
--o, --output   Write output of listresources to a file
+-o, --output   Write output of listresources or getslicecred to a file
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
-                  RSpec filename prefix
+                  Filename prefix (used with -o)
+--slicecredfile SLICE_CRED_FILENAME
+        Name of slice credential file to read from if it exists, or
+	     -save to with -o getslicecred
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
                   Ad RSpec type and version to return, EG 'ProtoGENI 2'
 
@@ -186,6 +189,11 @@ default in config file.  The framework is a section named in the config file.
 ==== createslice ====
  * format:  omni.py createslice <slice-name>
  * example: omni.py createslice myslice
+     Or to create the slice and save off the slice credential:
+     	   omni.py -o createslice myslice
+     Or to create the slice and save off the slice credential to a
+          specific file:
+     	   omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml createslice myslice
 
   Creates the slice in your chosen control framework.
 
@@ -238,6 +246,38 @@ default in config file.  The framework is a section named in the config file.
 
   List slices registered under the given username. Not supported by all frameworks.
 
+=== getslicecred ===
+ * format: omni.py getslicecred <slicename>
+
+  Get the AM API compliant slice credential (signed XML document) for the given slice name
+
+  If you specify the -o option, the credential is saved to a file.
+  The filename is <slicename>-cred.xml
+  But if you specify the --slicecredfile option then that is the filename used.
+
+  Additionally, if you specify the --slicecredfile option and that references a file that is
+  not empty, then we do not query the Slice Authority for this credential, but instead
+  read it from this file.
+
+  EG:
+    Get slice mytest credential from slice authority, save to a file:
+      omni.py -o getslicecred mytest
+
+    Get slice mytest credential from slice authority, save to a file with prefix mystuff:
+      omni.py -o -p mystuff getslicecred mytest
+
+    Get slice mytest credential from slice authority, save to a file with name mycred.xml:
+      omni.py -o --slicecredfile mycred.xml getslicecred mytest
+
+    Get slice mytest credential from saved file (perhaps a delegated credential?) delegated-mytest-slicecred.xml:
+      omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
+
+  Arg: slice name
+  Slice name could be a full URN, but is usually just the slice name portion.
+  Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+  only the slice name part here.
+
+
 ==== getversion ====
  * format:  omni.py getversion [-a AM-URL]
  * examples:
@@ -280,7 +320,9 @@ default in config file.  The framework is a section named in the config file.
   the given resource.
 
   If a slice name is supplied, then resources for that slice only 
-  will be displayed.
+  will be displayed.  In this case, the slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
+
 
   If an Aggregate Manager URL is supplied, only resources
   from that AM will be listed.
@@ -298,6 +340,7 @@ default in config file.  The framework is a section named in the config file.
      AM does not speak that type and version, nothing is returned. Use
      GetVersion to see available types at that AM.
      Type and version are case-sensitive strings.
+  --slicecredfile says to use the given slicecredfile if it exists.
 
   File names will indicate the slice name, file format, and either
   the number of Aggregates represented (omnispecs), or
@@ -309,10 +352,12 @@ default in config file.  The framework is a section named in the config file.
  * examples:
   * omni.py createsliver myslice resources.ospec
   * omni.py createsliver -a http://localhost:12348 -n myslice resources.rspec
+  * Use a saved (delegated?) slice credential:
+    omni.py --slicecredfile myslice-credfile.xml createsliver -a http://localhost:12348 -n myslice resources.rspec
 
  The GENI AM API CreateSliver call
 
- * argument: the spec file should have been created by a call to 
+ * argument: the RSpec file should have been created by a call to 
             listresources (e.g. omni.py -o listresources)
             Then, edit the file, eg for an omnispec set "allocate": true, for each
 			resource that you want to allocate.
@@ -327,6 +372,9 @@ default in config file.  The framework is a section named in the config file.
   Slice name could be a full URN, but is usually just the slice name portion.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
+
+  Slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
 
   omni_config users section is used to get a set of SSH keys that should be loaded onto the
   remote node to allow SSH login, if the remote resource and aggregate support this
@@ -352,6 +400,9 @@ default in config file.  The framework is a section named in the config file.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
 
+  Slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
+
   Aggregates queried:
   - Single URL given in -a argument, if provided, ELSE
   - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -376,6 +427,9 @@ default in config file.  The framework is a section named in the config file.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
 
+  Slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
+
   Aggregates queried:
   - Single URL given in -a argument, if provided, ELSE
   - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -395,6 +449,9 @@ default in config file.  The framework is a section named in the config file.
   Slice name could be a full URN, but is usually just the slice name portion.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
+
+  Slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
 
   Aggregates queried:
   - Single URL given in -a argument, if provided, ELSE
@@ -416,6 +473,9 @@ default in config file.  The framework is a section named in the config file.
   Slice name could be a full URN, but is usually just the slice name portion.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
+
+  Slice credential is usually retrieved from the Slice Authority. But
+  with the --slicecredfile option it is read from that file, if it exists.
 
   Aggregates queried:
   - Single URL given in -a argument, if provided, ELSE

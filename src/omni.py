@@ -305,17 +305,22 @@ class CallHandler(object):
         
         -n gives native format; otherwise print omnispec in json format
            Note: omnispecs are deprecated. Native format is preferred.
-        -o writes to file instead of stdout; omnispec written to 1 file,
+        -o writes Ad RSpec to file instead of stdout; omnispec written to 1 file,
            native format written to single file per aggregate.
         -p gives filename prefix for each output file
         -t <type version>: Specify a required A RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
+        --slicecredfile says to use the given slicecredfile if it exists.
 
         File names will indicate the slice name, file format, and either
         the number of Aggregates represented (omnispecs), or
         which aggregate is represented (native format).
         EG: myprefix-myslice-rspec-localhost-8001.xml
+
+        If a slice name is supplied, then resources for that slice only 
+        will be displayed.  In this case, the slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
@@ -523,6 +528,10 @@ class CallHandler(object):
 
         -n Use native format rspec. Requires -a. Native RSpecs are preferred, and omnispecs are deprecated.
         -a Contact only the aggregate at the given URL
+        --slicecredfile Read slice credential from given file, if it exists
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
 
         omni_config users section is used to get a set of SSH keys that should be loaded onto the
         remote node to allow SSH login, if the remote resource and aggregate support this
@@ -665,6 +674,9 @@ class CallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -731,6 +743,9 @@ class CallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -777,6 +792,9 @@ class CallHandler(object):
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
@@ -832,6 +850,9 @@ class CallHandler(object):
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
@@ -903,6 +924,11 @@ class CallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
+        To create the slice and save off the slice credential:
+     	   omni.py -o createslice myslice
+        To create the slice and save off the slice credential to a specific file:
+     	   omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml createslice myslice
+
         Note that Slice Authorities typically limit this call to privileged users. EG PIs.
 
         Note also that typical slice lifetimes are short. See RenewSlice.
@@ -922,6 +948,12 @@ class CallHandler(object):
             printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
             retVal += printStr+"\n"
             self.logger.info( printStr )
+            filename = self._maybe_save_slicecred(name, slice_cred)
+            if filename is not None:
+                prstr = "Wrote slice %s credential to file '%s'" % (name, filename)
+                retVal += prstr + "\n"
+                self.logger.info(prstr)
+
             success = urn
 
         else:
@@ -1030,14 +1062,34 @@ class CallHandler(object):
         return retStr, slices
 
     def getslicecred(self, args):
-        '''Get the AM API compliant slice credential (signed XML document) and print to STDOUT.
+        '''Get the AM API compliant slice credential (signed XML document).
+
+        If you specify the -o option, the credential is saved to a file.
+        The filename is <slicename>-cred.xml
+        But if you specify the --slicecredfile option then that is the filename used.
+
+        Additionally, if you specify the --slicecredfile option and that references a file that is
+        not empty, then we do not query the Slice Authority for this credential, but instead
+        read it from this file.
+
+        EG:
+          Get slice mytest credential from slice authority, save to a file:
+            omni.py -o getslicecred mytest
+          
+          Get slice mytest credential from slice authority, save to a file with prefix mystuff:
+            omni.py -o -p mystuff getslicecred mytest
+
+          Get slice mytest credential from slice authority, save to a file with name mycred.xml:
+            omni.py -o --slicecredfile mycred.xml getslicecred mytest
+
+          Get slice mytest credential from saved file (perhaps a delegated credential?) delegated-mytest-slicecred.xml:
+            omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
+
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
         '''
-
-        # FIXME: Change this to use the -o option
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             # could print help here but that's verbose
@@ -1053,7 +1105,9 @@ class CallHandler(object):
         if cred is None:
             retVal = "No slice credential returned for slice %s"%urn
             return retVal, None
-        self._print_slice_expiration(urn)
+
+        # Log if the slice expires soon
+        strWithSliceExp = self._print_slice_expiration(urn, cred)
 
         # Print the non slice cred bit to log stream so
         # capturing just stdout gives just the cred hopefully
@@ -1061,11 +1115,45 @@ class CallHandler(object):
 #VERBOSE ONLY        self.logger.info("Slice cred for slice %s", urn)
 #VERBOSE ONLY        self.logger.info(cred)
 #        print cred
-        return cred, cred
+
+        retVal = cred
+        retItem = cred
+        filename = self._maybe_save_slicecred(name, cred)
+        if filename is not None:
+            self.logger.info("Wrote slice %s credential to file '%s'" % (name, filename))
+            retVal = "Saved slice %s cred to file %s" % (name, filename)
+
+        return retVal, retItem
 
     ####################
     ## Various helper functions follow
         
+    def _maybe_save_slicecred(self, name, slicecred):
+        '''Save slice credential to a file, returning the filename or
+        None on error or config not specifying -o
+
+        Only saves if self.opts.output and non-empty credential
+
+        Filename is:
+        --slicecredfile if supplied
+        else [<--p value>-]-<slicename>-cred.xml
+        '''
+        if name is None or name.strip() == "" or slicecred is None or slicecred.strip() is None:
+            return None
+
+        ret = None
+        if self.opts.output:
+            if self.opts.slicecredfile:
+                filename = self.opts.slicecredfile
+            else:
+                filename = name + "-cred.xml"
+                if self.opts.prefix and self.opts.prefix.strip() != "":
+                    filename = self.opts.prefix.strip() + "-" + filename
+            with open(filename, 'w') as file:
+                file.write(slicecred + "\n")
+                ret = filename
+        return ret
+
     def _print_slice_expiration(self, urn, sliceCred=None):
         '''Check when the slice expires and print out to STDOUT'''
         # FIXME: push this to config?
@@ -1103,6 +1191,14 @@ class CallHandler(object):
     def _get_slice_cred(self, urn):
         '''Try a couple times to get the given slice credential.
         Retry on wrong pass phrase.'''
+
+        if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile) and os.path.isfile(self.opts.slicecredfile) and os.path.getsize(self.opts.slicecredfile) > 0:
+            # read the slice cred from the given file
+            self.logger.info("Getting slice %s credential from file %s", urn, self.opts.slicecredfile)
+            cred = None
+            with open(self.opts.slicecredfile, 'r') as f:
+                cred = f.read()
+            return cred
 
         return _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
 
@@ -1401,9 +1497,11 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of listresources to a file")
+                      help="Write output of listresources or getslicecred to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="RSpec filename prefix")
+                      help="Filename prefix (used with -o)")
+    parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to with -o getslicecred")
     # Note that type and version are strings. Nominally case-sensitive.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, EG 'ProtoGENI 2'")
