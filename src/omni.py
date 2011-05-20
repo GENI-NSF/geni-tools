@@ -251,6 +251,9 @@ class CallHandler(object):
                         # success
                         self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
                         match = True
+                        rtype=availversion['type']
+                        rver=availversion['version']
+                        break
                 # if no success
                 if match == False:
                     #   return error showing ad_rspec_versions
@@ -646,7 +649,10 @@ class CallHandler(object):
             client = make_client(url, self.framework, self.opts)
             result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
-            if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
+            if result != None and isinstance(result, str) and \
+                    (result.lower().startswith('<rspec') or
+                     result.lower().startswith('<resv_rspec') or
+                     result.lower().startswith('<?xml ')):
                 try:
                     newl = ''
                     if '\n' not in result:
