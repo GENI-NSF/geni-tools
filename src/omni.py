@@ -62,6 +62,7 @@
        [string Boolean] = omni.py deleteslice SLICENAME
        [string listOfSliceNames] = omni.py listmyslices USER
        [stringCred stringCred] = omni.py getslicecred SLICENAME
+       [string string] = omni.py print_slice_expiration SLICENAME
     
 """
 
@@ -405,14 +406,14 @@ class CallHandler(object):
                             server = url[(url.find('://') + 3):]
 
                         # strip standard url endings that dont tell us anything
-                        if server.endswith("xmlrpcam"):
-                            server = server[:(server.index("xmlrpcam"))]
-                        elif server.endswith("xmlrpc"):
-                            server = server[:(server.index("xmlrpc"))]
-                        elif server.endswith("openflowgapi"):
-                            server = server[:(server.index("openflowgapi"))]
-                        elif server.endswith("gapi"):
-                            server = server[:(server.index("gapi"))]
+                        if server.endswith("/xmlrpc/am"):
+                            server = server[:(server.index("/xmlrpc/am"))]
+                        elif server.endswith("/xmlrpc"):
+                            server = server[:(server.index("/xmlrpc"))]
+                        elif server.endswith("/openflow/gapi/"):
+                            server = server[:(server.index("/openflow/gapi/"))]
+                        elif server.endswith("/gapi"):
+                            server = server[:(server.index("/gapi"))]
                         elif server.endswith(":12346"):
                             server = server[:(server.index(":12346"))]
 
@@ -773,6 +774,8 @@ class CallHandler(object):
             self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential'
                      % (urn))
 
+        retVal = self._print_slice_expiration(urn, slice_cred) + "\n"
+
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
@@ -794,7 +797,7 @@ class CallHandler(object):
                 successCnt+=1
             else:
                 retItem[ client.url ] = False
-        retVal = "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
                 
     def deletesliver(self, args):
@@ -1135,6 +1138,35 @@ class CallHandler(object):
 
         return retVal, retItem
 
+    def print_slice_expiration(self, args):
+        """Print the expiration time of the given slice, and a warning
+        if it is soon.
+        Arg: slice name
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+        only the slice name part here.
+        """
+
+        if len(args) == 0 or args[0] == None or args[0].strip() == "":
+            # could print help here but that's verbose
+            #parse_args(None)
+            self._raise_omni_error('print_slice_expiration requires arg of slice name')
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+        cred = self._get_slice_cred(urn)
+
+        retVal = None
+        if cred is None:
+            retVal = "No slice credential returned for slice %s"%urn
+            return retVal, None
+
+        # Log if the slice expires soon
+        retVal = self._print_slice_expiration(urn, cred)
+        return retVal, retVal
+
     ####################
     ## Various helper functions follow
         
@@ -1165,7 +1197,8 @@ class CallHandler(object):
         return ret
 
     def _print_slice_expiration(self, urn, sliceCred=None):
-        '''Check when the slice expires and print out to STDOUT'''
+        '''Check when the slice expires. Print varying warning notices
+        and the expiration date'''
         # FIXME: push this to config?
         shorthours = 3
         middays = 1
@@ -1184,18 +1217,18 @@ class CallHandler(object):
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
             retVal = 'Slice %s has expired at %s UTC' % (urn, sliceexp)
-            self.logger.info('Slice %s has expired at %s UTC' % (urn, sliceexp))
+            self.logger.warn('Slice %s has expired at %s UTC' % (urn, sliceexp))
         elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
-            retVal = 'Slice %s expires in <= %d hours' % (urn, shorthours)
-            self.logger.info('Slice %s expires in <= %d hours' % (urn, shorthours))
-            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
+            retVal = 'Slice %s expires in <= %d hours on %s UTC' % (urn, shorthours, sliceexp)
+            self.logger.warn('Slice %s expires in <= %d hours' % (urn, shorthours))
+            self.logger.info('Slice %s expires on %s UTC' % (urn, sliceexp))
             self.logger.debug('It is now %s UTC' % (datetime.datetime.utcnow()))
         elif sliceexp - datetime.timedelta(days=middays) <= now:
-            retVal = 'Slice %s expires within %d day' % (urn, middays)
-            self.logger.info('Slice %s expires within %d day' % (urn, middays))
+            retVal = 'Slice %s expires within %d day(s) on %s UTC' % (urn, middays, sliceexp)
+            self.logger.info('Slice %s expires within %d day on %s UTC' % (urn, middays, sliceexp))
         else:
             retVal = 'Slice %s expires on %s UTC' % (urn, sliceexp)
-            self.logger.debug('Slice %s expires on %s UTC' % (urn, sliceexp))
+            self.logger.info('Slice %s expires on %s UTC' % (urn, sliceexp))
         return retVal
 
     def _get_slice_cred(self, urn):
