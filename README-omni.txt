@@ -369,8 +369,11 @@ default in config file.  The framework is a section named in the config file.
   * omni.py createsliver -a http://localhost:12348 -n myslice resources.rspec
   * Use a saved (delegated?) slice credential:
     omni.py --slicecredfile myslice-credfile.xml createsliver -a http://localhost:12348 -n myslice resources.rspec
+  * Save manifest RSpec to a file with a particular prefix:
+    omni.py createsliver -a http://localhost:12348 -n myslice \
+             resources.rspec -o -p myPrefix
 
- The GENI AM API CreateSliver call
+ The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
 
  * argument: the RSpec file should have been created by a call to 
             listresources (e.g. omni.py -o listresources)
@@ -391,6 +394,12 @@ default in config file.  The framework is a section named in the config file.
   native rspec to a single aggregate specified by the "-a" command.
   Omnispecs are deprecated and native format RSpecs are preferred.
 
+  Typically users save the resulting manifest RSpec, to learn details
+  about what resources were actually granted to them. Use the -o
+  option to have that manifest saved to a file. Manifest files are
+  named something like:
+     myPrefix-mySlice-manifest-rspec-AggregateServername.xml
+
   Slice name could be a full URN, but is usually just the slice name portion.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
@@ -402,8 +411,7 @@ default in config file.  The framework is a section named in the config file.
   remote node to allow SSH login, if the remote resource and aggregate support this
 
   Note you likely want to check SliverStatus to ensure your resource comes up.
-  And check the sliver expiration time: you may want to call RenewSliver
-
+  And check the sliver expiration time: you may want to call RenewSliver.
 
 ==== renewsliver ====
  * format:  omni.py renewsliver [-a AM-URL] <slice-name> "<time>"

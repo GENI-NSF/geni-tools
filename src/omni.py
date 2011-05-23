@@ -296,12 +296,48 @@ class CallHandler(object):
                     # if content starts with <?xml ..... ?> then put the header after that bit
                     if content is not None and content.index("<?xml") > -1:
                         cstart = content.find("?>", content.index("<?xml") + len("<?xml"))+2
-                    file.write (content[:cstart] + '\n')
+                        file.write (content[:cstart] + '\n')
                     file.write( header )
                     file.write( "\n" )
                 if content is not None:
                     file.write( content[cstart:] )
                     file.write( "\n" )
+
+    def _filename_part_from_am_url(self, url):
+        """Strip uninteresting parts from an AM URL 
+        to help construct part of a filename"""
+        # see listresources and createsliver
+
+        if url is None or url.strip() == "":
+            return url
+
+        # remove all punctuation and use url
+        server = url
+        # strip leading protocol bit
+        if url.find('://') > -1:
+            server = url[(url.find('://') + 3):]
+
+        # strip standard url endings that dont tell us anything
+        if server.endswith("/xmlrpc/am"):
+            server = server[:(server.index("/xmlrpc/am"))]
+        elif server.endswith("/xmlrpc"):
+            server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/openflow/gapi/"):
+            server = server[:(server.index("/openflow/gapi/"))]
+        elif server.endswith("/gapi"):
+            server = server[:(server.index("/gapi"))]
+        elif server.endswith(":12346"):
+            server = server[:(server.index(":12346"))]
+
+        # remove punctuation. Handle both unicode and ascii gracefully
+        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+        if isinstance(server, unicode):
+            table = dict((ord(char), unicode('-')) for char in bad)
+        else:
+            assert isinstance(server, str)
+            table = string.maketrans(bad, '-' * len(bad))
+        server = server.translate(table)
+        return server
 
     def listresources(self, args):
         '''Optional arg is a slice name limiting results. Call ListResources
@@ -400,33 +436,14 @@ class CallHandler(object):
                         server = server.translate(string.maketrans(' .:', '---'))
                     else:
                         # remove all punctuation and use url
-                        server = url
-                        # strip leading protocol bit
-                        if url.find('://') > -1:
-                            server = url[(url.find('://') + 3):]
-
-                        # strip standard url endings that dont tell us anything
-                        if server.endswith("/xmlrpc/am"):
-                            server = server[:(server.index("/xmlrpc/am"))]
-                        elif server.endswith("/xmlrpc"):
-                            server = server[:(server.index("/xmlrpc"))]
-                        elif server.endswith("/openflow/gapi/"):
-                            server = server[:(server.index("/openflow/gapi/"))]
-                        elif server.endswith("/gapi"):
-                            server = server[:(server.index("/gapi"))]
-                        elif server.endswith(":12346"):
-                            server = server[:(server.index(":12346"))]
-
-                        # remove punctuation
-                        bad = ':/+%?&!@#^&*()[]{};"\'\\<>,.=_'
-                        server = server.translate(string.maketrans(bad, '-' * len(bad)))
+                        server = self._filename_part_from_am_url(url)
                     filename = "rspec-" + server+".xml"
                     if slicename:
                         filename = slicename+"-" + filename
 
                     if self.opts.prefix and self.opts.prefix.strip() != "":
                         filename  = self.opts.prefix.strip() + "-" + filename
-                        
+
                 # Create FILE
                 self._printRspec( header, content, filename)
 
@@ -457,7 +474,10 @@ class CallHandler(object):
             if self.opts.output:
                 # if this is only 1 AM, use its URN/URL in the filename?
                 # else use a count of AMs?
-                filename = "omnispec-" + str(numAggs) + "AMs.json"
+                server = str(numAggs) + "AMs"
+                if numAggs == 1 and self.opts.aggregate:
+                    server = self._filename_part_from_am_url(self.opts.aggregate)
+                filename = "omnispec-" + server + ".json"
                 if slicename:
                     filename = slicename+"-" + filename
                 if self.opts.prefix and self.opts.prefix.strip() != "":
@@ -526,6 +546,8 @@ class CallHandler(object):
     def createsliver(self, args):
         '''AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
+        Return on success the manifest RSpec(s)
+
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
@@ -533,6 +555,8 @@ class CallHandler(object):
         -n Use native format rspec. Requires -a. Native RSpecs are preferred, and omnispecs are deprecated.
         -a Contact only the aggregate at the given URL
         --slicecredfile Read slice credential from given file, if it exists
+        -o Save result (manifest rspec) in per-Aggregate files
+        -p (used with -o) Prefix for resulting manifest RSpec files
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -564,7 +588,7 @@ class CallHandler(object):
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
 
-        retVal += self._print_slice_expiration(urn)+"\n"
+        retVal += self._print_slice_expiration(urn, slice_cred)+"\n"
 
         # Load up the user's edited omnispec
         specfile = args[1]
@@ -630,10 +654,14 @@ class CallHandler(object):
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
             if not url in aggregate_urls:
-                self.logger.info("""Be sure to remember (write down) AM URL %s. You are reserving
-                    resources there, and your clearinghouse and config file won't remind you
-                    to check that sliver later. Future listresources/sliverstatus/deletesliver 
-                    calls need to include the '-a %s' arguments again to act on this sliver.""" % (url, url))
+                self.logger.info("""Be sure to remember (write down) AM URL:
+             %s. 
+             You are reserving resources there, and your clearinghouse
+             and config file won't remind you to check that sliver later. 
+             Future listresources/sliverstatus/deletesliver calls need to 
+             include the arguments 
+             '-a %s' 
+             arguments again to act on this sliver.""" % (url, url))
 
             # On Debug print the native version of omnispecs
             if not self.opts.native:
@@ -649,6 +677,7 @@ class CallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
+            prettyresult = result
 
             if result != None and isinstance(result, str) and \
                     (result.lower().startswith('<rspec') or
@@ -658,21 +687,44 @@ class CallHandler(object):
                     newl = ''
                     if '\n' not in result:
                         newl = '\n'
-                    self.logger.info('Asked %s to reserve resources. Result:\n%s' % (url, md.parseString(result).toprettyxml(indent=' '*2, newl=newl)))
+                    prettyresult = md.parseString(result).toprettyxml(indent=' '*2, newl=newl)
                 except:
-                    self.logger.info('Asked %s to reserve resources. Result: %s' % (url, result))
+                    pass
+
+                self.logger.info('Asked %s to reserve resources. Result:\n%s' % (url, prettyresult))
+
                 # summary
-                retVal += 'Reserved resources on %s.' % (url)
+                retVal += 'Reserved resources on %s. ' % (url)
 
             else:
                 self.logger.info('Asked %s to reserve resources. Result: %s' % (url, result))
                 # summary
-                retVal += 'Asked %s to reserve resources. No manifest Rspec returned.' % (url)
+                retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
 
             if '<RSpec type="SFA">' in rspec:
                 # Figure out the login name
                 # We could of course do this for the user.
                 self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
+
+            # If the user specified -o then we save the return from
+            # each AM as though it is a native manifest RSpec in a
+            # separate file
+            if self.opts.output:
+                # Create HEADER
+                header = "<!-- Reserved resources for slice %s at %s -->" % (name, url)
+
+                # create filename
+                # remove all punctuation and use url
+                server = self._filename_part_from_am_url(url)
+                filename = name+"-manifest-rspec-"+server+".xml"
+                if self.opts.prefix and self.opts.prefix.strip() != "":
+                    filename  = self.opts.prefix.strip() + "-" + filename
+                        
+                # Create FILE
+                self._printRspec( header, prettyresult, filename)
+                self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
+                retVal += '\n   Saved createsliver results to %s. ' % (filename)
+
         return retVal, result
 
     def renewsliver(self, args):
@@ -1536,7 +1588,7 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of listresources or getslicecred to a file")
+                      help="Write output of listresources or createsliver or getslicecred to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix (used with -o)")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
