@@ -240,13 +240,13 @@ default in config file.  The framework is a section named in the config file.
   Note that this is not supported by all control frameworks: some just
   let slices expire.
 
-=== listmyslices ===
+==== listmyslices ====
  * format: omni.py listmyslices <username>
  * example: omni.py listmyslices jdoe
 
   List slices registered under the given username. Not supported by all frameworks.
 
-=== getslicecred ===
+==== getslicecred ====
  * format: omni.py getslicecred <slicename>
 
   Get the AM API compliant slice credential (signed XML document) for the given slice name
@@ -277,6 +277,21 @@ default in config file.  The framework is a section named in the config file.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
 
+==== print_slice_expiration ====
+ * format omni.py print_slice_expiration <slice name>
+ * example: omni.py print_slice_expiration my_slice
+
+  Print the expiration time of the given slice, and a warning if it is
+  soon.
+  EG warn if the slice expires within 3 hours.
+
+  Arg: slice name
+  Slice name could be a full URN, but is usually just the slice name portion.
+  Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
+  only the slice name part here.
+
+  With the --slicecredfile option the slice's credential read from
+  that file, if it exists. Otherwise the Slice Authority is queried.
 
 ==== getversion ====
  * format:  omni.py getversion [-a AM-URL]
@@ -361,8 +376,15 @@ default in config file.  The framework is a section named in the config file.
             listresources (e.g. omni.py -o listresources)
             Then, edit the file, eg for an omnispec set "allocate": true, for each
 			resource that you want to allocate.
+	    Warning: requst RSpecs are often very different from
+            advertisement RSpecs.
+	    For help creating ProtoGENI RSpecs, see
+              http://www.protogeni.net/trac/protogeni/wiki/RSpec
+	    To validate the syntax of a generated request RSpec, run:
+              xmllint --noout --schema http://www.protogeni.net/resources/rspec/2/ad.xsd \
+                      yourReqeustRspec.xml
 
-  This command will allocate the requested resources (those marked
+  This createSliver command will allocate the requested resources (those marked
   with allocate: true in an omnispec).  It will send an rspec to each
   aggregate manager that a resource is requested for.
   This command can also operate in native mode "-n" by sending a
