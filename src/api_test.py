@@ -68,13 +68,14 @@ TMP_DIR = '/tmp'
 ################################################################################
 
 
+TEST_OPTS = None
+TEST_ARGS = ()
+
 class GENISetup(unittest.TestCase):
    def __init__(self, methodName='runTest'):
       super(GENISetup, self).__init__(methodName)
-      self.parser = omni.getParser()
-      print sys.argv
       # Add this script's args
-      self.options, self.args = self.parser.parse_args(sys.argv[1:])
+      self.options, self.args = (TEST_OPTS, TEST_ARGS)
 
    def sectionBreak( self ):
       print "\n"
@@ -439,5 +440,54 @@ class Test(GENISetup):
    #    self.printMonitoring( successFail )
 
 if __name__ == '__main__':
+   # This code uses the Omni option parser to parse the options here,
+   # allowing the unit tests to take options.
+   # Then we carefully edit sys.argv removing the omni options,
+   # but leave the remaining options (or none) in place so that
+   # the unittest optionparser doesnt throw an exception on omni
+   # options, and still can get its -v or -q arguments
+
+   import types
+
+   # Get the omni optiosn and arguments
+   parser = omni.getParser()
+   # FIXME: Add -v and -q that unittest wants but only if omni doesnt
+   # want them?
+   parser.add_option("-v", action="store_true", default=False)
+   parser.add_option("-q", action="store_true", default=False)
+   TEST_OPTS, TEST_ARGS = parser.parse_args(sys.argv[1:])
+   parser.remove_option("-v")
+   parser.remove_option("-q")
+
+   # Create a list of all omni options as they appear on commandline
+   omni_options_with_arg = []
+   omni_options_no_arg = []
+   for opt in parser._get_all_options():
+      #print "Found attr %s = %s" % (attr, getattr(TEST_OPTS, attr))
+      if opt.takes_value():
+         for cmdline in opt._long_opts:
+            omni_options_with_arg.append(cmdline)
+         for cmdline in opt._short_opts:
+            omni_options_with_arg.append(cmdline)
+      else:
+         for cmdline in opt._long_opts:
+            omni_options_no_arg.append(cmdline)
+         for cmdline in opt._short_opts:
+            omni_options_no_arg.append(cmdline)
+
+   # Delete the omni options and values from the commandline
+   del_lst = []
+   for i,option in enumerate(sys.argv):
+      if option in omni_options_with_arg:
+         del_lst.append(i)
+         del_lst.append(i+1)
+      elif option in omni_options_no_arg:
+         del_lst.append(i)
+
+   del_lst.reverse()
+   for i in del_lst:
+      del sys.argv[i]
+
+   # Invoke unit tests as usual
    unittest.main()
 
