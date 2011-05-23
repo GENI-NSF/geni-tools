@@ -32,35 +32,47 @@ import inspect
 import math
 import os
 import sys
+import time
 import tempfile
 import re
 import unittest
 import xml.etree.ElementTree as ET
 
 import omni
+from omni import *
 from omnilib.xmlrpc.client import make_client
+import omnilib.util.credparsing as credutils
 
 SLICE_NAME='mon'
 TMP_DIR = '/tmp'
 
- #  292  ./omni.py getversion
- #  293  ./omni.py listresources 
- #  294  ./omni.py createslice    
- #  295  ./omni.py createslice foo 
- #  296  ./omni.py -h     
- #  297  ./omni.py listresources > bar.txt
- #  299  ./omni.py createsliver foo bar.txt 
- #  300  ./omni.py silverstatus foo     
- #  301  ./omni.py sliverstatus foo
- #  302  ./omni.py deletesliver foo      
- #  303  ./omni.py renewslice foo    
- #  304  ./omni.py renewslice foo "jan 1 2011"     
- #  305  ./omni.py deleteslice foo 
+################################################################################
+#
+# Test scripts which test AM API calls on a CH where the running user
+# has permission to create slices.  This script is built on the unittest module.
+#
+# Purpose of the tests is to determine that AM API is functioning properly.
+#
+# To run all tests:
+# ./api_test.py
+#
+# To run a single test:
+# ./api_test.py Test.test_getversion
+#
+# To add a new test:
+# Create a new method with a name starting with 'test_".  It will
+# automatically be run when api_test.py is called.
+# If you want the test to be part of monitoring, include a call to the
+# printMonitoring method().
+#
+################################################################################
+
 
 class GENISetup(unittest.TestCase):
    def __init__(self, methodName='runTest'):
       super(GENISetup, self).__init__(methodName)
       self.parser = omni.getParser()
+      print sys.argv
       # Add this script's args
       self.options, self.args = self.parser.parse_args(sys.argv[1:])
 
@@ -90,20 +102,28 @@ class GENISetup(unittest.TestCase):
       print "MONITORING %s %s" % (inspect.stack()[1][3], resultStr)      
 
    def create_slice_name( self ):
-      slice_name = SLICE_NAME
-#      slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
+#      slice_name = SLICE_NAME
+      slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
       return slice_name
+
+   def call( self, cmd, options ):
+      retVal= omni.call( cmd, options=options, verbose=True )
+      return retVal
 
 class Test(GENISetup):
    def test_getversion(self):
+      """Passes if a call to 'getversion' on each aggregate returns
+      a structure with a 'geni_api' field.
+      """
+
       self.sectionBreak()
       options = self.options
       # now modify options for this test as desired
 
       # now construct args
       omniargs = ["getversion"]
-      print "doing omni.call %s %s" % (omniargs, options)
-      (text, retDict) = omni.call(omniargs, options)
+      print "doing self.call %s %s" % (omniargs, options)
+      (text, retDict) = self.call(omniargs, options)
       msg = "No geni_api version listed in result: \n%s" % text
       successFail = False
       if type(retDict) == type({}):
@@ -115,6 +135,9 @@ class Test(GENISetup):
       self.printMonitoring( successFail )
 
    def test_listresources_succ_native(self):
+      """Passes if a call to 'listresources -n' on the listed
+      aggregate succeeds.
+      """
       self.sectionBreak()
       options = self.options
       # now modify options for this test as desired
@@ -124,7 +147,8 @@ class Test(GENISetup):
 
 #CHECK THIS 
       print "doing omni.call %s %s" % (omniargs, options)
-      (text, rspec) = omni.call(omniargs, options)
+      (text, rspec) = self.call(omniargs, options)
+
       # Make sure we got an XML file back
       msg = "Returned rspec is not XML: %s" % rspec
       successFail = True
@@ -134,6 +158,7 @@ class Test(GENISetup):
       self.printMonitoring( successFail )
 
    def test_listresources_succ_plain(self):
+      """Passes if a call to 'listresources' succeeds."""
       self.sectionBreak()
       options = self.options
       # now modify options for this test as desired
@@ -141,13 +166,19 @@ class Test(GENISetup):
       # now construct args
       omniargs = ["listresources"]
       print "doing omni.call %s %s" % (omniargs, options)
-      (text, rspec) = omni.call(omniargs, options)
+      (text, rspec) = self.call(omniargs, options)
       msg = "No 'resources' found in rspec: %s" % rspec
       successFail = "resources" in text
       self.assertTrue(successFail, msg)
       self.printMonitoring( successFail )
 
    def test_slicecreation(self):
+      """Passes if the entire slice creation workflow succeeds:
+      (1) createslice
+      (2) renewslice (in a manner that should fail)
+      (3) renewslice (in a manner that should succeed)
+      (4) deleteslice
+"""
       self.sectionBreak()
       successFail = True
       slice_name = self.create_slice_name()
@@ -155,40 +186,59 @@ class Test(GENISetup):
          successFail = successFail and self.subtest_createslice( slice_name )
          successFail = successFail and self.subtest_renewslice_fail( slice_name )
          successFail = successFail and self.subtest_renewslice_success(  slice_name )
+      except Exception, exp:
+         print 'test_slicecreation had an error: %s' % exp
       finally:
          successFail = successFail and self.subtest_deleteslice(  slice_name )
       self.printMonitoring( successFail )
 
    def test_slivercreation(self):
+      """Passes if the sliver creation workflow succeeds:
+      (1) createslice
+      (2) createsliver
+      (3) sliverstatus
+      (4) renewsliver (in a manner that should fail)
+      (5) renewslice (to make sure the slice does not expire before the sliver expiration we are setting in the next step)
+      (6) renewsliver (in a manner that should succeed)
+      (7) deletesliver
+      (8) deleteslice
+"""
       self.sectionBreak()
       slice_name = self.create_slice_name()
       successFail = True
       try:
          successFail = successFail and self.subtest_createslice( slice_name )
+         time.sleep(5)
          successFail = successFail and self.subtest_createsliver( slice_name )
          successFail = successFail and self.subtest_sliverstatus( slice_name )
          successFail = successFail and self.subtest_renewsliver_fail( slice_name )
          successFail = successFail and self.subtest_renewslice_success( slice_name )
          successFail = successFail and self.subtest_renewsliver_success( slice_name )
          successFail = successFail and self.subtest_deletesliver( slice_name )
+      except Exception, exp:
+         print 'test_slivercreation had an error: %s' % exp
       finally:
+         try:
+            self.subtest_deletesliver( slice_name )
+         except:
+            pass
          successFail = successFail and self.subtest_deleteslice( slice_name )
 
       self.printMonitoring( successFail )
 
-   def test_shutdown(self):
-      self.sectionBreak()
-      slice_name = self.create_slice_name()
+   # def test_shutdown(self):
+   #    self.sectionBreak()
+   #    slice_name = self.create_slice_name()
 
-      successFail = True
-      try:
-         successFail = successFail and self.subtest_createslice( slice_name )
-         successFail = successFail and self.subtest_createsliver( slice_name )
-         successFail = successFail and self.subtest_shutdown( slice_name )
-         successFail = successFail and self.subtest_deletesliver( slice_name )
-      finally:
-         successFail = successFail and self.subtest_deleteslice( slice_name )
-      self.printMonitoring( successFail )
+   #    successFail = True
+   #    try:
+   #       successFail = successFail and self.subtest_createslice( slice_name )
+   #       successFail = successFail and self.subtest_createsliver( slice_name )
+   #       successFail = successFail and self.subtest_shutdown( slice_name )
+   #       successFail = successFail and self.subtest_deletesliver( slice_name )
+   #    finally:
+   #       successFail = successFail and self.subtest_deleteslice( slice_name )
+   #    self.printMonitoring( successFail )
 
 
    def subtest_createslice(self, slice_name ):
@@ -197,13 +247,12 @@ class Test(GENISetup):
 
       # now construct args
       omniargs = ["createslice", slice_name]
-      text, urn = omni.call(omniargs, options)
+      text, urn = self.call(omniargs, options)
       msg = "Slice creation FAILED."
       if urn is None:
          successFail = False
       else:
          successFail = True
-#      successFail = ("Created slice with Name %s" % SLICE_NAME) in text
       self.assertTrue( successFail, msg)
       return successFail
 
@@ -213,9 +262,10 @@ class Test(GENISetup):
 
       # now construct args
       omniargs = ["shutdown", slice_name]
-      text = omni.call(omniargs, options)
+      text = self.call(omniargs, options)
       msg = "Shutdown FAILED."
       successFail = ("Shutdown Sliver") in text
+# FIX ME
 #      self.assertTrue( successFail, msg)
 #      return successFail
       return True
@@ -226,14 +276,12 @@ class Test(GENISetup):
 
       # now construct args
       omniargs = ["deleteslice", slice_name]
-      text, successFail = omni.call(omniargs, options)
+      text, successFail = self.call(omniargs, options)
       msg = "Delete slice FAILED."
       # successFail = ("Delete Slice %s result:" % SLICE_NAME) in text
-#      self.assertTrue( successFail, msg)
-#      return successFail
-
-      # FIXMEFIXME?
-      return True
+# FIX ME
+      self.assertTrue( successFail, msg)
+      return successFail
 
    def subtest_renewslice_success(self, slice_name):
       options = self.options
@@ -242,13 +290,12 @@ class Test(GENISetup):
       # now construct args
       newtime = (datetime.datetime.now()+datetime.timedelta(hours=12)).isoformat()
       omniargs = ["renewslice", slice_name, newtime]
-      text, retTime = omni.call(omniargs, options)
+      text, retTime = self.call(omniargs, options)
       msg = "Renew slice FAILED."
       if retTime is None:
          successFail = False
       else:
          successFail = True
-#      successFail = ("now expires at") in text
       self.assertTrue( successFail, msg)
       return successFail
 
@@ -259,13 +306,12 @@ class Test(GENISetup):
       # now construct args
       newtime = (datetime.datetime.now()+datetime.timedelta(days=-1)).isoformat()
       omniargs = ["renewslice", slice_name, newtime]
-      text, retTime = omni.call(omniargs, options)
+      text, retTime = self.call(omniargs, options)
       msg = "Renew slice FAILED."
       if retTime is None:
          successFail = True
       else:
          successFail = False
-#      successFail = ("now expires at") in text
       self.assertTrue( successFail, msg)
       return successFail
 
@@ -275,8 +321,9 @@ class Test(GENISetup):
 
       # now construct args
       newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
+
       omniargs = ["renewsliver", slice_name, newtime]
-      text, retTime = omni.call(omniargs, options)
+      text, retTime = self.call(omniargs, options)
       # if retTime is None:
       #    successFail = False
       # else:
@@ -295,15 +342,27 @@ class Test(GENISetup):
       # now modify options for this test as desired
 
       # now construct args
-      newtime = (datetime.datetime.now()+datetime.timedelta(days=-1)).isoformat()
+      (foo, slicecred) = omni.call(["getslicecred", slice_name], options)
+      sliceexp = credutils.get_cred_exp(None, slicecred)
+      # try to renew the sliver for a time after the slice would expire
+      # this should fail
+      newtime = (sliceexp+datetime.timedelta(days=1)).isoformat()
+      print "Will renew past sliceexp %s to %s" % (sliceexp, newtime)
+      time.sleep(2)
       omniargs = ["renewsliver", slice_name, newtime]
-      text, retTime = omni.call(omniargs, options)
+      retTime = None
+      try:
+         text, retTime = self.call(omniargs, options)
+      except:
+         print "renewsliver threw exception as expected"
+
+      msg = "Renew sliver FAILED."
       if retTime is None:
          successFail = True
       else:
+         print "Renew succeeded when it should have failed? retVal: %s, retTime: %s" % (retVal, retTime)
          successFail = False
-#      successFail = ("Renewed sliver") in text
-      self.assertTrue( successFail )
+      self.assertTrue( successFail, msg )
       return successFail
 
    def subtest_sliverstatus(self, slice_name):
@@ -312,7 +371,7 @@ class Test(GENISetup):
 
       # now construct args
       omniargs = ["sliverstatus", slice_name]
-      text, status = omni.call(omniargs, options)
+      text, status = self.call(omniargs, options)
       m = re.search(r"Returned status of slivers on (\w+) of (\w+) possible aggregates.", text)
       succNum = m.group(1)
       possNum = m.group(2)
@@ -322,15 +381,13 @@ class Test(GENISetup):
       return successFail
 
    def subtest_createsliver(self, slice_name):
-      self.subtest_createslice( slice_name )
-
       options = self.options
       # now modify options for this test as desired
 
       # now construct args
       omniargs = ["-o", "listresources"]
       rspecfile = 'omnispec-1AMs.json'
-      text, resourcesDict = omni.call(omniargs, options)
+      text, resourcesDict = self.call(omniargs, options)
 
       with open(rspecfile) as file:
          rspectext = file.readlines()
@@ -339,19 +396,16 @@ class Test(GENISetup):
          resources = re.sub('"allocate": false','"allocate": true',rspectext, 1)
       # open a temporary named file for the rspec
       filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.now(), "apitest_%Y%m%d%H%M%S"))
-
       with open(filename, mode='w') as rspec_file:
          rspec_file.write( resources )
       omniargs = ["createsliver", slice_name, rspec_file.name]
-      text, result = omni.call(omniargs, options)
+      text, result = self.call(omniargs, options)
       if result is None:
          successFail = False
       else:
          successFail = True
-
       # delete tmp file
       os.remove( filename )      
-
       self.assertTrue( successFail )
       return successFail
    def subtest_deletesliver(self, slice_name):
@@ -360,7 +414,7 @@ class Test(GENISetup):
 
       # now construct args
       omniargs = ["deletesliver", slice_name]
-      text, successFail = omni.call(omiargs, options)
+      text, successFail = self.call(omniargs, options)
       m = re.search(r"Deleted slivers on (\w+) out of a possible (\w+) aggregates", text)
       succNum = m.group(1)
       possNum = m.group(2)
@@ -376,7 +430,7 @@ class Test(GENISetup):
 #
 #       # now construct args
 #       omniargs = ["sliverstatus", "this_slice_does_not_exist"]
-   #    text = omni.call(omniargs, options)
+   #    text = self.call(omniargs, options)
    #    print "*"*80
    #    print self.test_sliverstatusfail.__name__
    #    print "*"*80

@@ -114,4 +114,4 @@ def _do_ssl(framework, suppresserror, reason, fn, *args):
                 framework.logger.error('    ..... Run with --debug for more information')
             framework.logger.debug(traceback.format_exc())
             return None
-
+    return None

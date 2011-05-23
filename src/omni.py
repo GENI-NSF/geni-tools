@@ -550,8 +550,12 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
+        elif not slice_cred.startswith("<"):
+            #elif slice_cred is not XML that looks like a credential, assume
+            # assume it's an error message, and raise an omni_error
+            self._raise_omni_error("Cannot create sliver %s: not a slice credential: %s" % (urn, slice_cred))
 
-        retVal += self._print_slice_expiration(urn)+"\n"
+        retVal += self._print_slice_expiration(urn, slice_cred)+"\n"
 
         # Load up the user's edited omnispec
         specfile = args[1]
@@ -638,7 +642,7 @@ class CallHandler(object):
             result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
 
 
-            if result != None and isinstance(result, str) and (result.startswith('<rspec') or result.startswith('<resv_rspec')):
+            if result != None and isinstance(result, str) and (result.lower().startswith('<rspec') or result.lower().startswith('<resv_rspec')):
                 try:
                     newl = ''
                     if '\n' not in result:
@@ -1054,7 +1058,7 @@ class CallHandler(object):
         if cred is None:
             retVal = "No slice credential returned for slice %s"%urn
             return retVal, None
-        self._print_slice_expiration(urn)
+        self._print_slice_expiration(urn, cred)
 
         # Print the non slice cred bit to log stream so
         # capturing just stdout gives just the cred hopefully
@@ -1327,7 +1331,6 @@ def API_call( framework, config, args, opts, verbose=False ):
     handler = CallHandler(framework, config, opts)    
 #    Returns string, item
     result = handler._handle(args)
-
     if result is None:
         retVal = None
         retItem = None
@@ -1339,7 +1342,7 @@ def API_call( framework, config, args, opts, verbose=False ):
 
     # Print the summary of the command result
     if verbose:
-        s = "Command '" + str(" ".join(sys.argv)) + "' Returned"
+        s = "Command '" + str(" ".join(sys.argv))+ " ["+" ".join(args)+"]" + "' Returned"
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
@@ -1348,6 +1351,8 @@ def API_call( framework, config, args, opts, verbose=False ):
         logger.critical( header )
         # printed not logged so can redirect output to a file
         print retVal
+#        logger.critical( " " + "="*60 )
+#        print retItem
         logger.critical( " " + "="*60 )
     
     return retVal, retItem

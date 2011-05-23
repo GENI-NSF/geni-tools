@@ -26,6 +26,7 @@
    Utilities to parse credentials
 """
 
+import datetime
 import dateutil.parser
 import logging
 import traceback
@@ -36,12 +37,21 @@ def get_cred_exp(logger, credString):
     '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
     
     # Don't fully parse credential: grab the expiration from the string directly
-    credexp = 0
+    credexp = datetime.datetime.fromordinal(1)
 
     if credString is None:
         # failed to get a credential string. Can't check
         return credexp
 
+    # If credString is not a string then complain an return
+    if type(credString) == type('abc'):
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
+        logger.error("Credential is not a string: %s", credString)
+        return credexp
     try:
         doc = md.parseString(credString)
         signed_cred = doc.getElementsByTagName("signed-credential")
@@ -55,7 +65,13 @@ def get_cred_exp(logger, credString):
         if len(expirnode.childNodes) > 0:
             credexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
     except Exception, exc:
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
         logger.error("Failed to parse credential for expiration time: %s", exc)
+        logger.info("Unparsable credential: %s", credString)
         logger.debug(traceback.format_exc())
 
     return credexp
