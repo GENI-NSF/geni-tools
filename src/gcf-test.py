@@ -46,8 +46,9 @@ import random
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
+import M2Crypto.SSL
 from geni.config import read_config
-from geni.util.secure_xmlrpc_client import make_client
+from omnilib.xmlrpc.client import make_client
 import sfa.trust.credential as cred
 
 def getAbsPath(path):
@@ -295,12 +296,17 @@ def main(argv=None):
     keyf = getAbsPath(opts.keyfile)
     certf = getAbsPath(opts.certfile)
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
-    ch_server = make_client(opts.ch, keyf, certf,
-                            opts.debug_rpc)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
-    am_server = make_client(opts.am, keyf, certf,
-                            opts.debug_rpc)
+    sslctx = M2Crypto.SSL.Context()
+    print "cert_file = %r\nkey_file = %r" % (certf, keyf)
+    try:
+        sslctx.load_cert(certf, keyf)
+    except M2Crypto.SSL.SSLError, err:
+        print "Caught exception %r" % (err)
+    ch_server = make_client(opts.ch, sslctx, opts.debug_rpc)
+    am_server = make_client(opts.am, sslctx, opts.debug_rpc)
     exercise_am(ch_server, am_server)
+
     return 0
 
 if __name__ == "__main__":
