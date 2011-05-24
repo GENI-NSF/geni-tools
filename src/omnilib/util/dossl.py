@@ -40,13 +40,13 @@ from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 def _do_ssl(framework, suppresserror, reason, fn, *args):
     """ Attempts to make an xmlrpc call, and will repeat the attempt
     if it failed due to a bad passphrase for the ssl key.  Also does some
-    exception handling.  Returns the xmlrpc return if everything went okay, 
+    exception handling.  Returns the xmlrpc return if everything went okay,
     otherwise returns None."""
-    
+
     # Change exception name?
     max_attempts = 2
     attempt = 0
-        
+
     failMsg = "Call for %s failed." % reason
     while(attempt < max_attempts):
         attempt += 1
