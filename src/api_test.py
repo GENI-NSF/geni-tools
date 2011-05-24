@@ -27,6 +27,7 @@
 # FIXME: Add usage instructions
 # FIXME: Each test should describe expected results
 
+import copy as docopy
 import datetime
 import inspect
 import math
@@ -118,12 +119,12 @@ class Test(GENISetup):
       """
 
       self.sectionBreak()
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
       omniargs = ["getversion"]
-      print "doing self.call %s %s" % (omniargs, options)
+#      print "Doing self.call %s %s" % (omniargs, options)
       (text, retDict) = self.call(omniargs, options)
       msg = "No geni_api version listed in result: \n%s" % text
       successFail = False
@@ -140,14 +141,15 @@ class Test(GENISetup):
       aggregate succeeds.
       """
       self.sectionBreak()
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
       omniargs = ["-n", "-a", "http://myplc.gpolab.bbn.com:12346", "listresources"]
-
+      # Explicitly set this false so omni doesn't complain if both are true
+      options.omnispec=False
 #CHECK THIS 
-      print "doing omni.call %s %s" % (omniargs, options)
+#      print "Doing self.call %s %s" % (omniargs, options)
       (text, rspec) = self.call(omniargs, options)
 
       # Make sure we got an XML file back
@@ -161,12 +163,16 @@ class Test(GENISetup):
    def test_listresources_succ_plain(self):
       """Passes if a call to 'listresources' succeeds."""
       self.sectionBreak()
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
+
+      if options.native:
+         print "Forcing use of omnispecs..."
+         options.native = False
 
       # now construct args
       omniargs = ["listresources"]
-      print "doing omni.call %s %s" % (omniargs, options)
+#      print "Doing self.call %s %s" % (omniargs, options)
       (text, rspec) = self.call(omniargs, options)
       msg = "No 'resources' found in rspec: %s" % rspec
       successFail = "resources" in text
@@ -243,7 +249,7 @@ class Test(GENISetup):
 
 
    def subtest_createslice(self, slice_name ):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -258,7 +264,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_shutdown(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -272,7 +278,7 @@ class Test(GENISetup):
       return True
 
    def subtest_deleteslice(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -285,7 +291,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_renewslice_success(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -301,7 +307,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_renewslice_fail(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -317,7 +323,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_renewsliver_success(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -339,7 +345,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_renewsliver_fail(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -367,7 +373,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_sliverstatus(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -382,7 +388,7 @@ class Test(GENISetup):
       return successFail
 
    def subtest_createsliver(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -409,8 +415,9 @@ class Test(GENISetup):
       os.remove( filename )      
       self.assertTrue( successFail )
       return successFail
+
    def subtest_deletesliver(self, slice_name):
-      options = self.options
+      options = docopy.deepcopy(self.options)
       # now modify options for this test as desired
 
       # now construct args
@@ -426,7 +433,7 @@ class Test(GENISetup):
 
    # def test_sliverstatusfail(self):
    #    self.sectionBreak()
-#       options = self.options
+#       options = docopy.deepcopy(self.options)
 #       # now modify options for this test as desired
 #
 #       # now construct args
