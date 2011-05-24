@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.6
+#!/usr/bin/env python
 
 #----------------------------------------------------------------------
 # Copyright (c) 2010 Raytheon BBN Technologies
