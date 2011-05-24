@@ -35,7 +35,7 @@ import xml.dom.minidom as md
 
 def get_cred_exp(logger, credString):
     '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
-    
+
     # Don't fully parse credential: grab the expiration from the string directly
     credexp = datetime.datetime.fromordinal(1)
 
@@ -43,15 +43,16 @@ def get_cred_exp(logger, credString):
         # failed to get a credential string. Can't check
         return credexp
 
-    # If credString is not a string then complain an return
-    if type(credString) == type('abc'):
+    # If credString is not a string then complain and return
+    if type(credString) != type('abc'):
         if logger is None:
             level = logging.INFO
             logging.basicConfig(level=level)
             logger = logging.getLogger("omni.credparsing")
             logger.setLevel(level)
-        logger.error("Credential is not a string: %s", credString)
+        logger.error("Credential is not a string: %s", str(credString))
         return credexp
+
     try:
         doc = md.parseString(credString)
         signed_cred = doc.getElementsByTagName("signed-credential")
