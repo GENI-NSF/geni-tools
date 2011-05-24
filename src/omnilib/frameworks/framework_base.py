@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 import sys
 import os
+import M2Crypto.SSL
 from omnilib.util.paths import getAbsPath
 
 class Framework_Base():
@@ -43,8 +44,6 @@ class Framework_Base():
     """
     
     def __init__(self, config):
-        self.cert = None
-        self.key = None
         self.cert = getAbsPath(config['cert'])
         if not os.path.exists(self.cert):
             sys.exit("Frameworks certfile %s doesn't exist" % self.cert)
@@ -52,8 +51,7 @@ class Framework_Base():
         self.key = getAbsPath(config['key'])
         if not os.path.exists(self.key):
             sys.exit("Frameworks keyfile %s doesn't exist" % self.key)
-
-
+        self.sslctx = None
         
     def get_user_cred(self):
         """
@@ -109,3 +107,16 @@ class Framework_Base():
         print it and return None.
         """
         raise NotImplementedError('renew_slice')
+
+    def ssl_context(self):
+        """Returns an SSL Context"""
+        if not self.sslctx:
+            # Initialize the M2Crypto SSL Context
+            print "Initializing M2Crypto context"
+            self.sslctx = M2Crypto.SSL.Context()
+            print "cert_file = %r\nkey_file = %r" % (self.cert, self.key)
+            try:
+                self.sslctx.load_cert(self.cert, self.key)
+            except M2Crypto.SSL.SSLError, err:
+                print "Caught exception %r" % (err)
+        return self.sslctx

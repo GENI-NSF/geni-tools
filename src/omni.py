@@ -1349,9 +1349,9 @@ class OmniError( Exception ):
 def make_client(url, framework, opts):
     ''' Create an xmlrpc client, skipping the client cert if not opts.ssl'''
     if opts.ssl:
-        return omnilib.xmlrpc.client.make_client(url,
-                                                 framework.key,
-                                                 framework.cert)
+        ctx = framework.ssl_context()
+        print "context = %r" % (ctx)
+        return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 

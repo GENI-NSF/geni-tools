@@ -71,11 +71,11 @@ class Framework(Framework_Base):
         self.logger.debug("Configured with key file %s", config['key'])
         
         self.logger.debug('Using clearinghouse %s', self.config['ch'])
-        self.ch = make_client(self.config['ch'], self.config['key'],
-                              self.config['cert'], self.config['verbose'])
+        self.ch = make_client(self.config['ch'], self.ssl_context(),
+                              self.config['verbose'])
         self.logger.debug('Using slice authority %s', self.config['sa'])
-        self.sa = make_client(self.config['sa'], self.config['key'],
-                              self.config['cert'], self.config['verbose'])
+        self.sa = make_client(self.config['sa'], self.ssl_context(),
+                              self.config['verbose'])
         self.user_cred = None
         
         # For now, no override aggregates.
