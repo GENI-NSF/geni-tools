@@ -1528,7 +1528,26 @@ def API_call( framework, config, args, opts, verbose=False ):
 
     # Print the summary of the command result
     if verbose:
-        s = "Command '" + str(" ".join(sys.argv))+ " ["+" ".join(args)+"]" + "' Returned"
+        #sys.argv when called as a library is
+        # uninteresting/misleading. So args is better, but this misses
+        # the options.
+        # We print here all non-default options
+        parser = getParser()
+        nondef = ""
+        for attr in dir(opts):
+            import types
+            if attr.startswith("_"):
+                continue
+            if isinstance(getattr(opts, attr), types.MethodType):
+                continue
+            if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
+                # non-default value
+                nondef += attr + ": " + str(getattr(opts, attr)) + "; "
+
+        if nondef != "":
+            nondef = "\n\t\t\tOptions: {" + nondef[:-2] + "}\n\t\t\t"
+
+        s = "Command omni Returned:" + nondef + "Args: ["+" ".join(args)+"]"
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
