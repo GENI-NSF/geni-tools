@@ -131,6 +131,10 @@ class CallHandler(object):
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result (JSON format) in per-Aggregate files
+        -p (used with -o) Prefix for resulting version information files
+
         '''
         retVal = ""
         version = {}
@@ -145,8 +149,23 @@ class CallHandler(object):
             else:
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
-                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, pp.pformat(thisVersion)) )
+                prettyVersion = pp.pformat(thisVersion)
+                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, prettyVersion))
                 successCnt += 1
+
+                if self.opts.output:
+                    # Create HEADER
+                    # But JSON cant have any
+                    header = None
+                    # Create filename
+                    server = self._filename_part_from_am_url(client.url)
+                    filename = "getversion-"+server+".xml"
+                    if self.opts.prefix and self.opts.prefix.strip() != "":
+                        filename  = self.opts.prefix.strip() + "-" + filename
+                    # Create File
+                    self._printRspec( header, prettyVersion, filename)
+                    self.logger.info("Wrote result of getversion at AM %s to file '%s'", client.url, filename)
+
 
         if len(clients)==0:
             retVal += "No aggregates to query.\n\n"
@@ -1542,23 +1561,26 @@ def API_call( framework, config, args, opts, verbose=False ):
                 continue
             if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
                 # non-default value
-                nondef += attr + ": " + str(getattr(opts, attr)) + "; "
+                nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
 
         if nondef != "":
-            nondef = "\n\t\t\tOptions: {" + nondef[:-2] + "}\n\t\t\t"
+            nondef = "\n  Options as run:" + nondef + "\n\n  "
 
-        s = "Command omni Returned:" + nondef + "Args: ["+" ".join(args)+"]"
+        cmd = None
+        if len(args) > 0:
+            cmd = args[0]
+        s = "Completed " + cmd + ":\n" + nondef + "Args: "+" ".join(args)+"\n\n  Result Summary: " + retVal
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
         logger = config['logger']
-        logger.critical( " " + "-"*60 )
-        logger.critical( header )
+        logger.info( " " + "-"*60 )
+        logger.info( header )
         # printed not logged so can redirect output to a file
-        print retVal
-#        logger.critical( " " + "="*60 )
+        #logger.info(retVal)
+#        logger.info( " " + "="*60 )
 #        print retItem
-        logger.critical( " " + "="*60 )
+        logger.info( " " + "="*60 )
     
     return retVal, retItem
 
@@ -1592,7 +1614,10 @@ def getParser():
  \t\t\t getslicecred <slicename> \n\
  \t\t\t renewslice <slicename> <new expiration time in UTC> \n\
  \t\t\t deleteslice <slicename> \n\
- \t\t\t listmyslices <username> \n\n\t See README-omni.txt for details."
+ \t\t\t listmyslices <username> \n\
+ \t\t\t getslicecred <slicename> \n\
+ \t\t\t print_slice_expiration <slicename> \n\
+\n\t See README-omni.txt for details."
 
     parser = optparse.OptionParser(usage)
     parser.add_option("-c", "--configfile",
@@ -1620,6 +1645,10 @@ def getParser():
     # Note that type and version are strings. Nominally case-sensitive.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, EG 'ProtoGENI 2'")
+    parser.add_option("-v", "--verbose", default=True, action="store_true",
+                      help="Turn on verbose command summary for omni commandline tool")
+    parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
+                      help="Turn off verbose command summary for omni commandline tool")
     return parser
 
 def parse_args(argv, options=None):
@@ -1654,7 +1683,7 @@ def main(argv=None):
         argv = sys.argv[1:]
     try:
         framework, config, args, opts = initialize(argv)
-        retVal = API_call(framework, config, args, opts, verbose=True)
+        retVal = API_call(framework, config, args, opts, verbose=opts.verbose)
     except OmniError, exc:
         sys.exit()
 
