@@ -218,9 +218,9 @@ class Framework(Framework_Base):
             return response['value']
 
     def delete_slice(self, urn):
-        ''''Delete the PG Slice. PG doesn't do this though, so instead we
+        """Delete the PG Slice. PG doesn't do this though, so instead we
         return a string including the slice expiration time.
-        '''
+        """
         mycred = self.get_user_cred()
         if mycred is None:
             prtStr = "Cannot get a valid user credential. Regardless, ProtoGENI slices cannot be deleted - they expire automatically."
@@ -377,8 +377,7 @@ class Framework(Framework_Base):
             self.logger.debug('AM URL = %s', am_url)
             if am_url != cm_url:
                 # Test the am_url...
-                client = make_client(am_url, self.config['key'],
-                                     self.config['cert'],
+                client = make_client(am_url, self.ssl_context(),
                                      self.config['verbose'],
                                      timeout=5)
                 # This refactoring means we print verbose errors for 404 Not Found messages like
