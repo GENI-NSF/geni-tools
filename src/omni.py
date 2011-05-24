@@ -305,7 +305,8 @@ class CallHandler(object):
 
     def _filename_part_from_am_url(self, url):
         """Strip uninteresting parts from an AM URL 
-        to help construct part of a filename"""
+        to help construct part of a filename.
+        """
         # see listresources and createsliver
 
         if url is None or url.strip() == "":
