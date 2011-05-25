@@ -458,13 +458,7 @@ if __name__ == '__main__':
 
    # Get the omni optiosn and arguments
    parser = omni.getParser()
-   # FIXME: Add -v and -q that unittest wants but only if omni doesnt
-   # want them?
-   parser.add_option("-v", action="store_true", default=False)
-   parser.add_option("-q", action="store_true", default=False)
    TEST_OPTS, TEST_ARGS = parser.parse_args(sys.argv[1:])
-   parser.remove_option("-v")
-   parser.remove_option("-q")
 
    # Create a list of all omni options as they appear on commandline
    omni_options_with_arg = []
@@ -489,6 +483,9 @@ if __name__ == '__main__':
          del_lst.append(i)
          del_lst.append(i+1)
       elif option in omni_options_no_arg:
+         # Skip -v, -q, -h arguments to try to let unittest have them
+         if option in ["-v", "-q", "-h"]:
+            continue
          del_lst.append(i)
 
    del_lst.reverse()
