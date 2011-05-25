@@ -85,6 +85,7 @@ import zlib
 
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
+from omnilib.util import OmniError
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
@@ -1360,17 +1361,9 @@ class CallHandler(object):
 
 # End of CallHandler
 
-class OmniError( Exception ):
-    '''Simple Exception wrapper marking fatal but anticipated omni errors (EG missing arguments, error in input file).
-    Omni function callers typically catch these, then print the message but not the stack trace.
-    '''
-    pass
-
 def make_client(url, framework, opts):
     ''' Create an xmlrpc client, skipping the client cert if not opts.ssl'''
     if opts.ssl:
-        ctx = framework.ssl_context()
-        print "context = %r" % (ctx)
         return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)

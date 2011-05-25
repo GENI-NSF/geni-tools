@@ -21,9 +21,11 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 import sys
+import logging
 import os
 import M2Crypto.SSL
 from omnilib.util.paths import getAbsPath
+from omnilib.util import OmniError
 
 class Framework_Base():
     """
@@ -108,15 +110,28 @@ class Framework_Base():
         """
         raise NotImplementedError('renew_slice')
 
-    def ssl_context(self):
-        """Returns an SSL Context"""
+    def ssl_context(self, retries=2):
+        """Returns an SSL Context or an exception is raised."""
+        if hasattr(self, 'logger'):
+            logger = self.logger
+        else:
+            logger = logging.getLogger("omni.framework")
         if not self.sslctx:
             # Initialize the M2Crypto SSL Context
-            print "Initializing M2Crypto context"
-            self.sslctx = M2Crypto.SSL.Context()
-            print "cert_file = %r\nkey_file = %r" % (self.cert, self.key)
-            try:
-                self.sslctx.load_cert(self.cert, self.key)
-            except M2Crypto.SSL.SSLError, err:
-                print "Caught exception %r" % (err)
+            attempts = 0
+            while attempts <= retries:
+                sslctx = M2Crypto.SSL.Context()
+                try:
+                    sslctx.load_cert(self.cert, self.key)
+                    self.sslctx = sslctx
+                    break
+                except M2Crypto.SSL.SSLError, err:
+                    logger.error('Wrong pass phrase for private key.')
+                    attempts = attempts + 1
+                    if attempts > retries:
+                        logger.error("Wrong pass phrase after %d tries.",
+                                     attempts)
+                        raise OmniError(err)
+                    else:
+                        logger.info('.... please retry.')
         return self.sslctx
