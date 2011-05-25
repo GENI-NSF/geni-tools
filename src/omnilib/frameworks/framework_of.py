@@ -42,7 +42,7 @@ class Framework(Framework_Base):
             config['verbose'] = False
         self.config = config
         
-        self.ch = make_client(config['ch'], config['key'], config['cert'])
+        self.ch = make_client(config['ch'], self.ssl_context())
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = None
         self.logger = config['logger']

@@ -165,7 +165,7 @@ class Framework(Framework_Base):
                 create_selfsigned_cert2(self, config['cert'], config['user'], config['key'])
                 try:
                     # use the self signed cert to get the gid
-                    self.registry = make_client(config['registry'], config['key'], config['cert'])
+                    self.registry = make_client(config['registry'], self.ssl_context())
                     self.user_cred = None
                     self.cert_string = file(config['cert'],'r').read()
                     cred = self.get_user_cred()
@@ -197,9 +197,9 @@ class Framework(Framework_Base):
         if not config.has_key('verbose'):
             config['verbose'] = False
         self.logger.info('SFA Registry: %s', config['registry'])
-        self.registry = make_client(config['registry'], config['key'], config['cert'], allow_none=True)
+        self.registry = make_client(config['registry'], self.ssl_context(), allow_none=True)
         self.logger.info('SFA Slice Manager: %s', config['slicemgr'])
-        self.slicemgr = make_client(config['slicemgr'], config['key'], config['cert'])
+        self.slicemgr = make_client(config['slicemgr'], self.ssl_context())
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = None
         

@@ -324,7 +324,8 @@ class CallHandler(object):
 
     def _filename_part_from_am_url(self, url):
         """Strip uninteresting parts from an AM URL 
-        to help construct part of a filename"""
+        to help construct part of a filename.
+        """
         # see listresources and createsliver
 
         if url is None or url.strip() == "":
@@ -1368,9 +1369,9 @@ class OmniError( Exception ):
 def make_client(url, framework, opts):
     ''' Create an xmlrpc client, skipping the client cert if not opts.ssl'''
     if opts.ssl:
-        return omnilib.xmlrpc.client.make_client(url,
-                                                 framework.key,
-                                                 framework.cert)
+        ctx = framework.ssl_context()
+        print "context = %r" % (ctx)
+        return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 

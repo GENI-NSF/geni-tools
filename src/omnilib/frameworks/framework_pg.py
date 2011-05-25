@@ -71,11 +71,11 @@ class Framework(Framework_Base):
         self.logger.debug("Configured with key file %s", config['key'])
         
         self.logger.debug('Using clearinghouse %s', self.config['ch'])
-        self.ch = make_client(self.config['ch'], self.config['key'],
-                              self.config['cert'], self.config['verbose'])
+        self.ch = make_client(self.config['ch'], self.ssl_context(),
+                              self.config['verbose'])
         self.logger.debug('Using slice authority %s', self.config['sa'])
-        self.sa = make_client(self.config['sa'], self.config['key'],
-                              self.config['cert'], self.config['verbose'])
+        self.sa = make_client(self.config['sa'], self.ssl_context(),
+                              self.config['verbose'])
         self.user_cred = None
         
         # For now, no override aggregates.
@@ -218,9 +218,9 @@ class Framework(Framework_Base):
             return response['value']
 
     def delete_slice(self, urn):
-        ''''Delete the PG Slice. PG doesn't do this though, so instead we
+        """Delete the PG Slice. PG doesn't do this though, so instead we
         return a string including the slice expiration time.
-        '''
+        """
         mycred = self.get_user_cred()
         if mycred is None:
             prtStr = "Cannot get a valid user credential. Regardless, ProtoGENI slices cannot be deleted - they expire automatically."
@@ -377,8 +377,7 @@ class Framework(Framework_Base):
             self.logger.debug('AM URL = %s', am_url)
             if am_url != cm_url:
                 # Test the am_url...
-                client = make_client(am_url, self.config['key'],
-                                     self.config['cert'],
+                client = make_client(am_url, self.ssl_context(),
                                      self.config['verbose'],
                                      timeout=5)
                 # This refactoring means we print verbose errors for 404 Not Found messages like
