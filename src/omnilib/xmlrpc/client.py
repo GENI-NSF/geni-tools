@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 import httplib
 import socket
+import sys
 import xmlrpclib
 import M2Crypto.SSL
 
@@ -32,8 +33,12 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         xmlrpclib.SafeTransport.__init__(self, use_datetime)
         self._ssl_context = ssl_context
         self._timeout = timeout
+        # Backward compatibility with Python 2.6
+        # Python 2.7 introduces a connection cache.
+        if not hasattr(self, '_connection'):
+            self._connection = (None, None)
 
-    def make_connection(self, host):
+    def make_connection27(self, host):
         if self._connection and host == self._connection[0]:
             return self._connection[1]
         else:
@@ -42,11 +47,21 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
             # it is handled by the SSL Context. This one liner
             # avoids an eclipse warning
             _ = x509
-            self._connection = host, ContextHTTPSConnection(chost,
-                                                            context=self._ssl_context)
+            conn = ContextHTTPSConnection(chost, context=self._ssl_context)
             if self._timeout:
-                self._connection[1]._conn.timeout = self._timeout
+                conn._conn.timeout = self._timeout
+            # Cache the result for Python 2.7
+            self._connection = host, conn
             return self._connection[1]
+
+    def make_connection(self, host):
+        conn = self.make_connection27(host)
+        if sys.version_info < (2, 7):
+            # Wrap the HTTPConnection for backward compatibility
+            httpconn = httplib.HTTP()
+            httpconn._setup(conn)
+            conn = httpconn
+        return conn
 
 
 class ContextHTTPSConnection(httplib.HTTPSConnection):
@@ -54,15 +69,14 @@ class ContextHTTPSConnection(httplib.HTTPSConnection):
     def __init__(self, host, port=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  source_address=None, context=None):
-        httplib.HTTPConnection.__init__(self, host, port, strict, timeout,
-                                        source_address)
+        httplib.HTTPConnection.__init__(self, host, port, strict, timeout)
         self.ssl_context = context
 
     def connect(self):
         "Connect to a host on a given (SSL) port."
 
         sock = socket.create_connection((self.host, self.port),
-                                        self.timeout, self.source_address)
+                                        self.timeout)
         if self._tunnel_host:
             self.sock = sock
             self._tunnel()
