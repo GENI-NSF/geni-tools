@@ -161,7 +161,7 @@ default in config file.  The framework is a section named in the config file.
 --no-ssl   Do not use ssl
 --orca-slice-id=ORCA_SLICE_ID
                 Use the given Orca slice id
--o, --output   Write output of listresources or getslicecred to a file
+-o, --output   Write output of getversion, listresources, createsliver, or getslicecred to a file
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
                   Filename prefix (used with -o)
 --slicecredfile SLICE_CRED_FILENAME
@@ -169,6 +169,10 @@ default in config file.  The framework is a section named in the config file.
 	     -save to with -o getslicecred
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
                   Ad RSpec type and version to return, EG 'ProtoGENI 2'
+-v, --verbose  (default True)
+        Turn on verbose command summary for omni commandline tool
+-q, --quiet    (default False)
+        Turn off verbose command summary for omni commandline tool
 
 === The following commands are supported: ===
 
@@ -297,7 +301,10 @@ default in config file.  The framework is a section named in the config file.
  * format:  omni.py getversion [-a AM-URL]
  * examples:
   * omni.py getversion
-  * omni.py getversion -a http://localhost:12348
+  * GetVersion for only this aggregate
+    omni.py getversion -a http://localhost:12348
+  * Save GetVersion information to per-aggregate files
+    omni.py getversion -o
 
   Call the AM API GetVersion function at each aggregate.
 
@@ -305,6 +312,9 @@ default in config file.  The framework is a section named in the config file.
   - Single URL given in -a argument, if provided, ELSE
   - List of URLs given in omni_config aggregates option, if provided, ELSE
   - List of URNs and URLs provided by the selected clearinghouse
+
+  -o Save result (JSON format) in per-Aggregate files
+  -p (used with -o) Prefix for resulting version information files
 
 ==== listresources ====
  * format:  omni.py listresources [-a AM-URL] [-n] [slice-name] \

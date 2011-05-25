@@ -1637,7 +1637,7 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of listresources or createsliver or getslicecred to a file")
+                      help="Write output of listresources, createsliver, getslicecred to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix (used with -o)")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
