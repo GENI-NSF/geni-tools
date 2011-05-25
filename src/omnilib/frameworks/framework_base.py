@@ -112,9 +112,7 @@ class Framework_Base():
         """Returns an SSL Context"""
         if not self.sslctx:
             # Initialize the M2Crypto SSL Context
-            print "Initializing M2Crypto context"
             self.sslctx = M2Crypto.SSL.Context()
-            print "cert_file = %r\nkey_file = %r" % (self.cert, self.key)
             try:
                 self.sslctx.load_cert(self.cert, self.key)
             except M2Crypto.SSL.SSLError, err:

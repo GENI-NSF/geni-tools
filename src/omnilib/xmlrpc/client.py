@@ -82,9 +82,7 @@ class ContextHTTPSConnection(httplib.HTTPSConnection):
             self._tunnel()
         if not self.ssl_context:
             # Initialize the M2Crypto SSL Context
-            print "Initializing M2Crypto context"
             self.ssl_context = M2Crypto.SSL.Context()
-        print "Wrapping socket via M2Crypto"
         self.sock = M2Crypto.SSL.Connection(self.ssl_context, sock)
         # sock.conn.addr = sock.addr
         self.sock.setup_ssl()
