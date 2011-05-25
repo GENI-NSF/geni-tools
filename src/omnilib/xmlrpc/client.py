@@ -77,7 +77,9 @@ class ContextHTTPSConnection(httplib.HTTPSConnection):
 
         sock = socket.create_connection((self.host, self.port),
                                         self.timeout)
-        if self._tunnel_host:
+        # Make sure the _tunnel_host attribute exists. It was
+        # introduced between Python 2.6.2 and Python 2.6.6.
+        if hasattr(self, '_tunnel_host') and self._tunnel_host:
             self.sock = sock
             self._tunnel()
         if not self.ssl_context:
