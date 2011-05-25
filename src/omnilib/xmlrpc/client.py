@@ -48,8 +48,8 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
             # avoids an eclipse warning
             _ = x509
             conn = ContextHTTPSConnection(chost, context=self._ssl_context)
-            if self._timeout:
-                conn._conn.timeout = self._timeout
+#            if self._timeout:
+#                conn._conn.timeout = self._timeout
             # Cache the result for Python 2.7
             self._connection = host, conn
             return self._connection[1]
