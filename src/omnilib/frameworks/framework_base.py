@@ -25,6 +25,7 @@ import logging
 import os
 import M2Crypto.SSL
 from omnilib.util.paths import getAbsPath
+from omnilib.util import OmniError
 
 class Framework_Base():
     """
@@ -130,7 +131,7 @@ class Framework_Base():
                     if attempts > retries:
                         logger.error("Wrong pass phrase after %d tries.",
                                      attempts)
-                        raise err
+                        raise OmniError(err)
                     else:
                         logger.info('.... please retry.')
         return self.sslctx
