@@ -306,8 +306,8 @@ class Framework(Framework_Base):
                 return None
 
         except Exception, exc:
-            self.logger.warning("Failed to renew slice %s: %s" % urn, exc)
-            return None            
+            self.logger.warning("Failed to renew slice %s: %s" , urn, exc)
+            return None
        
     def list_aggregates(self):
         aggs = {}
