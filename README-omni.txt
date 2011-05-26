@@ -161,7 +161,8 @@ default in config file.  The framework is a section named in the config file.
 --no-ssl   Do not use ssl
 --orca-slice-id=ORCA_SLICE_ID
                 Use the given Orca slice id
--o, --output   Write output of getversion, listresources, createsliver, or getslicecred to a file
+-o, --output   Write output of getversion, listresources,
+    	       	     -createsliver, sliverstatus, or getslicecred to a file
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
                   Filename prefix (used with -o)
 --slicecredfile SLICE_CRED_FILENAME
@@ -173,6 +174,9 @@ default in config file.  The framework is a section named in the config file.
         Turn on verbose command summary for omni commandline tool
 -q, --quiet    (default False)
         Turn off verbose command summary for omni commandline tool
+--tostdout (default True)
+        Print results like RSpecs to STDOUT instead of logging.
+	Only relevant when not saving results to a file with the -o option.
 
 === The following commands are supported: ===
 
@@ -315,6 +319,8 @@ default in config file.  The framework is a section named in the config file.
 
   -o Save result (JSON format) in per-Aggregate files
   -p (used with -o) Prefix for resulting version information files
+  If not saving results to a file, they are logged.
+  If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== listresources ====
  * format:  omni.py listresources [-a AM-URL] [-n] [slice-name] \
@@ -361,6 +367,8 @@ default in config file.  The framework is a section named in the config file.
   -o writes to file instead of stdout; omnispec written to 1 file,
      native format written to single file per aggregate.
   -p gives filename prefix for each output file
+  If not saving results to a file, they are logged.
+  If --tostdout option, then instead of logging, print to STDOUT.
   -t Requires the AM send RSpecs in the given type and version. If the
      AM does not speak that type and version, nothing is returned. Use
      GetVersion to see available types at that AM.
@@ -413,6 +421,14 @@ default in config file.  The framework is a section named in the config file.
   Slice name could be a full URN, but is usually just the slice name portion.
   Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
   only the slice name part here.
+
+  -n Use native format rspec. Requires -a. Native RSpecs are preferred, and omnispecs are deprecated.
+  -a Contact only the aggregate at the given URL
+  --slicecredfile Read slice credential from given file, if it exists
+  -o Save result (manifest rspec) in per-Aggregate files
+  -p (used with -o) Prefix for resulting manifest RSpec files
+  If not saving results to a file, they are logged.
+  If --tostdout option, then instead of logging, print to STDOUT.
 
   Slice credential is usually retrieved from the Slice Authority. But
   with the --slicecredfile option it is read from that file, if it exists.
@@ -475,6 +491,10 @@ default in config file.  The framework is a section named in the config file.
   - List of URLs given in omni_config aggregates option, if provided, ELSE
   - List of URNs and URLs provided by the selected clearinghouse
 
+  -o Save result in per-Aggregate files
+  -p (used with -o) Prefix for resulting files
+  If not saving results to a file, they are logged.
+  If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== deletesliver ====
  * format:  omni.py deletesliver [-a AM-URL] <slice-name>

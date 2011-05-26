@@ -126,7 +126,7 @@ class CallHandler(object):
         return getattr(self,call)(args[1:])
 
     def getversion(self, args):
-        '''AM API GetVersion
+        """AM API GetVersion
 
         Aggregates queried:
         - Single URL given in -a argument, if provided, ELSE
@@ -135,8 +135,10 @@ class CallHandler(object):
 
         -o Save result (JSON format) in per-Aggregate files
         -p (used with -o) Prefix for resulting version information files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
 
-        '''
+        """
         retVal = ""
         version = {}
         clients = self._getclients()
@@ -151,26 +153,27 @@ class CallHandler(object):
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
                 prettyVersion = pp.pformat(thisVersion)
-                self.logger.info( "URN: %s (url: %s) has version: \n%s\n" % (client.urn, client.url, prettyVersion))
                 successCnt += 1
-
+                header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
+                filename = None
                 if self.opts.output:
                     # Create HEADER
                     # But JSON cant have any
-                    header = None
+                    #header = None
                     # Create filename
                     server = self._filename_part_from_am_url(client.url)
                     filename = "getversion-"+server+".xml"
                     if self.opts.prefix and self.opts.prefix.strip() != "":
                         filename  = self.opts.prefix.strip() + "-" + filename
-                    # Create File
-                    self._printRspec( header, prettyVersion, filename)
-                    self.logger.info("Wrote result of getversion at AM %s to file '%s'", client.url, filename)
-
-
+                    self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
+                # Create File
+                # This logs or prints, depending on whether filename
+                # is None
+                self._printResults( header, prettyVersion, filename)
         if len(clients)==0:
             retVal += "No aggregates to query.\n\n"
         else:
+            # FIXME: If it is 1 just return the getversion?
             retVal += "Got version for %d out of %d aggregates\n" % (successCnt,len(clients))
 
         return (retVal, version)
@@ -300,25 +303,58 @@ class CallHandler(object):
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return rspecs
 
-    def _printRspec(self, header, content, filename=None):
-        """Print header string and content string to stdout, or given file."""
+    def _printResults(self, header, content, filename=None):
+        """Print header string and content string to file of given
+        name. If filename is none, then log to info.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+        cstart = 0
+        # if content starts with <?xml ..... ?> then put the header after that bit
+        if content is not None and content.find("<?xml") > -1:
+            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
         # used by listresources
         if filename is None:
             if header is not None:
-                self.logger.info(header+":")
+                if cstart > 0:
+                    if not self.opts.tostdout:
+                        self.logger.info(content[:cstart])
+                    else:
+                        print content[:cstart] + "\n"
+                if not self.opts.tostdout:
+                    self.logger.info(header)
+                else:
+                    # If cstart is 0 maybe still log the header so it
+                    # isn't written to STDOUT and non-machine-parsable
+                    if cstart == 0:
+                        self.logger.info(header)
+                    else:
+                        print header + "\n"
+            elif content is not None:
+                if not self.opts.tostdout:
+                    self.logger.info(content[:cstart])
+                else:
+                    print content[:cstart] + "\n"
             if content is not None:
-                self.logger.info(content)
+                if not self.opts.tostdout:
+                    self.logger.info(content[cstart:])
+                else:
+                    print content[cstart:] + "\n"
         else:
             with open(filename,'w') as file:
                 self.logger.info( "Writing to '%s'"%(filename))
-                cstart = 0
                 if header is not None:
-                    # if content starts with <?xml ..... ?> then put the header after that bit
-                    if content is not None and content.index("<?xml") > -1:
-                        cstart = content.find("?>", content.index("<?xml") + len("<?xml"))+2
+                    if cstart > 0:
                         file.write (content[:cstart] + '\n')
-                    file.write( header )
-                    file.write( "\n" )
+                    # this will fail for JSON output. 
+                    # only write header to file if have xml like
+                    # above, else do log thing per above
+                    if cstart > 0:
+                        file.write( header )
+                        file.write( "\n" )
+                    else:
+                        self.logger.info(header)
+                elif cstart > 0:
+                    file.write(content[:cstart] + '\n')
                 if content is not None:
                     file.write( content[cstart:] )
                     file.write( "\n" )
@@ -361,7 +397,7 @@ class CallHandler(object):
         return server
 
     def listresources(self, args):
-        '''Optional arg is a slice name limiting results. Call ListResources
+        """Optional arg is a slice name limiting results. Call ListResources
         on all aggregates and prints the omnispec/rspec to stdout or to file.
         
         -n gives native format; otherwise print omnispec in json format
@@ -369,6 +405,8 @@ class CallHandler(object):
         -o writes Ad RSpec to file instead of stdout; omnispec written to 1 file,
            native format written to single file per aggregate.
         -p gives filename prefix for each output file
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
         -t <type version>: Specify a required A RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
@@ -387,7 +425,7 @@ class CallHandler(object):
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
-        '''
+        """
 
         # An optional slice name might be specified.
         slicename = None
@@ -401,7 +439,9 @@ class CallHandler(object):
         # Query the various aggregates for resources
         # rspecs[(urn, url)] = decompressed native rspec
         rspecs = self._listresources( args )
-        numAggs = len(rspecs.keys())
+        numAggs = 0
+        if rspecs is not None:
+            numAggs = len(rspecs.keys())
         
         # handle empty case
         if not rspecs or rspecs == {}:
@@ -420,14 +460,14 @@ class CallHandler(object):
         omnispecs = {}
         fileCtr = 0
         for ((urn,url), rspec) in rspecs.items():                        
-            self.logger.debug("Getting RSpec items for urn %s (%s)", urn, url)
+            self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
 
             if self.opts.native:
                 # Create HEADER
                 if slicename is not None:
-                    header = "Resources for slice %s at %s [%s]" % (slicename, urn, url)
+                    header = "Resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
                 else:
-                    header = "Resources at %s [%s]" % (urn, url)
+                    header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
                 header = "<!-- "+header+" -->"
 
                 # Create BODY
@@ -466,7 +506,8 @@ class CallHandler(object):
                         filename  = self.opts.prefix.strip() + "-" + filename
 
                 # Create FILE
-                self._printRspec( header, content, filename)
+                # This prints or logs results, depending on filename None
+                self._printResults( header, content, filename)
 
             else:
                 # Convert RSpec to omnispec
@@ -481,11 +522,9 @@ class CallHandler(object):
         if not self.opts.native:
             # Create HEADER
             if slicename is not None:
-                header = "Resources for slice %s" % (slicename)
+                header = "Resources For Slice: %s" % (slicename)
             else:
                 header = "Resources"
-            if self.opts.output:
-                header = None
 
             # Create BODY
             content = json.dumps(omnispecs, indent=4)
@@ -505,11 +544,13 @@ class CallHandler(object):
                     filename  = self.opts.prefix.strip() + "-" + filename
                         
             # Create FILE
-            if numAggs>0:
-                self._printRspec( header, content, filename)
+            if numAggs>0 and len(omnispecs.keys()) > 0:
+                # log or print omnispecs, depending on if filename is None
+                self._printResults( header, content, filename)
 
 
         # Create RETURNS
+        # FIXME: If numAggs is 1 then retVal should just be the rspec?
         if slicename:
             retVal = "Retrieved resources for slice %s from %d aggregates."%(slicename, numAggs)
         else:
@@ -517,13 +558,18 @@ class CallHandler(object):
         if numAggs > 0:
             retVal +="\n"
             if self.opts.native:
-                retVal += "Wrote rspecs"
-                if self.opts.output:
-                    retVal +=" to %d files"% fileCtr
-            else:
-                retVal += "Wrote omnispecs"
+                if len(returnedRspecs.keys()) > 0:
+                    retVal += "Wrote rspecs from %d aggregates" % numAggs
+                    if self.opts.output:
+                        retVal +=" to %d files"% fileCtr
+                else:
+                    retVal +="No Rspecs succesfully parsed from %d aggregates" % numAggs
+            elif len(omnispecs.keys()) > 0:
+                retVal += "Wrote omnispecs from %d aggregates" % numAggs
                 if self.opts.output:
                     retVal +=" to '%s' file"% filename
+            else:
+                retVal += "No omnispecs successfully parsed from %d aggregates" % numAggs
             retVal +="."
 
         retItem = returnedRspecs
@@ -565,7 +611,7 @@ class CallHandler(object):
         return rspecs
 
     def createsliver(self, args):
-        '''AM API CreateSliver call
+        """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
         Return on success the manifest RSpec(s)
 
@@ -578,6 +624,8 @@ class CallHandler(object):
         --slicecredfile Read slice credential from given file, if it exists
         -o Save result (manifest rspec) in per-Aggregate files
         -p (used with -o) Prefix for resulting manifest RSpec files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -587,7 +635,7 @@ class CallHandler(object):
 
         Note you likely want to check SliverStatus to ensure your resource comes up.
         And check the sliver expiration time: you may want to call RenewSliver
-        '''
+        """
 
         retVal=''
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
@@ -715,18 +763,15 @@ class CallHandler(object):
                     prettyresult = md.parseString(result).toprettyxml(indent=' '*2, newl=newl)
                 except:
                     pass
-
-                self.logger.info('Asked %s to reserve resources. Result:\n%s' % (url, prettyresult))
-
                 # summary
                 retVal += 'Reserved resources on %s. ' % (url)
 
             else:
-                self.logger.info('Asked %s to reserve resources. Result: %s' % (url, result))
                 # summary
                 retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
 
-            if '<RSpec type="SFA">' in rspec:
+            # FIXME: When Tony revises the rspec, fix this test
+            if '<RSpec' in rspec and 'type="SFA"' in rspec:
                 # Figure out the login name
                 # We could of course do this for the user.
                 self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
@@ -734,10 +779,10 @@ class CallHandler(object):
             # If the user specified -o then we save the return from
             # each AM as though it is a native manifest RSpec in a
             # separate file
+            # Create HEADER
+            header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
+            filename = None
             if self.opts.output:
-                # Create HEADER
-                header = "<!-- Reserved resources for slice %s at %s -->" % (name, url)
-
                 # create filename
                 # remove all punctuation and use url
                 server = self._filename_part_from_am_url(url)
@@ -745,15 +790,18 @@ class CallHandler(object):
                 if self.opts.prefix and self.opts.prefix.strip() != "":
                     filename  = self.opts.prefix.strip() + "-" + filename
                         
-                # Create FILE
-                self._printRspec( header, prettyresult, filename)
-                self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
+                self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
+            else:
+                self.logger.info('Asked %s to reserve resources. Result:' % (url))
+
+            # Print or log results, putting header first
+            self._printResults( header, prettyresult, filename)
 
         return retVal, result
 
     def renewsliver(self, args):
-        '''AM API RenewSliver <slicename> <new expiration time in UTC>
+        """AM API RenewSliver <slicename> <new expiration time in UTC>
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
@@ -768,7 +816,7 @@ class CallHandler(object):
 
         Note that the expiration time cannot be past your slice expiration time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
-        '''
+        """
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('renewsliver requires arg of slice name and new expiration time in UTC')
 
@@ -812,17 +860,26 @@ class CallHandler(object):
             # Note that the time arg includes UTC offset as needed
             res = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
             if not res:
-                self.logger.warn("Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url))
+                prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
+                self.logger.warn(prStr)
                 retTime = None
             else:
-                self.logger.info("Renewed sliver %s at %s (%s) until %s UTC" % (urn, client.urn, client.url, time.isoformat()))
+                prStr = "Renewed sliver %s at %s (%s) until %s UTC" % (urn, client.urn, client.url, time.isoformat())
+                self.logger.info(prStr)
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
                 successCnt += 1
                 retTime = time.isoformat()
-        retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
+        if len(clientList) == 0:
+            retVal += "No aggregates on which to renew slivers for slice %s\n" % urn
+        elif len(clientList) > 1:
+            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
         return retVal, retTime
 
     def sliverstatus(self, args):
-        '''AM API SliverStatus  <slice name>
+        """AM API SliverStatus  <slice name>
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
@@ -834,7 +891,12 @@ class CallHandler(object):
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
-        '''
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('sliverstatus requires arg of slice name')
 
@@ -864,17 +926,30 @@ class CallHandler(object):
         for client in clientList:
             status = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
             if status:
-                self.logger.info("Sliver at %s:" % (client.url))
-                self.logger.info(pprint.pformat(status)+"\n")
+                prettyResult = pprint.pformat(status)
+                header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
+                filename = None
+                if self.opts.output:
+                    # better filename
+                    # remove all punctuation and use url
+                    server = self._filename_part_from_am_url(client.url)
+                    filename = name+"-sliverstatus-"+server+".json"
+                    if self.opts.prefix and self.opts.prefix.strip() != "":
+                        filename  = self.opts.prefix.strip() + "-" + filename
+                        
+                    #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
+                    
+                self._printResults(header, prettyResult, filename)
                 retItem[ client.url ] = status
                 successCnt+=1
             else:
                 retItem[ client.url ] = False
+        # FIXME: Return the status if there was only 1 client?
         retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
                 
     def deletesliver(self, args):
-        '''AM API DeleteSliver <slicename>
+        """AM API DeleteSliver <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
@@ -886,7 +961,7 @@ class CallHandler(object):
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
-        '''
+        """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('deletesliver requires arg of slice name')
 
@@ -922,17 +997,28 @@ class CallHandler(object):
         ## where you still have resources.
         for client in clientList:
             if _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
-                self.logger.info("Deleted sliver %s on %s at %s" % (urn, client.urn, client.url))
+                prStr = "Deleted sliver %s on %s at %s" % (urn,
+                                                           client.urn,
+                                                           client.url)
+                if len(clientList) == 1:
+                    retVal = prStr
+                self.logger.info(prStr)
                 successCnt += 1
                 retCode = retCode and True
             else:
-                self.logger.warn("Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url))
+                prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                self.logger.warn(prStr)
+                if len(clientList) == 1:
+                    retVal = prStr
                 retCode = False
-        retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
+        if len(clientList) == 0:
+            retVal = "No aggregates specified on which to delete slivers"
+        elif len(clientList) > 1:
+            retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
         return retVal, retCode
 
     def shutdown(self, args):
-        '''AM API Shutdown <slicename>
+        """AM API Shutdown <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
@@ -944,7 +1030,7 @@ class CallHandler(object):
         - Single URL given in -a argument, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
-        '''
+        """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('shutdown requires arg of slice name')
 
@@ -966,14 +1052,24 @@ class CallHandler(object):
         retCode = True
         clientList = self._getclients()
         for client in clientList:
-            if _do_ssl(self.framework, None, "Shutdown %s on %s" % (urn, client.url), client.Shutdown, urn, [slice_cred]):
-                self.logger.info("Shutdown Sliver %s at %s on %s" % (urn, client.urn, client.url))
+            if _do_ssl(self.framework, None, "Shutdown %s on %s" %
+                       (urn, client.url), client.Shutdown, urn, [slice_cred]):
+                prStr = "Shutdown Sliver %s on AM %s at %s" % (urn, client.urn, client.url)
+                self.logger.info(prStr)
+                if len(clientList) == 1:
+                    retVal = prStr
                 successCnt+=1
                 retCode = retCode and True
             else:
-                self.logger.warn( "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) )
+                prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
+                self.logger.warn(prStr)
+                if len(clientList) == 1:
+                    retVal = prStr
                 retCode = False
-        retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
+        if len(clientList) == 0:
+            retVal = "No aggregates specified on which to shutdown slice %s" % urn
+        elif len(clientList) > 1:
+            retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
         return retVal, retCode
 
     # End of AM API operations
@@ -999,12 +1095,14 @@ class CallHandler(object):
             retVal[urn] = url
         if len(aggList)==0:
             retStr = "No aggregates found."
+        elif len(aggList) == 1:
+            retStr = "Found 1 aggregate. URN: %s; URL: %s" % (retVal.keys()[0], retVal[retVal.keys()[0]])
         else:
             retStr = "Found %d aggregates." % len(aggList)
         return retStr, retVal
 
     def createslice(self, args):
-        '''Create a Slice at the given Slice Authority.
+        """Create a Slice at the given Slice Authority.
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
@@ -1018,7 +1116,7 @@ class CallHandler(object):
         Note that Slice Authorities typically limit this call to privileged users. EG PIs.
 
         Note also that typical slice lifetimes are short. See RenewSlice.
-        '''
+        """
         retVal = ""
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('createslice requires arg of slice name')
@@ -1095,14 +1193,14 @@ class CallHandler(object):
         return retVal, retTime
 
     def deleteslice(self, args):
-        '''Framework specific DeleteSlice call at the given Slice Authority
+        """Framework specific DeleteSlice call at the given Slice Authority
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
         Delete all your slivers first! This does not free up resources at various aggregates.
-        '''
+        """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('deleteslice requires arg of slice name')
 
@@ -1148,7 +1246,7 @@ class CallHandler(object):
         return retStr, slices
 
     def getslicecred(self, args):
-        '''Get the AM API compliant slice credential (signed XML document).
+        """Get the AM API compliant slice credential (signed XML document).
 
         If you specify the -o option, the credential is saved to a file.
         The filename is <slicename>-cred.xml
@@ -1175,7 +1273,7 @@ class CallHandler(object):
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
-        '''
+        """
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             # could print help here but that's verbose
@@ -1244,19 +1342,22 @@ class CallHandler(object):
     ## Various helper functions follow
         
     def _maybe_save_slicecred(self, name, slicecred):
-        '''Save slice credential to a file, returning the filename or
+        """Save slice credential to a file, returning the filename or
         None on error or config not specifying -o
 
         Only saves if self.opts.output and non-empty credential
 
+        If you didn't specify -o but do specify --tostdout, then write
+        the slice credential to STDOUT
+
         Filename is:
         --slicecredfile if supplied
         else [<--p value>-]-<slicename>-cred.xml
-        '''
+        """
         if name is None or name.strip() == "" or slicecred is None or slicecred.strip() is None:
             return None
 
-        ret = None
+        filename = None
         if self.opts.output:
             if self.opts.slicecredfile:
                 filename = self.opts.slicecredfile
@@ -1266,12 +1367,14 @@ class CallHandler(object):
                     filename = self.opts.prefix.strip() + "-" + filename
             with open(filename, 'w') as file:
                 file.write(slicecred + "\n")
-                ret = filename
-        return ret
+        elif self.opts.tostdout:
+            self.logger.info("Writing slice %s cred to STDOUT per options", name)
+            print slicecred
+        return filename
 
     def _print_slice_expiration(self, urn, sliceCred=None):
-        '''Check when the slice expires. Print varying warning notices
-        and the expiration date'''
+        """Check when the slice expires. Print varying warning notices
+        and the expiration date"""
         # FIXME: push this to config?
         shorthours = 3
         middays = 1
@@ -1305,8 +1408,8 @@ class CallHandler(object):
         return retVal
 
     def _get_slice_cred(self, urn):
-        '''Try a couple times to get the given slice credential.
-        Retry on wrong pass phrase.'''
+        """Try a couple times to get the given slice credential.
+        Retry on wrong pass phrase."""
 
         if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile) and os.path.isfile(self.opts.slicecredfile) and os.path.getsize(self.opts.slicecredfile) > 0:
             # read the slice cred from the given file
@@ -1362,21 +1465,21 @@ class CallHandler(object):
 # End of CallHandler
 
 def make_client(url, framework, opts):
-    ''' Create an xmlrpc client, skipping the client cert if not opts.ssl'''
+    """ Create an xmlrpc client, skipping the client cert if not opts.ssl"""
     if opts.ssl:
         return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 
 def load_config(opts, logger):
-    '''Load the omni config file.
+    """Load the omni config file.
     Search path:
     - filename from commandline
       - in current directory
       - in ~/.gcf
     - omni_config in current directory
     - omni_config in ~/.gcf
-    '''
+    """
 
     # Load up the config file
     configfiles = ['omni_config','~/.gcf/omni_config']
@@ -1579,7 +1682,7 @@ def API_call( framework, config, args, opts, verbose=False ):
     return retVal, retItem
 
 def configure_logging(opts):
-    '''Configure logging. INFO level by defult, DEBUG level if opts.debug'''
+    """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
     level = logging.INFO
     logging.basicConfig(level=level)
     if opts.debug:
@@ -1631,7 +1734,7 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of listresources, createsliver, getslicecred to a file")
+                      help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix (used with -o)")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
@@ -1643,6 +1746,8 @@ def getParser():
                       help="Turn on verbose command summary for omni commandline tool")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
                       help="Turn off verbose command summary for omni commandline tool")
+    parser.add_option("--tostdout", default=False, action="store_true",
+                      help="Print results like rspecs to STDOUT instead of to log stream")
     return parser
 
 def parse_args(argv, options=None):

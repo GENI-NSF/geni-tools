@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-''' Use Omni as a library to unit test API compliance'''
+""" Use Omni as a library to unit test API compliance"""
 
 # FIXME: Add usage instructions
 # FIXME: Each test should describe expected results
@@ -130,7 +130,7 @@ class Test(GENISetup):
       successFail = False
       if type(retDict) == type({}):
          for key,verDict in retDict.items():
-            if verDict.has_key('geni_api'):
+            if verDict is not None and verDict.has_key('geni_api'):
                successFail = True
                break
       self.assertTrue(successFail, msg)
@@ -155,8 +155,9 @@ class Test(GENISetup):
       # Make sure we got an XML file back
       msg = "Returned rspec is not XML: %s" % rspec
       successFail = True
-      for key, value in rspec.items():
-         successFail = successFail and (ET.fromstring(value) is not None)
+      if rspec is not None:
+         for key, value in rspec.items():
+            successFail = successFail and (ET.fromstring(value) is not None)
       self.assertTrue(successFail, msg)
       self.printMonitoring( successFail )
 
@@ -458,6 +459,8 @@ if __name__ == '__main__':
 
    # Get the omni optiosn and arguments
    parser = omni.getParser()
+   parser.add_option("--vv", action="store_true", help="Give -v to unittest")
+   parser.add_option("--qq", action="store_true", help="Give -q to unittest")
    TEST_OPTS, TEST_ARGS = parser.parse_args(sys.argv[1:])
 
    # Create a list of all omni options as they appear on commandline
@@ -478,14 +481,37 @@ if __name__ == '__main__':
 
    # Delete the omni options and values from the commandline
    del_lst = []
+   haveV = False
+   haveQ = False
+   haveVV = False
+   haveQQ = False
    for i,option in enumerate(sys.argv):
       if option in omni_options_with_arg:
          del_lst.append(i)
          del_lst.append(i+1)
       elif option in omni_options_no_arg:
-         # Skip -v, -q, -h arguments to try to let unittest have them
-         if option in ["-v", "-q", "-h"]:
-            continue
+         if option == "-v":
+            haveV = True
+            if haveVV:
+               continue
+         elif option == "-q":
+            haveQ = True
+            if haveQQ:
+               continue
+         elif option == "--vv":
+            haveVV = True
+            if haveV:
+               # Want to not remove -v but we already did!
+               # So just replace the --vv with -v
+               sys.argv[i] = "-v"
+               continue
+         elif option == "--qq":
+            haveQQ = True
+            if haveQ:
+               # Want to not remove -q but we alredy did!
+               # So just replace the --qq with -q
+               sys.argv[i] = "-q"
+               continue
          del_lst.append(i)
 
    del_lst.reverse()
