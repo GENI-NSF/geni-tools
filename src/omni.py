@@ -590,6 +590,9 @@ class CallHandler(object):
         # Extract the individual omnispecs from the JSON dict
         omnispecs = {}
         for url, spec_dict in jspecs.items():
+            # json produces unicode strings.
+            # some libraries like m2crypto can't handle unicode URLs
+            url = str(url)
             omnispecs[url] = OmniSpec('', '', dictionary=spec_dict)
 
         # Only keep omnispecs that have a resource marked 'allocate'
