@@ -50,10 +50,9 @@
        [string dictionary] = omni.py listresources
        [string rspec] = omni.py createsliver SLICENAME RSPEC_FILENAME
        [string dictionary] = omni .py sliverstatus SLICENAME
-       On success: [string dateTimeRenewedTo] = omni.py renewsliver SLICENAME
-       On fail: [string None] = omni.py renewsliver SLICENAME
-       [string Boolean] = omni.py deletesliver SLICENAME
-       [string Boolean] = omni.py shutdown SLICENAME
+       [string (successList, failList)] = omni.py renewsliver SLICENAME
+       [string (successList, failList)] = omni.py deletesliver SLICENAME
+       [string (successList, failList)] = omni.py shutdown SLICENAME
        [string dictionary] = omni.py listaggregates
        On success: [string sliceurnstring] = omni.py createslice SLICENAME
        On fail: [string None] = omni.py createslice SLICENAME
@@ -612,7 +611,6 @@ class CallHandler(object):
             else:
                 self.logger.info('Nothing to allocate at %r', url)
         return rspecs
-
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
@@ -858,6 +856,8 @@ class CallHandler(object):
             urn = self.opts.orca_slice_id
 
         successCnt = 0
+        successList = []
+        failList = []
         clientList = self._getclients()
         for client in clientList:
             # Note that the time arg includes UTC offset as needed
@@ -867,19 +867,19 @@ class CallHandler(object):
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
-                retTime = None
+                failList.append( client.url )
             else:
                 prStr = "Renewed sliver %s at %s (%s) until %s UTC" % (urn, client.urn, client.url, time.isoformat())
                 self.logger.info(prStr)
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
-                retTime = time.isoformat()
+                successList.append( client.url )
         if len(clientList) == 0:
             retVal += "No aggregates on which to renew slivers for slice %s\n" % urn
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
-        return retVal, retTime
+        return retVal, (successList, failList)
 
     def sliverstatus(self, args):
         """AM API SliverStatus  <slice name>
@@ -982,7 +982,8 @@ class CallHandler(object):
             urn = self.opts.orca_slice_id
 
         retVal = ""
-        retCode = True
+        successList = []
+        failList = []
         successCnt = 0
         clientList = self._getclients()
 
@@ -1007,18 +1008,18 @@ class CallHandler(object):
                     retVal = prStr
                 self.logger.info(prStr)
                 successCnt += 1
-                retCode = retCode and True
+                successList.append( client.url )
             else:
                 prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
-                retCode = False
+                failList.append( client.url )
         if len(clientList) == 0:
             retVal = "No aggregates specified on which to delete slivers"
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
-        return retVal, retCode
+        return retVal, (successList, failList)
 
     def shutdown(self, args):
         """AM API Shutdown <slicename>
@@ -1052,7 +1053,8 @@ class CallHandler(object):
         #Call shutdown on each AM
         retVal = ""
         successCnt = 0
-        retCode = True
+        successList = []
+        failList = []
         clientList = self._getclients()
         for client in clientList:
             if _do_ssl(self.framework, None, "Shutdown %s on %s" %
@@ -1062,18 +1064,18 @@ class CallHandler(object):
                 if len(clientList) == 1:
                     retVal = prStr
                 successCnt+=1
-                retCode = retCode and True
+                successList.append( client.url )
             else:
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
-                retCode = False
+                failList.append( client.url )
         if len(clientList) == 0:
             retVal = "No aggregates specified on which to shutdown slice %s" % urn
         elif len(clientList) > 1:
             retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
-        return retVal, retCode
+        return retVal, (successList, failList)
 
     # End of AM API operations
     #########################################
@@ -1466,6 +1468,23 @@ class CallHandler(object):
             return aggs
 
 # End of CallHandler
+
+
+def countSuccess( successList, failList ):
+    """Intended to be used with 'renewsliver', 'deletesliver', and
+    'shutdown' which return a two item tuple as their second
+    arguement.  The first item is a list of urns/urls for which it
+    successfully performed the operation.  The second item is a
+    list of the urns/urls for which it did not successfully
+    perform the operation.  Failure could be due to an actual
+    error or just simply that there were no such resources
+    allocated to this sliver at that aggregates.  In this context
+    this method returns a tuple containing the number of items
+    which succeeded and the number of items attempted.
+    """
+    succNum = len( successList )
+    return (succNum, succNum + len( failList ) )
+
 
 def make_client(url, framework, opts):
     """ Create an xmlrpc client, skipping the client cert if not opts.ssl"""

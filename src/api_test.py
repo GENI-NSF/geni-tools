@@ -105,8 +105,8 @@ class GENISetup(unittest.TestCase):
         print "MONITORING %s %s" % (inspect.stack()[1][3], resultStr)      
 
     def create_slice_name( self ):
-        slice_name = SLICE_NAME
-#        slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
+#        slice_name = SLICE_NAME
+        slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
         return slice_name
 
     def call( self, cmd, options ):
@@ -197,6 +197,7 @@ class Test(GENISetup):
         except Exception, exp:
             print 'test_slicecreation had an error: %s' % exp
             successFail = False
+            traceback.print_exc()
         finally:
             successFail = successFail and self.subtest_deleteslice(  slice_name )
         self.printMonitoring( successFail )
@@ -225,8 +226,9 @@ class Test(GENISetup):
             successFail = successFail and self.subtest_renewsliver_success( slice_name )
             successFail = successFail and self.subtest_deletesliver( slice_name )
         except Exception, exp:
-            print 'test_slivercreation had an error: '
+            print 'test_slivercreation had an error: %s' % str(exp)
             successFail = False
+            traceback.print_exc()
         finally:
             try:
                 self.subtest_deletesliver( slice_name )
@@ -237,18 +239,18 @@ class Test(GENISetup):
         self.printMonitoring( successFail )
 
     # def test_shutdown(self):
-    #    self.sectionBreak()
-    #    slice_name = self.create_slice_name()
+    #     self.sectionBreak()
+    #     slice_name = self.create_slice_name()
         
-        #    successFail = True
-        #    try:
-        #       successFail = successFail and self.subtest_createslice( slice_name )
-        #       successFail = successFail and self.subtest_createsliver( slice_name )
-        #       successFail = successFail and self.subtest_shutdown( slice_name )
-        #       successFail = successFail and self.subtest_deletesliver( slice_name )
-        #    finally:
-        #       successFail = successFail and self.subtest_deleteslice( slice_name )
-        #    self.printMonitoring( successFail )
+    #     successFail = True
+    #     try:
+    #         successFail = successFail and self.subtest_createslice( slice_name )
+    #         successFail = successFail and self.subtest_createsliver( slice_name )
+    #         successFail = successFail and self.subtest_shutdown( slice_name )
+    #         successFail = successFail and self.subtest_deletesliver( slice_name )
+    #     finally:
+    #         successFail = successFail and self.subtest_deleteslice( slice_name )
+    #         self.printMonitoring( successFail )
 
 
     def subtest_createslice(self, slice_name ):
@@ -272,13 +274,13 @@ class Test(GENISetup):
 
         # now construct args
         omniargs = ["shutdown", slice_name]
-        text = self.call(omniargs, options)
-        msg = "Shutdown FAILED."
-        successFail = ("Shutdown Sliver") in text
-        # FIX ME
-        #      self.assertTrue( successFail, msg)
-        #      return successFail
-        return True
+        text, (successList, failList) = self.call(omniargs, options)
+        succNum, failNum = omni.countSuccess( successList, failList )
+        if succNum == 1:
+           successFail = True
+        else:
+           successFail = False
+        return successFail
 
     def subtest_deleteslice(self, slice_name):
         options = docopy.deepcopy(self.options)
@@ -331,14 +333,21 @@ class Test(GENISetup):
         newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
 
         omniargs = ["renewsliver", slice_name, newtime]
-        text, retTime = self.call(omniargs, options)
+        text, (succList, failList) = self.call(omniargs, options)
+        succNum, possNum = omni.countSuccess( succList, failList )
+        # # retTime is only None if so renewslivers happened
         # if retTime is None:
-        #    successFail = False
+        #    succNum = 0
         # else:
-        #    successFail = True
-        m = re.search(r"Renewed slivers on (\w+) out of (\w+) aggregates", text)
-        succNum = m.group(1)
-        possNum = m.group(2)
+        #    try:
+        #       # this string only prints if there > 1 successes
+        #       m = re.search(r"Renewed slivers on (\w+) out of (\w+) aggregates", text)
+        #       succNum = m.group(1)
+        #       possNum = m.group(2)
+        #    except:
+        #       succNum = 1
+        #       possNum = 1
+
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
 
@@ -394,8 +403,9 @@ class Test(GENISetup):
 
         # now construct args
         omniargs = ["-o", "listresources"]
-        rspecfile = 'omnispec-1AMs.json'
         text, resourcesDict = self.call(omniargs, options)
+
+        rspecfile = 'omnispec-%dAMs.json'%len(resourcesDict.keys())
         
         with open(rspecfile) as file:
             rspectext = file.readlines()
@@ -423,10 +433,12 @@ class Test(GENISetup):
 
         # now construct args
         omniargs = ["deletesliver", slice_name]
-        text, successFail = self.call(omniargs, options)
-        m = re.search(r"Deleted slivers on (\w+) out of a possible (\w+) aggregates", text)
-        succNum = m.group(1)
-        possNum = m.group(2)
+        text, (successList, failList) = self.call(omniargs, options)
+        succNum, possNum = omni.countSuccess( successList, failList )
+#        m = re.search(r"Deleted slivers on (\w+) out of a possible (\w+) aggregates", text)
+#        succNum = m.group(1)
+#        possNum = m.group(2)
+
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
         self.assertTrue( successFail )
