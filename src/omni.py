@@ -1678,6 +1678,17 @@ def API_call( framework, config, args, opts, verbose=False ):
                 continue
             if isinstance(getattr(opts, attr), types.MethodType):
                 continue
+            # if the parser has no option with a dest==attr,
+            # then continue
+            # This means that the user supplied an option the parser didn't
+            # handle, and typically there would have been an error,
+            # but lets not complain here
+            has = False
+            for opt in parser.option_list:
+                if opt.dest == attr:
+                    has=True
+            if has == False:
+                continue
             if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
                 # non-default value
                 nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))

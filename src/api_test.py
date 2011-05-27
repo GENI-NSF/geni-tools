@@ -467,12 +467,10 @@ if __name__ == '__main__':
     # the unittest optionparser doesnt throw an exception on omni
     # options, and still can get its -v or -q arguments
 
-    import types
-
     # Get the omni optiosn and arguments
     parser = omni.getParser()
-    parser.add_option("--vv", action="store_true", help="Give -v to unittest")
-    parser.add_option("--qq", action="store_true", help="Give -q to unittest")
+    parser.add_option("--vv", action="store_true", help="Give -v to unittest", default=False)
+    parser.add_option("--qq", action="store_true", help="Give -q to unittest", default=False)
     TEST_OPTS, TEST_ARGS = parser.parse_args(sys.argv[1:])
     
     # Create a list of all omni options as they appear on commandline
@@ -490,6 +488,9 @@ if __name__ == '__main__':
                 omni_options_no_arg.append(cmdline)
             for cmdline in opt._short_opts:
                 omni_options_no_arg.append(cmdline)
+
+    parser.remove_option("--vv")
+    parser.remove_option("--qq")
 
     # Delete the omni options and values from the commandline
     del_lst = []
@@ -529,6 +530,12 @@ if __name__ == '__main__':
     del_lst.reverse()
     for i in del_lst:
         del sys.argv[i]
+
+    # Add -v or -q if only had --vv or --qq
+    if haveVV and not haveV:
+        sys.argv.insert(1,'-v')
+    if haveQQ and not haveQ:
+        sys.argv.insert(1,'-q')
 
     # Invoke unit tests as usual
     unittest.main()
