@@ -350,7 +350,7 @@ class Framework(Framework_Base):
         """
         cred = self.get_user_cred()
         if not cred:
-            raise Exception("Cannot get PG comnponents - no user credential available.")
+            raise Exception("Cannot get PG components - no user credential available.")
         pg_response = _do_ssl(self, None, "List Components at PG CH %s" % self.config['ch'], self.ch.ListComponents, {'credential': cred})
 
         if (pg_response is None) or (pg_response['code']):
@@ -377,6 +377,7 @@ class Framework(Framework_Base):
             self.logger.debug('AM URL = %s', am_url)
             if am_url != cm_url:
                 # Test the am_url...
+                # timeout is in seconds
                 client = make_client(am_url, self.ssl_context(),
                                      self.config['verbose'],
                                      timeout=5)
