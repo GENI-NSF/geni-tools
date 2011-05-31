@@ -96,9 +96,9 @@ class GENISetup(unittest.TestCase):
               MONITORING test_getversion 1"""
 
         if result is True:
-           resultStr = 1
+            resultStr = 1
         else:
-           resultStr = 0
+            resultStr = 0
 
         # inspect.stack()[0][3] returns the name of the method being called
         # inspect.stack()[1][3] returns the name of the parent of the method being called
@@ -168,8 +168,8 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         if options.native:
-           print "Forcing use of omnispecs..."
-           options.native = False
+            print "Forcing use of omnispecs..."
+            options.native = False
 
         # now construct args
         omniargs = ["listresources"]
@@ -262,9 +262,9 @@ class Test(GENISetup):
         text, urn = self.call(omniargs, options)
         msg = "Slice creation FAILED."
         if urn is None:
-           successFail = False
+            successFail = False
         else:
-           successFail = True
+            successFail = True
         self.assertTrue( successFail, msg)
         return successFail
 
@@ -277,9 +277,9 @@ class Test(GENISetup):
         text, (successList, failList) = self.call(omniargs, options)
         succNum, failNum = omni.countSuccess( successList, failList )
         if succNum == 1:
-           successFail = True
+            successFail = True
         else:
-           successFail = False
+            successFail = False
         return successFail
 
     def subtest_deleteslice(self, slice_name):
@@ -319,9 +319,9 @@ class Test(GENISetup):
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
         if retTime is None:
-           successFail = True
+            successFail = True
         else:
-           successFail = False
+            successFail = False
         self.assertTrue( successFail, msg)
         return successFail
 
@@ -369,16 +369,16 @@ class Test(GENISetup):
         omniargs = ["renewsliver", slice_name, newtime]
         retTime = None
         try:
-           text, retTime = self.call(omniargs, options)
+            text, retTime = self.call(omniargs, options)
         except:
-           print "renewsliver threw exception as expected"
+            print "renewsliver threw exception as expected"
 
         msg = "Renew sliver FAILED."
         if retTime is None:
-           successFail = True
+            successFail = True
         else:
-           print "Renew succeeded when it should have failed? retVal: %s, retTime: %s" % (retVal, retTime)
-           successFail = False
+            print "Renew succeeded when it should have failed? retVal: %s, retTime: %s" % (retVal, retTime)
+            successFail = False
         self.assertTrue( successFail, msg )
         return successFail
 
@@ -443,21 +443,20 @@ class Test(GENISetup):
         successFail = (int(succNum) == 1)
         self.assertTrue( successFail )
         return successFail
-
-   # def test_sliverstatusfail(self):
-   #    self.sectionBreak()
+# def test_sliverstatusfail(self):
+#    self.sectionBreak()
 #       options = docopy.deepcopy(self.options)
 #       # now modify options for this test as desired
 #
 #       # now construct args
 #       omniargs = ["sliverstatus", "this_slice_does_not_exist"]
-   #    text = self.call(omniargs, options)
-   #    print "*"*80
-   #    print self.test_sliverstatusfail.__name__
-   #    print "*"*80
-   #    successFail = ("ERROR:omni:Call for Get Slice Cred ") in text
-   #    self.assertTrue( successFail, "error message")
-   #    self.printMonitoring( successFail )
+#    text = self.call(omniargs, options)
+#    print "*"*80
+#    print self.test_sliverstatusfail.__name__
+#    print "*"*80
+#    successFail = ("ERROR:omni:Call for Get Slice Cred ") in text
+#    self.assertTrue( successFail, "error message")
+#    self.printMonitoring( successFail )
 
 if __name__ == '__main__':
     # This code uses the Omni option parser to parse the options here,
@@ -514,17 +513,17 @@ if __name__ == '__main__':
             elif option == "--vv":
                 haveVV = True
                 if haveV:
-                   # Want to not remove -v but we already did!
-                   # So just replace the --vv with -v
-                   sys.argv[i] = "-v"
-                   continue
+                    # Want to not remove -v but we already did!
+                    # So just replace the --vv with -v
+                    sys.argv[i] = "-v"
+                    continue
             elif option == "--qq":
                 haveQQ = True
                 if haveQ:
-                   # Want to not remove -q but we alredy did!
-                   # So just replace the --qq with -q
-                   sys.argv[i] = "-q"
-                   continue
+                    # Want to not remove -q but we alredy did!
+                    # So just replace the --qq with -q
+                    sys.argv[i] = "-q"
+                    continue
             del_lst.append(i)
 
     del_lst.reverse()
