@@ -147,7 +147,7 @@ class CallHandler(object):
             thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
             version[ client.url ] = thisVersion
             if thisVersion is None:
-                self.logger.warn( "URN: %s (url:%s) call FAILED.\n" % (client.urn, client.url) )
+                self.logger.warn( "URN: %s (url:%s) call failed.\n" % (client.urn, client.url) )
             else:
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
