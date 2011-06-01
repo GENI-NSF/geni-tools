@@ -122,7 +122,7 @@ class Framework_Base():
             while attempts <= retries:
                 sslctx = M2Crypto.SSL.Context()
                 try:
-                    sslctx.load_cert(self.cert, self.key)
+                    sslctx.load_cert_chain(self.cert, self.key)
                     self.sslctx = sslctx
                     break
                 except M2Crypto.SSL.SSLError, err:
