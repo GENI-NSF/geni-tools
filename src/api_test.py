@@ -397,6 +397,43 @@ class Test(GENISetup):
         self.assertTrue( successFail )
         return successFail
 
+    def _filename_part_from_am_url(self, url):
+        """Strip uninteresting parts from an AM URL 
+        to help construct part of a filename.
+        """
+        # see listresources and createsliver
+
+        if url is None or url.strip() == "":
+            return url
+
+        # remove all punctuation and use url
+        server = url
+        # strip leading protocol bit
+        if url.find('://') > -1:
+            server = url[(url.find('://') + 3):]
+
+        # strip standard url endings that dont tell us anything
+        if server.endswith("/xmlrpc/am"):
+            server = server[:(server.index("/xmlrpc/am"))]
+        elif server.endswith("/xmlrpc"):
+            server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/openflow/gapi/"):
+            server = server[:(server.index("/openflow/gapi/"))]
+        elif server.endswith("/gapi"):
+            server = server[:(server.index("/gapi"))]
+        elif server.endswith(":12346"):
+            server = server[:(server.index(":12346"))]
+
+        # remove punctuation. Handle both unicode and ascii gracefully
+        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+        if isinstance(server, unicode):
+            table = dict((ord(char), unicode('-')) for char in bad)
+        else:
+            assert isinstance(server, str)
+            table = string.maketrans(bad, '-' * len(bad))
+        server = server.translate(table)
+        return server
+
     def subtest_createsliver(self, slice_name):
         options = docopy.deepcopy(self.options)
         # now modify options for this test as desired
@@ -405,7 +442,15 @@ class Test(GENISetup):
         omniargs = ["-o", "listresources"]
         text, resourcesDict = self.call(omniargs, options)
 
-        rspecfile = 'omnispec-%dAMs.json'%len(resourcesDict.keys())
+        numAggs = len(resourcesDict.keys())
+        server = str(numAggs) + "AMs"
+        if numAggs == 1:
+            server = self._filename_part_from_am_url(options.aggregate)
+        filename = "omnispec-" + server + ".json"
+        if options.prefix and options.prefix.strip() != "":
+            filename  = options.prefix.strip() + "-" + filename
+
+        rspecfile = filename
         
         with open(rspecfile) as file:
             rspectext = file.readlines()
