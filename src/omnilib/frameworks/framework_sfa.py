@@ -232,7 +232,7 @@ class Framework(Framework_Base):
 
             auth_cred = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
             if auth_cred is None:
-                self.loger.error("Cannot create SFA slice - could not get the authority credential.")
+                self.logger.error("Cannot create SFA slice - could not get the authority credential.")
                 return None
 
             # Note this is in UTC
