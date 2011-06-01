@@ -237,7 +237,7 @@ class Framework(Framework_Base):
 
             auth_cred = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
             if auth_cred is None:
-                self.logger.error("Cannot create SFA slice: Only your local %s PI can create a slice on PlanetLab for you, and then add you to that slice.", self.config['authority'])
+                self.logger.error("Cannot create SFA slice: Only your local %s PI can create a slice on PlanetLab for you and then add you to that slice.", self.config['authority'])
                 return None
 
             # Note this is in UTC
