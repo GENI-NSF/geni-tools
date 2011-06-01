@@ -211,13 +211,13 @@ class Framework(Framework_Base):
             self.user_cred = _do_ssl(self, None, ("Get SFA user credential from registry %s for user %s using cert file %s" % (self.config['registry'], self.config['user'], self.config['cert'])), self.registry.GetSelfCredential, self.cert_string, self.config['user'], "user")
         return self.user_cred
     
-    def get_slice_cred(self, urn):
+    def get_slice_cred(self, urn, error_to_ignore=None):
         user_cred = self.get_user_cred()
         if user_cred is None:
             self.logger.error("Cannot get a slice credential without a user credential")
             return None
 
-        return _do_ssl(self, None, ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
+        return _do_ssl(self, error_to_ignore, ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
     
     def create_slice(self, urn):    
         ''' Gets the credential for a slice, creating the slice 
@@ -225,7 +225,9 @@ class Framework(Framework_Base):
         '''
         hrn, type = urn_to_hrn(urn)
 
-        slice_cred = self.get_slice_cred(urn)
+        # get_slice_cred is expected to fail here - we want to
+        # suppress the error. Avoid 'Record not found'
+        slice_cred = self.get_slice_cred(urn, "Record not found")
         if slice_cred is None:
             # Slice doesn't exist, create it
             user_cred = self.get_user_cred()
@@ -235,7 +237,7 @@ class Framework(Framework_Base):
 
             auth_cred = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
             if auth_cred is None:
-                self.logger.error("Cannot create SFA slice - could not get the authority credential.")
+                self.logger.error("Cannot create SFA slice: Only your local %s PI can create a slice on PlanetLab for you, and then add you to that slice.", self.config['authority'])
                 return None
 
             # Note this is in UTC
@@ -256,8 +258,9 @@ class Framework(Framework_Base):
             #self.renew_slice(urn, datetime.datetime.utcnow() + datetime.timedelta(seconds=DEFAULT_SLICE_TIME))            
 
             slice_cred = self.get_slice_cred(urn)
+        else:
+            self.logger.info("SFA slice %s already exists; returning existing slice" % urn)
 
-        #print slice_cred
         return slice_cred
         
     
@@ -272,7 +275,9 @@ class Framework(Framework_Base):
         if auth_cred is None:
             self.logger.error("Cannot delete SFA slice - could not retrieve authority credential")
             return None
-     
+
+        # FIXME: If the slice is already gone, you get a Record not
+        # found here. Suppress that?
         return _do_ssl(self, None, ("Delete SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Remove, urn, auth_cred, 'slice')
  
     def renew_slice(self, urn, requested_expiration):
