@@ -1487,9 +1487,32 @@ def countSuccess( successList, failList ):
     succNum = len( successList )
     return (succNum, succNum + len( failList ) )
 
+def validate_url(url):
+    """Basic sanity checks on URLS before trying to use them.
+    Return None on success, error string if there is a problem."""
+
+    import urlparse
+    pieces = urlparse.urlparse(url)
+    if not all([pieces.scheme, pieces.netloc]):
+        return "Invalid URL: %s" % url
+    if not pieces.scheme in ["http", "https"]:
+        return "Invalid URL. URL should be http or https protocol: %s" % url
+    if not set(pieces.netloc) <= set(string.letters+string.digits+'-.:'):
+        return "Invalid URL. Host/port has invalid characters in url %s" % url
+    return None
 
 def make_client(url, framework, opts):
     """ Create an xmlrpc client, skipping the client cert if not opts.ssl"""
+
+    err = validate_url(url)
+    if err is not None:
+        if hasattr(framework, 'logger'):
+            logger = framework.logger
+        else:
+            logger = logging.getLogger("omni")
+        logger.error(err)
+        raise OmniError(err)
+
     if opts.ssl:
         return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
     else:
@@ -1641,7 +1664,7 @@ def call(argv, options=None, verbose=False):
         raise OmniError("Invalid options argument to call: must be an optparse.Values object")
 
     if argv is None or not type(argv) == list:
-        raise OmniError("Invalid arv argument to call: must be a list")
+        raise OmniError("Invalid argv argument to call: must be a list")
 
     framework, config, args, opts = initialize(argv, options)
     # process the user's call
