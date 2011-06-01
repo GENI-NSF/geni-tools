@@ -1652,6 +1652,12 @@ def API_call( framework, config, args, opts, verbose=False ):
     If verbose, print the command and the summary.
     Return the summary and the result object.
     """
+
+    logger = config['logger']
+
+    if opts.debug:
+        logger.info(getSystemInfo() + "\nOmni: " + getOmniVersion())
+
     # Process the user's call
     handler = CallHandler(framework, config, opts)    
 #    Returns string, item
@@ -1704,7 +1710,6 @@ def API_call( framework, config, args, opts, verbose=False ):
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
-        logger = config['logger']
         logger.info( " " + "-"*60 )
         logger.info( header )
         # printed not logged so can redirect output to a file
@@ -1725,7 +1730,13 @@ def configure_logging(opts):
     logger.setLevel(level)
     return logger
 
-def _get_version():
+def getSystemInfo():
+    import platform
+    pver = platform.python_implementation() + " " + platform.python_version()
+    osinfo = platform.platform()
+    return "Python: " + pver + "\nOS: " + osinfo
+
+def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
     version +="\nCopyright (c) 2011 Raytheon BBN Technologies"
     return version
@@ -1735,7 +1746,7 @@ def getParser():
     Do not actually parse anything"""
 
 
-    usage = "\n" + _get_version() + "\n\n%prog [options] <command and arguments> \n\
+    usage = "\n" + getOmniVersion() + "\n\n%prog [options] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
  \t\t\t getversion \n\
@@ -1756,7 +1767,7 @@ def getParser():
  \t\t\t print_slice_expiration <slicename> \n\
 \n\t See README-omni.txt for details."
 
-    parser = optparse.OptionParser(usage=usage, version="%prog: " + _get_version())
+    parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
     parser.add_option("-c", "--configfile",
                       help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
