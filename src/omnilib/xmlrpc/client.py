@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 import httplib
 import socket
 import sys
@@ -29,7 +30,7 @@ import M2Crypto.SSL
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
     def __init__(self, use_datetime=0, ssl_context=None,
-                 timeout=None):
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
         xmlrpclib.SafeTransport.__init__(self, use_datetime)
         self._ssl_context = ssl_context
         self._timeout = timeout
@@ -47,9 +48,8 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
             # it is handled by the SSL Context. This one liner
             # avoids an eclipse warning
             _ = x509
-            conn = ContextHTTPSConnection(chost, context=self._ssl_context)
-#            if self._timeout:
-#                conn._conn.timeout = self._timeout
+            conn = ContextHTTPSConnection(chost, context=self._ssl_context,
+                                          timeout=self._timeout)
             # Cache the result for Python 2.7
             self._connection = host, conn
             return self._connection[1]
@@ -71,27 +71,25 @@ class ContextHTTPSConnection(httplib.HTTPSConnection):
                  source_address=None, context=None):
         httplib.HTTPConnection.__init__(self, host, port, strict, timeout)
         self.ssl_context = context
+        self.sockTimeout = None
+        if timeout != socket._GLOBAL_DEFAULT_TIMEOUT:
+            self.sockTimeout = M2Crypto.SSL.timeout(sec=float(timeout))
 
     def connect(self):
         "Connect to a host on a given (SSL) port."
-
-        sock = socket.create_connection((self.host, self.port),
-                                        self.timeout)
-        # Make sure the _tunnel_host attribute exists. It was
-        # introduced between Python 2.6.2 and Python 2.6.6.
-        if hasattr(self, '_tunnel_host') and self._tunnel_host:
-            self.sock = sock
-            self._tunnel()
         if not self.ssl_context:
             # Initialize the M2Crypto SSL Context
             self.ssl_context = M2Crypto.SSL.Context()
-        self.sock = M2Crypto.SSL.Connection(self.ssl_context, sock)
-        # sock.conn.addr = sock.addr
-        self.sock.setup_ssl()
-        self.sock.set_connect_state()
-        self.sock.connect_ssl()
+        self.sock = M2Crypto.SSL.Connection(self.ssl_context)
+        self.sock.set_post_connection_check_callback(None)
+        if self.sockTimeout is not None:
+            self.sock.set_socket_read_timeout(self.sockTimeout)
+            self.sock.set_socket_write_timeout(self.sockTimeout)
+        self.sock.connect((self.host, self.port))
 
-def make_client(url, ssl_context, verbose=False, timeout=None,
+
+def make_client(url, ssl_context, verbose=False,
+                timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                 allow_none=False):
     """Create an SSL connection to an XML RPC server.
     Returns the XML RPC server proxy.
