@@ -364,14 +364,14 @@ class Test(GENISetup):
         # try to renew the sliver for a time after the slice would expire
         # this should fail
         newtime = (sliceexp+datetime.timedelta(days=1)).isoformat()
-        print "Will renew past sliceexp %s to %s" % (sliceexp, newtime)
+        print "Will renew past slice expiration %s to %s (should fail)" % (sliceexp, newtime)
         time.sleep(2)
         omniargs = ["renewsliver", slice_name, newtime]
         retTime = None
         try:
             text, retTime = self.call(omniargs, options)
         except:
-            print "renewsliver threw exception as expected"
+            print "Renewsliver threw exception as expected"
 
         msg = "Renew sliver FAILED."
         if retTime is None:

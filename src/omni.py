@@ -751,6 +751,7 @@ class CallHandler(object):
             # Okay, send a message to the AM this resource came from
             result = None
             client = make_client(url, self.framework, self.opts)
+            self.logger.info("Creating sliver(s) from rspec fils %s for slice %s", specfile, urn)
             result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
             prettyresult = result
 

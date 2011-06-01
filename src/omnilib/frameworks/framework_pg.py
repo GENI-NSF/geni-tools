@@ -287,7 +287,7 @@ class Framework(Framework_Base):
         else:
             slice_cred = response['value']
             expiration = expiration_dt.isoformat()
-            self.logger.info('requesting new expiration %r', expiration)
+            self.logger.info('Requesting new slice expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
             response = _do_ssl(self, None, ("Renew slice %s at SA %s" % (urn, self.config['sa'])), self.sa.RenewSlice, params)
