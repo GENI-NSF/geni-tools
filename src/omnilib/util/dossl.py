@@ -112,7 +112,7 @@ def _do_ssl(framework, suppresserror, reason, fn, *args):
             if sock_err.errno == 115:
                 framework.logger.debug("%s Operation timed out.", failMsg)
             else:
-                framework.logger.error("%s: Unknown socket error %s" % (failMsg, exc))
+                framework.logger.error("%s: Unknown socket error %s" % (failMsg, sock_err))
                 if not framework.logger.isEnabledFor(logging.DEBUG):
                     framework.logger.error('    ..... Run with --debug for more information')
                 framework.logger.debug(traceback.format_exc())
