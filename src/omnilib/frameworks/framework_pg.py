@@ -302,7 +302,12 @@ class Framework(Framework_Base):
                 return None
             else:
                 # Success. requested expiration worked, return it.
+
+                # FIXME: response['value'] is the new slice
+                # cred. Could parse the new expiration date out of
+                # that and return that instead
                 return expiration_dt
+
     # def _get_slices(self):
     #     """Gets the ProtoGENI slices from the ProtoGENI
     #     Clearinghouse. Returns a list of dictionaries as documented
