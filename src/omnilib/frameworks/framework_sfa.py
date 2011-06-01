@@ -177,7 +177,10 @@ class Framework(Framework_Base):
                     if res is None:
                         os.remove(self.config['cert'])
                         sys.exit("Failed to download your user certificate from the PL registry")
-                    gid = res[0]['gid']
+                    elif type(res) is dict:
+                        gid = res['gid']
+                    else:
+                        gid = res[0]['gid']
                     # Finally, copy the gid to the cert location
                     f = open(self.config['cert'],'w')
                     f.write(gid)
@@ -290,14 +293,18 @@ class Framework(Framework_Base):
             self.logger.error("Failed to renew slice %s: could not get a user credential", urn)
             return None
         try:
-            records = _do_ssl(self, None, ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)[0]
+            records = _do_ssl(self, None, ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
             if records != None:
+                if type(records) is not dict:
+                    self.logger.debug("Taking first record returned by SFA registry.resolve")
+                    records = records[0]
+                else:
+                    self.logger.debug("Exactly 1 record returned by SFA registry.resolve as a dict")
                 slice_record = records[0]
                 slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
             else:
                 self.logger.warning("Failed to find SFA slice record. Cannot renew slice %s", urn)
                 return None
-
             res = _do_ssl(self, None, ("Renew SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Update, slice_record, slice_cred)
             if res == 1:
                 return requested_expiration
