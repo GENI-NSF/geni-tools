@@ -23,11 +23,8 @@
 
 import logging
 import os
-import socket
-import ssl
 import sys
 from urlparse import urlparse
-import xmlrpclib
 
 from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
@@ -375,30 +372,26 @@ class Framework(Framework_Base):
             self.logger.debug('Checking for AM at %s', cm_url)
             am_url = self._cm_to_am(cm_url)
             self.logger.debug('AM URL = %s', am_url)
-            if am_url != cm_url:
-                # Test the am_url...
-                # timeout is in seconds
-                client = make_client(am_url, self.ssl_context(),
-                                     self.config['verbose'],
-                                     timeout=5)
-                # This refactoring means we print verbose errors for 404 Not Found messages like
-                # we get when there is no AM for the CM
-                # Old version skipped xmlrpclib.ProtocolError, ssl.SSLError, socket.error
-                version = _do_ssl(self, "404 Not Found", "Test PG AM for GENI API compatibilitity at %s" % am_url, client.GetVersion)
-                self.logger.debug('version = %r', version)
-                if version is not None:
-                    # Temporarily accept pg style result until pgeni3 is upgraded.
-                    if version.has_key('output'):
-                        version = version['value']
-                    if version.has_key('geni_api'):
-                        cm_dict['am_url'] = am_url
-                        result.append(cm_dict)
+            # Test the am_url...
+            # timeout is in seconds
+            client = make_client(am_url, self.ssl_context(),
+                                 self.config['verbose'],
+                                 timeout=5)
+            # This refactoring means we print verbose errors for 404 Not Found messages like
+            # we get when there is no AM for the CM
+            # Old version skipped xmlrpclib.ProtocolError, ssl.SSLError, socket.error
+            version = _do_ssl(self, "404 Not Found", "Test PG AM for GENI API compatibilitity at %s" % am_url, client.GetVersion)
+            self.logger.debug('version = %r', version)
+            if version is not None:
+                if version.has_key('geni_api'):
+                    cm_dict['am_url'] = am_url
+                    result.append(cm_dict)
         return result
 
     def _cm_to_am(self, url):
         """Convert a CM url to an AM url."""
         # Replace the trailing "cm" with "am"
-        if url.endswith('cm'):
+        if url.endswith('/protogeni/xmlrpc/cm'):
             return url[:-2] + 'am'
         else:
             return url
