@@ -100,6 +100,11 @@ def _do_ssl(framework, suppresserror, reason, fn, *args):
                 framework.logger.debug(traceback.format_exc())
                 return None
         except xmlrpclib.Fault, fault:
+            if suppresserror and str(fault).find(suppresserror) > -1:
+                # Suppress this error
+                framework.logger.debug("Suppressing error doing %s: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
+                framework.logger.debug(traceback.format_exc())
+                return None
             framework.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
             return None
         except socket.error, sock_err:
