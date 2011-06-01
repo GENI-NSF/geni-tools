@@ -93,6 +93,7 @@ import omnilib.xmlrpc.client
 #import sfa.trust.gid as gid
 
 OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
+OMNI_VERSION="1.3"
 
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
@@ -1724,11 +1725,17 @@ def configure_logging(opts):
     logger.setLevel(level)
     return logger
 
+def _get_version():
+    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
+    version +="\nCopyright (c) 2011 Raytheon BBN Technologies"
+    return version
+
 def getParser():
     """Construct an Options Parser for parsing omni arguments.
     Do not actually parse anything"""
 
-    usage = "omni.py [options] <command and arguments> \n\
+
+    usage = "\n" + _get_version() + "\n\n%prog [options] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
  \t\t\t getversion \n\
@@ -1749,7 +1756,7 @@ def getParser():
  \t\t\t print_slice_expiration <slicename> \n\
 \n\t See README-omni.txt for details."
 
-    parser = optparse.OptionParser(usage)
+    parser = optparse.OptionParser(usage=usage, version="%prog: " + _get_version())
     parser.add_option("-c", "--configfile",
                       help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
