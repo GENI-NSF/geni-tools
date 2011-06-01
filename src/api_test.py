@@ -377,7 +377,7 @@ class Test(GENISetup):
         if retTime is None:
             successFail = True
         else:
-            print "Renew succeeded when it should have failed? retVal: %s, retTime: %s" % (retVal, retTime)
+            print "Renew succeeded when it should have failed? text: %s, retTime: %s" % (text, retTime)
             successFail = False
         self.assertTrue( successFail, msg )
         return successFail

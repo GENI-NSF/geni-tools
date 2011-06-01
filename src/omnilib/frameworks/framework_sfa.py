@@ -163,6 +163,7 @@ class Framework(Framework_Base):
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
                 create_selfsigned_cert2(self, config['cert'], config['user'], config['key'])
+                Framework_Base.__init__(self, config)
                 try:
                     # use the self signed cert to get the gid
                     self.registry = make_client(config['registry'], self.ssl_context())
