@@ -22,15 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 """Script to generate a slice credential. For use by the
-portal."""
+portal.
+
+"""
 
 import sys
 import ConfigParser
 from geni.util.urn_util import URN
 import geni.util.cert_util as cert_util
 import geni.util.cred_util as cred_util
-import sfa
+import sfa.trust
 
 def main(argv=None):
     if argv is None:
@@ -81,7 +84,6 @@ def main(argv=None):
 def x_create_credential(caller_gid, object_gid, life_secs, typename,
                       issuer_keyfile, issuer_certfile, trusted_roots):
     pass
-
 
 if __name__ == "__main__":
     sys.exit(main())
