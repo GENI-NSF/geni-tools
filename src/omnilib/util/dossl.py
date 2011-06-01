@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 #----------------------------------------------------------------------
 # Copyright (c) 2011 Raytheon BBN Technologies
 #
@@ -22,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 """
    Utility function wrapping SSL calls to catch SSL/OpenSSL/XMLRPC errors.
    Takes a framework which should have a logger and a cert filename.
@@ -30,6 +29,7 @@
 
 import logging
 import OpenSSL
+import socket
 import ssl
 import traceback
 import xmlrpclib
@@ -98,11 +98,20 @@ def _do_ssl(framework, suppresserror, reason, fn, *args):
                 if not framework.logger.isEnabledFor(logging.DEBUG):
                     framework.logger.error('    ..... Run with --debug for more information')
                 framework.logger.debug(traceback.format_exc())
-
                 return None
         except xmlrpclib.Fault, fault:
             framework.logger.error("%s Server says: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
             return None
+        except socket.error, sock_err:
+            # Check for an M2Crypto timeout case, which manifests as socket error 115, 'Operation now in progress'
+            if sock_err.errno == 115:
+                framework.logger.debug("%s Operation timed out.", failMsg)
+            else:
+                framework.logger.error("%s: Unknown socket error %s" % (failMsg, exc))
+                if not framework.logger.isEnabledFor(logging.DEBUG):
+                    framework.logger.error('    ..... Run with --debug for more information')
+                framework.logger.debug(traceback.format_exc())
+                return None
         except Exception, exc:
             if suppresserror and str(exc).find(suppresserror) > -1:
                 # Suppress this error
