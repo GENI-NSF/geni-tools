@@ -735,7 +735,7 @@ class CallHandler(object):
              and config file won't remind you to check that sliver later. 
              Future listresources/sliverstatus/deletesliver calls need to 
              include the arguments 
-             '-a %s' 
+                   '-a %s'
              arguments again to act on this sliver.""" % (url, url))
 
             # On Debug print the native version of omnispecs
