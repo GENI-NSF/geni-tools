@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
@@ -153,6 +152,8 @@ class Framework(Framework_Base):
     def __init__(self, config):
         config['cert'] = os.path.expanduser(config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
+        if not config.has_key('verbose'):
+            config['verbose'] = False
 
         self.config = config
         self.logger = logging.getLogger('omni.sfa')
@@ -163,10 +164,10 @@ class Framework(Framework_Base):
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
                 create_selfsigned_cert2(self, config['cert'], config['user'], config['key'])
-                Framework_Base.__init__(self, config)
                 try:
                     # use the self signed cert to get the gid
-                    self.registry = make_client(config['registry'], self.ssl_context())
+                    self.registry = self.make_client(config['registry'], config['key'], config['cert'],
+                                                     verbose=config['verbose'])
                     self.user_cred = None
                     self.cert_string = file(config['cert'],'r').read()
                     cred = self.get_user_cred()
@@ -198,12 +199,12 @@ class Framework(Framework_Base):
 
         Framework_Base.__init__(self,config)        
 
-        if not config.has_key('verbose'):
-            config['verbose'] = False
         self.logger.info('SFA Registry: %s', config['registry'])
-        self.registry = make_client(config['registry'], self.ssl_context(), allow_none=True)
+        self.registry = self.make_client(config['registry'], self.key, self.cert,
+                                         allow_none=True, verbose=self.config['verbose'])
         self.logger.info('SFA Slice Manager: %s', config['slicemgr'])
-        self.slicemgr = make_client(config['slicemgr'], self.ssl_context())
+        self.slicemgr = self.make_client(config['slicemgr'], self.key, self.cert,
+                                         verbose=self.config['verbose'])
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = None
         

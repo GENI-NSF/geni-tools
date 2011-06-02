@@ -26,7 +26,6 @@ import os
 import sys
 from urlparse import urlparse
 
-from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
@@ -68,11 +67,11 @@ class Framework(Framework_Base):
         self.logger.debug("Configured with key file %s", config['key'])
         
         self.logger.debug('Using clearinghouse %s', self.config['ch'])
-        self.ch = make_client(self.config['ch'], self.ssl_context(),
-                              self.config['verbose'])
+        self.ch = self.make_client(self.config['ch'], self.key, self.cert,
+                                   self.config['verbose'])
         self.logger.debug('Using slice authority %s', self.config['sa'])
-        self.sa = make_client(self.config['sa'], self.ssl_context(),
-                              self.config['verbose'])
+        self.sa = self.make_client(self.config['sa'], self.key, self.cert,
+                                   self.config['verbose'])
         self.user_cred = None
         
         # For now, no override aggregates.
@@ -379,9 +378,9 @@ class Framework(Framework_Base):
             self.logger.debug('AM URL = %s', am_url)
             # Test the am_url...
             # timeout is in seconds
-            client = make_client(am_url, self.ssl_context(),
-                                 self.config['verbose'],
-                                 timeout=5)
+            client = self.make_client(am_url, self.key, self.cert,
+                                      self.config['verbose'],
+                                      timeout=5)
             # This refactoring means we print verbose errors for 404 Not Found messages like
             # we get when there is no AM for the CM
             # Old version skipped xmlrpclib.ProtocolError, ssl.SSLError, socket.error

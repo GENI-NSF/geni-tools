@@ -21,13 +21,65 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import xmlrpclib
+
+class SafeTransportWithCert(xmlrpclib.SafeTransport):
+
+    def __init__(self, use_datetime=0, keyfile=None, certfile=None,
+                 timeout=None):
+        xmlrpclib.SafeTransport.__init__(self, use_datetime)
+        self.__x509 = dict()
+        if keyfile:
+            self.__x509['key_file'] = keyfile
+        if certfile:
+            self.__x509['cert_file'] = certfile
+        self._timeout = timeout
+
+    def make_connection(self, host):
+        host_tuple = (host, self.__x509)
+        conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
+        if self._timeout:
+            conn._conn.timeout = self._timeout
+        return conn
+
+
+def make_client(url, keyfile, certfile, verbose=False, timeout=None,
+                allow_none=False):
+    """Create an SSL connection to an XML RPC server.
+    Returns the XML RPC server proxy.
+    """
+    cert_transport = None
+    if keyfile and certfile:
+        cert_transport = SafeTransportWithCert(keyfile=keyfile,
+                                               certfile=certfile,
+                                               timeout=timeout)
+    return xmlrpclib.ServerProxy(url, transport=cert_transport,
+                                 verbose=verbose, allow_none=allow_none)
+
+#----------------------------------------------------------------------
+#
+# Everything below here is related to an attempted switch to M2Crypto
+# for the SSL infrastructure. In the end, the M2Crypto implementation
+# had a number of problems, and those problems were different depending
+# on the exact version of Python and M2Crypto in use. We had three
+# different platforms (Linux/Python/M2Crypto) which suffered from three
+# differents sets of problems.
+#
+# This code is preserved in case it can be resurrected in the future.
+#
+# The benefit of M2Crypto integration was single entry of the user's
+# private key password. M2Crypto offers SSL Contexts, which allow this
+# feature. Python 2.x does not appear to allow any way to do this.
+# Python 3.2 introduces SSL Contexts, but that is too new for us to
+# rely on.
+#
+#----------------------------------------------------------------------
 import httplib
 import socket
 import sys
-import xmlrpclib
 import M2Crypto.SSL
 
-class SafeTransportWithCert(xmlrpclib.SafeTransport):
+class SafeTransportWithCertM2Crypto(xmlrpclib.SafeTransport):
 
     def __init__(self, use_datetime=0, ssl_context=None,
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
@@ -48,7 +100,7 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
             # it is handled by the SSL Context. This one liner
             # avoids an eclipse warning
             _ = x509
-            conn = ContextHTTPSConnection(chost, context=self._ssl_context,
+            conn = ContextHTTPSConnectionM2Crypto(chost, context=self._ssl_context,
                                           timeout=self._timeout)
             # Cache the result for Python 2.7
             self._connection = host, conn
@@ -64,7 +116,7 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         return conn
 
 
-class ContextHTTPSConnection(httplib.HTTPSConnection):
+class ContextHTTPSConnectionM2Crypto(httplib.HTTPSConnection):
 
     def __init__(self, host, port=None,
                  strict=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
@@ -88,7 +140,7 @@ class ContextHTTPSConnection(httplib.HTTPSConnection):
         self.sock.connect((self.host, self.port))
 
 
-def make_client(url, ssl_context, verbose=False,
+def make_client_m2crypto(url, ssl_context, verbose=False,
                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                 allow_none=False):
     """Create an SSL connection to an XML RPC server.
@@ -96,7 +148,7 @@ def make_client(url, ssl_context, verbose=False,
     """
     cert_transport = None
     if ssl_context:
-        cert_transport = SafeTransportWithCert(ssl_context=ssl_context,
-                                               timeout=timeout)
+        cert_transport = SafeTransportWithCertM2Crypto(ssl_context=ssl_context,
+                                                       timeout=timeout)
     return xmlrpclib.ServerProxy(url, transport=cert_transport,
                                  verbose=verbose, allow_none=allow_none)

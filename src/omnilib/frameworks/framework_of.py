@@ -21,12 +21,10 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 '''Openflow / Expedient as CH. Follows GCF model. https://server:443/expedient_geni/clearinghouse/rpc/'''
-from omnilib.xmlrpc.client import make_client
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
-import traceback
 import sys
 
 class Framework(Framework_Base):
@@ -42,7 +40,8 @@ class Framework(Framework_Base):
             config['verbose'] = False
         self.config = config
         
-        self.ch = make_client(config['ch'], self.ssl_context())
+        self.ch = self.make_client(config['ch'], self.key, self.cert,
+                                   verbose=config['verbose'])
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = None
         self.logger = config['logger']
@@ -65,7 +64,6 @@ class Framework(Framework_Base):
         # 10/7/10: We believe ListAggregates is not implemented yet.
         # So either we log an error and return an empty list, or we just raise the exception
         # I choose to leave it alone - raise the exception. And when it works, it will work.
-        sites = []
         sites = _do_ssl(self, None, ("List Aggregates at OpenFlow CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
             sites = []

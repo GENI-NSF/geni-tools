@@ -26,6 +26,7 @@ import os
 import M2Crypto.SSL
 from omnilib.util.paths import getAbsPath
 from omnilib.util import OmniError
+import omnilib.xmlrpc.client
 
 class Framework_Base():
     """
@@ -110,12 +111,22 @@ class Framework_Base():
         """
         raise NotImplementedError('renew_slice')
 
+    def make_client(self, url, keyfile, certfile, verbose=False, timeout=None,
+                    allow_none=False):
+        """Create an API client. This is currently an XML-RPC client
+        over SSL with a client side certificate."""
+        return omnilib.xmlrpc.client.make_client(url, keyfile, certfile,
+                                                 verbose=verbose,
+                                                 timeout=timeout,
+                                                 allow_none=allow_none)
+
     def ssl_context(self, retries=2):
         """Returns an SSL Context or an exception is raised."""
         if hasattr(self, 'logger'):
             logger = self.logger
         else:
             logger = logging.getLogger("omni.framework")
+        logger.warning("*** Creating an SSL Context! ***")
         if not self.sslctx:
             # Initialize the M2Crypto SSL Context
             attempts = 0

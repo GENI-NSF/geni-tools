@@ -1514,7 +1514,7 @@ def make_client(url, framework, opts):
         raise OmniError(err)
 
     if opts.ssl:
-        return omnilib.xmlrpc.client.make_client(url, framework.ssl_context())
+        return omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 
