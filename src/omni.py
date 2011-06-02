@@ -196,7 +196,7 @@ class CallHandler(object):
         rspecs = {}
         options = {}
 
-        options['geni_compressed'] = False;
+        options['geni_compressed'] = True;
         
         # An optional slice name might be specified.
         slicename = None
