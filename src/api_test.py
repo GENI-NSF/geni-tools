@@ -140,7 +140,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        omniargs = ["-n", "-a", "http://myplc.gpolab.bbn.com:12346", "listresources"]
+        omniargs = ["-n", "listresources"]
         # Explicitly set this false so omni doesn't complain if both are true
         options.omnispec=False
 
@@ -438,7 +438,7 @@ class Test(GENISetup):
 
         numAggs = len(resourcesDict.keys())
         server = str(numAggs) + "AMs"
-        if numAggs == 1:
+        if (numAggs == 1) and (options.aggregate is not None):
             server = self._filename_part_from_am_url(options.aggregate)
         filename = "omnispec-" + server + ".json"
         if options.prefix and options.prefix.strip() != "":
