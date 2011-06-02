@@ -39,7 +39,12 @@ class SafeTransportWithCert(xmlrpclib.SafeTransport):
         host_tuple = (host, self.__x509)
         conn = xmlrpclib.SafeTransport.make_connection(self, host_tuple)
         if self._timeout:
-            conn._conn.timeout = self._timeout
+            if hasattr(conn, '_conn'):
+                # Python 2.6
+                conn._conn.timeout = self._timeout
+            else:
+                # Python 2.7
+                conn.timeout = self._timeout
         return conn
 
 
