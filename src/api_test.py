@@ -28,22 +28,15 @@
 # FIXME: Each test should describe expected results
 
 import copy as docopy
-import datetime
 import inspect
 import math
-import os
-import sys
 import time
-import tempfile
-import traceback
 import re
 import unittest
 import xml.etree.ElementTree as ET
 
 import omni
 from omni import *
-from omnilib.xmlrpc.client import make_client
-import omnilib.util.credparsing as credutils
 
 SLICE_NAME='mon'
 TMP_DIR = '/tmp'

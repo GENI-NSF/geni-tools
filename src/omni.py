@@ -74,18 +74,14 @@ import logging
 import optparse
 import os
 import pprint
-import ssl
 import string
 import sys
-import traceback
 import xml.dom.minidom as md
-import xmlrpclib
 import zlib
 
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util import OmniError
-from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 import omnilib.xmlrpc.client
@@ -1235,7 +1231,6 @@ class CallHandler(object):
             self._raise_omni_error('listmyslices requires 1 arg: user')
 
         retStr = ""
-        slices=None
         slices = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
         if slices is None:
             # only end up here if call to _do_ssl failed
@@ -1857,8 +1852,8 @@ def main(argv=None):
         argv = sys.argv[1:]
     try:
         framework, config, args, opts = initialize(argv)
-        retVal = API_call(framework, config, args, opts, verbose=opts.verbose)
-    except OmniError, exc:
+        API_call(framework, config, args, opts, verbose=opts.verbose)
+    except OmniError:
         sys.exit()
 
         
