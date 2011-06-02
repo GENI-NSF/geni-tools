@@ -218,14 +218,13 @@ class Test(GENISetup):
             successFail = successFail and self.subtest_renewsliver_fail( slice_name )
             successFail = successFail and self.subtest_renewslice_success( slice_name )
             successFail = successFail and self.subtest_renewsliver_success( slice_name )
-            successFail = successFail and self.subtest_deletesliver( slice_name )
         except Exception, exp:
             print 'test_slivercreation had an error: %s' % str(exp)
             successFail = False
             traceback.print_exc()
         finally:
             try:
-                self.subtest_deletesliver( slice_name )
+                successFail = successFail and self.subtest_deletesliver( slice_name )
             except:
                 pass
             successFail = successFail and self.subtest_deleteslice( slice_name )
