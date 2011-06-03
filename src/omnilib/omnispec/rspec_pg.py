@@ -74,7 +74,8 @@ def add_options(ospec, root):
     options['startup command'] = '/bin/ls > /dev/null'
     options['virtual'] = True
     options['number'] = 1
-    options['os'] = 'FEDORA10-STD'
+#    Specify no OS so PG will pick the default
+    options['os'] = ""
     ospec.add_resource('RandomNode', onode)
 
 def add_nodes(ospec, root):
