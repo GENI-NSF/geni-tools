@@ -100,7 +100,7 @@ class GENISetup(unittest.TestCase):
 
     def create_slice_name( self ):
 #        slice_name = SLICE_NAME
-        slice_name = datetime.datetime.strftime(datetime.datetime.now(), SLICE_NAME+"_%H%M%S")
+        slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(), SLICE_NAME+"_%H%M%S")
         return slice_name
 
     def call( self, cmd, options ):
@@ -291,7 +291,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        newtime = (datetime.datetime.now()+datetime.timedelta(hours=12)).isoformat()
+        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=12)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
@@ -307,7 +307,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        newtime = (datetime.datetime.now()+datetime.timedelta(days=-1)).isoformat()
+        newtime = (datetime.datetime.utcnow()+datetime.timedelta(days=-1)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
@@ -323,7 +323,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        newtime = (datetime.datetime.now()+datetime.timedelta(hours=8)).isoformat()
+        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=8)).isoformat()
 
         omniargs = ["renewsliver", slice_name, newtime]
         text, (succList, failList) = self.call(omniargs, options)
@@ -435,6 +435,8 @@ class Test(GENISetup):
         omniargs = ["-o", "listresources"]
         text, resourcesDict = self.call(omniargs, options)
 
+        self.assertTrue((resourcesDict is not None and len(resourcesDict.keys()) > 0), "Cannot create sliver: no resources listed")
+
         numAggs = len(resourcesDict.keys())
         server = str(numAggs) + "AMs"
         if (numAggs == 1) and (options.aggregate is not None):
@@ -451,7 +453,7 @@ class Test(GENISetup):
             # allocate the first resource in the rspec
             resources = re.sub('"allocate": false','"allocate": true',rspectext, 1)
         # open a temporary named file for the rspec
-        filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.now(), "apitest_%Y%m%d%H%M%S"))
+        filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.utcnow(), "apitest_%Y%m%d%H%M%S"))
         with open(filename, mode='w') as rspec_file:
             rspec_file.write( resources )
         omniargs = ["createsliver", slice_name, rspec_file.name]
