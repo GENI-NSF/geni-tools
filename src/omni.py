@@ -654,7 +654,7 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
-        elif not slice_cred.startswith("<"):
+        elif not (type(slice_cred) is str and slice_cred.startswith("<")):
             #elif slice_cred is not XML that looks like a credential, assume
             # assume it's an error message, and raise an omni_error
             self._raise_omni_error("Cannot create sliver %s: not a slice credential: %s" % (urn, slice_cred))
