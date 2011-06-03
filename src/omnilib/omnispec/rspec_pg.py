@@ -21,6 +21,12 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+# WARNING: While this does do _something_ with V2 RSpecs, it
+# basically lets your reserve a random node.
+# And then your request will be in V0.2 format.
+# So a PG AM that does not accept V0.2 requests will fail.
+# For full PG support use native RSpecs.
+
 import xml.etree.ElementTree as ET
 from omnilib.omnispec.omnispec import OmniSpec, OmniResource
 
