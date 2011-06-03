@@ -218,6 +218,7 @@ class CallHandler(object):
             if cred is None:
                 self.logger.error('Cannot list resources for slice %s: could not get slice credential' % (urn))
                 return None
+
             self.logger.info('Gathering resources reserved for slice %s..' % slicename)
 
             options['geni_slice_urn'] = urn
@@ -654,10 +655,6 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
                      % (urn))
-        elif not (type(slice_cred) is str and slice_cred.startswith("<")):
-            #elif slice_cred is not XML that looks like a credential, assume
-            # assume it's an error message, and raise an omni_error
-            self._raise_omni_error("Cannot create sliver %s: not a slice credential: %s" % (urn, slice_cred))
 
         retVal += self._print_slice_expiration(urn, slice_cred)+"\n"
 
@@ -1044,6 +1041,7 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential'
                      % (urn))
+
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
@@ -1421,7 +1419,15 @@ class CallHandler(object):
                 cred = f.read()
             return cred
 
-        return _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
+        # Check that the return is either None or a valid slice cred
+        # Callers handle None - usually by raising an error
+        cred = _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
+        if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
+            #elif slice_cred is not XML that looks like a credential, assume
+            # assume it's an error message, and raise an omni_error
+            self.logger.error("Got invalid slice credential for slice %s: %s" % (urn, cred))
+            cred = None
+        return cred
 
     def _getclients(self, ams=None):
         """Create XML-RPC clients for each aggregate (from commandline, else from config file, else from framework)
