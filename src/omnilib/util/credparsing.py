@@ -50,7 +50,7 @@ def get_cred_exp(logger, credString):
             logging.basicConfig(level=level)
             logger = logging.getLogger("omni.credparsing")
             logger.setLevel(level)
-        logger.error("Credential is not a string: %s", str(credString))
+        logger.error("Cannot parse expiration date: Credential is not a string: %s", str(credString))
         return credexp
 
     try:
