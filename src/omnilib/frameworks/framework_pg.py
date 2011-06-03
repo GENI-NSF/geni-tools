@@ -132,7 +132,12 @@ class Framework(Framework_Base):
             self.logger.debug("Resolved slice %s, getting credential", urn)
             response = _do_ssl(self, None, ("Get PG slice credential for %s from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
             if response is None:
-                raise Exception("Failed to get PG slice %s credential", urn)
+                raise Exception("Failed to get PG slice %s credential" % urn)
+            if not response.has_key('value'):
+                raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
+            if not type(response['value']) is str:
+                raise Exception("Failed to get valid PG slice credential for %s. Got non string: %r" % (urn, response['value']))
+
             return response['value']
 
     
