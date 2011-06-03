@@ -309,9 +309,11 @@ class Test(GENISetup):
         # now construct args
         newtime = (datetime.datetime.utcnow()+datetime.timedelta(days=-1)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
+        print "Will try to renew slice to past: should fail..."
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
         if retTime is None:
+            print "Renew to a day ago failed as expected"
             successFail = True
         else:
             successFail = False
