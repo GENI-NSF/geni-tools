@@ -134,8 +134,10 @@ class Framework(Framework_Base):
             if response is None:
                 raise Exception("Failed to get PG slice %s credential" % urn)
             if not response.has_key('value'):
+                self.logger.debug("Got GetCredential response %r", response)
                 raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
             if not type(response['value']) is str:
+                self.logger.debug("Got GetCredential response %r", response)
                 raise Exception("Failed to get valid PG slice credential for %s. Got non string: %r" % (urn, response['value']))
 
             return response['value']
