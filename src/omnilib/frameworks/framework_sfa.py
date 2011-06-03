@@ -280,7 +280,23 @@ class Framework(Framework_Base):
 
         # FIXME: If the slice is already gone, you get a Record not
         # found here. Suppress that?
-        return _do_ssl(self, None, ("Delete SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Remove, urn, auth_cred, 'slice')
+        try:
+            records = _do_ssl(self, "Record not found", ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
+        except Exception, exc:
+            self.logger.info("Failed to find SFA slice %s: %s" , urn, exc)
+            return False
+        if records is None or len(records) == 0:
+            self.logger.info("Failed to find SFA slice %s - it is probably already deleted.", urn)
+            return True
+
+        res = _do_ssl(self, None, ("Delete SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Remove, urn, auth_cred, 'slice')
+        if res is None:
+            self.logger.warning("Failed to delete SFA slice %s", urn)
+            res = False
+        elif res == 1:
+            self.logger.info("Deleted SFA slice %s", urn)
+            res = True
+        return res
  
     def renew_slice(self, urn, requested_expiration):
         """Renew a slice.
