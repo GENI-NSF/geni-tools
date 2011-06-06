@@ -29,7 +29,8 @@ from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair
 from geni.util.urn_util import URN
 
-def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
+def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
+                public_key=None):
     '''Create a new certificate and return it and the associated keys.
     If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
@@ -48,7 +49,13 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False):
     newgid = GID(create=True, subject=dotted[:64],
                      urn=urn)
     
-    keys = Keypair(create=True)
+    if public_key is None:
+        # create a new key pair
+        keys = Keypair(create=True)
+    else:
+        # use the specified public key file
+        keys = Keypair()
+        keys.load_pubkey_from_file(public_key)
     newgid.set_pubkey(keys)
     if intermediate:
         # This cert will be able to sign certificates

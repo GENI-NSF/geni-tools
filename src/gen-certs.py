@@ -51,7 +51,6 @@ import string
 import geni
 import sfa.trust.gid as gid
 import sfa.trust.certificate as cert
-import sfa.util.namespace
 from geni.util.cert_util import create_cert
 from geni.config import read_config
 
@@ -142,20 +141,25 @@ def make_am_cert(dir, ch_cert, ch_key):
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
 
-def make_user_cert(dir, username, ch_keys, ch_gid):
+def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None):
     '''Make a GID/Cert for given username signed by given CH GID/keys, 
     saved in given directory. Not returned.'''
     # Create a cert like PREFIX+TYPE+name
     # ie geni.net:gpo:gcf+user+alice
     urn = geni.URN(CERT_AUTHORITY, USER_CERT_TYPE, username).urn_string()
-    (alice_gid, alice_keys) = create_cert(urn, ch_keys, ch_gid)
+    (alice_gid, alice_keys) = create_cert(urn, issuer_key=ch_keys,
+                                          issuer_cert=ch_gid,
+                                          public_key=public_key)
     alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
-    alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
+    if public_key is None:
+        alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
     
 # Make a Credential for Alice
 #alice_cred = create_user_credential(alice_gid, CH_KEY_FILE, CH_CERT_FILE)
 #alice_cred.save_to_file('../alice-user-cred.xml')
-    print "Created Experimenter %s cert/keys in %s and %s" % (username, os.path.join(dir, USER_CERT_FILE), os.path.join(dir, USER_KEY_FILE))
+    print "Created Experimenter %s certificate in %s" % (username, os.path.join(dir, USER_CERT_FILE))
+    if public_key is None:
+        print "Created Experimenter %s key in %s" % (username, os.path.join(dir, USER_KEY_FILE))
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -172,13 +176,16 @@ def parse_args(argv):
                       help="Create AM cert/keys")
     parser.add_option("--exp", action="store_true", default=False,
                       help="Create experimenter cert/keys")
+    parser.add_option("--pubkey", help="public key", default=None)
     parser.add_option("--authority", default=None, help="The Authority of the URN in publicid format (such as 'geni.net//gpo//gcf'). Overrides base_name from gcf_config file.")
     return parser.parse_args()
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
-    opts, args = parse_args(argv)
+    (opts, args) = parse_args(argv)
+    # Ignore args, appease eclipse.
+    _ = args
     global config, CERT_AUTHORITY
     optspath = None
     if not opts.configfile is None:
@@ -238,7 +245,8 @@ def main(argv=None):
         make_am_cert(dir, ch_cert, ch_keys)
 
     if not opts.notAll or opts.exp:
-        make_user_cert(dir, username, ch_keys, ch_cert)
+        make_user_cert(dir, username, ch_keys, ch_cert,
+                       public_key=opts.pubkey)
 
     return 0
 
