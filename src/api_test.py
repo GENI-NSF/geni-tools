@@ -164,6 +164,7 @@ class Test(GENISetup):
         if options.native:
             print "Forcing use of omnispecs..."
             options.native = False
+            options.omnispec = True
 
         # now construct args
         omniargs = ["listresources"]
@@ -434,7 +435,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        omniargs = ["-o", "listresources"]
+        omniargs = ["--omnispec", "-o", "listresources"]
         text, resourcesDict = self.call(omniargs, options)
 
         self.assertTrue((resourcesDict is not None and len(resourcesDict.keys()) > 0), "Cannot create sliver: no resources listed")

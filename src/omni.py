@@ -88,7 +88,6 @@ import omnilib.xmlrpc.client
 
 #import sfa.trust.gid as gid
 
-OMNI_CONFIG_TEMPLATE='/etc/omni/templates/omni_config'
 OMNI_VERSION="1.3"
 
 class CallHandler(object):
@@ -398,7 +397,8 @@ class CallHandler(object):
         on all aggregates and prints the omnispec/rspec to stdout or to file.
         
         -n gives native format; otherwise print omnispec in json format
-           Note: omnispecs are deprecated. Native format is preferred.
+           Note: omnispecs are deprecated. Native format is default.
+        --omnispec Return Omnispec format rspecs. Deprecated
         -o writes Ad RSpec to file instead of stdout; omnispec written to 1 file,
            native format written to single file per aggregate.
         -p gives filename prefix for each output file
@@ -513,6 +513,8 @@ class CallHandler(object):
                     omnispecs[ url ] = rspec_to_omnispec(urn,rspec)
                     returnedRspecs[(urn,url)] = omnispecs[url]
                 except Exception, e:
+                    # FIXME: _raise_omni_error instead?
+                    # FIXME: stuff the native Rspec into the returnedRspecs?
                     self.logger.error("Failed to parse RSpec from AM %s (%s): %s", urn, url, e)
 
         # Print omnispecs
@@ -609,6 +611,7 @@ class CallHandler(object):
             else:
                 self.logger.info('Nothing to allocate at %r', url)
         return rspecs
+
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
@@ -618,7 +621,8 @@ class CallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
         only the slice name part here.
 
-        -n Use native format rspec. Requires -a. Native RSpecs are preferred, and omnispecs are deprecated.
+        -n Use native format rspec. Requires -a. Native RSpecs are the default, and omnispecs are deprecated.
+        --omnispec Use Omnispec rspec format. Deprecated.
         -a Contact only the aggregate at the given URL
         --slicecredfile Read slice credential from given file, if it exists
         -o Save result (manifest rspec) in per-Aggregate files
@@ -674,6 +678,10 @@ class CallHandler(object):
                 self._raise_omni_error('Unable to read rspec file %s: %s'
                          % (specfile, str(exc)))
         else:
+            # FIXME: Note this may through an exception
+            # if the omnispec is badly formatted
+            # Also note that the resulting RSpecs are of particular
+            # formats, that may no longer be supported by AMs
             rspecs = self._ospec_to_rspecs(specfile)
 
         result = None
@@ -686,7 +694,7 @@ class CallHandler(object):
             required = ['urn', 'keys']
             for req in required:
                 if not req in user:
-                    raise Exception("%s in omni_config is not specified for user %s" % (req,user))
+                    self._raise_omni_error("%s in omni_config is not specified for user %s" % (req,user))
 
             for key in user['keys'].split(','):        
                 try:
@@ -1790,7 +1798,8 @@ def getParser():
  \t\t\t listmyslices <username> \n\
  \t\t\t getslicecred <slicename> \n\
  \t\t\t print_slice_expiration <slicename> \n\
-\n\t See README-omni.txt for details."
+\n\t See README-omni.txt for details.\n\
+\t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 
     parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
     parser.add_option("-c", "--configfile",
@@ -1798,9 +1807,9 @@ def getParser():
     parser.add_option("-f", "--framework", default="",
                       help="Control framework to use for creation/deletion of slices")
     parser.add_option("-n", "--native", default=False, action="store_true",
-                      help="Use native RSpecs (preferred)")
+                      help="Use native RSpecs (default)")
     parser.add_option("--omnispec", default=False, action="store_true",
-                      help="Use OmniSpec RSpecs (default, will be deprecated soon)")
+                      help="Use OmniSpec RSpecs (deprecated)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
                       help="Communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
@@ -1848,7 +1857,7 @@ def parse_args(argv, options=None):
         #does sys.exit - should we catch this and raise OmniError instead?
         parser.error("Select either native (-n) OR OmniSpecs (--omnispec) RSpecs")
     elif not options.native and not options.omnispec:
-        options.omnispec = True
+        options.native = True
 
     return options, args
 
