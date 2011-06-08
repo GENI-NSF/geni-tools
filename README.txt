@@ -48,8 +48,7 @@ Basic install & running instructions are in INSTALL.txt.
 
 Full details on options for each step are described below.
 
-0. Edit gcf_config (installed to /etc/gcf-servers/gcf_config or can
-   also be read from the current directory) to configure your
+0. Edit gcf_config (typically in the current directory) to configure your
    clearinghouse and aggregate manager.  The default values should be
    fine for most settings, but you should change the base_name (URN)
    to be specific to you.  The keys and certificates will be generated
@@ -72,9 +71,8 @@ Full details on options for each step are described below.
    certificates to interact with any other GENI site. In particular,
    URNs must be globally unique.
 
-   By default the gcf_config file is found in the local directory or
-   /etc/gcf-servers/.  Override the default locations by specifying
-   the -f argument.
+   By default the gcf_config file is found in the local directory.
+   Override the default locations by specifying the -f argument.
 
    A directory for trusted_roots is used or created, and your CH
    certificate is copied there. This is used in Federation (see
@@ -239,7 +237,8 @@ Full details on options for each step are described below.
    Enter a new am_# property with a value like "URN,URL" (without quotes) with
    one such entry per line. An example is:
 
-     'am_5 = urn:publicid:IDN+plc:gpo1+authority+sa, http://sfa.gpolab.bbn.com:12348'
+     'am_5 = urn:publicid:IDN+plc:gpo1+authority+sa, \
+             http://sfa.gpolab.bbn.com:12348'
 
    The URN should be unique. While it need not be fully accurate, that
    is useful. You can find the URN using the openssl commandline:
