@@ -59,32 +59,51 @@ for other user tools. To do so, import omni and use the omni.call
 function.
 EG:
   User does:
-    myscript.py -f my_sfa --myScriptPrivateOption doNativeList slicename
+    myscript.py -f my_sfa --myScriptPrivateOption doNativeList <slicename>
 
   Your myscript.py code does:
+    import sys
     import omni
-    # Get a parser from omni that understands omni options
-    parser = omni.getParser()
-    # Add additional optparse.OptionParser style options for your
-    # script as needed.
-    # Be sure not to re-use options already in use by omni for
-    # different meanings, otherwise you'll raise an OptionConflictError
-    parser.add_option("--myScriptPrivateOption",
+
+    def main(argv=None):
+      # Get a parser from omni that understands omni options
+      parser = omni.getParser()
+      # Add additional optparse.OptionParser style options for your
+      # script as needed.
+      # Be sure not to re-use options already in use by omni for
+      # different meanings, otherwise you'll raise an OptionConflictError
+      parser.add_option("--myScriptPrivateOption",
 			action="store_true", default=False)
-    # options is an optparse.Values object, and args is a list
-    options, args = parser.parse_args(sys.argv[1:])
-    if options.myScriptPrivateOption:
+      # options is an optparse.Values object, and args is a list
+      options, args = parser.parse_args(sys.argv[1:])
+      if options.myScriptPrivateOption:
           # do something special for your private script's options
 	  print "Got myScriptOption"
-    # figure out doNativeList means to do listresources with the
-    # -n argument and parse out slicename arg
-    omniargs = ["-n", 'listresources', slicename]
-    # And now call omni, and omni sees your parsed options and arguments
-    text, dict = omni.call(omniargs, options)
-    print text
+      # figure out doNativeList means to do listresources with the
+      # -n argument and parse out slicename arg
+      omniargs = []
+      if args and len(args)>0:
+         if args[0] == "doNativeList":
+           print "Doing native listing"
+           omniargs.append("-n")
+           omniargs.append("listresources")
+         else:
+           print "Unknown command %s. Do getversion" % args[0]
+           omniargs.append("getversion")
+         if len(args)>1:
+           print "Got slice name %s" % args[1]
+           slicename=args[1]
+           omniargs.append(slicename)
+
+      # And now call omni, and omni sees your parsed options and arguments
+      text, dict = omni.call(omniargs, options)
+      print text
+
+    if __name__ == "__main__":
+      sys.exit(main())
 
   This is equivalent to:
-    ./omni.py -n listresources slicename
+    ./omni.py -n listresources <slicename>
 
 This allows your calling script to:
  * Have its own private options
