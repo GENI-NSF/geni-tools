@@ -110,7 +110,7 @@ def create_selfsigned_cert2(framework, filename, user, key):
     setattr(subj, "CN", user)
     cert.set_subject(subj)
 
-    key = _do_ssl(framework, None, "Load private key from %s" % key, crypto.load_privatekey, crypto.FILETYPE_PEM, file(key).read())
+    (key, message) = _do_ssl(framework, None, "Load private key from %s" % key, crypto.load_privatekey, crypto.FILETYPE_PEM, file(key).read())
     cert.set_pubkey(key)
 
     cert.set_issuer(subj)
@@ -175,10 +175,10 @@ class Framework(Framework_Base):
                         os.remove(self.config['cert'])
                         sys.exit("Failed to download your user credential from the PL registry")
                     gid = 'Not found'
-                    res = _do_ssl(self, None, ("Look up GID for user %s from SFA registry %s" % (config['user'], config['registry'])), self.registry.Resolve, config['user'], cred)
+                    (res, message) = _do_ssl(self, None, ("Look up GID for user %s from SFA registry %s" % (config['user'], config['registry'])), self.registry.Resolve, config['user'], cred)
                     if res is None:
                         os.remove(self.config['cert'])
-                        sys.exit("Failed to download your user certificate from the PL registry")
+                        sys.exit("Failed to download your user certificate from the PL registry: %s" % message)
                     elif type(res) is dict:
                         gid = res['gid']
                     else:
@@ -210,7 +210,8 @@ class Framework(Framework_Base):
         
     def get_user_cred(self):
         if self.user_cred is None:
-            self.user_cred = _do_ssl(self, None, ("Get SFA user credential from registry %s for user %s using cert file %s" % (self.config['registry'], self.config['user'], self.config['cert'])), self.registry.GetSelfCredential, self.cert_string, self.config['user'], "user")
+            (self.user_cred, message) = _do_ssl(self, None, ("Get SFA user credential from registry %s for user %s using cert file %s" % (self.config['registry'], self.config['user'], self.config['cert'])), self.registry.GetSelfCredential, self.cert_string, self.config['user'], "user")
+            # FIXME: Return error message?
         return self.user_cred
     
     def get_slice_cred(self, urn, error_to_ignore=None):
@@ -219,7 +220,9 @@ class Framework(Framework_Base):
             self.logger.error("Cannot get a slice credential without a user credential")
             return None
 
-        return _do_ssl(self, error_to_ignore, ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
+        (cred, message) = _do_ssl(self, (error_to_ignore,), ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
+        # FIXME: return error message?
+        return cred
     
     def create_slice(self, urn):    
         ''' Gets the credential for a slice, creating the slice 
@@ -237,8 +240,9 @@ class Framework(Framework_Base):
                 self.logger.error("Cannot create the SFA slice - could not get your user credential.")
                 return None
 
-            auth_cred = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
+            (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
             if auth_cred is None:
+                # FIXME: use the message?
                 self.logger.error("Cannot create SFA slice: Only your local %s PI can create a slice on PlanetLab for you and then add you to that slice.", self.config['authority'])
                 return None
 
@@ -253,7 +257,8 @@ class Framework(Framework_Base):
                       'hrn': u'%s' % hrn, u'PI': [u'%s' % user], 'type': u'slice', \
                       u'name': u'%s' % hrn}
     
-            _do_ssl(self, None, ("Register new slice %s at SFA registry %s" % (urn, self.config['registry'])), self.registry.Register, record, auth_cred)
+            (result, message) = _do_ssl(self, None, ("Register new slice %s at SFA registry %s" % (urn, self.config['registry'])), self.registry.Register, record, auth_cred)
+            # FIXME: If there was an error message, use it?
 
             # For some reason the slice doesn't seem to have the correct expiration time, 
             # so call renew_slice
@@ -273,25 +278,28 @@ class Framework(Framework_Base):
             self.logger.error("Cannot delete SFA slice - could not get your user credential.")
             return None
 
-        auth_cred = _do_ssl(self, None, ("Get SFA authority cred for %s from registry %s" % (self.config['authority'], self.config['registry'])), self.registry.GetCredential, user_cred, self.config['authority'], 'authority')
+        (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority cred for %s from registry %s" % (self.config['authority'], self.config['registry'])), self.registry.GetCredential, user_cred, self.config['authority'], 'authority')
         if auth_cred is None:
+            # FIXME: use error message?
             self.logger.error("Cannot delete SFA slice - could not retrieve authority credential")
             return None
 
-        # FIXME: If the slice is already gone, you get a Record not
-        # found here. Suppress that?
+        # If the slice is already gone, you get a Record not
+        # found here. Suppress that
+        message = ""
         try:
-            records = _do_ssl(self, "Record not found", ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
+            (records, message) = _do_ssl(self, ("Record not found",), ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
         except Exception, exc:
             self.logger.info("Failed to find SFA slice %s: %s" , urn, exc)
             return False
         if records is None or len(records) == 0:
+            # FIXME: Use message?
             self.logger.info("Failed to find SFA slice %s - it is probably already deleted.", urn)
             return True
 
-        res = _do_ssl(self, None, ("Delete SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Remove, urn, auth_cred, 'slice')
+        (res, message) = _do_ssl(self, None, ("Delete SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Remove, urn, auth_cred, 'slice')
         if res is None:
-            self.logger.warning("Failed to delete SFA slice %s", urn)
+            self.logger.warning("Failed to delete SFA slice %s: %s", urn, message)
             res = False
         elif res == 1:
             self.logger.info("Deleted SFA slice %s", urn)
@@ -318,8 +326,9 @@ class Framework(Framework_Base):
 
         records = None
         res = None
+        message = ""
         try:
-            records = _do_ssl(self, None, ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
+            (records, message) = _do_ssl(self, None, ("Lookup SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
         except Exception, exc:
             self.logger.warning("Failed to look up SFA slice %s: %s" , urn, exc)
             return None
@@ -333,11 +342,11 @@ class Framework(Framework_Base):
             slice_record = records
             slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
         else:
-            self.logger.warning("Failed to find SFA slice record. Cannot renew slice %s", urn)
+            self.logger.warning("Failed to find SFA slice record. Cannot renew slice %s: %s", urn, message)
             return None
 
         try:
-            res = _do_ssl(self, None, ("Renew SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Update, slice_record, slice_cred)
+            (res, message) = _do_ssl(self, None, ("Renew SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Update, slice_record, slice_cred)
         except Exception, exc:
             self.logger.warning("Failed to renew SFA slice %s: %s" , urn, exc)
             return None
@@ -345,11 +354,11 @@ class Framework(Framework_Base):
         if res == 1:
             return requested_expiration
         else:
+            # FIXME: Use message?
             self.logger.warning("Failed to renew slice %s" % urn)
             self.logger.debug("Got result %r" % res)
             return None
 
-       
     def list_aggregates(self):
         aggs = {}
         user_cred = self.get_user_cred()
@@ -357,8 +366,9 @@ class Framework(Framework_Base):
             self.logger.error("Cannot list aggregates from SFA registry without a user credential")
             return aggs
 
-        sites = _do_ssl(self, None, "List Aggregates at SFA registry %s" % self.config['registry'], self.registry.get_aggregates, user_cred)
+        (sites, message) = _do_ssl(self, None, "List Aggregates at SFA registry %s" % self.config['registry'], self.registry.get_aggregates, user_cred)
         if sites is None:
+            # FIXME: Use message?
             sites = []
         for site in sites:
             aggs[site['urn']] = site['url']

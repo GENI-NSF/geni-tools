@@ -48,23 +48,25 @@ class Framework(Framework_Base):
         
     def get_user_cred(self):
         if self.user_cred == None:
-            self.user_cred = _do_ssl(self, None, ("Create user credential on OpenFlow CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
+            (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on OpenFlow CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
         return self.user_cred
     
     def get_slice_cred(self, urn):
-        return _do_ssl(self, None, ("Create slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
+        (cred, message) = _do_ssl(self, None, ("Create slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
+        return cred
     
     def create_slice(self, urn):    
         return self.get_slice_cred(urn)
     
     def delete_slice(self, urn):
-        return _do_ssl(self, None, ("Delete Slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        (bool, message) = _do_ssl(self, None, ("Delete Slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        return bool
      
     def list_aggregates(self):
         # 10/7/10: We believe ListAggregates is not implemented yet.
         # So either we log an error and return an empty list, or we just raise the exception
         # I choose to leave it alone - raise the exception. And when it works, it will work.
-        sites = _do_ssl(self, None, ("List Aggregates at OpenFlow CH %s" % self.config['ch']), self.ch.ListAggregates)
+        (sites, message) = _do_ssl(self, None, ("List Aggregates at OpenFlow CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
             sites = []
         aggs = {}
@@ -102,7 +104,8 @@ class Framework(Framework_Base):
         """See framework_base for doc.
         """
         expiration = expiration_dt.isoformat()
-        if _do_ssl(self, None, ("Renew slice %s on OpenFlow CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration):
+        (bool, message) = _do_ssl(self, None, ("Renew slice %s on OpenFlow CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
+        if bool:
             return expiration_dt
         else:
             return None

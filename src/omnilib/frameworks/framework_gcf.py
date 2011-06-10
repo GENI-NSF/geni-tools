@@ -47,21 +47,27 @@ class Framework(Framework_Base):
         
     def get_user_cred(self):
         if self.user_cred == None:
-            self.user_cred = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
+            (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
+            # FIXME: use any message?
         return self.user_cred
     
     def get_slice_cred(self, urn):
-        return _do_ssl(self, None, ("Create slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
+        (cred, message) = _do_ssl(self, None, ("Create slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
+        # FIXME: use any message?
+        return cred
     
     def create_slice(self, urn):    
         return self.get_slice_cred(urn)
     
     def delete_slice(self, urn):
-        return _do_ssl(self, None, ("Delete Slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        # FIXME: use any message?
+        return bool
      
     def list_aggregates(self):
-        sites = _do_ssl(self, None, ("List Aggregates at GCF CH %s" % self.config['ch']), self.ch.ListAggregates)
+        (sites, message) = _do_ssl(self, None, ("List Aggregates at GCF CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
+            # FIXME: use any message?
             sites = []
         aggs = {}
         for (urn, url) in sites:
@@ -98,7 +104,9 @@ class Framework(Framework_Base):
         """See framework_base for doc.
         """
         expiration = expiration_dt.isoformat()
-        if _do_ssl(self, None, ("Renew slice %s on GCF CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration):
+        (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCF CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
+        if bool:
             return expiration_dt
         else:
+            # FIXME: use any message?
             return None
