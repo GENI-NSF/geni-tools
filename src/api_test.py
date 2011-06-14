@@ -100,7 +100,11 @@ class GENISetup(unittest.TestCase):
 
     def create_slice_name( self ):
 #        slice_name = SLICE_NAME
-        slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(), SLICE_NAME+"_%H%M%S")
+        if self.options.reuse_slice_name is None:
+            slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(), SLICE_NAME+"_%H%M%S")
+        else:
+            slice_name = self.options.reuse_slice_name
+            
         return slice_name
 
     def call( self, cmd, options ):
@@ -183,18 +187,24 @@ class Test(GENISetup):
         (4) deleteslice
         """
         self.sectionBreak()
+        if self.options.reuse_slice_name is None:
+            reuseslice = False
+        else:
+            reuseslice = True
         successFail = True
         slice_name = self.create_slice_name()
         try:
-            successFail = successFail and self.subtest_createslice( slice_name )
+            if not reuseslice:
+                successFail = successFail and self.subtest_createslice( slice_name )
             successFail = successFail and self.subtest_renewslice_fail( slice_name )
             successFail = successFail and self.subtest_renewslice_success(  slice_name )
         except Exception, exp:
             print 'test_slicecreation had an error: %s' % exp
             successFail = False
-            traceback.print_exc()
+            raise
         finally:
-            successFail = successFail and self.subtest_deleteslice(  slice_name )
+            if not reuseslice:
+                successFail = successFail and self.subtest_deleteslice(  slice_name )
         self.printMonitoring( successFail )
 
     def test_slivercreation(self):
@@ -210,25 +220,35 @@ class Test(GENISetup):
         """
         self.sectionBreak()
         slice_name = self.create_slice_name()
+        if self.options.reuse_slice_name is None:
+            reuseslice = False
+        else:
+            reuseslice = True
+
         successFail = True
         try:
-            successFail = successFail and self.subtest_createslice( slice_name )
-            time.sleep(5)
+            if not reuseslice:
+                successFail = successFail and self.subtest_createslice( slice_name )
+                time.sleep(5)
             successFail = successFail and self.subtest_createsliver( slice_name )
             successFail = successFail and self.subtest_sliverstatus( slice_name )
             successFail = successFail and self.subtest_renewsliver_fail( slice_name )
             successFail = successFail and self.subtest_renewslice_success( slice_name )
             successFail = successFail and self.subtest_renewsliver_success( slice_name )
+
         except Exception, exp:
             print 'test_slivercreation had an error: %s' % str(exp)
             successFail = False
-            traceback.print_exc()
+            raise
         finally:
             try:
                 successFail = successFail and self.subtest_deletesliver( slice_name )
+            except AssertionError:
+                raise
             except:
                 pass
-            successFail = successFail and self.subtest_deleteslice( slice_name )
+            if not reuseslice:
+                successFail = successFail and self.subtest_deleteslice( slice_name )
 
         self.printMonitoring( successFail )
 
@@ -292,7 +312,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=12)).isoformat()
+        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=36)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
@@ -347,7 +367,8 @@ class Test(GENISetup):
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
 
-        self.assertTrue( successFail )
+        msg = "Failed to renew sliver for 8 hours from now"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def subtest_renewsliver_fail(self, slice_name):
@@ -366,6 +387,8 @@ class Test(GENISetup):
         retTime = None
         try:
             text, retTime = self.call(omniargs, options)
+        except AssertionError:
+            raise
         except:
             print "Renewsliver threw exception as expected"
 
@@ -390,7 +413,8 @@ class Test(GENISetup):
         possNum = m.group(2)
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
-        self.assertTrue( successFail )
+        msg = "Failed to get sliverstatus"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def _filename_part_from_am_url(self, url):
@@ -467,7 +491,8 @@ class Test(GENISetup):
             successFail = True
         # delete tmp file
         os.remove( filename )      
-        self.assertTrue( successFail )
+        msg = "Failed to create sliver"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def subtest_deletesliver(self, slice_name):
@@ -484,7 +509,8 @@ class Test(GENISetup):
 
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
-        self.assertTrue( successFail )
+        msg = "Failed to delete sliver"
+        self.assertTrue( successFail, msg )
         return successFail
 # def test_sliverstatusfail(self):
 #    self.sectionBreak()
@@ -511,6 +537,7 @@ if __name__ == '__main__':
 
     # Get the omni optiosn and arguments
     parser = omni.getParser()
+    parser.add_option("--reuse-slice", action="store", type='string', dest='reuse_slice_name', help="Use slice name provided instead of creating/deleting a new slice")
     parser.add_option("--vv", action="store_true", help="Give -v to unittest", default=False)
     parser.add_option("--qq", action="store_true", help="Give -q to unittest", default=False)
     TEST_OPTS, TEST_ARGS = parser.parse_args(sys.argv[1:])
@@ -581,4 +608,5 @@ if __name__ == '__main__':
 
     # Invoke unit tests as usual
     unittest.main()
+
 
