@@ -198,12 +198,10 @@ class Test(GENISetup):
                 successFail = successFail and self.subtest_createslice( slice_name )
             successFail = successFail and self.subtest_renewslice_fail( slice_name )
             successFail = successFail and self.subtest_renewslice_success(  slice_name )
-        except AssertionError:
-            raise
         except Exception, exp:
             print 'test_slicecreation had an error: %s' % exp
             successFail = False
-            traceback.print_exc()
+            raise
         finally:
             if not reuseslice:
                 successFail = successFail and self.subtest_deleteslice(  slice_name )
@@ -237,12 +235,11 @@ class Test(GENISetup):
             successFail = successFail and self.subtest_renewsliver_fail( slice_name )
             successFail = successFail and self.subtest_renewslice_success( slice_name )
             successFail = successFail and self.subtest_renewsliver_success( slice_name )
-        except AssertionError:
-            raise
+
         except Exception, exp:
             print 'test_slivercreation had an error: %s' % str(exp)
             successFail = False
-            traceback.print_exc()
+            raise
         finally:
             try:
                 successFail = successFail and self.subtest_deletesliver( slice_name )
@@ -315,7 +312,7 @@ class Test(GENISetup):
         # now modify options for this test as desired
 
         # now construct args
-        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=12)).isoformat()
+        newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=36)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
         text, retTime = self.call(omniargs, options)
         msg = "Renew slice FAILED."
@@ -370,7 +367,8 @@ class Test(GENISetup):
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
 
-        self.assertTrue( successFail )
+        msg = "Failed to renew sliver for 8 hours from now"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def subtest_renewsliver_fail(self, slice_name):
@@ -415,7 +413,8 @@ class Test(GENISetup):
         possNum = m.group(2)
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
-        self.assertTrue( successFail )
+        msg = "Failed to get sliverstatus"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def _filename_part_from_am_url(self, url):
@@ -492,7 +491,8 @@ class Test(GENISetup):
             successFail = True
         # delete tmp file
         os.remove( filename )      
-        self.assertTrue( successFail )
+        msg = "Failed to create sliver"
+        self.assertTrue( successFail, msg )
         return successFail
 
     def subtest_deletesliver(self, slice_name):
@@ -509,7 +509,8 @@ class Test(GENISetup):
 
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
-        self.assertTrue( successFail )
+        msg = "Failed to delete sliver"
+        self.assertTrue( successFail, msg )
         return successFail
 # def test_sliverstatusfail(self):
 #    self.sectionBreak()
