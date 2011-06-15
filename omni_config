@@ -62,8 +62,7 @@ authority=plc.bbn
 # Your planetlab username
 user=plc.bbn.jkarlin
 
-# Your PL certificate (obtain by running 'sfi.py gid')
-# and copying ~/.sfi/<your username>.gid here
+# Your PL certificate (omni will offer to download it here if needed)
 cert=~/.gcf/jkarlin.gid
 
 # Your planetlab private key
