@@ -35,8 +35,9 @@ New in v1.3:
  file. Specifically, use that with 'listresources' and 'createsliver'
  to save advertisement and manifest RSpecs.
  * Slice credentials can be saved to a file and re-used.
+ * Added support for AM API V2 Draft Revisions.
  * You can specify a particular RSpec format, at aggregates that speak
- more than one format (eg both SFA and PRotoGENI V2).
+ more than one format (eg both SFA and ProtoGENI V2).
  * New functions 'listmyslices' and 'print_slice_expiration'
  * Log and output messages are clearer.
 
@@ -59,9 +60,12 @@ for other user tools. To do so, import omni and use the omni.call
 function.
 EG:
   User does:
+{{{
     myscript.py -f my_sfa --myScriptPrivateOption doNativeList <slicename>
+}}}
 
   Your myscript.py code does:
+{{{
     import sys
     import omni
 
@@ -101,9 +105,12 @@ EG:
 
     if __name__ == "__main__":
       sys.exit(main())
+}}}
 
   This is equivalent to:
+{{{
     ./omni.py -n listresources <slicename>
+}}}
 
 This allows your calling script to:
  * Have its own private options
@@ -188,12 +195,13 @@ We recommend not trying to support omnispecs for different RSpec formats.
 
 == Running Omni ==
 
-=== The following options are supported: ===
+=== Supported options ===
+Omni supports the following command-line options.
 
 -c FILE   Location of your config file (default ~/.gcf/omni_config)
 
 -f FRAMEWORK   Control framework to use (e.g. my_sfa), overriding
-default in config file.  The framework is a section named in the config file.
+        default in config file.  The framework is a section named in the config file.
 
 -n, --native   Use native RSpecs (default)
 --omnispec     Use OmniSpec RSpecs (deprecated)
@@ -202,16 +210,16 @@ default in config file.  The framework is a section named in the config file.
 --debug   Enable debugging output
 --no-ssl   Do not use ssl
 --orca-slice-id=ORCA_SLICE_ID
-                Use the given Orca slice id
+        Use the given Orca slice id
 -o, --output   Write output of getversion, listresources,
-    	       	     -createsliver, sliverstatus, or getslicecred to a file
+        -createsliver, sliverstatus, or getslicecred to a file
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
-                  Filename prefix (used with -o)
+        Filename prefix (used with -o)
 --slicecredfile SLICE_CRED_FILENAME
         Name of slice credential file to read from if it exists, or
-	     -save to with -o getslicecred
+	-save to with -o getslicecred
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-                  Ad RSpec type and version to return, EG 'ProtoGENI 2'
+        Ad RSpec type and version to return, EG 'ProtoGENI 2'
 -v, --verbose  (default True)
         Turn on verbose command summary for omni commandline tool
 -q, --quiet    (default False)
@@ -220,17 +228,18 @@ default in config file.  The framework is a section named in the config file.
         Print results like RSpecs to STDOUT instead of logging.
 	Only relevant when not saving results to a file with the -o option.
 
-=== The following commands are supported: ===
+=== Supported commands ===
+Omni supports the following commands.
 
-=== listaggregates ===
+==== listaggregates ====
  * format: omni.py listaggregates [-a AM_URL]
  * examples:
    omni.py listaggregates
-   	   To list all aggregates from the omni_config 'aggregates'
+           List all aggregates from the omni_config 'aggregates'
 	   option if supplied, else all aggregates listed by the
 	   Clearinghouse
    omni.py listaggregates -a http://localhost:8001
-   	   To list just the aggregate from the commandline
+           List just the aggregate from the commandline
  
    Print the known aggregates' URN and URL.
    Get the aggregates list from the commandline, or from the
@@ -274,7 +283,6 @@ default in config file.  The framework is a section named in the config file.
   trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
   would like the time to be in local time at the control framework you
   can leave off the trailing 'Z'.
-
 
 ==== deleteslice ====
  * format:  omni.py deleteslice <slice-name> 
@@ -366,10 +374,11 @@ default in config file.  The framework is a section named in the config file.
   - List of URLs given in omni_config aggregates option, if provided, ELSE
   - List of URNs and URLs provided by the selected clearinghouse
 
-  -o Save result (JSON format) in per-Aggregate files
-  -p (used with -o) Prefix for resulting version information files
-  If not saving results to a file, they are logged.
-  If --tostdout option, then instead of logging, print to STDOUT.
+  Options:
+  - -o Save result (JSON format) in per-Aggregate files
+  - -p (used with -o) Prefix for resulting version information files
+  - If not saving results to a file, they are logged.
+  - If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== listresources ====
  * format:  omni.py listresources [-a AM-URL] [-n] [slice-name] \
@@ -382,21 +391,20 @@ default in config file.  The framework is a section named in the config file.
   * omni.py listresources -a http://localhost:12348 myslice
     	    List resources in myslice at the localhost AM
   * omni.py listresources -a http://localhost:12348 -t ProtoGENI 2 myslice
-    	    List resources in myslice at the localhost AM requesting
-	    the AM send ProtoGENI V2 format.
+            List resources in myslice at the localhost AM, requesting that
+	    the AM send a ProtoGENI V2 format RSpec.
   * omni.py listresources -a http://localhost:12348 --omnispec myslice
             List resources in myslice at the localhost AM, converting
-	    them to the deprecated omnispec format
+	    them to the deprecated omnispec format.
   * omni.py listresources -a http://localhost:12348 myslice \
     	    		  -o -p myprefix
             List resources at a specific AM and save it to a file
-	    with prefix 'myprefix'
+	    with prefix 'myprefix'.
 
   Call the AM API ListResources function at specified aggregates.
 
   This command will list the rspecs of all GENI aggregates available
   through your chosen framework.
-, and present them optionally in omnispec form.
   It can save the result to a file so you can use the result to
   create a reservation RSpec, suitable for use in a call to
   createsliver.
@@ -414,19 +422,20 @@ default in config file.  The framework is a section named in the config file.
   If the "--omnispec" flag is used then the native RSpec is converted
   to the deprecated omnispec format.
 
-  -n gives native format (default)
+  Options:
+  - -n gives native format (default)
      Note: omnispecs are deprecated. Native format is preferred.
-  --omnispec request OmniSpec (json format) translation. Deprecated
-  -o writes to file instead of stdout; omnispec written to 1 file,
+  - --omnispec request OmniSpec (json format) translation. Deprecated
+  - -o writes to file instead of stdout; omnispec written to 1 file,
      native format written to single file per aggregate.
-  -p gives filename prefix for each output file
-  If not saving results to a file, they are logged.
-  If --tostdout option, then instead of logging, print to STDOUT.
-  -t Requires the AM send RSpecs in the given type and version. If the
+  - -p gives filename prefix for each output file
+  - If not saving results to a file, they are logged.
+  - If --tostdout option, then instead of logging, print to STDOUT.
+  - -t Requires the AM send RSpecs in the given type and version. If the
      AM does not speak that type and version, nothing is returned. Use
      GetVersion to see available types at that AM.
      Type and version are case-sensitive strings.
-  --slicecredfile says to use the given slicecredfile if it exists.
+  - --slicecredfile says to use the given slicecredfile if it exists.
 
   File names will indicate the slice name, file format, and either
   the number of Aggregates represented (omnispecs), or
@@ -456,11 +465,12 @@ default in config file.  The framework is a section named in the config file.
 	    Warning: requst RSpecs are often very different from
             advertisement RSpecs.
 	    For help creating ProtoGENI RSpecs, see
-              http://www.protogeni.net/trac/protogeni/wiki/RSpec
+              http://www.protogeni.net/trac/protogeni/wiki/RSpec.
 	    To validate the syntax of a generated request RSpec, run:
-              xmllint --noout
-                  --schema http://www.protogeni.net/resources/rspec/2/ad.xsd \
+{{{
+  xmllint --noout --schema http://www.protogeni.net/resources/rspec/2/ad.xsd \
                       yourRequestRspec.xml
+}}}
 
   This createSliver command will allocate the requested resources at
   the indicated aggregate (or in omnispecs those marked
@@ -479,22 +489,23 @@ default in config file.  The framework is a section named in the config file.
   Note that PLC Web UI lists slices as <site name>_<slice name>
   (EG bbn_myslice), and we want only the slice name part here.
 
-  -n Use native format rspec. Requires -a.
+  Options:
+  - -n Use native format rspec. Requires -a.
      Native RSpecs are default, and omnispecs are deprecated.
-  --omnispec Use Omnispec formats. Deprecated.
-  -a Contact only the aggregate at the given URL
-  --slicecredfile Read slice credential from given file, if it exists
-  -o Save result (manifest rspec) in per-Aggregate files
-  -p (used with -o) Prefix for resulting manifest RSpec files
-  If not saving results to a file, they are logged.
-  If --tostdout option, then instead of logging, print to STDOUT.
+  - --omnispec Use Omnispec formats. Deprecated.
+  - -a Contact only the aggregate at the given URL
+  - --slicecredfile Read slice credential from given file, if it exists
+  - -o Save result (manifest rspec) in per-Aggregate files
+  - -p (used with -o) Prefix for resulting manifest RSpec files
+  - If not saving results to a file, they are logged.
+  - If --tostdout option, then instead of logging, print to STDOUT.
 
   Slice credential is usually retrieved from the Slice Authority. But
   with the --slicecredfile option it is read from that file, if it exists.
 
   omni_config users section is used to get a set of SSH keys that
   should be loaded onto the remote node to allow SSH login, if the
-  remote resource and aggregate support this
+  remote resource and aggregate support this.
 
   Note you likely want to check SliverStatus to ensure your resource comes up.
   And check the sliver expiration time: you may want to call RenewSliver.
@@ -552,10 +563,11 @@ default in config file.  The framework is a section named in the config file.
   - List of URLs given in omni_config aggregates option, if provided, ELSE
   - List of URNs and URLs provided by the selected clearinghouse
 
-  -o Save result in per-Aggregate files
-  -p (used with -o) Prefix for resulting files
-  If not saving results to a file, they are logged.
-  If --tostdout option, then instead of logging, print to STDOUT.
+  Options:
+  - -o Save result in per-Aggregate files
+  - -p (used with -o) Prefix for resulting files
+  - If not saving results to a file, they are logged.
+  - If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== deletesliver ====
  * format:  omni.py deletesliver [-a AM-URL] <slice-name>
