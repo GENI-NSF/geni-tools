@@ -88,7 +88,7 @@ import omnilib.xmlrpc.client
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.3"
+OMNI_VERSION="1.4"
 
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all

@@ -23,7 +23,7 @@
 
 from distutils.core import setup
 setup(name='gcf-servers',
-      version="1.3",
+      version="1.4",
       package_dir={'': 'src'},                   
       py_modules=['geni.am','geni.ch','geni.config'],
       data_files=[('/etc/gcf-servers', ['gcf_config'])],

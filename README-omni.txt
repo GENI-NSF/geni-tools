@@ -29,6 +29,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.4:
+
 New in v1.3:
  * Omnispecs are deprecated, and native RSpecs are the default
  * Many commands take a '-o' option getting output saved to a
