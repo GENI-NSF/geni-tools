@@ -136,14 +136,15 @@ class CallHandler(object):
         """
         retVal = ""
         version = {}
-        clients = self._getclients()
+        (clients, message) = self._getclients()
         successCnt = 0
 
         for client in clients:
-            thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
             version[ client.url ] = thisVersion
             if thisVersion is None:
-                self.logger.warn( "URN: %s (url:%s) call failed.\n" % (client.urn, client.url) )
+                retVal = retVal + "Cannot GetVersion at %s: %s\n" % (client.url, message)
+                self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
             else:
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
@@ -166,10 +167,11 @@ class CallHandler(object):
                 # is None
                 self._printResults( header, prettyVersion, filename)
         if len(clients)==0:
-            retVal += "No aggregates to query.\n\n"
+            retVal += "No aggregates to query. %s\n\n" % message
         else:
+            # FIXME: If I have a message from getclients, want it here?
             # FIXME: If it is 1 just return the getversion?
-            retVal += "Got version for %d out of %d aggregates\n" % (successCnt,len(clients))
+            retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
 
         return (retVal, version)
 
@@ -188,7 +190,9 @@ class CallHandler(object):
         that it supports that format.
 
         Returns a dictionary of rspecs with the following format:
-           rspecs[(urn, url)] = decompressed native rspec        
+           rspecs[(urn, url)] = decompressed native rspec
+           AND a string describing the result.
+        On error the dictionary is None and the message explains.
         """
 
         # rspecs[(urn, url)] = decompressed native rspec
@@ -206,17 +210,20 @@ class CallHandler(object):
         if slicename is None or slicename == "":
             slicename = None
             cred = None
-            cred = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
+            (cred, message) = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
 
             if cred is None:
                 self.logger.error('Cannot list resources: Could not get user credential')
-                return None
+                return (None, "Could not get user credential: %s" % message)
         else:
             urn = self.framework.slice_name_to_urn(slicename)
-            cred = self._get_slice_cred(urn)
+            (cred, message) = self._get_slice_cred(urn)
             if cred is None:
-                self.logger.error('Cannot list resources for slice %s: could not get slice credential' % (urn))
-                return None
+                prstr = "Cannot list resources for slice %s: Could not get slice credential. " % urn
+                if message != "":
+                    prstr += message
+                self.logger.error(prstr)
+                return (None, prstr)
 
             self.logger.info('Gathering resources reserved for slice %s..' % slicename)
 
@@ -226,7 +233,12 @@ class CallHandler(object):
 
         # Query each aggregate for resources
         successCnt = 0
-        clientList = self._getclients()
+        mymessage = ""
+        (clientList, message) = self._getclients()
+        if len(clientList) == 0 and message != "":
+            mymessage = "No aggregates available to query: %s" % message
+        # FIXME: What if got a message and still got some aggs?
+
         # Connect to each available GENI AM to list their resources
         for client in clientList:
             if cred is None:
@@ -248,12 +260,14 @@ class CallHandler(object):
                 rver = self.opts.rspectype[1]
                 self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
                 # call getversion
-                thisVersion = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+                (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
                 if thisVersion is None:
                     self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+                    mymessage = mymessage + ". Skipped AM %s that didnt respond to GetVersion: %s" % (client.url, message)
                     continue
                 elif not thisVersion.has_key('ad_rspec_versions'):
                     self.logger.warning("AM getversion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
+                    mymessage = mymessage + ". Skipped AM %s that didnt advertise RSpec versions" % client.url
                     continue
 
                 # get the ad_rspec_versions key
@@ -279,6 +293,7 @@ class CallHandler(object):
                     #   return error showing ad_rspec_versions
                     pp = pprint.PrettyPrinter(indent=4)
                     self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                    mymessage = mymessage + ". Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
                     continue
                 # else
                 options['rspec_version'] = dict(type=rtype, version=rver)
@@ -288,16 +303,18 @@ class CallHandler(object):
 #            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
 
             self.logger.debug("Doing listresources with options %r", options)
-            rspec = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
+            (rspec, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, [cred], options)
 
             if not rspec is None:
                 successCnt += 1
                 if options.get('geni_compressed', False):
                     rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
+            else:
+                mymessage += ". No resources from AM %s: %s" % (client.url, message)
 
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
-        return rspecs
+        return (rspecs, mymessage)
 
     def _printResults(self, header, content, filename=None):
         """Print header string and content string to file of given
@@ -435,7 +452,7 @@ class CallHandler(object):
 
         # Query the various aggregates for resources
         # rspecs[(urn, url)] = decompressed native rspec
-        rspecs = self._listresources( args )
+        (rspecs, message) = self._listresources( args )
         numAggs = 0
         if rspecs is not None:
             numAggs = len(rspecs.keys())
@@ -446,6 +463,8 @@ class CallHandler(object):
                 prtStr = "Got no resources on slice %s"%slicename 
             else:
                 prtStr = "Got no resources" 
+            if message is not None:
+                prtStr = prtStr + ". " + message
             self.logger.info( prtStr )
             return prtStr, None
 
@@ -655,10 +674,9 @@ class CallHandler(object):
         name = args[0]
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name.strip())
-        slice_cred = self._get_slice_cred(urn)
+        (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential'
-                     % (urn))
+            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message))
 
         retVal += self._print_slice_expiration(urn, slice_cred)+"\n"
 
@@ -725,7 +743,11 @@ class CallHandler(object):
 #            self.logger.warn("No user keys found to be uploaded")
         
         # Perform the allocations
-        aggregate_urls = self._listaggregates().values()
+        (aggs, message) = self._listaggregates()
+        if aggs == {} and message != "":
+            retVal += "No aggregates to reserve on: %s" % message
+
+        aggregate_urls = aggs.values()
         for (url, rspec) in rspecs.items():
             # Is this AM listed in the CH or our list of aggregates?
             # If not we won't be able to check its status and delete it later
@@ -753,7 +775,7 @@ class CallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
-            result = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
+            (result, message) = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, [slice_cred], rspec, slice_users)
             prettyresult = result
 
             if result != None and isinstance(result, str) and \
@@ -773,12 +795,16 @@ class CallHandler(object):
             else:
                 # summary
                 retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
+                if result is None and message != "":
+                    retVal += message
 
             # FIXME: When Tony revises the rspec, fix this test
             if '<RSpec' in rspec and 'type="SFA"' in rspec:
                 # Figure out the login name
                 # We could of course do this for the user.
-                self.logger.info("Please run the omni sliverstatus call on your slice to determine your login name to PL resources")
+                prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % name
+                self.logger.info(prstr)
+                retVal += ". " + prstr
 
             # If the user specified -o then we save the return from
             # each AM as though it is a native manifest RSpec in a
@@ -828,10 +854,9 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self._get_slice_cred(urn)
+        (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential'
-                     % (urn))
+            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message))
 
         time = None
         try:
@@ -861,12 +886,14 @@ class CallHandler(object):
         successCnt = 0
         successList = []
         failList = []
-        clientList = self._getclients()
+        (clientList, message) = self._getclients()
         for client in clientList:
             # Note that the time arg includes UTC offset as needed
-            res = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
+            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                if message != "":
+                    prStr += " " + message
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
@@ -879,7 +906,7 @@ class CallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
         if len(clientList) == 0:
-            retVal += "No aggregates on which to renew slivers for slice %s\n" % urn
+            retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
         return retVal, (successList, failList)
@@ -910,10 +937,9 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self._get_slice_cred(urn)
+        (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential'
-                     % (urn))
+            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message))
 
         retVal = self._print_slice_expiration(urn, slice_cred) + "\n"
 
@@ -924,13 +950,16 @@ class CallHandler(object):
         successCnt = 0
         retItem = {}
         # Query status at each client
-        clientList = self._getclients()
+        (clientList, message) = self._getclients()
         if len(clientList) > 0:
             self.logger.info('Status of Slice %s:' % urn)
         else:
-            self.logger.warn("No aggregates available")
+            prstr = "No aggregates available to get slice status at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
         for client in clientList:
-            status = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
+            (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, [slice_cred])
             if status:
                 prettyResult = pprint.pformat(status)
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
@@ -949,7 +978,10 @@ class CallHandler(object):
                 retItem[ client.url ] = status
                 successCnt+=1
             else:
+                # FIXME: Put the message error in retVal?
                 retItem[ client.url ] = False
+                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s" % (name, client.url, message)
+
         # FIXME: Return the status if there was only 1 client?
         retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
@@ -975,10 +1007,9 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self._get_slice_cred(urn)
+        (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential'
-                     % (urn))
+            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message))
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -988,7 +1019,7 @@ class CallHandler(object):
         successList = []
         failList = []
         successCnt = 0
-        clientList = self._getclients()
+        (clientList, message) = self._getclients()
 
         # Connect to each available GENI AM
         ## The AM API does not cleanly state how to deal with
@@ -1003,7 +1034,8 @@ class CallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
-            if _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred]):
+            (res, message) = _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, [slice_cred])
+            if res:
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
@@ -1014,12 +1046,14 @@ class CallHandler(object):
                 successList.append( client.url )
             else:
                 prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                if message != "":
+                    prStr += " " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
                 failList.append( client.url )
         if len(clientList) == 0:
-            retVal = "No aggregates specified on which to delete slivers"
+            retVal = "No aggregates specified on which to delete slivers. %s" % message
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
         return retVal, (successList, failList)
@@ -1045,10 +1079,9 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        slice_cred = self._get_slice_cred(urn)
+        (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential'
-                     % (urn))
+            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message))
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -1059,10 +1092,11 @@ class CallHandler(object):
         successCnt = 0
         successList = []
         failList = []
-        clientList = self._getclients()
+        (clientList, message) = self._getclients()
         for client in clientList:
-            if _do_ssl(self.framework, None, "Shutdown %s on %s" %
-                       (urn, client.url), client.Shutdown, urn, [slice_cred]):
+            (res, message) = _do_ssl(self.framework, None, "Shutdown %s on %s" %
+                       (urn, client.url), client.Shutdown, urn, [slice_cred])
+            if res:
                 prStr = "Shutdown Sliver %s on AM %s at %s" % (urn, client.urn, client.url)
                 self.logger.info(prStr)
                 if len(clientList) == 1:
@@ -1071,12 +1105,14 @@ class CallHandler(object):
                 successList.append( client.url )
             else:
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
+                if message != "":
+                    prStr += ". " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
                 failList.append( client.url )
         if len(clientList) == 0:
-            retVal = "No aggregates specified on which to shutdown slice %s" % urn
+            retVal = "No aggregates specified on which to shutdown slice %s. %s" % (urn, message)
         elif len(clientList) > 1:
             retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
         return retVal, (successList, failList)
@@ -1094,7 +1130,8 @@ class CallHandler(object):
         """
         retStr = ""
         retVal = {}
-        aggList = self._listaggregates().items()
+        (aggs, message) = self._listaggregates()
+        aggList = aggs.items()
         self.logger.info("Listing %d aggregates..."%len(aggList))
         aggCnt = 0
         for (urn, url) in aggList:
@@ -1102,7 +1139,9 @@ class CallHandler(object):
             self.logger.info( "  Aggregate %d:\n \t%s \n \t%s" % (aggCnt, urn, url) )
 #            retStr += "%s: %s\n" % (urn, url)
             retVal[urn] = url
-        if len(aggList)==0:
+        if aggs == {} and message != "":
+            retStr += "No aggregates found: %s"
+        elif len(aggList)==0:
             retStr = "No aggregates found."
         elif len(aggList) == 1:
             retStr = "Found 1 aggregate. URN: %s; URL: %s" % (retVal.keys()[0], retVal[retVal.keys()[0]])
@@ -1135,7 +1174,7 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
         
-        slice_cred = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
+        (slice_cred, message) = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
             slice_exp = credutils.get_cred_exp(self.logger, slice_cred)
             printStr = "Created slice with Name %s, URN %s, Expiration %s" % (name, urn, slice_exp) 
@@ -1151,6 +1190,8 @@ class CallHandler(object):
 
         else:
             printStr = "Create Slice Failed for slice name %s." % (name) 
+            if message != "":
+                printStr += " " + message
             retVal += printStr+"\n"
             self.logger.error( printStr )
             success = None
@@ -1186,7 +1227,7 @@ class CallHandler(object):
             self._raise_omni_error(msg)
 
         # Try to renew the slice
-        out_expiration = _do_ssl(self.framework, None, "Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
+        (out_expiration, message) = _do_ssl(self.framework, None, "Renew Slice %s" % urn, self.framework.renew_slice, urn, in_expiration)
 
         if out_expiration:
             prtStr = "Slice %s now expires at %s UTC" % (name, out_expiration)
@@ -1195,6 +1236,8 @@ class CallHandler(object):
             retTime = out_expiration
         else:
             prtStr = "Failed to renew slice %s" % (name)
+            if message != "":
+                prtStr += ". " + message
             self.logger.warn( prtStr )
             retVal = prtStr+"\n"
             retTime = None
@@ -1218,13 +1261,15 @@ class CallHandler(object):
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
 
-        res = _do_ssl(self.framework, None, "Delete Slice %s" % urn, self.framework.delete_slice, urn)
+        (res, message) = _do_ssl(self.framework, None, "Delete Slice %s" % urn, self.framework.delete_slice, urn)
         # return True if successfully deleted slice, else False
         if (res is None) or (res is False):
             retVal = False
         else:
             retVal = True
         prtStr = "Delete Slice %s result: %r" % (name, res)
+        if res is None and message != "":
+            prtStr += ". " + message
         self.logger.info(prtStr)
         return prtStr, retVal
 
@@ -1237,12 +1282,12 @@ class CallHandler(object):
             self._raise_omni_error('listmyslices requires 1 arg: user')
 
         retStr = ""
-        slices = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
+        (slices, message) = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)
         if slices is None:
             # only end up here if call to _do_ssl failed
             slices = []
             self.logger.error("Failed to list slices for user '%s'"%(username))
-            retStr += "Server error: "
+            retStr += "Server error: %s. " % message
         elif len(slices) > 0:
             self.logger.info("User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices)))
         else:
@@ -1292,10 +1337,10 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        cred = self._get_slice_cred(urn)
+        (cred, message) = self._get_slice_cred(urn)
 
         if cred is None:
-            retVal = "No slice credential returned for slice %s"%urn
+            retVal = "No slice credential returned for slice %s: %s"%(urn, message)
             return retVal, None
 
         # Log if the slice expires soon
@@ -1335,11 +1380,11 @@ class CallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
-        cred = self._get_slice_cred(urn)
+        (cred, message) = self._get_slice_cred(urn)
 
         retVal = None
         if cred is None:
-            retVal = "No slice credential returned for slice %s"%urn
+            retVal = "No slice credential returned for slice %s: %s"%(urn, message)
             return retVal, None
 
         # Log if the slice expires soon
@@ -1392,7 +1437,7 @@ class CallHandler(object):
         if sliceCred is None:
             if urn is None or urn == '':
                 return ""
-            sliceCred = self._get_slice_cred(urn)
+            (sliceCred, _) = self._get_slice_cred(urn)
         if sliceCred is None:
             # failed to get a slice string. Can't check
             return ""
@@ -1417,7 +1462,9 @@ class CallHandler(object):
 
     def _get_slice_cred(self, urn):
         """Try a couple times to get the given slice credential.
-        Retry on wrong pass phrase."""
+        Retry on wrong pass phrase.
+        Return the slice credential, and a string message of any error.
+        """
 
         if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile) and os.path.isfile(self.opts.slicecredfile) and os.path.getsize(self.opts.slicecredfile) > 0:
             # read the slice cred from the given file
@@ -1425,17 +1472,18 @@ class CallHandler(object):
             cred = None
             with open(self.opts.slicecredfile, 'r') as f:
                 cred = f.read()
-            return cred
+            return (cred, "")
 
         # Check that the return is either None or a valid slice cred
         # Callers handle None - usually by raising an error
-        cred = _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
+        (cred, message) = _do_ssl(self.framework, None, "Get Slice Cred for slice %s" % urn, self.framework.get_slice_cred, urn)
         if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
             #elif slice_cred is not XML that looks like a credential, assume
             # assume it's an error message, and raise an omni_error
             self.logger.error("Got invalid slice credential for slice %s: %s" % (urn, cred))
             cred = None
-        return cred
+            message = "Invalid slice credential returned"
+        return (cred, message)
 
     def _getclients(self, ams=None):
         """Create XML-RPC clients for each aggregate (from commandline, else from config file, else from framework)
@@ -1443,14 +1491,18 @@ class CallHandler(object):
         Each client has a urn and url. See _listaggregates for details.
         """
         clients = []
-        for (urn, url) in self._listaggregates().items():
+        (aggs, message) = self._listaggregates()
+        if aggs == {} and message != "":
+            self.logger.warn('No aggregates found: %s', message)
+            return (clients, message)
+
+        for (urn, url) in aggs.items():
             client = make_client(url, self.framework, self.opts)
             client.urn = urn
             client.url = url
             clients.append(client)
-        if clients == []:
-            self.logger.warn( 'No aggregates found' )
-        return clients
+
+        return (clients, message)
 
     def _listaggregates(self):
         """List the aggregates that can be used for the current operation.
@@ -1464,19 +1516,20 @@ class CallHandler(object):
         # used by _getclients (above), createsliver, listaggregates
         if self.opts.aggregate:
             # No URN is specified, so put in 'unspecified_AM_URN'
-            return dict(unspecified_AM_URN=self.opts.aggregate.strip())
+            return (dict(unspecified_AM_URN=self.opts.aggregate.strip()), "")
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
             for url in self.omni_config['aggregates'].strip().split(','):
                 url = url.strip()
                 if url != '':
                     aggs[url] = url
-            return aggs
+            return (aggs, "")
         else:
-            aggs =  _do_ssl(self.framework, None, "List Aggregates from control framework", self.framework.list_aggregates)
-            if aggs is  None:
-                return {}
-            return aggs
+            (aggs, message) =  _do_ssl(self.framework, None, "List Aggregates from control framework", self.framework.list_aggregates)
+            if aggs is None:
+                # FIXME: Return the message?
+                return ({}, message)
+            return (aggs, "")
 
 # End of CallHandler
 
@@ -1565,7 +1618,7 @@ def load_config(opts, logger):
     # Did we find a valid config file?
     if not os.path.exists(filename):
         prtStr = """ Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
-                     An example config file can be found in the source tarball or in /etc/omni/templates/"""
+     An example config file can be found in the source tarball or on the wiki"""
         logger.error( prtStr )
         raise OmniError, prtStr
 
