@@ -34,6 +34,8 @@ import ssl
 import traceback
 import xmlrpclib
 
+from omnilib.util.omnierror import OmniError
+
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
 
 
@@ -61,7 +63,8 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     framework.logger.info('.... please retry.')
                 else:
                     framework.logger.error("Wrong pass phrase after %d tries" % max_attempts)
-                    return (None, "Wrong pass phrase after %d tries." % max_attempts)
+#                    return (None, "Wrong pass phrase after %d tries." % max_attempts)
+                    raise OmniError, "Wrong pass phrase after %d tries." % max_attempts
             else:
                 framework.logger.error("%s: Unknown OpenSSL error %s" % (failMsg, err))
                 if not framework.logger.isEnabledFor(logging.DEBUG):
@@ -77,7 +80,8 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     framework.logger.info('.... please retry.')
                 else:
                     framework.logger.error("Wrong pass phrase after %d tries. Cannot do %s." % (max_attempts, reason))
-                    return (None, "Wrong pass phrase after %d tries." % max_attempts)
+#                    return (None, "Wrong pass phrase after %d tries." % max_attempts)
+                    raise OmniError, "Wrong pass phrase after %d tries." % max_attempts
             elif exc.errno == 1 and exc.strerror.find("error:14094418") > -1:
                 # Handle SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
                 import sfa.trust.gid as gid
