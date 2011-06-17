@@ -1618,7 +1618,7 @@ def load_config(opts, logger):
     # Did we find a valid config file?
     if not os.path.exists(filename):
         prtStr = """ Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
-                     An example config file can be found in the source tarball or in /etc/omni/templates/"""
+     An example config file can be found in the source tarball or on the wiki"""
         logger.error( prtStr )
         raise OmniError, prtStr
 
