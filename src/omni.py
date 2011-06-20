@@ -225,7 +225,7 @@ class CallHandler(object):
                 self.logger.error(prstr)
                 return (None, prstr)
 
-            self.logger.info('Gathering resources reserved for slice %s..' % slicename)
+            self.logger.info('Gathering resources reserved for slice %s.' % slicename)
 
             options['geni_slice_urn'] = urn
 
@@ -263,11 +263,15 @@ class CallHandler(object):
                 (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
                 if thisVersion is None:
                     self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
-                    mymessage = mymessage + ". Skipped AM %s that didnt respond to GetVersion: %s" % (client.url, message)
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + "Skipped AM %s that didnt respond to GetVersion: %s" % (client.url, message)
                     continue
                 elif not thisVersion.has_key('ad_rspec_versions'):
                     self.logger.warning("AM getversion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
-                    mymessage = mymessage + ". Skipped AM %s that didnt advertise RSpec versions" % client.url
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + "Skipped AM %s that didnt advertise RSpec versions" % client.url
                     continue
 
                 # get the ad_rspec_versions key
@@ -293,7 +297,9 @@ class CallHandler(object):
                     #   return error showing ad_rspec_versions
                     pp = pprint.PrettyPrinter(indent=4)
                     self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                    mymessage = mymessage + ". Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
                     continue
                 # else
                 options['rspec_version'] = dict(type=rtype, version=rver)
@@ -311,7 +317,9 @@ class CallHandler(object):
                     rspec = zlib.decompress(rspec.decode('base64'))
                 rspecs[(client.urn, client.url)] = rspec
             else:
-                mymessage += ". No resources from AM %s: %s" % (client.url, message)
+                if mymessage != "":
+                    mymessage += ". "
+                mymessage += "No resources from AM %s: %s" % (client.url, message)
 
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
