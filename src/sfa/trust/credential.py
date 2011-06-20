@@ -80,9 +80,9 @@ signature_template = \
 
 ##
 # Convert a string into a bool
-
+# used to convert an xsd:boolean to a Python boolean
 def str2bool(str):
-    if str.lower() in ['yes','true','1']:
+    if str.lower() in ['true','1']:
         return True
     return False
 
