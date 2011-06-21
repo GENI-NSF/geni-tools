@@ -37,10 +37,12 @@ New in v1.3:
  file. Specifically, use that with 'listresources' and 'createsliver'
  to save advertisement and manifest RSpecs.
  * Slice credentials can be saved to a file and re-used.
- * Added support for AM API V2 Draft Revisions.
+ * Added support for GENI AM API Draft Revisions.
  * You can specify a particular RSpec format, at aggregates that speak
  more than one format (eg both SFA and ProtoGENI V2).
  * New functions 'listmyslices' and 'print_slice_expiration'
+ * All commands return a tuple: text result description and a
+ command-specific object, suitable for use by calling scripts
  * Log and output messages are clearer.
 
 Full changes are listed in the CHANGES file.
@@ -52,15 +54,15 @@ Omnispecs are deprecated. Use native Aggregate RSpecs.
 Each resource in an omnispec is referred to as an OmniResource. Each
 OmniResource has a name, a description, a type, booleans indicating
 whether the resource is allocated and whether the request wants to
-allocate it, and then hashes for options and misc fields.
+allocate it, and then dictionaries for options and misc fields.
 
 
 == Omni as a Library ==
 
-The omni.py file can be imported as a library, allowing Omni to front
-for other user tools. To do so, import omni and use the omni.call
+The omni.py file can be imported as a library, allowing other user 
+tools to front for Omni. To do so, import omni and use the omni.call
 function.
-EG:
+e.g.:
   User does:
 {{{
     myscript.py -f my_sfa --myScriptPrivateOption doNativeList <slicename>
@@ -103,6 +105,11 @@ EG:
 
       # And now call omni, and omni sees your parsed options and arguments
       text, dict = omni.call(omniargs, options)
+
+      # Process the dictionary returned in some way
+      print dict
+
+      # Give the text back to the user
       print text
 
     if __name__ == "__main__":
@@ -122,9 +129,9 @@ This allows your calling script to:
 In the omni.call method:
  * argv is a list ala sys.argv
  * options is an optional optparse.Values structure,
-   like you get from parser.parse_args
+   like you get from parser.parse_args.  
    Use this to pre-set certain values, or allow your caller to get
-   omni options from its commandline
+   omni options from its commandline.
 
  * The verbose option allows printing the command and summary,
    or suppressing it.
@@ -139,6 +146,8 @@ clearinghouse APIs requires adding a new Framework extension class.
 We recommend not trying to support omnispecs for different RSpec formats.
 
 == Omni workflow ==
+For a fully worked simple example of using Omni, see 
+http://groups.geni.net/geni/wiki/GENIExperimenter
 
  1. Pick a Clearinghouse you want to use. That is the control framework you
     will use.
@@ -188,12 +197,20 @@ We recommend not trying to support omnispecs for different RSpec formats.
     where you are reserving resources.)
     Then omni will call the GENI AM API CreateSliver call on the
     Aggregate Manager. It will supply your Slice Credentials (from the
-    Clearinghouse) plus your own user certificate, and the RSpec. At
-    this point, you have resources and can do your experiment.
+    Clearinghouse) plus your own user certificate, and the RSpec. 
+
+    At this point, you have resources and can do your experiment.
+
  7. Renew or Delete.  After a while you may want to Renew your Sliver
     that is expiring, or Delete it. Omni will contact the
     Clearinghouse, get a list of all Aggregates, and invoke
     RenewSliver or DeleteSliver on each, for your slice name.
+
+ 8. Optional: listmyslices and print_slice_expiration. Occasionally you
+    may run listmyslices to remind yourself of your outstanding
+    slices. Then you can choose to delete or renew them as needed. If
+    you don't recall when your slice expires, use
+    print_slice_expiration to remind yourself.
 
 == Running Omni ==
 
@@ -206,26 +223,38 @@ Omni supports the following command-line options.
         default in config file.  The framework is a section named in the config file.
 
 -n, --native   Use native RSpecs (default)
+
 --omnispec     Use OmniSpec RSpecs (deprecated)
+
 -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
                 Communicate with a specific aggregate
+
 --debug   Enable debugging output
+
 --no-ssl   Do not use ssl
+
 --orca-slice-id=ORCA_SLICE_ID
         Use the given Orca slice id
+
 -o, --output   Write output of getversion, listresources,
         -createsliver, sliverstatus, or getslicecred to a file
+
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
         Filename prefix (used with -o)
+
 --slicecredfile SLICE_CRED_FILENAME
         Name of slice credential file to read from if it exists, or
 	-save to with -o getslicecred
+
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
         Ad RSpec type and version to return, EG 'ProtoGENI 2'
+
 -v, --verbose  (default True)
         Turn on verbose command summary for omni commandline tool
+
 -q, --quiet    (default False)
         Turn off verbose command summary for omni commandline tool
+
 --tostdout (default True)
         Print results like RSpecs to STDOUT instead of logging.
 	Only relevant when not saving results to a file with the -o option.
@@ -234,386 +263,386 @@ Omni supports the following command-line options.
 Omni supports the following commands.
 
 ==== listaggregates ====
- * format: omni.py listaggregates [-a AM_URL]
+Print the known aggregates' URN and URL.
+
+ * format: omni.py [-a AM_URL] listaggregates
  * examples:
-   omni.py listaggregates
+  * omni.py listaggregates
            List all aggregates from the omni_config 'aggregates'
 	   option if supplied, else all aggregates listed by the
 	   Clearinghouse
-   omni.py listaggregates -a http://localhost:8001
+  * omni.py -a http://localhost:8001 listaggregates
            List just the aggregate from the commandline
  
-   Print the known aggregates' URN and URL.
-   Get the aggregates list from the commandline, or from the
-   omni_config 'aggregates' option, or from the Clearinghouse.
+ Gets the aggregates list from the commandline, or from the
+ omni_config 'aggregates' option, or from the Clearinghouse.
 
 ==== createslice ====
+Creates the slice in your chosen control framework.
+
  * format:  omni.py createslice <slice-name>
- * example: omni.py createslice myslice
-     Or to create the slice and save off the slice credential:
+ * examples: 
+  * omni.py createslice myslice
+  * Or to create the slice and save off the slice credential:
      	   omni.py -o createslice myslice
-     Or to create the slice and save off the slice credential to a
+  *  Or to create the slice and save off the slice credential to a
            specific file:
            omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml 
                    createslice myslice
 
-  Creates the slice in your chosen control framework.
+ Slice name could be a full URN, but is usually just the slice name portion.
+ Note that PLC Web UI lists slices as <site name>_<slice name>
+ (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+ Note that Slice Authorities typically limit this call to
+ privileged users, e.g. PIs.
 
-  Note that Slice Authorities typically limit this call to
-  privileged users. EG PIs.
-
-  Note also that typical slice lifetimes are short. See RenewSlice.
+ Note also that typical slice lifetimes are short. See RenewSlice.
 
 ==== renewslice ====
+Renews the slice at your chosen control framework. If your slice
+expires, you will be unable to reserve resources or delete
+reservations at aggregates.
+
  * format:  omni.py renewslice <slice-name> <date-time>
  * example: omni.py renewslice myslice 20100928T15:00:00Z
 
-  Renews the slice at your chosen control framework. If your slice
-  expires, you will be unable to reserve resources or delete
-  reservations at aggregates.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
-
-  The date-time argument takes a standard form
-  "YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
-  trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
-  would like the time to be in local time at the control framework you
-  can leave off the trailing 'Z'.
+The date-time argument takes a standard form
+"YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
+trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
+would like the time to be in local time at the control framework you
+can leave off the trailing 'Z'.
 
 ==== deleteslice ====
+Deletes the slice in your chosen control framework.
+
  * format:  omni.py deleteslice <slice-name> 
  * example: omni.py deleteslice myslice
 
-  Deletes the slice in your chosen control framework.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Delete all your slivers first! Deleting your slice does not free up resources at
+various aggregates.
 
-  Delete all your slivers first! This does not free up resources at
-  various aggregates.
-
-  Note that this is not supported by all control frameworks: some just
-  let slices expire.
+Note that DeleteSlice is not supported by all control frameworks: some just
+let slices expire.
 
 ==== listmyslices ====
+List slices registered under the given username.
+Not supported by all frameworks.
+
  * format: omni.py listmyslices <username>
  * example: omni.py listmyslices jdoe
 
-  List slices registered under the given username.
-  Not supported by all frameworks.
-
 ==== getslicecred ====
+Get the AM API compliant slice credential (signed XML document)
+for the given slice name
+
  * format: omni.py getslicecred <slicename>
 
-  Get the AM API compliant slice credential (signed XML document)
-  for the given slice name
-
-  If you specify the -o option, the credential is saved to a file.
-  The filename is <slicename>-cred.xml
-  But if you specify the --slicecredfile option then that is the filename used.
-
-  Additionally, if you specify the --slicecredfile option and that
-  references a file that is not empty, then we do not query the Slice
-  Authority for this credential, but instead read it from this file.
-
-  EG:
-    Get slice mytest credential from slice authority, save to a file:
+ * examples:
+  * Get slice mytest credential from slice authority, save to a file:
       omni.py -o getslicecred mytest
 
-    Get slice mytest credential from slice authority,
+  * Get slice mytest credential from slice authority,
     save to a file with prefix mystuff:
       omni.py -o -p mystuff getslicecred mytest
 
-    Get slice mytest credential from slice authority,
+  * Get slice mytest credential from slice authority,
     save to a file with name mycred.xml:
       omni.py -o --slicecredfile mycred.xml getslicecred mytest
 
-    Get slice mytest credential from saved file (perhaps a
-    delegated credential?) delegated-mytest-slicecred.xml:
+  * Get slice mytest credential from saved file 
+    delegated-mytest-slicecred.xml (perhaps this is a delegated credential?): 
       omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
 
-  Arg: slice name
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+If you specify the -o option, the credential is saved to a file.
+The filename is <slicename>-cred.xml
+But if you specify the --slicecredfile option then that is the filename used.
+
+Additionally, if you specify the --slicecredfile option and that
+references a file that is not empty, then we do not query the Slice
+Authority for this credential, but instead read it from this file.
+
+Arg: slice name
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 ==== print_slice_expiration ====
+Print the expiration time of the given slice, and a warning if it is
+soon.
+e.g. warn if the slice expires within 3 hours.
+
  * format omni.py print_slice_expiration <slice name>
  * example: omni.py print_slice_expiration my_slice
 
-  Print the expiration time of the given slice, and a warning if it is
-  soon.
-  EG warn if the slice expires within 3 hours.
+Arg: slice name
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Arg: slice name
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
-
-  With the --slicecredfile option the slice's credential read from
-  that file, if it exists. Otherwise the Slice Authority is queried.
+With the --slicecredfile option the slice's credential is read from
+that file, if it exists. Otherwise the Slice Authority is queried.
 
 ==== getversion ====
- * format:  omni.py getversion [-a AM-URL]
+Call the AM API GetVersion function at each aggregate.
+
+ * format:  omni.py [-a AM-URL] getversion
  * examples:
   * omni.py getversion
-  * GetVersion for only this aggregate
-    omni.py getversion -a http://localhost:12348
-  * Save GetVersion information to per-aggregate files
-    omni.py getversion -o
+  * GetVersion for only this aggregate: 
+        omni.py -a http://localhost:12348 getversion
+  * Save GetVersion information to per-aggregate files: 
+        omni.py -o getversion
 
-  Call the AM API GetVersion function at each aggregate.
+Aggregates queried:
+ - Single URL given in -a argument, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
 
-  Aggregates queried:
-  - Single URL given in -a argument, if provided, ELSE
-  - List of URLs given in omni_config aggregates option, if provided, ELSE
-  - List of URNs and URLs provided by the selected clearinghouse
-
-  Options:
-  - -o Save result (JSON format) in per-Aggregate files
-  - -p (used with -o) Prefix for resulting version information files
-  - If not saving results to a file, they are logged.
-  - If --tostdout option, then instead of logging, print to STDOUT.
+Options:
+ - -o Save result (JSON format) in per-Aggregate files
+ - -p Prefix for resulting version information files (used with -o) 
+ - If not saving results to a file, they are logged.
+ - If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== listresources ====
- * format:  omni.py listresources [-a AM-URL] [-n] [slice-name] \
-   	    	    		      	     [-o  [-p fileprefix]]
+Call the AM API ListResources function at specified aggregates.
+
+ * format:  omni.py [-a AM-URL] [-n] [-o [-p fileprefix]] \
+                    listresources [slice-name] 
  * examples:
   * omni.py listresources
     	    List resources at all AMs on your CH
   * omni.py listresources myslice
-    	    List resources in myslices from all AMs on your CH
-  * omni.py listresources -a http://localhost:12348 myslice
+    	    List resources in myslice from all AMs on your CH
+  * omni.py -a http://localhost:12348 listresources myslice
     	    List resources in myslice at the localhost AM
   * omni.py listresources -a http://localhost:12348 -t ProtoGENI 2 myslice
             List resources in myslice at the localhost AM, requesting that
 	    the AM send a ProtoGENI V2 format RSpec.
-  * omni.py listresources -a http://localhost:12348 --omnispec myslice
+  * omni.py -a http://localhost:12348 --omnispec listresources myslice
             List resources in myslice at the localhost AM, converting
 	    them to the deprecated omnispec format.
-  * omni.py listresources -a http://localhost:12348 myslice \
-    	    		  -o -p myprefix
+  * omni.py -a http://localhost:12348 -o -p myprefix listresources myslice 
             List resources at a specific AM and save it to a file
 	    with prefix 'myprefix'.
 
-  Call the AM API ListResources function at specified aggregates.
+This command will list the rspecs of all GENI aggregates available
+through your chosen framework.
+It can save the result to a file so you can use the result to
+create a reservation RSpec, suitable for use in a call to
+createsliver.
+Omnispecs can be optionally generated with --omnispec.
 
-  This command will list the rspecs of all GENI aggregates available
-  through your chosen framework.
-  It can save the result to a file so you can use the result to
-  create a reservation RSpec, suitable for use in a call to
-  createsliver.
-  Omnispecs can be optionally generated with --omnispec.
-
-  If a slice name is supplied, then resources for that slice only 
-  will be displayed.  In this case, the slice credential is usually
-  retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
+If a slice name is supplied, then resources for that slice only 
+will be displayed.  In this case, the slice credential is usually
+retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
 
-  If an Aggregate Manager URL is supplied, only resources
-  from that AM will be listed.
+If an Aggregate Manager URL is supplied, only resources
+from that AM will be listed.
 
-  If the "--omnispec" flag is used then the native RSpec is converted
-  to the deprecated omnispec format.
+If the "--omnispec" flag is used then the native RSpec is converted
+to the deprecated omnispec format.
 
-  Options:
-  - -n gives native format (default)
-     Note: omnispecs are deprecated. Native format is preferred.
-  - --omnispec request OmniSpec (json format) translation. Deprecated
-  - -o writes to file instead of stdout; omnispec written to 1 file,
-     native format written to single file per aggregate.
-  - -p gives filename prefix for each output file
-  - If not saving results to a file, they are logged.
-  - If --tostdout option, then instead of logging, print to STDOUT.
-  - -t Requires the AM send RSpecs in the given type and version. If the
-     AM does not speak that type and version, nothing is returned. Use
-     GetVersion to see available types at that AM.
-     Type and version are case-sensitive strings.
-  - --slicecredfile says to use the given slicecredfile if it exists.
+Options:
+ - -n gives native format (default)
+    Note: omnispecs are deprecated. Native format is preferred.
+ - --omnispec request OmniSpec (json format) translation. Deprecated
+ - -o writes to file instead of stdout; omnispec written to 1 file,
+    native format written to single file per aggregate.
+ - -p gives filename prefix for each output file
+ - If not saving results to a file, they are logged.
+ - If --tostdout option, then instead of logging, print to STDOUT.
+ - -t Requires the AM send RSpecs in the given type and version. If the
+    AM does not speak that type and version, nothing is returned. Use
+    GetVersion to see available types at that AM.
+    Type and version are case-sensitive strings.
+ - --slicecredfile says to use the given slicecredfile if it exists.
 
-  File names will indicate the slice name, file format, and either
-  the number of Aggregates represented (omnispecs), or
-  which aggregate is represented (native format).
-  EG: myprefix-myslice-rspec-localhost-8001.xml
+File names will indicate the slice name, file format, and either
+the number of Aggregates represented (omnispecs), or
+which aggregate is represented (native format).
+e.g.: myprefix-myslice-rspec-localhost-8001.xml
 
 ==== createsliver ====
- * format:  omni.py createsliver [-a AM-URL [-n]] <slice-name> <spec file>
+The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
+
+ * format:  omni.py [-a AM-URL [-n]] createsliver <slice-name> <spec file>
  * examples:
   * omni.py createsliver myslice resources.rspec
-  * omni.py createsliver -a http://localhost:12348 myslice resources.rspec
-  * Use a saved (delegated?) slice credential:
-    omni.py --slicecredfile myslice-credfile.xml createsliver \
-            -a http://localhost:12348 myslice resources.rspec
-  * Save manifest RSpec to a file with a particular prefix:
-    omni.py createsliver -a http://localhost:12348 myslice \
-             resources.rspec -o -p myPrefix
-  * Use an omnispec to create sliver(s)
-    omni.py createsliver --omnispec myslice resources.ospec
-
-
- The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
+  * omni.py -a http://localhost:12348 createsliver myslice resources.rspec
+  * Use a saved (delegated?) slice credential: 
+        omni.py --slicecredfile myslice-credfile.xml \
+            -a http://localhost:12348 createsliver myslice resources.rspec
+  * Save manifest RSpec to a file with a particular prefix: 
+        omni.py -a http://localhost:12348 -o -p myPrefix \
+             createsliver myslice resources.rspec 
+  * Use an omnispec to create sliver(s): 
+        omni.py --omnispec createsliver myslice resources.ospec
 
  * argument: the RSpec file should have been created by using
             availability information from a previous call to
-            listresources (e.g. omni.py -o listresources)
-	    Warning: requst RSpecs are often very different from
+            listresources (e.g. omni.py -o listresources). 
+	    Warning: request RSpecs are often very different from
             advertisement RSpecs.
-	    For help creating ProtoGENI RSpecs, see
+For help creating ProtoGENI RSpecs, see
               http://www.protogeni.net/trac/protogeni/wiki/RSpec.
-	    To validate the syntax of a generated request RSpec, run:
+To validate the syntax of a generated request RSpec, run:
 {{{
   xmllint --noout --schema http://www.protogeni.net/resources/rspec/2/ad.xsd \
                       yourRequestRspec.xml
 }}}
 
-  This createSliver command will allocate the requested resources at
-  the indicated aggregate (or in omnispecs those marked
-  with allocate: true).
-  Note: This command operates by default in native mode "-n" by sending a
-  native rspec to a single aggregate specified by the "-a" command.
-  Omnispecs are deprecated and native format RSpecs are the default.
+This createsliver command will allocate the requested resources at
+the indicated aggregate (or in omnispecs those marked
+with allocate: true).
+Note: This command operates by default in native mode "-n" by sending a
+native rspec to a single aggregate specified by the "-a" command.
+Omnispecs are deprecated and native format RSpecs are the default.
 
-  Typically users save the resulting manifest RSpec, to learn details
-  about what resources were actually granted to them. Use the -o
-  option to have that manifest saved to a file. Manifest files are
-  named something like:
-     myPrefix-mySlice-manifest-rspec-AggregateServername.xml
+Typically users save the resulting manifest RSpec, to learn details
+about what resources were actually granted to them. Use the -o
+option to have that manifest saved to a file. Manifest files are
+named something like:
+   myPrefix-mySlice-manifest-rspec-AggregateServername.xml
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Options:
-  - -n Use native format rspec. Requires -a.
-     Native RSpecs are default, and omnispecs are deprecated.
-  - --omnispec Use Omnispec formats. Deprecated.
-  - -a Contact only the aggregate at the given URL
-  - --slicecredfile Read slice credential from given file, if it exists
-  - -o Save result (manifest rspec) in per-Aggregate files
-  - -p (used with -o) Prefix for resulting manifest RSpec files
-  - If not saving results to a file, they are logged.
-  - If --tostdout option, then instead of logging, print to STDOUT.
+Options:
+ - -n Use native format RSpec. Requires -a.
+    Native RSpecs are default, and omnispecs are deprecated.
+ - --omnispec Use Omnispec formats. Deprecated.
+ - -a Contact only the aggregate at the given URL
+ - --slicecredfile Read slice credential from given file, if it exists
+ - -o Save result (manifest rspec) in per-Aggregate files
+ - -p Prefix for resulting manifest RSpec files. (used with -o)
+ - If not saving results to a file, they are logged.
+ - If --tostdout option, then instead of logging, print to STDOUT.
 
-  Slice credential is usually retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
+Slice credential is usually retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
-  omni_config users section is used to get a set of SSH keys that
-  should be loaded onto the remote node to allow SSH login, if the
-  remote resource and aggregate support this.
+omni_config users section is used to get a set of SSH keys that
+should be loaded onto the remote node to allow SSH login, if the
+remote resource and aggregate support this.
 
-  Note you likely want to check SliverStatus to ensure your resource comes up.
-  And check the sliver expiration time: you may want to call RenewSliver.
+Note you likely want to check SliverStatus to ensure your resource comes up.
+And check the sliver expiration time: you may want to call RenewSliver.
 
 ==== renewsliver ====
+Calls the AM API RenewSliver function
+
  * format:  omni.py renewsliver [-a AM-URL] <slice-name> "<time>"
  * examples:
   * omni.py renewsliver myslice "12/12/10 4:15pm"
   * omni.py renewsliver myslice "12/12/10 16:15"
-  * omni.py renewsliver -a http://localhost:12348 myslice "12/12/10 16:15"
+  * omni.py -a http://localhost:12348 renewsliver myslice "12/12/10 16:15"
 
-  AM API RenewSliver function
+This command will renew your resources at each aggregate up to the
+specified time.  This time must be less than or equal to the time
+available to the slice.  Times are in UTC.
 
-  This command will renew your resources at each aggregate up to the
-  specified time.  This time must be less than or equal to the time
-  available to the slice.  Times are in UTC.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Slice credential is usually retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
-  Slice credential is usually retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
+Aggregates queried:
+ - Single URL given in -a argument, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
 
-  Aggregates queried:
-  - Single URL given in -a argument, if provided, ELSE
-  - List of URLs given in omni_config aggregates option, if provided, ELSE
-  - List of URNs and URLs provided by the selected clearinghouse
-
-  Note that the expiration time cannot be past your slice expiration
-  time (see renewslice). Some aggregates will
-  not allow you to _shorten_ your sliver expiration time.
+Note that the expiration time cannot be past your slice expiration
+time (see renewslice). Some aggregates will
+not allow you to _shorten_ your sliver expiration time.
 
 ==== sliverstatus ====
- * format: omni.py sliverstatus [-a AM-URL] <slice-name>
+GENI AM API SliverStatus function
+
+ * format: omni.py [-a AM-URL] sliverstatus <slice-name>
  * examples:
   * omni.py sliverstatus myslice
-  * omni.py sliverstatus -a http://localhost:12348 myslice
+  * omni.py -a http://localhost:12348 sliverstatus myslice
 
-  GENI AM API SliverStatus function
+This command will get information from each aggregate about the
+status of the specified slice. This can include expiration time,
+whether the resource is ready for use, and the SFA node login name.
 
-  This command will get information from each aggregate about the
-  status of the specified slice. This can include expiration time,
-  whether the resource is ready for use, and the SFA node login name.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Slice credential is usually retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
-  Slice credential is usually retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
+Aggregates queried:
+ - Single URL given in -a argument, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
 
-  Aggregates queried:
-  - Single URL given in -a argument, if provided, ELSE
-  - List of URLs given in omni_config aggregates option, if provided, ELSE
-  - List of URNs and URLs provided by the selected clearinghouse
-
-  Options:
-  - -o Save result in per-Aggregate files
-  - -p (used with -o) Prefix for resulting files
-  - If not saving results to a file, they are logged.
-  - If --tostdout option, then instead of logging, print to STDOUT.
+Options:
+ - -o Save result in per-aggregate files
+ - -p Prefix for resulting files (used with -o) 
+ - If not saving results to a file, they are logged.
+ - If --tostdout option, then instead of logging, print to STDOUT.
 
 ==== deletesliver ====
- * format:  omni.py deletesliver [-a AM-URL] <slice-name>
+Calls the GENI AM API DeleteSliver function. 
+This command will free any resources associated with your slice at
+the given aggregates.
+
+ * format:  omni.py [-a AM-URL] deletesliver <slice-name>
  * examples:
   * omni.py deletesliver myslice
-  * omni.py deletesliver -a http://localhost:12348 myslice
+  * omni.py -a http://localhost:12348 deletesliver myslice
 
-  GENI AM API DeleteSliver function
-  This command will free any resources associated with your slice at
-  the given aggregates.
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Slice credential is usually retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
-  Slice credential is usually retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
-
-  Aggregates queried:
-  - Single URL given in -a argument, if provided, ELSE
-  - List of URLs given in omni_config aggregates option, if provided, ELSE
-  - List of URNs and URLs provided by the selected clearinghouse
+Aggregates queried:
+ - Single URL given in -a argument, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
 
 ==== shutdown ====
- * format:  omni.py shutdown [-a AM-URL] <slice-name>
+Calls the GENI AM API Shutdown function
+This command will stop the resources from running, but not delete
+their state.  This command should NOT be needed by most users - it
+is intended for emergency stop and supporting later forensics /
+debugging. 
+
+ * format:  omni.py [-a AM-URL] shutdown <slice-name>
  * examples:
   * omni.py shutdown myslice
-  * omni.py shutdown -a http://localhost:12348 myslice
+  * omni.py -a http://localhost:12348 shutdown myslice
 
-  GENI AM API Shutdown function
-  This command will stop the resources from running, but not delete
-  their state.  This command should not be needed by most users - it
-  is intended for emergency stop and supporitng later forensics /
-  debugging. 
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-  Slice name could be a full URN, but is usually just the slice name portion.
-  Note that PLC Web UI lists slices as <site name>_<slice name>
-  (EG bbn_myslice), and we want only the slice name part here.
+Slice credential is usually retrieved from the Slice Authority. But
+with the --slicecredfile option it is read from that file, if it exists.
 
-  Slice credential is usually retrieved from the Slice Authority. But
-  with the --slicecredfile option it is read from that file, if it exists.
-
-  Aggregates queried:
-  - Single URL given in -a argument, if provided, ELSE
-  - List of URLs given in omni_config aggregates option, if provided, ELSE
-  - List of URNs and URLs provided by the selected clearinghouse
+Aggregates queried:
+ - Single URL given in -a argument, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
 

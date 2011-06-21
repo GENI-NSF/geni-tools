@@ -437,7 +437,7 @@ class CallHandler(object):
         File names will indicate the slice name, file format, and either
         the number of Aggregates represented (omnispecs), or
         which aggregate is represented (native format).
-        EG: myprefix-myslice-rspec-localhost-8001.xml
+        e.g.: myprefix-myslice-rspec-localhost-8001.xml
 
         If a slice name is supplied, then resources for that slice only 
         will be displayed.  In this case, the slice credential is usually retrieved from the Slice Authority. But
@@ -645,8 +645,8 @@ class CallHandler(object):
         Return on success the manifest RSpec(s)
 
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         -n Use native format rspec. Requires -a. Native RSpecs are the default, and omnispecs are deprecated.
         --omnispec Use Omnispec rspec format. Deprecated.
@@ -841,8 +841,8 @@ class CallHandler(object):
     def renewsliver(self, args):
         """AM API RenewSliver <slicename> <new expiration time in UTC>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -922,8 +922,8 @@ class CallHandler(object):
     def sliverstatus(self, args):
         """AM API SliverStatus  <slice name>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -997,8 +997,8 @@ class CallHandler(object):
     def deletesliver(self, args):
         """AM API DeleteSliver <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -1069,8 +1069,8 @@ class CallHandler(object):
     def shutdown(self, args):
         """AM API Shutdown <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
@@ -1161,15 +1161,15 @@ class CallHandler(object):
         """Create a Slice at the given Slice Authority.
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         To create the slice and save off the slice credential:
      	   omni.py -o createslice myslice
         To create the slice and save off the slice credential to a specific file:
      	   omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml createslice myslice
 
-        Note that Slice Authorities typically limit this call to privileged users. EG PIs.
+        Note that Slice Authorities typically limit this call to privileged users, e.g. PIs.
 
         Note also that typical slice lifetimes are short. See RenewSlice.
         """
@@ -1212,8 +1212,8 @@ class CallHandler(object):
         renewed.
         Args: slicename, and expirationdate
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Return summary string, new slice expiration (string)
         """
@@ -1256,8 +1256,8 @@ class CallHandler(object):
         """Framework specific DeleteSlice call at the given Slice Authority
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
 
         Delete all your slivers first! This does not free up resources at various aggregates.
         """
@@ -1317,7 +1317,7 @@ class CallHandler(object):
         not empty, then we do not query the Slice Authority for this credential, but instead
         read it from this file.
 
-        EG:
+        e.g.:
           Get slice mytest credential from slice authority, save to a file:
             omni.py -o getslicecred mytest
           
@@ -1332,8 +1332,8 @@ class CallHandler(object):
 
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
         """
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -1375,8 +1375,8 @@ class CallHandler(object):
         if it is soon.
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (EG bbn_myslice), and we want
-        only the slice name part here.
+        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
+        only the slice name part here (e.g. myslice).
         """
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -1743,6 +1743,11 @@ def call(argv, options=None, verbose=False):
 
         # And now call omni, and omni sees your parsed options and arguments
         text, dict = omni.call(omniargs, options)
+
+        # Process the dictionary returned in some way
+        print dict
+
+        # Give the text back to the user
         print text
 
       if __name__ == "__main__":
@@ -1911,7 +1916,7 @@ def getParser():
                       help="Name of slice credential file to read from if it exists, or save to with -o getslicecred")
     # Note that type and version are strings. Nominally case-sensitive.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
-                      help="Ad RSpec type and version to return, EG 'ProtoGENI 2'")
+                      help="Ad RSpec type and version to return, e.g. 'ProtoGENI 2'")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
