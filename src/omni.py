@@ -1899,7 +1899,7 @@ def getParser():
     parser.add_option("-n", "--native", default=False, action="store_true",
                       help="Use native RSpecs (default)")
     parser.add_option("--omnispec", default=False, action="store_true",
-                      help="Use OmniSpec RSpecs (deprecated)")
+                      help="Use Omnispecs (deprecated)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
                       help="Communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,

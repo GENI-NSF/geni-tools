@@ -1,19 +1,19 @@
 = The Omni GENI Client =
 
-Omni is an end-user GENI client that communicates with GENI Aggregate
+Omni is a GENI experimenter tool that communicates with GENI Aggregate
 Managers via the GENI AM API.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
 enumerate available GENI Aggregate Managers.  Note that Omni 
 supports using control framework native RSpecs, or a (deprecated)
-common unified 'omnispec'.
+common subset called an 'omnispec'.
 
 To configure Omni, please copy omni_config to your ~/.gcf
 directory and fill in the parameters for at least one control
 framework - particularly the location of your certificate and key, in
 its appropriate section.  Edit the [omni] section to specify that
 framework as your default. Embedded comments describe the meaning of
-each field. (Note that keys for the GCF framework are by default
-stored in ~/.gcf.)
+each field. (Note that keys for the GCF framework are stored in ~/.gcf
+by default.)
 
 The currently supported control frameworks are SFA (PlanetLab),
 ProtoGENI and GCF. Any AM API compliant aggregate should work.
@@ -49,20 +49,20 @@ Full changes are listed in the CHANGES file.
 
 == Omnispecs ==
 
-Omnispecs are deprecated. Use native Aggregate RSpecs.
+'''Omnispecs are now deprecated. Use native Aggregate RSpecs.'''
 
-Each resource in an omnispec is referred to as an OmniResource. Each
-OmniResource has a name, a description, a type, booleans indicating
+Each resource in an omnispec is referred to as an Omni Resource. Each
+Omni Resource has a name, a description, a type, booleans indicating
 whether the resource is allocated and whether the request wants to
 allocate it, and then dictionaries for options and misc fields.
 
-
 == Omni as a Library ==
 
-The omni.py file can be imported as a library, allowing other user 
-tools to front for Omni. To do so, import omni and use the omni.call
-function.
-e.g.:
+The omni.py file can be imported as a library, enabling programmatic
+access to Omni functions. To use omni as a library, import omni and
+use the omni.call function.
+
+For example:
   User does:
 {{{
     myscript.py -f my_sfa --myScriptPrivateOption doNativeList <slicename>
@@ -127,7 +127,7 @@ This allows your calling script to:
  * Accept omni options (like "-f") in your script to pass along to omni
 
 In the omni.call method:
- * argv is a list ala sys.argv
+ * argv is a list just like sys.argv
  * options is an optional optparse.Values structure,
    like you get from parser.parse_args.  
    Use this to pre-set certain values, or allow your caller to get
@@ -159,9 +159,9 @@ http://groups.geni.net/geni/wiki/GENIExperimenter
  3. Run omni -o listresources
   a. When you do this, Omni will contact your designated
      Clearinghouse, using your framework-specific user credentials.
-  b. The clearinghouse will list the Aggregates it knows about. EG for
-     GCF, the am_* entries in gcf_config. For SFA, it will return the
-     contents of /etc/sfa/geni_aggregates.xml.
+  b. The clearinghouse will list the Aggregates it knows about. For
+     example for GCF, the am_* entries in gcf_config. For SFA, it will
+     return the contents of /etc/sfa/geni_aggregates.xml.
   c. Omni will then contact each of the Aggregates that the
      Clearinghouse told it about, and use the GENI AM API to ask each
      for its resources. Again, it will use your user credentials. So
@@ -224,7 +224,7 @@ Omni supports the following command-line options.
 
 -n, --native   Use native RSpecs (default)
 
---omnispec     Use OmniSpec RSpecs (deprecated)
+--omnispec     Use Omnispecs (deprecated)
 
 -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
                 Communicate with a specific aggregate
@@ -237,7 +237,7 @@ Omni supports the following command-line options.
         Use the given Orca slice id
 
 -o, --output   Write output of getversion, listresources,
-        -createsliver, sliverstatus, or getslicecred to a file
+        createsliver, sliverstatus, or getslicecred to a file
 
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
         Filename prefix (used with -o)
@@ -247,7 +247,7 @@ Omni supports the following command-line options.
 	-save to with -o getslicecred
 
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-        Ad RSpec type and version to return, EG 'ProtoGENI 2'
+        Ad RSpec type and version to return, e.g. 'ProtoGENI 2'
 
 -v, --verbose  (default True)
         Turn on verbose command summary for omni commandline tool
@@ -457,7 +457,7 @@ to the deprecated omnispec format.
 Options:
  - -n gives native format (default)
     Note: omnispecs are deprecated. Native format is preferred.
- - --omnispec request OmniSpec (json format) translation. Deprecated
+ - --omnispec request Omnispec (json format) translation. Deprecated
  - -o writes to file instead of stdout; omnispec written to 1 file,
     native format written to single file per aggregate.
  - -p gives filename prefix for each output file
