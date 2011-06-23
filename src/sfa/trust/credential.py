@@ -690,7 +690,10 @@ class Credential(object):
     # Verify
     #   trusted_certs: A list of trusted GID filenames (not GID objects!) 
     #                  Chaining is not supported within the GIDs by xmlsec1.
-    #                  None means skip xmlsec1 et al - only used by some utilities
+    #
+    #   trusted_certs_required: Should usually be true. Set False means an
+    #                 empty list of trusted_certs would still let this method pass.
+    #                 It just skips xmlsec1 verification et al. Only used by some utils
     #    
     # Verify that:
     # . All of the signatures are valid and that the issuers trace back
@@ -713,9 +716,12 @@ class Credential(object):
     #   must be done elsewhere
     #
     # @param trusted_certs: The certificates of trusted CA certificates
-    def verify(self, trusted_certs=None):
+    def verify(self, trusted_certs=None, trusted_certs_required=True):
         if not self.xml:
             self.decode()        
+
+        if trusted_certs_required and trusted_certs is None:
+            trusted_certs = []
 
 #        trusted_cert_objects = [GID(filename=f) for f in trusted_certs]
         trusted_cert_objects = []
