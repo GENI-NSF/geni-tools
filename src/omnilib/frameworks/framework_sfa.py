@@ -221,6 +221,8 @@ class Framework(Framework_Base):
             return None
 
         (cred, message) = _do_ssl(self, (error_to_ignore,), ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
+        if message is not None and message.find("Record not found: ") > -1 and (error_to_ignore is None or error_to_ignore.find("Record not found") ==-1):
+            self.logger.error('Did you create the slice? SFA SA server has no record of slice %s' % urn)
         # FIXME: return error message?
         return cred
     
