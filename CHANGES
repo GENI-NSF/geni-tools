@@ -1,4 +1,12 @@
 gcf 1.4:
+        - New delegateSliceCred script allowing off-line delegation of
+	slice credentials. (ticket #44)
+	- SFA library fixes with delegated slice credentials
+	- Ensure the root error is reported to the user when there are
+	problems.
+	- Once the user has failed to enter their passphrase twice,
+	exit - don't bury it in later errors. (ticket #43)
+	- More error message cleanup
 
 gcf 1.3 May, 2011:
 	GCF:
