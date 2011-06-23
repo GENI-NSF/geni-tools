@@ -109,7 +109,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
         except xmlrpclib.Fault, fault:
             if suppresserrors:
                 for suppresserror in suppresserrors:
-                    if str(fault).find(suppresserror) > -1:
+                    if suppresserror and str(fault).find(suppresserror) > -1:
                         # Suppress this error
                         framework.logger.debug("Suppressing error doing %s: %s" % (failMsg, cln_xmlrpclib_fault(fault)))
                         framework.logger.debug(traceback.format_exc())
@@ -120,7 +120,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
         except socket.error, sock_err:
             if suppresserrors:
                 for suppresserror in suppresserrors:
-                    if str(sock_err).find(suppresserror) > -1:
+                    if suppresserror and str(sock_err).find(suppresserror) > -1:
                         # Suppress this error
                         framework.logger.debug("Suppressing error doing %s: %s" % (failMsg, sock_err))
                         framework.logger.debug(traceback.format_exc())
@@ -138,7 +138,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
         except Exception, exc:
             if suppresserrors:
                 for suppresserror in suppresserrors:
-                    if str(exc).find(suppresserror) > -1:
+                    if suppresserror and str(exc).find(suppresserror) > -1:
                         # Suppress this error
                         framework.logger.debug("Suppressing error doing %s: %s" % (failMsg, exc))
                         framework.logger.debug(traceback.format_exc())
