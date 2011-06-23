@@ -22,41 +22,37 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-
-# delegate a slice credential
-# get the owner's gid/key (person running this
-# get the user (Delegatee)'s gid
-# load the slice cred to delegate (local or remote)
-# check that the cred to delegate is owned by subject of the given gid
-# check that the owner gid matches the given key
-# check that have a good gid to delegate to
-
-# by default I think give same rights as were there, but without delegate? 
-# Make delegate an option?
+'''
+Delegate a credential to another experimenter.
+Takes a saved credential, the owner's certificate and key, and the certificate
+to delegate to.
+Allows you to control if the delegated credential is delegatable, and what
+the expiration date is of the new credential.
+TODO: Support partial privilege delegation.
+If you supply trusted root certificates, validates the full PKI chain.
+'''
 
 # need a mode which simply prints the given cred's rights, marking
-# which are delegatable 
-# and also a way to print the cred expiration time
+# which are delegatable
+# and also a way to print the original cred's expiration time (so you know what is valid)
 
 # need a way to specify which of the cred's rights to delegate, and
 # which to mark delegatable
 # Note that this is messy since PG slice creds just say * and PL slice creds
 
+import datetime
+import dateutil
+import logging
+import optparse
+import os
+import string
+import sys
+from xml.dom.minidom import Document, parseString
 
-# error check that desired expiration time <= original
-# error check that desired rights are subset of original rights and
-# that each desired right is marked delegatable on orig
- 
-# FIXME: Must the delegee's cert be signed by same as me? or can it be anyone?
 import sfa.trust.credential as cred
 import sfa.trust.rights as privs
 from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair, Certificate
-import optparse
-import logging
-import os
-import string
-import sys
 
 def configure_logging(opts):
     """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
@@ -91,8 +87,11 @@ if __name__ == '__main__':
     parser.add_option("--delegeegid", action="store", type="string", default=None,
                       help="Filename of Cert to delegate to")
     parser.add_option("--debug", action="store_true", default=False)
-    # FIXME: Allow requesting new expiration time <= orig,
-    # and new rights <= orig
+    parser.add_option("--trusted-root", action="append", default=None, dest="trustedroot",
+                      help="Filenames of trusted cert/cred signer certs. If supplied, verifies the credential.")
+    parser.add_option("--newExpiration", action="store", default=None,
+                      help="Expiration of new credential. Defaults to same as original.")
+    # FIXME: Allow requesting new rights <= orig
     opts, args = parser.parse_args(sys.argv[1:])
 
     logger = configure_logging(opts)
@@ -110,62 +109,128 @@ if __name__ == '__main__':
     if slicecredstr is None:
         sys.exit("No slice credential found")
 
+    # Handle user supplied a set of trusted roots to use to validate the creds/certs
+    roots = None
+    if opts.trustedroot:
+        temp = opts.trustedroot
+        for root in temp:
+            if root is None or str(root).strip == "":
+                continue
+            if os.path.isdir(root):
+                for file in os.listdir(root):
+                    temp.append(os.path.join(root, file))
+            elif os.path.isfile(root):
+                if roots is None:
+                    roots = []
+                roots.append(os.path.expanduser(root))
+
     if (not (type(slicecredstr) is str and slicecredstr.startswith("<"))):
         sys.exit("Not a slice cred in file %s" % opts.slicecred)
 
     slicecred = cred.Credential(string=slicecredstr)
 
-# get the owner's gid/key (person running this
+    newExpiration = None
+    if opts.newExpiration:
+        try:
+            newExpiration = dateutil.parser.parse(opts.newExpiration)
+        except Exception, exc:
+            sys.exit("Failed to parse desired new expiration %s: %s" % (opts.newExpiration, exc))
+
+    # Confirm desired new expiration <= existing expiration
+    slicecred_exp = slicecred.get_expiration()
+    if newExpiration is None:
+        newExpiration = slicecred_exp
+        logger.info("Delegated cred will expire at same time as original: %s UTC" % newExpiration)
+    elif newExpiration > slicecred_exp:
+        sys.exit('Cannot delegate credential until %s UTC past existing expirationn %s UTC' % (newExpiration, slicecred_exp))
+    elif newExpiration <= datetime.datetime.utcnow():
+        sys.exit('Cannot delegate credential until %s UTC - in the past' % (newExpiration))
+    else:
+        logger.info('Delegated cred will expire at %s UTC- sooner than original date of %s UTC' % (newExpiration, slicecred_exp))
+
+    # get the owner's gid/key (person running this)
     owner_key = Keypair(filename=opts.key)
     owner_cert = GID(filename=opts.cert)
-# get the user (Delegatee)'s gid
+
+    # get the user (Delegatee)'s gid
     delegee_cert = GID(filename=opts.delegeegid)
 
-    # confirm cert/key of owner are a pair, haven't expired
+    # confirm cert hasn't expired
+    if owner_cert.cert.has_expired():
+        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_expiration()))
+
     # confirm cert to delegate to hasn't expired
-    # Must cert to delegate to by issued by same entity? I think not
+    if delegee_cert.cert.has_expired():
+        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_expiration()))
 
+    try:
+        # Note roots may be None if user supplied None, in which case we don't actually verify everything
+        if not slicecred.verify(roots):
+            sys.exit("Failed to validate credential")
+    except Exception, exc:
+        raise
+#        sys.exit("Failed to validate credential: %s" % exc)
 
-    # validate the slice cred further?
-    # valid
-    # delegatable
+    # confirm cred says rights are delegatable
+    if not slicecred.get_privileges().get_all_delegate():
+        sys.exit("Slice says not all privileges are delegatable")
+
     # owned by user whose cert we got
     if not owner_cert.get_urn() == slicecred.get_gid_caller().get_urn():
         sys.exit("Can't delegate slice: not owner (mismatched URNs)")
     if not owner_cert.save_to_string(False) == slicecred.get_gid_caller().save_to_string(False):
-        sys.exit("Can't delegate slice: not owner (mismiatched GIDs)")
-
+        sys.exit("Can't delegate slice: not owner (mismatched GIDs)")
 
     object_gid = slicecred.get_gid_object()
-    object_hrn = object_gid.get_hrn()        
+
+    # OK, inputs are verified
+    logger.info("Delegating %s's rights to %s to %s until %s UTC", owner_cert.get_urn(), object_gid.get_urn(), delegee_cert.get_urn(), newExpiration)
+    logger.info("Original rights to delegate: %s" % slicecred.get_privileges().save_to_string())
+    if opts.delegatable:
+        logger.info("New credential will be delegatable")
+
+    # Now construct and sign the delegated credential
+    object_hrn = object_gid.get_hrn()
     delegee_hrn = delegee_cert.get_hrn()
-    
-    #user_key = Keypair(filename=keyfile)
-    #user_hrn = self.get_gid_caller().get_hrn()
     subject_string = "%s delegated to %s" % (object_hrn, delegee_hrn)
     dcred = cred.Credential(subject=subject_string)
     dcred.set_gid_caller(delegee_cert)
     dcred.set_gid_object(object_gid)
     dcred.set_parent(slicecred)
-    dcred.set_expiration(slicecred.get_expiration())
+    dcred.set_expiration(newExpiration)
+
+    # FIXME: permit partial rights delegation
     dcred.set_privileges(slicecred.get_privileges())
     dcred.get_privileges().delegate_all_privileges(opts.delegatable)
-    #dcred.set_issuer_keys(keyfile, delegee_gidfile)
+
     dcred.set_issuer_keys(opts.key, opts.cert)
     dcred.encode()
     dcred.sign()
 
+    # Verify the result is still good
+    try:
+        # Note roots may be None if user supplied None, in which case we don't actually verify everything
+        if not dcred.verify(roots):
+            sys.exit("Failed to validate credential")
+    except Exception, exc:
+        raise
+#        sys.exit("Failed to validate credential: %s" % exc)
+
+#    logger.info( 'Generated delegated credential')
     if opts.debug:
         dcred.dump(True)
+    else:
+        logger.info("Created delegated credential %s", dcred)
 
+    # Save the result to a file
     bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
     if isinstance(delegee_hrn, unicode):
         table = dict((ord(char), unicode('-')) for char in bad)
     else:
         assert isinstance(delegee_hrn, str)
         table = string.maketrans(bad, '-' * len(bad))
-    
+
     newname = delegee_hrn.translate(table) + "-delegated-" + opts.slicecred
     dcred.save_to_file(newname)
+
     logger.info("Saved delegated slice cred to %s" % newname)
-    print dcred
