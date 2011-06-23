@@ -24,9 +24,9 @@ gcf 1.3 May, 2011:
 	    createslice -o --slicecredfile <filename>
  	  saves the new slice credential there. AM calls can use the
 	  credential. 
-          EG: omni.py  --slicecredfile mysavedcred.xml \
+          For example: omni.py  --slicecredfile mysavedcred.xml \
 	               createsliver myslicename myRSpec.xml
-	- new listmyslices command added to see what your framework's
+	- New listmyslices command added to see what your framework's
 	registry has for you (ticket #38)
 	- Refactoring to allow re-use of omni functions as library
 	calls (ticket #37)
@@ -37,7 +37,7 @@ gcf 1.3 May, 2011:
 	- New api_test script to test AM API compliance and server availability
 	- Add options for temporary Orca compatibility
 	- Better config file searching
-	- From Ezra Kissel: Enable allocationg specific PG nodes from
+	- From Ezra Kissel: Enable allocating specific PG nodes from
 	omnispecs (ticket #33)
 	- Bug fixes
 
