@@ -306,7 +306,7 @@ class Framework(Framework_Base):
                 if response is None:
                     msg = msg % (urn, message)
                 else:
-                    msg = msg % (urn, response['output'])
+                    msg = msg % (urn, "PG SA said: " + response['output'])
                 self.logger.warning(msg)
                 return None
             else:
