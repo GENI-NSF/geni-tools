@@ -50,33 +50,62 @@ DEFAULT_CREDENTIAL_LIFETIME = 86400 * 14
 # TODO:
 # . make privs match between PG and PL
 # . Need to add support for other types of credentials, e.g. tickets
-
+# . add namespaces to signed-credential element?
 
 signature_template = \
 '''
 <Signature xml:id="Sig_%s" xmlns="http://www.w3.org/2000/09/xmldsig#">
-    <SignedInfo>
-      <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
-      <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
-      <Reference URI="#%s">
+  <SignedInfo>
+    <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+    <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+    <Reference URI="#%s">
       <Transforms>
         <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
       </Transforms>
       <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
       <DigestValue></DigestValue>
-      </Reference>
-    </SignedInfo>
-    <SignatureValue />
-      <KeyInfo>
-        <X509Data>
-          <X509SubjectName/>
-          <X509IssuerSerial/>
-          <X509Certificate/>
-        </X509Data>
-      <KeyValue />
-      </KeyInfo>
-    </Signature>
+    </Reference>
+  </SignedInfo>
+  <SignatureValue />
+  <KeyInfo>
+    <X509Data>
+      <X509SubjectName/>
+      <X509IssuerSerial/>
+      <X509Certificate/>
+    </X509Data>
+    <KeyValue />
+  </KeyInfo>
+</Signature>
 '''
+
+# PG formats the template (whitespace) slightly differently.
+# Note that they don't include the xmlns in the template, but add it later.
+# Otherwise the two are equivalent.
+#signature_template_as_in_pg = \
+#'''
+#<Signature xml:id="Sig_%s" >
+# <SignedInfo>
+#  <CanonicalizationMethod      Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+#  <SignatureMethod      Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+#  <Reference URI="#%s">
+#    <Transforms>
+#      <Transform         Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+#    </Transforms>
+#    <DigestMethod        Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+#    <DigestValue></DigestValue>
+#    </Reference>
+# </SignedInfo>
+# <SignatureValue />
+# <KeyInfo>
+#  <X509Data >
+#   <X509SubjectName/>
+#   <X509IssuerSerial/>
+#   <X509Certificate/>
+#  </X509Data>
+#  <KeyValue />
+# </KeyInfo>
+#</Signature>
+#'''
 
 ##
 # Convert a string into a bool
@@ -385,6 +414,15 @@ class Credential(object):
         # Create the XML document
         doc = Document()
         signed_cred = doc.createElement("signed-credential")
+
+# PG adds these. It would be nice to be consistent.
+# But it's kind of odd for PL to use PG schemas that talk
+# about tickets, and the PG CM policies.
+# Note the careful addition of attributes from the parent below...
+#        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+#        signed_cred.setAttribute("xsinoNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
+#        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
+
         doc.appendChild(signed_cred)  
         
         # Fill in the <credential> bit        
@@ -416,11 +454,36 @@ class Credential(object):
         # Add the parent credential if it exists
         if self.parent:
             sdoc = parseString(self.parent.get_xml())
+            # If the root node is a signed-credential (it should be), then
+            # get all its attributes and attach those to our signed_cred
+            # node.
+            # Specifically, PG adds attributes for namespaces (which is reasonable),
+            # and we need to include those again here or else their signature
+            # no longer matches on the credential.
+            # We expect three of these, but here we copy them all:
+#        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+#        signed_cred.setAttribute("xsinoNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
+#        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
+            parentRoot = sdoc.documentElement
+            if parentRoot.tagName == "signed-credential" and parentRoot.hasAttributes():
+                for attrIx in range(0, parentRoot.attributes.length):
+                    attr = parentRoot.attributes.item(attrIx)
+                    try:
+                        # returns the old attribute of same name that was
+                        # on the credential
+                        _ = signed_cred.setAttributeNode(attr.cloneNode(True))
+                        # Could complain if the old attribute value is different
+                        # from the new attribute's value. That would indicate
+                        # we've just changed namespaces or something and bad stuff will happen
+                    except:
+                        # throws InUse exception if we forgot to clone the attribute first
+                        pass
+
             p_cred = doc.importNode(sdoc.getElementsByTagName("credential")[0], True)
             p = doc.createElement("parent")
             p.appendChild(p_cred)
             cred.appendChild(p)
-
+        # done handling parent credential
 
         # Create the <signatures> tag
         signatures = doc.createElement("signatures")
@@ -594,10 +657,12 @@ class Credential(object):
             kind = getTextNode(priv, "name")
             deleg = str2bool(getTextNode(priv, "can_delegate"))
             if kind == '*':
-                # Convert * into the default privileges for the credential's type                
+                # Convert * into the default privileges for the credential's type
+                # Each inherits the delegatability from the * above
                 _ , type = urn_to_hrn(self.gidObject.get_urn())
                 rl = rlist.determine_rights(type, self.gidObject.get_urn())
                 for r in rl.rights:
+                    r.delegate = deleg
                     rlist.add(r)
             else:
                 rlist.add(Right(kind.strip(), deleg))
@@ -625,6 +690,7 @@ class Credential(object):
     # Verify
     #   trusted_certs: A list of trusted GID filenames (not GID objects!) 
     #                  Chaining is not supported within the GIDs by xmlsec1.
+    #                  None means skip xmlsec1 et al - only used by some utilities
     #    
     # Verify that:
     # . All of the signatures are valid and that the issuers trace back
@@ -647,22 +713,25 @@ class Credential(object):
     #   must be done elsewhere
     #
     # @param trusted_certs: The certificates of trusted CA certificates
-    def verify(self, trusted_certs):
+    def verify(self, trusted_certs=None):
         if not self.xml:
             self.decode()        
 
 #        trusted_cert_objects = [GID(filename=f) for f in trusted_certs]
         trusted_cert_objects = []
         ok_trusted_certs = []
-        for f in trusted_certs:
-            try:
-                # Failures here include unreadable files
-                # or non PEM files
-                trusted_cert_objects.append(GID(filename=f))
-                ok_trusted_certs.append(f)
-            except Exception, exc:
-                sfa_logger.error("Failed to load trusted cert from %s: %r", f, exc)
-        trusted_certs = ok_trusted_certs
+        # If caller explicitly passed in None that means skip cert chain validation.
+        # Strange and not typical
+        if trusted_certs is not None:
+            for f in trusted_certs:
+                try:
+                    # Failures here include unreadable files
+                    # or non PEM files
+                    trusted_cert_objects.append(GID(filename=f))
+                    ok_trusted_certs.append(f)
+                except Exception, exc:
+                    sfa_logger.error("Failed to load trusted cert from %s: %r", f, exc)
+            trusted_certs = ok_trusted_certs
 
         # Use legacy verification if this is a legacy credential
         if self.legacy:
@@ -679,12 +748,16 @@ class Credential(object):
 
         # Verify the signatures
         filename = self.save_to_random_tmp_file()
-        cert_args = " ".join(['--trusted-pem %s' % x for x in trusted_certs])
+        if trusted_certs is not None:
+            cert_args = " ".join(['--trusted-pem %s' % x for x in trusted_certs])
 
-        # Verify the gids of this cred and of its parents
-        for cur_cred in self.get_credential_list():
-            cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
-            cur_cred.get_gid_caller().verify_chain(trusted_cert_objects) 
+        # If caller explicitly passed in None that means skip cert chain validation.
+        # Strange and not typical
+        if trusted_certs is not None:
+            # Verify the gids of this cred and of its parents
+            for cur_cred in self.get_credential_list():
+                cur_cred.get_gid_object().verify_chain(trusted_cert_objects)
+                cur_cred.get_gid_caller().verify_chain(trusted_cert_objects)
 
         refs = []
         refs.append("Sig_%s" % self.get_refid())
@@ -694,6 +767,13 @@ class Credential(object):
             refs.append("Sig_%s" % ref)
 
         for ref in refs:
+            # If caller explicitly passed in None that means skip xmlsec1 validation.
+            # Strange and not typical
+            if trusted_certs is None:
+                break
+
+#            print "Doing %s --verify --node-id '%s' %s %s 2>&1" % \
+#                (self.xmlsec_path, ref, cert_args, filename)
             verified = os.popen('%s --verify --node-id "%s" %s %s 2>&1' \
                             % (self.xmlsec_path, ref, cert_args, filename)).read()
             if not verified.strip().startswith("OK"):
@@ -704,7 +784,7 @@ class Credential(object):
                     mstart = mstart + 4
                     mend = verified.find('\\', mstart)
                     msg = verified[mstart:mend]
-                raise CredentialNotVerifiable("xmlsec1 error verifying cert: %s %s" % (msg, verified.strip()))
+                raise CredentialNotVerifiable("xmlsec1 error verifying cred using Signature ID %s: %s %s" % (ref, msg, verified.strip()))
         os.remove(filename)
 
         # Verify the parents (delegation)
@@ -779,8 +859,8 @@ class Credential(object):
         # make sure the rights given to the child are a subset of the
         # parents rights (and check delegate bits)
         if not parent_cred.get_privileges().is_superset(self.get_privileges()):
-            raise ChildRightsNotSubsetOfParent(
-                self.parent.get_privileges().save_to_string() + " " +
+            raise ChildRightsNotSubsetOfParent(("Parent cred ref %s rights " % self.parent.get_refid()) + 
+                self.parent.get_privileges().save_to_string() + (" not superset of delegated cred ref %s rights " % self.get_refid()) +
                 self.get_privileges().save_to_string())
 
         # make sure my target gid is the same as the parent's
