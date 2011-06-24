@@ -468,16 +468,14 @@ class Credential(object):
             if parentRoot.tagName == "signed-credential" and parentRoot.hasAttributes():
                 for attrIx in range(0, parentRoot.attributes.length):
                     attr = parentRoot.attributes.item(attrIx)
-                    try:
-                        # returns the old attribute of same name that was
-                        # on the credential
-                        _ = signed_cred.setAttributeNode(attr.cloneNode(True))
-                        # Could complain if the old attribute value is different
-                        # from the new attribute's value. That would indicate
-                        # we've just changed namespaces or something and bad stuff will happen
-                    except:
-                        # throws InUse exception if we forgot to clone the attribute first
-                        pass
+                    # returns the old attribute of same name that was
+                    # on the credential
+                    # Below throws InUse exception if we forgot to clone the attribute first
+                    oldAttr = signed_cred.setAttributeNode(attr.cloneNode(True))
+                    if oldAttr and oldAttr.value != attr.value:
+                        msg = "Delegating cred from owner %s to %s over %s replaced attribute %s value %s with %s" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
+                        sfa_logger.error(msg)
+                        raise CredentialNotVerifiable("Can't encode new valid delegated credential: %s" % msg)
 
             p_cred = doc.importNode(sdoc.getElementsByTagName("credential")[0], True)
             p = doc.createElement("parent")
