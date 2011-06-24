@@ -25,7 +25,7 @@ URN creation and verification utilities.
 '''
 
 import re
-from sfa.util.namespace import URN_PREFIX
+from sfa.util.xrn import Xrn # for URN_PREFIX
 
 class URN(object):
     """ 
@@ -82,7 +82,7 @@ class URN(object):
             if not is_valid_urn_string(name):
                 name = string_to_urn_format(name)
             
-            self.urn = '%s+%s+%s+%s' % (URN_PREFIX, authority, type, name)
+            self.urn = '%s+%s+%s+%s' % (Xrn.URN_PREFIX, authority, type, name)
             if not is_valid_urn(self.urn):
                 raise ValueError("Failed to create valid URN from args %s, %s, %s" % (self.authority, self.type, self.name))
     
@@ -121,7 +121,7 @@ publicid_xforms = [('%',  '%25'),
                    ('//', ':'  ),
                    ('/',  '%2F')]
 
-# FIXME: See sfa/util/namespace/URN_PREFIX which is ...:IDN
+# FIXME: See sfa/util/xrn/Xrn.URN_PREFIX which is ...:IDN
 publicid_urn_prefix = 'urn:publicid:'    
     
 # validate urn

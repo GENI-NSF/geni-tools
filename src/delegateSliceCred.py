@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False):
+        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         raise
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     # Verify the result is still good
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False):
+        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         raise

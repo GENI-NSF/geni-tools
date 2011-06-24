@@ -25,14 +25,12 @@
 # descendant of the certificate class.
 ##
 
-### $Id$
-### $URL$
 import xmlrpclib
 import uuid
 
-from sfa.util.sfalogging import sfa_logger
+from sfa.util.sfalogging import logger
 from sfa.trust.certificate import Certificate
-from sfa.util.namespace import *
+from sfa.util.xrn import hrn_to_urn, urn_to_hrn
 
 ##
 # Create a new uuid. Returns the UUID as a string.
@@ -82,7 +80,7 @@ class GID(Certificate):
         
         Certificate.__init__(self, create, subject, string, filename)
         if subject:
-            sfa_logger.debug("Creating GID for subject: %s" % subject)
+            logger.debug("Creating GID for subject: %s" % subject)
         if uuid:
             self.uuid = int(uuid)
         if hrn:
@@ -178,14 +176,21 @@ class GID(Certificate):
     # @param indent specifies a number of spaces to indent the output
     # @param dump_parents If true, also dump the parents of the GID
 
-    def dump(self, indent=0, dump_parents=False):
-        print " "*indent, " hrn:", self.get_hrn()
-        print " "*indent, " urn:", self.get_urn()
-        print " "*indent, "uuid:", self.get_uuid()
+    def dump(self, *args, **kwargs):
+        print self.dump_string(*args,**kwargs)
+
+    def dump_string(self, indent=0, dump_parents=False):
+        result="GID\n"
+        result += " "*indent + "hrn:" + str(self.get_hrn()) +"\n"
+        result += " "*indent + "urn:" + str(self.get_urn()) +"\n"
+        result += " "*indent + "uuid:" + str(self.get_uuid()) + "\n"
+        filename=self.get_filename()
+        if filename: result += "Filename %s\n"%filename
 
         if self.parent and dump_parents:
-            print " "*indent, "parent:"
-            self.parent.dump(indent+4, dump_parents)
+            result += " "*indent + "parent:\n"
+            result += self.parent.dump_string(indent+4, dump_parents)
+        return result
 
     ##
     # Verify the chain of authenticity of the GID. First perform the checks

@@ -23,56 +23,84 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import os
+import os, sys
 import traceback
 import logging, logging.handlers
+
+CRITICAL=logging.CRITICAL
+ERROR=logging.ERROR
+WARNING=logging.WARNING
+INFO=logging.INFO
+DEBUG=logging.DEBUG
 
 # a logger that can handle tracebacks 
 class _SfaLogger:
     def __init__ (self,logfile=None,loggername=None,level=logging.INFO):
         # default is to locate loggername from the logfile if avail.
         if not logfile:
-            loggername='console'
-            handler=logging.StreamHandler()
-            handler.setFormatter(logging.Formatter("%(message)s"))
-        else:
-            if not loggername:
-                loggername=os.path.basename(logfile)
-            try:
-                handler=logging.handlers.RotatingFileHandler(logfile,maxBytes=1000000, backupCount=5) 
-            except IOError:
-                # This is usually a permissions error becaue the file is
-                # owned by root, but httpd is trying to access it.
-                tmplogfile=os.getenv("TMPDIR", "/tmp") + os.path.sep + os.path.basename(logfile)
-                handler=logging.handlers.RotatingFileHandler(tmplogfile,maxBytes=1000000, backupCount=5) 
-            handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+            #loggername='console'
+            #handler=logging.StreamHandler()
+            #handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+            logfile = "/var/log/sfa.log"
 
+        if not loggername:
+            loggername=os.path.basename(logfile)
+        try:
+            handler=logging.handlers.RotatingFileHandler(logfile,maxBytes=1000000, backupCount=5) 
+        except IOError:
+            # This is usually a permissions error becaue the file is
+            # owned by root, but httpd is trying to access it.
+            tmplogfile=os.getenv("TMPDIR", "/tmp") + os.path.sep + os.path.basename(logfile)
+            handler=logging.handlers.RotatingFileHandler(tmplogfile,maxBytes=1000000, backupCount=5) 
+        handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
         self.logger=logging.getLogger(loggername)
         self.logger.setLevel(level)
-        self.logger.addHandler(handler)
+        # check if logger already has the handler we're about to add
+        handler_exists = False
+        for l_handler in self.logger.handlers:
+            if l_handler.baseFilename == handler.baseFilename and \
+               l_handler.level == handler.level:
+                handler_exists = True
+
+        if not handler_exists:
+            self.logger.addHandler(handler)
+
+        self.loggername=loggername
 
     def setLevel(self,level):
         self.logger.setLevel(level)
 
-    ####################
-    def wrap(fun):
-        def wrapped(self,msg,*args,**kwds):
-            native=getattr(self.logger,fun.__name__)
-            return native(msg,*args,**kwds)
-        #wrapped.__doc__=native.__doc__
-        return wrapped
+    # shorthand to avoid having to import logging all over the place
+    def setLevelDebug(self):
+        self.logger.setLevel(logging.DEBUG)
 
-    @wrap
-    def critical(): pass
-    @wrap
-    def error(): pass
-    @wrap
-    def warning(): pass
-    @wrap
-    def info(): pass
-    @wrap
-    def debug(): pass
-    
+    # define a verbose option with s/t like
+    # parser.add_option("-v", "--verbose", action="count", dest="verbose", default=0)
+    # and pass the coresponding options.verbose to this method to adjust level
+    def setLevelFromOptVerbose(self,verbose):
+        if verbose==0:
+            self.logger.setLevel(logging.WARNING)
+        elif verbose==1:
+            self.logger.setLevel(logging.INFO)
+        elif verbose==2:
+            self.logger.setLevel(logging.DEBUG)
+
+    ####################
+    def info(self, msg):
+        self.logger.info(msg)
+
+    def debug(self, msg):
+        self.logger.debug(msg)
+
+    def warn(self, msg):
+        self.logger.warn(msg)
+
+    def error(self, msg):
+        self.logger.error(msg)
+
+    def critical(self, msg):
+        self.logger.critical(msg)
+
     # logs an exception - use in an except statement
     def log_exc(self,message):
         self.error("%s BEG TRACEBACK"%message+"\n"+traceback.format_exc().strip("\n"))
@@ -88,10 +116,14 @@ class _SfaLogger:
         self.debug("%s BEG STACK"%message+"\n"+to_log)
         self.debug("%s END STACK"%message)
 
-sfa_logger=_SfaLogger(logfile='/var/log/sfa.log')
-sfa_import_logger=_SfaLogger(logfile='/var/log/sfa_import.log')
-console_logger=_SfaLogger()
 
+info_logger = _SfaLogger(loggername='info', level=logging.INFO)
+debug_logger = _SfaLogger(loggername='debug', level=logging.DEBUG)
+warn_logger = _SfaLogger(loggername='warning', level=logging.WARNING)
+error_logger = _SfaLogger(loggername='error', level=logging.ERROR)
+critical_logger = _SfaLogger(loggername='critical', level=logging.CRITICAL)
+logger = info_logger
+sfi_logger = _SfaLogger(logfile=os.path.expanduser("~/.sfi/")+'sfi.log',loggername='sfilog', level=logging.DEBUG)
 ########################################
 import time
 
@@ -109,7 +141,7 @@ def profile(logger):
             result = callable(*args, **kwds)
             end = time.time()
             args = map(str, args)
-            args += ["%s = %s" % (name, str(value)) for (name, value) in kwds.items()]
+            args += ["%s = %s" % (name, str(value)) for (name, value) in kwds.iteritems()]
             # should probably use debug, but then debug is not always enabled
             logger.info("PROFILED %s (%s): %.02f s" % (callable.__name__, ", ".join(args), end - start))
             return result
@@ -120,20 +152,25 @@ def profile(logger):
 if __name__ == '__main__': 
     print 'testing sfalogging into logger.log'
     logger=_SfaLogger('logger.log')
+    logger2=_SfaLogger('logger.log', level=logging.DEBUG)
+    logger3=_SfaLogger('logger.log', level=logging.ERROR)
+    print logger.logger.handlers
+
     logger.critical("logger.critical")
     logger.error("logger.error")
-    logger.warning("logger.warning")
+    logger.warn("logger.warning")
     logger.info("logger.info")
     logger.debug("logger.debug")
     logger.setLevel(logging.DEBUG)
     logger.debug("logger.debug again")
     
-    @profile(console_logger)
+
+    @profile(logger)
     def sleep(seconds = 1):
         time.sleep(seconds)
 
-    
-    console_logger.info('console.info')
+    logger.info('console.info')
     sleep(0.5)
-    console_logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
     sleep(0.25)
+

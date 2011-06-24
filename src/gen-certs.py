@@ -81,7 +81,7 @@ CERT_AUTHORITY = None # configured in gcf_config
 USER_CERT_TYPE = 'user'
 
 # For CHs and AMs. EG gcf+authority+am
-# See sfa/util/namespace.py eg
+# See sfa/util/xrn.py eg
 # Only authorities can sign credentials.
 AUTHORITY_CERT_TYPE = 'authority'
 CH_CERT_SUBJ = 'sa' 

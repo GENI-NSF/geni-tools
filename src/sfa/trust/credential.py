@@ -33,15 +33,24 @@ import os
 import datetime
 from tempfile import mkstemp
 from xml.dom.minidom import Document, parseString
+
+HAVELXML = False
+try:
+    from lxml import etree
+    HAVELXML = True
+except:
+    pass
+
 from dateutil.parser import parse
+from StringIO import StringIO
 
 from sfa.util.faults import *
-from sfa.util.sfalogging import sfa_logger
+from sfa.util.sfalogging import logger
 from sfa.trust.certificate import Keypair
 from sfa.trust.credential_legacy import CredentialLegacy
 from sfa.trust.rights import Right, Rights
 from sfa.trust.gid import GID
-from sfa.util.namespace import *
+from sfa.util.xrn import urn_to_hrn
 
 # 2 weeks, in seconds 
 DEFAULT_CREDENTIAL_LIFETIME = 86400 * 14
@@ -474,7 +483,7 @@ class Credential(object):
                     oldAttr = signed_cred.setAttributeNode(attr.cloneNode(True))
                     if oldAttr and oldAttr.value != attr.value:
                         msg = "Delegating cred from owner %s to %s over %s replaced attribute %s value %s with %s" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
-                        sfa_logger.error(msg)
+                        logger.error(msg)
                         raise CredentialNotVerifiable("Can't encode new valid delegated credential: %s" % msg)
 
             p_cred = doc.importNode(sdoc.getElementsByTagName("credential")[0], True)
@@ -714,9 +723,20 @@ class Credential(object):
     #   must be done elsewhere
     #
     # @param trusted_certs: The certificates of trusted CA certificates
-    def verify(self, trusted_certs=None, trusted_certs_required=True):
+    def verify(self, trusted_certs=None, schema=None, trusted_certs_required=True):
         if not self.xml:
-            self.decode()        
+            self.decode()
+
+        # validate against RelaxNG schema
+        if HAVELXML and not self.legacy:
+            if schema and os.path.exists(schema):
+                tree = etree.parse(StringIO(self.xml))
+                schema_doc = etree.parse(schema)
+                xmlschema = etree.XMLSchema(schema_doc)
+                if not xmlschema.validate(tree):
+                    error = xmlschema.error_log.last_error
+                    message = "%s (line %s)" % (error.message, error.line)
+                    raise CredentialNotVerifiable(message)
 
         if trusted_certs_required and trusted_certs is None:
             trusted_certs = []
@@ -734,7 +754,7 @@ class Credential(object):
                     trusted_cert_objects.append(GID(filename=f))
                     ok_trusted_certs.append(f)
                 except Exception, exc:
-                    sfa_logger.error("Failed to load trusted cert from %s: %r", f, exc)
+                    logger.error("Failed to load trusted cert from %s: %r", f, exc)
             trusted_certs = ok_trusted_certs
 
         # Use legacy verification if this is a legacy credential
@@ -835,7 +855,7 @@ class Credential(object):
         # Maybe should be (hrn, type) = urn_to_hrn(root_cred_signer.get_urn())
         root_cred_signer_type = root_cred_signer.get_type()
         if (root_cred_signer_type == 'authority'):
-            #sfa_logger.debug('Cred signer is an authority')
+            #logger.debug('Cred signer is an authority')
             # signer is an authority, see if target is in authority's domain
             hrn = root_cred_signer.get_hrn()
             if root_target_gid.get_hrn().startswith(hrn):
@@ -914,32 +934,42 @@ class Credential(object):
         dcred.encode()
         dcred.sign()
 
-        return dcred 
+        return dcred
+
+    # only informative
+    def get_filename(self):
+        return getattr(self,'filename',None)
+
     ##
     # Dump the contents of a credential to stdout in human-readable format
     #
     # @param dump_parents If true, also dump the parent certificates
+    def dump (self, *args, **kwargs):
+        print self.dump_string(*args, **kwargs)
 
-    def dump(self, dump_parents=False):
-        print "CREDENTIAL", self.get_subject()
 
-        print "      privs:", self.get_privileges().save_to_string()
-
-        print "  gidCaller:"
+    def dump_string(self, dump_parents=False):
+        result=""
+        result += "CREDENTIAL %s\n" % self.get_subject()
+        filename=self.get_filename()
+        if filename: result += "Filename %s\n"%filename
+        result += "      privs: %s\n" % self.get_privileges().save_to_string()
         gidCaller = self.get_gid_caller()
         if gidCaller:
-            gidCaller.dump(8, dump_parents)
-
-        print "  gidObject:"
-        gidObject = self.get_gid_object()
-        if gidObject:
-            gidObject.dump(8, dump_parents)
+            result += "  gidCaller:\n"
+            result += gidCaller.dump_string(8, dump_parents)
 
         if self.get_signature():
             print "  gidIssuer:"
             self.get_signature().get_issuer_gid().dump(8, dump_parents)
 
-        if self.parent and dump_parents:
-            print "\nPARENT",
-            self.parent.dump(True)
+        gidObject = self.get_gid_object()
+        if gidObject:
+            result += "  gidObject:\n"
+            result += gidObject.dump_string(8, dump_parents)
 
+        if self.parent and dump_parents:
+            result += "\nPARENT"
+            result += self.parent.dump(True)
+
+        return result

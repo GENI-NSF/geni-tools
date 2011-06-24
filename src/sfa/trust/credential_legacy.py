@@ -245,24 +245,29 @@ class CredentialLegacy(Certificate):
     #
     # @param dump_parents If true, also dump the parent certificates
 
-    def dump(self, dump_parents=False):
-        print "CREDENTIAL", self.get_subject()
+    def dump(self, *args, **kwargs):
+        print self.dump_string(*args,**kwargs)
 
-        print "      privs:", self.get_privileges().save_to_string()
+    def dump_string(self, dump_parents=False):
+        result=""
+        result += "CREDENTIAL %s\n" % self.get_subject()
 
-        print "  gidCaller:"
+        result += "      privs: %s\n" % self.get_privileges().save_to_string()
+
         gidCaller = self.get_gid_caller()
         if gidCaller:
+            result += "  gidCaller:\n"
             gidCaller.dump(8, dump_parents)
 
-        print "  gidObject:"
         gidObject = self.get_gid_object()
         if gidObject:
-            gidObject.dump(8, dump_parents)
+            result += "  gidObject:\n"
+            result += gidObject.dump_string(8, dump_parents)
 
-        print "   delegate:", self.get_delegate()
+        result += "   delegate: %s" % self.get_delegate()
 
         if self.parent and dump_parents:
-           print "PARENT",
-           self.parent.dump(dump_parents)
+            result += "PARENT\n"
+            result += self.parent.dump_string(dump_parents)
 
+        return result
