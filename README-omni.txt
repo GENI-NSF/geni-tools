@@ -65,65 +65,22 @@ use the omni.call function.
 For example:
   User does:
 {{{
-    myscript.py -f my_sfa --myScriptPrivateOption doNativeList <slicename>
+    myscript.py -f my_sfa --myScriptPrivateOption doNonNativeList <slicename>
 }}}
 
   Your myscript.py code does:
 {{{
-    import sys
-    import omni
-
-    def main(argv=None):
-      # Get a parser from omni that understands omni options
-      parser = omni.getParser()
-      # Add additional optparse.OptionParser style options for your
-      # script as needed.
-      # Be sure not to re-use options already in use by omni for
-      # different meanings, otherwise you'll raise an OptionConflictError
-      parser.add_option("--myScriptPrivateOption",
-			action="store_true", default=False)
-      # options is an optparse.Values object, and args is a list
-      options, args = parser.parse_args(sys.argv[1:])
-      if options.myScriptPrivateOption:
-          # do something special for your private script's options
-	  print "Got myScriptOption"
-      # figure out doNativeList means to do listresources with the
-      # -n argument and parse out slicename arg
-      omniargs = []
-      if args and len(args)>0:
-         if args[0] == "doNativeList":
-           print "Doing native listing"
-           omniargs.append("-n")
-           omniargs.append("listresources")
-         else:
-           print "Unknown command %s. Do getversion" % args[0]
-           omniargs.append("getversion")
-         if len(args)>1:
-           print "Got slice name %s" % args[1]
-           slicename=args[1]
-           omniargs.append(slicename)
-
-      # And now call omni, and omni sees your parsed options and arguments
-      text, dict = omni.call(omniargs, options)
-
-      # Process the dictionary returned in some way
-      print dict
-
-      # Give the text back to the user
-      print text
-
-    if __name__ == "__main__":
-      sys.exit(main())
+Change the omni scripting example to use -o and not -n which is already the default (in omni.py and in README-omni.txt and on the OmniOverview page and on the OmniScriptingWithOptions page) 
 }}}
 
   This is equivalent to:
 {{{
-    ./omni.py -n listresources <slicename>
+    ./omni.py --omnispec listresources <slicename>
 }}}
 
 This allows your calling script to:
  * Have its own private options
- * Programmatically set other omni options (like inferring the "-n")
+ * Programmatically set other omni options (like inferring the "--omnispec")
  * Accept omni options (like "-f") in your script to pass along to omni
 
 In the omni.call method:
