@@ -1706,54 +1706,87 @@ def call(argv, options=None, verbose=False):
       Use this to pre-set certain values, or allow your caller to get omni options from its commandline
 
     Can call functions like this:
-     User does:    myscript.py -f my_sfa --myScriptPrivateOption doNativeList slicename
+     User does:    myscript.py -f my_sfa --myScriptPrivateOption doNonNativeList slicename
 
      Your myscript.py code does:
       import sys
       import omni
 
+      ################################################################################
+      # Requires that you have omni installed or the path to gcf/src in your
+      # PYTHONPATH.
+      #
+      # For example put the following in your bashrc:
+      #     export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src
+      #
+      ################################################################################
+
       def main(argv=None):
+        ##############################################################################
         # Get a parser from omni that understands omni options
+        ##############################################################################
         parser = omni.getParser()
-        # Add additional optparse.OptionParser style options for your script as needed
-        # Be sure not to re-use options already in use by omni for different meanings
-        # otherwise you'll raise an OptionConflictError
+        # update usage for help message
+        omni_usage = parser.get_usage()
+        parser.set_usage(omni_usage+"\nmyscript.py supports additional commands.\n\n\tCommands and their arguments are:\n\t\t\tdoNonNativeList [optional: slicename]")
+
+        ##############################################################################
+        # Add additional optparse.OptionParser style options for your
+        # script as needed.
+        # Be sure not to re-use options already in use by omni for
+        # different meanings, otherwise you'll raise an OptionConflictError
+        ##############################################################################
         parser.add_option("--myScriptPrivateOption",
-			action="store_true", default=False)
+                          help="A non-omni option added by %s"%sys.argv[0],
+                          action="store_true", default=False)
         # options is an optparse.Values object, and args is a list
         options, args = parser.parse_args(sys.argv[1:])
         if options.myScriptPrivateOption:
           # do something special for your private script's options
           print "Got myScriptOption"
-        # figure out doNativeList means to do listresources with the
-        # -n argument and parse out slicename arg
+
+
+
+        ##############################################################################
+        # figure out that doNonNativeList means to do listresources with the
+        # --omnispec argument and parse out slicename arg
+        ##############################################################################
         omniargs = []
         if args and len(args)>0:
-           if args[0] == "doNativeList":
-             print "Doing native listing"
-             omniargs.append("-n")
-             omniargs.append("listresources")
-           else:
-             print "Unknown command. Do getversion"
-             omniargs.append("getversion")
-           if len(args)>1:
-             print "Got slice name %s" % args[1]
-             slicename=args[1]
-             omniargs.append(slicename)
+          if args[0] == "doNonNativeList":
+            print "Doing omnispec listing"
+            omniargs.append("--omnispec")
+            omniargs.append("listresources")
+            if len(args)>1:
+              print "Got slice name %s" % args[1]
+              slicename=args[1]
+              omniargs.append(slicename)
+          else:
+            omniargs = args
+        else:
+          print "Got no command. Run '%s -h' for more information."%sys.argv[0]
+          return
 
+        ##############################################################################
         # And now call omni, and omni sees your parsed options and arguments
-        text, dict = omni.call(omniargs, options)
-
-        # Process the dictionary returned in some way
-        print dict
+        ##############################################################################
+        text, retItem = omni.call(omniargs, options)
 
         # Give the text back to the user
         print text
 
+        # Process the dictionary returned in some way
+        if type(retItem) == type({}):
+          numItems = len(retItem.keys())
+        elif type(retItem) == type([]):
+          numItems = len(retItem)
+        if numItems:
+          print "\nThere were %d items returned." % numItems
+
       if __name__ == "__main__":
           sys.exit(main())
 
-    This is equivalent to: ./omni.py -n listresources <slicename>
+    This is equivalent to: ./omni.py --omnispec listresources <slicename>
 
     Verbose option allows printing the command and summary, or suppressing it.
     Callers can control omni logs (suppressing console printing for example) using python logging.
@@ -1909,11 +1942,11 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file")
+                      help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file (Omni picks the name)")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="Filename prefix (used with -o)")
+                      help="Filename prefix when saving results (used with -o)")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to with -o getslicecred")
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
     # Note that type and version are strings. Nominally case-sensitive.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, e.g. 'ProtoGENI 2'")

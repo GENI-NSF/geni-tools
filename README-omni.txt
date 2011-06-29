@@ -134,12 +134,10 @@ def main(argv=None):
   ##############################################################################
   text, retItem = omni.call(omniargs, options)
 
-  # Process the dictionary returned in some way
-  print retItem
-
   # Give the text back to the user
   print text
 
+  # Process the dictionary returned in some way
   if type(retItem) == type({}):
     numItems = len(retItem.keys())
   elif type(retItem) == type([]):
@@ -272,14 +270,16 @@ Omni supports the following command-line options.
         Use the given Orca slice id
 
 -o, --output   Write output of getversion, listresources,
-        createsliver, sliverstatus, or getslicecred to a file
+        createsliver, sliverstatus, or getslicecred to a file (Omni
+        picks the name)
 
 -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
         Filename prefix (used with -o)
 
 --slicecredfile SLICE_CRED_FILENAME
         Name of slice credential file to read from if it exists, or
-	-save to with -o getslicecred
+	save to when running like 
+	'--slicecredfile mySliceCred.xml -o getslicecred mySliceName'
 
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
         Ad RSpec type and version to return, e.g. 'ProtoGENI 2'
