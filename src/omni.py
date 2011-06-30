@@ -90,6 +90,19 @@ import omnilib.xmlrpc.client
 
 OMNI_VERSION="1.4"
 
+def naiveUTC(dt):
+    """Converts dt to a naive datetime in UTC.
+
+    if 'dt' has a timezone then
+        convert to UTC
+        strip off timezone (make it "naive" in Python parlance)
+    """
+    if dt.tzinfo:
+        tz_utc = dateutil.tz.tzutc()
+        dt = dt.astimezone(tz_utc)
+        dt = dt.replace(tzinfo=None)
+    return dt
+
 class CallHandler(object):
     """Handle calls on the framework. Valid calls are all
     methods without an underscore: getversion, createslice, deleteslice, 
@@ -872,10 +885,14 @@ class CallHandler(object):
         except Exception, exc:
             self._raise_omni_error('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
+        # Convert to naive UTC time if necessary
+        time = naiveUTC(time)
+
         retVal = ''
 
         # Compare requested time with slice expiration time
         slicecred_exp = credutils.get_cred_exp(self.logger, slice_cred)
+        slicecred_exp = naiveUTC(slicecred_exp)
         retVal += self._print_slice_expiration(urn, slice_cred) +"\n"
         if time > slicecred_exp:
             self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
@@ -1451,6 +1468,7 @@ class CallHandler(object):
             return ""
 
         sliceexp = credutils.get_cred_exp(self.logger, sliceCred)
+        sliceexp = naiveUTC(sliceexp)
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
             retVal = 'Slice %s has expired at %s UTC' % (urn, sliceexp)
