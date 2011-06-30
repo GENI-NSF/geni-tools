@@ -767,7 +767,7 @@ class Credential(object):
             return True
         
         # make sure it is not expired
-        if self.get_expiration() < datetime.datetime.utcnow():
+        if self.get_expiration().replace(tzinfo=None) < datetime.datetime.utcnow():
             raise CredentialNotVerifiable("Credential expired at %s" % self.expiration.isoformat())
 
         # Verify the signatures
