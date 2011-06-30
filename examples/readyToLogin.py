@@ -90,17 +90,8 @@ def loginToPlanetlab( sliverStat, inXterm=True ):
         output += "\n"
     return output
 
-#def loginToProtoGENI( sliverStat, inXterm=True ):
-#    return "Parsing of ProtoGENI resources is not yet implemented at this time."
-
 def loginToProtoGENI( sliverStat, inXterm=True ):
     """Print command to ssh into a ProtoGENI host."""
-#    print sliverStat
-#    for resource in sliverStat['geni_resources']:
-#        print resource['pg_manifest']['attributes']['hostname']
-#        print resource['pg_manifest']['name']
-#        print resource['pg_manifest']
-
     output = ""
     for resourceDict in sliverStat['geni_resources']: 
         for children1 in resourceDict['pg_manifest']['children']:
@@ -118,29 +109,6 @@ def loginToProtoGENI( sliverStat, inXterm=True ):
                     output += " &"
         output += "\n"
     return output
-
-
-    # for resource in resourceDict['geni_resources']: 
-    #     output = ""
-    #     for manifest in resource['pg_manifest']: 
-    #         if inXterm is True:
-    #             output = "xterm -e "
-    #             output += "ssh %s@%s" % ( manifest['name'], manifest['attributes']['hostname'])
-    #     if inXterm is True:
-    #         output += " &"
-    #     return output 
-
-
-def stripExtraLines( sliverstatusList ):
-    """Remove extraneous output"""
-    for line in sliverstatusList:
-        if not line.startswith("{"):
-            sliverstatusList = sliverstatusList[1:]
-        else:
-            return sliverstatusList
-    return sliverstatusList
-
-
 def main(argv=None):
     parser = omni.getParser()
     # Parse Options
@@ -160,8 +128,6 @@ def main(argv=None):
     
     # Run equivalent of 'omni.py sliverstatus username'
     text, sliverStatus = omni.call( ['sliverstatus', slicename], options )
-    
-#    print sliverStatus
 
     # Do Real Work
     # Determine how to SSH into nodes
