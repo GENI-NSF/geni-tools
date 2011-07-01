@@ -852,7 +852,7 @@ class CallHandler(object):
         return retVal, result
 
     def renewsliver(self, args):
-        """AM API RenewSliver <slicename> <new expiration time in UTC>
+        """AM API RenewSliver <slicename> <new expiration time in UTC or with a timezone>
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
         only the slice name part here (e.g. myslice).
@@ -865,6 +865,8 @@ class CallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
         Note that the expiration time cannot be past your slice expiration time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
         """
@@ -885,7 +887,7 @@ class CallHandler(object):
         except Exception, exc:
             self._raise_omni_error('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
 
-        # Convert to naive UTC time if necessary
+        # Convert to naive UTC time if necessary for ease of comparison
         time = naiveUTC(time)
 
         retVal = ''
@@ -902,7 +904,10 @@ class CallHandler(object):
         else:
             self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slicecred_exp, time))
 
-        self.logger.info('Renewing Sliver %s until %s UTC' % (urn, time))
+        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+
+        self.logger.info('Renewing Sliver %s until %s (UTC)' % (urn, time_with_tz))
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -914,7 +919,7 @@ class CallHandler(object):
         (clientList, message) = self._getclients()
         for client in clientList:
             # Note that the time arg includes UTC offset as needed
-            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time.isoformat())
+            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, [slice_cred], time_with_tz.isoformat())
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
                 if message != "":
@@ -924,7 +929,7 @@ class CallHandler(object):
                 self.logger.warn(prStr)
                 failList.append( client.url )
             else:
-                prStr = "Renewed sliver %s at %s (%s) until %s UTC" % (urn, client.urn, client.url, time.isoformat())
+                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
@@ -933,7 +938,7 @@ class CallHandler(object):
         if len(clientList) == 0:
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
-            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s UTC\n" % (successCnt, len(clientList), urn, time)
+            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
         return retVal, (successList, failList)
 
     def sliverstatus(self, args):
@@ -1228,6 +1233,8 @@ class CallHandler(object):
         """Renew the slice at the clearinghouse so that the slivers can be
         renewed.
         Args: slicename, and expirationdate
+          Note that Slice Authorities may interpret dates differently if you do not
+          specify a timezone. SFA drops any timezone information though.
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
         only the slice name part here (e.g. myslice).

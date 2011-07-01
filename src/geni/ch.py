@@ -29,6 +29,7 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
+import dateutil
 import traceback
 import uuid
 import os
@@ -200,6 +201,19 @@ class Clearinghouse(object):
         return SecureXMLRPCServer(addr, keyfile=keyfile, certfile=certfile,
                                   ca_certs=ca_certs)
 
+    def _naiveUTC(self, dt):
+        """Converts dt to a naive datetime in UTC.
+
+        if 'dt' has a timezone then
+        convert to UTC
+        strip off timezone (make it "naive" in Python parlance)
+        """
+        if dt.tzinfo:
+            tz_utc = dateutil.tz.tzutc()
+            dt = dt.astimezone(tz_utc)
+            dt = dt.replace(tzinfo=None)
+        return dt
+
     def GetVersion(self):
         self.logger.info("Called GetVersion")
         version = dict()
@@ -217,12 +231,13 @@ class Clearinghouse(object):
             # If the Slice has expired, treat this as
             # a request to renew
             slice_cred = self.slices[urn_req]
-            if slice_cred.expiration <= datetime.datetime.utcnow():
+            slice_exp = self._naiveUTC(slice_cred.expiration)
+            if slice_exp <= datetime.datetime.utcnow():
                 # Need to renew this slice
-                self.logger.info("CreateSlice on %r found existing cred that expired at %r - will renew", urn_req, slice_cred.expiration)
+                self.logger.info("CreateSlice on %r found existing cred that expired at %r - will renew", urn_req, slice_exp)
                 slice_gid = slice_cred.get_gid_object()
             else:
-                self.logger.debug("Slice cred is still valid at %r until %r - return it", datetime.datetime.utcnow(), slice_cred.expiration)
+                self.logger.debug("Slice cred is still valid at %r until %r - return it", datetime.datetime.utcnow(), slice_exp)
                 return slice_cred.save_to_string()
         
         # First ensure we have a slice_urn
