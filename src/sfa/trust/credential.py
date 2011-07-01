@@ -46,6 +46,7 @@ from StringIO import StringIO
 
 from sfa.util.faults import *
 from sfa.util.sfalogging import logger
+from sfa.util.sfatime import utcparse
 from sfa.trust.certificate import Keypair
 from sfa.trust.credential_legacy import CredentialLegacy
 from sfa.trust.rights import Right, Rights
@@ -767,7 +768,7 @@ class Credential(object):
             return True
         
         # make sure it is not expired
-        if self.get_expiration().replace(tzinfo=None) < datetime.datetime.utcnow():
+        if utcparse(self.get_expiration()) < datetime.datetime.utcnow():
             raise CredentialNotVerifiable("Credential expired at %s" % self.expiration.isoformat())
 
         # Verify the signatures
