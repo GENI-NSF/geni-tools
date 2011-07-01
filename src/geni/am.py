@@ -445,8 +445,9 @@ class ReferenceAggregateManager(object):
         # do not create a sliver that will outlive the slice!
         expiration = datetime.datetime.utcnow() + self.max_lease
         for cred in creds:
-            if cred.expiration < expiration:
-                expiration = cred.expiration
+            credexp = self._naiveUTC(cred.expiration)
+            if credexp < expiration:
+                expiration = credexp
 
         sliver = Sliver(slice_urn, expiration)
 
@@ -543,7 +544,7 @@ class ReferenceAggregateManager(object):
 
     def RenewSliver(self, slice_urn, credentials, expiration_time):
         '''Renew the local sliver that is part of the named Slice
-        until the given expiration time (in UTC).
+        until the given expiration time (in UTC with a TZ per RFC3339).
         Requires at least one credential that is valid until then.
         Return False on any error, True on success.'''
 
@@ -563,15 +564,20 @@ class ReferenceAggregateManager(object):
                                  slice_urn)
                 return False
             requested = dateutil.parser.parse(str(expiration_time))
+            # Per the AM API, the input time should be TZ-aware
+            # But since the slice cred may not (per ISO8601), convert
+            # it to naiveUTC for comparison
+            requested = self._naiveUTC(requested)
             lastexp = 0
             for cred in creds:
-                lastexp = cred.expiration
-                if cred.expiration >= requested:
+                credexp = self._naiveUTC(cred.expiration)
+                lastexp = credexp
+                if credexp >= requested:
                     sliver.expiration = requested
                     self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
                     return True
                 else:
-                    self.logger.debug("Valid cred %r expires at %r before %r", cred, cred.expiration, requested)
+                    self.logger.debug("Valid cred %r expires at %r before %r", cred, credexp, requested)
 
             # Fell through then no credential expires at or after
             # newly requested expiration time
@@ -608,3 +614,17 @@ class ReferenceAggregateManager(object):
         fault_string = 'The slice named by %s does not exist' % (slice_urn)
         self.logger.warning(fault_string)
         raise xmlrpclib.Fault(fault_code, fault_string)
+
+    def _naiveUTC(self, dt):
+        """Converts dt to a naive datetime in UTC.
+
+        if 'dt' has a timezone then
+        convert to UTC
+        strip off timezone (make it "naive" in Python parlance)
+        """
+        if dt.tzinfo:
+            tz_utc = dateutil.tz.tzutc()
+            dt = dt.astimezone(tz_utc)
+            dt = dt.replace(tzinfo=None)
+        return dt
+

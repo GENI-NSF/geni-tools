@@ -74,6 +74,19 @@ def load_slice_cred(slicefilename):
             return cred
     return None
 
+def naiveUTC(dt):
+    """Converts dt to a naive datetime in UTC.
+
+    If 'dt' has a timezone then
+    convert to UTC
+    strip off timezone (make it "naive" in Python parlance)
+    """
+    if dt.tzinfo:
+        tz_utc = dateutil.tz.tzutc()
+        dt = dt.astimezone(tz_utc)
+        dt = dt.replace(tzinfo=None)
+    return dt
+
 if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option("--cert", action="store", default=None,
@@ -132,12 +145,12 @@ if __name__ == '__main__':
     newExpiration = None
     if opts.newExpiration:
         try:
-            newExpiration = dateutil.parser.parse(opts.newExpiration)
+            newExpiration = naiveUTC(dateutil.parser.parse(opts.newExpiration))
         except Exception, exc:
             sys.exit("Failed to parse desired new expiration %s: %s" % (opts.newExpiration, exc))
 
     # Confirm desired new expiration <= existing expiration
-    slicecred_exp = slicecred.get_expiration()
+    slicecred_exp = naiveUTC(slicecred.get_expiration())
     if newExpiration is None:
         newExpiration = slicecred_exp
         logger.info("Delegated cred will expire at same time as original: %s UTC" % newExpiration)
