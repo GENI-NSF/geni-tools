@@ -29,7 +29,17 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v1.4:
+New in v1.3.1:
+ * Correctly verify delegated slice credentials
+ * Ensure the root error is reported to the user when there are
+   problems.
+ * Once the user has failed to enter their passphrase twice,
+   exit - don't bury it in later errors. (ticket #43)
+ * Clean up timezone handling, correctly handling credentials that
+ specify a timezone. (ticket #47)
+ * examples directory contains simple scripting examples
+ * New delegateSliceCred script allowing off-line delegation of
+   slice credentials. (ticket #44)
 
 New in v1.3:
  * Omnispecs are deprecated, and native RSpecs are the default
