@@ -35,7 +35,7 @@ New in v1.3:
  * Omnispecs are deprecated, and native RSpecs are the default
  * Many commands take a '-o' option getting output saved to a
  file. Specifically, use that with 'listresources' and 'createsliver'
- to save advertisement and manifest RSpecs.
+ to save advertisement and manifest RSpecs. See Handling Omni Output below.
  * Slice credentials can be saved to a file and re-used.
  * Added support for GENI AM API Draft Revisions.
  * You can specify a particular RSpec format, at aggregates that speak
@@ -46,6 +46,19 @@ New in v1.3:
  * Log and output messages are clearer.
 
 Full changes are listed in the CHANGES file.
+
+== Handling Omni Output ==
+In Omni versions prior to v1.3, some output went to STDOUT. Callers could
+redirect STDOUT ('>') to a file.
+In all cases where users would do that, Omni now supports the
+'-o' option to have Omni save the output to one or more files for
+you. See the documentation for individual commands for details.
+
+Remaining output is done through the python logging package, and
+prints to STDERR by default.
+
+For further control of Omni output, use Omni as a library from your
+own python script (see below for details).
 
 == Omnispecs ==
 
@@ -346,11 +359,13 @@ Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-The date-time argument takes a standard form
+The date-time argument takes a standard form such as
 "YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
-trailing 'Z' represents time zone Zulu, which us UTC or GMT. If you
-would like the time to be in local time at the control framework you
-can leave off the trailing 'Z'.
+trailing 'Z' in this case represents time zone Zulu, which us UTC or
+GMT. You may specify a different time zone, or none. Warning: slice
+authorities are inconsistent in how they interpret times (with or
+without timezones). The slice authority may interpret the time as a
+local time in its own timezone.
 
 ==== deleteslice ====
 Deletes the slice in your chosen control framework.
@@ -587,7 +602,7 @@ Calls the AM API RenewSliver function
 
 This command will renew your resources at each aggregate up to the
 specified time.  This time must be less than or equal to the time
-available to the slice.  Times are in UTC.
+available to the slice.  Times are in UTC or supply an explicit timezone.
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -600,6 +615,9 @@ Aggregates queried:
  - Single URL given in -a argument, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+Note that per the AM API expiration times will be timezone aware.
+Unqualified times are assumed to be in UTC.
 
 Note that the expiration time cannot be past your slice expiration
 time (see renewslice). Some aggregates will
