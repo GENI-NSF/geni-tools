@@ -7,7 +7,8 @@ gcf 1.3.1:
 	- Clean up timezone handling (ticket #47)
         - examples directory contains simple scripting examples
         - New delegateSliceCred script allowing off-line delegation of
-	slice credentials. (ticket #44)
+	slice credentials.
+        Run src/delegateSliceCred.py -h for usage. (ticket #44)
 	- More error message cleanup
 
 gcf 1.3 May, 2011:

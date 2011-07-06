@@ -39,7 +39,8 @@ New in v1.3.1:
  specify a timezone. (ticket #47)
  * examples directory contains simple scripting examples
  * New delegateSliceCred script allowing off-line delegation of
-   slice credentials. (ticket #44)
+   slice credentials.
+   Run src/delegateSliceCred.py -h for usage. (ticket #44)
 
 New in v1.3:
  * Omnispecs are deprecated, and native RSpecs are the default
