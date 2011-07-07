@@ -699,6 +699,10 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message))
 
+        expd, slice_exp = self._has_slice_expired(slice_cred)
+        if expd:
+            self._raise_omni_error('Cannot create sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
+
         retVal += self._print_slice_expiration(urn, slice_cred)+"\n"
 
         # Load up the user's edited omnispec
@@ -901,6 +905,8 @@ class CallHandler(object):
         elif time <= datetime.datetime.utcnow():
             self.logger.info('Sliver %s will be set to expire now' % urn)
             time = datetime.datetime.utcnow()
+        elif slicecred_exp >= datetime.datetime.utcnow():
+            self._raise_omni_error('Cannot renew sliver %s because the slice expired at %s UTC' % (urn, slicecred_exp))
         else:
             self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slicecred_exp, time))
 
@@ -971,6 +977,10 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message))
 
+        expd, slice_exp = self._has_slice_expired(slice_cred)
+        if expd:
+            self._raise_omni_error('Cannot get sliverstatus for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
+
         retVal = self._print_slice_expiration(urn, slice_cred) + "\n"
 
         if self.opts.orca_slice_id:
@@ -1040,6 +1050,13 @@ class CallHandler(object):
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
             self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message))
+
+        # Here we would abort if the slice has expired
+        # But perhaps we should keep going so if there are resources
+        # at the aggregate, it can use this cue to free them?
+        expd, slice_exp = self._has_slice_expired(slice_cred)
+        if expd:
+            self._raise_omni_error('Cannot delete sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -1112,6 +1129,10 @@ class CallHandler(object):
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
             self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message))
+
+        expd, slice_exp = self._has_slice_expired(slice_cred)
+        if expd:
+            self._raise_omni_error('Cannot shutdown slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         if self.opts.orca_slice_id:
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
@@ -1456,6 +1477,17 @@ class CallHandler(object):
             self.logger.info("Writing slice %s cred to STDOUT per options", name)
             print slicecred
         return filename
+
+    def _has_slice_expired(self, sliceCred):
+        """Return (boolean, expiration datetime) whether given slicecred (string) has expired)"""
+        if sliceCred is None:
+            return (True, None)
+        sliceexp = credutils.get_cred_exp(self.logger, sliceCred)
+        sliceexp = naiveUTC(sliceexp)
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            return (True, sliceexp)
+        return (False, sliceexp)
 
     def _print_slice_expiration(self, urn, sliceCred=None):
         """Check when the slice expires. Print varying warning notices
