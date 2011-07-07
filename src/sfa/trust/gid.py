@@ -180,7 +180,7 @@ class GID(Certificate):
         print self.dump_string(*args,**kwargs)
 
     def dump_string(self, indent=0, dump_parents=False):
-        result="GID\n"
+        result=" "*(indent-2) + "GID\n"
         result += " "*indent + "hrn:" + str(self.get_hrn()) +"\n"
         result += " "*indent + "urn:" + str(self.get_urn()) +"\n"
         result += " "*indent + "uuid:" + str(self.get_uuid()) + "\n"
