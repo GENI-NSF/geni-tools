@@ -972,6 +972,6 @@ class Credential(object):
 
         if self.parent and dump_parents:
             result += "\nPARENT"
-            result += self.parent.dump(True)
+            result += self.parent.dump_string(True)
 
         return result
