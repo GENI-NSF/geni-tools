@@ -29,6 +29,11 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.4:
+ * Omni aborts if it detects your slice has expired
+ * SFA logger handles log file conflicts (ticket #48)
+ * SFA library bug fixes
+
 New in v1.3.1:
  * Correctly verify delegated slice credentials
  * Ensure the root error is reported to the user when there are
