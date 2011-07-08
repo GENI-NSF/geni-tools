@@ -28,15 +28,18 @@
 # FIXME: Each test should describe expected results
 
 import copy as docopy
+import datetime
 import inspect
 import math
+import os
 import re
+import sys
 import time
 import unittest
 import xml.etree.ElementTree as ET
 
 import omni
-from omni import *
+import omnilib.util.credparsing as credutils
 
 SLICE_NAME='mon'
 TMP_DIR = '/tmp'
@@ -462,7 +465,7 @@ class Test(GENISetup):
             table = dict((ord(char), unicode('-')) for char in bad)
         else:
             assert isinstance(server, str)
-            table = string.maketrans(bad, '-' * len(bad))
+            table = str.maketrans(bad, '-' * len(bad))
         server = server.translate(table)
         return server
 
