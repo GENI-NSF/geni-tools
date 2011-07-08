@@ -885,6 +885,10 @@ class CallHandler(object):
         if slice_cred is None:
             self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message))
 
+        expd, slice_exp = self._has_slice_expired(slice_cred)
+        if expd:
+            self._raise_omni_error('Cannot get renewsliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
+
         time = None
         try:
             time = dateutil.parser.parse(args[1])
@@ -897,18 +901,14 @@ class CallHandler(object):
         retVal = ''
 
         # Compare requested time with slice expiration time
-        slicecred_exp = credutils.get_cred_exp(self.logger, slice_cred)
-        slicecred_exp = naiveUTC(slicecred_exp)
         retVal += self._print_slice_expiration(urn, slice_cred) +"\n"
-        if time > slicecred_exp:
-            self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slicecred_exp))
+        if time > slice_exp:
+            self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slice_exp))
         elif time <= datetime.datetime.utcnow():
             self.logger.info('Sliver %s will be set to expire now' % urn)
             time = datetime.datetime.utcnow()
-        elif slicecred_exp >= datetime.datetime.utcnow():
-            self._raise_omni_error('Cannot renew sliver %s because the slice expired at %s UTC' % (urn, slicecred_exp))
         else:
-            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slicecred_exp, time))
+            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
