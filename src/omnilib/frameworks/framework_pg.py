@@ -91,13 +91,14 @@ class Framework(Framework_Base):
         #}
         
     def get_user_cred(self):
+        message = ""
         if self.user_cred == None:
             pg_response = dict()
             (pg_response, message) = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
             if pg_response is None:
-                self.logger.error("Failed to get your PG user credential")
+                self.logger.error("Failed to get your PG user credential: %s", message)
                 # FIXME: Return error message?
-                return None
+                return None, message
                                   
             code = pg_response['code']
             if code:
@@ -107,12 +108,12 @@ class Framework(Framework_Base):
                 #return None
             else:
                 self.user_cred = pg_response['value']
-        return self.user_cred
+        return self.user_cred, message
     
     def get_slice_cred(self, urn):
-        mycred = self.get_user_cred()
+        mycred, message = self.get_user_cred()
         if mycred is None:
-            self.logger.error("Cannot get PG slice %s without a user credential", urn)
+            self.logger.error("Cannot get PG slice %s without a user credential: %s", urn, message)
             return None
 
         # Note params may be used again later in this method
@@ -182,9 +183,9 @@ class Framework(Framework_Base):
         If the slice exists, just return a credential for the existing slice.
         If the slice does not exist, create it and return a credential.
         """
-        mycred = self.get_user_cred()
+        mycred, message = self.get_user_cred()
         if mycred is None:
-            self.logger.error("Cannot create a PG slice without a valid user credential")
+            self.logger.error("Cannot create a PG slice without a valid user credential: %s", message)
             return None
         # Note: params is used again below through either code path.
         params = {'credential': mycred,
@@ -227,7 +228,7 @@ class Framework(Framework_Base):
         """Delete the PG Slice. PG doesn't do this though, so instead we
         return a string including the slice expiration time.
         """
-        mycred = self.get_user_cred()
+        mycred, message = self.get_user_cred()
         if mycred is None:
             prtStr = "Cannot get a valid user credential. Regardless, ProtoGENI slices cannot be deleted - they expire automatically."
             self.logger.error(prtStr)
@@ -276,9 +277,9 @@ class Framework(Framework_Base):
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
         """
-        mycred = self.get_user_cred()
+        mycred, message = self.get_user_cred()
         if mycred is None:
-            self.logger.error("Cannot renew slice %s without a valid user credential", urn)
+            self.logger.error("Cannot renew slice %s without a valid user credential: %s", urn, message)
             return None
         # Note: params is used again below through either code path.
         params = {'credential': mycred,
@@ -322,9 +323,9 @@ class Framework(Framework_Base):
     #     Clearinghouse. Returns a list of dictionaries as documented
     #     in https://www.protogeni.net/trac/protogeni/wiki/ClearingHouseAPI2#List
     #     """
-    #     cred = self.get_user_cred()
+    #     cred, message = self.get_user_cred()
     #     if not cred:
-    #         raise Exception("No user credential available.")
+    #         raise Exception("No user credential available. %s" % message)
     #     pg_response = self.ch.List({'credential': cred, 'type': 'Slices'})
 
     #     code = pg_response['code']
@@ -339,9 +340,9 @@ class Framework(Framework_Base):
 
     def _list_my_slices(self, user):
         """Gets the ProtoGENI slices from the ProtoGENI Slice Authority. """
-        cred = self.get_user_cred()
+        cred, message = self.get_user_cred()
         if not cred:
-            raise Exception("No user credential available.")        
+            raise Exception("No user credential available. %s" % message)
         pg_response = self.sa.Resolve({'credential': cred, 'type': 'User', 'hrn': user})
         code = pg_response['code']
         if code:
@@ -359,9 +360,9 @@ class Framework(Framework_Base):
         Clearinghouse. Returns a list of dictionaries as documented
         in https://www.protogeni.net/trac/protogeni/wiki/ClearingHouseAPI2#ListComponents
         """
-        cred = self.get_user_cred()
+        cred, message = self.get_user_cred()
         if not cred:
-            raise Exception("Cannot get PG components - no user credential available.")
+            raise Exception("Cannot get PG components - no user credential available. %s" % message)
         (pg_response, message) = _do_ssl(self, None, "List Components at PG CH %s" % self.config['ch'], self.ch.ListComponents, {'credential': cred})
 
         if (pg_response is None) or (pg_response['code']):

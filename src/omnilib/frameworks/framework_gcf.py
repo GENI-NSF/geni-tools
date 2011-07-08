@@ -46,10 +46,11 @@ class Framework(Framework_Base):
         self.logger = config['logger']
         
     def get_user_cred(self):
+        message = ""
         if self.user_cred == None:
             (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
-            # FIXME: use any message?
-        return self.user_cred
+
+        return self.user_cred, message
     
     def get_slice_cred(self, urn):
         (cred, message) = _do_ssl(self, None, ("Create slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)

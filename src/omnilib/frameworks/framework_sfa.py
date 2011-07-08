@@ -170,10 +170,10 @@ class Framework(Framework_Base):
                                                      verbose=config['verbose'])
                     self.user_cred = None
                     self.cert_string = file(config['cert'],'r').read()
-                    cred = self.get_user_cred()
+                    cred, message = self.get_user_cred()
                     if cred is None:
                         os.remove(self.config['cert'])
-                        sys.exit("Failed to download your user credential from the PL registry")
+                        sys.exit("Failed to download your user credential from the PL registry: %s" % message)
                     gid = 'Not found'
                     (res, message) = _do_ssl(self, None, ("Look up GID for user %s from SFA registry %s" % (config['user'], config['registry'])), self.registry.Resolve, config['user'], cred)
                     if res is None:
@@ -209,15 +209,17 @@ class Framework(Framework_Base):
         self.user_cred = None
         
     def get_user_cred(self):
+        message = ""
         if self.user_cred is None:
             (self.user_cred, message) = _do_ssl(self, None, ("Get SFA user credential from registry %s for user %s using cert file %s" % (self.config['registry'], self.config['user'], self.config['cert'])), self.registry.GetSelfCredential, self.cert_string, self.config['user'], "user")
-            # FIXME: Return error message?
-        return self.user_cred
+
+        # Warning: when omni calls get_user_cred in a _do_ssl there are 2 messages
+        return self.user_cred, message
     
     def get_slice_cred(self, urn, error_to_ignore=None):
-        user_cred = self.get_user_cred()
+        user_cred, message = self.get_user_cred()
         if user_cred is None:
-            self.logger.error("Cannot get a slice credential without a user credential")
+            self.logger.error("Cannot get a slice credential without a user credential: %s", message)
             return None
 
         (cred, message) = _do_ssl(self, (error_to_ignore,), ("Get SFA slice credential for slice %s from registry %s" % (urn, self.config['registry'])), self.registry.GetCredential, user_cred, urn, 'slice')
@@ -237,9 +239,9 @@ class Framework(Framework_Base):
         slice_cred = self.get_slice_cred(urn, "Record not found")
         if slice_cred is None:
             # Slice doesn't exist, create it
-            user_cred = self.get_user_cred()
+            user_cred, message = self.get_user_cred()
             if user_cred is None:
-                self.logger.error("Cannot create the SFA slice - could not get your user credential.")
+                self.logger.error("Cannot create the SFA slice - could not get your user credential. %s", message)
                 return None
 
             (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
@@ -275,9 +277,9 @@ class Framework(Framework_Base):
     
     def delete_slice(self, urn):
         ''' Deletes the slice '''
-        user_cred = self.get_user_cred()
+        user_cred, message = self.get_user_cred()
         if user_cred is None:
-            self.logger.error("Cannot delete SFA slice - could not get your user credential.")
+            self.logger.error("Cannot delete SFA slice - could not get your user credential. %s", message)
             return None
 
         (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority cred for %s from registry %s" % (self.config['authority'], self.config['registry'])), self.registry.GetCredential, user_cred, self.config['authority'], 'authority')
@@ -321,9 +323,9 @@ class Framework(Framework_Base):
         if slice_cred is None:
             self.logger.error("Failed to renew slice %s: could not get a slice credential", urn)
             return None
-        user_cred = self.get_user_cred()
+        user_cred, message = self.get_user_cred()
         if user_cred is None:
-            self.logger.error("Failed to renew slice %s: could not get a user credential", urn)
+            self.logger.error("Failed to renew slice %s: could not get a user credential. %s", urn, message)
             return None
 
         records = None
@@ -363,9 +365,9 @@ class Framework(Framework_Base):
 
     def list_aggregates(self):
         aggs = {}
-        user_cred = self.get_user_cred()
+        user_cred, message = self.get_user_cred()
         if user_cred is None:
-            self.logger.error("Cannot list aggregates from SFA registry without a user credential")
+            self.logger.error("Cannot list aggregates from SFA registry without a user credential. %s", message)
             return aggs
 
         (sites, message) = _do_ssl(self, None, "List Aggregates at SFA registry %s" % self.config['registry'], self.registry.get_aggregates, user_cred)
