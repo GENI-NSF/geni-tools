@@ -58,7 +58,7 @@ class Framework_Base():
         
     def get_user_cred(self):
         """
-        Returns a user credential from the control framework as a string.
+        Returns a user credential from the control framework as a string. And an error messge if any.
         """
         raise NotImplementedError('get_user_cred')
     
