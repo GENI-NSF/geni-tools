@@ -95,6 +95,7 @@ class Framework(Framework_Base):
         if self.user_cred == None:
             pg_response = dict()
             (pg_response, message) = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
+            _ = message #Appease eclipse
             if pg_response is None:
                 self.logger.error("Failed to get your PG user credential: %s", message)
                 # FIXME: Return error message?
@@ -399,6 +400,7 @@ class Framework(Framework_Base):
             (version, message) = _do_ssl(self, ("404 Not Found", "Name or service not known", "timed out"), "Test PG AM for GENI API compatibilitity at %s" % am_url, client.GetVersion)
             # FIXME: look at the message and say something re-assuring
             # on OK errors?
+            _ = message #Appease eclipse
             self.logger.debug('version = %r', version)
             if version is not None:
                 if version.has_key('geni_api'):

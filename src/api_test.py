@@ -28,16 +28,18 @@
 # FIXME: Each test should describe expected results
 
 import copy as docopy
+import datetime
 import inspect
 import math
+import os
 import re
+import sys
 import time
-import traceback
 import unittest
 import xml.etree.ElementTree as ET
 
 import omni
-from omni import *
+import omnilib.util.credparsing as credutils
 
 SLICE_NAME='mon'
 TMP_DIR = '/tmp'
@@ -128,7 +130,7 @@ class Test(GENISetup):
         msg = "No geni_api version listed in result: \n%s" % text
         successFail = False
         if type(retDict) == type({}):
-            for key,verDict in retDict.items():
+            for verDict in retDict.values():
                 if verDict is not None and verDict.has_key('geni_api'):
                     successFail = True
                     break
@@ -149,12 +151,13 @@ class Test(GENISetup):
         options.omnispec=False
 
         (text, rspec) = self.call(omniargs, options)
+        _ = text # Appease eclipse
 
         # Make sure we got an XML file back
         msg = "Returned rspec is not XML: %s" % rspec
         successFail = True
         if rspec is not None:
-            for key, value in rspec.items():
+            for value in rspec.values():
                 successFail = successFail and (ET.fromstring(value) is not None)
         self.assertTrue(successFail, msg)
         self.printMonitoring( successFail )
@@ -274,6 +277,7 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["createslice", slice_name]
         text, urn = self.call(omniargs, options)
+        _ = text # Appease eclipse
         msg = "Slice creation FAILED."
         if urn is None:
             successFail = False
@@ -289,7 +293,9 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["shutdown", slice_name]
         text, (successList, failList) = self.call(omniargs, options)
+        _ = text # Appease eclipse
         succNum, failNum = omni.countSuccess( successList, failList )
+        _ = failNum # Appease eclipse
         if succNum == 1:
             successFail = True
         else:
@@ -303,6 +309,7 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["deleteslice", slice_name]
         text, successFail = self.call(omniargs, options)
+        _ = text # Appease eclipse
         msg = "Delete slice FAILED."
         self.assertTrue( successFail, msg)
         return successFail
@@ -315,6 +322,7 @@ class Test(GENISetup):
         newtime = (datetime.datetime.utcnow()+datetime.timedelta(hours=36)).isoformat()
         omniargs = ["renewslice", slice_name, newtime]
         text, retTime = self.call(omniargs, options)
+        _ = text # Appease eclipse
         msg = "Renew slice FAILED."
         if retTime is None:
             successFail = False
@@ -332,6 +340,8 @@ class Test(GENISetup):
         omniargs = ["renewslice", slice_name, newtime]
         print "Will try to renew slice to past: should fail..."
         text, retTime = self.call(omniargs, options)
+        _ = text # Appease eclipse
+
         msg = "Renew slice FAILED."
         if retTime is None:
             print "Renew to a day ago failed as expected"
@@ -350,7 +360,9 @@ class Test(GENISetup):
 
         omniargs = ["renewsliver", slice_name, newtime]
         text, (succList, failList) = self.call(omniargs, options)
+        _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( succList, failList )
+        _ = possNum # Appease eclipse
         # # retTime is only None if so renewslivers happened
         # if retTime is None:
         #    succNum = 0
@@ -377,6 +389,7 @@ class Test(GENISetup):
 
         # now construct args
         (foo, slicecred) = omni.call(["getslicecred", slice_name], options)
+        _ = foo # Appease eclipse ## Really? "foo"? Should be named more appropriately.
         sliceexp = credutils.get_cred_exp(None, slicecred)
         # try to renew the sliver for a time after the slice would expire
         # this should fail
@@ -408,9 +421,11 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["sliverstatus", slice_name]
         text, status = self.call(omniargs, options)
+        _ = status # Appease eclipse
         m = re.search(r"Returned status of slivers on (\w+) of (\w+) possible aggregates.", text)
         succNum = m.group(1)
         possNum = m.group(2)
+        _ = possNum # Appease eclipse
         # we have reserved resources on exactly one aggregate
         successFail = (int(succNum) == 1)
         msg = "Failed to get sliverstatus"
@@ -450,7 +465,7 @@ class Test(GENISetup):
             table = dict((ord(char), unicode('-')) for char in bad)
         else:
             assert isinstance(server, str)
-            table = string.maketrans(bad, '-' * len(bad))
+            table = str.maketrans(bad, '-' * len(bad))
         server = server.translate(table)
         return server
 
@@ -461,6 +476,7 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["--omnispec", "-o", "listresources"]
         text, resourcesDict = self.call(omniargs, options)
+        _ = text # Appease eclipse
 
         self.assertTrue((resourcesDict is not None and len(resourcesDict.keys()) > 0), "Cannot create sliver: no resources listed")
 
@@ -502,7 +518,9 @@ class Test(GENISetup):
         # now construct args
         omniargs = ["deletesliver", slice_name]
         text, (successList, failList) = self.call(omniargs, options)
+        _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( successList, failList )
+        _ = possNum # Appease eclipse
 #        m = re.search(r"Deleted slivers on (\w+) out of a possible (\w+) aggregates", text)
 #        succNum = m.group(1)
 #        possNum = m.group(2)

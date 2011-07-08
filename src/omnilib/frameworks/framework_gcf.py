@@ -55,6 +55,7 @@ class Framework(Framework_Base):
     def get_slice_cred(self, urn):
         (cred, message) = _do_ssl(self, None, ("Create slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
         # FIXME: use any message?
+        _ = message #Appease eclipse
         return cred
     
     def create_slice(self, urn):    
@@ -63,12 +64,14 @@ class Framework(Framework_Base):
     def delete_slice(self, urn):
         (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
         # FIXME: use any message?
+        _ = message #Appease eclipse
         return bool
      
     def list_aggregates(self):
         (sites, message) = _do_ssl(self, None, ("List Aggregates at GCF CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
             # FIXME: use any message?
+            _ = message #Appease eclipse
             sites = []
         aggs = {}
         for (urn, url) in sites:
@@ -110,4 +113,5 @@ class Framework(Framework_Base):
             return expiration_dt
         else:
             # FIXME: use any message?
+            _ = message #Appease eclipse
             return None

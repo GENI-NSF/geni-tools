@@ -54,6 +54,7 @@ class Framework(Framework_Base):
     
     def get_slice_cred(self, urn):
         (cred, message) = _do_ssl(self, None, ("Create slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.CreateSlice, urn)
+        _ = message #Appease eclipse
         return cred
     
     def create_slice(self, urn):    
@@ -61,6 +62,7 @@ class Framework(Framework_Base):
     
     def delete_slice(self, urn):
         (bool, message) = _do_ssl(self, None, ("Delete Slice %s on OpenFlow CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        _ = message #Appease eclipse
         return bool
      
     def list_aggregates(self):
@@ -68,6 +70,7 @@ class Framework(Framework_Base):
         # So either we log an error and return an empty list, or we just raise the exception
         # I choose to leave it alone - raise the exception. And when it works, it will work.
         (sites, message) = _do_ssl(self, None, ("List Aggregates at OpenFlow CH %s" % self.config['ch']), self.ch.ListAggregates)
+        _ = message #Appease eclipse
         if sites is None:
             sites = []
         aggs = {}
@@ -106,6 +109,7 @@ class Framework(Framework_Base):
         """
         expiration = expiration_dt.isoformat()
         (bool, message) = _do_ssl(self, None, ("Renew slice %s on OpenFlow CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
+        _ = message #Appease eclipse
         if bool:
             return expiration_dt
         else:
