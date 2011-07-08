@@ -30,7 +30,6 @@ import datetime
 import dateutil.parser
 import logging
 import traceback
-import xml.dom
 import xml.dom.minidom as md
 
 def get_cred_exp(logger, credString):

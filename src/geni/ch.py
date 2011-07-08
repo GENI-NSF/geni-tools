@@ -29,7 +29,6 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
-import dateutil
 import traceback
 import uuid
 import os
