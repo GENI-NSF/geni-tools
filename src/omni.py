@@ -1353,7 +1353,6 @@ class CallHandler(object):
 
     def getusercred(self, args):
         """Save your user cred to usercred.xml - useful for debugging"""
-        cred = None
         (cred, message) = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
         
         if cred is None:
@@ -1411,7 +1410,7 @@ class CallHandler(object):
             return retVal, None
 
         # Log if the slice expires soon
-        strWithSliceExp = self._print_slice_expiration(urn, cred)
+        self._print_slice_expiration(urn, cred)
 
         # Print the non slice cred bit to log stream so
         # capturing just stdout gives just the cred hopefully
