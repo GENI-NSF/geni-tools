@@ -223,8 +223,7 @@ class CallHandler(object):
         if slicename is None or slicename == "":
             slicename = None
             cred = None
-            (cred, message) = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
-
+            (cred, message) = self.framework.get_user_cred()
             if cred is None:
                 self.logger.error('Cannot list resources: Could not get user credential')
                 return (None, "Could not get user credential: %s" % message)
@@ -1352,18 +1351,18 @@ class CallHandler(object):
         return retStr, slices
 
     def getusercred(self, args):
-        """Save your user cred to usercred.xml - useful for debugging"""
+        """Save your user credential to <framework nickname>-usercred.xml - useful for debugging."""
         cred = None
-        (cred, message) = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
+        (cred, message) = self.framework.get_user_cred()
         
         if cred is None:
-            self._raise_omni_error("Got no user cred from framework: %s" % message)
-
-        self.logger.info("Writing your user cred to usercred.xml")
-        with open("usercred.xml", "wb") as file:
+            self._raise_omni_error("Got no user credential from framework: %s" % message)
+        fname = self.opts.framework + "-usercred.xml"
+        self.logger.info("Writing your user credential to %s" % fname)
+        with open(fname, "wb") as file:
             file.write(cred)
-        self.logger.info("User cred:\n%r", cred)
-        return "Saved user cred to usercred.xml", cred
+        self.logger.info("User credential:\n%r", cred)
+        return "Saved user credential to %s" % fname, cred
 
     def getslicecred(self, args):
         """Get the AM API compliant slice credential (signed XML document).
