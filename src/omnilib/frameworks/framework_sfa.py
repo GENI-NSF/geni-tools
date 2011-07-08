@@ -111,6 +111,7 @@ def create_selfsigned_cert2(framework, filename, user, key):
     cert.set_subject(subj)
 
     (key, message) = _do_ssl(framework, None, "Load private key from %s" % key, crypto.load_privatekey, crypto.FILETYPE_PEM, file(key).read())
+    _ = message #Appease eclipse
     cert.set_pubkey(key)
 
     cert.set_issuer(subj)
@@ -211,6 +212,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         if self.user_cred is None:
             (self.user_cred, message) = _do_ssl(self, None, ("Get SFA user credential from registry %s for user %s using cert file %s" % (self.config['registry'], self.config['user'], self.config['cert'])), self.registry.GetSelfCredential, self.cert_string, self.config['user'], "user")
+            _ = message #Appease eclipse
             # FIXME: Return error message?
         return self.user_cred
     
@@ -243,6 +245,7 @@ class Framework(Framework_Base):
                 return None
 
             (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority credential from registry %s for authority %s" % (self.config['registry'], self.config['authority'])), self.registry.GetCredential, user_cred, self.config['authority'], "authority")
+            _ = message #Appease eclipse
             if auth_cred is None:
                 # FIXME: use the message?
                 self.logger.error("Cannot create SFA slice: Only your local %s PI can create a slice on PlanetLab for you and then add you to that slice.", self.config['authority'])
@@ -261,6 +264,7 @@ class Framework(Framework_Base):
     
             (result, message) = _do_ssl(self, None, ("Register new slice %s at SFA registry %s" % (urn, self.config['registry'])), self.registry.Register, record, auth_cred)
             # FIXME: If there was an error message, use it?
+            _ = result #Appease eclipse
 
             # For some reason the slice doesn't seem to have the correct expiration time, 
             # so call renew_slice
@@ -281,6 +285,7 @@ class Framework(Framework_Base):
             return None
 
         (auth_cred, message) = _do_ssl(self, None, ("Get SFA authority cred for %s from registry %s" % (self.config['authority'], self.config['registry'])), self.registry.GetCredential, user_cred, self.config['authority'], 'authority')
+        _ = message #Appease eclipse
         if auth_cred is None:
             # FIXME: use error message?
             self.logger.error("Cannot delete SFA slice - could not retrieve authority credential")
@@ -369,6 +374,7 @@ class Framework(Framework_Base):
             return aggs
 
         (sites, message) = _do_ssl(self, None, "List Aggregates at SFA registry %s" % self.config['registry'], self.registry.get_aggregates, user_cred)
+        _ = message #Appease eclipse
         if sites is None:
             # FIXME: Use message?
             sites = []
