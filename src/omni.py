@@ -1351,7 +1351,7 @@ class CallHandler(object):
 
         return retStr, slices
 
-    def save_user_cred(self, args):
+    def getusercred(self, args):
         """Save your user cred to usercred.xml - useful for debugging"""
         cred = None
         (cred, message) = _do_ssl(self.framework, None, "Get User Credential from control framework", self.framework.get_user_cred)
