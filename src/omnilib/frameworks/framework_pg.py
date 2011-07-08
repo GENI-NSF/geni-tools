@@ -230,6 +230,7 @@ class Framework(Framework_Base):
         return a string including the slice expiration time.
         """
         mycred, message = self.get_user_cred()
+        _ = message # Appease eclipse
         if mycred is None:
             prtStr = "Cannot get a valid user credential. Regardless, ProtoGENI slices cannot be deleted - they expire automatically."
             self.logger.error(prtStr)

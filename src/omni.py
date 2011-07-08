@@ -1352,7 +1352,6 @@ class CallHandler(object):
 
     def getusercred(self, args):
         """Save your user credential to <framework nickname>-usercred.xml - useful for debugging."""
-        cred = None
         (cred, message) = self.framework.get_user_cred()
         
         if cred is None:
