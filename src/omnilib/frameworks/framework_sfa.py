@@ -176,13 +176,12 @@ class Framework(Framework_Base):
                         sys.exit("Failed to download your user credential from the PL registry")
                     gid = 'Not found'
                     (res, message) = _do_ssl(self, None, ("Look up GID for user %s from SFA registry %s" % (config['user'], config['registry'])), self.registry.Resolve, config['user'], cred)
-                    if res is None:
+                    record = self.get_record_from_resolve_by_type(res, 'user')
+                    if record is None:
                         os.remove(self.config['cert'])
                         sys.exit("Failed to download your user certificate from the PL registry: %s" % message)
-                    elif type(res) is dict:
-                        gid = res['gid']
-                    else:
-                        gid = res[0]['gid']
+                    gid = record['gid']
+
                     # Finally, copy the gid to the cert location
                     f = open(self.config['cert'],'w')
                     f.write(gid)
@@ -225,6 +224,52 @@ class Framework(Framework_Base):
             self.logger.error('Did you create the slice? SFA SA server has no record of slice %s' % urn)
         # FIXME: return error message?
         return cred
+
+    def get_record_from_resolve_by_type(self, results, typeStr='user'):
+        '''Return the record (dict) with the given 'type' value.
+        On error or failure to find one, return None.'''
+        if results is None:
+            # expected if, say, the slice doesn't exist
+            return None
+        if type(results) is str:
+            # Does this happen? Assuming this was an actual GID
+            self.logger.debug('Got string results from which to find gid of type %s', typeStr)
+            return results
+        if type(results) is dict:
+            if not results.has_key('type'):
+                # raise? Or just return None?
+                self.logger.debug('resolve result was dict without a type key? %s', results)
+                return None
+            if results['type'] == typeStr:
+                self.logger.debug('Single resolve return dict was right')
+                return results
+            else:
+                self.logger.debug('Single resolve return dict not of correct type %s: %s', typeStr, results)
+                return None
+        if not type(results) is list:
+            # huh?
+            self.logger.debug('Resolve return not a dict or a list? %s', str(results))
+            return None
+
+        i = 0
+        for result in results:
+            i = i+1
+            if not type(result) is dict:
+                # huh?
+                self.logger.debug('Resolve results[%d] not a dict? %s', i, str(result))
+                continue
+            if not result.has_key('type'):
+                self.logger.debug('Resolve results[%d] has no type? %s', str(result))
+                continue
+            if result['type'] == typeStr:
+                self.logger.debug('Resolve result[%d] matched type %s', i, typeStr)
+                return result
+            else:
+                self.logger.debug('Resolve result[%d][type]=%s, not %s', i, result['type'], typeStr)
+                continue
+        self.logger.debug('Failed to find type %s in any of %d resolve results', typeStr, i)
+        return None
+
     
     def create_slice(self, urn):    
         ''' Gets the credential for a slice, creating the slice 
@@ -294,7 +339,8 @@ class Framework(Framework_Base):
         except Exception, exc:
             self.logger.info("Failed to find SFA slice %s: %s" , urn, exc)
             return False
-        if records is None or len(records) == 0:
+        slice_record = self.get_record_from_resolve_by_type(records, 'slice')
+        if slice_record is None:
             # FIXME: Use message?
             self.logger.info("Failed to find SFA slice %s - it is probably already deleted.", urn)
             return True
@@ -335,17 +381,12 @@ class Framework(Framework_Base):
             self.logger.warning("Failed to look up SFA slice %s: %s" , urn, exc)
             return None
 
-        if records != None:
-            if type(records) is not dict:
-                self.logger.debug("Taking first record returned by SFA registry.resolve")
-                records = records[0]
-            else:
-                self.logger.debug("Exactly 1 record returned by SFA registry.resolve as a dict")
-            slice_record = records
-            slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
-        else:
+        slice_record = self.get_record_from_resolve_by_type(records, 'slice')
+        if slice_record is None:
             self.logger.warning("Failed to find SFA slice record. Cannot renew slice %s: %s", urn, message)
             return None
+
+        slice_record['expires'] = int(time.mktime(requested_expiration.timetuple()))
 
         try:
             (res, message) = _do_ssl(self, None, ("Renew SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Update, slice_record, slice_cred)
