@@ -23,7 +23,7 @@
 
 from distutils.core import setup
 setup(name='omni',
-      version="1.3.1",
+      version="1.3.2",
       package_dir={'': 'src/'},      
       packages=['omnilib','omnilib.frameworks','omnilib.omnispec', 'omnilib.util', 'omnilib.xmlrpc'],     
       data_files=[('/etc/omni/templates', ['omni_config'])],
