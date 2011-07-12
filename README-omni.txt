@@ -29,6 +29,9 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.3.2:
+ * Fixed user-is-a-slice bug (ticket #49)
+
 New in v1.3.1:
  * Correctly verify delegated slice credentials
  * Ensure the root error is reported to the user when there are

@@ -1,10 +1,5 @@
 gcf 1.3.2:
         - Fixed user-is-a-slice bug (ticket #49)
-	- Added new method to framework_sfa.py called
-          get_record_from_resolve_by_type()
- 	- Added call to this method each of three times Resolve it
-           called to ensure getting the type of result desired (slice
-           vs user)
 
 gcf 1.3.1:
 	- SFA library fixes with delegated slice credentials
