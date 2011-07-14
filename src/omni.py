@@ -729,6 +729,8 @@ class CallHandler(object):
         result = None
         # Copy the user config and read the keys from the files into the structure
         slice_users = copy(self.config['users'])
+        if len(slice_users) == 0:
+            self.logger.warn("No users defined. No keys will be uploaded to support SSH access.")
 
         #slice_users = copy(self.omni_config['slice_users'])
         for user in slice_users:
