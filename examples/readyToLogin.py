@@ -97,8 +97,8 @@ def loginToProtoGENI( sliverStat, inXterm=True ):
         for children1 in resourceDict['pg_manifest']['children']:
             for children2 in children1['children']:
                 child = children2['attributes']
-                if (not child['username']) or (not child['hostname']):
-                    return None
+                if (not child.has_key('username')) or (not child.has_key('hostname')):
+                    continue
                 output += "%s's geni_status is: \n\t%s\n" % (child['hostname'],resourceDict['geni_status'])
                 output += "Login using:\n\t"
 
