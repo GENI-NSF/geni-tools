@@ -44,7 +44,7 @@ def findUsersAndKeys( config ):
     for user in config['users']:
         # convert strings containing public keys (foo.pub) into
         # private keys (foo)
-        privuserkeys = string.replace(user['keys'], ".pub","")
+        privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
             if not os.path.exists(os.path.expanduser(key)):
