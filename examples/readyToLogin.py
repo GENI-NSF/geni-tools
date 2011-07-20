@@ -23,8 +23,10 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import string
 import sys
 import omni
+import os.path
 from optparse import OptionParser
 
 ################################################################################
@@ -40,8 +42,15 @@ def findUsersAndKeys( config ):
     """Look in omni_config for user and key information to pass to ssh"""
     keyList = []
     for user in config['users']:
-        userkeys = user['keys'].split(",")
-        keyList = keyList + userkeys
+        # convert strings containing public keys (foo.pub) into
+        # private keys (foo)
+        privuserkeys = string.replace(user['keys'], ".pub","")
+        privuserkeys = privuserkeys.split(",")
+        for key in privuserkeys:
+            if not os.path.exists(os.path.expanduser(key)):
+                print "Key file [%s] does NOT exist." % key
+            else:
+                keyList.append(key)
     return keyList
 
 def sshIntoNodes( sliverStat, inXterm=True, keyList="" ):
