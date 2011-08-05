@@ -1021,7 +1021,7 @@ class CallHandler(object):
             else:
                 # FIXME: Put the message error in retVal?
                 retItem[ client.url ] = False
-                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s" % (name, client.url, message)
+                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
 
         # FIXME: Return the status if there was only 1 client?
         retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
