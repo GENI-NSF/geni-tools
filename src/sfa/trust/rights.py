@@ -83,7 +83,7 @@ def determine_rights(type, name):
     elif type in ["sa", "authority+sa"]:
         rl.add("authority")
         rl.add("sa")
-    elif type in ["ma", "authority+ma", "cm", "authority+cm"]:
+    elif type in ["ma", "authority+ma", "cm", "authority+cm", "sm", "authority+sm"]:
         rl.add("authority")
         rl.add("ma")
     elif type == "authority":
@@ -269,47 +269,3 @@ class Rights:
                 return False
         return True
 
-
-
-    ##
-    # Determine the rights that an object should have. The rights are entirely
-    # dependent on the type of the object. For example, users automatically
-    # get "refresh", "resolve", and "info".
-    #
-    # @param type the type of the object (user | sa | ma | slice | node)
-    # @param name human readable name of the object (not used at this time)
-    #
-    # @return Rights object containing rights
-
-    def determine_rights(self, type, name):
-        rl = Rights()
-
-        # rights seem to be somewhat redundant with the type of the credential.
-        # For example, a "sa" credential implies the authority right, because
-        # a sa credential cannot be issued to a user who is not an owner of
-        # the authority
-
-        if type == "user":
-            rl.add("refresh")
-            rl.add("resolve")
-            rl.add("info")
-        elif type in ["sa", "authority+sa"]:
-            rl.add("authority")
-            rl.add("sa")
-        elif type in ["ma", "authority+ma", "cm", "authority+cm"]:
-            rl.add("authority")
-            rl.add("ma")
-        elif type == "authority":
-            rl.add("authority")
-            rl.add("sa")
-            rl.add("ma")
-        elif type == "slice":
-            rl.add("refresh")
-            rl.add("embed")
-            rl.add("bind")
-            rl.add("control")
-            rl.add("info")
-        elif type == "component":
-            rl.add("operator")
-
-        return rl

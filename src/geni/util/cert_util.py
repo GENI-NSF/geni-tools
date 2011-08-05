@@ -30,7 +30,7 @@ from sfa.trust.certificate import Keypair
 from geni.util.urn_util import URN
 
 def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
-                public_key=None):
+                public_key=None, lifeDays=1825):
     '''Create a new certificate and return it and the associated keys.
     If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
@@ -38,16 +38,17 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
     If intermediate then mark this 
     as an intermediate CA certificate (can sign).
     
+    lifeDays is the lifetime of the supplied cert - default is 1825 (5 years).
+
     Certificate URN must be supplied.
     CN of the cert will be dotted notation authority.type.name from the URN.
     '''
     # Note the below throws a ValueError if it wasnt a valid URN
     c_urn = URN(urn=urn)
     dotted = '%s.%s.%s' % (c_urn.getAuthority(), c_urn.getType(), c_urn.getName())
-    
 
     newgid = GID(create=True, subject=dotted[:64],
-                     urn=urn)
+                 urn=urn, lifeDays=lifeDays)
     
     if public_key is None:
         # create a new key pair

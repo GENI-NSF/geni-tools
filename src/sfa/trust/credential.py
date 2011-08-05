@@ -45,7 +45,7 @@ from sfa.util.sfalogging import logger
 from sfa.util.sfatime import utcparse
 from sfa.trust.certificate import Keypair
 from sfa.trust.credential_legacy import CredentialLegacy
-from sfa.trust.rights import Right, Rights
+from sfa.trust.rights import Right, Rights, determine_rights
 from sfa.trust.gid import GID
 from sfa.util.xrn import urn_to_hrn
 
@@ -669,7 +669,7 @@ class Credential(object):
                 # Convert * into the default privileges for the credential's type
                 # Each inherits the delegatability from the * above
                 _ , type = urn_to_hrn(self.gidObject.get_urn())
-                rl = rlist.determine_rights(type, self.gidObject.get_urn())
+                rl = determine_rights(type, self.gidObject.get_urn())
                 for r in rl.rights:
                     r.delegate = deleg
                     rlist.add(r)
@@ -852,6 +852,14 @@ class Credential(object):
         if root_target_gid_str == root_cred_signer_str:
             # cred signer is target, return success
             return
+
+        # root_cred_signer is not the target_gid
+        # So this is a different gid that we have not verified
+        # Did xmlsec1 verify the cert chain on this already?
+        # Regardless, it hasn't verified that the gid meets the HRN namespace
+        # requirements
+# FIXME: Uncomment once we verify this is right
+#        root_cred_signer.verify_chain(trusted_cert_objects)
 
         # See if it the signer is an authority over the domain of the target
         # Maybe should be (hrn, type) = urn_to_hrn(root_cred_signer.get_urn())

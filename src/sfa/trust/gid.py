@@ -75,10 +75,11 @@ class GID(Certificate):
     # @param subject If subject!=None, create the X509 cert and set the subject name
     # @param string If string!=None, load the GID from a string
     # @param filename If filename!=None, load the GID from a file
+    # @param lifeDays life of GID in days - default is 1825==5 years
 
-    def __init__(self, create=False, subject=None, string=None, filename=None, uuid=None, hrn=None, urn=None):
+    def __init__(self, create=False, subject=None, string=None, filename=None, uuid=None, hrn=None, urn=None, lifeDays=1825):
         
-        Certificate.__init__(self, create, subject, string, filename)
+        Certificate.__init__(self, lifeDays, create, subject, string, filename)
         if subject:
             logger.debug("Creating GID for subject: %s" % subject)
         if uuid:
@@ -210,6 +211,11 @@ class GID(Certificate):
             # make sure the parent's hrn is a prefix of the child's hrn
             if not self.get_hrn().startswith(self.parent.get_hrn()):
                 raise GidParentHrn("This cert HRN %s doesnt start with parent HRN %s" % (self.get_hrn(), self.parent.get_hrn()))
+
+            # Then recurse up the chain - ensure the parent is a trusted
+            # root or is in the namespace of a trusted root
+# FIXME: Uncomment once we verify this is right
+#            self.parent.verify_chain(trusted_certs)
         else:
             # make sure that the trusted root's hrn is a prefix of the child's
             trusted_gid = GID(string=trusted_root.save_to_string())

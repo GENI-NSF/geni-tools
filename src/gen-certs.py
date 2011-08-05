@@ -87,7 +87,6 @@ AUTHORITY_CERT_TYPE = 'authority'
 CH_CERT_SUBJ = 'sa' 
 AM_CERT_SUBJ = 'am'
 
-
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
     Does not check that the path exists."""
@@ -107,6 +106,7 @@ def make_ch_cert(dir):
     # Create a cert with urn like geni.net:gpo:gcf+authority+sa
     urn = geni.URN(CERT_AUTHORITY, AUTHORITY_CERT_TYPE, CH_CERT_SUBJ).urn_string()
     
+    # add lifeDays arg to change # of days cert lasts
     (ch_gid, ch_keys) = create_cert(urn)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
@@ -136,6 +136,7 @@ def make_am_cert(dir, ch_cert, ch_key):
     # Create a cert with urn like geni.net:gpo:gcf:am1+authority+am
     auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
     urn = geni.URN(auth_name, AUTHORITY_CERT_TYPE, AM_CERT_SUBJ).urn_string()
+    # add lifeDays arg to change # of days cert lasts
     (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
@@ -147,6 +148,7 @@ def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None):
     # Create a cert like PREFIX+TYPE+name
     # ie geni.net:gpo:gcf+user+alice
     urn = geni.URN(CERT_AUTHORITY, USER_CERT_TYPE, username).urn_string()
+    # add lifeDays arg to change # of days cert lasts
     (alice_gid, alice_keys) = create_cert(urn, issuer_key=ch_keys,
                                           issuer_cert=ch_gid,
                                           public_key=public_key)

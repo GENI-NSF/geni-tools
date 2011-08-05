@@ -311,16 +311,17 @@ class Certificate:
     ##
     # Create a certificate object.
     #
+    # @param lifeDays life of cert in days - default is 1825==5 years
     # @param create If create==True, then also create a blank X509 certificate.
     # @param subject If subject!=None, then create a blank certificate and set
     #     it's subject name.
     # @param string If string!=None, load the certficate from the string.
     # @param filename If filename!=None, load the certficiate from the file.
 
-    def __init__(self, create=False, subject=None, string=None, filename=None, intermediate=None):
+    def __init__(self, lifeDays=1825, create=False, subject=None, string=None, filename=None, intermediate=None):
         self.data = {}
         if create or subject:
-            self.create()
+            self.create(lifeDays)
         if subject:
             self.set_subject(subject)
         if string:
@@ -333,11 +334,12 @@ class Certificate:
 
     # Create a blank X509 certificate and store it in this object.
 
-    def create(self):
+    def create(self, lifeDays=1825):
         self.cert = crypto.X509()
+        # FIXME: Use different serial #s
         self.cert.set_serial_number(3)
-        self.cert.gmtime_adj_notBefore(0)
-        self.cert.gmtime_adj_notAfter(60*60*24*365*5) # five years
+        self.cert.gmtime_adj_notBefore(0) # 0 means now
+        self.cert.gmtime_adj_notAfter(lifeDays*60*60*24) # five years is default
         self.cert.set_version(2) # x509v3 so it can have extensions
 
 
@@ -674,6 +676,13 @@ class Certificate:
         if not self.is_signed_by_cert(self.parent):
             logger.debug("verify_chain: NO %s is not signed by parent"%self.get_subject())
             return CertNotSignedByParent(self.get_subject())
+
+        # Confirm that the parent is a CA. Only CAs can be trusted as signers.
+        # FIXME: test this...
+        if not self.parent.intermediate:
+            logger.debug("verify_chain: cert %s's parent %s is not an intermediate CA", self.get_subject(), self.parent.get_subject())
+# FIXME: Uncomment if this is the right thing...
+#            return CertNotSignedByParent(self.get_subject())
 
         # if the parent isn't verified...
         logger.debug("verify_chain: .. %s, -> verifying parent %s"%(self.get_subject(),self.parent.get_subject()))
