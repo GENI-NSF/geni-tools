@@ -430,9 +430,11 @@ class Credential(object):
 # But it's kind of odd for PL to use PG schemas that talk
 # about tickets, and the PG CM policies.
 # Note the careful addition of attributes from the parent below...
-#        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-#        signed_cred.setAttribute("xsinoNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
+        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+#        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
 #        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
+        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.planet-lab.org/resources/sfa/credential.xsd")
+        signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy.xsd")
 
         doc.appendChild(signed_cred)  
         
@@ -473,7 +475,7 @@ class Credential(object):
             # no longer matches on the credential.
             # We expect three of these, but here we copy them all:
 #        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-#        signed_cred.setAttribute("xsinoNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
+#        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
 #        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
             parentRoot = sdoc.documentElement
             if parentRoot.tagName == "signed-credential" and parentRoot.hasAttributes():
@@ -484,9 +486,9 @@ class Credential(object):
                     # Below throws InUse exception if we forgot to clone the attribute first
                     oldAttr = signed_cred.setAttributeNode(attr.cloneNode(True))
                     if oldAttr and oldAttr.value != attr.value:
-                        msg = "Delegating cred from owner %s to %s over %s replaced attribute %s value %s with %s" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
-                        logger.error(msg)
-                        raise CredentialNotVerifiable("Can't encode new valid delegated credential: %s" % msg)
+                        msg = "Delegating cred from owner %s to %s over %s replaced attribute %s value '%s' with '%s'" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
+                        logger.warn(msg)
+                        #raise CredentialNotVerifiable("Can't encode new valid delegated credential: %s" % msg)
 
             p_cred = doc.importNode(sdoc.getElementsByTagName("credential")[0], True)
             p = doc.createElement("parent")
