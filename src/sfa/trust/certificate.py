@@ -305,6 +305,7 @@ class Certificate:
     issuerKey = None
     issuerSubject = None
     parent = None
+    intermediate = False
 
     separator="-----parent-----"
 
@@ -678,10 +679,9 @@ class Certificate:
             return CertNotSignedByParent(self.get_subject())
 
         # Confirm that the parent is a CA. Only CAs can be trusted as signers.
-        # FIXME: test this...
-        if not self.parent.intermediate:
-            logger.debug("verify_chain: cert %s's parent %s is not an intermediate CA", self.get_subject(), self.parent.get_subject())
-# FIXME: Uncomment if this is the right thing...
+        # BUT: plc.bbn for example is not an intermediate CA. So can't do this.
+#        if not self.parent.intermediate:
+#            logger.warn("verify_chain: cert %s's parent %s is not an intermediate CA" % (self.get_subject(), self.parent.get_subject()))
 #            return CertNotSignedByParent(self.get_subject())
 
         # if the parent isn't verified...
