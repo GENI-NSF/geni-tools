@@ -50,7 +50,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     attempt = 0
 
     failMsg = "Call for %s failed." % reason
-    while(attempt < max_attempts):
+    while(attempt <= max_attempts):
         attempt += 1
         try:
             result = fn(*args)
@@ -59,7 +59,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
             if str(err).find('bad decrypt') > -1:
                 framework.logger.debug("Doing %s got %s", reason, err)
                 framework.logger.error('Wrong pass phrase for private key.')
-                if attempt < max_attempts:
+                if attempt <= max_attempts:
                     framework.logger.info('.... please retry.')
                 else:
                     framework.logger.error("Wrong pass phrase after %d tries" % max_attempts)
@@ -76,7 +76,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
             if exc.errno == 336265225:
                 framework.logger.debug("Doing %s got %s", reason, exc)
                 framework.logger.error('Wrong pass phrase for private key.')
-                if attempt < max_attempts:
+                if attempt <= max_attempts:
                     framework.logger.info('.... please retry.')
                 else:
                     framework.logger.error("Wrong pass phrase after %d tries. Cannot do %s." % (max_attempts, reason))
@@ -146,7 +146,14 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                         return (None, suppresserror)
             clnfault = cln_xmlrpclib_fault(fault)
             framework.logger.error("%s Server says: %s" % (failMsg, clnfault))
-            return (None, clnfault)
+            if str(fault).find("try again later") > -1 and attempt <= max_attempts:
+                import time
+                pause = 10
+                framework.logger.info(" ... pausing %d seconds and retrying ...." % pause)
+                time.sleep(pause)
+                continue
+            else:
+                return (None, clnfault)
         except socket.error, sock_err:
             if suppresserrors:
                 for suppresserror in suppresserrors:
