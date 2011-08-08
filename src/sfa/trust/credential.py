@@ -426,15 +426,18 @@ class Credential(object):
         doc = Document()
         signed_cred = doc.createElement("signed-credential")
 
-# PG adds these. It would be nice to be consistent.
-# But it's kind of odd for PL to use PG schemas that talk
-# about tickets, and the PG CM policies.
-# Note the careful addition of attributes from the parent below...
+# Declare namespaces
+# Note that credential/policy.xsd are really the PG schemas
+# in a PL namespace.
+# Note that delegation of credentials between the 2 only really works
+# cause those schemas are identical.
+# Also note these PG schemas talk about PG tickets and CM policies.
         signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.planet-lab.org/resources/sfa/credential.xsd")
+        signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
+
 #        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
 #        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
-        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.planet-lab.org/resources/sfa/credential.xsd")
-        signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy.xsd")
 
         doc.appendChild(signed_cred)  
         
@@ -470,13 +473,25 @@ class Credential(object):
             # If the root node is a signed-credential (it should be), then
             # get all its attributes and attach those to our signed_cred
             # node.
-            # Specifically, PG adds attributes for namespaces (which is reasonable),
+            # Specifically, PG and PLadd attributes for namespaces (which is reasonable),
             # and we need to include those again here or else their signature
             # no longer matches on the credential.
             # We expect three of these, but here we copy them all:
 #        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+# and from PG (PL is equivalent, as shown above):
 #        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
 #        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
+
+            # HOWEVER!
+            # PL now also declares these, with different URLs, so
+            # the code notices those attributes already existed with
+            # differnt values, and complains.
+            # This happens regularly on delegation now that PG and
+            # PL both declare the namespace with different URLs.
+            # If the content ever differs this is a problem,
+            # but for now it works - different URLs (values in the attributes)
+            # but the same actual schema, so using the PG schema
+            # on delegated-to-PL credentials works fine.
             parentRoot = sdoc.documentElement
             if parentRoot.tagName == "signed-credential" and parentRoot.hasAttributes():
                 for attrIx in range(0, parentRoot.attributes.length):
