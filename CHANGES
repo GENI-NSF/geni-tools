@@ -2,6 +2,9 @@ gcf 1.4:
         - Omni aborts if it detects your slice has expired
         - SFA logger handles log file conflicts (ticket #48)
         - Certificate lifetime is configurable in gen-certs
+        - GCF slices are delegatable by default (library supports
+        specifying this now)
+        - SFA library updates (eg slices declare an XML namespace)
         - SFA library bug fixes
         - Fixed a minor bug in examples/readyToLogin for certain
         ProtoGENI aggregates
