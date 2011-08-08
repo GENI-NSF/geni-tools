@@ -345,12 +345,16 @@ class Framework(Framework_Base):
         cred, message = self.get_user_cred()
         if not cred:
             raise Exception("No user credential available. %s" % message)
-        pg_response = self.sa.Resolve({'credential': cred, 'type': 'User', 'hrn': user})
+        (pg_response, message) = _do_ssl(self, None, "Resolve user %s at PG SA %s" % (user, self.config['sa']), self.sa.Resolve, {'credential': cred, 'type': 'User', 'hrn': user})
+        if pg_response is None:
+            self.logger.error("Cannot list slices: %s", message)
+            return list()
+
         code = pg_response['code']
         if code:
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
-            self.logger.error("Received error message: %s", output)
+            self.logger.error("Received error message from PG: %s", output)
             # Return an empty list.
             return list()
         # value is a dict, containing a list of slices
