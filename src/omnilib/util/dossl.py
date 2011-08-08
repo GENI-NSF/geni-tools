@@ -99,6 +99,36 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     framework.logger.error('    ..... Run with --debug for more information')
                 framework.logger.debug(traceback.format_exc())
                 return (None, msg)
+            elif exc.errno == 1 and exc.strerror.find("error:14094415") > -1:
+                # user certificate expired
+                import sfa.trust.gid as gid
+                expiredAt = None
+                userURN = ""
+                issuer = ""
+                try:
+                    certObj = gid.GID(filename=framework.cert)
+                    userURN = certObj.get_urn()
+                    issuer = str(certObj.get_issuer())
+                    expiredAt = certObj.cert.get_notAfter()
+                except:
+                    pass
+                msg = "Your user certificate %s has expired" % userURN
+                if expiredAt:
+                    msg += " at %s" % expiredAt
+                msg += ". "
+                if issuer.find("boss") == 0:
+                    msg += "ProtoGENI users should log in to their account at the ProtoGENI website at http://%s and create and download a new certificate. " % issuer
+                elif issuer.find("plc.") == 0:
+                    msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
+                else:
+                    msg += "Contact your certificate issuer: %s. " % issuer
+                    msg += "ProtoGENI users should log in to their SA website and create and download a new certificate. "
+                    msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
+                framework.logger.error("Can't do %s. %s", reason, msg)
+                if not framework.logger.isEnabledFor(logging.DEBUG):
+                    framework.logger.error('    ..... Run with --debug for more information')
+                framework.logger.debug(traceback.format_exc())
+                return (None, msg)
             else:
                 msg = "Uknown SSL error %s" % exc
                 framework.logger.error("%s: %s" % (failMsg, msg))
