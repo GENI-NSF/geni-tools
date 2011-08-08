@@ -5,6 +5,8 @@ gcf 1.4:
         - Write output filename when ListResources or GetVersion saves
         results to a file.
         - Warn on common AM URL typos.
+        - Pause 10sec and retry (max 3x) if server says it is busy, 
+        as PG often does.
         - Certificate lifetime is configurable in gen-certs
         - GCF slices are delegatable by default (library supports
         specifying this now)

@@ -36,6 +36,8 @@ New in v1.4:
  * Write output filename when ListResources or GetVersion saves
  results to a file.
  * Warn on common AM URL typos.
+ * Pause 10sec and retry (max 3x) if server says it is busy, 
+ as PG often does.
  * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
 
