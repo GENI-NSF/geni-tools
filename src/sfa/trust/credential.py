@@ -486,13 +486,22 @@ class Credential(object):
             # HOWEVER!
             # PL now also declares these, with different URLs, so
             # the code notices those attributes already existed with
-            # differnt values, and complains.
+            # different values, and complains.
             # This happens regularly on delegation now that PG and
             # PL both declare the namespace with different URLs.
             # If the content ever differs this is a problem,
             # but for now it works - different URLs (values in the attributes)
             # but the same actual schema, so using the PG schema
             # on delegated-to-PL credentials works fine.
+
+            # Note: you could also not copy attributes
+            # which already exist. It appears that both PG and PL
+            # will actually validate a slicecred with a parent
+            # signed using PG namespaces and a child signed with PL
+            # namespaces over the whole thing. But I don't know
+            # if that is a bug in xmlsec1, an accident since
+            # the contents of the schemas are the same,
+            # or something else, but it seems odd. And this works.
             parentRoot = sdoc.documentElement
             if parentRoot.tagName == "signed-credential" and parentRoot.hasAttributes():
                 for attrIx in range(0, parentRoot.attributes.length):
