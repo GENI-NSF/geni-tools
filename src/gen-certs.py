@@ -167,7 +167,7 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-d", "--directory", default='.',
                       help="directory for created cert files", metavar="DIR")
-    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
+    parser.add_option("-c", "--configfile",  help="config file path", metavar="FILE")
     parser.add_option("-u", "--username", default='alice',
                       help="Experimenter username")
     parser.add_option("--notAll", action="store_true", default=False,

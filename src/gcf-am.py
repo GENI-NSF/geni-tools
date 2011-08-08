@@ -48,9 +48,9 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
                       help="AM key file name", metavar="FILE")
-    parser.add_option("-c", "--certfile",
+    parser.add_option("-g", "--certfile",
                       help="AM certificate file name (PEM format)", metavar="FILE")
-    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
+    parser.add_option("-c", "--configfile",  help="config file path", metavar="FILE")
     # Note: The trusted CH certificates are _not_ enough here.
     # It needs self signed certificates. EG CA certificates.
     parser.add_option("-r", "--rootcadir",

@@ -7,6 +7,9 @@ gcf 1.4:
         - Warn on common AM URL typos.
         - Pause 10sec and retry (max 3x) if server says it is busy, 
         as PG often does.
+        - GCF tools option change: gen-certs, gcf-am, etc now use -c
+        to specify the config file, not -f. -g lets you specify the
+        cert file.
         - Certificate lifetime is configurable in gen-certs
         - GCF slices are delegatable by default (library supports
         specifying this now)

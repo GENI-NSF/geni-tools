@@ -232,9 +232,9 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile",
                       help="experimenter key file name", metavar="FILE")
-    parser.add_option("-c", "--certfile",
+    parser.add_option("-g", "--certfile",
                       help="experimenter certificate file name", metavar="FILE")
-    parser.add_option("-f", "--configfile",  help="config file path", metavar="FILE")
+    parser.add_option("-c", "--configfile",  help="config file path", metavar="FILE")
     
     parser.add_option("--ch", 
                       help="clearinghouse URL")

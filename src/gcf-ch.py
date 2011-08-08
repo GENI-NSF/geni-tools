@@ -80,9 +80,9 @@ def parse_args(argv):
     parser = optparse.OptionParser()
     parser.add_option("-k", "--keyfile", 
                       help="CH key file name", metavar="FILE")
-    parser.add_option("-c", "--certfile", 
+    parser.add_option("-g", "--certfile",
                       help="CH certificate file name (PEM format)", metavar="FILE")
-    parser.add_option("-f", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
+    parser.add_option("-c", "--configfile", default="gcf_config", help="config file path", metavar="FILE")
     # Note: A CH that only wants to talk to its own users doesn't need
     # this argument. It works if it just trusts its own cert.
     # Supplying this arg allows users of other frameworks to create slices on this CH.

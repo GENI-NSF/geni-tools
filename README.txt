@@ -86,8 +86,8 @@ Full details on options for each step are described below.
    line options:
 
    $ python src/gcf-ch.py -r <ch-cert.pem or trusted_roots_dir/> \
-                          -c ch-cert.pem -k ch-key.pem \
-                          -f <path-to-gcf_config-file>
+                          -g ch-cert.pem -k ch-key.pem \
+                          -c <path-to-gcf_config-file>
 
    The optional -r argument could be a file with the GCF CH
    certificate.  If you want to allow users from other Clearinghouses
@@ -128,8 +128,8 @@ Full details on options for each step are described below.
    line options:
 
  $ python src/gcf-am.py -r <ch-cert.pem or trusted_chs_and_cas_dir/> \
-                        -c am-cert.pem -k am-key.pem \
-                        -f <path-to-gcf_config-file>
+                        -g am-cert.pem -k am-key.pem \
+                        -c <path-to-gcf_config-file>
 
    By default the gcf_config file is found in the local
    directory. Override that by specifying the -f argument. See the
@@ -156,10 +156,10 @@ Full details on options for each step are described below.
    To override the settings in gcf_config, you can use these command
    line options:
 
-   $ python src/gcf-test.py -c alice-cert.pem -k alice-key.pem \
+   $ python src/gcf-test.py -g alice-cert.pem -k alice-key.pem \
                             --ch https://localhost:8000/ \
                             --am https://localhost:8001/ \
-                            -f <path-to-gcf_config-file>
+                            -c <path-to-gcf_config-file>
 
    The output should show some basic API testing, and possibly some
    debug output. Errors will be marked by exception traces or
