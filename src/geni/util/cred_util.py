@@ -235,10 +235,11 @@ class CredentialVerifier(object):
             raise xmlrpclib.Fault(fault_code, fault_string)
 
 
-def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfile, issuer_certfile, trusted_roots):
+def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfile, issuer_certfile, trusted_roots, delegatable=False):
     '''Create and Return a Credential object issued by given key/cert for the given caller
     and object GID objects, given life in seconds, and given type.
-    Privileges are determined by type per sfa/trust/rights.py'''
+    Privileges are determined by type per sfa/trust/rights.py
+    Privileges are delegatable if requested.'''
     # FIXME: Validate args: my gids, >0 life,
     # type of cred one I can issue
     # and readable key and cert files
@@ -287,7 +288,10 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     # remove, update, resolve, list, getcredential,
     # listslices, listnodes, getpolicy
     # Note that it does not allow manipulating slivers
+
+    # And every right is delegatable if any are delegatable (default False)
     privileges = rights.determine_rights(typename, None)
+    privileges.delegate_all_privileges(delegatable)
     ucred.set_privileges(privileges)
     ucred.encode()
     ucred.set_issuer_keys(issuer_keyfile, issuer_certfile)

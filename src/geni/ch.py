@@ -289,9 +289,10 @@ class Clearinghouse(object):
         # OK have a user_gid so can get a slice credential
         # authorizing this user on the slice
         try:
+            # add delegatable=True to make this slice delegatable
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid,
-                                                      SLICE_CRED_LIFE)
+                                                      SLICE_CRED_LIFE, delegatable=True)
         except Exception, exc:
             self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid.get_hrn(), slice_gid.get_hrn(), traceback.format_exc())
             raise Exception('CreateSlice failed to get slice credential for user %r, slice %r' % (user_gid.get_hrn(), slice_gid.get_hrn()), exc)
@@ -329,8 +330,14 @@ class Clearinghouse(object):
         slice_cred = self.slices[slice_urn]
         slice_gid = slice_cred.get_gid_object()
         duration_secs = duration.seconds + duration.days * 24 * 3600
+        # if original slice' privileges were all delegatable,
+        # make all the privs here delegatable
+        # Of course, the correct thing would be to do it priv by priv...
+        dgatable = False
+        if slice_cred.get_privileges().get_all_delegate():
+            dgatable = True
         slice_cred = self.create_slice_credential(user_gid, slice_gid,
-                                                  duration_secs)
+                                                  duration_secs, delegatable=dgatable)
         self.logger.info("Slice %s renewed to %s", slice_urn, expire_str)
         self.slices[slice_urn] = slice_cred
         return True
@@ -365,9 +372,9 @@ class Clearinghouse(object):
             raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
         return ucred.save_to_string()
     
-    def create_slice_credential(self, user_gid, slice_gid, duration):
+    def create_slice_credential(self, user_gid, slice_gid, duration, delegatable=False):
         '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        return cred_util.create_credential(user_gid, slice_gid, duration, 'slice', self.keyfile, self.certfile, self.trusted_root_files )
+        return cred_util.create_credential(user_gid, slice_gid, duration, 'slice', self.keyfile, self.certfile, self.trusted_root_files, delegatable)
 
