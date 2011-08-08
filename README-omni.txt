@@ -35,6 +35,7 @@ New in v1.4:
  * Handle expired user certs nicely in Omni
  * Write output filename when ListResources or GetVersion saves
  results to a file.
+ * Warn on common AM URL typos.
  * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
 

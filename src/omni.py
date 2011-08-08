@@ -1640,7 +1640,8 @@ def countSuccess( successList, failList ):
 
 def validate_url(url):
     """Basic sanity checks on URLS before trying to use them.
-    Return None on success, error string if there is a problem."""
+    Return None on success, error string if there is a problem.
+    If return starts with WARN: then just log a warning - not fatal."""
 
     import urlparse
     pieces = urlparse.urlparse(url)
@@ -1650,19 +1651,41 @@ def validate_url(url):
         return "Invalid URL. URL should be http or https protocol: %s" % url
     if not set(pieces.netloc) <= set(string.letters+string.digits+'-.:'):
         return "Invalid URL. Host/port has invalid characters in url %s" % url
+
+    # Look for common errors in contructing the urls
+    # if the urn part of the urn is openflow/gapi (no trailing slash)
+    # then warn it needs a trailing slash for Expedient
+    if pieces.path.lower().find('/openflow/gapi') == 0 and pieces.path != '/openflow/gapi/':
+        return "WARN: Likely invalid Expedient URL %s. Expedient AM runs at /openflow/gapi/ - try url https://%s/openflow/gapi/" % (url, pieces.netloc)
+
+    # If the url has no path part but a port that is 123?? and not 12346
+    # then warn and suggest SFA AMs typically run on 12346
+    if (pieces.path is None or pieces.path.strip() == "" or pieces.path.strip() == '/') and pieces.port >= 12300 and pieces.port < 12400 and pieces.port != 12346:
+        return "WARN: Likely invalid SFA URL %s. SFA AM typically runs on port 12346. Try AM URL https://%s:12346/" % (url, pieces.hostname)
+
+    # if the non host part has 'protogeni' and is not protogeni/xmlrpc/am
+    # then warn that PG AM interface is at protogeni/xmlrpc/am
+    if pieces.path.lower().find('/protogeni') == 0 and pieces.path != '/protogeni/xmlrpc/am' and pieces.path != '/protogeni/xmlrpc/am/':
+        return "WARN: Likely invalid PG URL %s: PG AMs typically run at /protogeni/xmlrpc/am - try url https://%s/protogeni/xmlrpc/am" % (url, pieces.netloc)
+
     return None
 
 def make_client(url, framework, opts):
     """ Create an xmlrpc client, skipping the client cert if not opts.ssl"""
 
+    warnprefix = "WARN: "
     err = validate_url(url)
     if err is not None:
         if hasattr(framework, 'logger'):
             logger = framework.logger
         else:
             logger = logging.getLogger("omni")
-        logger.error(err)
-        raise OmniError(err)
+        if err.find(warnprefix) == 0:
+            err = err[len(warnprefix):]
+            logger.warn(err)
+        else:
+            logger.error(err)
+            raise OmniError(err)
 
     if opts.ssl:
         return omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
