@@ -2,6 +2,8 @@ gcf 1.4:
         - Omni aborts if it detects your slice has expired
         - SFA logger handles log file conflicts (ticket #48)
         - Handle expired user certs nicely in Omni
+        - Write output filename when ListResources or GetVersion saves
+        results to a file.
         - Certificate lifetime is configurable in gen-certs
         - GCF slices are delegatable by default (library supports
         specifying this now)

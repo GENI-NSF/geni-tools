@@ -33,6 +33,8 @@ New in v1.4:
  * Omni aborts if it detects your slice has expired
  * SFA logger handles log file conflicts (ticket #48)
  * Handle expired user certs nicely in Omni
+ * Write output filename when ListResources or GetVersion saves
+ results to a file.
  * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
 
