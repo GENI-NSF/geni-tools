@@ -179,6 +179,11 @@ class CallHandler(object):
                 # This logs or prints, depending on whether filename
                 # is None
                 self._printResults( header, prettyVersion, filename)
+
+                # FIXME: include filename in summary: always? only if 1 aggregate?
+                if filename:
+                    retVal += "Saved getversion at AM %s (%s) to file '%s'.\n" % (client.urn, client.url, filename)
+
         if len(clients)==0:
             retVal += "No aggregates to query. %s\n\n" % message
         else:
@@ -495,6 +500,7 @@ class CallHandler(object):
         returnedRspecs = {}
         omnispecs = {}
         fileCtr = 0
+        savedFileDesc = ""
         for ((urn,url), rspec) in rspecs.items():                        
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
 
@@ -544,6 +550,8 @@ class CallHandler(object):
                 # Create FILE
                 # This prints or logs results, depending on filename None
                 self._printResults( header, content, filename)
+                if filename:
+                    savedFileDesc += "Saved listResources RSpec at %s to file %s. \n" % (urn, filename)
 
             else:
                 # Convert RSpec to omnispec
@@ -586,7 +594,6 @@ class CallHandler(object):
                 # log or print omnispecs, depending on if filename is None
                 self._printResults( header, content, filename)
 
-
         # Create RETURNS
         # FIXME: If numAggs is 1 then retVal should just be the rspec?
         if slicename:
@@ -600,6 +607,7 @@ class CallHandler(object):
                     retVal += "Wrote rspecs from %d aggregates" % numAggs
                     if self.opts.output:
                         retVal +=" to %d files"% fileCtr
+                        retVal += "\n" + savedFileDesc
                 else:
                     retVal +="No Rspecs succesfully parsed from %d aggregates" % numAggs
             elif len(omnispecs.keys()) > 0:
@@ -1016,6 +1024,8 @@ class CallHandler(object):
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
                     
                 self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
                 retItem[ client.url ] = status
                 successCnt+=1
             else:
