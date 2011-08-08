@@ -240,10 +240,10 @@ Full details on options for each step are described below.
      'am_5 = urn:publicid:IDN+plc:gpo1+authority+sa, \
              http://sfa.gpolab.bbn.com:12348'
 
-   The URN should be unique. While it need not be fully accurate, that
-   is useful. You can find the URN using the openssl commandline:
+   The AM URN should be unique. While it need not be fully accurate, that
+   is useful. You can find the AM URN using the openssl commandline:
 
-     openssl x509 -in [gid] -text | grep "Subject Alternative" 
+     openssl x509 -in [cert of AM] -text | grep "urn:publicid:IDN"
 
 
 Further Reading
