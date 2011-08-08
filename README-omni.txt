@@ -32,6 +32,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v1.4:
  * Omni aborts if it detects your slice has expired
  * SFA logger handles log file conflicts (ticket #48)
+ * Handle expired user certs nicely in Omni
+ * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
 
 New in v1.3.2:
