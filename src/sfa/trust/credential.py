@@ -738,6 +738,7 @@ class Credential(object):
     # . That the issuer of the credential is the authority in the target's urn
     #    . In the case of a delegated credential, this must be true of the root
     # . That all of the gids presented in the credential are valid
+    #    . Including verifying GID chains, and includ the issuer
     # . The credential is not expired
     #
     # -- For Delegates (credentials with parents)
@@ -805,7 +806,7 @@ class Credential(object):
             cert_args = " ".join(['--trusted-pem %s' % x for x in trusted_certs])
 
         # If caller explicitly passed in None that means skip cert chain validation.
-        # Strange and not typical
+        # - Strange and not typical
         if trusted_certs is not None:
             # Verify the gids of this cred and of its parents
             for cur_cred in self.get_credential_list():
@@ -844,8 +845,9 @@ class Credential(object):
         if self.parent:
             self.verify_parent(self.parent)
 
-        # Make sure the issuer is the target's authority
-        self.verify_issuer()
+        # Make sure the issuer is the target's authority, and is
+        # itself a valid GID
+        self.verify_issuer(trusted_cert_objects)
         return True
 
     ##
@@ -863,35 +865,58 @@ class Credential(object):
         return list
     
     ##
-    # Make sure the credential's target gid was signed by (or is the same) the entity that signed
-    # the original credential or an authority over that namespace.
-    def verify_issuer(self):                
+    # Make sure the credential's target gid (a) was signed by or (b)
+    # is the same as the entity that signed the original credential,
+    # or (c) is an authority over the target's namespace.
+    # Also ensure that the credential issuer / signer itself has a valid
+    # GID signature chain (signed by an authority with namespace rights).
+    def verify_issuer(self, trusted_gids):
         root_cred = self.get_credential_list()[-1]
         root_target_gid = root_cred.get_gid_object()
         root_cred_signer = root_cred.get_signature().get_issuer_gid()
 
-        if root_target_gid.is_signed_by_cert(root_cred_signer):
-            # cred signer matches target signer, return success
-            return
+        # Case 1:
+        # Allow non authority to sign target and cred about target.
+        #
+        # Why do we need to allow non authorities to sign?
+        # If in the target gid validation step we correctly
+        # checked that the target is only signed by an authority,
+        # then this is just a special case of case 3.
+        # This short-circuit is the common case currently -
+        # and cause GID validation doesn't check 'authority',
+        # this allows users to generate valid slice credentials.
+        # Disable this.
+#        if root_target_gid.is_signed_by_cert(root_cred_signer):
+#            # cred signer matches target signer, return success
+#            return
 
+        # Case 2:
+        # Allow someone to sign credential about themeselves. Used?
+        # If not, remove this.
         root_target_gid_str = root_target_gid.save_to_string()
         root_cred_signer_str = root_cred_signer.save_to_string()
         if root_target_gid_str == root_cred_signer_str:
             # cred signer is target, return success
             return
 
-        # root_cred_signer is not the target_gid
-        # So this is a different gid that we have not verified
-        # Did xmlsec1 verify the cert chain on this already?
-        # Regardless, it hasn't verified that the gid meets the HRN namespace
-        # requirements
-# FIXME: Uncomment once we verify this is right
-#        root_cred_signer.verify_chain(trusted_cert_objects)
+        # Case 3:
 
-        # See if it the signer is an authority over the domain of the target
+        # root_cred_signer is not the target_gid
+        # So this is a different gid that we have not verified.
+        # xmlsec1 verified the cert chain on this already, but
+        # it hasn't verified that the gid meets the HRN namespace
+        # requirements.
+        # Below we'll ensure that it is an authority.
+        # But we haven't verified that it is _signed by_ an authority
+        # We also don't know if xmlsec1 requires that cert signers
+        # are marked as CAs.
+        root_cred_signer.verify_chain(trusted_gids)
+
+        # See if the signer is an authority over the domain of the target.
+        # There are multiple types of authority - accept them all here
         # Maybe should be (hrn, type) = urn_to_hrn(root_cred_signer.get_urn())
         root_cred_signer_type = root_cred_signer.get_type()
-        if (root_cred_signer_type == 'authority'):
+        if (root_cred_signer_type.find('authority') == 0):
             #logger.debug('Cred signer is an authority')
             # signer is an authority, see if target is in authority's domain
             hrn = root_cred_signer.get_hrn()

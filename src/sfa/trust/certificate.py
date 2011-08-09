@@ -641,6 +641,7 @@ class Certificate:
     # child. If a parent did not sign a child, then an exception is thrown. If
     # the bottom of the recursion is reached and the certificate does not match
     # a trusted root, then an exception is thrown.
+    # Also require that parents are CAs.
     #
     # @param Trusted_certs is a list of certificates that are trusted.
     #
@@ -678,11 +679,15 @@ class Certificate:
             logger.debug("verify_chain: NO %s is not signed by parent"%self.get_subject())
             return CertNotSignedByParent(self.get_subject())
 
-        # Confirm that the parent is a CA. Only CAs can be trusted as signers.
-        # BUT: plc.bbn for example is not an intermediate CA. So can't do this.
-#        if not self.parent.intermediate:
-#            logger.warn("verify_chain: cert %s's parent %s is not an intermediate CA" % (self.get_subject(), self.parent.get_subject()))
-#            return CertNotSignedByParent(self.get_subject())
+        # Confirm that the parent is a CA. Only CAs can be trusted as
+        # signers.
+        # Note that trusted roots are not parents, so don't need to be
+        # CAs.
+        # Ugly - cert objects aren't parsed so we need to read the
+        # extension and hope there are no other basicConstraints
+        if not self.parent.intermediate and not (self.parent.get_extension('basicConstraints') == 'CA:TRUE'):
+            logger.warn("verify_chain: cert %s's parent %s is not an intermediate CA" % (self.get_subject(), self.parent.get_subject()))
+            return CertNotSignedByParent(self.get_subject())
 
         # if the parent isn't verified...
         logger.debug("verify_chain: .. %s, -> verifying parent %s"%(self.get_subject(),self.parent.get_subject()))
