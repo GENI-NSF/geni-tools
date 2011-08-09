@@ -30,14 +30,14 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.4:
- * Omni aborts if it detects your slice has expired
+ * Omni aborts if it detects your slice has expired (ticket #51)
  * SFA logger handles log file conflicts (ticket #48)
- * Handle expired user certs nicely in Omni
+ * Handle expired user certs nicely in Omni (ticket #52)
  * Write output filename when ListResources or GetVersion saves
- results to a file.
- * Warn on common AM URL typos.
+ results to a file. (ticket #53)
+ * Warn on common AM URL typos. (ticket #54)
  * Pause 10sec and retry (max 3x) if server says it is busy, 
- as PG often does.
+ as PG often does. (ticket #55)
  * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
 
