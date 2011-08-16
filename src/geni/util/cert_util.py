@@ -29,14 +29,13 @@ from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair
 from geni.util.urn_util import URN
 
-def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
+def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
                 public_key=None, lifeDays=1825, email=None):
     '''Create a new certificate and return it and the associated keys.
     If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
     
-    If intermediate then mark this 
-    as an intermediate CA certificate (can sign).
+    If ca then mark this as a CA certificate (can sign other certs).
     
     lifeDays is the lifetime of the supplied cert - default is 1825 (5 years).
 
@@ -61,10 +60,8 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
         keys = Keypair()
         keys.load_pubkey_from_file(public_key)
     newgid.set_pubkey(keys)
-    if intermediate:
-        # This cert will be able to sign certificates
-        newgid.set_intermediate_ca(intermediate)
-        
+    newgid.set_intermediate_ca(ca)
+
     if issuer_key and issuer_cert:
         # the given issuer will issue this cert
         if isinstance(issuer_key,str):

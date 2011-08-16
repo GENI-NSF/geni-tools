@@ -107,7 +107,7 @@ def make_ch_cert(dir):
     urn = geni.URN(CERT_AUTHORITY, AUTHORITY_CERT_TYPE, CH_CERT_SUBJ).urn_string()
     
     # add lifeDays arg to change # of days cert lasts
-    (ch_gid, ch_keys) = create_cert(urn)
+    (ch_gid, ch_keys) = create_cert(urn, ca=True)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
 
@@ -137,7 +137,7 @@ def make_am_cert(dir, ch_cert, ch_key):
     auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
     urn = geni.URN(auth_name, AUTHORITY_CERT_TYPE, AM_CERT_SUBJ).urn_string()
     # add lifeDays arg to change # of days cert lasts
-    (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, True)
+    (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, ca=True)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
@@ -151,6 +151,7 @@ def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None):
     # add lifeDays arg to change # of days cert lasts
     (alice_gid, alice_keys) = create_cert(urn, issuer_key=ch_keys,
                                           issuer_cert=ch_gid,
+                                          ca=False,
                                           public_key=public_key,
                                           email=email)
     alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
