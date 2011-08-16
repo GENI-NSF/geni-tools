@@ -30,7 +30,7 @@ from sfa.trust.certificate import Keypair
 from geni.util.urn_util import URN
 
 def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
-                public_key=None, lifeDays=1825):
+                public_key=None, lifeDays=1825, email=None):
     '''Create a new certificate and return it and the associated keys.
     If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
@@ -47,8 +47,11 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, intermediate=False,
     c_urn = URN(urn=urn)
     dotted = '%s.%s.%s' % (c_urn.getAuthority(), c_urn.getType(), c_urn.getName())
 
-    newgid = GID(create=True, subject=dotted[:64],
-                 urn=urn, lifeDays=lifeDays)
+    subject = dict()
+    subject['CN'] = dotted[:64]
+    if email:
+        subject['emailAddress'] = email
+    newgid = GID(create=True, subject=subject, urn=urn, lifeDays=lifeDays)
     
     if public_key is None:
         # create a new key pair
