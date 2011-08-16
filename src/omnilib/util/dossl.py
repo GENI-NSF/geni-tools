@@ -33,6 +33,7 @@ import socket
 import ssl
 import traceback
 import xmlrpclib
+import sfa.trust.gid as gid
 
 from omnilib.util.omnierror import OmniError
 
@@ -84,7 +85,6 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     raise OmniError, "Wrong pass phrase after %d tries." % max_attempts
             elif exc.errno == 1 and exc.strerror.find("error:14094418") > -1:
                 # Handle SSLError: [Errno 1] _ssl.c:480: error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
-                import sfa.trust.gid as gid
                 certiss = 'unknown'
                 certsubj = 'unknown'
                 try:
@@ -101,7 +101,6 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 return (None, msg)
             elif exc.errno == 1 and exc.strerror.find("error:14094415") > -1:
                 # user certificate expired
-                import sfa.trust.gid as gid
                 expiredAt = None
                 userURN = ""
                 issuer = ""
