@@ -885,19 +885,18 @@ class Credential(object):
         # This short-circuit is the common case currently -
         # and cause GID validation doesn't check 'authority',
         # this allows users to generate valid slice credentials.
-        # Disable this.
-#        if root_target_gid.is_signed_by_cert(root_cred_signer):
-#            # cred signer matches target signer, return success
-#            return
+        if root_target_gid.is_signed_by_cert(root_cred_signer):
+            # cred signer matches target signer, return success
+            return
 
         # Case 2:
         # Allow someone to sign credential about themeselves. Used?
         # If not, remove this.
-        root_target_gid_str = root_target_gid.save_to_string()
-        root_cred_signer_str = root_cred_signer.save_to_string()
-        if root_target_gid_str == root_cred_signer_str:
-            # cred signer is target, return success
-            return
+        #root_target_gid_str = root_target_gid.save_to_string()
+        #root_cred_signer_str = root_cred_signer.save_to_string()
+        #if root_target_gid_str == root_cred_signer_str:
+        #    # cred signer is target, return success
+        #    return
 
         # Case 3:
 
