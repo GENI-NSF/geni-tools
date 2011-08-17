@@ -27,7 +27,7 @@
 Create some basic x509 identity certificates and keys.
 
 Certificates and keys are created for two authorities:
-a clearinghouse and an intermediate CA - an aggregate manager. 
+a clearinghouse and an aggregate manager.
 Finally, a user cert and
 key is created for a user (named Alice by default). Options allow
 controlling which certs are created.
