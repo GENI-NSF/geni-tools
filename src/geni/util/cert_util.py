@@ -60,7 +60,7 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
         keys = Keypair()
         keys.load_pubkey_from_file(public_key)
     newgid.set_pubkey(keys)
-    newgid.set_intermediate_ca(ca)
+    newgid.set_is_ca(ca)
 
     if issuer_key and issuer_cert:
         # the given issuer will issue this cert

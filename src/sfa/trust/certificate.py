@@ -305,7 +305,7 @@ class Certificate:
     issuerKey = None
     issuerSubject = None
     parent = None
-    intermediate = False
+    isCA = None # will be a boolean once set
 
     separator="-----parent-----"
 
@@ -318,8 +318,9 @@ class Certificate:
     #     it's subject name.
     # @param string If string!=None, load the certficate from the string.
     # @param filename If filename!=None, load the certficiate from the file.
+    # @param isCA If !=None, set whether this cert is for a CA
 
-    def __init__(self, lifeDays=1825, create=False, subject=None, string=None, filename=None, intermediate=None):
+    def __init__(self, lifeDays=1825, create=False, subject=None, string=None, filename=None, isCA=None):
         self.data = {}
         if create or subject:
             self.create(lifeDays)
@@ -330,8 +331,9 @@ class Certificate:
         if filename:
             self.load_from_file(filename)
 
-        if intermediate:
-            self.set_intermediate_ca(intermediate)
+        # Set the CA bit if a value was supplied
+        if isCA != None:
+            self.set_is_ca(isCA)
 
     # Create a blank X509 certificate and store it in this object.
 
@@ -505,10 +507,22 @@ class Certificate:
         pkey.m2key = m2x509.get_pubkey()
         return pkey
 
-    def set_intermediate_ca(self, val):
-        self.intermediate = val
+    # Set whether this cert is for a CA. All signers and only signers should be CAs.
+    # The local member starts unset, letting us check that you only set it once
+    # @param val Boolean indicating whether this cert is for a CA
+    def set_is_ca(self, val):
+        if val is None:
+            return
+
+        if self.isCA != None:
+            # Can't double set properties
+            raise "Cannot set basicConstraints CA:?? more than once. Was %s, trying to set as %s" % (self.isCA, val)
+
+        self.isCA = val
         if val:
             self.add_extension('basicConstraints', 1, 'CA:TRUE')
+        else:
+            self.add_extension('basicConstraints', 1, 'CA:FALSE')
 
 
 
@@ -521,6 +535,25 @@ class Certificate:
     # @param value string containing value of the extension
 
     def add_extension(self, name, critical, value):
+        oldExtVal = None
+        try:
+            oldExtVal = self.get_extension(name)
+        except:
+            # M2Crypto LookupError when the extension isn't there (yet)
+            pass
+
+        # This code limits you from adding the extension with the same value
+        # The method comment says you shouldn't do this with the same name
+        # But actually it (m2crypto) appears to allow you to do this.
+        if oldExtVal and oldExtVal == value:
+            # don't add this extension again
+            # just do nothing as here
+            return
+        # FIXME: What if they are trying to set with a different value?
+        # Is this ever OK? Or should we raise an exception?
+#        elif oldExtVal:
+#            raise "Cannot add extension %s which had val %s with new val %s" % (name, oldExtVal, value)
+
         ext = crypto.X509Extension (name, critical, value)
         self.cert.add_extensions([ext])
 
@@ -685,8 +718,8 @@ class Certificate:
         # CAs.
         # Ugly - cert objects aren't parsed so we need to read the
         # extension and hope there are no other basicConstraints
-        if not self.parent.intermediate and not (self.parent.get_extension('basicConstraints') == 'CA:TRUE'):
-            logger.warn("verify_chain: cert %s's parent %s is not an intermediate CA" % (self.get_subject(), self.parent.get_subject()))
+        if not self.parent.isCA and not (self.parent.get_extension('basicConstraints') == 'CA:TRUE'):
+            logger.warn("verify_chain: cert %s's parent %s is not a CA" % (self.get_subject(), self.parent.get_subject()))
             return CertNotSignedByParent(self.get_subject())
 
         # if the parent isn't verified...
