@@ -41,6 +41,20 @@ default_cf = my_gcf
 #  http://myplc2.gpolab.bbn.com:8001/, \
 #  https://masada.gpolab.bbn.com:443/openflow/gapi/
 
+
+# You can also tell Omni a single aggregate URL to contact, with the -a
+# argument. In addition, rather than remembering the URL, you can define a
+# nickname for the aggregate here.
+
+[aggregate_nicknames]
+# Nickname=URN,URL
+# You can leave the URN out
+# Sample nicknames follow
+pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
+plc=,https://www.planet-lab.org:12346
+pg-ky=urn:publicid:IDN+uky.emulab.net+authority+am,https://www.uky.emulab.net/protogeni/xmlrpc/am
+
 # ==================================
 # Configure Control Frameworks here
 

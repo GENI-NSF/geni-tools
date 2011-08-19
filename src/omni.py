@@ -138,7 +138,8 @@ class CallHandler(object):
         """AM API GetVersion
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
@@ -437,7 +438,7 @@ class CallHandler(object):
 
     def listresources(self, args):
         """Optional arg is a slice name limiting results. Call ListResources
-        on all aggregates and prints the omnispec/rspec to stdout or to file.
+        on 1+ aggregates and prints the omnispec/rspec to stdout or to file.
         
         -n gives native format; otherwise print omnispec in json format
            Note: omnispecs are deprecated. Native format is default.
@@ -462,7 +463,8 @@ class CallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
@@ -583,7 +585,9 @@ class CallHandler(object):
                 # else use a count of AMs?
                 server = str(numAggs) + "AMs"
                 if numAggs == 1 and self.opts.aggregate:
-                    server = self._filename_part_from_am_url(self.opts.aggregate)
+                    # FIXME: We may have a URN or nickname here.
+                    # Wouldn't that be better for a filename?
+                    server = self._filename_part_from_am_url(self._derefAggNick(self.opts.aggregate)[0])
                 filename = "omnispec-" + server + ".json"
                 if slicename:
                     filename = slicename+"-" + filename
@@ -666,12 +670,14 @@ class CallHandler(object):
         Return on success the manifest RSpec(s)
 
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        -n Use native format rspec. Requires -a. Native RSpecs are the default, and omnispecs are deprecated.
+        -n Use native format rspec. Requires -a.
+        Native RSpecs are the default, and omnispecs are deprecated.
         --omnispec Use Omnispec rspec format. Deprecated.
-        -a Contact only the aggregate at the given URL
+        -a Contact only the aggregate at the given URL, or with the given
+         nickname that translates to a URL in your omni_config
         --slicecredfile Read slice credential from given file, if it exists
         -o Save result (manifest rspec) in per-Aggregate files
         -p (used with -o) Prefix for resulting manifest RSpec files
@@ -681,11 +687,13 @@ class CallHandler(object):
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
-        omni_config users section is used to get a set of SSH keys that should be loaded onto the
-        remote node to allow SSH login, if the remote resource and aggregate support this
+        omni_config users section is used to get a set of SSH keys that
+        should be loaded onto the remote node to allow SSH login, if the
+        remote resource and aggregate support this.
 
-        Note you likely want to check SliverStatus to ensure your resource comes up.
-        And check the sliver expiration time: you may want to call RenewSliver
+        Note you likely want to check SliverStatus to ensure your resource
+        comes up.
+        And check the sliver expiration time: you may want to call RenewSliver.
         """
 
         retVal=''
@@ -724,7 +732,7 @@ class CallHandler(object):
             rspecs = {}
             try:
                 rspec = file(specfile).read()
-                rspecs[self.opts.aggregate] = rspec
+                rspecs[self._derefAggNick(self.opts.aggregate)[0]] = rspec
             except Exception, exc:
                 self._raise_omni_error('Unable to read rspec file %s: %s'
                          % (specfile, str(exc)))
@@ -866,22 +874,25 @@ class CallHandler(object):
         return retVal, result
 
     def renewsliver(self, args):
-        """AM API RenewSliver <slicename> <new expiration time in UTC or with a timezone>
+        """AM API RenewSliver <slicename> <new expiration time in UTC
+        or with a timezone>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
         Note that per the AM API expiration times will be timezone aware.
         Unqualified times are assumed to be in UTC.
-        Note that the expiration time cannot be past your slice expiration time (see renewslice). Some aggregates will
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
         """
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
@@ -960,14 +971,15 @@ class CallHandler(object):
     def sliverstatus(self, args):
         """AM API SliverStatus  <slice name>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
@@ -1041,14 +1053,15 @@ class CallHandler(object):
     def deletesliver(self, args):
         """AM API DeleteSliver <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
@@ -1120,14 +1133,15 @@ class CallHandler(object):
     def shutdown(self, args):
         """AM API Shutdown <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument, if provided, ELSE
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
@@ -1185,11 +1199,13 @@ class CallHandler(object):
     # Start of control framework operations
 
     def listaggregates(self, args):
-        """Print the known aggregates URN and URL
+        """Print the known aggregates' URN and URL
         Gets aggregates from:
         - command line (one, no URN available), OR
-        - omni config (1+, no URNs available), OR
-        - Specified control framework (via remote query). This is the aggregates that registered with the framework.
+        - command line nickname (one, URN may be supplied), OR
+        - omni_config (1+, no URNs available), OR
+        - Specified control framework (via remote query).
+        This is the aggregates that registered with the framework.
         """
         retStr = ""
         retVal = {}
@@ -1216,15 +1232,17 @@ class CallHandler(object):
         """Create a Slice at the given Slice Authority.
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         To create the slice and save off the slice credential:
      	   omni.py -o createslice myslice
         To create the slice and save off the slice credential to a specific file:
-     	   omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml createslice myslice
+           omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml
+                   createslice myslice
 
-        Note that Slice Authorities typically limit this call to privileged users, e.g. PIs.
+        Note that Slice Authorities typically limit this call to privileged
+        users, e.g. PIs.
 
         Note also that typical slice lifetimes are short. See RenewSlice.
         """
@@ -1269,8 +1287,8 @@ class CallHandler(object):
           Note that Slice Authorities may interpret dates differently if you do not
           specify a timezone. SFA drops any timezone information though.
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Return summary string, new slice expiration (string)
         """
@@ -1313,10 +1331,11 @@ class CallHandler(object):
         """Framework specific DeleteSlice call at the given Slice Authority
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        Delete all your slivers first! This does not free up resources at various aggregates.
+        Delete all your slivers first!
+        This does not free up resources at various aggregates.
         """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('deleteslice requires arg of slice name')
@@ -1364,7 +1383,8 @@ class CallHandler(object):
         return retStr, slices
 
     def getusercred(self, args):
-        """Save your user credential to <framework nickname>-usercred.xml - useful for debugging."""
+        """Save your user credential to <framework nickname>-usercred.xml
+        Useful for debugging."""
         (cred, message) = self.framework.get_user_cred()
         
         if cred is None:
@@ -1381,11 +1401,12 @@ class CallHandler(object):
 
         If you specify the -o option, the credential is saved to a file.
         The filename is <slicename>-cred.xml
-        But if you specify the --slicecredfile option then that is the filename used.
+        But if you specify the --slicecredfile option then that is the
+        filename used.
 
-        Additionally, if you specify the --slicecredfile option and that references a file that is
-        not empty, then we do not query the Slice Authority for this credential, but instead
-        read it from this file.
+        Additionally, if you specify the --slicecredfile option and that
+        references a file that is not empty, then we do not query the Slice
+        Authority for this credential, but instead read it from this file.
 
         e.g.:
           Get slice mytest credential from slice authority, save to a file:
@@ -1402,8 +1423,8 @@ class CallHandler(object):
 
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
         """
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -1445,8 +1466,8 @@ class CallHandler(object):
         if it is soon.
         Arg: slice name
         Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name> (e.g. bbn_myslice), and we want
-        only the slice name part here (e.g. myslice).
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
         """
 
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
@@ -1576,7 +1597,8 @@ class CallHandler(object):
         return (cred, message)
 
     def _getclients(self, ams=None):
-        """Create XML-RPC clients for each aggregate (from commandline, else from config file, else from framework)
+        """Create XML-RPC clients for each aggregate (from commandline,
+        else from config file, else from framework)
         Return them as a sequence.
         Each client has a urn and url. See _listaggregates for details.
         """
@@ -1594,6 +1616,26 @@ class CallHandler(object):
 
         return (clients, message)
 
+    def _derefAggNick(self, aggregateNickname):
+        """Check if the given aggregate string is a nickname defined
+        in omni_config. If so, return the dereferenced URL,URN.
+        Else return the input as the URL, and 'unspecified_AM_URN' as the URN."""
+
+        if not aggregateNickname:
+            return (None, None)
+        aggregateNickname = aggregateNickname.strip()
+        urn = "unspecified_AM_URN"
+        url = aggregateNickname
+
+        if self.config['aggregate_nicknames'].has_key(aggregateNickname):
+            url = self.config['aggregate_nicknames'][aggregateNickname][1]
+            tempurn = self.config['aggregate_nicknames'][aggregateNickname][0]
+            if tempurn.strip() != "":
+                urn = tempurn
+            self.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
+        return url,urn
+
+
     def _listaggregates(self):
         """List the aggregates that can be used for the current operation.
         If an aggregate was specified on the command line, use only that one.
@@ -1605,8 +1647,11 @@ class CallHandler(object):
         """
         # used by _getclients (above), createsliver, listaggregates
         if self.opts.aggregate:
-            # No URN is specified, so put in 'unspecified_AM_URN'
-            return (dict(unspecified_AM_URN=self.opts.aggregate.strip()), "")
+            # Try treating that as a nickname
+            # otherwise it is the url directly
+            # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
+            url, urn = self._derefAggNick(self.opts.aggregate)
+            return (dict(urn=url), "")
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
             for url in self.omni_config['aggregates'].strip().split(','):
@@ -1759,6 +1804,32 @@ def load_config(opts, logger):
             for (key,val) in confparser.items(user.strip()):
                 d[key] = val
             config['users'].append(d)
+
+    # Find aggregate nicknames
+    config['aggregate_nicknames'] = {}
+    if confparser.has_section('aggregate_nicknames'):
+        for (key,val) in confparser.items('aggregate_nicknames'):
+            temp = val.split(',')
+            for i in range(len(temp)):
+                temp[i] = temp[i].strip()
+            if len(temp) != 2:
+                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+            if len(temp) == 0:
+                continue
+            if len(temp) == 1:
+                # Got 1 entry - if its a valid URL, use it
+                res = validate_url(temp[0])
+                if res is None or res.startswith("WARN:"):
+                    t = temp[0]
+                    temp = ["",t]
+                else:
+                    # not a valid URL. Skip it
+                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
+                    continue
+
+            # If temp len > 2: try to use it as is
+
+            config['aggregate_nicknames'][key] = temp
 
     # Load up the framework section
     if not opts.framework:
