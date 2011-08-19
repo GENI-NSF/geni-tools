@@ -71,6 +71,7 @@ import datetime
 import dateutil.parser
 import json
 import logging
+import logging.config
 import optparse
 import os
 import pprint
@@ -1981,14 +1982,66 @@ def API_call( framework, config, args, opts, verbose=False ):
     return retVal, retItem
 
 def configure_logging(opts):
-    """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
+    """Configure logging. If a log config filename is supplied with the -l option,
+    and the file is non-empty, configure logging from that file. For details on this,
+    see the applyLogConfig documentation.
+
+    Otherwise, use a basic config, with INFO level by default,
+    DEBUG level if opts.debug.
+
+    Return a logger for 'omni'."""
+
     level = logging.INFO
-    logging.basicConfig(level=level)
+    optlevel = 'INFO'
     if opts.debug:
         level = logging.DEBUG
+        optlevel = 'DEBUG'
+    if opts.logconfig:
+        applyLogConfig(opts.logconfig, defaults={'optlevel': optlevel})
+    else:
+        logging.basicConfig(level=level)
+
     logger = logging.getLogger("omni")
-    logger.setLevel(level)
     return logger
+
+def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
+    """Change the logging configuration to that in the specified file, if found.
+    Effects all uses of python logging in this process.
+    Tries hard to find the file, and does nothing if not found.
+    'defaults' is a dictionary in ConfigParser format, that sets variables
+    for use in the config files. Specifically,
+    use this to set 'optlevel' to the basic logging level desired: INFO is the default.
+    For help creating a logging config file,
+    see http://docs.python.org/library/logging.config.html#configuration-file-format
+    and see the sample 'omni_log_conf_sample.conf'
+
+    From a script, you can over-ride the -l argument to change the log level.
+    Alternatively, you can call this function during omni operations.
+    Sample usage from a script:
+      # Configure logging based on command line options, using any -l specified file
+      framework, config, args, opts = omni.initialize(omniargs, options)
+      text, retItem = omni.API_call( framework, config, args, opts )
+
+      # Without changing commandline args, reset the logging config
+      omni.applyLogConfig("examples/myLogConfig.conf")
+
+      # <Here your script resets 'args' to give a different command>
+
+      # Then make the call for the new command, using the new log level
+      text, retItem = omni.API_call( framework, config, args, opts )
+"""
+
+    fns = [logConfigFilename, os.path.join('src', logConfigFilename), os.path.expanduser(logConfigFilename), os.path.join('.', logConfigFilename), os.path.abspath(logConfigFilename)]
+    found = False
+    for fn in fns:
+        if os.path.exists(fn) and os.path.getsize(fn) > 0:
+            logging.config.fileConfig(fn, defaults=defaults)
+            logging.info("Configured logging from file %s", fn)
+            found = True
+            break
+
+    if not found:
+        logging.warn("Failed to find log config file %s", logConfigFilename)
 
 def getSystemInfo():
     import platform
@@ -2004,7 +2057,6 @@ def getOmniVersion():
 def getParser():
     """Construct an Options Parser for parsing omni arguments.
     Do not actually parse anything"""
-
 
     usage = "\n" + getOmniVersion() + "\n\n%prog [options] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
@@ -2060,6 +2112,8 @@ def getParser():
                       help="Turn off verbose command summary for omni commandline tool")
     parser.add_option("--tostdout", default=False, action="store_true",
                       help="Print results like rspecs to STDOUT instead of to log stream")
+    parser.add_option("-l", "--logconfig", default=None,
+                      help="Python logging config file")
     return parser
 
 def parse_args(argv, options=None):

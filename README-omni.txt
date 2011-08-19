@@ -30,6 +30,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.4:
+ * Omni logging is configurable with a -l option, or from a
+ script by calling applyLogConfig(). (ticket #61)
  * Omni aborts if it detects your slice has expired (ticket #51)
  * SFA logger handles log file conflicts (ticket #48)
  * Handle expired user certs nicely in Omni (ticket #52)
@@ -81,10 +83,23 @@ In all cases where users would do that, Omni now supports the
 you. See the documentation for individual commands for details.
 
 Remaining output is done through the python logging package, and
-prints to STDERR by default.
+prints to STDERR by default. Logging levels, format, and output
+destinations are configurable by supplying a custom Python logging
+configuration file, using the '-l' option. Note that these settings
+will apply to the entire Python process. For help creating a logging
+config file, see
+http://docs.python.org/library/logging.config.html#configuration-file-format
+and see the sample 'omni_log_conf_sample.conf'. Note that if present
+in your configuration file, Omni will use the special variable
+'optlevel' to set logging to INFO by default, and DEBUG if you
+specify the '--debug' option to Omni.
 
 For further control of Omni output, use Omni as a library from your
-own python script (see below for details).
+own python script (see below for details). For example, your script
+can modify the '-l' logging config file option between Omni
+calls. Alternatively, you can call the Omni function
+'omni.applyLogConfig(<path to your log config file>)'. See the
+documentation for 'applyLogConfig' for details.
 
 == Omnispecs ==
 

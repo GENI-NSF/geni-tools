@@ -1,4 +1,6 @@
 gcf 1.4:
+        - Omni logging is configurable with a -l option, or from a
+        script by calling applyLogConfig(). (ticket #61)
         - Omni aborts if it detects your slice has expired (ticket #51)
         - SFA logger handles log file conflicts (ticket #48)
         - Handle expired user certs nicely in Omni (ticket #52)
