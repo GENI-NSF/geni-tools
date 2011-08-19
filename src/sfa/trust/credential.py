@@ -47,7 +47,7 @@ from sfa.trust.certificate import Keypair
 from sfa.trust.credential_legacy import CredentialLegacy
 from sfa.trust.rights import Right, Rights, determine_rights
 from sfa.trust.gid import GID
-from sfa.util.xrn import urn_to_hrn
+from sfa.util.xrn import urn_to_hrn, hrn_authfor_hrn
 
 # 2 weeks, in seconds 
 DEFAULT_CREDENTIAL_LIFETIME = 86400 * 14
@@ -918,8 +918,8 @@ class Credential(object):
         if (root_cred_signer_type.find('authority') == 0):
             #logger.debug('Cred signer is an authority')
             # signer is an authority, see if target is in authority's domain
-            hrn = root_cred_signer.get_hrn()
-            if root_target_gid.get_hrn().startswith(hrn):
+            signerhrn = root_cred_signer.get_hrn()
+            if hrn_authfor_hrn(signerhrn, root_target_gid.get_hrn()):
                 return
 
         # We've required that the credential be signed by an authority

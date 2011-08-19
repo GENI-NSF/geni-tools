@@ -33,6 +33,7 @@ import datetime
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
+from sfa.util.xrn import hrn_authfor_hrn
 
 class CredentialVerifier(object):
     """Utilities to verify signed credentials from a given set of 
@@ -267,8 +268,8 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     issuer_gid = gid.GID(filename=issuer_certfile)
     
     if not (object_gid.get_urn() == issuer_gid.get_urn() or 
-        (issuer_gid.get_type() == 'authority' and 
-         object_gid.get_urn().split('+')[1].startswith(issuer_gid.get_urn().split('+')[1]))):
+        (issuer_gid.get_type().find('authority') == 0 and
+         hrn_authfor_hrn(issuer_gid.get_hrn(), object_gid.get_hrn()))):
         raise ValueError("Issuer not authorized to issue credential: Issuer=%s  Target=%s" % (issuer_gid.get_urn(), object_gid.get_urn()))
     
 

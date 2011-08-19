@@ -30,6 +30,7 @@ def get_leaf(hrn): return Xrn(hrn).get_leaf()
 def get_authority(hrn): return Xrn(hrn).get_authority_hrn()
 def urn_to_hrn(urn): xrn=Xrn(urn); return (xrn.hrn, xrn.type)
 def hrn_to_urn(hrn,type): return Xrn(hrn, type=type).urn
+def hrn_authfor_hrn(parenthrn, hrn): return Xrn.hrn_is_auth_for_hrn(parenthrn, hrn)
 
 class Xrn:
 
@@ -56,10 +57,38 @@ class Xrn:
     # e.g. escape ('a.b') -> 'a\.b'
     @staticmethod
     def escape(token): return re.sub(r'([^\\])\.', r'\1\.', token)
+
     # e.g. unescape ('a\.b') -> 'a.b'
     @staticmethod
     def unescape(token): return token.replace('\\.','.')
-        
+
+    # Return the HRN authority chain from top to bottom.
+    # e.g. hrn_auth_chain('a\.b.c.d') -> ['a\.b', 'a\.b.c']
+    @staticmethod
+    def hrn_auth_chain(hrn):
+        parts = Xrn.hrn_auth_list(hrn)
+        chain = []
+        for i in range(len(parts)):
+            chain.append('.'.join(parts[:i+1]))
+        # Include the HRN itself?
+        #chain.append(hrn)
+        return chain
+
+    # Is the given HRN a true authority over the namespace of the other
+    # child HRN?
+    # A better alternative than childHRN.startswith(parentHRN)
+    # e.g. hrn_is_auth_for_hrn('a\.b', 'a\.b.c.d') -> True,
+    # but hrn_is_auth_for_hrn('a', 'a\.b.c.d') -> False
+    # Also hrn_is_uauth_for_hrn('a\.b.c.d', 'a\.b.c.d') -> True
+    @staticmethod
+    def hrn_is_auth_for_hrn(parenthrn, hrn):
+        if parenthrn == hrn:
+            return True
+        for auth in Xrn.hrn_auth_chain(hrn):
+            if parenthrn == auth:
+                return True
+        return False
+
     URN_PREFIX = "urn:publicid:IDN"
 
     ########## basic tools on URNs

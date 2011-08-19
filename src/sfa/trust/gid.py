@@ -32,7 +32,7 @@ from sfa.trust.certificate import Certificate
 
 from sfa.util.faults import *
 from sfa.util.sfalogging import logger
-from sfa.util.xrn import hrn_to_urn, urn_to_hrn
+from sfa.util.xrn import hrn_to_urn, urn_to_hrn, hrn_authfor_hrn
 
 ##
 # Create a new uuid. Returns the UUID as a string.
@@ -211,8 +211,8 @@ class GID(Certificate):
        
         if self.parent:
             # make sure the parent's hrn is a prefix of the child's hrn
-            if not self.get_hrn().startswith(self.parent.get_hrn()):
-                raise GidParentHrn("This cert HRN %s doesnt start with parent HRN %s" % (self.get_hrn(), self.parent.get_hrn()))
+            if not hrn_authfor_hrn(self.parent.get_hrn(), self.get_hrn()):
+                raise GidParentHrn("This cert HRN %s isn't in the namespace for  parent HRN %s" % (self.get_hrn(), self.parent.get_hrn()))
 
             # Parent must also be an authority (of some type) to sign a GID
             # There are multiple types of authority - accept them all here
@@ -230,8 +230,8 @@ class GID(Certificate):
             #if trusted_type == 'authority':
             #    trusted_hrn = trusted_hrn[:trusted_hrn.rindex('.')]
             cur_hrn = self.get_hrn()
-            if not self.get_hrn().startswith(trusted_hrn):
-                raise GidParentHrn("Trusted roots HRN %s isnt start of this cert %s" % (trusted_hrn, cur_hrn))
+            if not hrn_authfor_hrn(trusted_hrn, cur_hrn):
+                raise GidParentHrn("Trusted root with HRN %s isn't a namespace authority for this cert %s" % (trusted_hrn, cur_hrn))
 
             # There are multiple types of authority - accept them all here
             if not trusted_type.find('authority') == 0:
