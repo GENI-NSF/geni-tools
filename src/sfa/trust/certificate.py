@@ -507,6 +507,9 @@ class Certificate:
         pkey.m2key = m2x509.get_pubkey()
         return pkey
 
+    def set_intermediate_ca(self, val):
+        return self.set_is_ca(val)
+
     # Set whether this cert is for a CA. All signers and only signers should be CAs.
     # The local member starts unset, letting us check that you only set it once
     # @param val Boolean indicating whether this cert is for a CA
