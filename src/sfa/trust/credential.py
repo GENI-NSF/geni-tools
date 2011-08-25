@@ -269,7 +269,16 @@ class Credential(object):
     def get_subject(self):
         if not self.gidObject:
             self.decode()
-        return self.gidObject.get_subject()   
+        return self.gidObject.get_printable_subject()
+
+    def get_summary_tostring(self):
+        if not self.gidObject:
+            self.decode()
+        obj = self.gidObject.get_printable_subject()
+        caller = self.gidCaller.get_printable_subject()
+        exp = self.get_expiration()
+        # Summarize the rights too? The issuer?
+        return "[ Grant %s rights on %s until %s ]" % (caller, obj, exp)
 
     def get_signature(self):
         if not self.signature:
@@ -672,13 +681,19 @@ class Credential(object):
 
         # Is this a signed-cred or just a cred?
         if len(signed_cred) > 0:
-            cred = signed_cred[0].getElementsByTagName("credential")[0]
+            creds = signed_cred[0].getElementsByTagName("credential")
             signatures = signed_cred[0].getElementsByTagName("signatures")
             if len(signatures) > 0:
                 sigs = signatures[0].getElementsByTagName("Signature")
         else:
-            cred = doc.getElementsByTagName("credential")[0]
+            creds = doc.getElementsByTagName("credential")
         
+        if creds is None or len(creds) == 0:
+            # malformed cred file
+            raise CredentialNotVerifiable("Malformed XML: No credential tag found")
+
+        # Just take the first cred if there are more than one
+        cred = creds[0]
 
         self.set_refid(cred.getAttribute("xml:id"))
         self.set_expiration(utcparse(getTextNode(cred, "expires")))
@@ -765,7 +780,7 @@ class Credential(object):
                 xmlschema = etree.XMLSchema(schema_doc)
                 if not xmlschema.validate(tree):
                     error = xmlschema.error_log.last_error
-                    message = "%s (line %s)" % (error.message, error.line)
+                    message = "%s: %s (line %s)" % (self.get_summary_tostring(), error.message, error.line)
                     raise CredentialNotVerifiable(message)
 
         if trusted_certs_required and trusted_certs is None:
@@ -798,7 +813,7 @@ class Credential(object):
         
         # make sure it is not expired
         if self.get_expiration() < datetime.datetime.utcnow():
-            raise CredentialNotVerifiable("Credential expired at %s" % self.expiration.isoformat())
+            raise CredentialNotVerifiable("Credential %s expired at %s" % (self.get_summary_tostring(), self.expiration.isoformat()))
 
         # Verify the signatures
         filename = self.save_to_random_tmp_file()
@@ -838,7 +853,7 @@ class Credential(object):
                     mstart = mstart + 4
                     mend = verified.find('\\', mstart)
                     msg = verified[mstart:mend]
-                raise CredentialNotVerifiable("xmlsec1 error verifying cred using Signature ID %s: %s %s" % (ref, msg, verified.strip()))
+                raise CredentialNotVerifiable("xmlsec1 error verifying cred %s using Signature ID %s: %s %s" % (self.get_summary_tostring(), ref, msg, verified.strip()))
         os.remove(filename)
 
         # Verify the parents (delegation)
@@ -944,23 +959,23 @@ class Credential(object):
         # make sure the rights given to the child are a subset of the
         # parents rights (and check delegate bits)
         if not parent_cred.get_privileges().is_superset(self.get_privileges()):
-            raise ChildRightsNotSubsetOfParent(("Parent cred ref %s rights " % self.parent.get_refid()) + 
-                self.parent.get_privileges().save_to_string() + (" not superset of delegated cred ref %s rights " % self.get_refid()) +
+            raise ChildRightsNotSubsetOfParent(("Parent cred ref %s rights " % parent_cred.get_refid()) +
+                self.parent.get_privileges().save_to_string() + (" not superset of delegated cred %s ref %s rights " % (self.get_summary_tostring(), self.get_refid())) +
                 self.get_privileges().save_to_string())
 
         # make sure my target gid is the same as the parent's
         if not parent_cred.get_gid_object().save_to_string() == \
            self.get_gid_object().save_to_string():
-            raise CredentialNotVerifiable("Target gid not equal between parent and child")
+            raise CredentialNotVerifiable("Delegated cred %s: Target gid not equal between parent and child. Parent %s" % (self.get_summary_tostring(), parent_cred.get_summary_tostring()))
 
         # make sure my expiry time is <= my parent's
         if not parent_cred.get_expiration() >= self.get_expiration():
-            raise CredentialNotVerifiable("Delegated credential expires after parent")
+            raise CredentialNotVerifiable("Delegated credential %s expires after parent %s" % (self.get_summary_tostring(), parent_cred.get_summary_tostring()))
 
         # make sure my signer is the parent's caller
         if not parent_cred.get_gid_caller().save_to_string(False) == \
            self.get_signature().get_issuer_gid().save_to_string(False):
-            raise CredentialNotVerifiable("Delegated credential not signed by parent caller")
+            raise CredentialNotVerifiable("Delegated credential %s not signed by parent %s's caller" % (self.get_summary_tostring(), parent_cred.get_summary_tostring()))
                 
         # Recurse
         if parent_cred.parent:

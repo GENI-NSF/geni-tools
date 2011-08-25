@@ -212,7 +212,7 @@ class GID(Certificate):
         if self.parent:
             # make sure the parent's hrn is a prefix of the child's hrn
             if not hrn_authfor_hrn(self.parent.get_hrn(), self.get_hrn()):
-                raise GidParentHrn("This cert HRN %s isn't in the namespace for  parent HRN %s" % (self.get_hrn(), self.parent.get_hrn()))
+                raise GidParentHrn("This cert HRN %s isn't in the namespace for parent HRN %s" % (self.get_hrn(), self.parent.get_hrn()))
 
             # Parent must also be an authority (of some type) to sign a GID
             # There are multiple types of authority - accept them all here
