@@ -289,10 +289,11 @@ class Clearinghouse(object):
         # OK have a user_gid so can get a slice credential
         # authorizing this user on the slice
         try:
+            expiration = datetime.datetime.utcnow() + datetime.timedelta(seconds=SLICE_CRED_LIFE)
             # add delegatable=True to make this slice delegatable
             slice_cred = self.create_slice_credential(user_gid,
                                                       slice_gid,
-                                                      SLICE_CRED_LIFE, delegatable=True)
+                                                      expiration, delegatable=True)
         except Exception, exc:
             self.logger.error('CreateSlice failed to get slice credential for user %r, slice %r: %s', user_gid.get_hrn(), slice_gid.get_hrn(), traceback.format_exc())
             raise Exception('CreateSlice failed to get slice credential for user %r, slice %r' % (user_gid.get_hrn(), slice_gid.get_hrn()), exc)
@@ -309,13 +310,13 @@ class Clearinghouse(object):
             return False
         try:
             in_expiration = dateutil.parser.parse(expire_str)
+            in_expiration = cred_util.naiveUTC(in_expiration)
         except:
             self.logger.warning('Unable to parse date "%s"', expire_str)
             return False
         # Is requested expiration valid? It must be in the future,
         # but not too far into the future.
         now = datetime.datetime.utcnow()
-        now = now.replace(tzinfo=in_expiration.tzinfo)
         if in_expiration < now:
             self.logger.warning('Expiration "%s" is in the past.', expire_str)
             return False
@@ -329,7 +330,6 @@ class Clearinghouse(object):
         user_gid = gid.GID(string=self._server.pem_cert)
         slice_cred = self.slices[slice_urn]
         slice_gid = slice_cred.get_gid_object()
-        duration_secs = duration.seconds + duration.days * 24 * 3600
         # if original slice' privileges were all delegatable,
         # make all the privs here delegatable
         # Of course, the correct thing would be to do it priv by priv...
@@ -337,7 +337,7 @@ class Clearinghouse(object):
         if slice_cred.get_privileges().get_all_delegate():
             dgatable = True
         slice_cred = self.create_slice_credential(user_gid, slice_gid,
-                                                  duration_secs, delegatable=dgatable)
+                                                  in_expiration, delegatable=dgatable)
         self.logger.info("Slice %s renewed to %s", slice_urn, expire_str)
         self.slices[slice_urn] = slice_cred
         return True
@@ -365,16 +365,17 @@ class Clearinghouse(object):
         # FIXME: Validate arg - non empty, my user
         user_gid = gid.GID(string=user_gid)
         self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
+        expiration = datetime.datetime.utcnow() + datetime.timedelta(seconds=USER_CRED_LIFE)
         try:
-            ucred = cred_util.create_credential(user_gid, user_gid, USER_CRED_LIFE, 'user', self.keyfile, self.certfile, self.trusted_root_files)
+            ucred = cred_util.create_credential(user_gid, user_gid, expiration, 'user', self.keyfile, self.certfile, self.trusted_root_files)
         except Exception, exc:
             self.logger.error("Failed to create user credential for %s: %s", user_gid.get_hrn(), traceback.format_exc())
             raise Exception("Failed to create user credential for %s" % user_gid.get_hrn(), exc)
         return ucred.save_to_string()
     
-    def create_slice_credential(self, user_gid, slice_gid, duration, delegatable=False):
+    def create_slice_credential(self, user_gid, slice_gid, expiration, delegatable=False):
         '''Create a Slice credential object for this user_gid (object) on given slice gid (object)'''
         # FIXME: Validate the user_gid and slice_gid
         # are my user and slice
-        return cred_util.create_credential(user_gid, slice_gid, duration, 'slice', self.keyfile, self.certfile, self.trusted_root_files, delegatable)
+        return cred_util.create_credential(user_gid, slice_gid, expiration, 'slice', self.keyfile, self.certfile, self.trusted_root_files, delegatable)
 

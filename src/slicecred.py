@@ -30,6 +30,7 @@ portal.
 
 import sys
 import ConfigParser
+import datetime
 from geni.util.urn_util import URN
 import geni.util.cert_util as cert_util
 import geni.util.cred_util as cred_util
@@ -61,8 +62,9 @@ def main(argv=None):
     # 30 days - Expiration should be on the command line, and the
     # lifetime should be computed.
     life_secs = 60 * 60 * 24 * 30
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(seconds=life_secs)
 
-    slice_cred = cred_util.create_credential(user_cert, slice_cert, life_secs,
+    slice_cred = cred_util.create_credential(user_cert, slice_cert, expiration,
                                              'slice', keyfile, certfile,
                                              [certfile])
     print slice_cred.save_to_string()

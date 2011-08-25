@@ -29,11 +29,25 @@ import logging
 import xmlrpclib
 import sys
 import datetime
+import dateutil
 
 import sfa.trust.credential as cred
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
 from sfa.util.xrn import hrn_authfor_hrn
+
+def naiveUTC(dt):
+    """Converts dt to a naive datetime in UTC.
+
+    if 'dt' has a timezone then
+        convert to UTC
+        strip off timezone (make it "naive" in Python parlance)
+    """
+    if dt.tzinfo:
+        tz_utc = dateutil.tz.tzutc()
+        dt = dt.astimezone(tz_utc)
+        dt = dt.replace(tzinfo=None)
+    return dt
 
 class CredentialVerifier(object):
     """Utilities to verify signed credentials from a given set of 
@@ -236,7 +250,7 @@ class CredentialVerifier(object):
             raise xmlrpclib.Fault(fault_code, fault_string)
 
 
-def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfile, issuer_certfile, trusted_roots, delegatable=False):
+def create_credential(caller_gid, object_gid, expiration, typename, issuer_keyfile, issuer_certfile, trusted_roots, delegatable=False):
     '''Create and Return a Credential object issued by given key/cert for the given caller
     and object GID objects, given life in seconds, and given type.
     Privileges are determined by type per sfa/trust/rights.py
@@ -248,8 +262,13 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
         raise ValueError("Missing Caller GID")
     if object_gid is None:
         raise ValueError("Missing Object GID")
-    if life_secs is None or life_secs < 1:
-        raise ValueError("Credential life in seconds was 0")
+    if expiration is None:
+        raise ValueError("Missing expiration")
+    naive_expiration = naiveUTC(expiration)
+    duration = naive_expiration - datetime.datetime.utcnow()
+    life_secs = duration.seconds + duration.days * 24 * 3600
+    if life_secs < 1:
+        raise ValueError("Credential expiration is in the past")
     if trusted_roots is None:
         raise ValueError("Missing list of trusted roots")
 
@@ -281,7 +300,7 @@ def create_credential(caller_gid, object_gid, life_secs, typename, issuer_keyfil
     # Or do gid.is_signed_by_cert(issuer_certfile)?
     ucred.set_gid_caller(caller_gid)
     ucred.set_gid_object(object_gid)
-    ucred.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(seconds=life_secs))
+    ucred.set_expiration(expiration)
     # Use sfa/trust/rights.py to figure out what privileges
     # the credential should have.
     # user means refresh, resolve, info
