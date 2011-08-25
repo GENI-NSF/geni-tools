@@ -66,7 +66,7 @@
 """
 
 import ConfigParser
-from copy import copy
+from copy import copy, deepcopy
 import datetime
 import dateutil.parser
 import json
@@ -737,7 +737,7 @@ class CallHandler(object):
                 self._raise_omni_error('Unable to read rspec file %s: %s'
                          % (specfile, str(exc)))
         else:
-            # FIXME: Note this may through an exception
+            # FIXME: Note this may throw an exception
             # if the omnispec is badly formatted
             # Also note that the resulting RSpecs are of particular
             # formats, that may no longer be supported by AMs
@@ -2193,6 +2193,13 @@ def parse_args(argv, options=None):
     """
     if options is not None and not options.__class__==optparse.Values:
         raise OmniError("Invalid options argument to parse_args: must be an optparse.Values object")
+    elif options is not None:
+        # The caller, presumably a script, gave us an optparse.Values storage object.
+        # Passing this object to parser.parse_args replaces the storage - it is pass
+        # by reference. Callers may not expect that. In particular, multiple calls in
+        # separate threads will conflict.
+        # Make a deep copy
+        options = deepcopy(options)
 
     parser = getParser()
     if argv is None:

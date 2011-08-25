@@ -35,6 +35,7 @@ New in v1.4:
  * Omni aborts if it detects your slice has expired (ticket #51)
  * Omni config can define aggregate nicknames, to use instead
  of a URL in the -a argument. (ticket #62)
+ * Solved a thread safety bug in omni - copy options list. (ticket #63)
  * SFA logger handles log file conflicts (ticket #48)
  * Handle expired user certs nicely in Omni (ticket #52)
  * Write output filename when ListResources or GetVersion saves
