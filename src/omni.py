@@ -84,7 +84,8 @@ from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
-from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof
+from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
+	is_ABAC_framework
 import omnilib.util.credparsing as credutils
 import omnilib.xmlrpc.client
 
@@ -341,18 +342,19 @@ class CallHandler(object):
 #            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
 
             self.logger.debug("Doing listresources with options %r", options)
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(cred)
 	    else:
 		creds = [cred]
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
 	    if isinstance(resp, dict):
+		if is_ABAC_framework(self.framework):
+		    if 'proof' in resp:
+			save_proof(self.framework.abac_log, resp['proof'])
 		if 'manifest' in resp:
 		    rspec = resp['manifest']
-		if 'proof' in resp:
-		    save_proof(self.abac_log, resp['proof'])
 	    else:
 		rspec = resp
 
@@ -844,8 +846,8 @@ class CallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(slice_cred)
 	    else:
 		creds = [slice_cred]
@@ -853,10 +855,12 @@ class CallHandler(object):
             (result, message) = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, creds, rspec, slice_users)
 
 	    if isinstance(result, dict):
-		if 'abac_credentials' in result:
-		    save_abac_creds(result['abac_credentials'], self.abac_dir)
-		if 'proof' in result:
-		    save_proof(self.abac_log, result['proof'])
+		if is_ABAC_framework(self.framework):
+		    if 'abac_credentials' in result:
+			save_abac_creds(result['abac_credentials'],
+				self.framework.abac_dir)
+		    if 'proof' in result:
+			save_proof(self.framework.abac_log, result['proof'])
 		if 'manifest' in result:
 		    result = result['manifest']
 
@@ -987,8 +991,8 @@ class CallHandler(object):
         (clientList, message) = self._getclients()
         for client in clientList:
 	    # Add ABAC Creds if necessary
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(slice_cred)
 	    else:
 		creds = [slice_cred]
@@ -996,10 +1000,12 @@ class CallHandler(object):
             (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, creds, time_with_tz.isoformat())
 	    # Unpack ABAC results
 	    if isinstance(res, dict):
-		if 'abac_credentials' in res:
-		    save_abac_creds(res['abac_credentials'], self.abac_dir)
-		if 'proof' in res:
-		    save_proof(self.abac_log, res['proof'])
+		if is_ABAC_framework(self.framework):
+		    if 'abac_credentials' in res:
+			save_abac_creds(res['abac_credentials'],
+				self.framework.abac_dir)
+		    if 'proof' in res:
+			save_proof(self.framework.abac_log, res['proof'])
 		if 'success' in res:
 		    res = res['success']
 
@@ -1078,16 +1084,17 @@ class CallHandler(object):
 
         for client in clientList:
 	    # Add ABAC Creds if necessary
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(slice_cred)
 	    else:
 		creds = [slice_cred]
             (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, creds)
 	    # Unpack ABAC results
-	    if status and 'proof' in status:
-		save_proof(self.abac_log, status['proof'])
-		# XXX: may not need to do this
+	    if 'proof' in status:
+		if is_ABAC_framework(self.framework):
+		    save_proof(self.framework.abac_log, status['proof'])
+		    # XXX: may not need to do delete the proof dict entry
 		del status['proof']
             if status:
                 prettyResult = pprint.pformat(status)
@@ -1174,8 +1181,8 @@ class CallHandler(object):
         ## where you still have resources.
         for client in clientList:
 	    #Gather abac certs if we need them
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(slice_cred)
 	    else:
 		creds = [slice_cred]
@@ -1183,8 +1190,9 @@ class CallHandler(object):
             (res, message) = _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, creds)
 	    # Unpack ABAC results
 	    if isinstance(res, dict):
-		if 'proof' in res:
-		    save_proof(self.abac_log, res['proof'])
+		if is_ABAC_framework(self.framework):
+		    if 'proof' in res:
+			save_proof(self.framework.abac_log, res['proof'])
 		if 'success' in res:
 		    res = res['success']
 
@@ -1253,8 +1261,8 @@ class CallHandler(object):
         (clientList, message) = self._getclients()
         for client in clientList:
 	    # Add ABAC Creds if necessary
-	    if self.opts.abac:
-		creds = get_abac_creds(self.abac_dir)
+	    if is_ABAC_framework(self.framework):
+		creds = get_abac_creds(self.framework.abac_dir)
 		creds.append(slice_cred)
 	    else:
 		creds = [slice_cred]
@@ -1262,8 +1270,9 @@ class CallHandler(object):
                        (urn, client.url), client.Shutdown, urn, creds)
 	    # Unpack ABAC results
 	    if isinstance(res, dict):
-		if 'proof' in res:
-		    save_proof(self.abac_log, res['proof'])
+		if is_ABAC_framework(self.framework):
+		    if 'proof' in res:
+			save_proof(self.abac_log, res['proof'])
 		if 'success' in res:
 		    res = res['success']
             if res:

@@ -14,7 +14,10 @@ import ABAC
 import Creddy
 
 from xmlrpclib import Binary
+from hashlib import sha256
 
+def is_ABAC_framework(f):
+    return getattr(f, 'abac', False)
 
 def get_abac_creds(root):
     '''
@@ -34,14 +37,27 @@ def get_abac_creds(root):
 		print sys.stderr, "Error on %s: %s" % (e.filename, e.strerror)
     return creds
 
-def save_abac_creds(creds, dir):
-    d = os.path.expanduser(dir)
+def save_abac_creds(creds, dir="~/.abac"):
+    credhashes = set()
+    for r, d, fns in os.walk(os.path.expanduser(dir)):
+        for fn in fns:
+            h = sha256();
+            f = open(os.path.join(r, fn))
+            h.update(f.read())
+            f.close()
+            credhashes.add(h.hexdigest())
+
     for c in creds:
 	if isinstance(c, Binary): c = c.data
-	cf = tempfile.NamedTemporaryFile(prefix='cred', suffix='.der',
-		dir=d, delete=False)
-	cf.write(c)
-	cf.close()
+        h = sha256()
+        h.update(c)
+        if h.hexdigest() not in credhashes:
+            if c.startswith('-----BEGIN'): suffix = '.pem'
+            else: suffix='.der'
+            f = tempfile.NamedTemporaryFile(dir=os.path.expanduser(dir),
+                                            suffix=suffix, delete=False);
+            f.write(c)
+            f.close()
 
 def creddy_from_chunk(chunk):
     f = tempfile.NamedTemporaryFile(suffix='.pem')
