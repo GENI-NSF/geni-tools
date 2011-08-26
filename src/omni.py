@@ -353,6 +353,8 @@ class CallHandler(object):
 		    rspec = resp['manifest']
 		if 'proof' in resp:
 		    save_proof(self.abac_log, resp['proof'])
+	    else:
+		rspec = resp
 
 	    if not rspec is None:
 		successCnt += 1
@@ -1083,7 +1085,7 @@ class CallHandler(object):
 		creds = [slice_cred]
             (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, creds)
 	    # Unpack ABAC results
-	    if 'proof' in status:
+	    if status and 'proof' in status:
 		save_proof(self.abac_log, status['proof'])
 		# XXX: may not need to do this
 		del status['proof']
