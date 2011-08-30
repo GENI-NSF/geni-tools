@@ -1,9 +1,11 @@
 gcf 1.4:
         - Omni logging is configurable with a -l option, or from a
-        script by calling applyLogConfig(). (ticket #61)
+          script by calling applyLogConfig(). (ticket #61)
+        - Fix RenewSlice in gcf-ch.py to honor the requested
+          time. (ticket #60)
         - Omni aborts if it detects your slice has expired (ticket #51)
         - Omni config can define aggregate nicknames, to use instead
-        of a URL in the -a argument. (ticket #62)
+          of a URL in the -a argument. (ticket #62)
         - Solved a thread safety bug in omni - copy options list. (ticket #63)
         - SFA logger handles log file conflicts (ticket #48)
         - Handle expired user certs nicely in Omni (ticket #52)
@@ -24,6 +26,7 @@ gcf 1.4:
           ProtoGENI aggregates
         - Changed certificate generation (src/gen-certs.py) to
           properly mark the ch certificate as a CA
+        - Incorporated GEC 11 ABAC demonstration code
 
 gcf 1.3.2:
         - Fixed user-is-a-slice bug (ticket #49)
