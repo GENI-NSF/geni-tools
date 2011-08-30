@@ -97,6 +97,13 @@ in your configuration file, Omni will use the special variable
 'optlevel' to set logging to INFO by default, and DEBUG if you
 specify the '--debug' option to Omni.
 
+Note also that when you do 'omni.call' or 'omni.applyLogConfig' to load a
+logging configuration from a file, existing loggers are NOT disabled
+(which is the python logging default). However, those existing logers
+will not be modified with the new logging settings, unless they are
+explicitly named in the logging config file (they or their ancestor,
+where 'root' does not count).
+
 For further control of Omni output, use Omni as a library from your
 own python script (see below for details). For example, your script
 can modify the '-l' logging config file option between Omni

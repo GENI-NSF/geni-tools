@@ -2078,10 +2078,16 @@ def configure_logging(opts):
 def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
     """Change the logging configuration to that in the specified file, if found.
     Effects all uses of python logging in this process.
+
+    Existing loggers are not modified, unless they are explicitly named
+    in the logging config file (they or their ancestor, not 'root').
+
     Tries hard to find the file, and does nothing if not found.
+
     'defaults' is a dictionary in ConfigParser format, that sets variables
     for use in the config files. Specifically,
     use this to set 'optlevel' to the basic logging level desired: INFO is the default.
+
     For help creating a logging config file,
     see http://docs.python.org/library/logging.config.html#configuration-file-format
     and see the sample 'omni_log_conf_sample.conf'
@@ -2106,7 +2112,10 @@ def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
     found = False
     for fn in fns:
         if os.path.exists(fn) and os.path.getsize(fn) > 0:
-            logging.config.fileConfig(fn, defaults=defaults)
+            # Only new loggers get the parameters in the config file.
+            # If disable_existing is True(default), then existing loggers are disabled,
+            # unless they (or ancestors, not 'root') are explicitly listed in the config file.
+            logging.config.fileConfig(fn, defaults=defaults, disable_existing_loggers=False)
             logging.info("Configured logging from file %s", fn)
             found = True
             break
