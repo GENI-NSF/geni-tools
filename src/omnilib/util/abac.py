@@ -10,8 +10,19 @@ import zipfile
 import datetime
 import shutil
 
-import ABAC
-import Creddy
+try:
+    import ABAC
+except:
+    # ABAC is not for general use yet. To avoid confusion, silently continue.
+    # In the future, issue a warning and/or fail outright.
+    pass
+
+try:
+    import Creddy
+except:
+    # ABAC is not for general use yet. To avoid confusion, silently continue.
+    # In the future, issue a warning and/or fail outright.
+    pass
 
 from xmlrpclib import Binary
 from hashlib import sha256
