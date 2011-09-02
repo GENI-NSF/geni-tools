@@ -45,6 +45,8 @@ New in v1.4:
  as PG often does. (ticket #55)
  * SFA library updates (eg slices declare an XML namespace)
  * SFA library bug fixes
+ * Added a "--no-tz" option for renewing slivers at older SFA-based
+ aggregates. (ticket #65)
 
 New in v1.3.2:
  * Fixed user-is-a-slice bug (ticket #49)
@@ -677,11 +679,18 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 Note that per the AM API expiration times will be timezone aware.
-Unqualified times are assumed to be in UTC.
+Unqualified times are assumed to be in UTC. See below for an exception.
 
 Note that the expiration time cannot be past your slice expiration
 time (see renewslice). Some aggregates will
 not allow you to _shorten_ your sliver expiration time.
+
+Note that older SFA-based aggregates (like the MyPLC aggregates in the
+GENI mesoscale deployment) fail to renew slivers when a timezone is
+present in the call from omni. If you see an error from the aggregate
+that says {{{Fault 111: "Internal API error: can't compare
+offset-naive and offset-aware date times"}}} you should add the
+"--no-tz" flag to the omni renewsliver command line.
 
 ==== sliverstatus ====
 GENI AM API SliverStatus function
