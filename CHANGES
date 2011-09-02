@@ -27,6 +27,8 @@ gcf 1.4:
         - Changed certificate generation (src/gen-certs.py) to
           properly mark the ch certificate as a CA
         - Incorporated GEC 11 ABAC demonstration code
+        - Added a "--no-tz" option for renewing slivers at older
+          SFA-based aggregates. (ticket #65)
 
 gcf 1.3.2:
         - Fixed user-is-a-slice bug (ticket #49)
