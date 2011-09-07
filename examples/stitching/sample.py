@@ -147,7 +147,7 @@ def main(argv=None):
         # Fake responses make no Omni calls, but use canned responses
         # from libstitch/sample. See doFakeRequest methods in libstitch/rspec.py.
         # Real responses invoke createSliver on aggregates.
-        real = True ## FIXME: Make this a commandline arg
+        real = False ## FIXME: Make this a commandline arg
         pause = False ## Pause when inserting vlans into rspecs
 
         # Two ways to make reservations: in sequence, or in parallel.
