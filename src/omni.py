@@ -1091,11 +1091,11 @@ class CallHandler(object):
 		creds = [slice_cred]
             (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, creds)
 	    # Unpack ABAC results
-	    if 'proof' in status:
+	    if status and 'proof' in status:
 		if is_ABAC_framework(self.framework):
 		    save_proof(self.framework.abac_log, status['proof'])
 		    # XXX: may not need to do delete the proof dict entry
-		del status['proof']
+                    del status['proof']
             if status:
                 prettyResult = pprint.pformat(status)
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
