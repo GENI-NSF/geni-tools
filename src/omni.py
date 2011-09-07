@@ -997,7 +997,14 @@ class CallHandler(object):
 	    else:
 		creds = [slice_cred]
             # Note that the time arg includes UTC offset as needed
-            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, creds, time_with_tz.isoformat())
+            time_string = time_with_tz.isoformat()
+            if self.opts.no_tz:
+                # The timezone causes an error in older sfa
+                # implementations as deployed in mesoscale GENI. Strip
+                # off the timezone if the user specfies --no-tz
+                self.logger.info('Removing timezone at user request (--no-tz)')
+                time_string = time_with_tz.replace(tzinfo=None).isoformat()
+            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, creds, time_string)
 	    # Unpack ABAC results
 	    if isinstance(res, dict):
 		if is_ABAC_framework(self.framework):
@@ -2298,6 +2305,8 @@ def getParser():
                       help="Use ABAC authorization")
     parser.add_option("-l", "--logconfig", default=None,
                       help="Python logging config file")
+    parser.add_option("--no-tz", default=False, action="store_true",
+                      help="Do not send timezone on RenewSliver")
     return parser
 
 def parse_args(argv, options=None):
