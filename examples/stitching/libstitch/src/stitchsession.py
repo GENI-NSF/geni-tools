@@ -55,13 +55,15 @@ class StitchSession(object):
     #    @param userNameStr - The user in the omni_config whose credentials will
     #    be used to request resources
     #    @param userKeyFileStr - The path of the keyfile for the user
+    #    @param siteNamePrefixStr - The sitename_ prefix for SFA internal slicenames. May be empty.
     #    @param logger - The logging object to log output to
     # 
-    def __init__(self, sliceNameStr, userNameStr, userKeyFileStr, logger):
+    def __init__(self, sliceNameStr, userNameStr, userKeyFileStr, siteNamePrefixStr, logger):
         self.logger = logger
         self.sliceNameStr = str(sliceNameStr)
         self.userNameStr = str(userNameStr)
         self.userKeyFileStr = str(userKeyFileStr)
+        self.siteNamePrefixStr = str(siteNamePrefixStr)
         self.aggregateDict = {} # aggrURL -> ReqRSpec object
         # Advertised routes between aggregates, as pulled from Ad Rspecs
         # Dict: aggrURL -> Dict{local interface URN -> remote interface URN}
@@ -110,6 +112,14 @@ class StitchSession(object):
     #
     def getUserKeyFile(self):
         return self.userKeyFileStr
+
+
+    ## Gets the site name prefix for full SFA slice names, if any
+    #
+    #   @return The site name prefix
+    #
+    def getSiteNamePrefix(self):
+        return self.siteNamePrefixStr
 
 
     ## Gets the ReqRSpec object associated with the given aggregate URL

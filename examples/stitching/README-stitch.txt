@@ -360,11 +360,6 @@ Other design questions:
 Future Work:
 ------------------------------------------------------------------
 
-    - Full slice name for RSpecs adds site name to the commandline
-    slice name - currently hardcoded to 'bbn', which is only accurate
-    for slices created at plc.bbn. This impacts the derived username
-    for logging in to SFA nodes, and the inserted slicename in MAX and demo-ION
-    aggregates.
     - Represent a 'switch'. Which can itself have properties
     - Derive aggregate namespaces, URL from RSpecs
     - How do we determine which nodes in PG manifest are from
@@ -387,12 +382,6 @@ Current Caveats
 - Request RSpecs must have an XML comment of a particular form
 that includes the aggregate URL for us to ID the aggregate. See the
 examples. Obviously there are better ways to do this.
-
-- A couple spots hard code an assumption that your slice came from
-plc.bbn -- this may cause problems, but only in Real mode and only
-for users whose slice is not from plc.bbn. This impacts the derived
-username for logging in to SFA nodes, and the inserted slicename in
-MAX and demo-ION aggregates.
 
 ------------------------------------------------------------------
 Source Documentation:
