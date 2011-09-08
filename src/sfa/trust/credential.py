@@ -180,7 +180,11 @@ class Signature(object):
         self.gid = gid
 
     def decode(self):
-        doc = parseString(self.xml)
+        try:
+            doc = parseString(self.xml)
+        except ExpatError,e:
+            logger.log_exc ("Failed to parse credential, %s"%self.xml)
+            raise
         sig = doc.getElementsByTagName("Signature")[0]
         self.set_refid(sig.getAttribute("xml:id").strip("Sig_"))
         keyinfo = sig.getElementsByTagName("X509Data")[0]
