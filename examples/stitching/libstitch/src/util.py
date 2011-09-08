@@ -517,7 +517,7 @@ def pauseForInput():
 #
 #   @param options - The options dictionary from the omni parser
 #   @param logger - The logger object to log output to
-#   @return - A tuple containing (username,keyfile) extracted from omni config
+#   @return - A tuple containing (username,keyfile,sitename) extracted from omni config
 #
 def getOmniConf(options, logger):
 
@@ -554,10 +554,10 @@ def getOmniConf(options, logger):
     if len(user_name)<1:
         logger.error("Unable to find username")
         return None
+    site_name = getSiteNamePrefix(config, logger)
+    logger.info("Found username "+user_name+" and keyfile: "+key+" and sitenamePrefix: " + site_name + " in omni_config")
 
-    logger.info("Found username "+user_name+" and keyfile: "+key+" in omni_config")
-
-    return (user_name,key)
+    return (user_name,key, site_name)
 
 
 ## Determines whether the given elementtree document is in Protogeni V2 format
@@ -890,9 +890,34 @@ def getTermColorTag(num):
 def getTermColorEndTag():
     return term_end
 
-# FIXME
-# maybeAddSiteName
+# getSiteNamePrefix
 # If omni config has framework type=sfa,
 # then get the authority element, get part after last '.'
-# and prepend sitestr_ to fron of slicename for various things
-# args must be options, config, str to prepend to, logger
+# and prepend sitestr_ to front of slicename for various things
+# IE within SFA slice foo is known as site_foo
+def getSiteNamePrefix(config, logger):
+    # Make sure this is an SFA SA so has a site name
+    if not (config \
+       and config.has_key('selected_framework') \
+       and config['selected_framework'].has_key('type') \
+       and config['selected_framework']['type'] == 'sfa'):
+        logger.debug("Not an SFA framework so no site name")
+        return ""
+
+    # Need to add site name. Make sure there is an authority
+    if not config['selected_framework'].has_key('authority'):
+        logger.warn('Missing authority key from omni_config')
+        return ""
+
+    auth = config['selected_framework']['authority'].strip()
+    # see sfa/util/xrn/XRN.hrn_leaf()
+    site = [ x.replace('--sep--','\\.') for x in auth.replace('\\.','--sep--').split('.') ][-1].strip()
+    logger.debug("From authority %s derived sitename %s", auth, site)
+
+    if site and len(site) > 0:
+        return site + '_'
+    else:
+        logger.debug("Since site was empty, returning empty string")
+        return ""
+
+    # Note that there is also a username tag - which we could use too....

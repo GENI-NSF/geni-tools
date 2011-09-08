@@ -90,7 +90,7 @@ class Stitch(object):
         self.user = ""
         self.keyfile = ""
         try:
-            self.user, self.keyfile = util.getOmniConf(self.options,self.logger) 
+            self.user, self.keyfile, self.site_name = util.getOmniConf(self.options,self.logger)
         except:
             raise Exception("Something is missing from your omni config")
 
@@ -119,7 +119,7 @@ class Stitch(object):
         ################################################       
 
         # Create the stitchsession object, which holds state for our use
-        self.session = StitchSession(self.slicename, self.user, self.keyfile, self.logger)
+        self.session = StitchSession(self.slicename, self.user, self.keyfile, self.site_name, self.logger)
 
         # startSession parses the Ad RSpecs to get topology info
         if not self.session.startSession():

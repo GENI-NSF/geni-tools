@@ -716,9 +716,7 @@ class MaxReqRSpec(ReqRSpec):
     def insertSliceName(self):
         ns_prefix = "{"+self.stitchSession.getNamespaceFromType(self.rspecType)+"}"
 
-        # FIXME: the bbn_ part should be derived from the omni config
-        # and only added if this is an SFA account
-        slice_name = site_name + "_"+self.stitchSession.getSliceName()
+        slice_name = self.stitchSession.getSiteNamePrefix()+self.stitchSession.getSliceName()
 
         inner_rspec = self.rspecET.find(ns_prefix+RSPEC_TAG)
         if inner_rspec is not None:
@@ -1045,9 +1043,7 @@ class IonReqRSpec(ReqRSpec):
     def insertSliceName(self):
         ns_prefix = "{"+self.stitchSession.getNamespaceFromType(self.rspecType)+"}"
 
-        # FIXME: the bbn_ part should be derived from the omni config
-        # and only added if this is an SFA account
-        slice_name = site_name + "_"+self.stitchSession.getSliceName()
+        slice_name = self.stitchSession.getSiteNamePrefix()+self.stitchSession.getSliceName()
 
         inner_rspec = self.rspecET.find(ns_prefix+RSPEC_TAG)
         if inner_rspec is not None:
@@ -1637,9 +1633,7 @@ class MaxManRSpec(ManRSpec):
         self.nodes = []
         ns_prefix = "{"+self.stitchSession.getNamespaceFromType(self.rspecType)+"}"
 
-        # FIXME: bbn part needs to be derived from omni_config
-        # and only added if this is an SFA account
-        user_name = site_name + "_"+self.stitchSession.getSliceName()
+        user_name = self.stitchSession.getSiteNamePrefix() + self.stitchSession.getSliceName()
 
         #Pull this info from the Request because it is more complete 
         plab_node_elems = self.reqRSpec.rspecET.findall(ns_prefix+RSPEC_TAG+"/"+ns_prefix+COMPRSRC_TAG+"/"+ns_prefix+PLABNODE_TAG)
