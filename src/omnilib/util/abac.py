@@ -24,14 +24,11 @@
 
 import sys
 
-import os
 import os.path
 import tempfile
 import re
-import time
 import zipfile
 import datetime
-import shutil
 
 try:
     import ABAC
@@ -66,15 +63,16 @@ def get_abac_creds(root):
     '''
     creds = []
     for r, d, f in os.walk(os.path.expanduser(root)):
-	for fn in f:
-	    try:
-		ff = open(os.path.join(r, fn), 'r')
-		c = ff.read()
-		ff.close()
-		creds.append(Binary(c))
-	    except EnvironmentError, e:
-		# XXX logger??
-		print sys.stderr, "Error on %s: %s" % (e.filename, e.strerror)
+        _ = d # appease eclipse
+        for fn in f:
+            try:
+                ff = open(os.path.join(r, fn), 'r')
+                c = ff.read()
+                ff.close()
+                creds.append(Binary(c))
+            except EnvironmentError, e:
+                # XXX logger??
+                print sys.stderr, "Error on %s: %s" % (e.filename, e.strerror)
     return creds
 
 def save_abac_creds(creds, dir="~/.abac"):
@@ -86,6 +84,7 @@ def save_abac_creds(creds, dir="~/.abac"):
     credhashes = set()
     # Walk the existing dir and save hashes of the creds
     for r, d, fns in os.walk(os.path.expanduser(dir)):
+        _ = d # appease eclipse
         for fn in fns:
             h = sha256();
             f = open(os.path.join(r, fn))
@@ -96,7 +95,7 @@ def save_abac_creds(creds, dir="~/.abac"):
     # If the cred has nor been seen, save it, using the tempfile library to
     # pick a unique name w/o collision.
     for c in creds:
-	if isinstance(c, Binary): c = c.data
+        if isinstance(c, Binary): c = c.data
         h = sha256()
         h.update(c)
         if h.hexdigest() not in credhashes:
@@ -117,9 +116,9 @@ def creddy_from_chunk(chunk):
     f.write(chunk)
     f.flush()
     try:
-	return Creddy.ID(f.name)
+        return Creddy.ID(f.name)
     except:
-	return None
+        return None
 
 
 def print_proof(proof, out=sys.stdout):
@@ -134,24 +133,24 @@ def print_proof(proof, out=sys.stdout):
     # Find the IDs and keep track of the map from name to keyid
     # IDs get loaded into teh context here
     for c in proof:
-	if isinstance(c, Binary): c = c.data
-	i = creddy_from_chunk(c)
-	if i is None:
-	    attrs.append(c)
-	else:
-	    names.append((re.compile(i.keyid()), i.cert_filename()[:-7]))
-	    a.load_id_chunk(i.cert_chunk())
+        if isinstance(c, Binary): c = c.data
+        i = creddy_from_chunk(c)
+        if i is None:
+            attrs.append(c)
+        else:
+            names.append((re.compile(i.keyid()), i.cert_filename()[:-7]))
+            a.load_id_chunk(i.cert_chunk())
 
     # Add the attributes
     for c in attrs:
-	a.load_attribute_chunk(c)
+        a.load_attribute_chunk(c)
 
     # Print 'em
     for c in a.credentials():
-	s = "%s <- %s" % (c.head().string(), c.tail().string())
-	for r, n in names:
-	    s = r.sub(n, s)
-	print >>out, s
+        s = "%s <- %s" % (c.head().string(), c.tail().string())
+        for r, n in names:
+            s = r.sub(n, s)
+        print >>out, s
 
 def save_proof(d, proof):
     '''
@@ -159,9 +158,9 @@ def save_proof(d, proof):
     proof can be a list of strings or contain xmlrpc.Binary objects.
     '''
     zname = os.path.join(os.path.expanduser(d),
-	    '%s.zip' % datetime.datetime.now().isoformat())
+            '%s.zip' % datetime.datetime.now().isoformat())
     zf = zipfile.ZipFile(zname, 'w')
     for i, c in enumerate(proof):
-	if isinstance(c, Binary): c = c.data
-	zf.writestr('proof/cred%03d' % i, c)
+        if isinstance(c, Binary): c = c.data
+        zf.writestr('proof/cred%03d' % i, c)
     zf.close()
