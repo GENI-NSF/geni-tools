@@ -3,9 +3,11 @@ Intro:
 ------------------------------------------------------------------
 
 libstitch is a python module which helps to abstract away the complexities
-associated with aggregate stitching for GENI aggregates. libstitch
-can be used to facilitate all or a subset of the actions involved with
-GENI aggregate stitching.
+associated with inter-aggregate network stitching for GENI. For design
+details on this activity, see the GENI wiki:
+http://groups.geni.net/geni/wiki/GeniNetworkStitching
+libstitch can be used to facilitate all or a subset of the actions involved
+with GENI aggregate stitching.
 
 Some of these involve:
     -Topology discovery
@@ -22,7 +24,6 @@ for use.
 libstitch also serves as a complex example of using Omni as a library.
 Omni is called to make reservations at aggregates. For details on how
 Omni is called as a library here, see libstitch/src/rspec.py
-
 
 ------------------------------------------------------------------
 Usage:
@@ -44,8 +45,15 @@ python ./sample.py -c <relative path to omni_config> <slicename> \
 
 To actually contact aggregates, set real=True within the source of
 sample.py, and be sure you have a slice from a slice authority accepted
-at all aggregates you will use -- PLC is preferred for the MAX and demo-ION
-aggregates.
+at all aggregates you will use -- PLC is required for the MAX and demo-ION
+aggregates as of this writing (thise AMs do not trust other
+authorities).
+
+------------------------------------------------------------------
+Credits:
+------------------------------------------------------------------
+
+libstitch was originally written by Chris Benninger. Thanks, Chris!
 
 ------------------------------------------------------------------
 Changelog:
@@ -77,16 +85,16 @@ Requirements:
 == Linux ==
 
 -- Omni --
-Use Omni 1.3+
+Use Omni 1.3 or later
  - Install
     put gcf/src from the omni package on your PYTHONPATH
-EG
-export PYTHONPATH=$PYTHONPATH:~/gcf/src
+  For example in bash:
+    export PYTHONPATH=$PYTHONPATH:~/gcf/src
 
  - Configure Omni
     By default, your omni config should be named omni_config
-  in the directory '.gcf'. But this is configurable using the
-  '-c' argument.
+    in the directory '.gcf'. But this is configurable using the
+    '-c' argument.
      - use PLC as your default_cf to work with the MAX and ION AMs
      - Declare a user whose SSH key your config points to
      - See a sample omni_config at the bottom of this file
@@ -94,40 +102,39 @@ export PYTHONPATH=$PYTHONPATH:~/gcf/src
 -- LXML --
 Used for parsing XML
 - Install
-    Ubuntu: suto aptitude install python-lxml
+    Ubuntu: sudo apt-get install python-lxml
 
 -- Graphviz --
 Used for creating graphs (optional)
  - Install
-    Ubuntu: sudo aptitude install python-pygraphviz
+    Ubuntu: sudo apt-get install python-pygraphviz
 
 -- Nose --
 Used for the unit tests (optional)
  - Install
-    Ubuntu: sudo aptitude install python-nose
+    Ubuntu: sudo apt-get install python-nose
 
 -- libstitch --
-Add the folder libstitch is in to your PYTHONPATH env variable.
+Add the folder libstitch to your PYTHONPATH.
 Note: do not add the libstitch folder itself, but the folder it sits in.
-EG
-export PYTHONPATH=$PYTHONPATH:~/gcf/examples/stitching
+For example in bash:
+  export PYTHONPATH=$PYTHONPATH:~/gcf/examples/stitching
 
 
 == Windows ==
-Unsupported
+Untested.
 
 
 == Mac ==
-Untested
+Untested.
 
 
 ------------------------------------------------------------------
 How to use: As a library
 ------------------------------------------------------------------
 
-Put the libstitch folder somewhere in your PYTHONPATH. EG
-export PYTHONPATH=$PYTHONPATH:~/gcf/src:~/gcf/examples/stitching
-
+First, satisfy all requirements above, including installing dependencies
+and setting PYTHONPATH.
 
 ---- Basic Example ----
 
