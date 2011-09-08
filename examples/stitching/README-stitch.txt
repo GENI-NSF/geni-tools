@@ -7,7 +7,7 @@ associated with aggregate stitching for GENI aggregates. libstitch
 can be used to facilitate all or a subset of the actions involved with
 GENI aggregate stitching.
 
-Some of these involve: 
+Some of these involve:
     -Topology discovery
     -RSpec parsing and interpretation
     -Calculation of dependencies between aggregates
@@ -19,21 +19,55 @@ The main interface is very high-level, however there are some useful
 models and abstractions lower in the stack which are also available
 for use.
 
+libstitch also serves as a complex example of using Omni as a library.
+Omni is called to make reservations at aggregates. For details on how
+Omni is called as a library here, see libstitch/src/rspec.py
+
+
+------------------------------------------------------------------
+Usage:
+------------------------------------------------------------------
+
+To use the included sample.py in its basic form, which uses all cached/
+sample RSpecs and does not actually contact any aggregates:
+
+First satisfy the requirements below, including:
+- setting PYTHONPATH
+- installing prerequisites
+- if using 'real' mode, contacting aggregates: create a slice
+
+Then, from gcf/examples/stitching, do:
+
+python ./sample.py -c <relative path to omni_config> <slicename> \
+       libstitch/samples/utah-request.xml libstitch/samples/ion-request.xml \
+       libstitch/samples/max-request.xml 
+
+To actually contact aggregates, set real=True within the source of
+sample.py, and be sure you have a slice from a slice authority accepted
+at all aggregates you will use -- PLC is preferred for the MAX and demo-ION
+aggregates.
 
 ------------------------------------------------------------------
 Changelog:
 ------------------------------------------------------------------
 
-HEAD:
-    -Outlined how to use the library as a python mod in readme
-    -Reading topology and adjacency from advertisement rspecs
-    -Starting a session no longer uses filehandles, strings instead
-    -Parallelize requests by non-dependent RSpecs
-    -Output of graphs and scripts are now separate calls
+gcf-1.4:
+    - Large scale code cleanup.
+    - Bug fixes.
+    - Code refactoring and simplification.
+    - ION RSpecs mimic MAX versions
+    - Better exception handling and debug printouts.
+    - Restrictions (eg on available VLAN ranges) are per interface.
+
+gpo-HEAD:
+    - Outlined how to use the library as a python module in readme
+    - Reading topology and adjacency from advertisement rspecs
+    - Starting a session no longer uses filehandles, strings instead
+    - Parallelize requests by non-dependent RSpecs
+    - Output of graphs and scripts are now separate calls
 
 gec-stitching-demo-v1:
-    -Base functionality for GEC 11
-
+    - Base functionality for GEC 11
 
 
 ------------------------------------------------------------------
@@ -49,8 +83,8 @@ Use Omni 1.3+
 EG
 export PYTHONPATH=$PYTHONPATH:~/gcf/src
 
- - Configure Omni 
-    By default, your omni config should be named omni_config 
+ - Configure Omni
+    By default, your omni config should be named omni_config
   in the directory '.gcf'. But this is configurable using the
   '-c' argument.
      - use PLC as your default_cf to work with the MAX and ION AMs
@@ -73,7 +107,7 @@ Used for the unit tests (optional)
     Ubuntu: sudo aptitude install python-nose
 
 -- libstitch --
-Add the folder libstitch is in to your PYTHONPATH env variable. 
+Add the folder libstitch is in to your PYTHONPATH env variable.
 Note: do not add the libstitch folder itself, but the folder it sits in.
 EG
 export PYTHONPATH=$PYTHONPATH:~/gcf/examples/stitching
@@ -111,8 +145,8 @@ assigned_vlans = s.executeSequence(sequence)
 see: sample.py
 
 This example can be used to do basic stitching work. Make sure you edit
-the scripts in the 'templates' directory for your use. 
-You can edit the setup template to upload a custom payload of 
+the scripts in the 'templates' directory for your use.
+You can edit the setup template to upload a custom payload of
 whatever you like.
 
 
@@ -122,14 +156,14 @@ Project Organization:
 
 Python Source:
 
-    sample.py   
+    sample.py
         A sample, basic usage of the high-level interface that comes
         with libstitch.
 
     libstitch/
         Main python module folder for libstitch.
 
-    libstitch/stitch.py   
+    libstitch/stitch.py
         The high-level interface if you just want to use what is already
          supported.
 
@@ -158,7 +192,7 @@ Python Source:
         session'. Not rigidly defined, a stitchsession is generally
         any operation which involves more than one RSpec object or
         requires some consistent state or context throughout usage of
-        the library 
+        the library
 
     libstitch/src/util.py
         Contains only functions which have no state. Helper functions
@@ -166,10 +200,10 @@ Python Source:
 
 
 Tests:
-    
+
     libstitch/tests/test_rspec.py
         Contains tests for libstitch/src/rspec.py
-        
+
     libstitch/tests/test_util.py
         Contains tests for libstitch/src/util.py
 
@@ -186,7 +220,7 @@ Supporting Items:
 
     libstitch/libstitch.doxy
         Doxygen config file for libstitch.
-                    
+
     libstitch/cache/
         The folder where topology discovery functions will search for
         advertisement rspecs by default.
@@ -209,7 +243,7 @@ The general description of how this library works is as follows. We
 read in rspec files and pass them into new ReqRSpec objects, and
 pass those objects into a new Stitch session. After a session has
 been 'started' we calculate restrictions. A restriction is just a
-key/value pair associated with a ReqRSpec or specific interface in 
+key/value pair associated with a ReqRSpec or specific interface in
 that ReqRSpec (aggregate) which can be used later
 on to help in dependency calculation, and is essentially any property
 which might remotely be involved in relation to other ReqRSpecs. We
@@ -313,19 +347,31 @@ Other design questions:
         them if the cache folder is empty. 
         Replacing this is just a matter of re-implementing the 
         util.getTopologyData() function.
-        
+
 
 ------------------------------------------------------------------
 Future Work:
 ------------------------------------------------------------------
 
+    - Full slice name for RSpecs adds site name to the commandline
+    slice name - currently hardcoded to 'bbn', which is only accurate
+    for slices created at plc.bbn. This impacts the derived username
+    for logging in to SFA nodes, and the inserted slicename in MAX and demo-ION
+    aggregates.
     - Represent a 'switch'. Which can itself have properties
     - Derive aggregate namespaces, URL from RSpecs
+    - How do we determine which nodes in PG manifest are from
+    that aggregate to avoid double-adding?
+    - IDing of ION RSpecs and URLs uses hard-coded URL list
     - Support a service for getting topology information
-    - Support VLAN tag negotiation
     - Implement insertVlanData in PGReqRSpec
+    - Support VLAN tag negotiation
     - Make IONRSpecs inherit from MAX versions for code re-use
-
+    - Allow toggling 'real' from command line.
+    - Allow specifying output folder on command line.
+    - Allow specifying cache folder on command line.
+    - Better extraction of username, key from omni config
+    - Support non-VLAN dependencies
 
 ------------------------------------------------------------------
 Current Caveats
@@ -333,8 +379,13 @@ Current Caveats
 
 - Request RSpecs must have an XML comment of a particular form
 that includes the aggregate URL for us to ID the aggregate. See the
-examples. Obviously there are better ways to do this.  
+examples. Obviously there are better ways to do this.
 
+- A couple spots hard code an assumption that your slice came from
+plc.bbn -- this may cause problems, but only in Real mode and only
+for users whose slice is not from plc.bbn. This impacts the derived
+username for logging in to SFA nodes, and the inserted slicename in
+MAX and demo-ION aggregates.
 
 ------------------------------------------------------------------
 Source Documentation:

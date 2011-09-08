@@ -72,7 +72,7 @@ class RequestThread(threading.Thread):
             # Another thread is running this one. Want to wait
             self.logger.info("Another thread submitting request to %s. Waiting...", self.reqRSpec.aggrURL)
             while not self.reqRSpec.completed:
-                # FIXME
+                # FIXME: do a real wait on the other thread that submitted this RSpec
                 time.sleep(1)
             self.ready.release()
             return

@@ -347,6 +347,7 @@ class CallHandler(object):
 		creds.append(cred)
 	    else:
 		creds = [cred]
+
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
 	    if isinstance(resp, dict):

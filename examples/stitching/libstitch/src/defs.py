@@ -106,4 +106,5 @@ logger_name = 'libstitch'
 # as in authority=plc.bbn in an SFA config
 # used to contruct the SFA-internal slicename and username
 # used for logins
+# FIXME: Remove this hack
 site_name = 'bbn'

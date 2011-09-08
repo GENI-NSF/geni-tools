@@ -893,6 +893,6 @@ def getTermColorEndTag():
 # FIXME
 # maybeAddSiteName
 # If omni config has framework type=sfa,
-# then get teh authority element, get part after last '.'
+# then get the authority element, get part after last '.'
 # and prepend sitestr_ to fron of slicename for various things
 # args must be options, config, str to prepend to, logger

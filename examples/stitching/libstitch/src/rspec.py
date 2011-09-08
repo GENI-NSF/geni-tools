@@ -546,7 +546,7 @@ class MaxReqRSpec(ReqRSpec):
 
         # FIXME
         # MAX native requests show you the internal interface
-        # to get to the hose. From that,
+        # to get to the host. From that,
         # you can get a vlanRange element, in the compResc section
         # try to use that?
         # link -> attachedLinkUrn that looks normal
@@ -1660,9 +1660,6 @@ class MaxManRSpec(ManRSpec):
                #self.logger.debug("Pattern matched. group1: %s, group2 %s, group3 %s, group4 %s", result.group(1), result.group(2), result.group(3), result.group(4))
             else:
                 self.logger.warn("Pattern did not match. %d groups", len(result.group))
-
-#            # FIXME: Ugly hard-coded bit... Isn't this domain=?
-#            node_name+=".dragon.maxgigapop.net"
 
 # This pulls the external address
 #            address_elem = plab_node_elem.find(ns_prefix+ADDR_TAG)
