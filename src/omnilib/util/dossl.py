@@ -129,7 +129,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 framework.logger.debug(traceback.format_exc())
                 return (None, msg)
             else:
-                msg = "Uknown SSL error %s" % exc
+                msg = "Unknown SSL error %s" % exc
                 framework.logger.error("%s: %s" % (failMsg, msg))
                 if not framework.logger.isEnabledFor(logging.DEBUG):
                     framework.logger.error('    ..... Run with --debug for more information')
