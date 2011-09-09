@@ -124,11 +124,10 @@ class CallHandler(object):
                 self.abac_dir = aconf['abac']
                 self.abac_log = aconf['abac_log']
             else:
-                self.logger.error("ABAC requested (--abac) and no abac= or abac_log=in omni_config: disabling ABAC")
+                self.logger.error("ABAC requested (--abac) and no abac= or abac_log= in omni_config: disabling ABAC")
                 self.opts.abac= False
                 self.abac_dir = None
                 self.abac_log = None
-
 
         
     def _raise_omni_error( self, msg ):
@@ -341,6 +340,9 @@ class CallHandler(object):
 #            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
 
             self.logger.debug("Doing listresources with options %r", options)
+
+            # If ABAC then creds are ABAC creds. Else Creds are the user cred or slice cred
+            # as retrieved above, as normal
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(cred)
@@ -349,6 +351,7 @@ class CallHandler(object):
 
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
+            # If ABAC return is a dict with proof and the regular return
             if isinstance(resp, dict):
                 if is_ABAC_framework(self.framework):
                     if 'proof' in resp:
@@ -846,6 +849,8 @@ class CallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
+
+            # If ABAC then creds are ABAC creds, else creds are slice_cred
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(slice_cred)
@@ -854,6 +859,7 @@ class CallHandler(object):
 
             (result, message) = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, creds, rspec, slice_users)
 
+            # If ABAC then return is a dict with abac_credentials, proof, and normal return
             if isinstance(result, dict):
                 if is_ABAC_framework(self.framework):
                     if 'abac_credentials' in result:
@@ -990,7 +996,7 @@ class CallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            # Add ABAC Creds if necessary
+            # Add ABAC Creds if necessary, else it is just the slice_cred
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(slice_cred)
@@ -1005,7 +1011,7 @@ class CallHandler(object):
                 self.logger.info('Removing timezone at user request (--no-tz)')
                 time_string = time_with_tz.replace(tzinfo=None).isoformat()
             (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, creds, time_string)
-            # Unpack ABAC results
+            # Unpack ABAC results: A dict with abac_credentials, proof, and the normal return
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
                     if 'abac_credentials' in res:
@@ -1090,14 +1096,14 @@ class CallHandler(object):
             self.logger.warn(prstr)
 
         for client in clientList:
-            # Add ABAC Creds if necessary
+            # Add ABAC Creds if necessary to the normal slice_cred
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(slice_cred)
             else:
                 creds = [slice_cred]
             (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, creds)
-            # Unpack ABAC results
+            # Unpack ABAC results from a dict that includes proof
             if status and 'proof' in status:
                 if is_ABAC_framework(self.framework):
                     save_proof(self.framework.abac_log, status['proof'])
@@ -1187,7 +1193,7 @@ class CallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
-            #Gather abac certs if we need them
+            #Gather ABAC certs if we need them to add to the slice_cred
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(slice_cred)
@@ -1195,7 +1201,7 @@ class CallHandler(object):
                 creds = [slice_cred]
 
             (res, message) = _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, creds)
-            # Unpack ABAC results
+            # Unpack ABAC results from a dict with proof and normal result
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
                     if 'proof' in res:
@@ -1267,7 +1273,7 @@ class CallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            # Add ABAC Creds if necessary
+            # Add ABAC Creds if necessary to the slice_cred
             if is_ABAC_framework(self.framework):
                 creds = get_abac_creds(self.framework.abac_dir)
                 creds.append(slice_cred)
@@ -1275,7 +1281,7 @@ class CallHandler(object):
                 creds = [slice_cred]
             (res, message) = _do_ssl(self.framework, None, "Shutdown %s on %s" %
                        (urn, client.url), client.Shutdown, urn, creds)
-            # Unpack ABAC results
+            # Unpack ABAC results from a dict with proof, normal result
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
                     if 'proof' in res:
@@ -1742,6 +1748,7 @@ class CallHandler(object):
             if tempurn.strip() != "":
                 urn = tempurn
             self.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
+
         return url,urn
 
 
@@ -1761,7 +1768,9 @@ class CallHandler(object):
             # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
             url, urn = self._derefAggNick(self.opts.aggregate)
             _ = urn # appease eclipse
-            return (dict(urn=url), "")
+            ret = {}
+            ret[urn] = url
+            return (ret, "")
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
             for url in self.omni_config['aggregates'].strip().split(','):
