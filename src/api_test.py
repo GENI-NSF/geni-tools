@@ -499,7 +499,7 @@ class Test(GENISetup):
         filename = os.path.join( TMP_DIR, datetime.datetime.strftime(datetime.datetime.utcnow(), "apitest_%Y%m%d%H%M%S"))
         with open(filename, mode='w') as rspec_file:
             rspec_file.write( resources )
-        omniargs = ["createsliver", slice_name, rspec_file.name]
+        omniargs = ["createsliver", slice_name, "--omnispec", rspec_file.name]
         text, result = self.call(omniargs, options)
         if result is None:
             successFail = False
