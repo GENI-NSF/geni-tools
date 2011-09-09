@@ -31,6 +31,7 @@ least the aggregates from which you are requesting resources.
 '''
 
 import logging
+import os
 import sys
 
 import libstitch
@@ -49,11 +50,25 @@ def main(argv=None):
 
     parser = omni.getParser()
     omni_usage = parser.get_usage()
-    parser.set_usage("\n\nsample.py [omni options] <slicename> <rspec> [<rspec> ...]")
+    parser.set_usage("\n\nsample.py [omni options] [--real] [--outFolder <foldername>] <slicename> <rspec> [<rspec> ...]")
 
-    # Let Omni parse its options as usual.
+    # Add custom options for this script
+    parser.add_option("--real",
+                    help="Really do sliver requests, don't fake it",
+                    action="store_true", default=False)
+    parser.add_option("--outFolder",
+                    help="Folder for graph and script output files",
+                    metavar="FOLDER", default=None)
+
+    # Let Omni parse its options as usual. This also parses out our
+    # custom options, if provided.
     # options is an optparse.Values object, and args is a list
     options, args = parser.parse_args(sys.argv[1:])
+
+    if options.real:
+        print "\nWill do real sliver requests"
+    else:
+        print "\nWill simulate sliver requests"
 
     ######################################################
     # BEGIN SEQUENCE 
@@ -147,7 +162,7 @@ def main(argv=None):
         # Fake responses make no Omni calls, but use canned responses
         # from libstitch/sample. See doFakeRequest methods in libstitch/rspec.py.
         # Real responses invoke createSliver on aggregates.
-        real = False ## FIXME: Make this a commandline arg
+        real = options.real
         pause = False ## Pause when inserting vlans into rspecs
 
         # Two ways to make reservations: in sequence, or in parallel.
@@ -174,9 +189,24 @@ def main(argv=None):
         print "               OUTPUT "
         print "#######################################\n"
 
-        # Get an output folder
-        # FIXME: have an option to specify path on the commandline?
-        folder = s.defaultOutputFolder() #Optional, can use any path you like
+        # Get an output folder. Try to use any commandline option, else use a default
+        folder = None
+        if options.outFolder:
+            if not os.path.exists(options.outFolder):
+                # try creating it. If that fails, use the default
+                try:
+                    os.mkdir(options.outFolder)
+                    folder = options.outFolder
+                    print "Using output folder %s" % folder
+                except Exception, e:
+                    print "Failed creating requested output folder %s: %s" % (options.outFolder, e)
+            else:
+                folder = options.outFolder
+                print "Using output folder %s" % folder
+
+        if not folder:
+            folder = s.defaultOutputFolder() #Optional, can use any path you like
+
         if folder is not None:
             s.generateGraph(folder) 
             s.generateScripts(folder)
