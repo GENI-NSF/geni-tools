@@ -33,6 +33,7 @@ import inspect
 import math
 import os
 import re
+import string 
 import sys
 import time
 import unittest
@@ -465,7 +466,7 @@ class Test(GENISetup):
             table = dict((ord(char), unicode('-')) for char in bad)
         else:
             assert isinstance(server, str)
-            table = str.maketrans(bad, '-' * len(bad))
+            table = string.maketrans(bad, '-' * len(bad))
         server = server.translate(table)
         return server
 
