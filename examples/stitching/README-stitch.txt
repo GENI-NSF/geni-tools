@@ -43,11 +43,14 @@ python ./sample.py -c <relative path to omni_config> <slicename> \
        libstitch/samples/utah-request.xml libstitch/samples/ion-request.xml \
        libstitch/samples/max-request.xml 
 
-To actually contact aggregates, set real=True within the source of
-sample.py, and be sure you have a slice from a slice authority accepted
+To actually contact aggregates, supply --real option on the commandline,
+and be sure you have a slice from a slice authority accepted
 at all aggregates you will use -- PLC is required for the MAX and demo-ION
 aggregates as of this writing (thise AMs do not trust other
 authorities).
+
+Output (graph, scripts) generally goes to a new subfolder.
+Specify --outFolder to give a specific folder to write to.
 
 ------------------------------------------------------------------
 Credits:
@@ -362,15 +365,11 @@ Future Work:
 
     - Represent a 'switch'. Which can itself have properties
     - Derive aggregate namespaces, URL from RSpecs
-    - How do we determine which nodes in PG manifest are from
-    that aggregate to avoid double-adding?
     - IDing of ION RSpecs and URLs uses hard-coded URL list
     - Support a service for getting topology information
     - Implement insertVlanData in PGReqRSpec
     - Support VLAN tag negotiation
     - Make IONRSpecs inherit from MAX versions for code re-use
-    - Allow toggling 'real' from command line.
-    - Allow specifying output folder on command line.
     - Allow specifying cache folder on command line.
     - Better extraction of username, key from omni config
     - Support non-VLAN dependencies
@@ -382,6 +381,8 @@ Current Caveats
 - Request RSpecs must have an XML comment of a particular form
 that includes the aggregate URL for us to ID the aggregate. See the
 examples. Obviously there are better ways to do this.
+- Topology comes from a directory of Ad RSpecs
+- Aggregate URLs/namespaces come from hard-coded struct in util.py
 
 ------------------------------------------------------------------
 Source Documentation:

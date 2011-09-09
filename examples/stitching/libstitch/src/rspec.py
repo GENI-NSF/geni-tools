@@ -1869,9 +1869,51 @@ class PGV2ManRSpec(ManRSpec):
             component_manager_id = util.strifyEle(node_elem.get("component_manager_id"))
             #self.logger.debug("Client_id: %s, component_id: %s, comp_mgr_id: %s", client_id, component_id, component_manager_id)
 
-            # if the mgr is not where we sent to, skip this one
-            # FIXME: Need a better test!
-            if "maxgigapop" in component_manager_id:
+            # Skip nodes not managed by the AM we contacted.
+            # IE the RSpec from/to PG often lists all nodes, including those
+            # not managed by this Node. So it won't have a hostname/ip
+            # and should be added by that other AM
+            # Here we extract the authority part of various URNs, comparing
+            # components we requested from this AM with the authority of the component_manager_id
+            # on this Node. Only if they are the same do we treat this as a locally
+            # managed node and add it
+            mine = True
+            idnIx = component_manager_id.find('IDN+')
+            cmAuth = component_manager_id[idnIx+len('IDN+'):component_manager_id[idnIx+len('IDN+'):].find('+')+idnIx+len('IDN+')]
+            self.logger.debug("This node %s has is managed by an AM with authority %s", component_id, cmAuth)
+
+            reqIfc1 = ""
+            reqIfc2 = ""
+            rIs = self.reqRSpec.requestedInterfaces.keys()
+            if len(rIs) > 0:
+                reqIfc1 = rIs[0]
+            if len(rIs) > 1:
+                reqIfc2 = rIs[1]
+
+            if len(reqIfc1) > 0:
+                idnIx = reqIfc1.find('IDN+')
+                ri1Auth = reqIfc1[idnIx+len('IDN+'):reqIfc1[idnIx+len('IDN+'):].find('+')+idnIx+len('IDN+')]
+                self.logger.debug("This AM requested interface %s with authority %s", reqIfc1, ri1Auth)
+                if ri1Auth == cmAuth:
+                    self.logger.debug("... which is same as this node's authority - local Node to add.")
+                else:
+                    self.logger.debug("... which is different than this node's authority. Skip it.")
+                    mine = False
+
+            # Do a 2nd requested interface (if any) to check for problems
+            if len(reqIfc2) > 0:
+                idnIx = reqIfc2.find('IDN+')
+                ri2Auth = reqIfc2[idnIx+len('IDN+'):reqIfc2[idnIx+len('IDN+'):].find('+')+idnIx+len('IDN+')]
+                self.logger.debug("This AM requested interface %s with authority %s", reqIfc2, ri2Auth)
+                if ri2Auth == cmAuth:
+                    self.logger.debug("... which is same as this node's authority - local node to add.")
+                    if not mine:
+                        self.logger.debug("... which disagrees with the first requested interface we checked!")
+                else:
+                    self.logger.debug("... which is different than this node's authority")
+                    if mine:
+                        self.logger.debug("... which disagrees with the first requested interface we checked!!")
+            if not mine:
                 continue
 
             hostname = "unknown"

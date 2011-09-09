@@ -652,6 +652,9 @@ def getCachedAdvertisements(logger):
    
     logger.info("Collecting all known Advertisements")
 
+
+    # Find the directory with cached Advertisements
+    # FIXME: Use this as the default, but accept a path on the commandline
     ##Find the path of this module
     mod = inspect.getmodule(getCachedAdvertisements)
     path = os.path.dirname(mod.__file__)
