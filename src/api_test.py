@@ -104,7 +104,7 @@ class GENISetup(unittest.TestCase):
     def create_slice_name( self ):
 #        slice_name = SLICE_NAME
         if self.options.reuse_slice_name is None:
-            slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(), SLICE_NAME+"_%H%M%S")
+            slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(), SLICE_NAME+"-%H%M%S")
         else:
             slice_name = self.options.reuse_slice_name
             
