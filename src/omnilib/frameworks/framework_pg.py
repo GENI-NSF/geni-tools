@@ -136,6 +136,11 @@ class Framework(Framework_Base):
             (response, message) = _do_ssl(self, None, ("Get PG slice credential for %s from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
             if response is None:
                 raise Exception("Failed to get PG slice %s credential: %s" % (urn, message))
+            # When the CM is busy, it return error 14: 'slice is busy; try again later'
+            # FIXME: All server calls should check for that 'try again later' and retry,
+            # as dossl does when the AM raises that message in an XMLRPC fault
+            if response['code']:
+                raise Exception("Failed to get PG slice %s credential: Error: %d, Message: %s" % (urn, response['code'], response['output']))
             if not response.has_key('value'):
                 self.logger.debug("Got GetCredential response %r", response)
                 raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
