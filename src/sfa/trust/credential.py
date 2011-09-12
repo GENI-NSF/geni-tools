@@ -928,7 +928,13 @@ class Credential(object):
         # But we haven't verified that it is _signed by_ an authority
         # We also don't know if xmlsec1 requires that cert signers
         # are marked as CAs.
-        root_cred_signer.verify_chain(trusted_gids)
+
+        # Note that if verify() gave us no trusted_gids then this
+        # call will fail. So skip it if we have no trusted_gids
+        if trusted_gids and len(trusted_gids) > 0:
+            root_cred_signer.verify_chain(trusted_gids)
+        else:
+            logger.debug("No trusted gids. Cannot verify that cred signer is signed by a trusted authority. Skipping that check.")
 
         # See if the signer is an authority over the domain of the target.
         # There are multiple types of authority - accept them all here

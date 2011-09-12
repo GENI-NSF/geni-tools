@@ -258,7 +258,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     if opts.debug:
         dcred.dump(True)
     else:
-        logger.info("Created delegated credential %s", dcred)
+        logger.info("Created delegated credential %s", dcred.get_summary_tostring())
 
     # Save the result to a file
     bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
