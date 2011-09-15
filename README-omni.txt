@@ -29,6 +29,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.5:
+
 New in v1.4:
  * Omni logging is configurable with a -l option, or from a
  script by calling applyLogConfig(). (ticket #61)

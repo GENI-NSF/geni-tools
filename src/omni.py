@@ -90,7 +90,7 @@ import omnilib.xmlrpc.client
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.4"
+OMNI_VERSION="1.5"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
