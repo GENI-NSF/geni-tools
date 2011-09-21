@@ -53,7 +53,7 @@ def findUsersAndKeys( config ):
                 keyList.append(key)
     return keyList
 
-def sshIntoNodes( sliverStat, inXterm=True, keyList="" ):
+def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
     """Wrapper to determine type of node (PL, PG) and ssh into it."""
 
     if type(sliverStat) != type({}):
@@ -66,10 +66,17 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" ):
             aggStat['pl_expires']
             print ""
             print "="*80
-            print "Aggregate [%s] has a PlanetLab sliver." % aggName
-            login = loginToPlanetlab( aggStat, inXterm, keyList=keyList )
-            if login is not None:
-                print login
+            # In PlanetLAB after you delete a silver you get an empty sliver, i.e. a sliver
+            # with no resources, so check whether there are any resources listed in siverstatus
+            # to determin whether this is actually a sliver or not
+            if len(aggStat['geni_resources']) > 0 :
+                print "Aggregate [%s] has a PlanetLab sliver." % aggName
+                login = loginToPlanetlab( aggStat, inXterm, keyList=keyList, readyOnly=readyOnly )
+
+                if login is not None:
+                    print login
+            else :
+                print "Aggregate [%s] has No PlanetLab sliver." % aggName
             print "="*80
             print ""
         except:
@@ -81,7 +88,7 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" ):
             print ""
             print "="*80
             print "Aggregate [%s] has a ProtoGENI sliver.\n" % aggName
-            login = loginToProtoGENI( aggStat, inXterm, keyList=keyList )
+            login = loginToProtoGENI( aggStat, inXterm, keyList=keyList, readyOnly=readyOnly )
             if login is not None:
                 print login
             print "="*80
@@ -89,13 +96,18 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" ):
         except:
             pass
 
-def loginToPlanetlab( sliverStat, inXterm=True, keyList=[] ):
+def loginToPlanetlab( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     """Print command to ssh into a PlanetLab host."""
     output = ""
     for resourceDict in sliverStat['geni_resources']: 
+        # If the user only wants the nodes that are in ready state, skip over all 
+        # nodes that are not ready
         if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
             return None
-#        output += "%s's pl_boot_state is: \n\t%s\n" % (resourceDict['pl_hostname'],resourceDict['pl_boot_state'])
+        if (readyOnly is True and resourceDict['geni_status'].strip() != "ready") :
+          continue
+        output += "\n%s's geni_status is: %s (pl_boot_state:%s) \n" % (resourceDict['pl_hostname'], resourceDict['geni_status'],resourceDict['pl_boot_state'])
+        # Check if node is in ready state
         output += "Login using:\n"
 
         if len(keyList) == 0:
@@ -110,16 +122,20 @@ def loginToPlanetlab( sliverStat, inXterm=True, keyList=[] ):
             output += "\n"
     return output
 
-def loginToProtoGENI( sliverStat, inXterm=True, keyList=[] ):
+def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     """Print command to ssh into a ProtoGENI host."""
     output = ""
     for resourceDict in sliverStat['geni_resources']: 
+        # If the user only wants the nodes that are in ready state, skip over all 
+        # nodes that are not ready
+        if (readyOnly is True and resourceDict['geni_status'].strip() != "ready") :
+          continue
         for children1 in resourceDict['pg_manifest']['children']:
             for children2 in children1['children']:
                 child = children2['attributes']
                 if (not child.has_key('username')) or (not child.has_key('hostname')):
                     continue
-                output += "%s's geni_status is: \n\t%s\n" % (child['hostname'],resourceDict['geni_status'])
+                output += "\n%s's geni_status is: %s\n" % (child['hostname'],resourceDict['geni_status'])
                 output += "Login using:\n"
 
                 if len(keyList) == 0:
@@ -144,6 +160,10 @@ def main(argv=None):
                       action="store_false", 
                       default=True,
                       help="do NOT add xterm")
+    parser.add_option( "--readyonly", dest="readyonly",
+                      action="store_true", 
+                      default=False,
+                      help="Only print nodes in ready state")
     (options, args) = parser.parse_args()
     
     if len(args) > 0:
@@ -160,7 +180,7 @@ def main(argv=None):
 
     # Do Real Work
     # Determine how to SSH into nodes
-    sshIntoNodes( sliverStatus, inXterm=options.xterm, keyList=keyList )
+    sshIntoNodes( sliverStatus, inXterm=options.xterm, keyList=keyList ,readyOnly=options.readyonly)
         
 if __name__ == "__main__":
     sys.exit(main())
