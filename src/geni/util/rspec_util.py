@@ -37,7 +37,7 @@ def is_wellformed_xml( string ):
     parser = xml.parsers.expat.ParserCreate()
     retVal = True
     try: 
-        parser.Parse( string )
+        parser.Parse( string, 1 )
     except Exception:
         # Parsing failed
         print Exception
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         else:
             print "is_rspec_str() is FALSE"                
 
-        print is_wellformed_xml( test_str )
+#        print is_wellformed_xml( test_str )
 
     print "===== For the following strings is_rspec_str() should be TRUE ====="
     test( xml_str )
