@@ -56,12 +56,11 @@ class _SfaLogger:
             # We could (a) rename the tmplogfile, or (b)
             # just log to the console in that case.
             # Here we default to the console.
-            if os.path.exists(tmplogfile) and not os.access(tmplogfile, os.W_OK):
+            if os.path.exists(tmplogfile) and not os.access(tmplogfile,os.W_OK):
                 loggername = loggername + "-console"
                 handler = logging.StreamHandler()
             else:
                 handler=logging.handlers.RotatingFileHandler(tmplogfile,maxBytes=1000000, backupCount=5) 
-
         handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
         self.logger=logging.getLogger(loggername)
         self.logger.setLevel(level)
@@ -70,7 +69,7 @@ class _SfaLogger:
         for l_handler in self.logger.handlers:
             if l_handler.baseFilename == handler.baseFilename and \
                l_handler.level == handler.level:
-                handler_exists = True
+                handler_exists = True 
 
         if not handler_exists:
             self.logger.addHandler(handler)
@@ -101,13 +100,17 @@ class _SfaLogger:
 
     def debug(self, msg):
         self.logger.debug(msg)
-
+        
     def warn(self, msg):
         self.logger.warn(msg)
 
+    # some code is using logger.warn(), some is using logger.warning()
+    def warning(self, msg):
+        self.logger.warning(msg)
+   
     def error(self, msg):
-        self.logger.error(msg)
-
+        self.logger.error(msg)    
+ 
     def critical(self, msg):
         self.logger.critical(msg)
 
@@ -125,6 +128,12 @@ class _SfaLogger:
         to_log="".join(traceback.format_stack())
         self.debug("%s BEG STACK"%message+"\n"+to_log)
         self.debug("%s END STACK"%message)
+
+    def enable_console(self, stream=sys.stdout):
+        formatter = logging.Formatter("%(message)s")
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
 
 info_logger = _SfaLogger(loggername='info', level=logging.INFO)
@@ -161,26 +170,29 @@ def profile(logger):
 
 if __name__ == '__main__': 
     print 'testing sfalogging into logger.log'
-    logger=_SfaLogger('logger.log')
-    logger2=_SfaLogger('logger.log', level=logging.DEBUG)
-    logger3=_SfaLogger('logger.log', level=logging.ERROR)
-    print logger.logger.handlers
-
-    logger.critical("logger.critical")
-    logger.error("logger.error")
-    logger.warn("logger.warning")
-    logger.info("logger.info")
-    logger.debug("logger.debug")
-    logger.setLevel(logging.DEBUG)
-    logger.debug("logger.debug again")
+    logger1=_SfaLogger('logger.log', loggername='std(info)')
+    logger2=_SfaLogger('logger.log', loggername='error', level=logging.ERROR)
+    logger3=_SfaLogger('logger.log', loggername='debug', level=logging.DEBUG)
     
+    for (logger,msg) in [ (logger1,"std(info)"),(logger2,"error"),(logger3,"debug")]:
+        
+        print "====================",msg, logger.logger.handlers
+   
+        logger.enable_console()
+        logger.critical("logger.critical")
+        logger.error("logger.error")
+        logger.warn("logger.warning")
+        logger.info("logger.info")
+        logger.debug("logger.debug")
+        logger.setLevel(logging.DEBUG)
+        logger.debug("logger.debug again")
+    
+        @profile(logger)
+        def sleep(seconds = 1):
+            time.sleep(seconds)
 
-    @profile(logger)
-    def sleep(seconds = 1):
-        time.sleep(seconds)
-
-    logger.info('console.info')
-    sleep(0.5)
-    logger.setLevel(logging.DEBUG)
-    sleep(0.25)
+        logger.info('console.info')
+        sleep(0.5)
+        logger.setLevel(logging.DEBUG)
+        sleep(0.25)
 
