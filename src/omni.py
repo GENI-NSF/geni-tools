@@ -88,6 +88,8 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
 import omnilib.util.credparsing as credutils
 import omnilib.xmlrpc.client
 
+from geni.util import rspec_util 
+
 #import sfa.trust.gid as gid
 
 OMNI_VERSION="1.5"
@@ -871,11 +873,8 @@ class CallHandler(object):
                     result = result['manifest']
 
             prettyresult = result
-
-            if result != None and isinstance(result, str) and \
-                    (result.lower().startswith('<rspec') or
-                     result.lower().startswith('<resv_rspec') or
-                     result.lower().startswith('<?xml ')):
+            
+            if rspec_util.is_rspec_string( result ):
                 try:
                     newl = ''
                     if '\n' not in result:
