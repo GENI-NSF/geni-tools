@@ -314,7 +314,7 @@ class CallHandler(object):
                     if not availversion.has_key('type') and availversion.has_key('version'):
                         self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or version")
                         continue
-                    # Tony&Jonathon agreed that types are case sensitive. Still, that's ugly
+
                     # version is also a string
                     if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
                         # success
@@ -2302,9 +2302,9 @@ def getParser():
                       help="Filename prefix when saving results (used with -o)")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
-    # Note that type and version are strings. Nominally case-sensitive.
+    # Note that type and version are case in-sensitive strings.
     parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
-                      help="Ad RSpec type and version to return, e.g. 'ProtoGENI 2'")
+                      help="Ad RSpec type and version to return, e.g. 'GENI 3'")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",

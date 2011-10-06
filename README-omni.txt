@@ -74,7 +74,7 @@ New in v1.3:
  * Slice credentials can be saved to a file and re-used.
  * Added support for GENI AM API Draft Revisions.
  * You can specify a particular RSpec format, at aggregates that speak
- more than one format (eg both SFA and ProtoGENI V2).
+ more than one format (eg both SFA and GENI V3).
  * New functions 'listmyslices' and 'print_slice_expiration'
  * All commands return a tuple: text result description and a
  command-specific object, suitable for use by calling scripts
@@ -350,7 +350,7 @@ Omni supports the following command-line options.
 	'--slicecredfile mySliceCred.xml -o getslicecred mySliceName'
 
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-        Ad RSpec type and version to return, e.g. 'ProtoGENI 2'
+        Ad RSpec type and version to return, e.g. GENI 3'
 
 -v, --verbose  (default True)
         Turn on verbose command summary for omni commandline tool
@@ -536,9 +536,9 @@ Call the AM API ListResources function at specified aggregates.
     	    List resources in myslice at the localhost AM
   * omni.py -a myLocalAM listresources
             List resources at the AM with my nickname myLocalAM in omni_config
-  * omni.py listresources -a http://localhost:12348 -t ProtoGENI 2 myslice
+  * omni.py listresources -a http://localhost:12348 -t GENI 3 myslice
             List resources in myslice at the localhost AM, requesting that
-	    the AM send a ProtoGENI V2 format RSpec.
+	    the AM send a GENI V3 format RSpec.
   * omni.py -a http://localhost:12348 --omnispec listresources myslice
             List resources in myslice at the localhost AM, converting
 	    them to the deprecated omnispec format.
@@ -606,11 +606,11 @@ The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
             listresources (e.g. omni.py -o listresources). 
 	    Warning: request RSpecs are often very different from
             advertisement RSpecs.
-For help creating ProtoGENI RSpecs, see
+For help creating GENI RSpecs, see
               http://www.protogeni.net/trac/protogeni/wiki/RSpec.
 To validate the syntax of a generated request RSpec, run:
 {{{
-  xmllint --noout --schema http://www.protogeni.net/resources/rspec/2/ad.xsd \
+  xmllint --noout --schema http://www.geni.net/resources/rspec/3/ad.xsd \
                       yourRequestRspec.xml
 }}}
 
