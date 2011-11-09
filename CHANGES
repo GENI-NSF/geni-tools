@@ -2,6 +2,7 @@
 
 gcf 1.5:
  * omni
+  * Remove AM specific URL validation checks; they were confusing. (ticket #66)
 
  * gcf
 

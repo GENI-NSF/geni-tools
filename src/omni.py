@@ -1817,20 +1817,26 @@ def validate_url(url):
         return "Invalid URL. Host/port has invalid characters in url %s" % url
 
     # Look for common errors in contructing the urls
-    # if the urn part of the urn is openflow/gapi (no trailing slash)
-    # then warn it needs a trailing slash for Expedient
-    if pieces.path.lower().find('/openflow/gapi') == 0 and pieces.path != '/openflow/gapi/':
-        return "WARN: Likely invalid Expedient URL %s. Expedient AM runs at /openflow/gapi/ - try url https://%s/openflow/gapi/" % (url, pieces.netloc)
 
-    # If the url has no path part but a port that is 123?? and not 12346
-    # then warn and suggest SFA AMs typically run on 12346
-    if (pieces.path is None or pieces.path.strip() == "" or pieces.path.strip() == '/') and pieces.port >= 12300 and pieces.port < 12400 and pieces.port != 12346:
-        return "WARN: Likely invalid SFA URL %s. SFA AM typically runs on port 12346. Try AM URL https://%s:12346/" % (url, pieces.hostname)
+# GCF Ticket #66: This check is just causing confusion. And will be OBE with FOAM.
+#    # if the urn part of the urn is openflow/gapi (no trailing slash)
+#    # then warn it needs a trailing slash for Expedient
+#    if pieces.path.lower().find('/openflow/gapi') == 0 and pieces.path != '/openflow/gapi/':
+#        return "WARN: Likely invalid Expedient URL %s. Expedient AM runs at /openflow/gapi/ - try url https://%s/openflow/gapi/" % (url, pieces.netloc)
 
-    # if the non host part has 'protogeni' and is not protogeni/xmlrpc/am
-    # then warn that PG AM interface is at protogeni/xmlrpc/am
-    if pieces.path.lower().find('/protogeni') == 0 and pieces.path != '/protogeni/xmlrpc/am' and pieces.path != '/protogeni/xmlrpc/am/':
-        return "WARN: Likely invalid PG URL %s: PG AMs typically run at /protogeni/xmlrpc/am - try url https://%s/protogeni/xmlrpc/am" % (url, pieces.netloc)
+# GCF ticket #66: Not sure these checks are helping either.
+# Right thing may be to test the URL and see if an AM is running there, rather
+# than this approach.
+
+#    # If the url has no path part but a port that is 123?? and not 12346
+#    # then warn and suggest SFA AMs typically run on 12346
+#    if (pieces.path is None or pieces.path.strip() == "" or pieces.path.strip() == '/') and pieces.port >= 12300 and pieces.port < 12400 and pieces.port != 12346:
+#        return "WARN: Likely invalid SFA URL %s. SFA AM typically runs on port 12346. Try AM URL https://%s:12346/" % (url, pieces.hostname)
+
+#    # if the non host part has 'protogeni' and is not protogeni/xmlrpc/am
+#    # then warn that PG AM interface is at protogeni/xmlrpc/am
+#    if pieces.path.lower().find('/protogeni') == 0 and pieces.path != '/protogeni/xmlrpc/am' and pieces.path != '/protogeni/xmlrpc/am/':
+#        return "WARN: Likely invalid PG URL %s: PG AMs typically run at /protogeni/xmlrpc/am - try url https://%s/protogeni/xmlrpc/am" % (url, pieces.netloc)
 
     return None
 
@@ -1972,6 +1978,7 @@ def load_framework(config):
     """Select the Control Framework to use from the config, and instantiate the proper class."""
 
     cf_type = config['selected_framework']['type']
+    config['logger'].debug('Using framework type %s', cf_type)
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     config['selected_framework']['logger'] = config['logger']
@@ -1990,6 +1997,7 @@ def initialize(argv, options=None ):
     logger = configure_logging(opts)
     config = load_config(opts, logger)
     framework = load_framework(config)
+    logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts
 
 def call(argv, options=None, verbose=False):

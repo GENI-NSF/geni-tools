@@ -30,6 +30,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.5:
+  * Remove AM specific URL validation checks; they were confusing. (ticket #66)
 
 New in v1.4:
  * Omni logging is configurable with a -l option, or from a
