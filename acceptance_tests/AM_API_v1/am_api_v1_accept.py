@@ -56,7 +56,7 @@ class Test(ut.OmniUnittest):
     def test_getversion(self):
         """Passes if a 'getversion' call at each aggregate returns an XMLRPC struct with 'geni_api' field set to API_VERSION.""" 
 
-        self.section_break()
+        #self.section_break()
         options = docopy.deepcopy(self.options)
         # now modify options for this test as desired
 
@@ -95,6 +95,40 @@ class Test(ut.OmniUnittest):
 #        self.print_monitoring( success_fail )
         self.assertTrue(success_fail, msg)
 
+    def test_getversion_assert(self):
+        """Passes if a 'GetVersion' call returns an XMLRPC struct with
+        a 'geni_api' field whose value is '1'.
+        """
+        # XXX What does section_break do? Do we need it?
+        #self.section_break()
+
+        # XXX Should this be done in setup?
+        options = docopy.deepcopy(self.options)
+        # now modify options for this test as desired
+
+        # now construct args
+        omniargs = ["getversion"]
+        (text, ret_dict) = self.call(omniargs, options)
+
+        pprinter = pprint.PrettyPrinter(indent=4)
+        # Can this ever *not* be a dict?
+        # 2.7: assertIs
+        self.assertTrue(type(ret_dict) is dict,
+                      'Returned: \n%s' % (pprinter.pformat(ret_dict)))
+        # XXX Should check for an empty dict which indicates a misconfiguration!
+        for (agg, ver_dict) in ret_dict.items():
+            # 2.7: assertNotNone
+            self.assertTrue(ver_dict is not None,
+                            '"getversion" fails to return an XMLRPC struct from aggregate "%s": \n%s' % (agg, pprinter.pformat(ver_dict)))
+            # 2.7: assertIn
+            self.assertTrue('geni_api' in ver_dict,
+                            "No geni_api version listed in 'getversion' return from aggregate '%s': \n%s" % (agg, pprinter.pformat(ver_dict)))
+            value = ver_dict['geni_api']
+            self.assertTrue(type(value) is int,
+                            'Expected int but received %r from aggregate "%s"' % (type(value), agg))
+            self.assertEqual(value, API_VERSION)
+            self.assertEqual(value, API_VERSION,
+                            'Expected %d but received %d from aggregate %s' % (API_VERSION, value, agg))
 
 
 if __name__ == '__main__':
