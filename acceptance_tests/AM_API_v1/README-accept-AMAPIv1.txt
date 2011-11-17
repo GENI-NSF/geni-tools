@@ -3,70 +3,92 @@ AM API v1 Acceptance Tests
 
 Description
 ===========
-Acceptance tests to show that AM API v1 is implemented completely at
-an aggregate.
+Acceptance tests to show that the AM API v1 is implemented completely at
+the aggregate under test.
 
 Installation & Getting Started
 ==============================
 Software Dependencies
 =====================
 Requires:
- * GENI credentials 
- * omni 1.4
+ * GENI credentials from the GPO ProtoGENI SA
+   * NOTE: The acceptance tests work fine with other credentials that
+     are trusted at the AM under test
+ * Omni 1.4
 
-Included Software
+Software
 ==================
  * acceptance_tests/AM_API_v1/am_api_v1_accept.py 
    - the AM API v1 acceptance tests
  * acceptance_tests/omni_accept.conf 
-   - configuration file for the am_api_accept.py
+   - logging configuration file for am_api_v1_accept.py
  * src/omni_unittest.py 
-   - facilitates using Omni and unittest
+   - facilitates using Omni and unittest together
+
+Pre-work
+========
+These instructions assume you have already done the following items:
+
+ (1) Allow your Aggregate Manager (AM) to use credentials from the GPO
+ ProtoGENI AM.
+     For example, instructions for doing this with a MyPLC are here:
+     http://groups.geni.net/geni/wii/GpoLab/MyplcReferenceImplementation#TrustaRemoteSliceAuthority
+     NOTE: The acceptance tests work fine with other credentials that
+     are trusted at the AM under test.
+
+ (2) Request GPO ProtoGENI credentials.  If you don't have any, e-mail:
+     help@geni.net
 
 Usage Instructions
 ==================
- (1) Request GENI credentials if you don't have them
- (2) Install Omni 1.4
- (3) Set PYTHONPATH
- (4) Configure Omni (based on some provided omni_config)
- (5) To run all of the tests:
-      $ cd gcf/acceptance_tests/AM_API_v1
-      $ ./am_api_v1_accept.py -l ../omni_accept.conf -c path/to/omni_config -a AM_url_or_nickname_to_test
-     To run individual tests:
-      $ ./am_api_v1_accept.py -l ../omni_accept.conf -c path/to/omni_config -a AM_url_or_nickname_to_test Test.test_getversion
- (6) Correct errors and run step (5) again, as needed.
- (7) 
+
+ (1) Install Omni 
+     (a) Install Omni 1.4 and test
+         $ ./gcf/install/install.sh
+	 All of the tests should return "passed".
+	 NOTE: The above script does the steps in INSTALL.txt.
+     (b) Close both of the xterm windows that were opened.
+     (c) Configure Omni (based on the provided omni_config)
+         XXXX
+
+ (2) Positive testing: Run acceptance tests with a GENI credential
+ accepted by the AM
+     (a) Set PYTHONPATH so the acceptance tests can locate omni.py:
+     	 PYTHONPATH=$PYTHONPATH:path/to/omni.py
+
+	 Or add the following to your ~/.bashrc:
+	 export PYTHONPATH=${PYTHONPATH}:path/to/omni.py
+     (b) Run all of the tests:
+          $ cd gcf/acceptance_tests/AM_API_v1
+          $ ./am_api_v1_accept.py -l ../omni_accept.conf -c path/to/omni_config -a AM_url_or_nickname_to_test
+         Optional: To run individual tests:
+          $ ./am_api_v1_accept.py -l ../omni_accept.conf -c path/to/omni_config -a AM_url_or_nickname_to_test Test.test_getversion
+     (c) Correct errors and run step (3b) again, as needed.
+
+ (3) Negative testing: Run acceptance tests with a credential at a gcf
+ clearinghouse not accepted by the AM.
+     (a) Make sure the gcf-ch and gcf-am are running:
+          $ ../../install/run_gcf.sh
+     (b) Run getversion test:
+          $ ./am_api_v1_accept.py -f my_gcf -l ../omni_accept.conf -c path/to/omni_config -a AM_url_or_nickname_to_test Test.test_getversion
+         This should fail with the following error:
+     (c) Correct errors and run step (3b) again, as needed.
+
+ (4) Congratulations! You are done.	 
   
+Sample Output
+=============
+
+Message explaining all of the command line options;
+      $ ./am_api_v1_accept.py -h 
+
+
 A successful run looks like this:
-$ ./am_api_v1_accept.py -l ../omni_accept.conf -c ~/.gcf/omni_config.keep -f pgeni_utah  -a pg-utah
-NEW TEST: test_getversion
-.
-----------------------------------------------------------------------
-Ran 1 test in 3.496s
-
-OK
-
 
 An unsuccessful run looks like this:
-$ ./am_api_v1_accept.py -l ../omni_accept.conf -c ~/.gcf/omni_config.keep -f pgeni_utah  -a pg-utah2
-NEW TEST: test_getversion
-F
-======================================================================
-FAIL: Passes if a 'getversion' call at each aggregate returns an XMLRPC struct with 'geni_api' field set to API_VERSION.
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "./am_api_v1_accept.py", line 96, in test_getversion
-    self.assertTrue(success_fail, msg)
-AssertionError: geni_api version returned "2" not "1" as expected from aggregate "https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0"
-
-----------------------------------------------------------------------
-Ran 1 test in 3.751s
-
-FAILED (failures=1)
-	   
 
 Further Reading
 ===============
-
- * AM API v1 documentation:
+ * AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
+ * gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
 
