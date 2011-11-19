@@ -28,9 +28,7 @@ import copy as docopy
 import unittest
 import omni
 import omni_unittest as ut
-import os.path
 import pprint
-import sys
 
 ################################################################################
 #
@@ -53,19 +51,9 @@ import sys
 # This is the acceptance test for AM API version 1
 API_VERSION = 1
 
-LOG_CONFIG_FILE = "omni_accept.conf"
-
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
 
-    def setUp( self ):
-        self.options_copy = docopy.deepcopy(self.options)
-        # Use the default log configuration file provided with the test
-        # unless the -l option is used
-        if not self.options.logconfig:
-            log_config = os.path.join(sys.path[0], LOG_CONFIG_FILE)
-            if os.path.exists(log_config):
-                omni.applyLogConfig(log_config)
 
 
     def test_getversion(self):

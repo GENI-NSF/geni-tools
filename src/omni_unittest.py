@@ -31,8 +31,12 @@ import sys
 import unittest
 
 import omni
+import os.path
+
 
 SLICE_NAME = 'mon'
+LOG_CONFIG_FILE = "omni_accept.conf"
+
 
 
 class OmniUnittest(unittest.TestCase):
@@ -75,6 +79,16 @@ class OmniUnittest(unittest.TestCase):
             slice_name = self.options.reuse_slice_name
             
         return slice_name
+
+    def setUp( self ):
+        self.options_copy = docopy.deepcopy(self.options)
+        # Use the default log configuration file provided with the test
+        # unless the -l option is used
+        if not self.options.logconfig:
+            log_config = os.path.join(sys.path[0], LOG_CONFIG_FILE)
+            if os.path.exists(log_config):
+                omni.applyLogConfig(log_config)
+
 
     def call( self, cmd, options ):
         """Make the Omni call"""
