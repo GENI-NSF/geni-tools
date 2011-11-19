@@ -26,8 +26,11 @@
 
 import copy as docopy
 import unittest
+import omni
 import omni_unittest as ut
+import os.path
 import pprint
+import sys
 
 ################################################################################
 #
@@ -50,15 +53,27 @@ import pprint
 # This is the acceptance test for AM API version 1
 API_VERSION = 1
 
+LOG_CONFIG_FILE = "omni_accept.conf"
+
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
+
+    def setUp( self ):
+        self.options_copy = docopy.deepcopy(self.options)
+        # Use the default log configuration file provided with the test
+        # unless the -l option is used
+        if not self.options.logconfig:
+            log_config = os.path.join(sys.path[0], LOG_CONFIG_FILE)
+            if os.path.exists(log_config):
+                omni.applyLogConfig(log_config)
+
+
     def test_getversion(self):
         """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
         """
         # Do AM API call
-        options = docopy.deepcopy(self.options)
         omniargs = ["getversion"]
-        (text, ret_dict) = self.call(omniargs, options)
+        (text, ret_dict) = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
         # If this isn't a dictionary, something has gone wrong in Omni.  
@@ -96,10 +111,12 @@ class Test(ut.OmniUnittest):
                             API_VERSION, value, agg))
 
 if __name__ == '__main__':
+    import sys
     # Include default Omni command line options
     # Support unittest option by replacing -v and -q with --vv a --qq
-    Test.unittest_parser()
-
+    usage = "\n      %s -a am-undertest " \
+            "\n      Also try --vv" % sys.argv[0]
+    Test.unittest_parser(usage=usage)
     # Invoke unit tests as usual
     unittest.main()
 

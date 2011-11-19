@@ -83,13 +83,16 @@ class OmniUnittest(unittest.TestCase):
 
 
     @classmethod
-    def unittest_parser( cls, parser = omni.getParser()):
+    def unittest_parser( cls, parser = omni.getParser(), usage=None):
         # This code uses the Omni option parser to parse the options here,
         # allowing the unit tests to take options.
         # Then we carefully edit sys.argv removing the omni options,
         # but leave the remaining options (or none) in place so that
         # the unittest optionparser doesnt throw an exception on omni
         # options, and still can get its -v or -q arguments
+
+        if usage is not None:
+            parser.set_usage(usage)
 
         # Get the omni options and arguments
 
@@ -191,7 +194,8 @@ class Test(OmniUnittest):
         self.print_monitoring( success_fail )
 
 if __name__ == '__main__':
-    sys.argv = OmniUnittest.unittest_parser()
+    usage = "\n\tTHIS IS REPLACED USAGE"
+    sys.argv = OmniUnittest.unittest_parser(usage=usage)
     # Invoke unit tests as usual
     unittest.main()
 
