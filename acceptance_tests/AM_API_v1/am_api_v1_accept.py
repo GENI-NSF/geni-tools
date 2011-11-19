@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-""" Acceptance tests for AM API."""
+""" Acceptance tests for AM API v1."""
 
 import copy as docopy
 import unittest
@@ -31,20 +31,19 @@ import pprint
 
 ################################################################################
 #
-# Test scripts which test AM API calls on a CH where the running user
-# has permission to create slices.  This script is built on the unittest module.
+# Test AM API v1 calls for accurate and complete functionality.
 #
-# Purpose of the tests is to determine that AM API is functioning properly.
+# This script relies on the unittest module.
 #
 # To run all tests:
-# ./am_api_accept.py
+# ./am_api_v1_accept.py -l ../omni_accept.conf -c <omni_config> -a <AM to test>
 #
 # To run a single test:
-# ./am_api_accept.py Test.test_getversion
+# ./am_api_v1_accept.py -l ../omni_accept.conf -c <omni_config> -a <AM to test> Test.test_getversion
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
-# automatically be run when am_api_accept.py is called.
+# automatically be run when am_api_v1_accept.py is called.
 #
 ################################################################################
 
@@ -54,82 +53,47 @@ API_VERSION = 1
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
     def test_getversion(self):
-        """Passes if a 'getversion' call at each aggregate returns an XMLRPC struct with 'geni_api' field set to API_VERSION.""" 
-
-        #self.section_break()
-        options = docopy.deepcopy(self.options)
-        # now modify options for this test as desired
-
-        # now construct args
-        omniargs = ["getversion"]
-        (text, ret_dict) = self.call(omniargs, options)
-
-        success_fail = True
-        msg = "All aggregates returned a geni_api version of %s" % (str(API_VERSION))
-        if type(ret_dict) == type({}):
-            # loop through each aggregate
-            for (agg, ver_dict) in ret_dict.items():
-                if ver_dict is not None: 
-                    if ver_dict.has_key('geni_api'):
-                        # Fails if any aggs return geni_api != API_VERSION
-                        if str(ver_dict['geni_api']) != str(API_VERSION):
-                            msg = 'geni_api version returned "%s" not "%s" as expected from aggregate "%s"' % ( str(ver_dict['geni_api']), str(API_VERSION), agg)
-                            success_fail = False
-                            break
-                    else:
-                        pprinter = pprint.PrettyPrinter(indent=4)
-                        msg = "No geni_api version listed in 'getversion' return from aggregate '%s': \n%s" % (agg, pprinter.pformat(ver_dict))
-                        success_fail = False
-                        break
-                else:
-                    pprinter = pprint.PrettyPrinter(indent=4)
-                    msg = '"getversion" fails to return an XMLRPC struct from aggregate "%s": \n%s' % (agg, pprinter.pformat(ver_dict))
-                    success_fail = False
-                    break
-        else:
-            # To end up here, means something went wrong in Omni
-            pprinter = pprint.PrettyPrinter(indent=4)
-            msg = 'Failure. Returned: \n%s' % (pprinter.pformat(ret_dict))
-            success_fail = False
-
-#        self.print_monitoring( success_fail )
-        self.assertTrue(success_fail, msg)
-
-    def test_getversion_assert(self):
-        """Passes if a 'GetVersion' call returns an XMLRPC struct with
-        a 'geni_api' field whose value is '1'.
+        """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
         """
-        # XXX What does section_break do? Do we need it?
-        #self.section_break()
-
-        # XXX Should this be done in setup?
+        # Do AM API call
         options = docopy.deepcopy(self.options)
-        # now modify options for this test as desired
-
-        # now construct args
         omniargs = ["getversion"]
         (text, ret_dict) = self.call(omniargs, options)
 
         pprinter = pprint.PrettyPrinter(indent=4)
-        # Can this ever *not* be a dict?
-        # 2.7: assertIs
+        # If this isn't a dictionary, something has gone wrong in Omni.  
+        ## In python 2.7: assertIs
         self.assertTrue(type(ret_dict) is dict,
-                      'Returned: \n%s' % (pprinter.pformat(ret_dict)))
-        # XXX Should check for an empty dict which indicates a misconfiguration!
+                      '"getversion" returned: \n%s' % (pprinter.pformat(ret_dict)))
+        # An empty dict indicates a misconfiguration!
+        self.assertTrue(len(ret_dict.keys()) > 0,
+                      '"getversion" returned empty dictionary which indicates ' \
+                      'there were no aggregates checked.  ' \
+                      'Look for misconfiguration.')
+
+        # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
-            # 2.7: assertNotNone
-            self.assertTrue(ver_dict is not None,
-                            '"getversion" fails to return an XMLRPC struct from aggregate "%s": \n%s' % (agg, pprinter.pformat(ver_dict)))
-            # 2.7: assertIn
+            self.assertTrue(type(ver_dict) is dict,
+                          '"getversion" fails to return expected XML-RPC struct ' \
+                          'from aggregate "%s". Returned: %s' % 
+                          (agg, pprinter.pformat(ver_dict)))
+            self.assertTrue(len(ver_dict.keys()) > 0,
+                            '"getversion" returned an empty XML-RPC struct ' \
+                            'from aggregate "%s".' % (agg))
+            ## In python 2.7: assertIn
             self.assertTrue('geni_api' in ver_dict,
-                            "No geni_api version listed in 'getversion' return from aggregate '%s': \n%s" % (agg, pprinter.pformat(ver_dict)))
+                            "No geni_api included in 'getversion' returned " \
+                            "from aggregate '%s': \n%s" % 
+                            (agg, pprinter.pformat(ver_dict)))
             value = ver_dict['geni_api']
             self.assertTrue(type(value) is int,
-                            'Expected int but received %r from aggregate "%s"' % (type(value), agg))
-            self.assertEqual(value, API_VERSION)
+                            'Received %r but expected "geni_api" to be int ' \
+                            'in "getversion" returned from aggregate "%s"' % 
+                            (type(value), agg))
             self.assertEqual(value, API_VERSION,
-                            'Expected %d but received %d from aggregate %s' % (API_VERSION, value, agg))
-
+                           'Received "geni_api=%d" but expected "geni_api=%d" ' \
+                            'in "getversion" returned from aggregate %s' % (
+                            API_VERSION, value, agg))
 
 if __name__ == '__main__':
     # Include default Omni command line options
