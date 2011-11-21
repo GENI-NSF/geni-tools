@@ -22,7 +22,7 @@
 #----------------------------------------------------------------------
 
 from ch import Clearinghouse
-from am import ReferenceAggregateManager, AggregateManagerServer
+from am1 import ReferenceAggregateManager, AggregateManagerServer
 from util.cred_util import *
 from util.urn_util import *
 from util.cert_util import *
