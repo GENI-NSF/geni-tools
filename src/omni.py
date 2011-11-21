@@ -360,6 +360,9 @@ class CallHandler(object):
                         save_proof(self.framework.abac_log, resp['proof'])
                 if 'manifest' in resp:
                     rspec = resp['manifest']
+                elif 'value' in resp:
+                    # AM API v2
+                    rspec = resp['value']
             else:
                 rspec = resp
 
