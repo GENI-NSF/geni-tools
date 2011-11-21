@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2011 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -41,6 +41,8 @@ import logging
 import optparse
 import os
 import geni
+import geni.am
+import geni.am.am2
 from geni.config import read_config
 
 
@@ -63,6 +65,8 @@ def parse_args(argv):
                       help="server port", metavar="PORT")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
+    parser.add_option("-V", "--api-version", type=int,
+                      help="AM API Version", default=1)
     return parser.parse_args()
 
 def getAbsPath(path):
@@ -112,12 +116,21 @@ def main(argv=None):
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
-    ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
-                                      delegate=delegate,
-                                      keyfile=getAbsPath(opts.keyfile),
-                                      certfile=getAbsPath(opts.certfile),
-                                      ca_certs=comboCertsFile,
-                                      base_name=config['global']['base_name'])
+    if opts.api_version == 1:
+        ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
+                                          delegate=delegate,
+                                          keyfile=getAbsPath(opts.keyfile),
+                                          certfile=getAbsPath(opts.certfile),
+                                          ca_certs=comboCertsFile,
+                                          base_name=config['global']['base_name'])
+    elif opts.api_version == 2:
+        ams = geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
+                                          keyfile=getAbsPath(opts.keyfile),
+                                          certfile=getAbsPath(opts.certfile),
+                                          trust_roots_dir=getAbsPath(opts.rootcadir),
+                                          ca_certs=comboCertsFile,
+                                          base_name=config['global']['base_name'])
+
     logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
     ams.serve_forever()
 
