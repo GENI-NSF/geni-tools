@@ -32,6 +32,7 @@ import datetime
 import dateutil.parser
 import logging
 import os
+import uuid
 import xml.dom.minidom as minidom
 import zlib
 
@@ -64,14 +65,14 @@ RESOURCE_NAMESPACE = 'geni//gpo//gcf'
 REFAM_MAXLEASE_DAYS = 365
 
 
+class Slice(object):
+    """A slice has a URN, a list of resources, and an expiration time in UTC."""
 
-class Sliver(object):
-    """A sliver has a URN, a list of resources, and an expiration time in UTC."""
-
-    def __init__(self, urn, expiration=datetime.datetime.utcnow()):
-        self.urn = urn.replace("+slice+", "+sliver+")
-        self.resources = list()
+    def __init__(self, urn, expiration):
+        self.id = str(uuid.uuid4())
+        self.urn = urn
         self.expiration = expiration
+        self.resources = dict()
 
     def status(self):
         """Determine the status of the sliver by examining the status
@@ -82,14 +83,14 @@ class Sliver(object):
         # Else if any resource is 'configuring', the sliver is 'configuring'
         # Else if all resources are 'ready', the sliver is 'ready'
         # Else the sliver is 'unknown'
-        rstat = [res.status for res in self.resources]
+        rstat = [res.status for res in self.resources.values()]
         if Resource.STATUS_SHUTDOWN in rstat:
             return Resource.STATUS_SHUTDOWN
         elif Resource.STATUS_FAILED in rstat:
             return Resource.STATUS_FAILED
         elif Resource.STATUS_CONFIGURING in rstat:
             return Resource.STATUS_CONFIGURING
-        elif rstat == [Resource.STATUS_READY for res in self.resources]:
+        elif rstat == [Resource.STATUS_READY for res in self.resources.values()]:
             # All resources report status of ready
             return Resource.STATUS_READY
         else:
@@ -102,7 +103,7 @@ class ReferenceAggregateManager(object):
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
     def __init__(self, root_cert, urn_authority):
-        self._slivers = dict()
+        self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM() for _ in range(3)])
         self._cred_verifier = geni.CredentialVerifier(root_cert)
@@ -186,8 +187,8 @@ class ReferenceAggregateManager(object):
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
-            if slice_urn in self._slivers:
-                sliver = self._slivers[slice_urn]
+            if slice_urn in self._slices:
+                sliver = self._slices[slice_urn]
                 result = ('<rspec type="GCF">'
                           + ''.join([x.toxml() for x in sliver.resources])
                           + '</rspec>')
@@ -248,17 +249,16 @@ class ReferenceAggregateManager(object):
                                                         privileges)
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
-        if slice_urn in self._slivers:
-            self.logger.error('Sliver %s already exists.' % slice_urn)
-            raise Exception('Sliver %s already exists.' % slice_urn)
+        if slice_urn in self._slices:
+            self.logger.error('Slice %s already exists.', slice_urn)
+            return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
 
         rspec_dom = None
         try:
             rspec_dom = minidom.parseString(rspec)
         except Exception, exc:
             self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
-            raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
-
+            return self.errorResult(1, 'Bad Args: RSpec is unparseable')
 
         # Look at the version of the input request RSpec
         # Make sure it is supported
@@ -266,20 +266,26 @@ class ReferenceAggregateManager(object):
         # EG if both V1 and V2 are supported, and the user gives V2 request,
         # then you must return a V2 request and not V1
 
-        resources = list()
-        for elem in rspec_dom.documentElement.getElementsByTagName('resource'):
-            resource = None
-            try:
-                resource = Resource.fromdom(elem)
-            except Exception, exc:
-                import traceback
-                self.logger.warning("Failed to parse resource from RSpec dom: %s", traceback.format_exc())
-                raise Exception("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+        allresources = self._agg.catalog()
+        allrdict = dict()
+        for r in allresources:
+            allrdict[r.id] = r
 
-            if resource not in self._resources:
-                self.logger.info("Requested resource %d not available" % resource._id)
-                raise Exception('Resource %d not available' % resource._id)
-            resources.append(resource)
+        # Note: This only handles unbound nodes. Any attempt by the client
+        # to specify a node is ignored.
+        resources = dict()
+        unbound = list()
+        for elem in rspec_dom.documentElement.getElementsByTagName('node'):
+            unbound.append(elem)
+        for elem in unbound:
+            client_id = elem.getAttribute('client_id')
+            keys = allrdict.keys()
+            if keys:
+                rid = keys[0]
+                resources[client_id] = allrdict[rid]
+                del allrdict[rid]
+            else:
+                return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
 
         # determine max expiration time from credentials
         # do not create a sliver that will outlive the slice!
@@ -289,20 +295,15 @@ class ReferenceAggregateManager(object):
             if credexp < expiration:
                 expiration = credexp
 
-        sliver = Sliver(slice_urn, expiration)
+        newslice = Slice(slice_urn, expiration)
+        self._agg.allocate(slice_urn, resources.values())
+        for cid, r in resources.items():
+            newslice.resources[cid] = r.id
+        self._slices[slice_urn] = newslice
 
-        # remove resources from available list
-        for resource in resources:
-            sliver.resources.append(resource)
-            self._resources.remove(resource)
-            resource.available = False
-            resource.status = Resource.STATUS_READY
-
-        self._slivers[slice_urn] = sliver
-
-        self.logger.info("Created new sliver for slice %s" % slice_urn)
-        result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in sliver.resources])
-                + '</rspec>')
+        self.logger.info("Created new slice %s" % slice_urn)
+        result = (self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer())
+        self.logger.debug('Result = %s', result)
         return dict(code=dict(geni_code=0,
                               am_type="gcf2",
                               am_code=0),
@@ -333,8 +334,8 @@ class ReferenceAggregateManager(object):
                                                 privileges)
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
-        if slice_urn in self._slivers:
-            sliver = self._slivers[slice_urn]
+        if slice_urn in self._slices:
+            sliver = self._slices[slice_urn]
             if sliver.status() == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not deleted because it is shutdown",
                                  slice_urn)
@@ -344,7 +345,7 @@ class ReferenceAggregateManager(object):
             for resource in sliver.resources:
                 resource.available = True
                 resource.status = Resource.STATUS_UNKNOWN
-            del self._slivers[slice_urn]
+            del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
             return dict(code=dict(geni_code=0,
                                   am_type="gcf2",
@@ -373,8 +374,8 @@ class ReferenceAggregateManager(object):
                                                 credentials,
                                                 slice_urn,
                                                 privileges)
-        if slice_urn in self._slivers:
-            sliver = self._slivers[slice_urn]
+        if slice_urn in self._slices:
+            sliver = self._slices[slice_urn]
             # Now calculate the status of the sliver
             res_status = list()
             for res in sliver.resources:
@@ -410,10 +411,10 @@ class ReferenceAggregateManager(object):
                                                         slice_urn,
                                                         privileges)
         # All the credentials we just got are valid
-        if slice_urn in self._slivers:
+        if slice_urn in self._slices:
             # If any credential will still be valid at the newly
             # requested time, then we can do this.
-            sliver = self._slivers.get(slice_urn)
+            sliver = self._slices.get(slice_urn)
             if sliver.status() == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not renewed because it is shutdown",
                                  slice_urn)
@@ -453,8 +454,8 @@ class ReferenceAggregateManager(object):
                                                         credentials,
                                                         slice_urn,
                                                         privileges)
-        if slice_urn in self._slivers:
-            sliver = self._slivers[slice_urn]
+        if slice_urn in self._slices:
+            sliver = self._slices[slice_urn]
             for resource in sliver.resources:
                 resource.status = Resource.STATUS_SHUTDOWN
             self.logger.info("Sliver %r shut down" % slice_urn)
@@ -470,6 +471,14 @@ class ReferenceAggregateManager(object):
         return dict(code=dict(geni_code=101,
                               am_type="gcf2",
                               am_code=0),
+                    value="",
+                    output=output)
+
+    def errorResult(self, code, output, am_code=None):
+        code_dict = dict(geni_code=code, am_type="gcf2")
+        if am_code is not None:
+            code_dict['am_code'] = am_code
+        return dict(code=code_dict,
                     value="",
                     output=output)
 
@@ -518,6 +527,24 @@ class ReferenceAggregateManager(object):
     def advert_footer(self):
         return '</rspec>'
 
+    def manifest_header(self):
+        header = '''<?xml version="1.0" encoding="UTF-8"?>
+<rspec xmlns="http://www.geni.net/resources/rspec/3"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd"
+       type="manifest">'''
+        return header
+
+    def manifest_slice(self, slice_urn):
+        tmpl = '<node client_id="%s"/>'
+        result = ""
+        for cid in self._slices[slice_urn].resources.keys():
+            result = result + tmpl % (cid)
+        return result
+
+    def manifest_footer(self):
+        return '</rspec>'
+
 
 class AggregateManager(object):
     """The public API for a GENI Aggregate Manager.  This class provides the
@@ -555,7 +582,7 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         return self._delegate.ListResources(credentials, options)
 
-    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
+    def CreateSliver(self, slice_urn, credentials, rspec, users, options=dict()):
         """Create a sliver with the given URN from the resources in
         the given RSpec.
         Return an RSpec of the actually allocated resources.
