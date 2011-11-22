@@ -874,6 +874,13 @@ class CallHandler(object):
                         save_proof(self.framework.abac_log, result['proof'])
                 if 'manifest' in result:
                     result = result['manifest']
+                elif 'code' in result:
+                    # Probably V2 API
+                    if result['code']['geni_code'] == 0:
+                        result = result['value']
+                    else:
+                        message = result['output']
+                        result = None
 
             prettyresult = result
             
