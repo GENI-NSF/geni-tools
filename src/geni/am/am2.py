@@ -188,13 +188,10 @@ class ReferenceAggregateManager(object):
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
             if slice_urn in self._slices:
-                sliver = self._slices[slice_urn]
-                result = ('<rspec type="GCF">'
-                          + ''.join([x.toxml() for x in sliver.resources])
-                          + '</rspec>')
+                result = self.manifest_rspec(slice_urn)
             else:
                 # return an empty rspec
-                result = '<rspec type="GCF"/>'
+                return self._no_such_slice(slice_urn)
         else:
             all_resources = self._agg.catalog(None)
             available = 'geni_available' in options and options['geni_available']
@@ -303,7 +300,7 @@ class ReferenceAggregateManager(object):
         self._slices[slice_urn] = newslice
 
         self.logger.info("Created new slice %s" % slice_urn)
-        result = (self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer())
+        result = self.manifest_rspec(slice_urn)
         self.logger.debug('Result = %s', result)
         return dict(code=dict(geni_code=0,
                               am_type="gcf2",
@@ -399,7 +396,7 @@ class ReferenceAggregateManager(object):
                         value=result,
                         output="")
         else:
-            return self.errorResult(12, 'Search Failed: no slice "%s" found' % (slice_urn))
+            return self._no_such_slice(slice_urn)
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         '''Renew the local sliver that is part of the named Slice
@@ -468,14 +465,7 @@ class ReferenceAggregateManager(object):
             return self._no_such_slice(slice_urn)
 
     def _no_such_slice(self, slice_urn):
-        output = 'The slice named by %s does not exist' % (slice_urn)
-        self.logger.warning(output)
-        # XXX Code for no slice here?
-        return dict(code=dict(geni_code=101,
-                              am_type="gcf2",
-                              am_code=0),
-                    value="",
-                    output=output)
+        return self.errorResult(12, 'Search Failed: no slice "%s" found' % (slice_urn))
 
     def errorResult(self, code, output, am_code=None):
         code_dict = dict(geni_code=code, am_type="gcf2")
@@ -544,6 +534,9 @@ class ReferenceAggregateManager(object):
 
     def manifest_footer(self):
         return '</rspec>'
+
+    def manifest_rspec(self, slice_urn):
+        return self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer()
 
     def resource_urn(self, resource):
         urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
