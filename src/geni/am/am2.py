@@ -74,7 +74,7 @@ class Slice(object):
         self.expiration = expiration
         self.resources = dict()
 
-    def status(self):
+    def status(self, resources):
         """Determine the status of the sliver by examining the status
         of each resource in the sliver.
         """
@@ -83,7 +83,7 @@ class Slice(object):
         # Else if any resource is 'configuring', the sliver is 'configuring'
         # Else if all resources are 'ready', the sliver is 'ready'
         # Else the sliver is 'unknown'
-        rstat = [res.status for res in self.resources.values()]
+        rstat = [res.status for res in resources]
         if Resource.STATUS_SHUTDOWN in rstat:
             return Resource.STATUS_SHUTDOWN
         elif Resource.STATUS_FAILED in rstat:
@@ -299,6 +299,7 @@ class ReferenceAggregateManager(object):
         self._agg.allocate(slice_urn, resources.values())
         for cid, r in resources.items():
             newslice.resources[cid] = r.id
+            r.status = Resource.STATUS_READY
         self._slices[slice_urn] = newslice
 
         self.logger.info("Created new slice %s" % slice_urn)
@@ -375,20 +376,22 @@ class ReferenceAggregateManager(object):
                                                 slice_urn,
                                                 privileges)
         if slice_urn in self._slices:
-            sliver = self._slices[slice_urn]
+            theSlice = self._slices[slice_urn]
             # Now calculate the status of the sliver
             res_status = list()
-            for res in sliver.resources:
+            resources = self._agg.catalog(slice_urn)
+            for res in resources:
+                self.logger.debug('Resource = %s', str(res))
                 # Gather the status of all the resources
                 # in the sliver. This could be actually
                 # communicating with the resources, or simply
                 # reporting the state of initialized, started, stopped, ...
-                res_status.append(dict(geni_urn=res.urn(),
+                res_status.append(dict(geni_urn=self.resource_urn(res),
                                        geni_status=res.status,
                                        geni_error=''))
-            self.logger.info("Calculated and returning sliver %r status" % slice_urn)
-            result = dict(geni_urn=sliver.urn,
-                          geni_status=sliver.status(),
+            self.logger.info("Calculated and returning slice %s status", slice_urn)
+            result = dict(geni_urn=slice_urn,
+                          geni_status=theSlice.status(resources),
                           geni_resources=res_status)
             return dict(code=dict(geni_code=0,
                                   am_type="gcf2",
@@ -396,7 +399,7 @@ class ReferenceAggregateManager(object):
                         value=result,
                         output="")
         else:
-            return self._no_such_slice(slice_urn)
+            return self.errorResult(12, 'Search Failed: no slice "%s" found' % (slice_urn))
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         '''Renew the local sliver that is part of the named Slice
@@ -504,12 +507,9 @@ class ReferenceAggregateManager(object):
   </node>
   '''
         resource_id = str(resource.id)
-        resource_type = str(resource.type)
         resource_exclusive = str(False).lower()
         resource_available = str(resource.available).lower()
-        resource_urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
-                                                     resource_type,
-                                                     resource_id))
+        resource_urn = self.resource_urn(resource)
         return tmpl % (self._my_urn,
                        resource_id,
                        resource_urn,
@@ -544,6 +544,12 @@ class ReferenceAggregateManager(object):
 
     def manifest_footer(self):
         return '</rspec>'
+
+    def resource_urn(self, resource):
+        urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
+                                            str(resource.type),
+                                            str(resource.id)))
+        return urn
 
 
 class AggregateManager(object):
@@ -595,7 +601,7 @@ class AggregateManager(object):
         """Delete the given sliver. Return true on success."""
         return self._delegate.DeleteSliver(slice_urn, credentials, options)
 
-    def SliverStatus(self, slice_urn, credentials, options):
+    def SliverStatus(self, slice_urn, credentials, options=dict()):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.'''
         return self._delegate.SliverStatus(slice_urn, credentials, options)
