@@ -1118,6 +1118,13 @@ class CallHandler(object):
                     save_proof(self.framework.abac_log, status['proof'])
                     # XXX: may not need to do delete the proof dict entry
                     del status['proof']
+            if status and 'code' in status:
+                # AM API v2
+                if status['code']['geni_code'] == 0:
+                    status = status['value']
+                else:
+                    message = status['output']
+                    status = None
             if status:
                 prettyResult = pprint.pformat(status)
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
