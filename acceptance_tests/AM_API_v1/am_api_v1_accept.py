@@ -56,7 +56,7 @@ class Test(ut.OmniUnittest):
 
 
 
-    def test_getversion(self):
+    def test_GetVersion(self):
         """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
         """
         # Do AM API call
@@ -67,36 +67,52 @@ class Test(ut.OmniUnittest):
         # If this isn't a dictionary, something has gone wrong in Omni.  
         ## In python 2.7: assertIs
         self.assertTrue(type(ret_dict) is dict,
-                      '"getversion" returned: \n%s' % (pprinter.pformat(ret_dict)))
+                        "Return from 'GetVersion' " \
+                        "expected to contain dictionary" \
+                        "but instead returned:\n %s"
+                        % (pprinter.pformat(ret_dict)))
         # An empty dict indicates a misconfiguration!
-        self.assertTrue(len(ret_dict.keys()) > 0,
-                      '"getversion" returned empty dictionary which indicates ' \
-                      'there were no aggregates checked.  ' \
-                      'Look for misconfiguration.')
-
+        self.assertTrue(ret_dict,
+                        "Return from 'GetVersion' " \
+                        "expected to contain dictionary keyed by aggregates " \
+                        "but instead returned empty dictionary." \
+                        "This indicates there were no aggregates checked. " \
+                        "Look for misconfiguration.")
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
+            ## In python 2.7: assertIsNotNone
+            self.assertTrue(ver_dict is not None,
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to be XML-RPC struct " \
+                          "but instead returned None." 
+                           % (agg))
             self.assertTrue(type(ver_dict) is dict,
-                          '"getversion" fails to return expected XML-RPC struct ' \
-                          'from aggregate "%s". Returned: %s' % 
-                          (agg, pprinter.pformat(ver_dict)))
-            self.assertTrue(len(ver_dict.keys()) > 0,
-                            '"getversion" returned an empty XML-RPC struct ' \
-                            'from aggregate "%s".' % (agg))
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to be XML-RPC struct " \
+                          "but instead returned:\n %s" 
+                          % (agg, pprinter.pformat(ver_dict)))
+            self.assertTrue(ver_dict,
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to be non-empty XML-RPC struct " \
+                          "but instead returned empty XML-RPC struct." 
+                           % (agg))
             ## In python 2.7: assertIn
             self.assertTrue('geni_api' in ver_dict,
-                            "No geni_api included in 'getversion' returned " \
-                            "from aggregate '%s': \n%s" % 
-                            (agg, pprinter.pformat(ver_dict)))
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to include 'geni_api' " \
+                          "but did not. Returned:\n %s:"  
+                           % (agg, pprinter.pformat(ver_dict)))
             value = ver_dict['geni_api']
             self.assertTrue(type(value) is int,
-                            'Received %r but expected "geni_api" to be int ' \
-                            'in "getversion" returned from aggregate "%s"' % 
-                            (type(value), agg))
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to have 'geni_api' be an integer " \
+                          "but instead 'geni_api' was of type %r." 
+                           % (agg, type(value)))
             self.assertEqual(value, API_VERSION,
-                           'Received "geni_api=%d" but expected "geni_api=%d" ' \
-                            'in "getversion" returned from aggregate %s' % (
-                            API_VERSION, value, agg))
+                          "Return from 'GetVersion' at aggregate '%s' " \
+                          "expected to have 'geni_api=%d' " \
+                          "but instead 'geni_api=%d.'"  
+                           % (agg, API_VERSION, value))
 
 if __name__ == '__main__':
     import sys
