@@ -2,13 +2,16 @@
 default_cf = pg-gpo
 
 [aggregate_nicknames]
-# Nickname=URN,URL
+# Format: Nickname=URN,URL
+
+# CONFIGURATION: Edit the url to match the location of the AM to be tested
+am-undertest=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+
+# For reference: other AMs 
 pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
 plc=,https://www.planet-lab.org:12346
-pg-ky=urn:publicid:IDN+uky.emulab.net+authority+am,https://www.uky.emulab.net/protogeni/xmlrpc/am
-# CONFIGURATION: Edit the url to match the location of the AM to be tested
-am-undertest=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi
 
 [pg-gpo]
 type=pg
@@ -28,12 +31,3 @@ authority=geni:gpo:gcf
 ch=https://localhost:8000
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
-
-# Users
-[Alice]
-urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
-keys=~/.gcf/alice.pub, ~/.gcf/alice2.pub
-
-[Bob]
-urn=urn:publicid:IDN+plc.bbn+user+bob
-keys=~/.gcf/bob.pub

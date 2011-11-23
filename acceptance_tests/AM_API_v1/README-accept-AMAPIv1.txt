@@ -49,15 +49,9 @@ Usage Instructions
 ==================
 
  (1) Install Omni 
-     (a) Install Omni 1.4 and test
-         $ ./gcf/install/install.sh
+     (a) Install Omni 1.4 and test it per the instructions in INSTALL.txt.
 	 All of the tests should return "passed".
-
-	 NOTE: The above script does the steps in INSTALL.txt for
-	 Ubuntu, but can be easily edited for RedHat/Fedora.
-	 Others should follow the steps in INSTALL.txt
-     (b) Close the xterm windows that were opened.
-     (c) Configure omni_config as necessary.
+     (b) Configure omni_config as necessary.
          * Edit the AM nickname "am-undertest" to point to the AM under test.
          * Double check the location of the ProtoGENI .pem files
          listed in the omni_config
@@ -65,10 +59,10 @@ Usage Instructions
  (2) Positive testing: Run acceptance tests with a GENI credential
  accepted by the AM
      (a) Set PYTHONPATH so the acceptance tests can locate omni.py:
-     	 PYTHONPATH=$PYTHONPATH:path/to/omni.py
+     	 PYTHONPATH=$PYTHONPATH:path/to/gcf/src
 
 	 Or add the following to your ~/.bashrc:
-	 export PYTHONPATH=${PYTHONPATH}:path/to/omni.py
+	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src
      (b) Run all of the tests:
           $ cd gcf/acceptance_tests/AM_API_v1
           $ ./am_api_v1_accept.py -a am-undertest
@@ -76,14 +70,16 @@ Usage Instructions
           $ ./am_api_v1_accept.py -a am-undertest Test.test_getversion
      (c) Correct errors and run step (3b) again, as needed.
 
- (3) Negative testing: Run acceptance tests with a credential at a gcf
- clearinghouse not accepted by the AM.
-     (a) Make sure the gcf-ch and gcf-am are running:
-          $ ../../install/run_gcf.sh
-     (b) Run getversion test:
-          $ ./am_api_v1_accept.py -a am-undertest -f my_gcf Test.test_getversion
-         This should fail with the error shown in the Sample Output below.
-     (c) Correct errors and run step (3b) again, as needed.
+# THIS SECTION DEFERED UNTIL WE HAVE MORE TESTS WRITTEN
+# (3) Negative testing: Run acceptance tests with a credential at a gcf
+# clearinghouse not accepted by the AM.
+#     (a) Make sure the gcf-ch and gcf-am are running:
+#          $ ../../install/run_gcf.sh
+#     (b) Run getversion test:
+#          $ ./am_api_v1_accept.py -a am-undertest -f my_gcf Test.test_getversion
+#         This should fail with the error shown in the Sample Output below.
+#     (c) Correct errors and run step (3b) again, as needed.
+# END DEFER
 
  (4) Congratulations! You are done.	 
   
@@ -105,17 +101,16 @@ F
 FAIL: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "./am_api_v1_accept.py", line 79, in test_getversion
-    (agg, pprinter.pformat(ver_dict)))
-AssertionError: "getversion" fails to return expected XML-RPC struct from aggregate "https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am". Returned: None
+  File "./am_api_v1_accept.py", line 88, in test_GetVersion
+    % (agg))
+AssertionError: Return from 'GetVersion' at aggregate 'https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am' expected to be XML-RPC struct but instead returned None.
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.062s
+Ran 1 test in 0.063s
 
 FAILED (failures=1)
 
 Output of help message:
-
 $ ./am_api_v1_accept.py -h
 Usage:
       ./am_api_v1_accept.py -a am-undertest
@@ -162,7 +157,6 @@ Options:
   --qq                  Give -q to unittest
 
 
-Message explaining all of the command line options;
 Further Reading
 ===============
  * AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
