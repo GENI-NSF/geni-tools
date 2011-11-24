@@ -5,7 +5,8 @@ default_cf = pg-gpo
 # Format: Nickname=URN,URL
 
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
-am-undertest=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+am-undertest=,https://www.emulab.net/protogeni/xmlrpc/am
+
 
 # For reference: other AMs 
 pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
