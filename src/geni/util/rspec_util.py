@@ -26,7 +26,19 @@
 RSpec validation utilities.
 """
 
+import subprocess
+import tempfile
 import xml.parsers.expat
+
+PG_2_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
+PG_2_AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
+PG_2_REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/req.xsd"
+
+GENI_3_NAMESPACE = "http://www.geni.net/resources/rspec/3"
+GENI_3_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
+GENI_3_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
+
+RSPECLINT = "rspeclint" 
 
 def is_wellformed_xml( string ):
     # Try to parse the XML code.
@@ -44,6 +56,47 @@ def is_wellformed_xml( string ):
         retVal= False
     return retVal
 
+
+def rspeclint_exists():
+    """Try to run 'rspeclint' to see if we can find it."""
+    # TODO: Hum....better way (or place) to do this? (wrapper? rspec_util?)
+    # TODO: silence this call
+    try:
+        cmd = [RSPECLINT]
+        output = subprocess.call( cmd )
+    except:
+        # TODO: WHAT EXCEPTION TO RAISE HERE?
+        raise Exception, "Failed to locate or run '%s'" % RSPECLINT
+
+
+# add some utility functions for testing various namespaces and schemas
+def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
+    """Run 'rspeclint' on a file.
+    ad - a string containing an RSpec
+    """
+    # rspeclint must be run on a file
+    with tempfile.NamedTemporaryFile() as f:
+        f.write( ad )
+        # TODO silence rspeclint
+        # Run rspeclint "../rspec/3" "../rspec/3/ad.xsd" <rspecfile>
+        cmd = [RSPECLINT, namespace, schema, f.name]
+        f.seek(0)
+        output = subprocess.call( cmd )
+        # log something?
+        # "Return from 'ListResources' at aggregate '%s' " \
+        #     "expected to pass rspeclint " \
+        #     "but did not. "
+        # % (agg_name, ad[:100]))
+
+        # if rspeclint returns 0 then it was successful
+        if output == 0:
+            return True
+        else: 
+            return False
+    
+#def is_valid_rspec(): 
+# Call is_rspec_string()
+# Call validate_rspec()
 def is_rspec_string( rspec ):
     '''Could this string be part of an XML-based rspec?
     Returns: True/False'''

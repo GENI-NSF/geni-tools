@@ -24,16 +24,10 @@
 #----------------------------------------------------------------------
 """ Acceptance tests for AM API v1."""
 
-import copy as docopy
 from geni.util import rspec_util 
 import unittest
-import omni
 import omni_unittest as ut
-import tempfile
 import pprint
-import subprocess
-
-RSPECLINT = "rspeclint" 
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
@@ -47,8 +41,6 @@ AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
 #GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
 #GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-
-
 
 ################################################################################
 #
@@ -137,31 +129,16 @@ class Test(ut.OmniUnittest):
     def test_ListResources(self):
         """Passes if 'ListResources' returns an advertisement RSpec (an XML document which passes rspeclint).
         """
-
-        # Check to see if rspeclint exists before doing the hard (and
+        # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
-        # TODO: Hum....better way (or place) to do this? (wrapper? rspec_util?)
-        # TODO: silence this call
-        try:
-            cmd = [RSPECLINT]
-            output = subprocess.call( cmd )
-        except:
-            # TODO: WHAT EXCEPTION TO RAISE HERE?
-            raise Exception, "Failed to locate or run '%s'" % RSPECLINT
+        rspec_util.rspeclint_exists()
         
         # Do AM API call
         omniargs = ["listresources", "-t", str(RSPEC_NAME), str(RSPEC_NUM)]
         self.options_copy.omnispec = False # omni will complaining if both true
         (text, ret_dict) = self.call(omniargs, self.options_copy)
 
-# FOR TESTING WITHOUT WAITING FOR LIST RESOURCES TO RETURN
-#        print ret_dict
-#        text = "This is a test"
-#        ret_dict = {}
-#        ret_dict[('amurn', 'http://amurl')] = "".join(open('rspec-www-emulab-net-protogeni.xml').readlines())
-
         pprinter = pprint.PrettyPrinter(indent=4)
-
         # If this isn't a dictionary, something has gone wrong in Omni.  
         ## In python 2.7: assertIs
         self.assertTrue(type(ret_dict) is dict,
@@ -185,6 +162,7 @@ class Test(ut.OmniUnittest):
                           "expected to be XML file " \
                           "but instead returned None." 
                            % (agg_name))
+            # TODO: more elegant truncation
             self.assertTrue(type(ad) is str,
                           "Return from 'ListResources' at aggregate '%s' " \
                           "expected to be string " \
@@ -194,6 +172,7 @@ class Test(ut.OmniUnittest):
                           % (agg_name, ad[:100]))
 
             # Test if file is XML and contains "<rspec" or "<resv_rspec"
+            # TODO is_rspec_string() might not be exactly the right thing here
             self.assertTrue(rspec_util.is_rspec_string( ad ),
                           "Return from 'ListResources' at aggregate '%s' " \
                           "expected to be XML " \
@@ -202,25 +181,16 @@ class Test(ut.OmniUnittest):
                           "... edited for length ..." 
                            % (agg_name, ad[:100]))
 
-            
-            # TO DO this should be moved to rspec_util.py
-            # rspeclint must be run on a file
-            with tempfile.NamedTemporaryFile() as f:
-                f.write( ad )
-                # TODO silence rspeclint
-                # Run rspeclint "../rspec/2" "../rspec/2/ad.xsd" <rspecfile>
-                cmd = [RSPECLINT, AD_NAMESPACE, AD_SCHEMA, f.name]
-                f.seek(0)
-                output = subprocess.call( cmd )
-                self.assertEqual(output, 0, 
-                                "Return from 'ListResources' at aggregate '%s' " \
-                                "expected to pass rspeclint " \
-                                "but did not. Return was: " \
-                                "\n%s\n" \
-                                "... edited for length ..."
-                                % (agg_name, ad[:100]))
-
-
+            # Test if XML file passes rspeclint
+            self.assertTrue(rspec_util.validate_rspec( ad, 
+                                                       namespace=AD_NAMESPACE, 
+                                                       schema=AD_SCHEMA ),
+                            "Return from 'ListResources' at aggregate '%s' " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (agg_name, ad[:100]))
 
 if __name__ == '__main__':
     import sys
