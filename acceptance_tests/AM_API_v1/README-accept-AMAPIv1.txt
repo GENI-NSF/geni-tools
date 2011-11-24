@@ -14,7 +14,19 @@ Requires:
  * GENI credentials from the GPO ProtoGENI SA
    * NOTE: The acceptance tests work fine with other credentials that
      are trusted at the AM under test
- * Omni 1.4
+ * Omni 1.4 [1]
+ * rspeclint (Code [2] and documentation [3] is available from ProtoGENI.)
+   (1) Install LibXML (which rspeclint relies on) from CPAN.
+     -- On Ubuntu Linux this is the libxml-libxml-perl package 
+     	$ sudo apt-get install libxml-libxml-perl
+     -- On Fedora Linux this is the perl-XML-LibXML package 
+     	$ sudo yum install perl-XML-LibXML
+     -- On CentOS this is the XXX package 
+        $
+   (2) Download rspeclint from ProtoGENI and save the file as "rspeclint".  
+       rspeclint perl file is here: 
+       		 http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
+   (3) Add rspeclint to your path.
 
 Software
 ==================
@@ -63,12 +75,19 @@ Usage Instructions
 
 	 Or add the following to your ~/.bashrc:
 	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src
-     (b) Run all of the tests:
+     (b) Change into the directory where you will run the acceptance test:
           $ cd gcf/acceptance_tests/AM_API_v1
-          $ ./am_api_v1_accept.py -a am-undertest
+     (c) Run 'rspeclint' to make sure rspeclint is in your path so that
+     am_api_v1_accept.py can find it.
+     	  $ rspeclint
+	  Usage: rspeclint [<namespace> <schema>]+ <document>
+
+	  Schema and document locations are either paths or URLs.
+     (d) Run all of the tests:
+          $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
-          $ ./am_api_v1_accept.py -a am-undertest Test.test_getversion
-     (c) Correct errors and run step (3b) again, as needed.
+          $ am_api_v1_accept.py -a am-undertest Test.test_getversion
+     (e) Correct errors and run step (3d) again, as needed.
 
 # THIS SECTION DEFERED UNTIL WE HAVE MORE TESTS WRITTEN
 # (3) Negative testing: Run acceptance tests with a credential at a gcf
@@ -159,6 +178,8 @@ Options:
 
 Further Reading
 ===============
- * AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
- * gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
+ [1] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
+ [2] rspeclint code: http://www.protogeni.net/resources/rspeclint
+ [3] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
 
+ * AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
