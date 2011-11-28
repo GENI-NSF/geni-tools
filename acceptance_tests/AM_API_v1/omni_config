@@ -7,6 +7,9 @@ default_cf = pg-gpo
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
 am-undertest=,https://www.emulab.net/protogeni/xmlrpc/am
 
+# CONFIGURATION: Edit the url below to match the location of the AM to be tested
+# Should match am-undertest above
+aggregates = https://www.emulab.net/protogeni/xmlrpc/am
 
 # For reference: other AMs 
 pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
