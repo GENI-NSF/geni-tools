@@ -266,7 +266,8 @@ class ReferenceAggregateManager(object):
         allresources = self._agg.catalog()
         allrdict = dict()
         for r in allresources:
-            allrdict[r.id] = r
+            if r.available:
+                allrdict[r.id] = r
 
         # Note: This only handles unbound nodes. Any attempt by the client
         # to specify a node is ignored.
@@ -334,22 +335,17 @@ class ReferenceAggregateManager(object):
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
             sliver = self._slices[slice_urn]
-            if sliver.status() == Resource.STATUS_SHUTDOWN:
+            resources = self._agg.catalog(slice_urn)
+            if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not deleted because it is shutdown",
                                  slice_urn)
-                return False
-            # return the resources to the pool
-            self._resources.extend(sliver.resources)
-            for resource in sliver.resources:
-                resource.available = True
-                resource.status = Resource.STATUS_UNKNOWN
+                return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
+            self._agg.deallocate(slice_urn, None)
+            for r in resources:
+                r.status = Resource.STATUS_UNKNOWN
             del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
-            return dict(code=dict(geni_code=0,
-                                  am_type="gcf2",
-                                  am_code=0),
-                        value=True,
-                        output="")
+            return self.successResult(True)
         else:
             return self._no_such_slice(slice_urn)
 
@@ -414,11 +410,12 @@ class ReferenceAggregateManager(object):
         if slice_urn in self._slices:
             # If any credential will still be valid at the newly
             # requested time, then we can do this.
+            resources = self._agg.catalog(slice_urn)
             sliver = self._slices.get(slice_urn)
-            if sliver.status() == Resource.STATUS_SHUTDOWN:
+            if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not renewed because it is shutdown",
                                  slice_urn)
-                return False
+                return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
             requested = dateutil.parser.parse(str(expiration_time))
             # Per the AM API, the input time should be TZ-aware
             # But since the slice cred may not (per ISO8601), convert
@@ -431,7 +428,7 @@ class ReferenceAggregateManager(object):
                 if credexp >= requested:
                     sliver.expiration = requested
                     self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
-                    return True
+                    return self.successResult(True)
                 else:
                     self.logger.debug("Valid cred %r expires at %r before %r", cred, credexp, requested)
 
@@ -440,7 +437,7 @@ class ReferenceAggregateManager(object):
             self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
             # FIXME: raise an exception so the client knows what
             # really went wrong?
-            return False
+            return self.errorResult(19, "Out of range: Expiration %r is out of range." % (expiration_time))
 
         else:
             return self._no_such_slice(slice_urn)
@@ -455,14 +452,22 @@ class ReferenceAggregateManager(object):
                                                         slice_urn,
                                                         privileges)
         if slice_urn in self._slices:
-            sliver = self._slices[slice_urn]
-            for resource in sliver.resources:
+            resources = self._agg.catalog(slice_urn)
+            for resource in resources:
                 resource.status = Resource.STATUS_SHUTDOWN
             self.logger.info("Sliver %r shut down" % slice_urn)
-            return True
+            return self.successResult(True)
         else:
             self.logger.info("Shutdown: No such slice: %s.", slice_urn)
             return self._no_such_slice(slice_urn)
+
+    def successResult(self, value):
+        code_dict = dict(geni_code=0,
+                         am_type="gcf2",
+                         am_code=0)
+        return dict(code=code_dict,
+                    value=value,
+                    output="")
 
     def _no_such_slice(self, slice_urn):
         return self.errorResult(12, 'Search Failed: no slice "%s" found' % (slice_urn))
@@ -590,7 +595,7 @@ class AggregateManager(object):
         """
         return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
 
-    def DeleteSliver(self, slice_urn, credentials, options):
+    def DeleteSliver(self, slice_urn, credentials, options=dict()):
         """Delete the given sliver. Return true on success."""
         return self._delegate.DeleteSliver(slice_urn, credentials, options)
 
@@ -599,13 +604,13 @@ class AggregateManager(object):
         in the sliver. The AM may not know.'''
         return self._delegate.SliverStatus(slice_urn, credentials, options)
 
-    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
+    def RenewSliver(self, slice_urn, credentials, expiration_time, options=dict()):
         """Extend the life of the given sliver until the given
         expiration time. Return False on error."""
         return self._delegate.RenewSliver(slice_urn, credentials,
                                           expiration_time, options)
 
-    def Shutdown(self, slice_urn, credentials, options):
+    def Shutdown(self, slice_urn, credentials, options=dict()):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
         return self._delegate.Shutdown(slice_urn, credentials, options)

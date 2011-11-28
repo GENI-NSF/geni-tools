@@ -1034,6 +1034,13 @@ class CallHandler(object):
                         save_proof(self.framework.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+                if 'code' in res:
+                    # AM API v2
+                    if res['code']['geni_code'] == 0:
+                        res = res['value']
+                    else:
+                        message = res['output']
+                        res = None
 
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
@@ -1228,6 +1235,13 @@ class CallHandler(object):
                         save_proof(self.framework.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+                if 'code' in res:
+                    # AM API v2
+                    if res['code']['geni_code'] == 0:
+                        res = res['value']
+                    else:
+                        message = res['output']
+                        res = None
 
             if res:
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
@@ -1308,6 +1322,13 @@ class CallHandler(object):
                         save_proof(self.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+                if 'code' in res:
+                    # AM API v2
+                    if res['code']['geni_code'] == 0:
+                        res = res['value']
+                    else:
+                        message = res['output']
+                        res = None
             if res:
                 prStr = "Shutdown Sliver %s on AM %s at %s" % (urn, client.urn, client.url)
                 self.logger.info(prStr)
