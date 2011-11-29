@@ -866,7 +866,15 @@ class CallHandler(object):
             else:
                 creds = [slice_cred]
 
-            (result, message) = _do_ssl(self.framework, None, ("Create Sliver %s at %s" % (urn, url)), client.CreateSliver, urn, creds, rspec, slice_users)
+            args = [urn, creds, rspec, slice_users]
+            if self.opts.api_version == 2:
+                # Add the options dict
+                args.append(dict())
+            (result, message) = _do_ssl(self.framework,
+                                        None,
+                                        ("Create Sliver %s at %s" % (urn, url)),
+                                        client.CreateSliver,
+                                        *args)
 
             # If ABAC then return is a dict with abac_credentials, proof, and normal return
             if isinstance(result, dict):
@@ -1023,7 +1031,16 @@ class CallHandler(object):
                 # off the timezone if the user specfies --no-tz
                 self.logger.info('Removing timezone at user request (--no-tz)')
                 time_string = time_with_tz.replace(tzinfo=None).isoformat()
-            (res, message) = _do_ssl(self.framework, None, ("Renew Sliver %s on %s" % (urn, client.url)), client.RenewSliver, urn, creds, time_string)
+
+            args = [urn, creds, time_string]
+            if self.opts.api_version == 2:
+                # Add the options dict
+                args.append(dict())
+            (res, message) = _do_ssl(self.framework,
+                                     None,
+                                     ("Renew Sliver %s on %s" % (urn, client.url)),
+                                     client.RenewSliver,
+                                     *args)
             # Unpack ABAC results: A dict with abac_credentials, proof, and the normal return
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
@@ -1122,7 +1139,15 @@ class CallHandler(object):
                 creds.append(slice_cred)
             else:
                 creds = [slice_cred]
-            (status, message) = _do_ssl(self.framework, None, "Sliver status of %s at %s" % (urn, client.url), client.SliverStatus, urn, creds)
+
+            args = [urn, creds]
+            if self.opts.api_version == 2:
+                # Add the options dict
+                args.append(dict())
+            (status, message) = _do_ssl(self.framework,
+                                        None,
+                                        "Sliver status of %s at %s" % (urn, client.url),
+                                        client.SliverStatus, *args)
             # Unpack ABAC results from a dict that includes proof
             if status and 'proof' in status:
                 if is_ABAC_framework(self.framework):
@@ -1227,7 +1252,15 @@ class CallHandler(object):
             else:
                 creds = [slice_cred]
 
-            (res, message) = _do_ssl(self.framework, None, ("Delete Sliver %s on %s" % (urn, client.url)), client.DeleteSliver, urn, creds)
+            args = [urn, creds]
+            if self.opts.api_version == 2:
+                # Add the options dict
+                args.append(dict())
+            (res, message) = _do_ssl(self.framework,
+                                     None,
+                                     ("Delete Sliver %s on %s" % (urn, client.url)),
+                                     client.DeleteSliver,
+                                     *args)
             # Unpack ABAC results from a dict with proof and normal result
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
@@ -1313,8 +1346,16 @@ class CallHandler(object):
                 creds.append(slice_cred)
             else:
                 creds = [slice_cred]
-            (res, message) = _do_ssl(self.framework, None, "Shutdown %s on %s" %
-                       (urn, client.url), client.Shutdown, urn, creds)
+
+            args = [urn, creds]
+            if self.opts.api_version == 2:
+                # Add the options dict
+                args.append(dict())
+            (res, message) = _do_ssl(self.framework,
+                                     None,
+                                     "Shutdown %s on %s" % (urn, client.url),
+                                     client.Shutdown,
+                                     *args)
             # Unpack ABAC results from a dict with proof, normal result
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
@@ -2366,6 +2407,8 @@ def getParser():
                       help="Python logging config file")
     parser.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
+    parser.add_option("-V", "--api-version", type="int", default=1,
+                      help="Specify version of AM API to use (1, 2, etc.)")
     return parser
 
 def parse_args(argv, options=None):
