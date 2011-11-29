@@ -65,6 +65,7 @@ Usage Instructions
 	 All of the tests should return "passed".
      (b) Configure omni_config as necessary.
          * Edit 'aggregates' to point to the url of the AM under test.
+         * Edit 'am-undertest' to point to the url of the AM under test.
          * Double check the location of the ProtoGENI .pem files
          listed in the omni_config
 	 
@@ -84,9 +85,9 @@ Usage Instructions
 
 	  Schema and document locations are either paths or URLs.
      (d) Run all of the tests:
-          $ am_api_v1_accept.py 
+          $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
-          $ am_api_v1_accept.py Test.test_getversion
+          $ am_api_v1_accept.py -a am-undertest Test.test_getversion
      (e) Correct errors and run step (3d) again, as needed.
 
 # THIS SECTION DEFERED UNTIL WE HAVE MORE TESTS WRITTEN
@@ -95,7 +96,7 @@ Usage Instructions
 #     (a) Make sure the gcf-ch and gcf-am are running:
 #          $ ../../install/run_gcf.sh
 #     (b) Run getversion test:
-#          $ ./am_api_v1_accept.py -f my_gcf Test.test_getversion
+#          $ ./am_api_v1_accept.py -a am-undertest -f my_gcf Test.test_getversion
 #         This should fail with the error shown in the Sample Output below.
 #     (c) Correct errors and run step (3b) again, as needed.
 # END DEFER
@@ -106,7 +107,7 @@ Sample Output
 =============
 
 A successful run looks like this:
-$ ./am_api_v1_accept.py 
+$ ./am_api_v1_accept.py -a am-undertest
 .
 ----------------------------------------------------------------------
 Ran 1 test in 5.590s
@@ -114,7 +115,7 @@ Ran 1 test in 5.590s
 OK
 
 An unsuccessful run looks like this:
-$ ./am_api_v1_accept.py -f my_gcf
+$ ./am_api_v1_accept.py -f my_gcf -a am-undertest
 F
 ======================================================================
 FAIL: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
