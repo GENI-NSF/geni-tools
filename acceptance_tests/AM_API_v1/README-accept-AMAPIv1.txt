@@ -69,7 +69,9 @@ Usage Instructions
          * Double check the location of the ProtoGENI .pem files
          listed in the omni_config
 	 
- (2) Positive testing: Run acceptance tests with a GENI credential
+ (2) Write a request RSpec for your AM and save as acceptance_tests/AM_API_v1/request.xml
+
+ (3) Positive testing: Run acceptance tests with a GENI credential
  accepted by the AM
      (a) Set PYTHONPATH so the acceptance tests can locate omni.py:
      	 PYTHONPATH=$PYTHONPATH:path/to/gcf/src
@@ -91,7 +93,7 @@ Usage Instructions
      (e) Correct errors and run step (3d) again, as needed.
 
 # THIS SECTION DEFERED UNTIL WE HAVE MORE TESTS WRITTEN
-# (3) Negative testing: Run acceptance tests with a credential at a gcf
+# (4) Negative testing: Run acceptance tests with a credential at a gcf
 # clearinghouse not accepted by the AM.
 #     (a) Make sure the gcf-ch and gcf-am are running:
 #          $ ../../install/run_gcf.sh
@@ -101,7 +103,7 @@ Usage Instructions
 #     (c) Correct errors and run step (3b) again, as needed.
 # END DEFER
 
- (4) Congratulations! You are done.	 
+ (5) Congratulations! You are done.	 
   
 Sample Output
 =============
