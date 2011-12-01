@@ -52,14 +52,28 @@ class Aggregate(object):
     def deallocate(self, container, resources):
         if container and resources:
             # deallocate the given resources from the container
-            pass
+            for r in resources:
+                r.available = True
+                self.containers[container].remove(r)
         elif container:
             # deallocate all the resources in the container
-            pass
+            for r in self.containers[container]:
+                r.available = True
+                self.containers[container].remove(r)
         elif resources:
             # deallocate the resources from their container
-            pass
+            for r in resources:
+                for c in self.containers.values():
+                    if r in c:
+                        r.available = True
+                        c.remove(r)
         # Finally, check if container is empty. If so, delete it.
+        # Note cache the keys because we will be modifying the dict
+        # inside the loop
+        allkeys = self.containers.keys()
+        for k in allkeys:
+            if not self.containers[k]:
+                del self.containers[k]
 
     def stop(self, container):
         # Mark the resources as 'SHUTDOWN'
