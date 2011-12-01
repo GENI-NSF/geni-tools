@@ -34,7 +34,7 @@ import omni
 import os.path
 
 
-SLICE_NAME = 'mon'
+SLICE_NAME = 'TestSlice'
 LOG_CONFIG_FILE = "omni_accept.conf"
 
 
@@ -71,14 +71,12 @@ class OmniUnittest(unittest.TestCase):
 
     def create_slice_name( self ):
         """slice name to be used to create a test slice"""
-#        slice_name = SLICE_NAME
-        if self.options.reuse_slice_name is None:
-            slice_name = datetime.datetime.strftime(datetime.datetime.utcnow(),
-                                                    SLICE_NAME+"-%H%M%S")
+        if self.options.reuse_slice_name:
+            return self.options.reuse_slice_name
         else:
-            slice_name = self.options.reuse_slice_name
-            
-        return slice_name
+            return SLICE_NAME 
+#datetime.datetime.strftime(datetime.datetime.utcnow(),
+#                                                    SLICE_NAME+"-%H%M%S")
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)

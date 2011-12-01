@@ -144,6 +144,16 @@ class Test(ut.OmniUnittest):
     def test_ListResources(self, slicename=None):
         """Passes if 'ListResources' returns an advertisement RSpec (an XML document which passes rspeclint).
         """
+        self.subtest_ListResources( slicename=slicename )
+
+#     def test_ListResources_badCredential(self, slicename=None):
+#         """Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
+#         """
+# #        self.options_copy
+#         subtest_ListResources( slicename=slicename )
+
+
+    def subtest_ListResources(self, slicename=None):
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
@@ -224,44 +234,31 @@ class Test(ut.OmniUnittest):
         """Passes if the sliver creation workflow succeeds:
         (1) (opt) createslice
         (2) createsliver
-        (3) listresources <slice name>
-        (4) [not implemented] sliverstatus
-        (5) [not implemented] renewsliver (in a manner that should fail)
-        (6) [not implemented] renewslice (to make sure the slice does not expire before the sliver expiration we are setting in the next step)
-        (7) [not implemented] renewsliver (in a manner that should succeed)
-        (8) deletesliver
-        (9) (opt) deleteslice
+        (3) deletesliver
+        (4) (opt) deleteslice
         """
 
         slice_name = self.create_slice_name()
 
+        print slice_name
+        # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slice_name )
             time.sleep(SLEEP_TIME)
 
-        #         try:
         self.subtest_CreateSliver( slice_name )
+        # Always DeleteSliver
         try:
-            self.test_ListResources( slicename=slice_name )
-            # self.subtest_sliverstatus( slice_name )
-            # self.subtest_renewsliver_fail( slice_name )
-            # self.subtest_renewslice_success( slice_name )
-            # self.subtest_renewsliver_success( slice_name )
-        except:
+            time.sleep(SLEEP_TIME)
+            self.subtest_DeleteSliver( slice_name )
+        except AssertionError:
             raise
-        finally:
-            # Always DeleteSliver
-            try:
-                time.sleep(SLEEP_TIME)
-                self.subtest_DeleteSliver( slice_name )
-            except AssertionError:
-                raise
-            except:
-                pass                
+        except:
+            pass                
 
-        # Always deleteslice
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slice_name )
+
 
     def subtest_CreateSliver(self, slice_name):
         # Check for the existance of the Request RSpec file
@@ -301,11 +298,6 @@ class Test(ut.OmniUnittest):
                         % (manifest[:100]))
 
 
-
-
-
-
-
     def subtest_DeleteSliver(self, slice_name):
         omniargs = ["deletesliver", slice_name]
         text, (successList, failList) = self.call(omniargs, self.options_copy)
@@ -332,6 +324,50 @@ class Test(ut.OmniUnittest):
         _ = text # Appease eclipse
         self.assertTrue( successFail, 
                          "Delete slice FAILED.")
+
+    # def test_ListResources2(self):
+    #     """Passes if the sliver creation workflow succeeds:
+    #     (1) (opt) createslice
+    #     (2) createsliver
+    #     (3) listresources <slice name>
+    #     (4) [not implemented] sliverstatus
+    #     (5) [not implemented] renewsliver (in a manner that should fail)
+    #     (6) [not implemented] renewslice (to make sure the slice does not expire before the sliver expiration we are setting in the next step)
+    #     (7) [not implemented] renewsliver (in a manner that should succeed)
+    #     (8) deletesliver
+    #     (9) (opt) deleteslice
+    #     """
+
+    #     slice_name = self.create_slice_name()
+
+    #     if not self.options_copy.reuse_slice_name:
+    #         self.subtest_createslice( slice_name )
+    #         time.sleep(SLEEP_TIME)
+
+    #     #         try:
+    #     self.subtest_CreateSliver( slice_name )
+    #     try:
+    #         self.test_ListResources( slicename=slice_name )
+    #         # self.subtest_sliverstatus( slice_name )
+    #         # self.subtest_renewsliver_fail( slice_name )
+    #         # self.subtest_renewslice_success( slice_name )
+    #         # self.subtest_renewsliver_success( slice_name )
+    #     except:
+    #         raise
+    #     finally:
+    #         # Always DeleteSliver
+    #         try:
+    #             time.sleep(SLEEP_TIME)
+    #             self.subtest_DeleteSliver( slice_name )
+    #         except AssertionError:
+    #             raise
+    #         except:
+    #             pass                
+
+    #     # Always deleteslice
+    #     if not self.options_copy.reuse_slice_name:
+    #         self.subtest_deleteslice( slice_name )
+
 
 if __name__ == '__main__':
     import sys
