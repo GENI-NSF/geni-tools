@@ -188,7 +188,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
-        self.assertRaises(AssertionError, self.subtest_ListResources, None, broken_usercred)
+        self.assertRaises(AssertionError, self.subtest_ListResources, usercred=broken_usercred)
 
 
     def subtest_ListResources(self, slicename=None, usercred=None):
