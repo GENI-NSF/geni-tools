@@ -227,10 +227,10 @@ class Test(ut.OmniUnittest):
         
         ## In python 2.7: assertIs
         self.assertTrue(type(ret_dict) is dict,
-                        "Return from 'ListResources' " \
-                        "expected to contain dictionary " \
-                        "but instead returned:\n %s"
-                        % (pprinter.pformat(ret_dict)))
+                        "Call to 'ListResources' failed or not possible " \
+                        "but expected to succeed. " \
+                        "Error returned:\n %s"
+                        % (text))
 
         # An empty dict indicates a misconfiguration!
         self.assertTrue(ret_dict,
