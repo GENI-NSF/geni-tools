@@ -278,11 +278,34 @@ class ReferenceAggregateManager(object):
         # hostname
         # code_tag
         # hrn
-        defad = dict(type="GCF", version="0.1")
+        default_ad = dict(type="GCF", version="0.1")
         # FIXME: Those schema/namespace values are bogus. But the spec also says they are optional.
-        reqver = [dict(type="GCF", version="0.1", schema="http://www.geni.net/resources/rspec/0.1/gcf-request.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
-        adver = [dict(type="GCF", version="0.1", schema="http://www.geni.net/resources/rspec/0.1/gcf-ad.xsd", namespace="http://www.geni.net/resources/rspec/0.1", extensions=[])]
-        versions = dict(default_ad_rspec=defad, geni_api=1, request_rspec_versions=reqver, ad_rspec_versions=adver, interface='aggregate', url='FIXME', urn='FIXME', hostname='FIXME', code_tag='FIXME', hrn='FIXME')
+        gcf_req = dict(type="GCF",
+                       version="0.1",
+                       schema="http://www.geni.net/resources/rspec/0.1/gcf-request.xsd",
+                       namespace="http://www.geni.net/resources/rspec/0.1",
+                       extensions=[])
+        gcf_ad = dict(type="GCF",
+                      version="0.1",
+                      schema="http://www.geni.net/resources/rspec/0.1/gcf-ad.xsd",
+                      namespace="http://www.geni.net/resources/rspec/0.1",
+                      extensions=[])
+        pgv2_req = dict(type="ProtoGENI",
+                       version="2",
+                       schema="http://www.protogeni.net/resources/rspec/2/request.xsd",
+                       namespace="http://www.protogeni.net/resources/rspec/2",
+                       extensions=[])
+        pgv2_ad = dict(type="ProtoGENI",
+                       version="2",
+                       schema="http://www.protogeni.net/resources/rspec/2/ad.xsd",
+                       namespace="http://www.protogeni.net/resources/rspec/2",
+                       extensions=[])
+        request_versions = [gcf_req, pgv2_req]
+        ad_versions = [gcf_ad, pgv2_ad]
+        versions = dict(default_ad_rspec=default_ad,
+                        geni_api=1,
+                        request_rspec_versions=request_versions,
+                        ad_rspec_versions=ad_versions)
         return versions
 
     # The list of credentials are options - some single cred
@@ -329,9 +352,9 @@ class ReferenceAggregateManager(object):
             # Can also error-check that the input value is supported.
             rspec_type = options['rspec_version']['type']
             rspec_version = options['rspec_version']['version']
-            if rspec_type is not 'GCF':
+            if rspec_type != 'GCF':
                 self.logger.warn("Returning GCF rspec even though request said %s", rspec_type)
-            self.logger.info("ListResources requested rspec %s (%d)", rspec_type, rspec_version)
+            self.logger.info("ListResources requested rspec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
