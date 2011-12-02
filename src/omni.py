@@ -2057,7 +2057,7 @@ def load_config(opts, logger):
     
     return config
 
-def load_framework(config):
+def load_framework(config, opts):
     """Select the Control Framework to use from the config, and instantiate the proper class."""
 
     cf_type = config['selected_framework']['type']
@@ -2065,7 +2065,7 @@ def load_framework(config):
 
     framework_mod = __import__('omnilib.frameworks.framework_%s' % cf_type, fromlist=['omnilib.frameworks'])
     config['selected_framework']['logger'] = config['logger']
-    framework = framework_mod.Framework(config['selected_framework'])
+    framework = framework_mod.Framework(config['selected_framework'], opts)
     return framework    
 
 def initialize(argv, options=None ):
@@ -2079,7 +2079,7 @@ def initialize(argv, options=None ):
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
     config = load_config(opts, logger)
-    framework = load_framework(config)
+    framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts
 
@@ -2364,7 +2364,7 @@ def getParser():
  \t\t\t renewslice <slicename> <new expiration time in UTC> \n\
  \t\t\t deleteslice <slicename> \n\
  \t\t\t listmyslices <username> \n\
- \t\t\t getslicecred <slicename> \n\
+ \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
@@ -2390,6 +2390,8 @@ def getParser():
                       help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file (Omni picks the name)")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix when saving results (used with -o)")
+    parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
     # Note that type and version are case in-sensitive strings.

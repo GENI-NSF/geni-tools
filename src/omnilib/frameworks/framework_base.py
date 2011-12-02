@@ -55,6 +55,27 @@ class Framework_Base():
         if not os.path.exists(self.key):
             sys.exit("Frameworks keyfile %s doesn't exist" % self.key)
         self.sslctx = None
+
+    def init_user_cred( self, opts ):
+        """Initialize user credential either from file (if
+        --usercredfile) or else to None.
+
+        Must call this method in framework's __init__ in order for
+        --usercredfile to be handled properly.
+        """
+        
+        # read the usercred from supplied file
+        cred = None
+        if opts.usercredfile and os.path.exists(opts.usercredfile) and os.path.isfile(opts.usercredfile) and os.path.getsize(opts.usercredfile) > 0:
+            # read the user cred from the given file
+            if hasattr(self, 'logger'):
+                logger = self.logger
+            else:
+                logger = logging.getLogger("omni.framework")
+            logger.info("Getting user credential from file %s", opts.usercredfile)
+            with open(opts.usercredfile, 'r') as f:
+                cred = f.read()
+        return cred
         
     def get_user_cred(self):
         """

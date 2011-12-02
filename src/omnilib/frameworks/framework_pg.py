@@ -48,8 +48,8 @@ class Framework(Framework_Base):
     interface to the Protogeni Control Framework.
     """
 
-    def __init__(self, config):
-        Framework_Base.__init__(self,config)        
+    def __init__(self, config, opts):
+        Framework_Base.__init__(self, config)        
         self.logger = logging.getLogger("omni.protogeni")
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
@@ -72,7 +72,7 @@ class Framework(Framework_Base):
         self.logger.debug('Using slice authority %s', self.config['sa'])
         self.sa = self.make_client(self.config['sa'], self.key, self.cert,
                                    self.config['verbose'])
-        self.user_cred = None
+        self.user_cred = self.init_user_cred( opts )
         
         # For now, no override aggregates.
         self.aggs = None

@@ -32,6 +32,7 @@ import os
 import pprint
 import re
 import time
+import tempfile
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
@@ -80,8 +81,6 @@ API_VERSION = 1
 
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
-
-
 
     def test_GetVersion(self):
         """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
@@ -141,48 +140,98 @@ class Test(ut.OmniUnittest):
                           "but instead 'geni_api=%d.'"  
                            % (agg, API_VERSION, value))
 
-    def test_ListResources(self, slicename=None):
+    def test_ListResources(self):
         """Passes if 'ListResources' returns an advertisement RSpec (an XML document which passes rspeclint).
         """
-        self.subtest_ListResources( slicename=slicename )
+        self.subtest_ListResources()
 
-#     def test_ListResources_badCredential(self, slicename=None):
-#         """Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
-#         """
-# #        self.options_copy
-#         subtest_ListResources( slicename=slicename )
+    def test_ListResources_badCredential(self):
+        """Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
+        """
+
+        # (1) Get the usercredential
+        omniargs = ["getusercred"]
+        (text, usercred) = self.call(omniargs, self.options_copy)
+        self.assertTrue( type(usercred) is str,
+                        "Return from 'getusercred' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                        % (usercred))
+
+        # Test if file is XML and contains "<rspec" or "<resv_rspec"
+        self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
+                        "Return from 'getusercred' " \
+                        "expected to be XML " \
+                        "but instead returned: \n" \
+                        "%s\n" \
+                        "... edited for length ..." 
+                        % (usercred[:100]))
+
+        # TO DO Validate usercred xml file
+        # # Test if XML file passes rspeclint
+        # if self.options_copy.rspeclint:
+        #     self.assertTrue(rspec_util.validate_rspec( rspec, 
+        #                                                namespace=rspec_namespace, 
+        #                                                schema=rspec_schema ),
+        #                     "Return from 'ListResources' at aggregate '%s' " \
+        #                     "expected to pass rspeclint " \
+        #                     "but did not. Return was: " \
+        #                     "\n%s\n" \
+        #                     "... edited for length ..."
+        #                     % (agg_name, rspec[:100]))
 
 
-    def subtest_ListResources(self, slicename=None):
+
+        # (2) Create a broken usercred
+        broken_usercred = usercred[1:]
+        # (3) Call listresources with this broken credential
+        # We expect this to fail
+        # self.subtest_ListResources(usercred=broken_usercred) 
+        # with slicename left to the default
+        self.assertRaises(AssertionError, self.subtest_ListResources, None, broken_usercred)
+
+
+    def subtest_ListResources(self, slicename=None, usercred=None):
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
             rspec_util.rspeclint_exists()
 
+        self.options_copy.omnispec = False # omni will complaining if both true
         if slicename:
             rspec_namespace = MANIFEST_NAMESPACE
             rspec_schema = MANIFEST_SCHEMA
         else:
             rspec_namespace = AD_NAMESPACE
             rspec_schema = AD_SCHEMA
-
         
-        # Do AM API call
+        omniargs = ["-t", str(RSPEC_NAME), str(RSPEC_NUM)]        
+
         if slicename:
-            omniargs = ["listresources", str(slicename), "-t", str(RSPEC_NAME), str(RSPEC_NUM)]
+            omniargs = omniargs + ["listresources", str(slicename)]
         else:
-            omniargs = ["listresources", "-t", str(RSPEC_NAME), str(RSPEC_NUM)]
-        self.options_copy.omnispec = False # omni will complaining if both true
-        (text, ret_dict) = self.call(omniargs, self.options_copy)
+            omniargs = omniargs + ["listresources"]
+
+        if usercred:
+            with tempfile.NamedTemporaryFile() as f:
+                # make a temporary file containing the user credential
+                f.write( usercred )
+                f.seek(0)
+                omniargs = omniargs + ["--usercredfile", f.name] 
+                # run command here while temporary file is open
+                (text, ret_dict) = self.call(omniargs, self.options_copy)
+        else:
+            (text, ret_dict) = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
-        # If this isn't a dictionary, something has gone wrong in Omni.  
+        
         ## In python 2.7: assertIs
         self.assertTrue(type(ret_dict) is dict,
                         "Return from 'ListResources' " \
                         "expected to contain dictionary " \
                         "but instead returned:\n %s"
                         % (pprinter.pformat(ret_dict)))
+
         # An empty dict indicates a misconfiguration!
         self.assertTrue(ret_dict,
                         "Return from 'ListResources' " \
@@ -230,6 +279,7 @@ class Test(ut.OmniUnittest):
                             "... edited for length ..."
                             % (agg_name, rspec[:100]))
 
+
     def test_CreateSliver(self):
         """Passes if the sliver creation workflow succeeds:
         (1) (opt) createslice
@@ -240,21 +290,14 @@ class Test(ut.OmniUnittest):
 
         slice_name = self.create_slice_name()
 
-        print slice_name
         # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slice_name )
             time.sleep(SLEEP_TIME)
 
         self.subtest_CreateSliver( slice_name )
-        # Always DeleteSliver
-        try:
-            time.sleep(SLEEP_TIME)
-            self.subtest_DeleteSliver( slice_name )
-        except AssertionError:
-            raise
-        except:
-            pass                
+        time.sleep(SLEEP_TIME)
+        self.subtest_DeleteSliver( slice_name )
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slice_name )
@@ -304,9 +347,11 @@ class Test(ut.OmniUnittest):
         _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( successList, failList )
         _ = possNum # Appease eclipse
-        # we have reserved resources on exactly one aggregate
+        # ASSUMES we have reserved resources on exactly one aggregate
         self.assertTrue( int(succNum) == 1, 
-                         "Failed to delete sliver")
+                         "Sliver deletion expected to work " \
+                         "but instead sliver deletion failed for slice: %s"
+                         % slice_name )
 
 
     def subtest_createslice(self, slice_name ):
@@ -315,7 +360,9 @@ class Test(ut.OmniUnittest):
         text, urn = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
         self.assertTrue( urn, 
-                         "Slice creation FAILED.")
+                         "Slice creation expected to work " \
+                         "but instead slice creation failed for slice: %s"
+                         % slice_name )
 
     def subtest_deleteslice(self, slice_name):
         """Delete a slice. Not an AM API call."""
@@ -323,7 +370,9 @@ class Test(ut.OmniUnittest):
         text, successFail = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
         self.assertTrue( successFail, 
-                         "Delete slice FAILED.")
+                         "Slice deletion expected to work " \
+                         "but instead slice deletion failed for slice: %s"
+                         % slice_name )
 
     # def test_ListResources2(self):
     #     """Passes if the sliver creation workflow succeeds:

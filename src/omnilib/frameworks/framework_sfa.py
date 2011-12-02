@@ -150,7 +150,7 @@ def create_selfsigned_cert(filename, user, key):
     
 
 class Framework(Framework_Base):
-    def __init__(self, config):
+    def __init__(self, config, opts):
         config['cert'] = os.path.expanduser(config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
         if not config.has_key('verbose'):
@@ -169,7 +169,8 @@ class Framework(Framework_Base):
                     # use the self signed cert to get the gid
                     self.registry = self.make_client(config['registry'], config['key'], config['cert'],
                                                      verbose=config['verbose'])
-                    self.user_cred = None
+                    self.user_cred = self.init_user_cred( opts )
+
                     self.cert_string = file(config['cert'],'r').read()
                     cred, message = self.get_user_cred()
                     if cred is None:
@@ -206,7 +207,8 @@ class Framework(Framework_Base):
         self.slicemgr = self.make_client(config['slicemgr'], self.key, self.cert,
                                          verbose=self.config['verbose'])
         self.cert_string = file(config['cert'],'r').read()
-        self.user_cred = None
+        self.user_cred = self.init_user_cred( opts )
+
         
     def get_user_cred(self):
         message = ""

@@ -27,7 +27,7 @@ import os
 import sys
 
 class Framework(Framework_Base):
-    def __init__(self, config):
+    def __init__(self, config, opts):
         Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
@@ -42,7 +42,7 @@ class Framework(Framework_Base):
         self.ch = self.make_client(config['ch'], self.key, self.cert,
                                    verbose=config['verbose'])
         self.cert_string = file(config['cert'],'r').read()
-        self.user_cred = None
+        self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
         
     def get_user_cred(self):
