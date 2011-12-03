@@ -85,7 +85,17 @@ API_VERSION = 1
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
 
-    def checkRSpecVersion(self):
+    def checkAdRSpecVersion(self):
+        return self.checkRSpecVersion(type='ad')
+    def checkRequestRSpecVersion(self):
+        return self.checkRSpecVersion(type='request')
+    def checkRSpecVersion(self, type='ad'):
+        """type is either 'ad' or 'request' """
+        if type not in ('ad', 'request'):
+            print "type must be either 'ad' or 'request', received '%s' instead" % type
+            return False
+
+        rspec_type = type+"_rspec_versions"
         rtype = RSPEC_NAME
         rver = RSPEC_NUM
 
@@ -97,10 +107,10 @@ class Test(ut.OmniUnittest):
         for agg, thisVersion in version.items():
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            self.assertTrue( thisVersion.has_key('ad_rspec_versions'),
+            self.assertTrue( thisVersion.has_key(rspec_type),
                              "AM %s GetVersion return does not contain ad_rspec_versions" % agg)
             # get the ad_rspec_versions key
-            ad_rspec_version = thisVersion['ad_rspec_versions']
+            ad_rspec_version = thisVersion[rspec_type]
             # foreach item in the list that is the val
             match = False
             for availversion in ad_rspec_version:
@@ -228,7 +238,7 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_ListResources(self, slicename=None, usercred=None):
-        self.assertTrue( self.checkRSpecVersion() )
+        self.assertTrue( self.checkAdRSpecVersion() )
 
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
@@ -328,8 +338,6 @@ class Test(ut.OmniUnittest):
         (4) (opt) deleteslice
         """
 
-        self.assertTrue( self.checkRSpecVersion() )
-
         slice_name = self.create_slice_name()
 
         # if reusing a slice name, don't create (or delete) the slice
@@ -346,6 +354,8 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_CreateSliver(self, slice_name):
+        self.assertTrue( self.checkRequestRSpecVersion() )
+
         # Check for the existance of the Request RSpec file
         self.assertTrue( os.path.exists(self.options_copy.rspec_file),
                          "Request RSpec file, '%s' for 'CreateSliver' call " \
