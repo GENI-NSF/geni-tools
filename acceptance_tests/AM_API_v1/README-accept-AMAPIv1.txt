@@ -3,44 +3,44 @@ AM API v1 Acceptance Tests
 
 Description
 ===========
-Acceptance tests to show that the AM API v1 is implemented completely at
-the aggregate under test.
+Acceptance tests verify compliance to the GENI Aggregate Manager (AM)
+API v1 specification [1].
+
+Acceptance tests are intended to be run with credentials from the GPO
+ProtoGENI, but they work with any credentials that are trusted at the
+AM under test.
 
 Installation & Getting Started
 ==============================
 Software Dependencies
 =====================
 Requires:
- * GENI credentials from the GPO ProtoGENI SA
-   * NOTE: The acceptance tests work fine with other credentials that
-     are trusted at the AM under test
- * Omni 1.4 [1]
- * rspeclint (Code [2] and documentation [3] is available from ProtoGENI.)
+ * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
+   is located at:
+   https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+ * Omni 1.5 and the acceptance tests [2] which are distributed as part
+   of the GCF1.5 package
+ * (optional) rspeclint (Code [3] and documentation [4] is available from ProtoGENI.)
    (1) Install LibXML (which rspeclint relies on) from CPAN.
      -- On Ubuntu Linux this is the libxml-libxml-perl package 
      	$ sudo apt-get install libxml-libxml-perl
      -- On Fedora Linux this is the perl-XML-LibXML package 
      	$ sudo yum install perl-XML-LibXML
-     -- On CentOS this is the XXX package 
-        $
    (2) Download rspeclint from ProtoGENI and save the file as "rspeclint".  
-       rspeclint perl file is here: 
+       'rspeclint' perl file is found here: 
        		 http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
    (3) Add rspeclint to your path.
 
 Software
 ==================
- * acceptance_tests/AM_API_v1/am_api_v1_accept.py 
+ * gcf-1.5/acceptance_tests/AM_API_v1/am_api_v1_accept.py 
    - the AM API v1 acceptance tests
- * acceptance_tests/AM_API_v1/omni_config
+ * gcf-1.5/acceptance_tests/AM_API_v1/omni_config
    - omni_config file 
-   - NOTE: Move to ~/.gcf/omni_config to ease running of acceptance tests
-     from any location.  But be careful to not overwrite any
-     omni_config that you may already have at that location.
- * acceptance_tests/AM_API_v1/omni_accept.conf 
+ * gcf-1.5/acceptance_tests/AM_API_v1/omni_accept.conf 
    - logging configuration file for am_api_v1_accept.py
    - used by default unless you override it with -l
- * src/omni_unittest.py 
+ * gcf-1.5/src/omni_unittest.py 
    - facilitates using Omni and unittest together
 
 Pre-work
@@ -49,35 +49,45 @@ These instructions assume you have already done the following items:
 
  (1) Allow your Aggregate Manager (AM) to use credentials from the GPO
  ProtoGENI AM.
+     This step varies by AM type.
      For example, instructions for doing this with a MyPLC are here:
      http://groups.geni.net/geni/wii/GpoLab/MyplcReferenceImplementation#TrustaRemoteSliceAuthority
-     NOTE: The acceptance tests work fine with other credentials that
-     are trusted at the AM under test.
 
  (2) Request GPO ProtoGENI credentials.  If you don't have any, e-mail:
      help@geni.net
 
+ (3) [optional] Move gcf/acceptance_tests/AM_API_v1/omni_config to
+     ~/.gcf/omni_config to ease running of acceptance tests from any
+     location.  But be careful to not overwrite any omni_config that
+     may already be at that location.
+
+
 Usage Instructions
 ==================
 
- (1) Install Omni 
-     (a) Install Omni 1.4 and test it per the instructions in INSTALL.txt.
+ (1) Install GCF1.5 (which includes Omni and the acceptance tests)
+     (a) Install and test it per the instructions in INSTALL.txt.
 	 All of the tests should return "passed".
      (b) Configure omni_config as necessary.
+         * Omni configuration is described in README-omni.txt
          * Edit 'aggregates' to point to the url of the AM under test.
          * Edit 'am-undertest' to point to the url of the AM under test.
-         * Double check the location of the ProtoGENI .pem files
-         listed in the omni_config
+         * Verify the ProtoGENI .pem files are found in the location
+           specified in the omni_config
 	 
- (2) Write a request RSpec for your AM and save as acceptance_tests/AM_API_v1/request.xml
+ (2) Write a request RSpec for AM under test.
+     (a) Move default rspec out of the way.
+         $ mv gcf-1.5/acceptance_tests/AM_API_v1/request.xml  gcf-1.5/acceptance_tests/AM_API_v1/request.xml.default
+     (b) Save request RSpec for AM under test as: 
+     	 gcf-1.5/acceptance_tests/AM_API_v1/request.xml
 
  (3) Positive testing: Run acceptance tests with a GENI credential
  accepted by the AM
      (a) Set PYTHONPATH so the acceptance tests can locate omni.py:
-     	 PYTHONPATH=$PYTHONPATH:path/to/gcf/src
+     	 PYTHONPATH=$PYTHONPATH:path/to/gcf-1.5/src
 
 	 Or add the following to your ~/.bashrc:
-	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src
+	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf-1.5/src
      (b) Change into the directory where you will run the acceptance test:
           $ cd gcf/acceptance_tests/AM_API_v1
      (c) Run 'rspeclint' to make sure rspeclint is in your path so that
@@ -92,62 +102,90 @@ Usage Instructions
           $ am_api_v1_accept.py -a am-undertest Test.test_getversion
      (e) Correct errors and run step (3d) again, as needed.
 
-# THIS SECTION DEFERED UNTIL WE HAVE MORE TESTS WRITTEN
-# (4) Negative testing: Run acceptance tests with a credential at a gcf
-# clearinghouse not accepted by the AM.
-#     (a) Make sure the gcf-ch and gcf-am are running:
-#          $ ../../install/run_gcf.sh
-#     (b) Run getversion test:
-#          $ ./am_api_v1_accept.py -a am-undertest -f my_gcf Test.test_getversion
-#         This should fail with the error shown in the Sample Output below.
-#     (c) Correct errors and run step (3b) again, as needed.
-# END DEFER
-
- (5) Congratulations! You are done.	 
+ (4) Congratulations! You are done.	 
   
 Sample Output
 =============
 
 A successful run looks like this:
-$ ./am_api_v1_accept.py -a am-undertest
-.
+$ am_api_v1_accept.py  -a am-undertest
+....
 ----------------------------------------------------------------------
-Ran 1 test in 5.590s
+Ran 4 tests in 120.270s
 
 OK
 
+
 An unsuccessful run looks like this:
-$ ./am_api_v1_accept.py -f my_gcf -a am-undertest
-F
+
+$ am_api_v1_accept.py  -f my_gcf -a am-undertest                                                                                 
+FFFF                                                                                    
+======================================================================                  
+FAIL: Passes if the sliver creation workflow succeeds:                                  
+----------------------------------------------------------------------                  
+Traceback (most recent call last):                                                      
+  File "./am_api_v1_accept.py", line 362, in test_CreateSliver                          
+    self.subtest_CreateSliver( slice_name )                                             
+  File "./am_api_v1_accept.py", line 371, in subtest_CreateSliver                       
+    self.assertTrue( self.checkRequestRSpecVersion() )                                  
+  File "./am_api_v1_accept.py", line 105, in checkRequestRSpecVersion                   
+    return self.checkRSpecVersion(type='request')                                       
+  File "./am_api_v1_accept.py", line 123, in checkRSpecVersion                          
+    "AM %s didn't respond to GetVersion" % (agg) )                                      
+AssertionError: AM https://www.emulab.net/protogeni/xmlrpc/am didn't respond to GetVersion
+
 ======================================================================
 FAIL: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "./am_api_v1_accept.py", line 88, in test_GetVersion
+  File "./am_api_v1_accept.py", line 173, in test_GetVersion
     % (agg))
-AssertionError: Return from 'GetVersion' at aggregate 'https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am' expected to be XML-RPC struct but instead returned None.
+AssertionError: Return from 'GetVersion' at aggregate 'https://www.emulab.net/protogeni/xmlrpc/am' expected to be XML-RPC struct but instead returned None.
+
+======================================================================
+FAIL: Passes if 'ListResources' returns an advertisement RSpec (an XML document which passes rspeclint).
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "./am_api_v1_accept.py", line 205, in test_ListResources
+    self.subtest_ListResources()
+  File "./am_api_v1_accept.py", line 255, in subtest_ListResources
+    self.assertTrue( self.checkAdRSpecVersion() )
+  File "./am_api_v1_accept.py", line 103, in checkAdRSpecVersion
+    return self.checkRSpecVersion(type='ad')
+  File "./am_api_v1_accept.py", line 123, in checkRSpecVersion
+    "AM %s didn't respond to GetVersion" % (agg) )
+AssertionError: AM https://www.emulab.net/protogeni/xmlrpc/am didn't respond to GetVersion
+
+======================================================================
+FAIL: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "./am_api_v1_accept.py", line 251, in test_ListResources_badCredential
+    self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
+AssertionError: AM https://www.emulab.net/protogeni/xmlrpc/am didn't respond to GetVersion
 
 ----------------------------------------------------------------------
-Ran 1 test in 0.063s
+Ran 4 tests in 4.837s
 
-FAILED (failures=1)
+FAILED (failures=4)
 
 Output of help message:
-$ ./am_api_v1_accept.py -h
-Usage:
-      ./am_api_v1_accept.py 
-      Also try --vv
+
+$ am_api_v1_accept.py  -h
+Usage:                                                                  
+      ./am_api_v1_accept.py -a am-undertest                             
+      Also try --vv                                                     
 
 Options:
   --version             show program's version number and exit
-  -h, --help            show this help message and exit
-  -c FILE, --configfile=FILE
-                        Config file name
-  -f FRAMEWORK, --framework=FRAMEWORK
+  -h, --help            show this help message and exit       
+  -c FILE, --configfile=FILE                                  
+                        Config file name                      
+  -f FRAMEWORK, --framework=FRAMEWORK                         
                         Control framework to use for creation/deletion of
-                        slices
-  -n, --native          Use native RSpecs (default)
-  --omnispec            Use Omnispecs (deprecated)
+                        slices                                           
+  -n, --native          Use native RSpecs (default)                      
+  --omnispec            Use Omnispecs (deprecated)                       
   -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
                         Communicate with a specific aggregate
   --debug               Enable debugging output
@@ -159,6 +197,10 @@ Options:
                         (Omni picks the name)
   -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
                         Filename prefix when saving results (used with -o)
+  --usercredfile=USER_CRED_FILENAME
+                        Name of user credential file to read from if it
+                        exists, or save to when running like '--usercredfile
+                        myUserCred.xml -o getusercred'
   --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
@@ -175,14 +217,25 @@ Options:
   -l LOGCONFIG, --logconfig=LOGCONFIG
                         Python logging config file
   --no-tz               Do not send timezone on RenewSliver
+  -V API_VERSION, --api-version=API_VERSION
+                        Specify version of AM API to use (1, 2, etc.)
+  --reuse-slice=REUSE_SLICE_NAME
+                        Use slice name provided instead of creating/deleting a
+                        new slice
+  --rspec-file=RSPEC_FILE
+                        In CreateSliver tests, use request RSpec file provided
+                        instead of default of 'request.xml'
+  --rspeclint           Validate RSpecs using 'rspeclint'
+  --ProtoGENIv2         Use ProtoGENI v2 RSpecs instead of GENI 3
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
 
 
-Further Reading
+Bibliography
 ===============
- [1] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
- [2] rspeclint code: http://www.protogeni.net/resources/rspeclint
- [3] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
+ [1] AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
+ [2] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
+ [3] rspeclint code: http://www.protogeni.net/resources/rspeclint
+ [4] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
 
- * AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
+ 
