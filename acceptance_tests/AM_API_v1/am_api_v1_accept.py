@@ -80,10 +80,15 @@ SLEEP_TIME=3
 API_VERSION = 1
 
 
-        
+class NotDictAssertionError( AssertionError ):
+    pass
 
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
+    
+    def assertDict(self, item, msg):
+        if not type(item) == dict:
+            raise NotDictAssertionError, msg
 
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
@@ -234,7 +239,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
-        self.assertRaises(AssertionError, self.subtest_ListResources, usercred=broken_usercred)
+        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
 
 
     def subtest_ListResources(self, slicename=None, usercred=None):
@@ -274,7 +279,7 @@ class Test(ut.OmniUnittest):
         pprinter = pprint.PrettyPrinter(indent=4)
         
         ## In python 2.7: assertIs
-        self.assertTrue(type(ret_dict) is dict,
+        self.assertDict(ret_dict,
                         "Call to 'ListResources' failed or not possible " \
                         "but expected to succeed. " \
                         "Error returned:\n %s"
@@ -291,7 +296,7 @@ class Test(ut.OmniUnittest):
         # Checks each aggregate
         for ((agg_name, agg_url), rspec) in ret_dict.items():
             ## In python 2.7: assertIsNotNone
-            self.assertTrue(rspec is not None,
+            self.assertTrue(rspec,
                           "Return from 'ListResources' at aggregate '%s' " \
                           "expected to be XML file " \
                           "but instead returned None." 
