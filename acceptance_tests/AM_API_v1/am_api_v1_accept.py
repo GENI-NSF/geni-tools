@@ -79,8 +79,43 @@ SLEEP_TIME=3
 # This is the acceptance test for AM API version 1
 API_VERSION = 1
 
+
+        
+
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
+
+    def checkRSpecVersion(self):
+        rtype = RSPEC_NAME
+        rver = RSPEC_NUM
+
+        # call GetVersion
+        omniargs = ['getversion']
+        (text, version) = self.call(omniargs, self.options_copy)
+
+        mymessage = ""
+        for agg, thisVersion in version.items():
+            self.assertTrue( thisVersion, 
+                             "AM %s didn't respond to GetVersion" % (agg) )
+            self.assertTrue( thisVersion.has_key('ad_rspec_versions'),
+                             "AM %s GetVersion return does not contain ad_rspec_versions" % agg)
+            # get the ad_rspec_versions key
+            ad_rspec_version = thisVersion['ad_rspec_versions']
+            # foreach item in the list that is the val
+            match = False
+            for availversion in ad_rspec_version:
+                if not(str(availversion['type']).lower().strip() == rtype.lower().strip()):
+                    continue
+                if not(str(availversion['version']).lower().strip() == str(rver).lower().strip()):
+                    continue
+
+                match = True
+                rtype=availversion['type']
+                rver=availversion['version']
+                break
+            self.assertTrue(match, 
+                        "Agg doesn't support requested version: %s %s" % (rtype, rver))
+            return match
 
     def test_GetVersion(self):
         """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
@@ -145,6 +180,7 @@ class Test(ut.OmniUnittest):
         """
         self.subtest_ListResources()
 
+
     def test_ListResources_badCredential(self):
         """Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
         """
@@ -192,6 +228,8 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_ListResources(self, slicename=None, usercred=None):
+        self.assertTrue( self.checkRSpecVersion() )
+
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
@@ -280,6 +318,8 @@ class Test(ut.OmniUnittest):
                             % (agg_name, rspec[:100]))
 
 
+
+
     def test_CreateSliver(self):
         """Passes if the sliver creation workflow succeeds:
         (1) (opt) createslice
@@ -287,6 +327,8 @@ class Test(ut.OmniUnittest):
         (3) deletesliver
         (4) (opt) deleteslice
         """
+
+        self.assertTrue( self.checkRSpecVersion() )
 
         slice_name = self.create_slice_name()
 
