@@ -36,10 +36,10 @@ import tempfile
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
-RSPEC_NAME = "ProtoGENI"
-RSPEC_NUM = 2
-#RSPEC_NAME = "GENI"
-#RSPEC_NUM = 3
+PGV2_RSPEC_NAME = "ProtoGENI"
+PGV2_RSPEC_NUM = 2
+RSPEC_NAME = "GENI"
+RSPEC_NUM = 3
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
@@ -85,6 +85,15 @@ class NotDictAssertionError( AssertionError ):
 
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
+
+    def setUp( self ):
+        ut.OmniUnittest.setUp(self)
+
+        if self.options_copy.protogeniv2:
+            self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)            
+
+        if not self.options_copy.rspectype:
+            self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
     
     def assertDict(self, item, msg):
         if not type(item) == dict:
@@ -101,8 +110,8 @@ class Test(ut.OmniUnittest):
             return False
 
         rspec_type = type+"_rspec_versions"
-        rtype = RSPEC_NAME
-        rver = RSPEC_NUM
+        rtype = self.options_copy.rspectype[0]
+        rver = self.options_copy.rspectype[1]
 
         # call GetVersion
         omniargs = ['getversion']
@@ -258,7 +267,7 @@ class Test(ut.OmniUnittest):
             rspec_namespace = AD_NAMESPACE
             rspec_schema = AD_SCHEMA
         
-        omniargs = ["-t", str(RSPEC_NAME), str(RSPEC_NUM)]        
+        omniargs = [] 
 
         if slicename:
             omniargs = omniargs + ["listresources", str(slicename)]
@@ -369,7 +378,7 @@ class Test(ut.OmniUnittest):
                          % self.options_copy.rspec_file )
         
         # CreateSliver
-        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file), "-t", RSPEC_NAME, RSPEC_NUM]
+        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
         text, manifest = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
@@ -490,6 +499,10 @@ if __name__ == '__main__':
                        action="store_true", 
                        dest='rspeclint', default=False,
                        help="Validate RSpecs using 'rspeclint'" )
+    parser.add_option( "--ProtoGENIv2", 
+                       action="store_true", 
+                       dest='protogeniv2', default=False,
+                       help="Use ProtoGENI v2 RSpecs instead of %s %s"%(RSPEC_NAME, RSPEC_NUM) )
 
     usage = "\n      %s -a am-undertest " \
             "\n      Also try --vv" % sys.argv[0]
