@@ -51,7 +51,7 @@ These instructions assume you have already done the following items:
  ProtoGENI AM.
      This step varies by AM type.
      For example, instructions for doing this with a MyPLC are here:
-     http://groups.geni.net/geni/wii/GpoLab/MyplcReferenceImplementation#TrustaRemoteSliceAuthority
+     http://groups.geni.net/geni/wiki/GpoLab/MyplcReferenceImplementation#TrustaRemoteSliceAuthority
 
  (2) Request GPO ProtoGENI credentials.  If you don't have any, e-mail:
      help@geni.net
@@ -99,7 +99,7 @@ Usage Instructions
      (d) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
-          $ am_api_v1_accept.py -a am-undertest Test.test_getversion
+          $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
      (e) Correct errors and run step (3d) again, as needed.
 
  (4) Congratulations! You are done.	 
