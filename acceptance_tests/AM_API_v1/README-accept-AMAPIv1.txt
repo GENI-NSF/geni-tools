@@ -15,9 +15,6 @@ Installation & Getting Started
 Software Dependencies
 =====================
 Requires:
- * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
-   is located at:
-   https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
  * Omni 1.5 and the acceptance tests [2] which are distributed as part
    of the GCF1.5 package
  * (optional) rspeclint (Code [3] and documentation [4] is available from ProtoGENI.)
@@ -30,6 +27,14 @@ Requires:
        'rspeclint' perl file is found here: 
        		 http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
    (3) Add rspeclint to your path.
+
+Credentials
+===========
+By policy, requires:
+ * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
+   is located at:
+   https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+
 
 Software
 ==================
