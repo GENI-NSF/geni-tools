@@ -4,20 +4,26 @@ AM API v1 Acceptance Tests
 Description
 ===========
 Acceptance tests verify compliance to the GENI Aggregate Manager (AM)
-API v1 specification [1].
+API v1 specification [1] plus change set A of the AM API v2 specification [2].
 
 Acceptance tests are intended to be run with credentials from the GPO
 ProtoGENI, but they work with any credentials that are trusted at the
 AM under test.
+
+Test verifies: 
+     - Sliver creation workflow 
+     - GetVersion returns GENI AM API version 1 
+     - ListResources returns an advertisement RSpec that is validated with rspeclint 
+     - ListResources FAILS when using a bad credential.
 
 Installation & Getting Started
 ==============================
 Software Dependencies
 =====================
 Requires:
- * Omni 1.5 and the acceptance tests [2] which are distributed as part
+ * Omni 1.5 and the acceptance tests [3] which are distributed as part
    of the GCF1.5 package
- * (optional) rspeclint (Code [3] and documentation [4] is available from ProtoGENI.)
+ * (optional) rspeclint (Code [4] and documentation [5] is available from ProtoGENI.)
    (1) Install LibXML (which rspeclint relies on) from CPAN.
      -- On Ubuntu Linux this is the libxml-libxml-perl package 
      	$ sudo apt-get install libxml-libxml-perl
@@ -75,39 +81,47 @@ Usage Instructions
 	 All of the tests should return "passed".
      (b) Configure omni_config as necessary.
          * Omni configuration is described in README-omni.txt
-         * Edit 'aggregates' to point to the url of the AM under test.
-         * Edit 'am-undertest' to point to the url of the AM under test.
          * Verify the ProtoGENI .pem files are found in the location
            specified in the omni_config
-	 
- (2) Write a request RSpec for AM under test.
-     (a) Move default rspec out of the way.
-         $ mv gcf-1.5/acceptance_tests/AM_API_v1/request.xml  gcf-1.5/acceptance_tests/AM_API_v1/request.xml.default
-     (b) Save request RSpec for AM under test as: 
-     	 gcf-1.5/acceptance_tests/AM_API_v1/request.xml
-
- (3) Positive testing: Run acceptance tests with a GENI credential
- accepted by the AM
-     (a) Set PYTHONPATH so the acceptance tests can locate omni.py:
+     (c) Set PYTHONPATH so the acceptance tests can locate omni.py:
      	 PYTHONPATH=$PYTHONPATH:path/to/gcf-1.5/src
 
 	 Or add the following to your ~/.bashrc:
 	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf-1.5/src
-     (b) Change into the directory where you will run the acceptance test:
+     (d) Change into the directory where you will run the acceptance test:
           $ cd gcf/acceptance_tests/AM_API_v1
-     (c) Run 'rspeclint' to make sure rspeclint is in your path so that
+     (e) Run 'rspeclint' to make sure rspeclint is in your path so that
      am_api_v1_accept.py can find it.
      	  $ rspeclint
 	  Usage: rspeclint [<namespace> <schema>]+ <document>
 
 	  Schema and document locations are either paths or URLs.
-     (d) Run all of the tests:
+ (2) (optional) Test acceptance test with default AM to ensure everything works.
+     (a) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
           $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
-     (e) Correct errors and run step (3d) again, as needed.
+     (b) The above tests should all pass.
 
- (4) Congratulations! You are done.	 
+ (3) Configure to test AM under test. 
+     (a) Configure omni_config as necessary.
+         * Edit 'aggregates' to point to the url of the AM under test.
+         * Edit 'am-undertest' to point to the url of the AM under test.
+     (b) Write a request RSpec for AM under test.
+     	 (i) Move default rspec used in (2) out of the way.
+             $ mv gcf-1.5/acceptance_tests/AM_API_v1/request.xml  gcf-1.5/acceptance_tests/AM_API_v1/request.xml.default
+         (ii) Write a request RSpec for the AM under test and save as: 
+     	     gcf-1.5/acceptance_tests/AM_API_v1/request.xml
+
+ (4) Positive testing: Run acceptance tests with a GENI credential
+ accepted by the AM
+     (a) Run all of the tests:
+          $ am_api_v1_accept.py -a am-undertest
+         Optional: To run individual tests:
+          $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
+     (b) Correct errors and run step (4a) again, as needed.
+
+ (5) Congratulations! You are done.	 
   
 Sample Output
 =============
@@ -239,8 +253,10 @@ Options:
 Bibliography
 ===============
  [1] AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API
- [2] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
- [3] rspeclint code: http://www.protogeni.net/resources/rspeclint
- [4] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
+ [2] AM API v2 change set A documentation: 
+     http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetA
+ [3] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
+ [4] rspeclint code: http://www.protogeni.net/resources/rspeclint
+ [5] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
 
  
