@@ -3,8 +3,11 @@ AM API v1 Acceptance Tests
 
 Description
 ===========
+
 Acceptance tests verify compliance to the GENI Aggregate Manager (AM)
-API v1 specification [1] plus change set A of the AM API v2 specification [2].
+API v1 specification [1] plus change set A of the AM API v2
+specification [2]. This is an early version of the acceptance test to
+get feedback on the test mechanism.
 
 Acceptance tests are intended to be run with credentials from the GPO
 ProtoGENI, but they work with any credentials that are trusted at the
@@ -13,8 +16,9 @@ AM under test.
 Test verifies: 
      - Sliver creation workflow 
      - GetVersion returns GENI AM API version 1 
-     - ListResources returns an advertisement RSpec that is validated with rspeclint 
-     - ListResources FAILS when using a bad credential.
+     - ListResources returns an advertisement RSpec (that is
+       optionally validated with rspeclint)
+     - ListResources FAILS when using a bad user credential.
 
 Installation & Getting Started
 ==============================
@@ -40,7 +44,6 @@ By policy, requires:
  * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
    is located at:
    https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
-
 
 Software
 ==================
@@ -96,14 +99,14 @@ Usage Instructions
 	  Usage: rspeclint [<namespace> <schema>]+ <document>
 
 	  Schema and document locations are either paths or URLs.
- (2) (optional) Test acceptance test with default AM to ensure everything works.
+ (2) (optional) Run acceptance test with default AM to ensure everything works.
      (a) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
           $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
      (b) The above tests should all pass.
 
- (3) Configure to test AM under test. 
+ (3) Configure to point to AM under test. 
      (a) Configure omni_config as necessary.
          * Edit 'aggregates' to point to the url of the AM under test.
          * Edit 'am-undertest' to point to the url of the AM under test.
@@ -113,8 +116,7 @@ Usage Instructions
          (ii) Write a request RSpec for the AM under test and save as: 
      	     gcf-1.5/acceptance_tests/AM_API_v1/request.xml
 
- (4) Positive testing: Run acceptance tests with a GENI credential
- accepted by the AM
+ (4) Run acceptance tests with a GENI credential accepted by the AM
      (a) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
@@ -122,6 +124,22 @@ Usage Instructions
      (b) Correct errors and run step (4a) again, as needed.
 
  (5) Congratulations! You are done.	 
+
+Variations
+==========
+
+ * To validate your RSpecs with rspeclint add the --rspeclint option:
+    $ am_api_v1_accept.py -a am-undertest --rspeclint
+Note this will cause the following text to print (which should be ignored):
+Usage: rspeclint [<namespace> <schema>]+ <document>
+
+Schema and document locations are either paths or URLs.
+
+ * To run with ProtoGENI v2 RSpecs instead of GENI v3 run:
+    $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2
+
+ * With the default AM configuration, instead run:
+    $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2 --rspec-file request_pgv2.xml  
   
 Sample Output
 =============
