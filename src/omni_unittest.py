@@ -74,9 +74,9 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return SLICE_NAME 
-#datetime.datetime.strftime(datetime.datetime.utcnow(),
-#                                                    SLICE_NAME+"-%H%M%S")
+#            return SLICE_NAME 
+            return datetime.datetime.strftime(datetime.datetime.utcnow(),
+                                                    SLICE_NAME+"-%H%M%S")
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
