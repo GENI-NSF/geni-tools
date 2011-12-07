@@ -5,19 +5,16 @@ default_cf = pg-gpo
 # Should match am-undertest below
 aggregates = https://www.emulab.net/protogeni/xmlrpc/am
 
-
 [aggregate_nicknames]
 # Format: Nickname=URN,URL
 
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
 am-undertest=,https://www.emulab.net/protogeni/xmlrpc/am
 
-
 # For reference: other AMs 
 pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
 plc=,https://www.planet-lab.org:12346
-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi
 
 [pg-gpo]
 type=pg
@@ -37,3 +34,4 @@ authority=geni:gpo:gcf
 ch=https://localhost:8000
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
+
