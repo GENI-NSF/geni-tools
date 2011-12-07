@@ -140,7 +140,13 @@ Schema and document locations are either paths or URLs.
 
  * With the default AM configuration, instead run:
     $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2 --rspec-file request_pgv2.xml  
-  
+
+ * It is possible to edit the omni_config to support use of other
+   frameworks like PlanetLab. If you do so, make sure to run the
+   following which will cause your PlanetLab credential to be
+   downloaded:
+    $ omni.py -f plc listresources  
+
 Sample Output
 =============
 
