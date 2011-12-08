@@ -3,10 +3,15 @@
 gcf 1.5:
  * omni
   * Remove AM specific URL validation checks; they were confusing. (ticket #66)
-
+  * SFA library fixes
+  * Updated readToLogin script to filter out nodes that aren't ready
+    and handle if !PlanetLab has no resources
+  * Improved check of manifest RSpec returned by CreateSliver
+  * Added function AM API v2 support
  * gcf
-
-
+  * Added an AM which supports AM API v2
+ * AM API v1 acceptance tests
+  * Initial cut at acceptance tests
 
 gcf 1.4:
  * omni
