@@ -31,6 +31,11 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 New in v1.5:
   * Remove AM specific URL validation checks; they were confusing. (ticket #66)
+  * Incorporated SFA library fixes
+  * Updated readyToLogin script to filter out nodes that aren't ready
+    and handle if !PlanetLab has no resources
+  * Improved check of manifest RSpec returned by CreateSliver
+  * Implemented preliminary (but incomplete) support of AM API v2
 
 New in v1.4:
  * Omni logging is configurable with a -l option, or from a
@@ -363,6 +368,10 @@ Omni supports the following command-line options.
         Print results like RSpecs to STDOUT instead of logging.
 	Only relevant when not saving results to a file with the -o option.
 
+-V, --api-version (default 1)
+        Specify the API version to use when talking to
+        aggregates. Available options are "1" and "2".
+
 === Supported commands ===
 Omni supports the following commands.
 
@@ -483,6 +492,22 @@ Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+==== getusercred ====
+Get the AM API compliant user credential (signed XML document) from
+the configured slice authority.
+
+ * format: omni.py getusercred
+
+ * examples:
+  * Print the user credential obtained from the slice authority:
+      omni.py getusercred
+
+  * Get the user credential from the slice authority and save it to a file:
+      omni.py -o getusercred
+
+If you specify the -o option, the credential is saved to a file.
+The filename is <framework>-usercred.xml.
 
 ==== print_slice_expiration ====
 Print the expiration time of the given slice, and a warning if it is
