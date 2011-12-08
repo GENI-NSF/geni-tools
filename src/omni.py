@@ -378,7 +378,7 @@ class CallHandler(object):
             else:
                 if mymessage != "":
                     mymessage += ". "
-                    mymessage += "No resources from AM %s: %s" % (client.url, message)
+                mymessage += "No resources from AM %s: %s" % (client.url, message)
 
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
