@@ -568,7 +568,7 @@ class AggregateManager(object):
                     value="",
                     output=output)
 
-    def GetVersion(self, options={}):
+    def GetVersion(self, options=dict()):
         '''Specify version information about this AM. That could
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
@@ -586,7 +586,7 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         return self._delegate.ListResources(credentials, options)
 
-    def CreateSliver(self, slice_urn, credentials, rspec, users, options=dict()):
+    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
         """Create a sliver with the given URN from the resources in
         the given RSpec.
         Return an RSpec of the actually allocated resources.
@@ -595,22 +595,22 @@ class AggregateManager(object):
         """
         return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
 
-    def DeleteSliver(self, slice_urn, credentials, options=dict()):
+    def DeleteSliver(self, slice_urn, credentials, options):
         """Delete the given sliver. Return true on success."""
         return self._delegate.DeleteSliver(slice_urn, credentials, options)
 
-    def SliverStatus(self, slice_urn, credentials, options=dict()):
+    def SliverStatus(self, slice_urn, credentials, options):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.'''
         return self._delegate.SliverStatus(slice_urn, credentials, options)
 
-    def RenewSliver(self, slice_urn, credentials, expiration_time, options=dict()):
+    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         """Extend the life of the given sliver until the given
         expiration time. Return False on error."""
         return self._delegate.RenewSliver(slice_urn, credentials,
                                           expiration_time, options)
 
-    def Shutdown(self, slice_urn, credentials, options=dict()):
+    def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
         return self._delegate.Shutdown(slice_urn, credentials, options)
