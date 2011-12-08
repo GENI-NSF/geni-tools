@@ -169,21 +169,28 @@ class ReferenceAggregateManager(object):
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
 
-        if not options:
-            options = dict()
+        if 'geni_rspec_version' not in options:
+            # This is a required option, so error out with bad arguments.
+            self.logger.error('No geni_rspec_version supplied to ListResources.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version was not supplied.')
+        if 'type' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a type field.')
+        if 'version' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a version field.')
 
         # Look to see what RSpec version the client requested
-        if 'rspec_version' in options:
-            # we only have one, so nothing to do here
-            # But an AM with multiple formats supported
-            # would use this to decide how to format the return.
-
-            # Can also error-check that the input value is supported.
-            rspec_type = options['rspec_version']['type']
-            rspec_version = options['rspec_version']['version']
-            if rspec_type is not 'GCF':
-                self.logger.warn("Returning GCF rspec even though request said %s", rspec_type)
-            self.logger.info("ListResources requested rspec %s (%d)", rspec_type, rspec_version)
+        # Error-check that the input value is supported.
+        rspec_type = options['geni_rspec_version']['type']
+        rspec_version = options['geni_rspec_version']['version']
+        if rspec_type != 'geni':
+            self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
+            return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+        if rspec_version != '3':
+            self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
+            return self.errorResult(4, 'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
+        self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
