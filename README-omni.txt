@@ -35,6 +35,7 @@ New in v1.5:
   * Updated readyToLogin script to filter out nodes that aren't ready
     and handle if !PlanetLab has no resources
   * Improved check of manifest RSpec returned by CreateSliver
+  * Added --usercredfile to allow the user to provide their user credential as a file
   * Implemented preliminary (but incomplete) support of AM API v2
 
 New in v1.4:
