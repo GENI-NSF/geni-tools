@@ -1,5 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.5.1:
+ * omni
+ * gcf
+ * AM API v1 acceptance tests
+
 gcf 1.5:
  * omni
   * Removed AM specific URL validation checks; they were confusing. (ticket #66)

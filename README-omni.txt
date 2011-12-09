@@ -29,6 +29,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.5.1:
+
 New in v1.5:
   * Remove AM specific URL validation checks; they were confusing. (ticket #66)
   * Incorporated SFA library fixes
