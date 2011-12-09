@@ -233,7 +233,8 @@ class CallHandler(object):
         rspecs = {}
         options = {}
 
-        options['geni_compressed'] = True;
+        options['geni_compressed'] = self.opts.compress
+        options['geni_available'] = self.opts.available
 
         # An optional slice name might be specified.
         slicename = None
@@ -2411,6 +2412,12 @@ def getParser():
                       help="Do not send timezone on RenewSliver")
     parser.add_option("-V", "--api-version", type="int", default=1,
                       help="Specify version of AM API to use (1, 2, etc.)")
+    parser.add_option("--no-compress", dest='compress', 
+                      default=True, action="store_false",
+                      help="Do not compress returned values")
+    parser.add_option("--available", 
+                      default=False, action="store_true",
+                      help="Only return available resources")
     return parser
 
 def parse_args(argv, options=None):

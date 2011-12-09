@@ -200,8 +200,23 @@ class Test(ut.OmniUnittest):
                            % (agg, API_VERSION, value))
 
     def test_ListResources(self):
-        """Passes if 'ListResources' returns an advertisement RSpec (an XML document which passes rspeclint).
+        """Passes if 'ListResources' returns an advertisement RSpec.
         """
+        # omni sets 'geni_compress' = True
+        self.subtest_ListResources()
+
+    def test_ListResources_notcompressed(self):
+        """Passes if 'ListResources' returns an advertisement RSpec.
+        """
+        # omni sets 'geni_compress' = True, override
+        self.options_copy.compress = False
+        self.subtest_ListResources()
+
+    def test_ListResources_available(self):
+        """Passes if 'ListResources' returns an advertisement RSpec.
+        """
+        # omni sets 'geni_available' = False, override
+        self.options_copy.available = True
         self.subtest_ListResources()
 
 

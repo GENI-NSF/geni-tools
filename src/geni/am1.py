@@ -196,10 +196,16 @@ class Resource(object):
     STATUS_UNKNOWN = 'unknown'
     STATUS_SHUTDOWN = 'shutdown'
 
+    def __str__(self):
+        return ("ID: %d, Type: %s, Available: %s, Status: %s" % 
+                (self._id, self._type, self.available, self.status))
     def __init__(self, id, type):
         self._id = id
         self._type = type
-        self.available = True
+        if (id%2) == 0:
+            self.available = True
+        else:
+            self.available = False            
         self.status = Resource.STATUS_UNKNOWN
 
     def urn(self):
@@ -367,7 +373,8 @@ class ReferenceAggregateManager(object):
                 # return an empty rspec
                 result = '<rspec type="GCF"/>'
         elif 'geni_available' in options and options['geni_available']:
-            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources])
+            # only include available items
+            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources if x.available])                     
                       + '</rspec>')
             # To make this AM return a fixed RSpec do:
             # rspecfile = open('/tmp/sample-of-ad-rspec.xml')
