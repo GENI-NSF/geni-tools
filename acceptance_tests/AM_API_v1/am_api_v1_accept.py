@@ -205,18 +205,18 @@ class Test(ut.OmniUnittest):
         # omni sets 'geni_compress' = True
         self.subtest_ListResources()
 
-    def test_ListResources_notcompressed(self):
+    def test_ListResources_geni_compressed(self):
         """Passes if 'ListResources' returns an advertisement RSpec.
         """
-        # omni sets 'geni_compress' = True, override
-        self.options_copy.compress = False
+        # omni sets 'geni_compressed' = True, override
+        self.options_copy.geni_compressed = False
         self.subtest_ListResources()
 
-    def test_ListResources_available(self):
+    def test_ListResources_geni_available(self):
         """Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_available' = False, override
-        self.options_copy.available = True
+        self.options_copy.geni_available = True
         self.subtest_ListResources()
 
 
