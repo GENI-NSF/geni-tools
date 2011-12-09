@@ -209,6 +209,24 @@ class CallHandler(object):
 
         return (retVal, version)
 
+    def _get_advertised_rspecs(self, client):
+        (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+        ad_key = 'ad_rspec_versions'
+        if self.opts.api_version == 2:
+            if thisVersion['code']['geni_code'] == 0:
+                thisVersion = thisVersion['value']
+                ad_key = 'geni_ad_rspec_versions'
+            else:
+                return (None, 'Error code %s from AM %s: %s' % (client.url, thisVersion['output']))
+        if thisVersion is None:
+            self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+            return (None, 'AM %s did not respond to GetVersion: %s' % (client.url, message))
+        if not thisVersion.has_key(ad_key):
+            self.logger.warning("AM GetVersion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
+            return (None, 'AM %s did not advertise RSpec versions' % (client.url))
+        # Looks ok, return the 'ad_rspec_versions' value.
+        return (thisVersion[ad_key], "")
+
     def _listresources(self, args):
         """Queries resources on various aggregates.
         
@@ -293,23 +311,14 @@ class CallHandler(object):
                 rtype = self.opts.rspectype[0]
                 rver = self.opts.rspectype[1]
                 self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
-                # call getversion
-                (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
-                if thisVersion is None:
-                    self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                if ad_rspec_version is None:
                     if mymessage != "":
                         mymessage += ". "
-                    mymessage = mymessage + "Skipped AM %s that didnt respond to GetVersion: %s" % (client.url, message)
-                    continue
-                elif not thisVersion.has_key('ad_rspec_versions'):
-                    self.logger.warning("AM getversion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
-                    if mymessage != "":
-                        mymessage += ". "
-                    mymessage = mymessage + "Skipped AM %s that didnt advertise RSpec versions" % client.url
+                    mymessage = mymessage + message
                     continue
 
-                # get the ad_rspec_versions key
-                ad_rspec_version = thisVersion['ad_rspec_versions']
                 self.logger.debug("Got %d supported ad_rspec_versions", len(ad_rspec_version))
                 # foreach item in the list that is the val
                 match = False
@@ -335,15 +344,33 @@ class CallHandler(object):
                         mymessage += ". "
                     mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
                     continue
-                # else
-                options['rspec_version'] = dict(type=rtype, version=rver)
-
-            # FIXME: Need to specify what rspec_version we want
-            # For PG non native mode that should be
-#            options['rspec_version'] = dict(type="ProtoGENI", version=0.1)
+                if self.opts.api_version == 1:
+                    options['rspec_version'] = dict(type=rtype, version=rver)
+                else:
+                    options['geni_rspec_version'] = dict(type=rtype, version=rver)
+            elif self.opts.api_version == 2:
+                # User did not specify an rspec type but did request version 2.
+                # Make an attempt to do the right thing, othewise bail and tell the user.
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                if ad_rspec_version is None:
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + message
+                    continue
+                if len(ad_rspec_version) == 1:
+                    # there is only one advertisement, so use it.
+                    options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
+                                                         version=ad_rspec_version[0]['version'])
+                else:
+                    # Inform the user that they have to pick.
+                    ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
+                    self.logger.warning("Please specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
+                    continue
 
             self.logger.debug("Doing listresources with options %r", options)
-
             # If ABAC then creds are ABAC creds. Else Creds are the user cred or slice cred
             # as retrieved above, as normal
             if is_ABAC_framework(self.framework):
@@ -379,7 +406,7 @@ class CallHandler(object):
             else:
                 if mymessage != "":
                     mymessage += ". "
-                    mymessage += "No resources from AM %s: %s" % (client.url, message)
+                mymessage += "No resources from AM %s: %s" % (client.url, message)
 
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)

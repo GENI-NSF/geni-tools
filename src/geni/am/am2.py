@@ -169,21 +169,28 @@ class ReferenceAggregateManager(object):
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
 
-        if not options:
-            options = dict()
+        if 'geni_rspec_version' not in options:
+            # This is a required option, so error out with bad arguments.
+            self.logger.error('No geni_rspec_version supplied to ListResources.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version was not supplied.')
+        if 'type' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a type field.')
+        if 'version' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a version field.')
 
         # Look to see what RSpec version the client requested
-        if 'rspec_version' in options:
-            # we only have one, so nothing to do here
-            # But an AM with multiple formats supported
-            # would use this to decide how to format the return.
-
-            # Can also error-check that the input value is supported.
-            rspec_type = options['rspec_version']['type']
-            rspec_version = options['rspec_version']['version']
-            if rspec_type is not 'GCF':
-                self.logger.warn("Returning GCF rspec even though request said %s", rspec_type)
-            self.logger.info("ListResources requested rspec %s (%d)", rspec_type, rspec_version)
+        # Error-check that the input value is supported.
+        rspec_type = options['geni_rspec_version']['type']
+        rspec_version = options['geni_rspec_version']['version']
+        if rspec_type != 'geni':
+            self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
+            return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+        if rspec_version != '3':
+            self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
+            return self.errorResult(4, 'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
+        self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
@@ -568,7 +575,7 @@ class AggregateManager(object):
                     value="",
                     output=output)
 
-    def GetVersion(self, options={}):
+    def GetVersion(self, options=dict()):
         '''Specify version information about this AM. That could
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
@@ -586,7 +593,7 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         return self._delegate.ListResources(credentials, options)
 
-    def CreateSliver(self, slice_urn, credentials, rspec, users, options=dict()):
+    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
         """Create a sliver with the given URN from the resources in
         the given RSpec.
         Return an RSpec of the actually allocated resources.
@@ -595,22 +602,22 @@ class AggregateManager(object):
         """
         return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
 
-    def DeleteSliver(self, slice_urn, credentials, options=dict()):
+    def DeleteSliver(self, slice_urn, credentials, options):
         """Delete the given sliver. Return true on success."""
         return self._delegate.DeleteSliver(slice_urn, credentials, options)
 
-    def SliverStatus(self, slice_urn, credentials, options=dict()):
+    def SliverStatus(self, slice_urn, credentials, options):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.'''
         return self._delegate.SliverStatus(slice_urn, credentials, options)
 
-    def RenewSliver(self, slice_urn, credentials, expiration_time, options=dict()):
+    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         """Extend the life of the given sliver until the given
         expiration time. Return False on error."""
         return self._delegate.RenewSliver(slice_urn, credentials,
                                           expiration_time, options)
 
-    def Shutdown(self, slice_urn, credentials, options=dict()):
+    def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
         return self._delegate.Shutdown(slice_urn, credentials, options)
