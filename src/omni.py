@@ -1878,7 +1878,9 @@ class CallHandler(object):
             url, urn = self._derefAggNick(self.opts.aggregate)
             _ = urn # appease eclipse
             ret = {}
-            ret[urn] = url
+            url = url.strip()
+            if url != '':
+                ret[urn] = url
             return (ret, "")
         elif not self.omni_config.get('aggregates', '').strip() == '':
             aggs = {}
