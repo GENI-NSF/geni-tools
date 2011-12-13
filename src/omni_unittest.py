@@ -69,12 +69,12 @@ class OmniUnittest(unittest.TestCase):
         #    method being called
         print "MONITORING %s %s" % (inspect.stack()[1][3], result_str)      
 
-    def create_slice_name( self ):
+    def create_slice_name( self, prefix=SLICE_NAME ):
         """slice name to be used to create a test slice"""
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return SLICE_NAME+os.getlogin()
+            return prefix+os.getlogin()
 #            return datetime.datetime.strftime(datetime.datetime.utcnow(),
 #                                                    SLICE_NAME+"-%H%M%S")
 

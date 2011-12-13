@@ -82,6 +82,8 @@ API_VERSION = 1
 
 class NotDictAssertionError( AssertionError ):
     pass
+class NotNoneAssertionError( AssertionError ):
+    pass
 
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
@@ -95,6 +97,10 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.rspectype:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
     
+    def assertIsNotNone(self, item, msg):
+        if item is None:
+            raise NotNoneAssertionError, msg
+
     def assertDict(self, item, msg):
         if not type(item) == dict:
             raise NotDictAssertionError, msg
@@ -366,20 +372,23 @@ class Test(ut.OmniUnittest):
         (3) deletesliver
         (4) (opt) deleteslice
         """
+        self.subtest_CreateSliverWorkflow()
 
-        slice_name = self.create_slice_name()
+    def subtest_CreateSliverWorkflow(self, slicename=None):
+        if slicename==None:
+            slicename = self.create_slice_name()
 
         # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
-            self.subtest_createslice( slice_name )
+            self.subtest_createslice( slicename )
             time.sleep(SLEEP_TIME)
 
-        self.subtest_CreateSliver( slice_name )
+        self.subtest_CreateSliver( slicename )
         time.sleep(SLEEP_TIME)
-        self.subtest_DeleteSliver( slice_name )
+        self.subtest_DeleteSliver( slicename )
 
         if not self.options_copy.reuse_slice_name:
-            self.subtest_deleteslice( slice_name )
+            self.subtest_deleteslice( slicename )
 
 
     def subtest_CreateSliver(self, slice_name):
@@ -398,7 +407,7 @@ class Test(ut.OmniUnittest):
 
         pprinter = pprint.PrettyPrinter(indent=4)
         ## In python 2.7: assertIsNotNone
-        self.assertTrue(manifest is not None,
+        self.assertIsNotNone(manifest,
                           "Return from 'CreateSliver'" \
                           "expected to be XML file " \
                           "but instead returned None.")
@@ -454,6 +463,45 @@ class Test(ut.OmniUnittest):
                          "Slice deletion expected to work " \
                          "but instead slice deletion failed for slice: %s"
                          % slice_name )
+
+
+
+    def test_CreateSliver_badrspec_emptyfile(self):
+        """Passes if the sliver creation workflow fails when the request RSpec is an empty file."""
+        slice_name = self.create_slice_name(prefix='bad')
+        with tempfile.NamedTemporaryFile() as f:
+            # write to a new temporary file
+            f.write( "" )
+            f.seek(0)        
+            self.options_copy.rspec_file = f.name
+            self.assertRaises(NotNoneAssertionError, self.subtest_CreateSliverWorkflow, slice_name )
+
+    def test_CreateSliver_badrspec_malformed(self):
+        """Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML."""
+
+        # Check for the existance of the Request RSpec file
+        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+                         "Request RSpec file, '%s' for 'CreateSliver' call " \
+                             "expected to exist " \
+                             "but does not." 
+                         % self.options_copy.rspec_file )
+
+        slice_name = self.create_slice_name(prefix='bad')
+
+        # open self.options_copy.rspec_file
+        with open(self.options_copy.rspec_file) as good:
+            good_rspec = good.readlines()
+
+        good_rspec = "".join(good_rspec)
+        # replace </rspec> with <rspec>
+        bad_rspec = good_rspec.replace("</rspec>", "<rspec>")
+
+        with tempfile.NamedTemporaryFile() as f:
+            # write to a new temporary file
+            f.write( bad_rspec )
+            f.seek(0)        
+            self.options_copy.rspec_file = f.name
+            self.assertRaises(NotNoneAssertionError, self.subtest_CreateSliverWorkflow, slice_name )
 
     # def test_ListResources2(self):
     #     """Passes if the sliver creation workflow succeeds:
