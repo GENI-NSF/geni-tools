@@ -91,8 +91,11 @@ class _SfaLogger:
             self.logger.setLevel(logging.WARNING)
         elif verbose==1:
             self.logger.setLevel(logging.INFO)
-        elif verbose==2:
+        elif verbose>=2:
             self.logger.setLevel(logging.DEBUG)
+    # in case some other code needs a boolean
+    def getBoolVerboseFromOpt(self,verbose):
+        return verbose>=1
 
     ####################
     def info(self, msg):
@@ -126,8 +129,8 @@ class _SfaLogger:
     # for investigation purposes, can be placed anywhere
     def log_stack(self,message):
         to_log="".join(traceback.format_stack())
-        self.debug("%s BEG STACK"%message+"\n"+to_log)
-        self.debug("%s END STACK"%message)
+        self.info("%s BEG STACK"%message+"\n"+to_log)
+        self.info("%s END STACK"%message)
 
     def enable_console(self, stream=sys.stdout):
         formatter = logging.Formatter("%(message)s")

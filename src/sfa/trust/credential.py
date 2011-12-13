@@ -40,10 +40,11 @@ try:
 except:
     pass
 
-from sfa.util.faults import *
+from xml.parsers.expat import ExpatError
+
+from sfa.util.faults import CredentialNotVerifiable, ChildRightsNotSubsetOfParent
 from sfa.util.sfalogging import logger
 from sfa.util.sfatime import utcparse
-from sfa.trust.certificate import Keypair
 from sfa.trust.credential_legacy import CredentialLegacy
 from sfa.trust.rights import Right, Rights, determine_rights
 from sfa.trust.gid import GID
@@ -209,17 +210,19 @@ class Signature(object):
 # not be changed else the signature is no longer valid.  So, once
 # you have loaded an existing signed credential, do not call encode() or sign() on it.
 
-def filter_creds_by_caller(creds, caller_hrn):
+def filter_creds_by_caller(creds, caller_hrn_list):
         """
         Returns a list of creds who's gid caller matches the
         specified caller hrn
         """
         if not isinstance(creds, list): creds = [creds]
+        if not isinstance(caller_hrn_list, list): 
+            caller_hrn_list = [caller_hrn_list]
         caller_creds = []
         for cred in creds:
             try:
                 tmp_cred = Credential(string=cred)
-                if tmp_cred.get_gid_caller().get_hrn() == caller_hrn:
+                if tmp_cred.get_gid_caller().get_hrn() in caller_hrn_list:
                     caller_creds.append(cred)
             except: pass
         return caller_creds
