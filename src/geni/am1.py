@@ -202,10 +202,7 @@ class Resource(object):
     def __init__(self, id, type):
         self._id = id
         self._type = type
-        if (id%2) == 0:
-            self.available = True
-        else:
-            self.available = False            
+        self.available = True
         self.status = Resource.STATUS_UNKNOWN
 
     def urn(self):
@@ -374,7 +371,7 @@ class ReferenceAggregateManager(object):
                 result = '<rspec type="GCF"/>'
         elif 'geni_available' in options and options['geni_available']:
             # only include available items
-            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources if x.available])                     
+            result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources])
                       + '</rspec>')
             # To make this AM return a fixed RSpec do:
             # rspecfile = open('/tmp/sample-of-ad-rspec.xml')
