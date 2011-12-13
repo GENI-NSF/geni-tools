@@ -57,7 +57,7 @@ MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
-SLEEP_TIME=3
+SLEEP_TIME=1
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -363,7 +363,7 @@ class Test(ut.OmniUnittest):
                             % (agg_name, rspec[:100]))
 
 
-
+        return rspec
 
     def test_CreateSliver(self):
         """Passes if the sliver creation workflow succeeds:
@@ -383,9 +383,38 @@ class Test(ut.OmniUnittest):
             self.subtest_createslice( slicename )
             time.sleep(SLEEP_TIME)
 
-        self.subtest_CreateSliver( slicename )
+        manifest = self.subtest_CreateSliver( slicename )
+        with open(self.options_copy.rspec_file) as f:
+            req = f.readlines()
+            request = "".join(req)
+
+        # # TODO: compare manifest to request
+        # print "REQUEST"
+        # print request
+        # print "MANIFEST"
+        # print manifest
+        # # loop over all nodes in <rspec> and compare 
+        # self.assertTrue( request == manifest,
+        #      "Manifest RSpec returned from 'CreateSliver' " \
+        #      "expected to match Request RSpec passed into 'CreateSliver' " \
+        #      "but were not.")       
+             
+
         time.sleep(SLEEP_TIME)
-        self.subtest_DeleteSliver( slicename )
+        try:
+            self.subtest_SliverStatus( slicename )        
+            manifest2 = self.subtest_ListResources( slicename=slicename )
+            self.assertTrue( manifest == manifest2,
+                  "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
+                  "expected to be equal " \
+                  "but were not.")
+        except:
+            raise
+        finally:
+            self.subtest_DeleteSliver( slicename )
+
+        # Test that DeleteSliver worked (by checking that SliverStatus now fails)
+        self.assertRaises(NotDictAssertionError, self.subtest_SliverStatus, slicename )
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
@@ -429,6 +458,60 @@ class Test(ut.OmniUnittest):
                             "%s\n" \
                             "... edited for length ..." 
                         % (manifest[:100]))
+
+        return manifest
+
+    def subtest_SliverStatus(self, slice_name):
+        # SliverStatus
+        omniargs = ["sliverstatus", slice_name] 
+        text, agg = self.call(omniargs, self.options_copy)
+        pprinter = pprint.PrettyPrinter(indent=4)
+
+        self.assertIsNotNone(agg,
+                          "Return from 'SliverStatus'" \
+                          "expected to be XMLRPC struct " \
+                          "but instead returned None.")
+        self.assertTrue(type(agg) is dict,
+                        "Return from 'SliverStatus' " \
+                            "expected to be XMLRPC struct " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (agg))
+        for aggName, status in agg.items():
+            self.assertDict(status, 
+                            "Return from 'SliverStatus' for Aggregate %s" \
+                            "expected to be XMLRPC struct " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                            % (agg, status))
+            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_urn', str )
+            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_status', str )
+            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_resources', list )
+            resources = status['geni_resources']
+            for resource in resources:
+                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_urn', str )
+                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_status', str )
+                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_error', str )
+
+    def checkKeyValue( self, method, aggName, dictionary, key, valueType=str):
+        """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        self.assertTrue(dictionary.has_key(key),
+                        "Return from '%s' at %s" \
+                            "expected to have entry '%s' " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, key, str(dictionary)))
+
+        self.assertTrue(type(dictionary[key])==valueType,
+                        "Return from '%s' at %s" \
+                            "expected to have entry '%s' of type '%s' " \
+                            "but instead returned: %s" 
+                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+
+
 
 
     def subtest_DeleteSliver(self, slice_name):
