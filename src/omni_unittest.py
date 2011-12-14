@@ -75,8 +75,15 @@ class OmniUnittest(unittest.TestCase):
             return self.options.reuse_slice_name
         else:
             return prefix+os.getlogin()
-#            return datetime.datetime.strftime(datetime.datetime.utcnow(),
-#                                                    SLICE_NAME+"-%H%M%S")
+
+    def create_slice_name_uniq( self, prefix=SLICE_NAME ):
+        """Unique slice name to be used to create a test slice"""
+        if self.options.reuse_slice_name:
+            return self.options.reuse_slice_name
+        else:
+#            return prefix+os.getlogin()
+            return datetime.datetime.strftime(datetime.datetime.utcnow(),
+                                                    prefix+"-%H%M%S")
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
