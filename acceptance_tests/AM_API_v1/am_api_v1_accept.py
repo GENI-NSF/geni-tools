@@ -407,6 +407,15 @@ class Test(ut.OmniUnittest):
             #       "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
             #       "expected to be equal " \
             #       "but were not.")
+            now = datetime.datetime.utcnow()
+            fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
+            twodays = (now + datetime.timedelta(days=2)).isoformat()            
+            fivedays = (now + datetime.timedelta(days=5)).isoformat()            
+            sixdays = (now + datetime.timedelta(days=6)).isoformat()            
+            self.subtest_RenewSlice( slicename, sixdays )
+            self.subtest_RenewSliver( slicename, fivemin )
+            self.subtest_RenewSliver( slicename, twodays )
+            self.subtest_RenewSliver( slicename, fivedays )
         except:
             raise
         finally:
@@ -424,7 +433,6 @@ class Test(ut.OmniUnittest):
         self.subtest_CreateSliverWorkflow_failure( slicename )
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-        # Test that DeleteSliver worked (by checking that SliverStatus now fails)
 #        self.assertRaises(NotNoneAssertionError, 
         self.assertRaises(NotDictAssertionError, 
                           self.subtest_SliverStatus, slicename )
@@ -443,6 +451,30 @@ class Test(ut.OmniUnittest):
         # Also repeated calls to DeleteSliver should now fail
         self.assertRaises(AssertionError, 
                           self.subtest_DeleteSliver, slicename )
+
+
+
+    def subtest_RenewSliver( self, slicename, newtime ):
+        omniargs = ["renewsliver", slicename, newtime] 
+        text, (succList, failList) = self.call(omniargs, self.options_copy)
+        succNum, possNum = omni.countSuccess( succList, failList )
+        pprinter = pprint.PrettyPrinter(indent=4)
+        self.assertTrue( int(succNum) == 1,
+                         "'RenewSliver' " \
+                         "expected to succeed " \
+                         "but did not.")
+
+    def subtest_RenewSlice( self, slicename, newtime ):
+        omniargs = ["renewslice", slicename, newtime] 
+        text, date = self.call(omniargs, self.options_copy)
+        pprinter = pprint.PrettyPrinter(indent=4)
+        self.assertIsNotNone( date, 
+                         "'RenewSlice' " \
+                         "expected to succeed " \
+                         "but did not.")
+
+
+
 
     def subtest_CreateSliver(self, slice_name):
         self.assertTrue( self.checkRequestRSpecVersion() )
