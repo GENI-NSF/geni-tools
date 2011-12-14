@@ -30,7 +30,7 @@ import uuid
 
 from sfa.trust.certificate import Certificate
 
-from sfa.util.faults import *
+from sfa.util.faults import GidInvalidParentHrn, GidParentHrn
 from sfa.util.sfalogging import logger
 from sfa.util.xrn import hrn_to_urn, urn_to_hrn, hrn_authfor_hrn
 

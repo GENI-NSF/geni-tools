@@ -23,7 +23,7 @@
 
 import re
 
-from sfa.util.faults import *
+from sfa.util.faults import SfaAPIError
 
 # for convenience and smoother translation - we should get rid of these functions eventually 
 def get_leaf(hrn): return Xrn(hrn).get_leaf()
@@ -98,7 +98,7 @@ class Xrn:
     @staticmethod
     def urn_full (urn):
         if urn.startswith(Xrn.URN_PREFIX): return urn
-        else: return Xrn.URN_PREFIX+URN
+        else: return Xrn.URN_PREFIX+urn
     @staticmethod
     def urn_meaningful (urn):
         if urn.startswith(Xrn.URN_PREFIX): return urn[len(Xrn.URN_PREFIX):]
@@ -173,13 +173,18 @@ class Xrn:
             # or completely change how record types are generated/stored   
             if name != 'sa':
                 type = type + "+" + name
-
+            name =""
+        else:
+            name = parts.pop(len(parts)-1)
         # convert parts (list) into hrn (str) by doing the following
         # 1. remove blank parts
         # 2. escape dots inside parts
         # 3. replace ':' with '.' inside parts
         # 3. join parts using '.' 
         hrn = '.'.join([Xrn.escape(part).replace(':','.') for part in parts if part]) 
+        # dont replace ':' in the name section
+        if name:
+            hrn += '.%s' % Xrn.escape(name) 
 
         self.hrn=str(hrn)
         self.type=str(type)

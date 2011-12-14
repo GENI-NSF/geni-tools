@@ -3,6 +3,7 @@
 gcf 1.5.1:
  * omni
  * gcf
+  * Incorporated latest SFA library changes (tag sfa-2.0-4)
  * AM API v1 acceptance tests
 
 gcf 1.5:

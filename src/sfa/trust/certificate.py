@@ -39,16 +39,13 @@ import functools
 import os
 import tempfile
 import base64
-import traceback
 from tempfile import mkstemp
 
 from OpenSSL import crypto
 import M2Crypto
 from M2Crypto import X509
 
-from sfa.util.sfalogging import logger
-from sfa.util.xrn import urn_to_hrn
-from sfa.util.faults import *
+from sfa.util.faults import CertExpired, CertMissingParent, CertNotSignedByParent
 from sfa.util.sfalogging import logger
 
 glo_passphrase_callback = None
@@ -527,7 +524,7 @@ class Certificate:
 
         if self.isCA != None:
             # Can't double set properties
-            raise "Cannot set basicConstraints CA:?? more than once. Was %s, trying to set as %s" % (self.isCA, val)
+            raise Exception, "Cannot set basicConstraints CA:?? more than once. Was %s, trying to set as %s" % (self.isCA, val)
 
         self.isCA = val
         if val:
@@ -720,8 +717,14 @@ class Certificate:
 
         # if it wasn't signed by the parent...
         if not self.is_signed_by_cert(self.parent):
-            logger.debug("verify_chain: NO. %s is not signed by parent %s, but by %s"%self.get_printable_subject(), self.parent.get_printable_subject(), self.get_issuer())
-            raise CertNotSignedByParent(self.get_printable_subject() + ": Parent %s, issuer %s" % (self.parent.get_printable_subject(), self.get_issuer()))
+            logger.debug("verify_chain: NO. %s is not signed by parent %s, but by %s"%\
+                             (self.get_printable_subject(), 
+                              self.parent.get_printable_subject(), 
+                              self.get_issuer()))
+            raise CertNotSignedByParent("%s: Parent %s, issuer %s"\
+                                            % (self.get_printable_subject(), 
+                                               self.parent.get_printable_subject(),
+                                               self.get_issuer()))
 
         # Confirm that the parent is a CA. Only CAs can be trusted as
         # signers.
@@ -730,11 +733,14 @@ class Certificate:
         # Ugly - cert objects aren't parsed so we need to read the
         # extension and hope there are no other basicConstraints
         if not self.parent.isCA and not (self.parent.get_extension('basicConstraints') == 'CA:TRUE'):
-            logger.warn("verify_chain: cert %s's parent %s is not a CA" % (self.get_printable_subject(), self.parent.get_printable_subject()))
-            raise CertNotSignedByParent(self.get_printable_subject() + ": Parent %s not a CA" % self.parent.get_printable_subject())
+            logger.warn("verify_chain: cert %s's parent %s is not a CA" % \
+                            (self.get_printable_subject(), self.parent.get_printable_subject()))
+            raise CertNotSignedByParent("%s: Parent %s not a CA" % (self.get_printable_subject(),
+                                                                    self.parent.get_printable_subject()))
 
         # if the parent isn't verified...
-        logger.debug("verify_chain: .. %s, -> verifying parent %s"%(self.get_printable_subject(),self.parent.get_printable_subject()))
+        logger.debug("verify_chain: .. %s, -> verifying parent %s"%\
+                         (self.get_printable_subject(),self.parent.get_printable_subject()))
         self.parent.verify_chain(trusted_certs)
 
         return
