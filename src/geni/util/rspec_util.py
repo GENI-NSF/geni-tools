@@ -25,7 +25,8 @@
 """
 RSpec validation utilities.
 """
-
+import lxml.objectify
+import lxml.etree as etree
 import subprocess
 import tempfile
 import xml.parsers.expat
@@ -56,6 +57,19 @@ def is_wellformed_xml( string ):
         retVal= False
     return retVal
 
+# def compare_request_manifest( request, manifest ):
+#     """Compare the nodes in the request and manifest to make sure they match."""
+#     req = lxml.objectify.fromstring(request)    
+#     print help(req)
+#     man = lxml.objectify.fromstring(manifest)
+    
+def xml_equal( xml1, xml2 ):
+    """Compare two xml documents and determine if they are the same (return: True)."""
+    obj1 = lxml.objectify.fromstring(xml1.strip())
+    newxml1 = etree.tostring(obj1)
+    obj2 = lxml.objectify.fromstring(xml2.strip())
+    newxml2 = etree.tostring(obj2)
+    return newxml1 == newxml2
 
 def rspeclint_exists():
     """Try to run 'rspeclint' to see if we can find it."""
@@ -173,3 +187,11 @@ if __name__ == "__main__":
     test( xml_notrspec_str )
     test( malformed_str )
     test( earlycomment_str )
+
+    print "===== XML Equality test ======"
+    print xml_equal(xml_str, xml_notrspec_str)
+    print xml_equal(xml_str, xml_str)
+
+    # print "===== XML Comparison test ======"
+    # print compare_request_manifest(xml_str, xml_notrspec_str)
+    # print compare_request_manifest(xml_str, xml_str)

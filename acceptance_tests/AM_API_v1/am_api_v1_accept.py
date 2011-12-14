@@ -393,6 +393,7 @@ class Test(ut.OmniUnittest):
         # print "MANIFEST"
         # print manifest
         # # loop over all nodes in <rspec> and compare 
+        # NEED SOMETHING SPECIAL HERE
         # self.assertTrue( request == manifest,
         #      "Manifest RSpec returned from 'CreateSliver' " \
         #      "expected to match Request RSpec passed into 'CreateSliver' " \
@@ -403,19 +404,16 @@ class Test(ut.OmniUnittest):
         try:
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
-            # self.assertTrue( manifest == manifest2,
-            #       "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
-            #       "expected to be equal " \
-            #       "but were not.")
-            now = datetime.datetime.utcnow()
-            fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
-            twodays = (now + datetime.timedelta(days=2)).isoformat()            
-            fivedays = (now + datetime.timedelta(days=5)).isoformat()            
-            sixdays = (now + datetime.timedelta(days=6)).isoformat()            
-            self.subtest_RenewSlice( slicename, sixdays )
-            self.subtest_RenewSliver( slicename, fivemin )
-            self.subtest_RenewSliver( slicename, twodays )
-            self.subtest_RenewSliver( slicename, fivedays )
+            self.assertTrue( rspec_util.xml_equal(manifest, manifest2),
+                  "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
+                  "expected to be equal " \
+                  "but were not. " \
+                  "\nManifest from 'CreateSliver': \n %s " \
+                  "\nManifest from 'ListResources': \n %s " 
+                             % (manifest, manifest2))
+
+            # RenewSliver for 5 mins, 2 days, and 5 days
+            self.subtest_RenewSliver_many( slicename )
         except:
             raise
         finally:
@@ -473,8 +471,16 @@ class Test(ut.OmniUnittest):
                          "expected to succeed " \
                          "but did not.")
 
-
-
+    def subtest_RenewSliver_many( self, slicename ):
+        now = datetime.datetime.utcnow()
+        fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
+        twodays = (now + datetime.timedelta(days=2)).isoformat()            
+        fivedays = (now + datetime.timedelta(days=5)).isoformat()            
+        sixdays = (now + datetime.timedelta(days=6)).isoformat()            
+        self.subtest_RenewSlice( slicename, sixdays )
+        self.subtest_RenewSliver( slicename, fivemin )
+        self.subtest_RenewSliver( slicename, twodays )
+        self.subtest_RenewSliver( slicename, fivedays )
 
     def subtest_CreateSliver(self, slice_name):
         self.assertTrue( self.checkRequestRSpecVersion() )
@@ -521,6 +527,7 @@ class Test(ut.OmniUnittest):
         # SliverStatus
         omniargs = ["sliverstatus", slice_name] 
         text, agg = self.call(omniargs, self.options_copy)
+
         pprinter = pprint.PrettyPrinter(indent=4)
 
         self.assertIsNotNone(agg,
