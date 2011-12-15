@@ -388,29 +388,22 @@ class Test(ut.OmniUnittest):
             request = "".join(req)
 
         # # TODO: compare manifest to request
-        # print "REQUEST"
-        # print request
-        # print "MANIFEST"
-        # print manifest
-        # # loop over all nodes in <rspec> and compare 
-        # NEED SOMETHING SPECIAL HERE
-        # self.assertTrue( request == manifest,
+        # self.assertTrue( TEST,
         #      "Manifest RSpec returned from 'CreateSliver' " \
-        #      "expected to match Request RSpec passed into 'CreateSliver' " \
-        #      "but were not.")       
+        #      "expected to be consistent with Request RSpec passed into 'CreateSliver' " \
+        #      "but is not.")       
              
-
         time.sleep(SLEEP_TIME)
         try:
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
-            self.assertTrue( rspec_util.xml_equal(manifest, manifest2),
-                  "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
-                  "expected to be equal " \
-                  "but were not. " \
-                  "\nManifest from 'CreateSliver': \n %s " \
-                  "\nManifest from 'ListResources': \n %s " 
-                             % (manifest, manifest2))
+            # self.assertTrue( rspec_util.xml_equal(manifest, manifest2),
+            #       "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
+            #       "expected to be equal " \
+            #       "but were not. " \
+            #       "\nManifest from 'CreateSliver': \n %s " \
+            #       "\nManifest from 'ListResources': \n %s " 
+            #                  % (manifest, manifest2))
 
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )
@@ -431,21 +424,32 @@ class Test(ut.OmniUnittest):
         self.subtest_CreateSliverWorkflow_failure( slicename )
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-#        self.assertRaises(NotNoneAssertionError, 
         self.assertRaises(NotDictAssertionError, 
                           self.subtest_SliverStatus, slicename )
 
         # Also ListResources should now fail
-        try:
-            # Option 1: Error because the slice does not exist
-#            self.assertRaises(NotNoneAssertionError, 
-            self.assertRaises(NotDictAssertionError, 
-                              self.subtest_ListResources, slicename )
-        except AssertionError:
-            # Option 2: Return an RSpec containing no resources
-            # TO DO
-            pass
-
+        # try:
+        #     # Option 1: Error because the slice does not exist
+        #     self.assertRaises(NotDictAssertionError, 
+        #                       self.subtest_ListResources, slicename )
+        # except AssertionError:
+        # Option 2: ListResources should return an RSpec containing no resources
+        manifest = self.subtest_ListResources( slicename )
+        self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                          "expected to be wellformed XML file " \
+                          "but was not. Return was: " \
+                          "\n%s\n" \
+                          "... edited for length ..."
+                            % (slicename, manifest[:100]))                         
+        self.assertFalse( rspec_util.has_child( manifest ),
+                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                          "expected to be empty " \
+                          "but was not. Return was: " \
+                          "\n%s\n" \
+                          "... edited for length ..."
+                            % (slicename, manifest[:100]))
+        
         # Also repeated calls to DeleteSliver should now fail
         self.assertRaises(AssertionError, 
                           self.subtest_DeleteSliver, slicename )
@@ -458,18 +462,18 @@ class Test(ut.OmniUnittest):
         succNum, possNum = omni.countSuccess( succList, failList )
         pprinter = pprint.PrettyPrinter(indent=4)
         self.assertTrue( int(succNum) == 1,
-                         "'RenewSliver' " \
+                         "'RenewSliver' until %s " \
                          "expected to succeed " \
-                         "but did not.")
+                         "but did not." % (str(newtime)))
 
     def subtest_RenewSlice( self, slicename, newtime ):
         omniargs = ["renewslice", slicename, newtime] 
         text, date = self.call(omniargs, self.options_copy)
         pprinter = pprint.PrettyPrinter(indent=4)
         self.assertIsNotNone( date, 
-                         "'RenewSlice' " \
+                         "'RenewSlice' until %s " \
                          "expected to succeed " \
-                         "but did not.")
+                         "but did not." % (str(newtime)))
 
     def subtest_RenewSliver_many( self, slicename ):
         now = datetime.datetime.utcnow()
