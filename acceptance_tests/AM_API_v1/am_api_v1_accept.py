@@ -497,27 +497,30 @@ class Test(ut.OmniUnittest):
                           self.subtest_SliverStatus, slicename )
 
         # Also ListResources should now fail
-        # try:
-        #     # Option 1: Error because the slice does not exist
-        #     self.assertRaises(NotDictAssertionError, 
-        #                       self.subtest_ListResources, slicename )
-        # except AssertionError:
-        # Option 2: ListResources should return an RSpec containing no resources
-        manifest = self.subtest_ListResources( slicename )
-        self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+        # Option 1: ListResources should return an RSpec containing no resources
+        try:
+            manifest = self.subtest_ListResources( slicename )
+            # if --less-strict, then accept a returned error
+            # Option 2: Error returned
+            # TO DO: perhaps be picky about the type of error returned
+            if not self.options_copy.less_strict:
+                self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+                             "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                             "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                             "\n%s\n" \
+                             "... edited for length ..."
+                         % (slicename, manifest[:100]))                         
+                self.assertFalse( rspec_util.has_child( manifest ),
                           "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                          "expected to be wellformed XML file " \
-                          "but was not. Return was: " \
-                          "\n%s\n" \
-                          "... edited for length ..."
-                            % (slicename, manifest[:100]))                         
-        self.assertFalse( rspec_util.has_child( manifest ),
-                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                          "expected to be empty " \
-                          "but was not. Return was: " \
-                          "\n%s\n" \
-                          "... edited for length ..."
-                            % (slicename, manifest[:100]))
+                              "expected to be empty " \
+                              "but was not. Return was: " \
+                              "\n%s\n" \
+                              "... edited for length ..."
+                          % (slicename, manifest[:100]))
+        except NotDictAssertionError:
+            if not self.options_copy.less_strict:
+                raise
         
         # Also repeated calls to DeleteSliver should now fail
         self.assertRaises(AssertionError, 
@@ -768,6 +771,10 @@ if __name__ == '__main__':
                        action="store_true", 
                        dest='rspeclint', default=False,
                        help="Validate RSpecs using 'rspeclint'" )
+    parser.add_option( "--less-strict", 
+                       action="store_true", 
+                       dest='less_strict', default=False,
+                       help="Be less rigorous." )
     parser.add_option( "--ProtoGENIv2", 
                        action="store_true", 
                        dest='protogeniv2', default=False,
