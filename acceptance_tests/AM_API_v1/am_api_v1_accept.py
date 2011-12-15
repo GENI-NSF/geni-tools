@@ -105,6 +105,57 @@ class Test(ut.OmniUnittest):
         if not type(item) == dict:
             raise NotDictAssertionError, msg
 
+    def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
+        """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        self.assertTrue(dictionary.has_key(key),
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, key, str(dictionary)))
+
+        self.assertTrue(type(dictionary[key])==valueType,
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' of type '%s' " \
+                            "but instead returned: %s" 
+                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+
+
+    def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
+        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType"""
+        self.assertDict( dictionary,
+                        "Return from '%s' at %s " \
+                            "expected to be dictionary " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, str(dictionary)))                         
+        self.assertTrue( dictionary.has_key(keyA) or
+                         dictionary.has_key(keyB), 
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' or '%s' " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, keyA, keyB,  str(dictionary)))
+
+        self.assertTrue(type(dictionary[keyA])==valueType or
+                        type(dictionary[keyB])==valueType,
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' or '%s' of type '%s' " \
+                            "but did not." 
+                        % (method, aggName, keyA, keyB, str(valueType)))
+    
+    def assertReturnPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
+        """Check whether dictionary returned by method at aggName has one of keyA or keyB of type valueType and return whichever one exists.
+        If both exist, return dictionary[keyA]."""
+        self.assertPairKeyValue( method, aggName, dictionary, keyA, keyB, valueType=valueType)
+        if dictionary.has_key(keyA):
+            return dictionary[keyA]
+        else:
+            return dictionary[keyB]            
+
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
@@ -204,6 +255,24 @@ class Test(ut.OmniUnittest):
                           "expected to have 'geni_api=%d' " \
                           "but instead 'geni_api=%d.'"  
                            % (agg, API_VERSION, value))
+
+            request_rspec_versions = self.assertReturnPairKeyValue( 
+                'GetVersion', agg, ver_dict, 
+                'request_rspec_versions', 
+                'geni_request_rspec_versions', 
+                list )
+            for vers in request_rspec_versions:
+                self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
+                self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
+            ad_rspec_versions = self.assertReturnPairKeyValue( 
+                'GetVersion', agg, ver_dict, 
+                'ad_rspec_versions',
+                'geni_ad_rspec_versions', 
+                list )
+            for vers in ad_rspec_versions:
+                self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
+                self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
+
 
     def test_ListResources(self):
         """Passes if 'ListResources' returns an advertisement RSpec.
@@ -553,30 +622,17 @@ class Test(ut.OmniUnittest):
                             "%s\n" \
                             "... edited for length ..." 
                             % (agg, status))
-            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_urn', str )
-            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_status', str )
-            self.checkKeyValue( 'SliverStatus', aggName, status, 'geni_resources', list )
+            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_urn', str )
+            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_status', str )
+            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_resources', list )
             resources = status['geni_resources']
             for resource in resources:
-                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_urn', str )
-                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_status', str )
-                self.checkKeyValue( 'SliverStatus', aggName, resource, 'geni_error', str )
+                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_urn', str )
+                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_status', str )
+                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_error', str )
 
-    def checkKeyValue( self, method, aggName, dictionary, key, valueType=str):
-        """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
-        self.assertTrue(dictionary.has_key(key),
-                        "Return from '%s' at %s" \
-                            "expected to have entry '%s' " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (method, aggName, key, str(dictionary)))
 
-        self.assertTrue(type(dictionary[key])==valueType,
-                        "Return from '%s' at %s" \
-                            "expected to have entry '%s' of type '%s' " \
-                            "but instead returned: %s" 
-                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+        
 
 
 
