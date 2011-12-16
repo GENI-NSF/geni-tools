@@ -28,6 +28,7 @@ import datetime
 from geni.util import rspec_util 
 import unittest
 import omni_unittest as ut
+from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omnilib.util import OmniError, NoSliceCredError
 import os
 import pprint
@@ -82,11 +83,6 @@ SLEEP_TIME=3
 API_VERSION = 1
 
 
-class NotDictAssertionError( AssertionError ):
-    pass
-class NotNoneAssertionError( AssertionError ):
-    pass
-
 class Test(ut.OmniUnittest):
     """Acceptance tests for GENI AM API v1."""
 
@@ -99,65 +95,6 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.rspectype:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
     
-    def assertIsNotNone(self, item, msg):
-        if item is None:
-            raise NotNoneAssertionError, msg
-
-    def assertDict(self, item, msg):
-        if not type(item) == dict:
-            raise NotDictAssertionError, msg
-
-    def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
-        """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
-        self.assertTrue(dictionary.has_key(key),
-                        "Return from '%s' at %s " \
-                            "expected to have entry '%s' " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (method, aggName, key, str(dictionary)))
-
-        self.assertTrue(type(dictionary[key])==valueType,
-                        "Return from '%s' at %s " \
-                            "expected to have entry '%s' of type '%s' " \
-                            "but instead returned: %s" 
-                        % (method, aggName, key, str(valueType), str(dictionary[key])))
-
-
-    def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
-        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType"""
-        self.assertDict( dictionary,
-                        "Return from '%s' at %s " \
-                            "expected to be dictionary " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (method, aggName, str(dictionary)))                         
-        self.assertTrue( dictionary.has_key(keyA) or
-                         dictionary.has_key(keyB), 
-                        "Return from '%s' at %s " \
-                            "expected to have entry '%s' or '%s' " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (method, aggName, keyA, keyB,  str(dictionary)))
-
-        self.assertTrue(type(dictionary[keyA])==valueType or
-                        type(dictionary[keyB])==valueType,
-                        "Return from '%s' at %s " \
-                            "expected to have entry '%s' or '%s' of type '%s' " \
-                            "but did not." 
-                        % (method, aggName, keyA, keyB, str(valueType)))
-    
-    def assertReturnPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
-        """Check whether dictionary returned by method at aggName has one of keyA or keyB of type valueType and return whichever one exists.
-        If both exist, return dictionary[keyA]."""
-        self.assertPairKeyValue( method, aggName, dictionary, keyA, keyB, valueType=valueType)
-        if dictionary.has_key(keyA):
-            return dictionary[keyA]
-        else:
-            return dictionary[keyB]            
-
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
