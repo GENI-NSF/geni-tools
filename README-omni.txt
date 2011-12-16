@@ -31,6 +31,11 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 New in v1.5.1:
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
+  * Complete support of AM API v2 (ticket #69)
+    - Default is AM API v1
+    - Use -V 2 or --api-version 2 to cause omni to use AM APIv2 to speak to aggregates
+   * Added --available to have listresources filter calls to only include available nodes (ticket #74)
+   * Added --no-compress to allow the user to specify that AM API call returns should not be compressed (ticket #73)
 
 New in v1.5:
   * Remove AM specific URL validation checks; they were confusing. (ticket #66)
