@@ -28,6 +28,7 @@ import datetime
 from geni.util import rspec_util 
 import unittest
 import omni_unittest as ut
+from omnilib.util import OmniError, NoSliceCredError
 import os
 import pprint
 import re
@@ -473,12 +474,13 @@ class Test(ut.OmniUnittest):
             #       "\nManifest from 'CreateSliver': \n %s " \
             #       "\nManifest from 'ListResources': \n %s " 
             #                  % (manifest, manifest2))
-
+            time.sleep(SLEEP_TIME)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )
         except:
             raise
         finally:
+            time.sleep(SLEEP_TIME)
             self.subtest_DeleteSliver( slicename )
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
@@ -493,37 +495,32 @@ class Test(ut.OmniUnittest):
         self.subtest_CreateSliverWorkflow_failure( slicename )
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-        self.assertRaises(NotDictAssertionError, 
+        self.assertRaises((NotDictAssertionError, NoSliceCredError), 
                           self.subtest_SliverStatus, slicename )
-
-        # Also ListResources should now fail
-        # Option 1: ListResources should return an RSpec containing no resources
-        try:
-            manifest = self.subtest_ListResources( slicename )
+        
+        if self.options_copy.less_strict:
             # if --less-strict, then accept a returned error
-            # Option 2: Error returned
-            # TO DO: perhaps be picky about the type of error returned
-            if not self.options_copy.less_strict:
-                self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+            self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename )
+        else:
+            # ListResources should return an RSpec containing no resources
+            manifest = self.subtest_ListResources( slicename )
+            self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
                              "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
-                self.assertFalse( rspec_util.has_child( manifest ),
+            self.assertFalse( rspec_util.has_child( manifest ),
                           "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                               "expected to be empty " \
                               "but was not. Return was: " \
                               "\n%s\n" \
                               "... edited for length ..."
                           % (slicename, manifest[:100]))
-        except NotDictAssertionError:
-            if not self.options_copy.less_strict:
-                raise
         
         # Also repeated calls to DeleteSliver should now fail
-        self.assertRaises(AssertionError, 
+        self.assertRaises((AssertionError, NoSliceCredError), 
                           self.subtest_DeleteSliver, slicename )
 
 
@@ -554,7 +551,7 @@ class Test(ut.OmniUnittest):
         fivedays = (now + datetime.timedelta(days=5)).isoformat()            
         sixdays = (now + datetime.timedelta(days=6)).isoformat()            
         self.subtest_RenewSlice( slicename, sixdays )
-        self.subtest_RenewSliver( slicename, fivemin )
+#        self.subtest_RenewSliver( slicename, fivemin )
         self.subtest_RenewSliver( slicename, twodays )
         self.subtest_RenewSliver( slicename, fivedays )
 
@@ -602,6 +599,7 @@ class Test(ut.OmniUnittest):
     def subtest_SliverStatus(self, slice_name):
         # SliverStatus
         omniargs = ["sliverstatus", slice_name] 
+        
         text, agg = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
@@ -710,7 +708,19 @@ class Test(ut.OmniUnittest):
             f.write( bad_rspec )
             f.seek(0)        
             self.options_copy.rspec_file = f.name
-            self.assertRaises(NotNoneAssertionError, self.subtest_CreateSliverWorkflow, slice_name )
+            self.assertRaises(NotNoneAssertionError, 
+                              self.subtest_CreateSliverWorkflow, 
+                              slice_name )
+
+
+    def test_CreateSliver_badrspec_manifest(self):
+        """Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec."""
+        slice_name = self.create_slice_name(prefix='bad')
+        self.options_copy.rspec_file='manifest.xml'
+        self.assertRaises(NotNoneAssertionError, 
+                          self.subtest_CreateSliverWorkflow, 
+                          slice_name )
+
 
     # def test_ListResources2(self):
     #     """Passes if the sliver creation workflow succeeds:

@@ -20,4 +20,4 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 
-from omnierror import OmniError
+from omnierror import OmniError, NoSliceCredError
