@@ -89,12 +89,6 @@ These instructions assume you have already done the following items:
  (2) Request GPO ProtoGENI credentials.  If you don't have any, e-mail:
      help@geni.net
 
- (3) [optional] Move gcf/acceptance_tests/AM_API_v1/omni_config to
-     ~/.gcf/omni_config to ease running of acceptance tests from any
-     location.  But be careful to not overwrite any omni_config that
-     may already be at that location.
-
-
 Usage Instructions
 ==================
 
@@ -145,18 +139,23 @@ Usage Instructions
  (4) Run acceptance tests with a GENI credential accepted by the AM
      (a) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
-         Optional: To run individual tests:
+         Optional: To run individual tests (replacing test_GetVersion
+         with the name of the appropriate test):
           $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
      (b) Correct errors and run step (4a) again, as needed.
      	 * See "Common Errors and What to Do About It" below for how
-                to deal with common errors.  In particular, you may
-                find --more-strict helpful if your AM returns an empty
-                RSpec when a slice does not exist.
+                to deal with common errors.  
+	 * In particular, you may find --more-strict helpful if your
+                AM returns an empty RSpec from ListResources when a
+                slice does not exist.
 
  (5) Congratulations! You are done.	 
 
 Variations
 ==========
+
+ * Use --vv to have the underlying unittest be more verbose (including
+   printing names and descriptions of tests).
 
  * To validate your RSpecs with rspeclint add the --rspeclint option:
     $ am_api_v1_accept.py -a am-undertest --rspeclint
@@ -172,6 +171,10 @@ Schema and document locations are either paths or URLs.
     $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2 --rspec-file request_pgv2.xml  
     
     This provides an appropriate ProtoGENI v2 request RSpec for the test.
+
+    Use --bad-rspec-file to provide an alternative manifest RSpec or
+    other inappropriate file to verify CreateSliver fails when passed
+    a bad request RSpec.
 
  * It is possible to edit the omni_config to support use of other
    frameworks. 
@@ -228,7 +231,6 @@ FAILED (failures=1)
 
 Output of help message:
 
-$ am_api_v1_accept.py  -h
 $ am_api_v1_accept.py -h        
 Usage:                                                                         
       ./am_api_v1_accept.py -a am-undertest                                    

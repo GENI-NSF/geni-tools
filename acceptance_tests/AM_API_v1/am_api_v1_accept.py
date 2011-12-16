@@ -201,7 +201,7 @@ class Test(ut.OmniUnittest):
             return match
 
     def test_GetVersion(self):
-        """Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1'.
+        """test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1' and other parameters defined in Change Set A.
         """
         # Do AM API call
         omniargs = ["getversion"]
@@ -277,20 +277,20 @@ class Test(ut.OmniUnittest):
 
 
     def test_ListResources(self):
-        """Passes if 'ListResources' returns an advertisement RSpec.
+        """test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_compress' = True
         self.subtest_ListResources()
 
     def test_ListResources_geni_compressed(self):
-        """Passes if 'ListResources' returns an advertisement RSpec.
+        """test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_compressed' = True, override
         self.options_copy.geni_compressed = False
         self.subtest_ListResources()
 
     def test_ListResources_geni_available(self):
-        """Passes if 'ListResources' returns an advertisement RSpec.
+        """test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_available' = False, override
         self.options_copy.geni_available = True
@@ -298,7 +298,7 @@ class Test(ut.OmniUnittest):
 
 
     def test_ListResources_badCredential(self):
-        """Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
+        """test_ListResources_badCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
         """
 
         # (1) Get the usercredential
@@ -436,12 +436,7 @@ class Test(ut.OmniUnittest):
         return rspec
 
     def test_CreateSliver(self):
-        """Passes if the sliver creation workflow succeeds:
-        (1) (opt) createslice
-        (2) createsliver
-        (3) deletesliver
-        (4) (opt) deleteslice
-        """
+        """test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec."""
         self.subtest_CreateSliverWorkflow()
 
     def subtest_CreateSliverWorkflow(self, slicename=None):
@@ -491,6 +486,7 @@ class Test(ut.OmniUnittest):
             self.subtest_deleteslice( slicename )
 
     def test_CreateSliverWorkflow_fail_notexist( self ):
+        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
         slicename = self.create_slice_name_uniq(prefix='non')        
         # Test SliverStatus, ListResources and DeleteSliver on a non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -673,10 +669,8 @@ class Test(ut.OmniUnittest):
                          "but instead slice deletion failed for slice: %s"
                          % slice_name )
 
-
-
     def test_CreateSliver_badrspec_emptyfile(self):
-        """Passes if the sliver creation workflow fails when the request RSpec is an empty file."""
+        """test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file."""
         slice_name = self.create_slice_name(prefix='bad')
         with tempfile.NamedTemporaryFile() as f:
             # write to a new temporary file
@@ -686,7 +680,7 @@ class Test(ut.OmniUnittest):
             self.assertRaises(NotNoneAssertionError, self.subtest_CreateSliverWorkflow, slice_name )
 
     def test_CreateSliver_badrspec_malformed(self):
-        """Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML."""
+        """test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML."""
 
         # Check for the existance of the Request RSpec file
         self.assertTrue( os.path.exists(self.options_copy.rspec_file),
@@ -716,56 +710,12 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliver_badrspec_manifest(self):
-        """Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
+        """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
         slice_name = self.create_slice_name(prefix='bad')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         self.assertRaises(NotNoneAssertionError, 
                           self.subtest_CreateSliverWorkflow, 
                           slice_name )
-
-
-    # def test_ListResources2(self):
-    #     """Passes if the sliver creation workflow succeeds:
-    #     (1) (opt) createslice
-    #     (2) createsliver
-    #     (3) listresources <slice name>
-    #     (4) [not implemented] sliverstatus
-    #     (5) [not implemented] renewsliver (in a manner that should fail)
-    #     (6) [not implemented] renewslice (to make sure the slice does not expire before the sliver expiration we are setting in the next step)
-    #     (7) [not implemented] renewsliver (in a manner that should succeed)
-    #     (8) deletesliver
-    #     (9) (opt) deleteslice
-    #     """
-
-    #     slice_name = self.create_slice_name()
-
-    #     if not self.options_copy.reuse_slice_name:
-    #         self.subtest_createslice( slice_name )
-    #         time.sleep(SLEEP_TIME)
-
-    #     #         try:
-    #     self.subtest_CreateSliver( slice_name )
-    #     try:
-    #         self.test_ListResources( slicename=slice_name )
-    #         # self.subtest_sliverstatus( slice_name )
-    #         # self.subtest_renewsliver_fail( slice_name )
-    #         # self.subtest_renewslice_success( slice_name )
-    #         # self.subtest_renewsliver_success( slice_name )
-    #     except:
-    #         raise
-    #     finally:
-    #         # Always DeleteSliver
-    #         try:
-    #             time.sleep(SLEEP_TIME)
-    #             self.subtest_DeleteSliver( slice_name )
-    #         except AssertionError:
-    #             raise
-    #         except:
-    #             pass                
-
-    #     # Always deleteslice
-    #     if not self.options_copy.reuse_slice_name:
-    #         self.subtest_deleteslice( slice_name )
 
 
 if __name__ == '__main__':
