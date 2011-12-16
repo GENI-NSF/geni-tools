@@ -58,6 +58,7 @@ MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
+BAD_RSPEC_FILE="bad.xml"
 SLEEP_TIME=3
 ################################################################################
 #
@@ -498,10 +499,11 @@ class Test(ut.OmniUnittest):
         self.assertRaises((NotDictAssertionError, NoSliceCredError), 
                           self.subtest_SliverStatus, slicename )
         
-        if self.options_copy.less_strict:
+        if not self.options_copy.strict:
             # if --less-strict, then accept a returned error
             self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename )
         else:
+            # if --more-strict
             # ListResources should return an RSpec containing no resources
             manifest = self.subtest_ListResources( slicename )
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
@@ -714,9 +716,9 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliver_badrspec_manifest(self):
-        """Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec."""
+        """Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
         slice_name = self.create_slice_name(prefix='bad')
-        self.options_copy.rspec_file='manifest.xml'
+        self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         self.assertRaises(NotNoneAssertionError, 
                           self.subtest_CreateSliverWorkflow, 
                           slice_name )
@@ -777,14 +779,23 @@ if __name__ == '__main__':
                        action="store", type='string', 
                        dest='rspec_file', default=REQ_RSPEC_FILE,
                        help="In CreateSliver tests, use request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
+
+    parser.add_option( "--bad-rspec-file", 
+                       action="store", type='string', 
+                       dest='bad_rspec_file', default=BAD_RSPEC_FILE,
+                       help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
     parser.add_option( "--rspeclint", 
                        action="store_true", 
                        dest='rspeclint', default=False,
                        help="Validate RSpecs using 'rspeclint'" )
     parser.add_option( "--less-strict", 
+                       action="store_false", 
+                       dest='strict', default=False,
+                       help="Be less rigorous. (Default)" )
+    parser.add_option( "--more-strict", 
                        action="store_true", 
-                       dest='less_strict', default=False,
-                       help="Be less rigorous." )
+                       dest='strict', default=False,
+                       help="Be more rigorous." )
     parser.add_option( "--ProtoGENIv2", 
                        action="store_true", 
                        dest='protogeniv2', default=False,
