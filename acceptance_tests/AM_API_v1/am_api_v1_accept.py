@@ -383,7 +383,7 @@ class Test(ut.OmniUnittest):
         # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slicename )
-            time.sleep(SLEEP_TIME)
+            time.sleep(self.options_copy.sleep_time)
 
         manifest = self.subtest_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
@@ -396,7 +396,7 @@ class Test(ut.OmniUnittest):
         #      "expected to be consistent with Request RSpec passed into 'CreateSliver' " \
         #      "but is not.")       
              
-        time.sleep(SLEEP_TIME)
+        time.sleep(self.options_copy.sleep_time)
         try:
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
@@ -407,13 +407,13 @@ class Test(ut.OmniUnittest):
             #       "\nManifest from 'CreateSliver': \n %s " \
             #       "\nManifest from 'ListResources': \n %s " 
             #                  % (manifest, manifest2))
-            time.sleep(SLEEP_TIME)
+            time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )
         except:
             raise
         finally:
-            time.sleep(SLEEP_TIME)
+            time.sleep(self.options_copy.sleep_time)
             self.subtest_DeleteSliver( slicename )
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
@@ -687,6 +687,10 @@ if __name__ == '__main__':
                        action="store_true", 
                        dest='protogeniv2', default=False,
                        help="Use ProtoGENI v2 RSpecs instead of %s %s"%(RSPEC_NAME, RSPEC_NUM) )
+    parser.add_option( "--sleep-time", 
+                       action="store", type='float', 
+                       default=SLEEP_TIME,
+                       help="Time to pause between some AM API calls in seconds (Default: %s seconds)"%(SLEEP_TIME) )
 
     usage = "\n      %s -a am-undertest " \
             "\n      Also try --vv" % sys.argv[0]
