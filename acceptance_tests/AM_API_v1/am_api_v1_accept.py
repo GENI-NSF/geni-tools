@@ -29,6 +29,7 @@ from geni.util import rspec_util
 import unittest
 import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
+from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError
 import os
 import pprint
@@ -390,14 +391,32 @@ class Test(ut.OmniUnittest):
             req = f.readlines()
             request = "".join(req)
 
+
+
         # # TODO: compare manifest to request
         # self.assertTrue( TEST,
         #      "Manifest RSpec returned from 'CreateSliver' " \
         #      "expected to be consistent with Request RSpec passed into 'CreateSliver' " \
         #      "but is not.")       
              
-        time.sleep(self.options_copy.sleep_time)
         try:
+            # manifest should be valid XML and the top level node should have a child
+            self.assertIsXML(  manifest,
+                         "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                             "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                             "\n%s\n" \
+                             "... edited for length ..."
+                         % (slicename, manifest[:100]))                         
+            self.assertResourcesExist( manifest,
+                          "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                              "expected to NOT be empty " \
+                              "but was. Return was: " \
+                              "\n%s\n" 
+                          % (slicename, manifest))
+            
+            time.sleep(self.options_copy.sleep_time)
+
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
             # self.assertTrue( rspec_util.xml_equal(manifest, manifest2),
@@ -421,6 +440,49 @@ class Test(ut.OmniUnittest):
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
+            
+    def subtest_MinCreateSliverWorkflow(self, slicename=None):
+        if slicename==None:
+            slicename = self.create_slice_name()
+
+        # if reusing a slice name, don't create (or delete) the slice
+        if not self.options_copy.reuse_slice_name:
+            self.subtest_createslice( slicename )
+            time.sleep(self.options_copy.sleep_time)
+
+        manifest = self.subtest_CreateSliver( slicename )
+        with open(self.options_copy.rspec_file) as f:
+            req = f.readlines()
+            request = "".join(req)             
+        try:
+            # manifest should be valid XML and the top level node should have a child
+            self.assertIsXML(  manifest,
+                         "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                             "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                             "\n%s\n" \
+                             "... edited for length ..."
+                         % (slicename, manifest[:100]))                         
+            self.assertResourcesExist( manifest,
+                          "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                              "expected to NOT be empty " \
+                              "but was. Return was: " \
+                              "\n%s\n"
+                          % (slicename, manifest))
+            
+            time.sleep(self.options_copy.sleep_time)
+        except:
+            raise
+        finally:
+            time.sleep(self.options_copy.sleep_time)
+            try:
+                self.subtest_DeleteSliver( slicename )
+            except:
+                pass
+
+        if not self.options_copy.reuse_slice_name:
+            self.subtest_deleteslice( slicename )
+
 
     def test_CreateSliverWorkflow_fail_notexist( self ):
         """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
@@ -603,7 +665,7 @@ class Test(ut.OmniUnittest):
         _ = text # Appease eclipse
         self.assertTrue( successFail, 
                          "Slice deletion expected to work " \
-                         "but instead slice deletion failed for slice: %s"
+                             "but instead slice deletion failed for slice: %s"
                          % slice_name )
 
     def test_CreateSliver_badrspec_emptyfile(self):
@@ -614,7 +676,8 @@ class Test(ut.OmniUnittest):
             f.write( "" )
             f.seek(0)        
             self.options_copy.rspec_file = f.name
-            self.assertRaises(NotNoneAssertionError, self.subtest_CreateSliverWorkflow, slice_name )
+            self.assertRaises(NotNoneAssertionError,
+                              self.subtest_MinCreateSliverWorkflow, slice_name )
 
     def test_CreateSliver_badrspec_malformed(self):
         """test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML."""
@@ -641,18 +704,19 @@ class Test(ut.OmniUnittest):
             f.write( bad_rspec )
             f.seek(0)        
             self.options_copy.rspec_file = f.name
-            self.assertRaises(NotNoneAssertionError, 
-                              self.subtest_CreateSliverWorkflow, 
-                              slice_name )
+            self.assertRaises(NotNoneAssertionError,
+                              self.subtest_MinCreateSliverWorkflow, slice_name )
 
 
     def test_CreateSliver_badrspec_manifest(self):
         """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
         slice_name = self.create_slice_name(prefix='bad')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
-        self.assertRaises(NotNoneAssertionError, 
-                          self.subtest_CreateSliverWorkflow, 
-                          slice_name )
+        
+        self.assertRaisesOnly(NotNoneAssertionError, "",
+                              self.subtest_MinCreateSliverWorkflow, slice_name)
+#        self.assertRaisesOnly(AssertionError, "",
+#                              self.test_GetVersion)
 
 
 if __name__ == '__main__':

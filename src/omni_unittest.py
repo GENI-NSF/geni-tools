@@ -26,6 +26,7 @@
 
 import copy as docopy
 import datetime
+from geni.util import rspec_util 
 import inspect
 import sys
 import unittest
@@ -41,6 +42,10 @@ LOG_CONFIG_FILE = "omni_accept.conf"
 class NotDictAssertionError( AssertionError ):
     pass
 class NotNoneAssertionError( AssertionError ):
+    pass
+class NoResourcesAssertionError( AssertionError ):
+    pass
+class NotXMLAssertionError( AssertionError ):
     pass
 
 class OmniUnittest(unittest.TestCase):
@@ -111,6 +116,35 @@ class OmniUnittest(unittest.TestCase):
         if not type(item) == dict:
             raise NotDictAssertionError, msg
 
+    def assertIsXML(self, rspec, msg=None):
+        if not rspec_util.is_wellformed_xml( rspec ):
+            if msg is None:
+                msg = "RSpec expected to be wellformed XML file " \
+                    "but was not. Return was: " \
+                    "\n%s\n" \
+                    "... edited for length ..." % (rspec[:100])
+            raise NotXMLAssertionError, msg
+
+    def assertResourcesExist(self, rspec, msg=None):                
+        if not rspec_util.has_child( rspec ):
+            if msg is None:
+                msg =  "RSpec expected to NOT be empty " \
+                    "but was. Return was: " \
+                    "\n%s\n" % (rspec[:100])
+            raise NoResourcesAssertionError, msg
+        
+    def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
+        try:
+            self.assertRaises( err, method, *args, **kwargs )
+        except AssertionError, e:
+            print "foo"
+            raise
+        except Exception, e:
+            output_msg = "%s not raised.  %s raised instead:\n%s" % (err.__name__, type(e).__name__, str("\n".join(e.args)))
+            if msg != "":
+               output_msg = "%s: %s" % (output_msg, msg)
+            raise AssertionError, output_msg
+        
     def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
         self.assertTrue(dictionary.has_key(key),
