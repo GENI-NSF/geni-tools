@@ -17,6 +17,7 @@ gcf 1.5.1:
   * Test CreateSliver with a variety of bad request RSpecs (ticket #76)
   * Test CreateSliver succeeds under normal conditions (ticket #72)
   * Test RenewSliver under normal conditions (#77)
+  * Added --sleep-time to adjust the time between AM API calls at the AM
 
 gcf 1.5:
  * omni

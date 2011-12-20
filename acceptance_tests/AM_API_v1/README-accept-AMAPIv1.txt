@@ -164,10 +164,10 @@ Usage: rspeclint [<namespace> <schema>]+ <document>
 
 Schema and document locations are either paths or URLs.
 
- * To run with ProtoGENI v2 RSpecs instead of GENI v3 run:
-    $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2
+ * To run with ProtoGENI v2 RSpecs instead of GENI v3 use:
+   --ProtoGENIv2, --rspec-file, and --bad-rspec-file.
 
- * With the default AM configuration, instead run:
+    For example, with the default AM configuration, run:
     $ am_api_v1_accept.py -a am-undertest --ProtoGENIv2 --rspec-file request_pgv2.xml  
     
     This provides an appropriate ProtoGENI v2 request RSpec for the test.
@@ -234,9 +234,9 @@ FAILED (failures=1)
 Output of help message:
 
 $ am_api_v1_accept.py -h        
-Usage:                                                                         
-      ./am_api_v1_accept.py -a am-undertest                                    
-      Also try --vv                                                            
+Usage:                                                         
+      ./am_api_v1_accept.py -a am-undertest                    
+      Also try --vv                                            
 
 Options:
   --version             show program's version number and exit
@@ -256,8 +256,8 @@ Options:
                         Use the given Orca slice id                      
   -o, --output          Write output of getversion, listresources,       
                         createsliver, sliverstatus, getslicecred to a file
-                        (Omni picks the name)
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
+                        (Omni picks the name)                             
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                            
                         Filename prefix when saving results (used with -o)
   --usercredfile=USER_CRED_FILENAME
                         Name of user credential file to read from if it
@@ -296,9 +296,11 @@ Options:
   --less-strict         Be less rigorous. (Default)
   --more-strict         Be more rigorous.
   --ProtoGENIv2         Use ProtoGENI v2 RSpecs instead of GENI 3
+  --sleep-time=SLEEP_TIME
+                        Time to pause between some AM API calls in seconds
+                        (Default: 3 seconds)
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
-
 
 Bibliography
 ===============
