@@ -69,10 +69,10 @@ SLEEP_TIME=3
 # This script relies on the unittest module.
 #
 # To run all tests:
-# ./am_api_v1_accept.py -l ../omni_accept.conf -c <omni_config> -a <AM to test>
+# ./am_api_v1_accept.py -a <AM to test>
 #
 # To run a single test:
-# ./am_api_v1_accept.py -l ../omni_accept.conf -c <omni_config> -a <AM to test> Test.test_getversion
+# ./am_api_v1_accept.py -a <AM to test> Test.test_GetVersion
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
