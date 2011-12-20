@@ -187,7 +187,9 @@ Schema and document locations are either paths or URLs.
 Common Errors and What to Do About It
 =====================================
 
-If you see:
+ * When running with ProtoGENI, you may occasionally get intermittent errors caused by making the AM API calls to quickly.  If you see these errors, either rerun the test or use the --sleep-time option to increase the time between calls.
+
+ * If you see:
    NotNoneAssertionError: Return from 'CreateSliver'expected to be XML file but instead returned None.
 
 Then:
@@ -195,7 +197,7 @@ Then:
    $ path/to/omni.py -a am-undertest deleteSliver acc<username>
 where <username> is your Unix account username.
 
-If a test fails, rerun the individual test by itself and look at the
+ * If a test fails, rerun the individual test by itself and look at the
 contents of the acceptance.log file for an indication of the source of
 the problem.
 
@@ -212,7 +214,7 @@ OK
 
 
 
-An partially unsuccessful run looks like this (run against ProtoGENI):
+A partially unsuccessful run looks like this (run against ProtoGENI):
 $ am_api_v1_accept.py -a am-undertest
 ....F.....
 ======================================================================
