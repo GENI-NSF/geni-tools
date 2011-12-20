@@ -713,11 +713,8 @@ class Test(ut.OmniUnittest):
         slice_name = self.create_slice_name(prefix='bad')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
-        self.assertRaisesOnly(NotNoneAssertionError, "",
+        self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
-#        self.assertRaisesOnly(AssertionError, "",
-#                              self.test_GetVersion)
-
 
 if __name__ == '__main__':
     import sys

@@ -133,17 +133,17 @@ class OmniUnittest(unittest.TestCase):
                     "\n%s\n" % (rspec[:100])
             raise NoResourcesAssertionError, msg
         
-    def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
-        try:
-            self.assertRaises( err, method, *args, **kwargs )
-        except AssertionError, e:
-            print "foo"
-            raise
-        except Exception, e:
-            output_msg = "%s not raised.  %s raised instead:\n%s" % (err.__name__, type(e).__name__, str("\n".join(e.args)))
-            if msg != "":
-               output_msg = "%s: %s" % (output_msg, msg)
-            raise AssertionError, output_msg
+    # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
+    #     try:
+    #         self.assertRaises( err, method, *args, **kwargs )
+    #     except AssertionError, e:
+    #         print "foo"
+    #         raise
+    #     except Exception, e:
+    #         output_msg = "%s not raised.  %s raised instead:\n%s" % (err.__name__, type(e).__name__, str("\n".join(e.args)))
+    #         if msg != "":
+    #            output_msg = "%s: %s" % (output_msg, msg)
+    #         raise AssertionError, output_msg
         
     def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
