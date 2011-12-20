@@ -29,6 +29,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v1.5.2:
+
 New in v1.5.1:
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
   * Complete support of AM API v2 (ticket #69)

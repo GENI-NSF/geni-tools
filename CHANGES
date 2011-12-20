@@ -1,5 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.5.2:
+ * omni    
+ * gcf
+ * AM API v1 acceptance tests
+
 gcf 1.5.1:
  * omni
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
