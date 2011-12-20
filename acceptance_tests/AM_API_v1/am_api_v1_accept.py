@@ -91,11 +91,11 @@ class Test(ut.OmniUnittest):
         ut.OmniUnittest.setUp(self)
 
         if self.options_copy.protogeniv2:
-            self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)            
+            self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
 
         if not self.options_copy.rspectype:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
-    
+
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
@@ -649,7 +649,7 @@ class Test(ut.OmniUnittest):
 
     def test_CreateSliver_badrspec_emptyfile(self):
         """test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file."""
-        slice_name = self.create_slice_name(prefix='bad')
+        slice_name = self.create_slice_name(prefix='bad1')
         with tempfile.NamedTemporaryFile() as f:
             # write to a new temporary file
             f.write( "" )
@@ -668,7 +668,7 @@ class Test(ut.OmniUnittest):
                              "but does not." 
                          % self.options_copy.rspec_file )
 
-        slice_name = self.create_slice_name(prefix='bad')
+        slice_name = self.create_slice_name(prefix='bad2')
 
         # open self.options_copy.rspec_file
         with open(self.options_copy.rspec_file) as good:
@@ -689,7 +689,7 @@ class Test(ut.OmniUnittest):
 
     def test_CreateSliver_badrspec_manifest(self):
         """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
-        slice_name = self.create_slice_name(prefix='bad')
+        slice_name = self.create_slice_name(prefix='bad3')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
         self.assertRaises(NotNoneAssertionError,
