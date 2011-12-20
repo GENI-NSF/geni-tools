@@ -455,30 +455,9 @@ class Test(ut.OmniUnittest):
             req = f.readlines()
             request = "".join(req)             
         try:
-            # manifest should be valid XML and the top level node should have a child
-            self.assertIsXML(  manifest,
-                         "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                             "expected to be wellformed XML file " \
-                             "but was not. Return was: " \
-                             "\n%s\n" \
-                             "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
-            self.assertResourcesExist( manifest,
-                          "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                              "expected to NOT be empty " \
-                              "but was. Return was: " \
-                              "\n%s\n"
-                          % (slicename, manifest))
-            
-            time.sleep(self.options_copy.sleep_time)
+            self.subtest_DeleteSliver( slicename )
         except:
-            raise
-        finally:
-            time.sleep(self.options_copy.sleep_time)
-            try:
-                self.subtest_DeleteSliver( slicename )
-            except:
-                pass
+            pass
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
