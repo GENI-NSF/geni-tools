@@ -25,7 +25,8 @@
 """
 RSpec validation utilities.
 """
-
+import lxml.objectify
+import lxml.etree as etree
 import subprocess
 import tempfile
 import xml.parsers.expat
@@ -56,6 +57,43 @@ def is_wellformed_xml( string ):
         retVal= False
     return retVal
 
+# def compare_request_manifest( request, manifest ):
+#     """Compare the nodes in the request and manifest to make sure they match."""
+#     req = lxml.objectify.fromstring(request)    
+#     print help(req)
+#     man = lxml.objectify.fromstring(manifest)
+    
+def has_child( xml ):
+    try:
+        root = etree.fromstring(xml)
+    except:
+        return False
+    # see if there are any children
+    if len(list(root)) > 0:
+        return True
+    else:
+        return False
+
+# def has_nodes( xml, node_name="node" ):
+#     print xml
+#     try:
+#         root = etree.fromstring(xml)
+#     except:
+#         return False
+#     firstnode = root.find("node")
+#     print firstnode
+#     if firstnode is None:
+#         return False
+#     else:
+#         return True
+def xml_equal( xml1, xml2 ):
+    """Compare two xml documents and determine if they are the same (return: True)."""
+    # Is this guaranteed to always work?
+    obj1 = lxml.objectify.fromstring(xml1.strip())
+    newxml1 = etree.tostring(obj1)
+    obj2 = lxml.objectify.fromstring(xml2.strip())
+    newxml2 = etree.tostring(obj2)
+    return newxml1 == newxml2
 
 def rspeclint_exists():
     """Try to run 'rspeclint' to see if we can find it."""
@@ -124,7 +162,7 @@ def is_rspec_string( rspec ):
 if __name__ == "__main__":
     xml_str = """<?xml version='1.0'?>
 <!--Comment-->
-<rspec></rspec>"""
+<rspec><node></node></rspec>"""
 
     rspec_comment_str = """
 <!--Comment-->
@@ -173,3 +211,23 @@ if __name__ == "__main__":
     test( xml_notrspec_str )
     test( malformed_str )
     test( earlycomment_str )
+
+    print "===== XML Equality test ======"
+    print xml_equal(xml_str, xml_notrspec_str)
+    print xml_equal(xml_str, xml_str)
+
+    # print "===== XML Comparison test ======"
+    # print compare_request_manifest(xml_str, xml_notrspec_str)
+    # print compare_request_manifest(xml_str, xml_str)
+
+    # print "===== RSpec has nodes? ======"
+    # print has_nodes(xml_str)
+    # print has_nodes(rspec_str)
+    # print has_nodes(xml_notrspec_str)
+    # print has_nodes(malformed_str)
+
+    print "===== RSpec has child? ======"
+    print has_child(xml_str)
+    print has_child(rspec_str)
+    print has_child(xml_notrspec_str)
+    print has_child(malformed_str)

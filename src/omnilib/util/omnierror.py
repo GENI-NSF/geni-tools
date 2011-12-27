@@ -30,3 +30,7 @@ class OmniError(Exception):
 
     """
     pass
+
+class NoSliceCredError(OmniError):
+    """Errors due to a lack of slice credentials."""
+    pass

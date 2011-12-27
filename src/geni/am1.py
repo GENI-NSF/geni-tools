@@ -196,6 +196,9 @@ class Resource(object):
     STATUS_UNKNOWN = 'unknown'
     STATUS_SHUTDOWN = 'shutdown'
 
+    def __str__(self):
+        return ("ID: %d, Type: %s, Available: %s, Status: %s" % 
+                (self._id, self._type, self.available, self.status))
     def __init__(self, id, type):
         self._id = id
         self._type = type
@@ -367,6 +370,7 @@ class ReferenceAggregateManager(object):
                 # return an empty rspec
                 result = '<rspec type="GCF"/>'
         elif 'geni_available' in options and options['geni_available']:
+            # only include available items
             result = ('<rspec type="GCF">' + ''.join([x.toxml() for x in self._resources])
                       + '</rspec>')
             # To make this AM return a fixed RSpec do:

@@ -1,10 +1,28 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.5.2:
+ * omni    
+ * gcf
+ * AM API v1 acceptance tests
+
 gcf 1.5.1:
  * omni
+  * Incorporated latest SFA library changes (tag sfa-2.0-4)
+  * Complete support of AM API v2 (ticket #69)
+    - Default is AM API v1
+    - Use -V 2 or --api-version 2 to cause omni to use AM APIv2 to speak to aggregates
+   * Added --available to have listresources filter calls to only include available nodes (ticket #74)
+   * Added --no-compress to allow the user to specify that AM API call returns should not be compressed (ticket #73)
  * gcf
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
+  * Complete support of AM API v2 in reference AM (ticket #68)  
  * AM API v1 acceptance tests
+  * Test common options on ListResources (ticket #75)
+  * Test CreateSliver workflow on deleted/non-existant slivers (ticket #79)
+  * Test CreateSliver with a variety of bad request RSpecs (ticket #76)
+  * Test CreateSliver succeeds under normal conditions (ticket #72)
+  * Test RenewSliver under normal conditions (#77)
+  * Added --sleep-time to adjust the time between AM API calls at the AM
 
 gcf 1.5:
  * omni

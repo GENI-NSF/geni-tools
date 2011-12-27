@@ -26,6 +26,7 @@
 
 import copy as docopy
 import datetime
+from geni.util import rspec_util 
 import inspect
 import sys
 import unittest
@@ -38,6 +39,14 @@ SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "omni_accept.conf"
 
 
+class NotDictAssertionError( AssertionError ):
+    pass
+class NotNoneAssertionError( AssertionError ):
+    pass
+class NoResourcesAssertionError( AssertionError ):
+    pass
+class NotXMLAssertionError( AssertionError ):
+    pass
 
 class OmniUnittest(unittest.TestCase):
     """Methods for using unittest module with Omni. """
@@ -69,14 +78,21 @@ class OmniUnittest(unittest.TestCase):
         #    method being called
         print "MONITORING %s %s" % (inspect.stack()[1][3], result_str)      
 
-    def create_slice_name( self ):
+    def create_slice_name( self, prefix=SLICE_NAME ):
         """slice name to be used to create a test slice"""
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return SLICE_NAME+os.getlogin()
-#            return datetime.datetime.strftime(datetime.datetime.utcnow(),
-#                                                    SLICE_NAME+"-%H%M%S")
+            return prefix+os.getlogin()
+
+    def create_slice_name_uniq( self, prefix=SLICE_NAME ):
+        """Unique slice name to be used to create a test slice"""
+        if self.options.reuse_slice_name:
+            return self.options.reuse_slice_name
+        else:
+#            return prefix+os.getlogin()
+            return datetime.datetime.strftime(datetime.datetime.utcnow(),
+                                                    prefix+"-%H%M%S")
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
@@ -92,6 +108,94 @@ class OmniUnittest(unittest.TestCase):
         """Make the Omni call"""
         ret_val = omni.call( cmd, options=options, verbose=True )
         return ret_val
+    def assertIsNotNone(self, item, msg):
+        if item is None:
+            raise NotNoneAssertionError, msg
+
+    def assertDict(self, item, msg):
+        if not type(item) == dict:
+            raise NotDictAssertionError, msg
+
+    def assertIsXML(self, rspec, msg=None):
+        if not rspec_util.is_wellformed_xml( rspec ):
+            if msg is None:
+                msg = "RSpec expected to be wellformed XML file " \
+                    "but was not. Return was: " \
+                    "\n%s\n" \
+                    "... edited for length ..." % (rspec[:100])
+            raise NotXMLAssertionError, msg
+
+    def assertResourcesExist(self, rspec, msg=None):                
+        if not rspec_util.has_child( rspec ):
+            if msg is None:
+                msg =  "RSpec expected to NOT be empty " \
+                    "but was. Return was: " \
+                    "\n%s\n" % (rspec[:100])
+            raise NoResourcesAssertionError, msg
+        
+    # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
+    #     try:
+    #         self.assertRaises( err, method, *args, **kwargs )
+    #     except AssertionError, e:
+    #         print "foo"
+    #         raise
+    #     except Exception, e:
+    #         output_msg = "%s not raised.  %s raised instead:\n%s" % (err.__name__, type(e).__name__, str("\n".join(e.args)))
+    #         if msg != "":
+    #            output_msg = "%s: %s" % (output_msg, msg)
+    #         raise AssertionError, output_msg
+        
+    def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
+        """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        self.assertTrue(dictionary.has_key(key),
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, key, str(dictionary)))
+
+        self.assertTrue(type(dictionary[key])==valueType,
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' of type '%s' " \
+                            "but instead returned: %s" 
+                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+
+
+    def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
+        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType"""
+        self.assertDict( dictionary,
+                        "Return from '%s' at %s " \
+                            "expected to be dictionary " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, str(dictionary)))                         
+        self.assertTrue( dictionary.has_key(keyA) or
+                         dictionary.has_key(keyB), 
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' or '%s' " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, keyA, keyB,  str(dictionary)))
+
+        self.assertTrue(type(dictionary[keyA])==valueType or
+                        type(dictionary[keyB])==valueType,
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' or '%s' of type '%s' " \
+                            "but did not." 
+                        % (method, aggName, keyA, keyB, str(valueType)))
+    
+    def assertReturnPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
+        """Check whether dictionary returned by method at aggName has one of keyA or keyB of type valueType and return whichever one exists.
+        If both exist, return dictionary[keyA]."""
+        self.assertPairKeyValue( method, aggName, dictionary, keyA, keyB, valueType=valueType)
+        if dictionary.has_key(keyA):
+            return dictionary[keyA]
+        else:
+            return dictionary[keyB]            
+
 
 
     @classmethod

@@ -81,7 +81,7 @@ import zlib
 
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
-from omnilib.util import OmniError
+from omnilib.util import OmniError, NoSliceCredError
 from omnilib.util.dossl import _do_ssl
 from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.5.1"
+OMNI_VERSION="1.5.2"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -132,9 +132,9 @@ class CallHandler(object):
                 self.abac_log = None
 
         
-    def _raise_omni_error( self, msg ):
+    def _raise_omni_error( self, msg, err=OmniError ):
         self.logger.error( msg )
-        raise OmniError, msg
+        raise err, msg
 
     def _handle(self, args):
         if len(args) == 0:
@@ -251,7 +251,8 @@ class CallHandler(object):
         rspecs = {}
         options = {}
 
-        options['geni_compressed'] = True;
+        options['geni_compressed'] = self.opts.geni_compressed
+        options['geni_available'] = self.opts.geni_available
 
         # An optional slice name might be specified.
         slicename = None
@@ -780,7 +781,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name.strip())
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message))
+            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
@@ -1003,7 +1004,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message))
+            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
@@ -1136,7 +1137,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message))
+            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
@@ -1240,7 +1241,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message))
+            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         # Here we would abort if the slice has expired
         # But perhaps we should keep going so if there are resources
@@ -1350,7 +1351,7 @@ class CallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = self._get_slice_cred(urn)
         if slice_cred is None:
-            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message))
+            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
@@ -2440,6 +2441,12 @@ def getParser():
                       help="Do not send timezone on RenewSliver")
     parser.add_option("-V", "--api-version", type="int", default=1,
                       help="Specify version of AM API to use (1, 2, etc.)")
+    parser.add_option("--no-compress", dest='geni_compressed', 
+                      default=True, action="store_false",
+                      help="Do not compress returned values")
+    parser.add_option("--available", dest='geni_available',
+                      default=False, action="store_true",
+                      help="Only return available resources")
     return parser
 
 def parse_args(argv, options=None):
