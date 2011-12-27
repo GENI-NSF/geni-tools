@@ -640,7 +640,7 @@ For help creating GENI RSpecs, see
               http://www.protogeni.net/trac/protogeni/wiki/RSpec.
 To validate the syntax of a generated request RSpec, run:
 {{{
-  xmllint --noout --schema http://www.geni.net/resources/rspec/3/ad.xsd \
+  xmllint --noout --schema http://www.geni.net/resources/rspec/3/request.xsd \
                       yourRequestRspec.xml
 }}}
 
