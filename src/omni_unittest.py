@@ -163,7 +163,7 @@ class OmniUnittest(unittest.TestCase):
 
 
     def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
-        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType"""
+        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyB will be tested."""
         self.assertDict( dictionary,
                         "Return from '%s' at %s " \
                             "expected to be dictionary " \
@@ -171,6 +171,7 @@ class OmniUnittest(unittest.TestCase):
                             "%s\n" \
                             "... edited for length ..." 
                         % (method, aggName, str(dictionary)))                         
+
         self.assertTrue( dictionary.has_key(keyA) or
                          dictionary.has_key(keyB), 
                         "Return from '%s' at %s " \
@@ -180,12 +181,17 @@ class OmniUnittest(unittest.TestCase):
                             "... edited for length ..." 
                         % (method, aggName, keyA, keyB,  str(dictionary)))
 
-        self.assertTrue(type(dictionary[keyA])==valueType or
-                        type(dictionary[keyB])==valueType,
+        # Test the first of these which exists
+        if dictionary.has_key(keyB):
+            keyTest = keyB
+        else:
+            keyTest = keyA
+
+        self.assertTrue(type(dictionary[keyTest])==valueType,
                         "Return from '%s' at %s " \
-                            "expected to have entry '%s' or '%s' of type '%s' " \
+                            "expected to have entry '%s' of type '%s' " \
                             "but did not." 
-                        % (method, aggName, keyA, keyB, str(valueType)))
+                        % (method, aggName, keyTest, str(valueType)))
     
     def assertReturnPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
         """Check whether dictionary returned by method at aggName has one of keyA or keyB of type valueType and return whichever one exists.

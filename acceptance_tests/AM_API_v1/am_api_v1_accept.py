@@ -116,15 +116,25 @@ class Test(ut.OmniUnittest):
 
         mymessage = ""
         for agg, thisVersion in version.items():
+
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            self.assertTrue( thisVersion.has_key(rspec_type),
-                             "AM %s GetVersion return does not contain ad_rspec_versions" % agg)
-            # get the ad_rspec_versions key
-            ad_rspec_version = thisVersion[rspec_type]
+            if API_VERSION ==1: 
+                value = thisVersion               
+            elif API_VERSION == 2:
+                value = thisVersion['value']
+            
+            rspec_version = self.assertReturnPairKeyValue( 
+                'GetVersion', agg, value, 
+                rspec_type, 
+                'geni_'+rspec_type, 
+                list )
+
+
+
             # foreach item in the list that is the val
             match = False
-            for availversion in ad_rspec_version:
+            for availversion in rspec_version:
                 if not(str(availversion['type']).lower().strip() == rtype.lower().strip()):
                     continue
                 if not(str(availversion['version']).lower().strip() == str(rver).lower().strip()):
@@ -391,7 +401,8 @@ class Test(ut.OmniUnittest):
             req = f.readlines()
             request = "".join(req)
 
-
+#        if API_VERSION == 2:
+#            manifest = manifest['value']
 
         # # TODO: compare manifest to request
         # self.assertTrue( TEST,
