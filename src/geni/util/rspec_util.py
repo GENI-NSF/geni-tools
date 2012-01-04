@@ -25,8 +25,9 @@
 """
 RSpec validation utilities.
 """
-import lxml.objectify
-import lxml.etree as etree
+#import lxml.objectify
+#import lxml.etree as etree
+import xml.etree.ElementTree as etree 
 import subprocess
 import tempfile
 import xml.parsers.expat
@@ -74,6 +75,8 @@ def has_child( xml ):
     else:
         return False
 
+
+
 # def has_nodes( xml, node_name="node" ):
 #     print xml
 #     try:
@@ -86,14 +89,14 @@ def has_child( xml ):
 #         return False
 #     else:
 #         return True
-def xml_equal( xml1, xml2 ):
-    """Compare two xml documents and determine if they are the same (return: True)."""
-    # Is this guaranteed to always work?
-    obj1 = lxml.objectify.fromstring(xml1.strip())
-    newxml1 = etree.tostring(obj1)
-    obj2 = lxml.objectify.fromstring(xml2.strip())
-    newxml2 = etree.tostring(obj2)
-    return newxml1 == newxml2
+# def xml_equal( xml1, xml2 ):
+#     """Compare two xml documents and determine if they are the same (return: True)."""
+#     # Is this guaranteed to always work?
+#     obj1 = lxml.objectify.fromstring(xml1.strip())
+#     newxml1 = etree.tostring(obj1)
+#     obj2 = lxml.objectify.fromstring(xml2.strip())
+#     newxml2 = etree.tostring(obj2)
+#     return newxml1 == newxml2
 
 def rspeclint_exists():
     """Try to run 'rspeclint' to see if we can find it."""
