@@ -119,11 +119,10 @@ class Test(ut.OmniUnittest):
 
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            if API_VERSION ==1: 
+            if API_VERSION == 1: 
                 value = thisVersion               
             elif API_VERSION == 2:
                 value = thisVersion['value']
-            
             rspec_version = self.assertReturnPairKeyValue( 
                 'GetVersion', agg, value, 
                 rspec_type, 
@@ -369,6 +368,11 @@ class Test(ut.OmniUnittest):
                           "... edited for length ..." 
                            % (agg_name, rspec[:100]))
 
+            if slicename:
+                self.assertRspecType( rspec, 'manifest')
+            else:
+                self.assertRspecType( rspec, 'advertisement')
+
             # Test if XML file passes rspeclint
             if self.options_copy.rspeclint:
                 self.assertTrue(rspec_util.validate_rspec( rspec, 
@@ -396,22 +400,16 @@ class Test(ut.OmniUnittest):
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
-        manifest = self.subtest_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
+        manifest = self.subtest_CreateSliver( slicename )
 
-#        if API_VERSION == 2:
-#            manifest = manifest['value']
-
-        # # TODO: compare manifest to request
-        # self.assertTrue( TEST,
-        #      "Manifest RSpec returned from 'CreateSliver' " \
-        #      "expected to be consistent with Request RSpec passed into 'CreateSliver' " \
-        #      "but is not.")       
-             
         try:
-            # manifest should be valid XML and the top level node should have a child
+            self.assertRspecType( request, 'request')
+            self.assertRspecType( manifest, 'manifest')
+
+            # manifest should be valid XML 
             self.assertIsXML(  manifest,
                          "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                              "expected to be wellformed XML file " \
@@ -419,24 +417,49 @@ class Test(ut.OmniUnittest):
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
+
+            # Make sure the Manifest returned the nodes identified in the Request
+            self.assertCompIDsEqual( request, manifest,
+                                     "Request RSpec and Manifest RSpec " \
+                                         "returned by 'ListResources' on slice '%s' " \
+                                         "expected to have same component_ids " \
+                                         "but did not." % slicename)
+
+
+            # the top level node should have a child
             self.assertResourcesExist( manifest,
                           "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                               "expected to NOT be empty " \
                               "but was. Return was: " \
                               "\n%s\n" 
                           % (slicename, manifest))
+
             
             time.sleep(self.options_copy.sleep_time)
 
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
-            # self.assertTrue( rspec_util.xml_equal(manifest, manifest2),
-            #       "Manifest RSpecs returned from 'CreateSliver' and 'ListResources' " \
-            #       "expected to be equal " \
-            #       "but were not. " \
-            #       "\nManifest from 'CreateSliver': \n %s " \
-            #       "\nManifest from 'ListResources': \n %s " 
-            #                  % (manifest, manifest2))
+
+            self.assertRspecType( manifest2, 'manifest')
+
+            # manifest should be valid XML 
+            self.assertIsXML(  manifest2,
+                         "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                             "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                             "\n%s\n" \
+                             "... edited for length ..."
+                         % (slicename, manifest[:100]))                         
+
+            # Make sure the Manifest returned the nodes identified in the Request
+            self.assertCompIDsEqual( request, manifest2,
+                                     "Request RSpec and Manifest RSpec " \
+                                         "returned by 'ListResources' on slice '%s' " \
+                                         "expected to have same component_ids " \
+                                         "but did not." % slicename )
+
+
+
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )

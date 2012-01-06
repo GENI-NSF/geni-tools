@@ -35,10 +35,18 @@ import xml.parsers.expat
 PG_2_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 PG_2_AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
 PG_2_REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/req.xsd"
+PG_2_MAN_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
 
 GENI_3_NAMESPACE = "http://www.geni.net/resources/rspec/3"
 GENI_3_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
 GENI_3_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
+GENI_3_MAN_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
+
+REQUEST = 'request'
+MANIFEST = 'manifest'
+ADVERTISEMENT = 'advertisement'
+
+XSI="http://www.w3.org/2001/XMLSchema-instance"
 
 RSPECLINT = "rspeclint" 
 
@@ -75,6 +83,87 @@ def has_child( xml ):
     else:
         return False
 
+def get_expected_schema_info( version="GENI 3" ):
+    """Returns (namespace, advertisement RSpec schema url, request RSpec schema url) for this RSpec version"""
+    if version == "ProtoGENI 2":
+        return (PG_2_NAMESPACE, 
+                PG_2_AD_SCHEMA, 
+                PG_2_REQ_SCHEMA, 
+                PG_2_MAN_SCHEMA)
+    elif version == "GENI 3":
+        return (GENI_3_NAMESPACE, 
+                GENI_3_AD_SCHEMA, 
+                GENI_3_REQ_SCHEMA, 
+                GENI_3_MAN_SCHEMA)
+
+
+def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
+    try:
+        root = etree.fromstring(xml)
+    except:
+        print "Failed to make an XML doc"
+        return False
+
+    actual_type = root.get('type')
+    if actual_type != type:
+        return False
+    else:
+        # location can contain many items
+        location = root.get( "{"+XSI+"}"+"schemaLocation" )
+        ns, ad_schema, req_schema, man_schema = get_expected_schema_info( version=version )
+        if type == REQUEST:
+            schema = req_schema
+        elif type == ADVERTISEMENT:
+            schema = ad_schema
+        elif type == MANIFEST:
+            schema = man_schema
+
+        # case insensitive
+        if schema in location:
+            return True
+        else:
+            return False
+
+    # Should never get here
+    return False
+
+
+
+def get_comp_ids_from_rspec( xml ):
+    try:
+        root = etree.fromstring(xml)
+    except:
+        return False
+
+    nodes = root.findall( 'node' ) #get all nodes
+    # generate a list of node component_ids
+    comp_id_list = []
+    for node in nodes:
+        # node must contain a sliver_type
+        if len(node.findall('sliver_type')) > 0:
+            node_comp_id = node.get('component_id')
+            if node_comp_id is not None:
+                comp_id_list = comp_id_list + [node_comp_id]
+    return set(comp_id_list)
+
+def compare_comp_ids( xml1, xml2):
+    """Determines that the list of component IDs in two RSpecs are the same. (Useful for compare request and manifest RSpecs.) """
+
+    comp_id1 = get_comp_ids_from_rspec( xml1 )
+    comp_id2 = get_comp_ids_from_rspec( xml2 )
+    if comp_id1 == comp_id2:
+        return True
+    else:
+        return False
+
+def has_child_ids( xml, check_comp_id_list ):
+    compare_comp_id_set = get_comp_ids_from_rspec( xml )
+
+    # check_comp_id_list must be a subset of compare_comp_id_list to return True
+    if set(check_comp_id_list) == compare_comp_id_set:
+        return True
+    else:
+        return False
 
 
 # def has_nodes( xml, node_name="node" ):
@@ -163,9 +252,29 @@ def is_rspec_string( rspec ):
     return False
 
 if __name__ == "__main__":
+    request_str = """<?xml version='1.0'?>
+<!--Comment-->
+<rspec type="request" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd"></rspec>"""
+    manifest_str = """<?xml version='1.0'?>
+<!--Comment-->
+<rspec type="manifest" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd"></rspec>"""
+
     xml_str = """<?xml version='1.0'?>
 <!--Comment-->
-<rspec><node></node></rspec>"""
+<rspec><node component_id='a'><sliver_type/></node><node component_id='b'><sliver_type/></node><node component_id='d'><!--no sliver_type--></node></rspec>"""
+
+    xml_str2 = """<?xml version='1.0'?>
+<!--Comment-->
+<rspec><node component_id='a'><sliver_type/></node><node component_id='b'><sliver_type/></node></rspec>"""
+    xml_str3 = """<?xml version='1.0'?>
+<!--Comment-->
+<rspec><node component_id='a'><sliver_type/></node><node component_id='d'><sliver_type/></node></rspec>"""
+
+    xml_str4 = """<?xml version='1.0'?>
+<!--Comment-->
+<rspec><node component_id='b'><sliver_type/></node></rspec>"""
+
+
 
     rspec_comment_str = """
 <!--Comment-->
@@ -215,9 +324,9 @@ if __name__ == "__main__":
     test( malformed_str )
     test( earlycomment_str )
 
-    print "===== XML Equality test ======"
-    print xml_equal(xml_str, xml_notrspec_str)
-    print xml_equal(xml_str, xml_str)
+    # print "===== XML Equality test ======"
+    # print xml_equal(xml_str, xml_notrspec_str)
+    # print xml_equal(xml_str, xml_str)
 
     # print "===== XML Comparison test ======"
     # print compare_request_manifest(xml_str, xml_notrspec_str)
@@ -234,3 +343,35 @@ if __name__ == "__main__":
     print has_child(rspec_str)
     print has_child(xml_notrspec_str)
     print has_child(malformed_str)
+
+
+    print "===== RSpec has child with ID? ======"
+    print has_child_ids(xml_str, 'a')
+    print has_child_ids(xml_str, 'b')
+    print has_child_ids(xml_str, 'c')
+    print has_child_ids(xml_str, 'd')
+    print has_child_ids(xml_str, ('a','b'))
+    print has_child_ids(xml_str, ['a','b'])
+    print has_child_ids(xml_str, ['a','b','d'])
+    print has_child_ids(xml_str, ['a','c'])
+    print has_child_ids(xml_str, ['a','d'])
+
+    print "===== Comp IDs in two Rspecs match ======"
+    print "Compare 2 identical RSpecs [Expected result: True]"
+    print compare_comp_ids( xml_str, xml_str )
+    print "Compare RSpec with extra unused node to one without  [Expected result: True]"
+    print compare_comp_ids( xml_str, xml_str2 )
+    print "Compare RSpecs with one node in common and another node different  [Expected result: False]"
+    print compare_comp_ids( xml_str, xml_str3 )
+    print "Compare RSpecs with one a subset of the other  [Expected result: False]"
+    print compare_comp_ids( xml_str, xml_str4 )
+
+    print "===== Rspec Type ======"
+    print is_rspec_of_type( request_str, 'request' )
+    print is_rspec_of_type( manifest_str, 'manifest' )
+    print is_rspec_of_type( request_str, 'request', 'GENI 3')
+    print is_rspec_of_type( manifest_str, 'manifest', 'GENI 3' )
+    print is_rspec_of_type( request_str, 'request', 'ProtoGENI 2')
+    print is_rspec_of_type( manifest_str, 'manifest', 'ProtoGENI 2' )
+    print is_rspec_of_type( request_str, 'foo' )
+    print is_rspec_of_type( manifest_str, 'bar' )

@@ -47,6 +47,10 @@ class NoResourcesAssertionError( AssertionError ):
     pass
 class NotXMLAssertionError( AssertionError ):
     pass
+class NotEqualComponentIDsError( AssertionError ):
+    pass
+class WrongRspecType( AssertionError ):
+    pass
 
 class OmniUnittest(unittest.TestCase):
     """Methods for using unittest module with Omni. """
@@ -132,7 +136,26 @@ class OmniUnittest(unittest.TestCase):
                     "but was. Return was: " \
                     "\n%s\n" % (rspec[:100])
             raise NoResourcesAssertionError, msg
-        
+
+    def assertCompIDsEqual(self, rspec1, rspec2, msg=None):                
+        if not rspec_util.compare_comp_ids( rspec1, rspec2 ):
+            if msg is None:
+                msg =  "Two RSpecs expected to have same component_ids " \
+                    "but did not."
+            raise NotEqualComponentIDsError, msg
+
+    def assertRspecType(self, rspec, type='request', version=None, msg=None):
+        if version == None:
+            rspec_type = self.options_copy.rspectype
+            if len(rspec_type) == 2:
+                version = "%s %s" % (rspec_type[0], str(rspec_type[1]))
+            else:
+                version = "GENI 3"
+        if not rspec_util.is_rspec_of_type( rspec, type=type, version=version ):
+            if msg is None:
+                msg =  "RSpec expected to have type '%s' " \
+                    "but did not." % type
+            raise WrongRspecType, msg        
     # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
     #     try:
     #         self.assertRaises( err, method, *args, **kwargs )
@@ -179,7 +202,7 @@ class OmniUnittest(unittest.TestCase):
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (method, aggName, keyA, keyB,  str(dictionary)))
+                        % (method, aggName, keyA, keyB,  str(dictionary)[:100]))
 
         # Test the first of these which exists
         if dictionary.has_key(keyB):
