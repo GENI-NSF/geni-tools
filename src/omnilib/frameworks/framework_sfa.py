@@ -304,7 +304,7 @@ class Framework(Framework_Base):
             user = self.config['user']
                            
             record = {'peer_authority': '', u'description': u'a slice', u'url': \
-                      u'http://www.testslice.com', 'expires': "%d" % expiration, \
+                      u'http://www.geni.net', 'expires': "%d" % expiration, \
                       u'authority': u'%s' % authority, u'researcher': [u'%s' % user], \
                       'hrn': u'%s' % hrn, u'PI': [u'%s' % user], 'type': u'slice', \
                       u'name': u'%s' % hrn}
