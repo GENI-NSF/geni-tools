@@ -7,8 +7,8 @@ directory is subject to the PlanetLab license (see "License"
 below). There are a small number of modifications to the code. These
 modifications are documented in the "Modifications" section below.
 
-This code is based on revision 00f273ccf5591251f27209e8d9e9eeb3a2dd10c2
-(Jan. 3rd, 2012, tag sfa-2.04) of the master branch of the
+This code is based on revision 56ff87f710f6506734e88ce9f87e6f1158ac92c0
+(Jan. 6th, 2012, tag sfa-2.08 + ) of the master branch of the
 PlanetLab Git repository (git.planet-lab.org/git/sfa.git).
 
 License
