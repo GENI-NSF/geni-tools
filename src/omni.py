@@ -364,7 +364,7 @@ class CallHandler(object):
                 else:
                     # Inform the user that they have to pick.
                     ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
-                    self.logger.warning("Please specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
+                    self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
                     if mymessage != "":
                         mymessage += ". "
                     mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
