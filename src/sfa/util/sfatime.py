@@ -63,4 +63,4 @@ def datetime_to_utc(input):
     return time.gmtime(datetime_to_epoch(input))
 
 def datetime_to_epoch(input):
-    return time.mktime(input.timetuple())
+    return int(time.mktime(input.timetuple()))
