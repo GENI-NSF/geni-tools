@@ -105,7 +105,7 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
         return False
 
     actual_type = root.get('type')
-    if actual_type != type:
+    if actual_type.lower() != type.lower():
         return False
     else:
         # location can contain many items
@@ -118,8 +118,8 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
         elif type == MANIFEST:
             schema = man_schema
 
-        # case insensitive
-        if schema in location:
+        # case insensitive comparison
+        if schema.lower() in location.lower():
             return True
         else:
             return False
