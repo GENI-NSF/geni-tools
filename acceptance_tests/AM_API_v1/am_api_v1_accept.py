@@ -739,7 +739,7 @@ if __name__ == '__main__':
     parser.add_option( "--rspec-file", 
                        action="store", type='string', 
                        dest='rspec_file', default=REQ_RSPEC_FILE,
-                       help="In CreateSliver tests, use request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
+                       help="In CreateSliver tests, use _bounded_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
 
     parser.add_option( "--bad-rspec-file", 
                        action="store", type='string', 

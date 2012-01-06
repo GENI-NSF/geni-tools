@@ -128,7 +128,7 @@ Usage Instructions
      (b) Write a request RSpec for AM under test.
      	 (i) Move default rspec used in (2) out of the way.
              $ mv gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml  gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml.default
-         (ii) Write a request RSpec for the AM under test and save as: 
+         (ii) Write a bounded [6] request RSpec for the AM under test and save as: 
      	     gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml
      (c) Write a manifest RSpec for AM under test.
      	 (i) Move default rspec used in (2) out of the way.
@@ -232,11 +232,10 @@ FAILED (failures=1)
 
 
 Output of help message:
-
-$ am_api_v1_accept.py -h        
-Usage:                                                         
-      ./am_api_v1_accept.py -a am-undertest                    
-      Also try --vv                                            
+$am_api_v1_accept.py -h
+Usage:                                                                 
+      ./am_api_v1_accept.py -a am-undertest                            
+      Also try --vv                                                    
 
 Options:
   --version             show program's version number and exit
@@ -287,8 +286,8 @@ Options:
                         Use slice name provided instead of creating/deleting a
                         new slice
   --rspec-file=RSPEC_FILE
-                        In CreateSliver tests, use request RSpec file provided
-                        instead of default of 'request.xml'
+                        In CreateSliver tests, use _bounded_ request RSpec
+                        file provided instead of default of 'request.xml'
   --bad-rspec-file=BAD_RSPEC_FILE
                         In negative CreateSliver tests, use request RSpec file
                         provided instead of default of 'bad.xml'
@@ -310,5 +309,11 @@ Bibliography
  [3] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
  [4] rspeclint code: http://www.protogeni.net/resources/rspeclint
  [5] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
+ [6] A _bounded_ advertisement RSpec explicitly lists all resources in
+ the RSpec.  (This is as oppossed to requesting some resource without
+ specifying which instance is being requested.)  This is important
+ because the acceptance tests compare the component IDs of the
+ resources in the request RSpec with those in the manifest RSpecs to
+ make sure that CreateSliver and ListResources are working properly.
 
  
