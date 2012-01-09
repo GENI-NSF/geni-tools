@@ -622,7 +622,7 @@ class CallHandler(object):
                 # This prints or logs results, depending on filename None
                 self._printResults( header, content, filename)
                 if filename:
-                    savedFileDesc += "Saved listResources RSpec at %s to file %s. \n" % (urn, filename)
+                    savedFileDesc += "Saved listResources RSpec at %s to file %s" % (urn, filename)
 
             else:
                 # Convert RSpec to omnispec
