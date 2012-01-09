@@ -730,50 +730,50 @@ class Test(ut.OmniUnittest):
         
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
+    @classmethod
+    def accept_parser( cls, parser=omni.getParser(), usage=None):
+        parser.add_option( "--reuse-slice", 
+                           action="store", type='string', dest='reuse_slice_name', 
+                           help="Use slice name provided instead of creating/deleting a new slice")
+        parser.add_option( "--rspec-file", 
+                           action="store", type='string', 
+                           dest='rspec_file', default=REQ_RSPEC_FILE,
+                           help="In CreateSliver tests, use _bounded_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
 
-def accept_parser( parser=omni.getParser(), usage=None):
-    parser.add_option( "--reuse-slice", 
-                       action="store", type='string', dest='reuse_slice_name', 
-                       help="Use slice name provided instead of creating/deleting a new slice")
-    parser.add_option( "--rspec-file", 
-                       action="store", type='string', 
-                       dest='rspec_file', default=REQ_RSPEC_FILE,
-                       help="In CreateSliver tests, use _bounded_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
+        parser.add_option( "--bad-rspec-file", 
+                           action="store", type='string', 
+                           dest='bad_rspec_file', default=BAD_RSPEC_FILE,
+                           help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
+        parser.add_option( "--rspeclint", 
+                           action="store_true", 
+                           dest='rspeclint', default=False,
+                           help="Validate RSpecs using 'rspeclint'" )
+        parser.add_option( "--less-strict", 
+                           action="store_false", 
+                           dest='strict', default=False,
+                           help="Be less rigorous. (Default)" )
+        parser.add_option( "--more-strict", 
+                           action="store_true", 
+                           dest='strict', default=False,
+                           help="Be more rigorous." )
+        parser.add_option( "--ProtoGENIv2", 
+                           action="store_true", 
+                           dest='protogeniv2', default=False,
+                           help="Use ProtoGENI v2 RSpecs instead of %s %s"%(RSPEC_NAME, RSPEC_NUM) )
+        parser.add_option( "--sleep-time", 
+                           action="store", type='float', 
+                           default=SLEEP_TIME,
+                           help="Time to pause between some AM API calls in seconds (Default: %s seconds)"%(SLEEP_TIME) )
+        options, args = Test.unittest_parser(parser=parser, 
+                             usage=usage)
 
-    parser.add_option( "--bad-rspec-file", 
-                       action="store", type='string', 
-                       dest='bad_rspec_file', default=BAD_RSPEC_FILE,
-                       help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
-    parser.add_option( "--rspeclint", 
-                       action="store_true", 
-                       dest='rspeclint', default=False,
-                       help="Validate RSpecs using 'rspeclint'" )
-    parser.add_option( "--less-strict", 
-                       action="store_false", 
-                       dest='strict', default=False,
-                       help="Be less rigorous. (Default)" )
-    parser.add_option( "--more-strict", 
-                       action="store_true", 
-                       dest='strict', default=False,
-                       help="Be more rigorous." )
-    parser.add_option( "--ProtoGENIv2", 
-                       action="store_true", 
-                       dest='protogeniv2', default=False,
-                       help="Use ProtoGENI v2 RSpecs instead of %s %s"%(RSPEC_NAME, RSPEC_NUM) )
-    parser.add_option( "--sleep-time", 
-                       action="store", type='float', 
-                       default=SLEEP_TIME,
-                       help="Time to pause between some AM API calls in seconds (Default: %s seconds)"%(SLEEP_TIME) )
-    Test.unittest_parser(parser=parser, 
-                         usage=usage)
-
-    return parser
+        return sys.argv
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest " \
             "\n      Also try --vv" % sys.argv[0]
     # Include default Omni_unittest command line options
-    parser = accept_parser(usage=usage)
+    Test.accept_parser(usage=usage)
 
     # Invoke unit tests as usual
     unittest.main()
