@@ -31,9 +31,11 @@ import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError
+import omni
 import os
 import pprint
 import re
+import sys
 import time
 import tempfile
 
@@ -729,10 +731,7 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
 
-if __name__ == '__main__':
-    import sys
-    import omni
-    parser = omni.getParser()
+def accept_parser( parser=omni.getParser(), usage=None):
     parser.add_option( "--reuse-slice", 
                        action="store", type='string', dest='reuse_slice_name', 
                        help="Use slice name provided instead of creating/deleting a new slice")
@@ -765,13 +764,17 @@ if __name__ == '__main__':
                        action="store", type='float', 
                        default=SLEEP_TIME,
                        help="Time to pause between some AM API calls in seconds (Default: %s seconds)"%(SLEEP_TIME) )
-
-    usage = "\n      %s -a am-undertest " \
-            "\n      Also try --vv" % sys.argv[0]
-    # Include default Omni command line options
-    # Support unittest option by replacing -v and -q with --vv a --qq
     Test.unittest_parser(parser=parser, 
                          usage=usage)
+
+    return parser
+
+if __name__ == '__main__':
+    usage = "\n      %s -a am-undertest " \
+            "\n      Also try --vv" % sys.argv[0]
+    # Include default Omni_unittest command line options
+    parser = accept_parser(usage=usage)
+
     # Invoke unit tests as usual
     unittest.main()
 
