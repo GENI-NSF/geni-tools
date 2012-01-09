@@ -38,6 +38,7 @@ import re
 import sys
 import time
 import tempfile
+import xml.etree.ElementTree as etree 
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
@@ -246,7 +247,28 @@ class Test(ut.OmniUnittest):
         self.subtest_ListResources()
 
 
-    def test_ListResources_badCredential(self):
+    def test_ListResources_badCredential_malformedXML(self):
+        """Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
+        self.subtest_ListResources_badCredential(self.removeFirstChar)
+    def test_ListResources_badCredential_alteredObject(self):
+        """Run ListResources with a User Credential that has been altered (so the signature doesn't match). """
+        self.subtest_ListResources_badCredential(self.alterSignedObject)
+
+    def removeFirstChar( self, usercred ):
+        return usercred[1:]
+
+    def alterSignedObject( self, usercred ):
+        try:
+            root = etree.fromstring(usercred)
+        except:
+            print "Failed to make an XML doc"
+            raise ValueError, "'usercred' is not an XML document."
+        newElement = etree.Element("foo")
+        root.insert(0, newElement)
+        newcred = etree.tostring(root)
+        return newcred
+
+    def subtest_ListResources_badCredential(self, mundgeFcn):
         """test_ListResources_badCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a bad credential.
         """
 
@@ -284,7 +306,8 @@ class Test(ut.OmniUnittest):
 
 
         # (2) Create a broken usercred
-        broken_usercred = usercred[1:]
+        broken_usercred = mundgeFcn(usercred)
+
         # (3) Call listresources with this broken credential
         # We expect this to fail
         # self.subtest_ListResources(usercred=broken_usercred) 
