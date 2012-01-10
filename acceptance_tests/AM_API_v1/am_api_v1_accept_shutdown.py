@@ -95,7 +95,7 @@ class ShutdownTest(accept.Test):
     def subtest_Shutdown(self, slicename=None):
         omniargs = ["shutdown", slicename, str(self.options_copy.rspec_file)] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
-        self.assertFalse( len(failList),
+        self.assertTrue( (len(succList) >=1) and (len(failList)==0),
                         "Return from 'Shutdown' " \
                         "expected to succeed " \
                         "but did not for: %s" % ", ".join(failList) )
