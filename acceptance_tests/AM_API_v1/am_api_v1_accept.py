@@ -314,8 +314,18 @@ class Test(ut.OmniUnittest):
         # with slicename left to the default
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
 
+    def test_ListResources_untrustedCredential(self):
+        """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
+        """
+        # Call listresources with this credential
+        # We expect this to fail
+        # self.subtest_ListResources(usercred=invalid_usercred) 
+        # with slicename left to the default
+        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
 
-    def subtest_ListResources(self, slicename=None, usercred=None):
+
+
+    def subtest_ListResources(self, slicename=None, usercred=None, usercredfile=None):
         self.assertTrue( self.checkAdRSpecVersion() )
 
         # Check to see if 'rspeclint' can be found before doing the hard (and
@@ -346,11 +356,15 @@ class Test(ut.OmniUnittest):
                 omniargs = omniargs + ["--usercredfile", f.name] 
                 # run command here while temporary file is open
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
+        elif usercredfile:
+            omniargs = omniargs + ["--usercredfile", usercredfile] 
+            # run command here while temporary file is open
+            (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
             (text, ret_dict) = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
-        
+
         ## In python 2.7: assertIs
         self.assertDict(ret_dict,
                         "Call to 'ListResources' failed or not possible " \
@@ -767,6 +781,9 @@ class Test(ut.OmniUnittest):
                            action="store", type='string', 
                            dest='bad_rspec_file', default=BAD_RSPEC_FILE,
                            help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
+
+        parser.add_option("--untrusted-usercredfile", default='untrusted-usercred.xml', metavar="UNTRUSTED_USER_CRED_FILENAME",
+                      help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
         parser.add_option( "--rspeclint", 
                            action="store_true", 
                            dest='rspeclint', default=False,
