@@ -956,12 +956,12 @@ class Test(ut.OmniUnittest):
                       help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
 
         parser.add_option( "--rspec-file-list", 
-                           action="store", type='string', nargs='+', 
+                           action="store", type='string', nargs=3, 
                            dest='rspec_file_list', default=(REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
                            help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
 
         parser.add_option( "--reuse-slice-list", 
-                           action="store", type='string', nargs='+', dest='reuse_slice_list', 
+                           action="store", type='string', nargs=3, dest='reuse_slice_list', 
                            help="In multi-slice CreateSliver tests, use slice names provided instead of creating/deleting a new slice")
 
         parser.add_option( "--rspeclint", 

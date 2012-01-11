@@ -15,10 +15,13 @@ AM under test.
 
 Test verifies: 
      - Sliver creation workflow
- 	* CreateSliver
+ 	* CreateSliver : checks that request and manifest match
 	* SliverStatus
-	* ListResources <slice name>
-	* DeleteSliver	
+	* ListResources <slice name> : checks that request and manifest match
+	* DeleteSliver
+     - Sliver creation workflow works with multiple simultaneous slices
+        * checks that you can't use a slice credential from one slice to do
+          ListResources <slicename> on another slice
      - Sliver creation workflow fails when:
         * request RSpec is really a manifest RSpec
 	* request RSpec is malformed (ie a tag is not closed)
@@ -30,14 +33,17 @@ Test verifies:
         * GENI AM API version 1 
         * 'geni_ad_rspec_versions' (or 'ad_rspec_versions') which in turn
           contains a 'type' and 'version'
-        * 'geni_request_rspec_versions' (or 'request_rspec_versions') which in turn
-          contains a 'type' and 'version'
+        * 'geni_request_rspec_versions' (or 'request_rspec_versions')
+          which in turn contains a 'type' and 'version'
      - ListResources returns an advertisement RSpec (that is
        optionally validated with rspeclint)
-     - ListResources FAILS when using a bad user credential.
+     - ListResources FAILS when using a bad user credential
+     - ListResources FAILS when using a valid but untrusted user
+       credential 
      - ListResources supports 'geni_compressed' and 'geni_available' options
      - SliverRenewal for 2 days and 5 days succeeds
-     
+     - Shutdown : WARNING, running this test (which is in a separate
+       file) likely requires administrator assistance to recover from)
 
 Installation & Getting Started
 ==============================
@@ -125,7 +131,7 @@ Usage Instructions
      (a) Configure omni_config
          * Edit 'aggregates' to point to the url of the AM under test.
          * Edit 'am-undertest' to point to the url of the AM under test.
-     (b) Write a request RSpec for AM under test.
+     (b) Write three request RSpecs for AM under test.
      	 (i) Move default RSpecs used in (2) out of the way.
              $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml.default
              $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml.default
@@ -191,11 +197,11 @@ Schema and document locations are either paths or URLs.
    - If you use PlanetLab, make sure to run the following which will
    cause your PlanetLab credential to be downloaded:
      $ omni.py -f plc listresources  
-   - If you use GCF, make sure to use the --more-strict option.
+   - If you use gcf, make sure to use the --more-strict option.
 
  * --untrusted-usercred allows you to pass in a user credential that
      is not trusted by the framework defined in the omni_config for
-     use into test_ListResources_untrustedCredential 
+     use in test_ListResources_untrustedCredential 
 
  * Future versions of this test will provide options --rspec-file-list
      and --reuse-slice-list which take lists of RSpec file and lists
@@ -205,7 +211,10 @@ Schema and document locations are either paths or URLs.
 Common Errors and What to Do About It
 =====================================
 
- * When running with ProtoGENI, you may occasionally get intermittent errors caused by making the AM API calls to quickly.  If you see these errors, either rerun the test or use the --sleep-time option to increase the time between calls.
+ * When running with ProtoGENI, you may occasionally get intermittent
+   errors caused by making the AM API calls to quickly.  If you see
+   these errors, either rerun the test or use the --sleep-time option
+   to increase the time between calls.
 
  * If you see:
    NotNoneAssertionError: Return from 'CreateSliver'expected to be XML file but instead returned None.
@@ -215,9 +224,9 @@ Then:
    $ path/to/omni.py -a am-undertest deleteSliver acc<username>
 where <username> is your Unix account username.
 
- * If a test fails, rerun the individual test by itself and look at the
-contents of the acceptance.log file for an indication of the source of
-the problem.
+ * If a test fails, rerun the individual test by itself and look at
+the contents of the acceptance.log file for an indication of the
+source of the problem.
 
 Sample Output
 =============
