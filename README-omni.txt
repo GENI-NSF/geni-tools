@@ -266,7 +266,7 @@ We recommend not trying to support omnispecs for different RSpec formats.
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
-http://groups.geni.net/geni/wiki/GENIExperimenter
+http://groups.geni.net/geni/wiki/HowToUseOmni
 
  1. Pick a Clearinghouse you want to use. That is the control framework you
     will use.
