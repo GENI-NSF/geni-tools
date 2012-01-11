@@ -89,7 +89,7 @@ def convert_public_key(key):
 
     # we can only convert rsa keys
     if "ssh-dss" in key:
-        return None
+        raise Exception, "keyconvert: dss keys are not supported"
 
     (ssh_f, ssh_fn) = tempfile.mkstemp()
     ssl_fn = tempfile.mktemp()
@@ -103,20 +103,21 @@ def convert_public_key(key):
     # that it can be expected to see why it failed.
     # TODO: for production, cleanup the temporary files
     if not os.path.exists(ssl_fn):
-        return None
+        raise Exception, "keyconvert: generated certificate not found. keyconvert may have failed."
 
     k = Keypair()
     try:
         k.load_pubkey_from_file(ssl_fn)
+        return k
     except:
         logger.log_exc("convert_public_key caught exception")
-        k = None
-
-    # remove the temporary files
-    os.remove(ssh_fn)
-    os.remove(ssl_fn)
-
-    return k
+        raise
+    finally:
+        # remove the temporary files
+        if os.path.exists(ssh_fn):
+            os.remove(ssh_fn)
+        if os.path.exists(ssl_fn):
+            os.remove(ssl_fn)
 
 ##
 # Public-private key pairs are implemented by the Keypair class.

@@ -15,9 +15,9 @@ framework as your default. Embedded comments describe the meaning of
 each field. (Note that keys for the GCF framework are stored in ~/.gcf
 by default.)
 
-The currently supported control frameworks are SFA (PlanetLab),
+The currently supported control frameworks are SFA (!PlanetLab),
 ProtoGENI and GCF. Any AM API compliant aggregate should work.
-These include SFA, ProtoGENI, OpenFlow and GCF.
+These include SFA, ProtoGENI, !OpenFlow and GCF.
 
 Omni performs the following functions:
  * Talks to each control framework in its native API
@@ -367,7 +367,8 @@ Omni supports the following command-line options.
 	'--slicecredfile mySliceCred.xml -o getslicecred mySliceName'
 
 -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-        Ad RSpec type and version to return, e.g. GENI 3'
+        Ad RSpec type and version to return, e.g. 'GENI 3'.
+        Required when using AM API version 2 or greater.
 
 -v, --verbose  (default True)
         Turn on verbose command summary for omni commandline tool
@@ -563,27 +564,34 @@ Options:
 Call the AM API ListResources function at specified aggregates.
 
  * format:  omni.py [-a AM_URL_or_nickname] [-n] [-o [-p fileprefix]] \
+                    [-t <RSPEC_TYPE> <RSPEC_VERSION>] \
+                    [--api-version <version #, 1 is default, or 2>] \
                     listresources [slice-name] 
  * examples:
-  * omni.py listresources
-    	    List resources at all AMs on your CH
-  * omni.py listresources myslice
-    	    List resources in myslice from all AMs on your CH
-  * omni.py -a http://localhost:12348 listresources myslice
-    	    List resources in myslice at the localhost AM
-  * omni.py -a myLocalAM listresources
+  * omni.py listresources -t geni 3
+            List resources at all AMs on your CH using GENI v3 format ad RSpecs
+  * omni.py listresources myslice -t geni 3
+            List resources in myslice from all AMs on your CH
+  * omni.py -a http://localhost:12348 listresources myslice -t geni 3
+            List resources in myslice at the localhost AM
+  * omni.py -a myLocalAM listresources -t geni 3
             List resources at the AM with my nickname myLocalAM in omni_config
   * omni.py listresources -a http://localhost:12348 -t GENI 3 myslice
             List resources in myslice at the localhost AM, requesting that
-	    the AM send a GENI V3 format RSpec.
+            the AM send a GENI v3 format RSpec.
   * omni.py -a http://localhost:12348 --omnispec listresources myslice
             List resources in myslice at the localhost AM, converting
-	    them to the deprecated omnispec format.
-  * omni.py -a http://localhost:12348 -o -p myprefix listresources myslice 
+            them to the deprecated omnispec format.
+  * omni.py -a http://localhost:12348 -o -p myprefix listresources myslice \
+            -t geni 3
             List resources at a specific AM and save it to a file
-	    with prefix 'myprefix'.
+            with prefix 'myprefix'.
+  * omni.py -a http://localhost:12348 listresources myslice -t geni 3 \
+            --api-version 2
+            List resources in myslice at the localhost AM, using AM API
+            version 2 and requesting GENI v3 format manifest RSpecs.
 
-This command will list the rspecs of all GENI aggregates available
+This command will list the RSpecs of all GENI aggregates available
 through your chosen framework.
 It can save the result to a file so you can use the result to
 create a reservation RSpec, suitable for use in a call to
@@ -594,7 +602,6 @@ If a slice name is supplied, then resources for that slice only
 will be displayed.  In this case, the slice credential is usually
 retrieved from the Slice Authority. But
 with the --slicecredfile option it is read from that file, if it exists.
-
 
 If an Aggregate Manager URL is supplied, only resources
 from that AM will be listed.
@@ -615,7 +622,10 @@ Options:
     AM does not speak that type and version, nothing is returned. Use
     GetVersion to see available types at that AM.
     Type and version are case-sensitive strings.
+    This argument is REQUIRED when using AM API version 2 or later.
  - --slicecredfile says to use the given slicecredfile if it exists.
+ - --api-version specifies the version of the AM API to speak.
+    AM API version 1 is the default.
 
 File names will indicate the slice name, file format, and either
 the number of Aggregates represented (omnispecs), or
@@ -629,6 +639,10 @@ The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
  * examples:
   * omni.py createsliver myslice resources.rspec
   * omni.py -a http://localhost:12348 createsliver myslice resources.rspec
+  * omni.py -a http://localhost:12348 --api-version 2 createsliver \
+            myslice resources.rspec
+        Specify using GENI AM API v2 to reserve a sliver in myslice from \
+        an AM running at localhost, using the request rspec in resources.rspec.
   * Use a saved (delegated?) slice credential: 
         omni.py --slicecredfile myslice-credfile.xml \
             -a http://localhost:12348 createsliver myslice resources.rspec
@@ -679,6 +693,8 @@ Options:
  - -p Prefix for resulting manifest RSpec files. (used with -o)
  - If not saving results to a file, they are logged.
  - If --tostdout option, then instead of logging, print to STDOUT.
+ - --api-version specifies the version of the AM API to speak.
+    AM API version 1 is the default.
 
 Slice credential is usually retrieved from the Slice Authority. But
 with the --slicecredfile option it is read from that file, if it exists.
@@ -698,6 +714,8 @@ Calls the AM API RenewSliver function
   * omni.py renewsliver myslice "12/12/10 4:15pm"
   * omni.py renewsliver myslice "12/12/10 16:15"
   * omni.py -a http://localhost:12348 renewsliver myslice "12/12/10 16:15"
+  * omni.py -a http://localhost:12348 --api-version 2 \
+            renewsliver myslice "12/12/10 16:15"
   * omni.py -a myLocalAM renewsliver myslice "12/12/10 16:15"
 
 This command will renew your resources at each aggregate up to the
@@ -738,6 +756,7 @@ GENI AM API SliverStatus function
  * examples:
   * omni.py sliverstatus myslice
   * omni.py -a http://localhost:12348 sliverstatus myslice
+  * omni.py -a http://localhost:12348 --api-version 2 sliverstatus myslice
   * omni.py -a myLocalAM sliverstatus myslice
 
 This command will get information from each aggregate about the
@@ -762,6 +781,8 @@ Options:
  - -p Prefix for resulting files (used with -o) 
  - If not saving results to a file, they are logged.
  - If --tostdout option, then instead of logging, print to STDOUT.
+ - --api-version specifies the version of the AM API to speak.
+    AM API version 1 is the default.
 
 ==== deletesliver ====
 Calls the GENI AM API DeleteSliver function. 
@@ -772,6 +793,7 @@ the given aggregates.
  * examples:
   * omni.py deletesliver myslice
   * omni.py -a http://localhost:12348 deletesliver myslice
+  * omni.py -a http://localhost:12348 --api-version 2 deletesliver myslice
   * omni.py -a myLocalAM deletesliver myslice
 
 Slice name could be a full URN, but is usually just the slice name portion.
@@ -798,6 +820,7 @@ debugging.
  * examples:
   * omni.py shutdown myslice
   * omni.py -a http://localhost:12348 shutdown myslice
+  * omni.py -a http://localhost:12348 --api-version 2 shutdown myslice
   * omni.py -a myLocalAM shutdown myslice
 
 Slice name could be a full URN, but is usually just the slice name portion.
@@ -812,4 +835,3 @@ Aggregates queried:
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
-

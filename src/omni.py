@@ -364,7 +364,7 @@ class CallHandler(object):
                 else:
                     # Inform the user that they have to pick.
                     ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
-                    self.logger.warning("Please specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
+                    self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
                     if mymessage != "":
                         mymessage += ". "
                     mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
@@ -622,7 +622,7 @@ class CallHandler(object):
                 # This prints or logs results, depending on filename None
                 self._printResults( header, content, filename)
                 if filename:
-                    savedFileDesc += "Saved listResources RSpec at %s to file %s. \n" % (urn, filename)
+                    savedFileDesc += "Saved listResources RSpec at %s to file %s" % (urn, filename)
 
             else:
                 # Convert RSpec to omnispec
@@ -2479,6 +2479,13 @@ def parse_args(argv, options=None):
         parser.error("Select either native (-n) OR OmniSpecs (--omnispec) RSpecs")
     elif not options.native and not options.omnispec:
         options.native = True
+
+    # Validate the API version. The parser has already converted the argument to
+    # an integer, so check against a list of valid versions.
+    supported_versions = [1, 2]
+    if options.api_version not in supported_versions:
+        parser.error('API version "%s" is not a supported version. Valid versions are: %r.'
+                     % (options.api_version, supported_versions))
 
     return options, args
 
