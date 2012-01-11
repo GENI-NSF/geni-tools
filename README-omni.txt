@@ -30,6 +30,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.5.2:
+  * None
 
 New in v1.5.1:
   * Incorporated latest SFA library changes (tag sfa-2.0-4)

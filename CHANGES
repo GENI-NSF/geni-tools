@@ -3,7 +3,14 @@
 gcf 1.5.2:
  * omni    
  * gcf
+   - validate the API version argument (#92)
  * AM API v1 acceptance tests
+   - Exercise !ListResourcs with an untrusted authority (#93)
+   - Exercise the !CreateSliver workflow with multiple simultaneous slivers (#84)
+   - Exercise Shutdown 	(#86)
+   - Exercise !ListResources with broken credentials (#85)
+   - Verify that !ListResources(slice) returns a slice manifest RSpec (#88)
+   - Verify that !CreateSliver returns a slice manifest RSpec (#88)
 
 gcf 1.5.1:
  * omni
