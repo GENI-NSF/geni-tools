@@ -231,35 +231,72 @@ source of the problem.
 Sample Output
 =============
 
-A successful run looks like this:
+A successful run looks something like this:
 $ am_api_v1_accept.py  -a am-undertest
 ....
 ----------------------------------------------------------------------
-Ran 4 tests in 120.270s
+Ran 13 tests in 444.270s
 
 OK
 
 
 
 A partially unsuccessful run looks like this (run against ProtoGENI):
-$ am_api_v1_accept.py -a am-undertest
-....F.....
+(NOTE that this may improve as PG modifies some minor issues with the RSpec format.)
+$ am_api_v1_accept.py -a am-undertest --vv         
+
+test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec. ... FAIL                                            
+test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed. ... ok                                                 
+test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential. ... FAIL           
+test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file. ... ok                                              
+test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML. ... ok                                        
+test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative. ... FAIL                                                           
+test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1' and other parameters defined in Change Set A. ... ok                               
+test_ListResources: Passes if 'ListResources' returns an advertisement RSpec. ... ok    
+test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). ... ok                         
+test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). ... ok                
+test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec. ... ok                                                                             
+test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec. ... ok                                                                            
+test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse. ... ok
+
 ======================================================================
-FAIL: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative.
+FAIL: test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "./am_api_v1_accept.py", line 724, in test_CreateSliver_badrspec_manifest
-    slice_name )
+  File "./am_api_v1_accept.py", line 481, in test_CreateSliver
+    self.subtest_CreateSliverWorkflow()
+  File "./am_api_v1_accept.py", line 500, in subtest_CreateSliverWorkflow
+    self.assertRspecType( manifest, 'manifest')
+  File "/home/sedwards/gcf/src/omni_unittest.py", line 163, in assertRspecType
+    raise WrongRspecType, msg
+WrongRspecType: RSpec expected to have type 'manifest' but did not.
+
+======================================================================
+FAIL: test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "./am_api_v1_accept.py", line 669, in test_CreateSliverWorkflow_multiSlice
+    self.assertRspecType( "".join(manifest[i]), 'manifest')
+  File "/home/sedwards/gcf/src/omni_unittest.py", line 163, in assertRspecType
+    raise WrongRspecType, msg
+WrongRspecType: RSpec expected to have type 'manifest' but did not.
+
+======================================================================
+FAIL: test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "./am_api_v1_accept.py", line 945, in test_CreateSliver_badrspec_manifest
+    self.subtest_MinCreateSliverWorkflow, slice_name)
 AssertionError: NotNoneAssertionError not raised
 
 ----------------------------------------------------------------------
-Ran 10 tests in 320.791s
+Ran 13 tests in 444.584s
 
-FAILED (failures=1)
+FAILED (failures=3)
 
 
 Output of help message:
-$am_api_v1_accept.py -h
+$ am_api_v1_accept.py -h
 Usage:                                                                 
       ./am_api_v1_accept.py -a am-undertest                            
       Also try --vv                                                    
@@ -285,16 +322,16 @@ Options:
                         (Omni picks the name)                             
   -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                            
                         Filename prefix when saving results (used with -o)
-  --usercredfile=USER_CRED_FILENAME
-                        Name of user credential file to read from if it
+  --usercredfile=USER_CRED_FILENAME                                       
+                        Name of user credential file to read from if it   
                         exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'
-  --slicecredfile=SLICE_CRED_FILENAME
-                        Name of slice credential file to read from if it
+                        myUserCred.xml -o getusercred'                      
+  --slicecredfile=SLICE_CRED_FILENAME                                       
+                        Name of slice credential file to read from if it    
                         exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'
+                        mySliceCred.xml -o getslicecred mySliceName'         
   -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-                        Ad RSpec type and version to return, e.g. 'GENI 3'
+                        Ad RSpec type and version to return, e.g. 'GENI 3'     
   -v, --verbose         Turn on verbose command summary for omni commandline
                         tool
   -q, --quiet           Turn off verbose command summary for omni commandline
@@ -318,6 +355,16 @@ Options:
   --bad-rspec-file=BAD_RSPEC_FILE
                         In negative CreateSliver tests, use request RSpec file
                         provided instead of default of 'bad.xml'
+  --untrusted-usercredfile=UNTRUSTED_USER_CRED_FILENAME
+                        Name of an untrusted user credential file to use in
+                        test: test_ListResources_untrustedCredential
+  --rspec-file-list=RSPEC_FILE_LIST
+                        In multi-slice CreateSliver tests, use _bounded_
+                        request RSpec files provided instead of default of
+                        '(request.xml,request2.xml,request3.xml)'
+  --reuse-slice-list=REUSE_SLICE_LIST
+                        In multi-slice CreateSliver tests, use slice names
+                        provided instead of creating/deleting a new slice
   --rspeclint           Validate RSpecs using 'rspeclint'
   --less-strict         Be less rigorous. (Default)
   --more-strict         Be more rigorous.
@@ -327,6 +374,15 @@ Options:
                         (Default: 3 seconds)
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
+
+For shutdown test:
+$ am_api_v1_accept_shutdown.py -h     
+Usage:                                                                               
+      ./am_api_v1_accept_shutdown.py -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown                                                                               
+      Also try --vv                                                                     
+  WARNING: Be very careful running this test. Administator support is likely to be needed to recover from running this test.              
+
+<snip>
 
 Bibliography
 ===============

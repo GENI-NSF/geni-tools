@@ -136,7 +136,7 @@ class ShutdownTest(accept.Test):
 
 
 if __name__ == '__main__':
-    usage = "\n      %s -a am-undertest " \
+    usage = "\n      %s -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown" \
             "\n      Also try --vv" \
             "\n  WARNING: Be very careful running this test. " \
             "Administator support is likely to be needed to recover " \

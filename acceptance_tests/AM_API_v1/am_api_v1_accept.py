@@ -250,10 +250,10 @@ class Test(ut.OmniUnittest):
 
 
     def test_ListResources_badCredential_malformedXML(self):
-        """Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
+        """test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
         self.subtest_ListResources_badCredential(self.removeFirstChar)
     def test_ListResources_badCredential_alteredObject(self):
-        """Run ListResources with a User Credential that has been altered (so the signature doesn't match). """
+        """test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). """
         self.subtest_ListResources_badCredential(self.alterSignedObject)
 
     def removeFirstChar( self, usercred ):
@@ -456,8 +456,9 @@ class Test(ut.OmniUnittest):
                            % (agg_name, rspec[:100]))
 
             if slicename:
-                pass
-#UNCOMMENT                self.assertRspecType( rspec, 'manifest')
+#                pass
+#UNCOMMENT
+                self.assertRspecType( rspec, 'manifest')
             else:
                 self.assertRspecType( rspec, 'advertisement')
 
@@ -495,7 +496,8 @@ class Test(ut.OmniUnittest):
 
         try:
             self.assertRspecType( request, 'request')
-#UNCOMMENT            self.assertRspecType( manifest, 'manifest')
+#UNCOMMENT
+            self.assertRspecType( manifest, 'manifest')
 
             # manifest should be valid XML 
             self.assertIsXML(  manifest,
@@ -528,7 +530,8 @@ class Test(ut.OmniUnittest):
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
 
-#UNCOMMENT            self.assertRspecType( manifest2, 'manifest')
+#UNCOMMENT
+            self.assertRspecType( manifest2, 'manifest')
 
             # manifest should be valid XML 
             self.assertIsXML(  manifest2,
@@ -623,6 +626,7 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliverWorkflow_multiSlice(self): 
+        """test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential."""
         request = []
         manifest = []
         manifest2 = []
@@ -661,7 +665,8 @@ class Test(ut.OmniUnittest):
         try:
             for i in xrange(num_slices):
                 self.assertRspecType( "".join(request[i]), 'request')
-#UNCOMMENT                self.assertRspecType( "".join(manifest[i]), 'manifest')
+#UNCOMMENT
+                self.assertRspecType( "".join(manifest[i]), 'manifest')
 
                 # manifest should be valid XML 
                 self.assertIsXML(  manifest[i],
@@ -703,7 +708,8 @@ class Test(ut.OmniUnittest):
                 manifest2.append("")
                 manifest2[i] = "".join(self.subtest_ListResources( slicename=slicenames[i] ))
             for i in xrange(num_slices):
-#UNCOMMENT                self.assertRspecType( "".join(manifest2[i]), 'manifest')
+#UNCOMMENT
+                self.assertRspecType( "".join(manifest2[i]), 'manifest')
 
                 # manifest should be valid XML 
                 self.assertIsXML(  manifest2[i],
