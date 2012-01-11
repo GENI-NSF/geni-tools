@@ -44,8 +44,8 @@ Installation & Getting Started
 Software Dependencies
 =====================
 Requires:
- * Omni 1.5.1 and the acceptance tests [3] which are distributed as part
-   of the gcf1.5.1 package
+ * Omni 1.5.2 and the acceptance tests [3] which are distributed as part
+   of the gcf1.5.2 package
  * (optional) rspeclint (Code [4] and documentation [5] is available from ProtoGENI.)
    (1) Install LibXML (which rspeclint relies on) from CPAN.
      -- On Ubuntu Linux this is the libxml-libxml-perl package 
@@ -66,14 +66,14 @@ By policy, requires:
 
 Software
 ==================
- * gcf-1.5.1/acceptance_tests/AM_API_v1/am_api_v1_accept.py 
+ * gcf-1.5.2/acceptance_tests/AM_API_v1/am_api_v1_accept.py 
    - the AM API v1 acceptance tests
- * gcf-1.5.1/acceptance_tests/AM_API_v1/omni_config
+ * gcf-1.5.2/acceptance_tests/AM_API_v1/omni_config
    - omni_config file 
- * gcf-1.5.1/acceptance_tests/AM_API_v1/omni_accept.conf 
+ * gcf-1.5.2/acceptance_tests/AM_API_v1/omni_accept.conf 
    - logging configuration file for am_api_v1_accept.py
    - used by default unless you override it with -l
- * gcf-1.5.1/src/omni_unittest.py 
+ * gcf-1.5.2/src/omni_unittest.py 
    - facilitates using Omni and unittest together
 
 Pre-work
@@ -92,7 +92,7 @@ These instructions assume you have already done the following items:
 Usage Instructions
 ==================
 
- (1) Install gcf1.5.1 (which includes Omni and the acceptance tests)
+ (1) Install gcf1.5.2 (which includes Omni and the acceptance tests)
      (a) Install and test it per the instructions in INSTALL.txt.
 	 All of the tests should return "passed".
      (b) Configure omni_config.
@@ -100,10 +100,10 @@ Usage Instructions
          * Verify the ProtoGENI .pem files are found in the location
            specified in the omni_config
      (c) Set PYTHONPATH so the acceptance tests can locate omni.py:
-     	 PYTHONPATH=$PYTHONPATH:path/to/gcf-1.5.1/src
+     	 PYTHONPATH=$PYTHONPATH:path/to/gcf-1.5.2/src
 
 	 Or add the following to your ~/.bashrc:
-	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf-1.5.1/src
+	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf-1.5.2/src
      (d) Change into the directory where you will run the acceptance test:
           $ cd gcf/acceptance_tests/AM_API_v1
      (e) Run 'rspeclint' to make sure rspeclint is in your path so that
@@ -126,15 +126,19 @@ Usage Instructions
          * Edit 'aggregates' to point to the url of the AM under test.
          * Edit 'am-undertest' to point to the url of the AM under test.
      (b) Write a request RSpec for AM under test.
-     	 (i) Move default rspec used in (2) out of the way.
-             $ mv gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml  gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml.default
-         (ii) Write a bounded [6] request RSpec for the AM under test and save as: 
-     	     gcf-1.5.1/acceptance_tests/AM_API_v1/request.xml
+     	 (i) Move default RSpecs used in (2) out of the way.
+             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml.default
+             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml.default
+             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml.default
+         (ii) Write three bounded [6] request RSpec for the AM under test and save as: 
+     	     gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml
+     	     gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml
+     	     gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml
      (c) Write a manifest RSpec for AM under test.
      	 (i) Move default rspec used in (2) out of the way.
-             $ mv gcf-1.5.1/acceptance_tests/AM_API_v1/bad.xml  gcf-1.5.1/acceptance_tests/AM_API_v1/bad.xml.default
+             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml.default
          (ii) Write a manifest RSpec for the AM under test and save as: 
-     	     gcf-1.5.1/acceptance_tests/AM_API_v1/bad.xml
+     	     gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml
 
  (4) Run acceptance tests with a GENI credential accepted by the AM
      (a) Run all of the tests:
@@ -149,7 +153,12 @@ Usage Instructions
                 AM returns an empty RSpec from ListResources when a
                 slice does not exist.
 
- (5) Congratulations! You are done.	 
+ (5) Run "Shutdown" acceptance tests.  Beware that this test likely
+ requires an admin to recover from as it runs the AM API command
+ "Shutdown" on a slice.
+         $ am_api_v1_accept.py -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown
+
+ (6) Congratulations! You are done.	 
 
 Variations
 ==========
@@ -183,6 +192,15 @@ Schema and document locations are either paths or URLs.
    cause your PlanetLab credential to be downloaded:
      $ omni.py -f plc listresources  
    - If you use GCF, make sure to use the --more-strict option.
+
+ * --untrusted-usercred allows you to pass in a user credential that
+     is not trusted by the framework defined in the omni_config for
+     use into test_ListResources_untrustedCredential 
+
+ * Future versions of this test will provide options --rspec-file-list
+     and --reuse-slice-list which take lists of RSpec file and lists
+     of existing slicenames for use in
+     test_CreateSliverWorkflow_multiSlice
 
 Common Errors and What to Do About It
 =====================================

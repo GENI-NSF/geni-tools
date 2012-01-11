@@ -137,8 +137,13 @@ class OmniUnittest(unittest.TestCase):
                     "\n%s\n" % (rspec[:100])
             raise NoResourcesAssertionError, msg
 
-    def assertCompIDsEqual(self, rspec1, rspec2, msg=None):                
-        if not rspec_util.compare_comp_ids( rspec1, rspec2 ):
+    def RSpecVersion( self ):
+        if self.options_copy.protogeniv2:
+            return "ProtoGENI 2"
+        else:
+            return "GENI 3"
+    def assertCompIDsEqual(self, rspec1, rspec2, version="GENI 3", msg=None):
+        if not rspec_util.compare_comp_ids( rspec1, rspec2, version=version ):
             if msg is None:
                 msg =  "Two RSpecs expected to have same component_ids " \
                     "but did not."

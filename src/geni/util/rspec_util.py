@@ -85,6 +85,7 @@ def has_child( xml ):
 
 def get_expected_schema_info( version="GENI 3" ):
     """Returns (namespace, advertisement RSpec schema url, request RSpec schema url) for this RSpec version"""
+
     if version == "ProtoGENI 2":
         return (PG_2_NAMESPACE, 
                 PG_2_AD_SCHEMA, 
@@ -129,35 +130,38 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
 
 
 
-def get_comp_ids_from_rspec( xml ):
+def get_comp_ids_from_rspec( xml, version="GENI 3" ):
     try:
         root = etree.fromstring(xml)
     except:
         return False
 
-    nodes = root.findall( 'node' ) #get all nodes
+    tmp = get_expected_schema_info( version=version )
+    ns, ad_schema, req_schema, man_schema  = tmp
+    prefix = "{%s}"%ns
+    nodes = root.findall( prefix+'node' ) #get all nodes
     # generate a list of node component_ids
     comp_id_list = []
     for node in nodes:
         # node must contain a sliver_type
-        if len(node.findall('sliver_type')) > 0:
+        if len(node.findall(prefix+'sliver_type')) > 0:
             node_comp_id = node.get('component_id')
             if node_comp_id is not None:
                 comp_id_list = comp_id_list + [node_comp_id]
     return set(comp_id_list)
 
-def compare_comp_ids( xml1, xml2):
+def compare_comp_ids( xml1, xml2, version="GENI 3"):
     """Determines that the list of component IDs in two RSpecs are the same. (Useful for compare request and manifest RSpecs.) """
 
-    comp_id1 = get_comp_ids_from_rspec( xml1 )
-    comp_id2 = get_comp_ids_from_rspec( xml2 )
+    comp_id1 = get_comp_ids_from_rspec( xml1, version=version )
+    comp_id2 = get_comp_ids_from_rspec( xml2, version=version )
     if comp_id1 == comp_id2:
         return True
     else:
         return False
 
-def has_child_ids( xml, check_comp_id_list ):
-    compare_comp_id_set = get_comp_ids_from_rspec( xml )
+def has_child_ids( xml, check_comp_id_list, version="GENI 3" ):
+    compare_comp_id_set = get_comp_ids_from_rspec( xml, version=version )
 
     # check_comp_id_list must be a subset of compare_comp_id_list to return True
     if set(check_comp_id_list) == compare_comp_id_set:
@@ -273,6 +277,7 @@ if __name__ == "__main__":
     xml_str4 = """<?xml version='1.0'?>
 <!--Comment-->
 <rspec><node component_id='b'><sliver_type/></node></rspec>"""
+    xml_str5 = """<rspec><node component_id='b'><sliver_type/></node></rspec>"""
 
 
 
@@ -365,6 +370,9 @@ if __name__ == "__main__":
     print compare_comp_ids( xml_str, xml_str3 )
     print "Compare RSpecs with one a subset of the other  [Expected result: False]"
     print compare_comp_ids( xml_str, xml_str4 )
+
+    print "Compare RSpecs that are the same except for the <?xml..> at the top  [Expected result: True]"
+    print compare_comp_ids( xml_str4, xml_str5 )
 
     print "===== Rspec Type ======"
     print is_rspec_of_type( request_str, 'request' )
