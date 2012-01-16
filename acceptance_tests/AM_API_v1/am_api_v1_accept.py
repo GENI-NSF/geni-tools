@@ -654,15 +654,24 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.reuse_slice_list:
             time.sleep(self.options_copy.sleep_time)
 
+        # in case some slivers were left laying around from last
+        # time, try to delete them now
         for i in xrange(num_slices):
-            with open(self.options_copy.rspec_file_list[i]) as f:
-                request.append("")
-                request[i] = "".join(f.readlines())
-            manifest.append("")
-            self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
-            manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
+            try:
+                self.subtest_DeleteSliver( slicenames[i] )
+            except:
+                pass
 
         try:
+            for i in xrange(num_slices):
+                with open(self.options_copy.rspec_file_list[i]) as f:
+                    request.append("")
+                    request[i] = "".join(f.readlines())
+                manifest.append("")
+                self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
+                manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
+
+
             for i in xrange(num_slices):
                 self.assertRspecType( "".join(request[i]), 'request')
 #UNCOMMENT
@@ -739,16 +748,22 @@ class Test(ut.OmniUnittest):
         finally:
             time.sleep(self.options_copy.sleep_time)
             for i in xrange(num_slices):
-                self.subtest_DeleteSliver( slicenames[i] )
+                try:
+                    self.subtest_DeleteSliver( slicenames[i] )
+                except:
+                    pass
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
         for i in xrange(num_slices):       
             self.subtest_CreateSliverWorkflow_failure( slicenames[i] )
 
-        for i in xrange(num_slices):
-            if not self.options_copy.reuse_slice_list:
-                self.subtest_deleteslice( slicenames[i] )
 
+        if not self.options_copy.reuse_slice_list:
+            for i in xrange(num_slices):
+                try:
+                    self.subtest_deleteslice( slicenames[i] )
+                except:
+                    pass
 
     def subtest_RenewSliver( self, slicename, newtime ):
         omniargs = ["renewsliver", slicename, newtime] 
