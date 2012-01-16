@@ -162,7 +162,7 @@ Usage Instructions
  (5) Run "Shutdown" acceptance tests.  Beware that this test likely
  requires an admin to recover from as it runs the AM API command
  "Shutdown" on a slice.
-         $ am_api_v1_accept.py -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown
+         $ am_api_v1_accept.py -a am-undertest ShutdownTest.test_CreateSliverWorkflow_with_Shutdown
 
  (6) Congratulations! You are done.	 
 
