@@ -489,10 +489,10 @@ class Test(ut.OmniUnittest):
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
+        manifest = self.subtest_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
-        manifest = self.subtest_CreateSliver( slicename )
 
         try:
             self.assertRspecType( request, 'request')
@@ -664,6 +664,12 @@ class Test(ut.OmniUnittest):
 
         try:
             for i in xrange(num_slices):
+                # Check for the existance of the Request RSpec file
+                self.assertTrue( os.path.exists(self.options_copy.rspec_file_list[i]), 
+                "Request RSpec file, '%s' for 'CreateSliver' call " \
+                                     "expected to exist " \
+                                     "but does not." 
+                                 % self.options_copy.rspec_file_list[i] )
                 with open(self.options_copy.rspec_file_list[i]) as f:
                     request.append("")
                     request[i] = "".join(f.readlines())
@@ -956,6 +962,13 @@ class Test(ut.OmniUnittest):
         slice_name = self.create_slice_name(prefix='bad3')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
+        # Check for the existance of the Request RSpec file
+        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+                         "Request RSpec file, '%s' for 'CreateSliver' call " \
+                             "expected to exist " \
+                             "but does not." 
+                         % self.options_copy.rspec_file )
+
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
     @classmethod
