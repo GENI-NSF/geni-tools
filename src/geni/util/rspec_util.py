@@ -150,6 +150,20 @@ def get_comp_ids_from_rspec( xml, version="GENI 3" ):
                 comp_id_list = comp_id_list + [node_comp_id]
     return set(comp_id_list)
 
+def has_child_node( xml, version="GENI 3" ):
+    try:
+        root = etree.fromstring(xml)
+    except:
+        return False
+
+    ns, ad_schema, req_schema, man_schema  = get_expected_schema_info( version=version )
+    prefix = "{%s}"%ns
+    nodes = root.findall( prefix+'node' ) #get all nodes
+    if len(nodes) > 0:
+        return True
+    else:
+        return False
+
 def compare_comp_ids( xml1, xml2, version="GENI 3"):
     """Determines that the list of component IDs in two RSpecs are the same. (Useful for compare request and manifest RSpecs.) """
 
@@ -383,3 +397,12 @@ if __name__ == "__main__":
     print is_rspec_of_type( manifest_str, 'manifest', 'ProtoGENI 2' )
     print is_rspec_of_type( request_str, 'foo' )
     print is_rspec_of_type( manifest_str, 'bar' )
+
+    print "===== Has Child Nodes ====="
+    print has_child_node( request_str )
+    print has_child_node( manifest_str )
+    print has_child_node( xml_str )
+    print has_child_node( xml_str2 )
+    print has_child_node( xml_str3 )
+    print has_child_node( xml_str4 )
+    print has_child_node( xml_str5 )

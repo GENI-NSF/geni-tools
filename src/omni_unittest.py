@@ -30,10 +30,9 @@ from geni.util import rspec_util
 import inspect
 import sys
 import unittest
-
 import omni
 import os.path
-
+import pwd
 
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "omni_accept.conf"
@@ -87,7 +86,7 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return prefix+os.getlogin()
+            return prefix+pwd.getpwuid(os.getuid())[0]
 
     def create_slice_name_uniq( self, prefix=SLICE_NAME ):
         """Unique slice name to be used to create a test slice"""
@@ -134,6 +133,13 @@ class OmniUnittest(unittest.TestCase):
             if msg is None:
                 msg =  "RSpec expected to NOT be empty " \
                     "but was. Return was: " \
+                    "\n%s\n" % (rspec[:100])
+            raise NoResourcesAssertionError, msg
+    def assertChildNodeExists(self, rspec, version="GENI 3", msg=None):        
+        if not rspec_util.has_child_node( rspec ):
+            if msg is None:
+                msg =  "RSpec expected to contain <node> " \
+                    "but did not. Return was: " \
                     "\n%s\n" % (rspec[:100])
             raise NoResourcesAssertionError, msg
 

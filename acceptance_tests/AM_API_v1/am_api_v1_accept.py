@@ -434,7 +434,7 @@ class Test(ut.OmniUnittest):
             self.assertTrue(rspec,
                           "Return from 'ListResources' at aggregate '%s' " \
                           "expected to be XML file " \
-                          "but instead returned None." 
+                          "but instead nothing returned." 
                            % (agg_name))
             # TODO: more elegant truncation
             self.assertTrue(type(rspec) is str,
@@ -460,6 +460,8 @@ class Test(ut.OmniUnittest):
 #UNCOMMENT
                 self.assertRspecType( rspec, 'manifest')
             else:
+#                pass
+#UNCOMMENT
                 self.assertRspecType( rspec, 'advertisement')
 
             # Test if XML file passes rspeclint
@@ -489,14 +491,20 @@ class Test(ut.OmniUnittest):
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
+        # cleanup up any previous failed runs
+        try:
+            self.subtest_DeleteSliver( slicename )
+        except:
+            pass
+
+        manifest = self.subtest_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
-        manifest = self.subtest_CreateSliver( slicename )
 
         try:
-            self.assertRspecType( request, 'request')
 #UNCOMMENT
+            self.assertRspecType( request, 'request')
             self.assertRspecType( manifest, 'manifest')
 
             # manifest should be valid XML 
@@ -509,15 +517,15 @@ class Test(ut.OmniUnittest):
                          % (slicename, manifest[:100]))                         
 
             # Make sure the Manifest returned the nodes identified in the Request
-            self.assertCompIDsEqual( request, manifest, self.RSpecVersion(), 
+            if rspec_util.has_child_node( manifest, self.RSpecVersion()):
+                self.assertCompIDsEqual( request, manifest, self.RSpecVersion(), 
                                      "Request RSpec and Manifest RSpec " \
                                          "returned by 'ListResources' on slice '%s' " \
                                          "expected to have same component_ids " \
                                          "but did not." % slicename)
-
-
-            # the top level node should have a child
-            self.assertResourcesExist( manifest,
+            else:
+                # the top level node should have a child
+                self.assertResourcesExist( manifest,
                           "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                               "expected to NOT be empty " \
                               "but was. Return was: " \
@@ -540,14 +548,24 @@ class Test(ut.OmniUnittest):
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
+                         % (slicename, manifest2[:100]))                         
 
             # Make sure the Manifest returned the nodes identified in the Request
-            self.assertCompIDsEqual( request, manifest2, self.RSpecVersion(),
+            if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
+                self.assertCompIDsEqual( request, manifest2, self.RSpecVersion(),
                                      "Request RSpec and Manifest RSpec " \
                                          "returned by 'ListResources' on slice '%s' " \
                                          "expected to have same component_ids " \
                                          "but did not." % slicename )
+            else:
+                # the top level node should have a child
+                self.assertResourcesExist( manifest2,
+                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                              "expected to NOT be empty " \
+                              "but was. Return was: " \
+                              "\n%s\n" 
+                          % (slicename, manifest2))
+
 
 
 
@@ -574,6 +592,12 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
+
+        # cleanup up any previous failed runs
+        try:
+            self.subtest_DeleteSliver( slicename )
+        except:
+            pass
 
         manifest = self.subtest_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
@@ -654,18 +678,34 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.reuse_slice_list:
             time.sleep(self.options_copy.sleep_time)
 
+        # in case some slivers were left laying around from last
+        # time, try to delete them now
         for i in xrange(num_slices):
-            with open(self.options_copy.rspec_file_list[i]) as f:
-                request.append("")
-                request[i] = "".join(f.readlines())
-            manifest.append("")
-            self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
-            manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
+            try:
+                self.subtest_DeleteSliver( slicenames[i] )
+            except:
+                pass
 
         try:
             for i in xrange(num_slices):
-                self.assertRspecType( "".join(request[i]), 'request')
+                # Check for the existance of the Request RSpec file
+                self.assertTrue( os.path.exists(self.options_copy.rspec_file_list[i]), 
+                "Request RSpec file, '%s' for 'CreateSliver' call " \
+                                     "expected to exist " \
+                                     "but does not." 
+                                 % self.options_copy.rspec_file_list[i] )
+                with open(self.options_copy.rspec_file_list[i]) as f:
+                    request.append("")
+                    request[i] = "".join(f.readlines())
+                manifest.append("")
+                self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
+                
+                manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
+
+
+            for i in xrange(num_slices):
 #UNCOMMENT
+                self.assertRspecType( "".join(request[i]), 'request')
                 self.assertRspecType( "".join(manifest[i]), 'manifest')
 
                 # manifest should be valid XML 
@@ -678,20 +718,21 @@ class Test(ut.OmniUnittest):
                          % (slicenames[i], manifest[i][:100]))
 
                 # Make sure the Manifest returned the nodes identified in the Request
-                self.assertCompIDsEqual( "".join(request[i]), "".join(manifest[i]), self.RSpecVersion(), 
+                if rspec_util.has_child_node( manifest[i], self.RSpecVersion()):
+                    self.assertCompIDsEqual( "".join(request[i]), "".join(manifest[i]), self.RSpecVersion(), 
                                          "Request RSpec and Manifest RSpec " \
                                              "returned by 'ListResources' on slice '%s' " \
                                              "expected to have same component_ids " \
                                              "but did not." % slicenames[i])
                                          
-                                         
-                # the top level node should have a child
-                self.assertResourcesExist( "".join(manifest[i]),
-                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                   "expected to NOT be empty " \
-                   "but was. Return was: " \
-                   "\n%s\n" 
-                   % (slicenames[i], "".join(manifest)))
+                else:
+                    # the top level node should have a child
+                    self.assertResourcesExist( "".join(manifest[i]),
+                    "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                    "expected to NOT be empty " \
+                    "but was. Return was: " \
+                    "\n%s\n" 
+                    % (slicenames[i], "".join(manifest[i])))
             
             time.sleep(self.options_copy.sleep_time)
 
@@ -721,13 +762,20 @@ class Test(ut.OmniUnittest):
                          % (slicenames[i], manifest[i][:100]))                         
 
                 # Make sure the Manifest returned the nodes identified in the Request
-                self.assertCompIDsEqual( request[i], manifest2[i], self.RSpecVersion(), 
+                if rspec_util.has_child_node( manifest2[i], self.RSpecVersion()):
+                    self.assertCompIDsEqual( request[i], manifest2[i], self.RSpecVersion(), 
                                      "Request RSpec and Manifest RSpec " \
                                          "returned by 'ListResources' on slice '%s' " \
                                          "expected to have same component_ids " \
                                          "but did not." % slicenames[i] )
-
-
+                else:
+                    # the top level node should have a child
+                    self.assertResourcesExist( "".join(manifest2[i]),
+                    "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                    "expected to NOT be empty " \
+                    "but was. Return was: " \
+                    "\n%s\n" 
+                    % (slicenames[i], "".join(manifest2[i])))
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
@@ -739,16 +787,22 @@ class Test(ut.OmniUnittest):
         finally:
             time.sleep(self.options_copy.sleep_time)
             for i in xrange(num_slices):
-                self.subtest_DeleteSliver( slicenames[i] )
+                try:
+                    self.subtest_DeleteSliver( slicenames[i] )
+                except:
+                    pass
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
         for i in xrange(num_slices):       
             self.subtest_CreateSliverWorkflow_failure( slicenames[i] )
 
-        for i in xrange(num_slices):
-            if not self.options_copy.reuse_slice_list:
-                self.subtest_deleteslice( slicenames[i] )
 
+        if not self.options_copy.reuse_slice_list:
+            for i in xrange(num_slices):
+                try:
+                    self.subtest_deleteslice( slicenames[i] )
+                except:
+                    pass
 
     def subtest_RenewSliver( self, slicename, newtime ):
         omniargs = ["renewsliver", slicename, newtime] 
@@ -799,7 +853,7 @@ class Test(ut.OmniUnittest):
         self.assertIsNotNone(manifest,
                           "Return from 'CreateSliver'" \
                           "expected to be XML file " \
-                          "but instead returned None.")
+                          "but instead nothing returned. AM returned:\n %s"%text)
         # TODO: more elegant truncation
         self.assertTrue(type(manifest) is str,
                         "Return from 'CreateSliver' " \
@@ -941,6 +995,13 @@ class Test(ut.OmniUnittest):
         slice_name = self.create_slice_name(prefix='bad3')
         self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
+        # Check for the existance of the Request RSpec file
+        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+                         "Request RSpec file, '%s' for 'CreateSliver' call " \
+                             "expected to exist " \
+                             "but does not." 
+                         % self.options_copy.rspec_file )
+
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
     @classmethod
