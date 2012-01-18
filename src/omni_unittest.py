@@ -135,6 +135,13 @@ class OmniUnittest(unittest.TestCase):
                     "but was. Return was: " \
                     "\n%s\n" % (rspec[:100])
             raise NoResourcesAssertionError, msg
+    def assertChildNodeExists(self, rspec, version="GENI 3", msg=None):        
+        if not rspec_util.has_child_node( rspec ):
+            if msg is None:
+                msg =  "RSpec expected to contain <node> " \
+                    "but did not. Return was: " \
+                    "\n%s\n" % (rspec[:100])
+            raise NoResourcesAssertionError, msg
 
     def RSpecVersion( self ):
         if self.options_copy.protogeniv2:
