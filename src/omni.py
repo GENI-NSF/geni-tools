@@ -924,7 +924,7 @@ class CallHandler(object):
 
             prettyresult = result
             
-            if rspec_util.is_rspec_string( result ):
+            if rspec_util.is_rspec_string( result, self.logger ):
                 try:
                     newl = ''
                     if '\n' not in result:

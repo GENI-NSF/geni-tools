@@ -25,8 +25,6 @@
 """
 RSpec validation utilities.
 """
-#import lxml.objectify
-#import lxml.etree as etree
 import xml.etree.ElementTree as etree 
 import subprocess
 import tempfile
@@ -50,7 +48,7 @@ XSI="http://www.w3.org/2001/XMLSchema-instance"
 
 RSPECLINT = "rspeclint" 
 
-def is_wellformed_xml( string ):
+def is_wellformed_xml( string, logger=None ):
     # Try to parse the XML code.
     # If it fails to parse, then it is not well-formed
     # 
@@ -60,9 +58,12 @@ def is_wellformed_xml( string ):
     retVal = True
     try: 
         parser.Parse( string, 1 )
-    except Exception:
-        # Parsing failed
-        print Exception
+    except Exception, e:
+        # Parsing failed, so not well formed XML
+        if logger is not None:
+            logger.debug("Not wellformed XML: %s", e)
+        else:
+            print "Not wellformed XML: ", e
         retVal= False
     return retVal
 
@@ -245,7 +246,7 @@ def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
 #def is_valid_rspec(): 
 # Call is_rspec_string()
 # Call validate_rspec()
-def is_rspec_string( rspec ):
+def is_rspec_string( rspec, logger=None ):
     '''Could this string be part of an XML-based rspec?
     Returns: True/False'''
 
@@ -256,7 +257,7 @@ def is_rspec_string( rspec ):
     rspec = rspec.lower()
 
     # (1) Check if rspec is a well-formed XML document
-    if not is_wellformed_xml( rspec ):
+    if not is_wellformed_xml( rspec, logger ):
         return False
     
     # (2) Check if rspec is a valid XML document
