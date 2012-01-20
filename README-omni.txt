@@ -33,7 +33,7 @@ New in v1.5.3:
  * Bug fix (ticket #95)
 
 New in v1.5.2:
-  * None
+  * Validate the API version argument (#92)
 
 New in v1.5.1:
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
