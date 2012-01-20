@@ -2,8 +2,8 @@
 
 gcf 1.5.2:
  * omni    
- * gcf
    - validate the API version argument (#92)
+ * gcf
  * AM API v1 acceptance tests
    - Exercise !ListResourcs with an untrusted authority (#93)
    - Exercise the !CreateSliver workflow with multiple simultaneous slivers (#84)
