@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.5.2"
+OMNI_VERSION="1.5.3"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -924,7 +924,7 @@ class CallHandler(object):
 
             prettyresult = result
             
-            if rspec_util.is_rspec_string( result ):
+            if rspec_util.is_rspec_string( result, self.logger ):
                 try:
                     newl = ''
                     if '\n' not in result:

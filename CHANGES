@@ -1,5 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.5.3:
+ * omni
+   - Log malformed XML exception correctly (#95)
+ * gcf
+
 gcf 1.5.2:
  * omni    
    - validate the API version argument (#92)
