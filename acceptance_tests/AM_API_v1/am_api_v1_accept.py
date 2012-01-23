@@ -120,14 +120,19 @@ class Test(ut.OmniUnittest):
         (text, version) = self.call(omniargs, self.options_copy)
 
         mymessage = ""
+
         for agg, thisVersion in version.items():
 
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            if API_VERSION == 1: 
-                value = thisVersion               
-            elif API_VERSION == 2:
+            print "api_version"
+            print self.options_copy.api_version
+            if self.options_copy.api_version == 2: 
                 value = thisVersion['value']
+            else:
+                value = thisVersion               
+
+
             rspec_version = self.assertReturnPairKeyValue( 
                 'GetVersion', agg, value, 
                 rspec_type, 
@@ -159,6 +164,7 @@ class Test(ut.OmniUnittest):
         omniargs = ["getversion"]
         (text, ret_dict) = self.call(omniargs, self.options_copy)
 
+
         pprinter = pprint.PrettyPrinter(indent=4)
         # If this isn't a dictionary, something has gone wrong in Omni.  
         ## In python 2.7: assertIs
@@ -176,6 +182,9 @@ class Test(ut.OmniUnittest):
                         "Look for misconfiguration.")
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
+            if self.options_copy.api_version == 2: 
+                ver_dict = ver_dict['value']
+
             ## In python 2.7: assertIsNotNone
             self.assertTrue(ver_dict is not None,
                           "Return from 'GetVersion' at aggregate '%s' " \
@@ -204,11 +213,12 @@ class Test(ut.OmniUnittest):
                           "expected to have 'geni_api' be an integer " \
                           "but instead 'geni_api' was of type %r." 
                            % (agg, type(value)))
-            self.assertEqual(value, API_VERSION,
+
+            self.assertEqual(value, self.options_copy.api_version,
                           "Return from 'GetVersion' at aggregate '%s' " \
                           "expected to have 'geni_api=%d' " \
                           "but instead 'geni_api=%d.'"  
-                           % (agg, API_VERSION, value))
+                           % (agg, self.options_copy.api_version, value))
 
             request_rspec_versions = self.assertReturnPairKeyValue( 
                 'GetVersion', agg, ver_dict, 
