@@ -179,8 +179,21 @@ class OmniUnittest(unittest.TestCase):
     #            output_msg = "%s: %s" % (output_msg, msg)
     #         raise AssertionError, output_msg
         
+    def assertV2ReturnStruct( self, method, aggName, dictionary):
+        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'code', dict )
+        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'value', dict )
+        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'output', str )
+
     def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        self.assertDict(dictionary, 
+                        "Return from '%s' at %s " \
+                            "expected to be a dictionary " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (method, aggName, str(dictionary)))
+
         self.assertTrue(dictionary.has_key(key),
                         "Return from '%s' at %s " \
                             "expected to have entry '%s' " \
@@ -197,14 +210,14 @@ class OmniUnittest(unittest.TestCase):
 
 
     def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
-        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyB will be tested."""
+        """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyA will be tested."""
         self.assertDict( dictionary,
                         "Return from '%s' at %s " \
                             "expected to be dictionary " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (method, aggName, str(dictionary)))                         
+                        % (method, aggName, str(dictionary)))      
 
         self.assertTrue( dictionary.has_key(keyA) or
                          dictionary.has_key(keyB), 
@@ -216,10 +229,10 @@ class OmniUnittest(unittest.TestCase):
                         % (method, aggName, keyA, keyB,  str(dictionary)[:100]))
 
         # Test the first of these which exists
-        if dictionary.has_key(keyB):
-            keyTest = keyB
-        else:
+        if dictionary.has_key(keyA):
             keyTest = keyA
+        else:
+            keyTest = keyB
 
         self.assertTrue(type(dictionary[keyTest])==valueType,
                         "Return from '%s' at %s " \
@@ -235,6 +248,7 @@ class OmniUnittest(unittest.TestCase):
             return dictionary[keyA]
         else:
             return dictionary[keyB]            
+
 
 
 

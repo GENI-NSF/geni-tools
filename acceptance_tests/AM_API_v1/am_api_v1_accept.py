@@ -14,7 +14,7 @@
 # included in all copies or substantial portions of the Work.
 #
 # THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# OR IMPLIED, IsNCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
@@ -125,21 +125,20 @@ class Test(ut.OmniUnittest):
 
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            print "api_version"
-            print self.options_copy.api_version
             if self.options_copy.api_version == 2: 
                 value = thisVersion['value']
+                rspec_version = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, value, 
+                    'geni_'+rspec_type, 
+                    None,
+                    list )
             else:
                 value = thisVersion               
-
-
-            rspec_version = self.assertReturnPairKeyValue( 
-                'GetVersion', agg, value, 
-                rspec_type, 
-                'geni_'+rspec_type, 
-                list )
-
-
+                rspec_version = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, value, 
+                    rspec_type, 
+                    'geni_'+rspec_type, 
+                    list )
 
             # foreach item in the list that is the val
             match = False
@@ -182,7 +181,13 @@ class Test(ut.OmniUnittest):
                         "Look for misconfiguration.")
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
+            # AM API v2 support
+
+#            print "+++++++++++++"
+#            print agg, ver_dict
+#            print "+++++++++++++"
             if self.options_copy.api_version == 2: 
+                self.assertV2ReturnStruct( 'GetVersion', agg, ver_dict)
                 ver_dict = ver_dict['value']
 
             ## In python 2.7: assertIsNotNone
@@ -220,19 +225,33 @@ class Test(ut.OmniUnittest):
                           "but instead 'geni_api=%d.'"  
                            % (agg, self.options_copy.api_version, value))
 
-            request_rspec_versions = self.assertReturnPairKeyValue( 
-                'GetVersion', agg, ver_dict, 
-                'request_rspec_versions', 
-                'geni_request_rspec_versions', 
-                list )
+            if self.options_copy.api_version == 2:
+                request_rspec_versions = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, ver_dict, 
+                    'geni_request_rspec_versions', 
+                    None,
+                    list )
+            else:
+                request_rspec_versions = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, ver_dict, 
+                    'request_rspec_versions', 
+                    'geni_request_rspec_versions', 
+                    list )
             for vers in request_rspec_versions:
                 self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
                 self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
-            ad_rspec_versions = self.assertReturnPairKeyValue( 
-                'GetVersion', agg, ver_dict, 
-                'ad_rspec_versions',
-                'geni_ad_rspec_versions', 
-                list )
+            if self.options_copy.api_version == 2:
+                ad_rspec_versions = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, ver_dict, 
+                    'geni_ad_rspec_versions', 
+                    None,
+                    list )
+            else:
+                ad_rspec_versions = self.assertReturnPairKeyValue( 
+                    'GetVersion', agg, ver_dict, 
+                    'ad_rspec_versions',
+                    'geni_ad_rspec_versions', 
+                    list )
             for vers in ad_rspec_versions:
                 self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
                 self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
@@ -440,6 +459,14 @@ class Test(ut.OmniUnittest):
 
         # Checks each aggregate
         for ((agg_name, agg_url), rspec) in ret_dict.items():
+#            print "+++++++++++++"
+#            print agg_name, agg_url, rspec
+#            print "+++++++++++++"
+#            if self.options_copy.api_version == 2: 
+#                self.assertV2ReturnStruct( 'ListResources', agg_name, rspec)
+#                rspec = rspec['value']
+
+
             ## In python 2.7: assertIsNotNone
             self.assertTrue(rspec,
                           "Return from 'ListResources' at aggregate '%s' " \
