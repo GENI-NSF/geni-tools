@@ -101,6 +101,12 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.rspectype:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
 
+        self.success = False
+    def tearDown( self ):
+        ut.OmniUnittest.tearDown(self)
+        if self.options_copy.monitoring:
+            # MONITORING test_TestName 1
+            print "MONITORING %s %d" % (self.id().split('.',2)[-1],int(self.success))
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
@@ -256,35 +262,36 @@ class Test(ut.OmniUnittest):
                 self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
                 self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
 
-
+        self.success = True
     def test_ListResources(self):
         """test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_compress' = True
         self.subtest_ListResources()
-
+        self.success = True
     def test_ListResources_geni_compressed(self):
         """test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_compressed' = True, override
         self.options_copy.geni_compressed = False
         self.subtest_ListResources()
-
+        self.success = True
     def test_ListResources_geni_available(self):
         """test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_available' = False, override
         self.options_copy.geni_available = True
         self.subtest_ListResources()
-
+        self.success = True
 
     def test_ListResources_badCredential_malformedXML(self):
         """test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
         self.subtest_ListResources_badCredential(self.removeFirstChar)
+        self.success = True
     def test_ListResources_badCredential_alteredObject(self):
         """test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). """
         self.subtest_ListResources_badCredential(self.alterSignedObject)
-
+        self.success = True
     def removeFirstChar( self, usercred ):
         return usercred[1:]
 
@@ -345,6 +352,42 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
 
 
+    # def subtest_ListResources_delegateSliceCredential(self, sliceToBeDelegated, delegeeUserCert):
+    #     """test_ListResources_delegateSliceCredential: Passes if 'ListResources'can access a slice using a delegated credential.
+    #     """
+
+    #     # (1) Get the slicecredential
+    #     omniargs = ["getslicecred"]
+    #     (text, slicecred) = self.call(omniargs, self.options_copy)
+    #     self.assertTrue( type(usercred) is str,
+    #                     "Return from 'getslicecred' " \
+    #                         "expected to be string " \
+    #                         "but instead returned: %r" 
+    #                     % (usercred))
+
+    #     # Test if file is XML and contains "<rspec" or "<resv_rspec"
+    #     self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
+    #                     "Return from 'getslicecred' " \
+    #                     "expected to be XML " \
+    #                     "but instead returned: \n" \
+    #                     "%s\n" \
+    #                     "... edited for length ..." 
+    #                     % (slicecred[:100]))
+
+
+
+    #     # (2) Create a broken usercred
+    #     broken_usercred = mundgeFcn(usercred)
+
+    #     # (3) Call listresources with the delegated slice credential
+    #     # We expect this to succeed
+    #     # self.subtest_ListResources(slicecred=slicecred) 
+    #     # with slicename left to the default
+    #     self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
+
+
+
+
     def subtest_ListResources_wrongSlice(self, slicelist):
         num_slices = len(slicelist)
         for i in xrange(num_slices):
@@ -380,7 +423,7 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=invalid_usercred) 
         # with slicename left to the default
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
-
+        self.success = True
 
 
     def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None):
@@ -518,7 +561,7 @@ class Test(ut.OmniUnittest):
     def test_CreateSliver(self):
         """test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec."""
         self.subtest_CreateSliverWorkflow()
-
+        self.success = True
     def subtest_CreateSliverWorkflow(self, slicename=None):
         if slicename==None:
             slicename = self.create_slice_name()
@@ -609,6 +652,11 @@ class Test(ut.OmniUnittest):
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )
+
+#            # Try to CreateSliver again, but it should fail
+#            self.assertRaises( Exception, 
+#                              self.subtest_CreateSliver, slicename )
+
         except:
             raise
         finally:
@@ -654,7 +702,7 @@ class Test(ut.OmniUnittest):
         slicename = self.create_slice_name_uniq(prefix='non')        
         # Test SliverStatus, ListResources and DeleteSliver on a non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
-
+        self.success = True
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
         self.assertRaises((NotDictAssertionError, NoSliceCredError), 
                           self.subtest_SliverStatus, slicename )
@@ -840,7 +888,7 @@ class Test(ut.OmniUnittest):
                     self.subtest_deleteslice( slicenames[i] )
                 except:
                     pass
-
+        self.success = True
     def subtest_RenewSliver( self, slicename, newtime ):
         omniargs = ["renewsliver", slicename, newtime] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
@@ -997,7 +1045,7 @@ class Test(ut.OmniUnittest):
             self.options_copy.rspec_file = f.name
             self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name )
-
+        self.success = True
     def test_CreateSliver_badrspec_malformed(self):
         """test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML."""
 
@@ -1025,7 +1073,7 @@ class Test(ut.OmniUnittest):
             self.options_copy.rspec_file = f.name
             self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name )
-
+        self.success = True
 
     def test_CreateSliver_badrspec_manifest(self):
         """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
@@ -1041,6 +1089,7 @@ class Test(ut.OmniUnittest):
 
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
+        self.success = True
     @classmethod
     def accept_parser( cls, parser=omni.getParser(), usage=None):
         parser.add_option( "--reuse-slice", 
@@ -1088,6 +1137,11 @@ class Test(ut.OmniUnittest):
                            action="store", type='float', 
                            default=SLEEP_TIME,
                            help="Time to pause between some AM API calls in seconds (Default: %s seconds)"%(SLEEP_TIME) )
+        parser.add_option( "--monitoring", 
+                           action="store_true",
+                           default=False,
+                           help="Print output to allow tests to be used in monitoring. Output is of the form: 'MONITORING test_TestName 1' The third field is 1 if the test is successful and 0 is the test is unsuccessful." )
+
         argv = Test.unittest_parser(parser=parser, usage=usage)
 
         return argv
