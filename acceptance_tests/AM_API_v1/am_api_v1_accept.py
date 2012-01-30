@@ -1148,7 +1148,9 @@ class Test(ut.OmniUnittest):
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest " \
-            "\n      Also try --vv" % sys.argv[0]
+            "\n      Also try --vv" \
+            "\n\n     Run an individual test using the following form..." \
+            "\n     %s -a am-undertest Test.test_GetVersion" % (sys.argv[0], sys.argv[0])
     # Include default Omni_unittest command line options
     Test.accept_parser(usage=usage)
 
