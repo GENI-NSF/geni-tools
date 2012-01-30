@@ -131,15 +131,15 @@ class Test(ut.OmniUnittest):
 
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
+            value = thisVersion               
             if self.options_copy.api_version == 2: 
-                value = thisVersion['value']
+#                value = thisVersion['value']
                 rspec_version = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, value, 
                     'geni_'+rspec_type, 
                     None,
                     list )
             else:
-                value = thisVersion               
                 rspec_version = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, value, 
                     rspec_type, 
@@ -163,7 +163,7 @@ class Test(ut.OmniUnittest):
             return match
 
     def test_GetVersion(self):
-        """test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api = 1' and other parameters defined in Change Set A.
+        """test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A.
         """
         # Do AM API call
         omniargs = ["getversion"]
@@ -187,15 +187,6 @@ class Test(ut.OmniUnittest):
                         "Look for misconfiguration.")
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
-            # AM API v2 support
-
-#            print "+++++++++++++"
-#            print agg, ver_dict
-#            print "+++++++++++++"
-            if self.options_copy.api_version == 2: 
-                self.assertV2ReturnStruct( 'GetVersion', agg, ver_dict)
-                ver_dict = ver_dict['value']
-
             ## In python 2.7: assertIsNotNone
             self.assertTrue(ver_dict is not None,
                           "Return from 'GetVersion' at aggregate '%s' " \
@@ -427,7 +418,8 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None):
-        self.assertTrue( self.checkAdRSpecVersion() )
+        if not slicecred:
+            self.assertTrue( self.checkAdRSpecVersion() )
 
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
