@@ -257,7 +257,8 @@ class Test(ut.OmniUnittest):
     def test_ListResources(self):
         """test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
         """
-        self.options_copy.arbitrary_option = True
+        if self.options_copy.api_version > 1:
+            self.options_copy.arbitrary_option = True
         # omni sets 'geni_compress' = True
         self.subtest_ListResources()
         self.success = True
