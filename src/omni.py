@@ -170,10 +170,23 @@ class CallHandler(object):
 
         for client in clients:
             (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
-            version[ client.url ] = thisVersion
+            # If return is a dict
+            if isinstance(thisVersion, dict) and thisVersion.has_key('code'):
+                # AM API v2
+                if thisVersion['code']['geni_code'] == 0:
+                    version[ client.url ] = thisVersion['value']
+                else:
+                    message2 = thisVersion['output']
+                    version[ client.url ] = None
+            else:
+                version[ client.url ] = thisVersion
+
             if thisVersion is None:
                 retVal = retVal + "Cannot GetVersion at %s: %s\n" % (client.url, message)
                 self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
+            elif version[ client.url ] is None:
+                retVal = retVal + "Cannot GetVersion at %s: %s\n" % (client.url, message2)
+                self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message2) )                
             else:
                 # FIXME only print 'peers' on verbose
                 pp = pprint.PrettyPrinter(indent=4)
@@ -206,7 +219,6 @@ class CallHandler(object):
             # FIXME: If I have a message from getclients, want it here?
             # FIXME: If it is 1 just return the getversion?
             retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
-
         return (retVal, version)
 
     def _get_advertised_rspecs(self, client):
