@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.5.3"
+OMNI_VERSION="1.6"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -262,9 +262,13 @@ class CallHandler(object):
         # rspecs[(urn, url)] = decompressed native rspec
         rspecs = {}
         options = {}
-
+        
         options['geni_compressed'] = self.opts.geni_compressed
         options['geni_available'] = self.opts.geni_available
+
+        # Pass in a dummy option for testing that is actually ok
+        if self.opts.arbitrary_option:
+            options['arbitrary_option'] = self.opts.arbitrary_option
 
         # An optional slice name might be specified.
         slicename = None
@@ -2459,6 +2463,9 @@ def getParser():
     parser.add_option("--available", dest='geni_available',
                       default=False, action="store_true",
                       help="Only return available resources")
+    parser.add_option("--arbitrary-option", dest='arbitrary_option',
+                      default=False, action="store_true",
+                      help="Add an arbitrary option to ListResources (for testing purposes)")
     return parser
 
 def parse_args(argv, options=None):
