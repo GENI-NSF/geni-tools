@@ -48,11 +48,12 @@ Basic install & running instructions are in INSTALL.txt.
 
 Full details on options for each step are described below.
 
-0. Edit gcf_config (typically in the current directory) to configure your
-   clearinghouse and aggregate manager.  The default values should be
-   fine for most settings, but you should change the base_name (URN)
-   to be specific to you.  The keys and certificates will be generated
-   in src/gen-certs.py in Step 1 to the destinations you enter in
+0. Edit gcf_config (typically in the current directory; find a
+   template in gcf_config.orig) to configure your clearinghouse and
+   aggregate manager.  The default values should be fine for most
+   settings, but you should change the base_name (URN) to be specific
+   to you.  The keys and certificates will be generated in
+   src/gen-certs.py in Step 1 to the destinations you enter in
    gcf_config.
  
 1. Generate keys and certificates for your users, clearinghouse, and 
