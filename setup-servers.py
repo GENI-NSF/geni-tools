@@ -23,10 +23,10 @@
 
 from distutils.core import setup
 setup(name='gcf-servers',
-      version="1.5.3",
+      version="1.6",
       package_dir={'': 'src'},                   
       py_modules=['geni.am','geni.ch','geni.config'],
-      data_files=[('/etc/gcf-servers', ['gcf_config'])],
+      data_files=[('/etc/gcf-servers', ['gcf_config.orig'])],
       scripts=['src/gcf-ch.py','src/gcf-am.py','src/gcf-test.py','src/gen-certs.py'],
       author='gpo',
       author_email='gcf-dev@geni.net',

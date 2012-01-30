@@ -7,8 +7,8 @@ enumerate available GENI Aggregate Managers.  Note that Omni
 supports using control framework native RSpecs, or a (deprecated)
 common subset called an 'omnispec'.
 
-To configure Omni, please copy omni_config to your ~/.gcf
-directory and fill in the parameters for at least one control
+To configure Omni, please copy omni_config.orig to ~/.gcf/omni_config
+and fill in the parameters for at least one control
 framework - particularly the location of your certificate and key, in
 its appropriate section.  Edit the [omni] section to specify that
 framework as your default. Embedded comments describe the meaning of
@@ -29,9 +29,10 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v1.5.3:
+New in v1.6:
  * Bug fix (ticket #95)
-
+ * Make getversion implementation be consistent with other commands (#109)
+ * Moved omni_config template to be omni_config.orig and changed instructions to match (#83)
 New in v1.5.2:
   * validate the API version argument (#92)
 

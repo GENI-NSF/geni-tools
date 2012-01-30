@@ -1,9 +1,12 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
-gcf 1.5.3:
+gcf 1.6:
  * omni
    - Log malformed XML exception correctly (#95)
+   - Make getversion implementation be consistent with other commands (#109)
+   - Moved omni_config template to be omni_config.orig and changed instructions to match (#83)
  * gcf
+   - Moved gcf_config template to be gcf_config.orig and changed instructions to match (#83)
 
 gcf 1.5.2:
  * omni    

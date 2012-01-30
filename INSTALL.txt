@@ -114,9 +114,13 @@ running in this environment.
 Here is a 4 step test install of this software. Full usage instructions 
 for each step are in README.txt
 
-1. Optional: Edit gcf_config if you want to change settings from the default 
+1. Copy gcf_config into place.
 
-  For a test run edits are not needed.
+   In terminal one:
+     $ cp gcf_config.orig gcf_config
+
+   Optional: Edit gcf_config if you want to change settings from the default 
+   For a test run edits are not needed.
 
 2. Create certificates and run the GENI Clearinghouse
 
