@@ -29,9 +29,9 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v1.5.3:
+New in v1.6:
  * Bug fix (ticket #95)
-
+ * Make getversion implementation be consistent with other commands (#109)
 New in v1.5.2:
   * validate the API version argument (#92)
 
