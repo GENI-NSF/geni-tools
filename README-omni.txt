@@ -33,6 +33,7 @@ New in v1.6:
  * Bug fix (ticket #95)
  * Make getversion implementation be consistent with other commands (#109)
  * Moved omni_config template to be omni_config.orig and changed instructions to match (#83)
+ * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
 New in v1.5.2:
   * validate the API version argument (#92)
 

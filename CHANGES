@@ -5,6 +5,7 @@ gcf 1.6:
    - Log malformed XML exception correctly (#95)
    - Make getversion implementation be consistent with other commands (#109)
    - Moved omni_config template to be omni_config.orig and changed instructions to match (#83)
+   - Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
  * gcf
    - Moved gcf_config template to be gcf_config.orig and changed instructions to match (#83)
 
