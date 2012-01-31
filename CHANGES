@@ -9,6 +9,8 @@ gcf 1.6:
  * gcf
    - Moved gcf_config template to be gcf_config.sample and changed instructions to match (#83)
    - Cleaned up TROUBLESHOOTING.txt (#110)
+ * AM API v1 acceptance tests
+   - Changed sample RSpec files to end in .xml.sample instead of .xml (#83)
 
 gcf 1.5.2:
  * omni    

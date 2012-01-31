@@ -119,11 +119,16 @@ Usage Instructions
 
 	  Schema and document locations are either paths or URLs.
  (2) (optional) Run acceptance test with default AM to ensure everything works.
-     (a) Run all of the tests:
+     (a) Move default RSpecs used into place:
+             $ cp gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml.sample  gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml
+             $ cp gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml.sample  gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml
+             $ cp gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml.sample  gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml
+             $ cp gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml.sample  gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml
+     (b) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests:
           $ am_api_v1_accept.py -a am-undertest Test.test_GetVersion
-     (b) The above tests should all pass except for one 
+     (c) The above tests should all pass except for one 
      	  * Test.test_CreateSliver_badrspec_manifest fails as shown in
                  the sample output.
 
@@ -133,16 +138,16 @@ Usage Instructions
          * Edit 'am-undertest' to point to the url of the AM under test.
      (b) Write three request RSpecs for AM under test.
      	 (i) Move default RSpecs used in (2) out of the way.
-             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml.default
-             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml.default
-             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml.default
+             $ rm gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml
+             $ rm gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml
+             $ rm gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml
          (ii) Write three bounded [6] request RSpec for the AM under test and save as: 
      	     gcf-1.5.2/acceptance_tests/AM_API_v1/request.xml
      	     gcf-1.5.2/acceptance_tests/AM_API_v1/request2.xml
      	     gcf-1.5.2/acceptance_tests/AM_API_v1/request3.xml
      (c) Write a manifest RSpec for AM under test.
      	 (i) Move default rspec used in (2) out of the way.
-             $ mv gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml  gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml.default
+             $ rm gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml
          (ii) Write a manifest RSpec for the AM under test and save as: 
      	     gcf-1.5.2/acceptance_tests/AM_API_v1/bad.xml
 
