@@ -117,7 +117,7 @@ for each step are in README.txt
 1. Copy gcf_config into place.
 
    In terminal one:
-     $ cp gcf_config.orig gcf_config
+     $ cp gcf_config.sample gcf_config
 
    Optional: Edit gcf_config if you want to change settings from the default 
    For a test run edits are not needed.
