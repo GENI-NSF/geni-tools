@@ -579,7 +579,7 @@ def isPGV2(et, logger):
 
     tag = str(elemList[0].tag)
     if '{' not in tag or '}' not in tag:
-        logger.info("Missing namespace prefix - looked in tag " + tag)
+        #logger.info("Missing namespace prefix - looked in tag " + tag)
         return False
 
     namespaceStr = ""
@@ -665,7 +665,7 @@ def isMax(et, logger):
         return False
 
     if '{' not in tag or '}' not in tag:
-        l ogger.info("Missing namespace prefix in " + tag)
+        logger.info("Missing namespace prefix in " + tag)
         return False
 
     namespaceStr = ""

@@ -796,7 +796,7 @@ class MaxReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #      
     def doRequest(self, tmp_filename, options):
-        omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
         try:
@@ -818,7 +818,7 @@ class MaxReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts):
             self.logger.info("Polling MAX for sliver status...")
 
-            omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -853,7 +853,7 @@ class MaxReqRSpec(ReqRSpec):
 
         self.logger.info("Slice created successfully at MAX, attempting to obtain manifest")
 
-        omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
         try:
             text, result = omni.call(omniargs, options)
         except:
@@ -1132,7 +1132,7 @@ class IonReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
-        omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename]
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename]
         result = None
         text = ""
         try:
@@ -1153,7 +1153,7 @@ class IonReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts):
             self.logger.info("Polling ION for sliver status...")
 
-            omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -1186,7 +1186,7 @@ class IonReqRSpec(ReqRSpec):
 
         self.logger.info("Slice created successfully at ION, attempting to obtain manifest")
 
-        omniargs = ["--api-version", 2, "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
         try:
             text, result = omni.call(omniargs, options)
         except:
@@ -1421,7 +1421,7 @@ class PGV2ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
-        omniargs = ["--api-version", 2, "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        omniargs = ["--api-version", "2", "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
 
@@ -1466,7 +1466,7 @@ class PGV2ReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts*3):
             self.logger.info("Polling PG for sliver status...")
 
-            omniargs = ["--api-version", 2, "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -1714,7 +1714,7 @@ class GENIV3ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #
     def doRequest(self, tmp_filename, options):
-        omniargs = ["--api-version", 2, "-t", "GENI", "3", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        omniargs = ["--api-version", "2", "-t", "GENI", "3", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
 
@@ -1759,7 +1759,7 @@ class GENIV3ReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts*3):
             self.logger.info("Polling GENI AM for sliver status...")
 
-            omniargs = ["--api-version", 2, "-t", "GENI", "3", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "GENI", "3", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
