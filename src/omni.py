@@ -81,7 +81,7 @@ import zlib
 
 from omnilib.omnispec.translation import rspec_to_omnispec, omnispec_to_rspec
 from omnilib.omnispec.omnispec import OmniSpec
-from omnilib.util import OmniError, NoSliceCredError
+from omnilib.util import OmniError, NoSliceCredError, RefusedError
 from omnilib.util.dossl import _do_ssl
 from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
@@ -405,6 +405,7 @@ class CallHandler(object):
                 if 'manifest' in resp:
                     rspec = resp['manifest']
                 elif 'code' in resp:
+
                     # AM API v2
                     if resp['code']['geni_code'] == 0:
                         rspec = resp['value']
@@ -934,9 +935,13 @@ class CallHandler(object):
                     # Probably V2 API
                     if result['code']['geni_code'] == 0:
                         result = result['value']
+                    elif result['code']['geni_code'] == 7: # REFUSED
+                        self._raise_omni_error( result['output'], RefusedError)
                     else:
                         message = result['output']
                         result = None
+            elif result is None:
+                self._raise_omni_error( message, RefusedError)
 
             prettyresult = result
             

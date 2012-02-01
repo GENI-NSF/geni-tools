@@ -34,3 +34,7 @@ class OmniError(Exception):
 class NoSliceCredError(OmniError):
     """Errors due to a lack of slice credentials."""
     pass
+
+class RefusedError(OmniError):
+    """Errors due to an AM refusal. geni_code=7."""
+    pass

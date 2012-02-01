@@ -30,7 +30,7 @@ import unittest
 import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
-from omnilib.util import OmniError, NoSliceCredError
+from omnilib.util import OmniError, NoSliceCredError, RefusedError
 import omni
 import os
 import pprint
@@ -235,8 +235,15 @@ class Test(ut.OmniUnittest):
                     'geni_request_rspec_versions', 
                     list )
             for vers in request_rspec_versions:
+#                self.assertKeyValue( 'GetVersion', agg, vers, 'schema', str )
                 self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
                 self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
+#                rspecSchema = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'type', None, str)
+#                rspecType = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'type', None, str)
+#                rspecVersion = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'version', None, str)
+ #               if rspecType
+
+
             if self.options_copy.api_version == 2:
                 ad_rspec_versions = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, ver_dict, 
@@ -344,43 +351,6 @@ class Test(ut.OmniUnittest):
         # with slicename left to the default
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
 
-
-    # def subtest_ListResources_delegateSliceCredential(self, sliceToBeDelegated, delegeeUserCert):
-    #     """test_ListResources_delegateSliceCredential: Passes if 'ListResources'can access a slice using a delegated credential.
-    #     """
-
-    #     # (1) Get the slicecredential
-    #     omniargs = ["getslicecred"]
-    #     (text, slicecred) = self.call(omniargs, self.options_copy)
-    #     self.assertTrue( type(usercred) is str,
-    #                     "Return from 'getslicecred' " \
-    #                         "expected to be string " \
-    #                         "but instead returned: %r" 
-    #                     % (usercred))
-
-    #     # Test if file is XML and contains "<rspec" or "<resv_rspec"
-    #     self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
-    #                     "Return from 'getslicecred' " \
-    #                     "expected to be XML " \
-    #                     "but instead returned: \n" \
-    #                     "%s\n" \
-    #                     "... edited for length ..." 
-    #                     % (slicecred[:100]))
-
-
-
-    #     # (2) Create a broken usercred
-    #     broken_usercred = mundgeFcn(usercred)
-
-    #     # (3) Call listresources with the delegated slice credential
-    #     # We expect this to succeed
-    #     # self.subtest_ListResources(slicecred=slicecred) 
-    #     # with slicename left to the default
-    #     self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
-
-
-
-
     def subtest_ListResources_wrongSlice(self, slicelist):
         num_slices = len(slicelist)
         for i in xrange(num_slices):
@@ -408,6 +378,10 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(slice) 
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
 
+#    def test_ListResources_delegatedSliceCred(self, slicecred):
+#        """ """
+#        # Check if slice credential is delegated.
+#        self.subtest_ListResources(slicename=, slicecred=slicecred)
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
         """
@@ -556,6 +530,7 @@ class Test(ut.OmniUnittest):
         """test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec."""
         self.subtest_CreateSliverWorkflow()
         self.success = True
+
     def subtest_CreateSliverWorkflow(self, slicename=None):
         if slicename==None:
             slicename = self.create_slice_name()
@@ -641,7 +616,9 @@ class Test(ut.OmniUnittest):
                           % (slicename, manifest2))
 
 
-
+            # Attempting to CreateSliver again should fail
+            self.assertRaises(RefusedError, 
+                              self.subtest_CreateSliver, slicename )
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
