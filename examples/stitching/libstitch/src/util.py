@@ -634,10 +634,10 @@ def isGENIV3(et, logger):
         #logger.debug("The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['geniv3']['namespace'])
         return False
 
-    typeStr = strifyEle(elemList[0].get('type'))
-    if typeStr is None or typeStr != 'request':
-        #logger.debug("This rspec is not a Request type: %s", typeStr)
-        return False
+#    typeStr = strifyEle(elemList[0].get('type'))
+#    if typeStr is None or typeStr != 'request':
+#        #logger.debug("This rspec is not a Request type: %s", typeStr)
+#        return False
 
     return True
 

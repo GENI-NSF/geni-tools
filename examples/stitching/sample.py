@@ -148,7 +148,9 @@ def main(argv=None):
                 print aggr.aggrURL
                 cnt = 1
                 for iface in aggr.requestedInterfaces.keys():
-                    print "  " + str(cnt) + ": " + iface + ' -> ' + aggr.requestedInterfaces[iface]['remoteIface'] + ' (on ' + aggr.requestedInterfaces[iface]['remoteAggrURL'] + ')'
+                    if iface is None:
+                        continue
+                    print "  " + str(cnt) + ": " + iface + ' -> ' + str(aggr.requestedInterfaces[iface]['remoteIface']) + ' (on ' + str(aggr.requestedInterfaces[iface]['remoteAggrURL']) + ')'
                     cnt += 1
                 print '\n'
             

@@ -66,9 +66,12 @@ class AdRSpec(object):
 
         for subclass in AdRSpec.__subclasses__():
             if subclass.rspecType == rspecType:
-                return super(cls, subclass).__new__(subclass, *arguments, **keyword) 
+                return super(cls, subclass).__new__(subclass, *arguments, **keyword)
+            for subclass2 in subclass.__subclasses__():
+                if subclass2.rspecType == rspecType:
+                    return super(cls, subclass2).__new__(subclass2, *arguments, **keyword)
 
-        raise Exception, 'Unsupported RSpec format!'
+        raise Exception, ('Unsupported RSpec format %s!' % rspecType)
 
 
     ## The Constructor
@@ -98,6 +101,7 @@ class AdRSpec(object):
 class PGV2AdRSpec(AdRSpec):
     rspecType = 'pgv2'
     ns_prefix = "{http://www.protogeni.net/resources/rspec/2}"
+    stitch_ns_prefix = ns_prefix
 
     ## The Constructor
     #     
@@ -119,23 +123,23 @@ class PGV2AdRSpec(AdRSpec):
     #
     def fromRSpec(self):
         presetRoutes = {}
-        ns_prefix=PGV2AdRSpec.ns_prefix
+        ns_prefix=self.__class__.ns_prefix
 
-        aggr_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+AGGR_TAG)
+        aggr_elems = self.rspecET.findall(self.stitch_ns_prefix+STCH_TAG+"/"+self.stitch_ns_prefix+AGGR_TAG)
         if len(aggr_elems)<1:
-            raise  exception.TopologyCalculationException("Problem parsing advert")
+            raise  exception.TopologyCalculationException("Problem parsing advert: found no aggregate elements")
         
         for aggr_elem in aggr_elems:
-            node_elems = aggr_elem.findall(ns_prefix+NODE_TAG)
+            node_elems = aggr_elem.findall(self.stitch_ns_prefix+NODE_TAG)
             aggr_url = util.strifyEle(aggr_elem.get(URL_ID))
 
             presetRoutes[aggr_url]={}
             for node_elem in node_elems:
-                link_elems = node_elem.findall(ns_prefix+PORT_TAG+"/"+ns_prefix+LINK_TAG)
+                link_elems = node_elem.findall(self.stitch_ns_prefix+PORT_TAG+"/"+self.stitch_ns_prefix+LINK_TAG)
 
                 for link_elem in link_elems:
                     link_id = util.strifyEle(link_elem.get(ID_TAG))
-                    remotelink_elem = link_elem.find(ns_prefix+RMOTLINK_TAG)
+                    remotelink_elem = link_elem.find(self.stitch_ns_prefix+RMOTLINK_TAG)
 
                     if remotelink_elem is None:
                         # FIXME: Exception or skip over this malformed element?
@@ -154,6 +158,7 @@ class PGV2AdRSpec(AdRSpec):
 class GENIV3AdRSpec(PGV2AdRSpec):
     rspecType = 'geniv3'
     ns_prefix = "{http://www.geni.net/resources/rspec/3}"
+    stitch_ns_prefix = "{http://hpn.east.isi.edu/rspec/ext/stitch/0.1/}"
 
     ## The Constructor
     #
@@ -273,6 +278,11 @@ class ReqRSpec(object):
             
             # If that remote AM is not one of the requestRSpecs on this session, 
             # then error/return
+            if remoteAggrURL is None:
+                self.logger.error("Request of %s lists interface %s at remote interface %s, but the remote AM URL is unknown!", self.aggrURL, iface, remoteIface)
+                self.logger.debug("... one of your Ad RSpecs may have a typo in the remote interface name?")
+                continue
+
             remoteAggrReqRSpec = self.stitchSession.getAggregate(remoteAggrURL)
             if not remoteAggrReqRSpec:
                 self.logger.error("Request of %s lists interface %s that connects to AM at %s, interface %s. But we have no request RSpec for that remote aggregate!", self.aggrURL, iface, remoteAggrURL, remoteIface)
@@ -796,6 +806,7 @@ class MaxReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #      
     def doRequest(self, tmp_filename, options):
+        # FIXME: Use GetVersion to determin API # and RSpec type
         omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
@@ -1132,6 +1143,7 @@ class IonReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
+        # FIXME: Use GetVersion to determin API # and RSpec type
         omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename]
         result = None
         text = ""
@@ -1421,6 +1433,7 @@ class PGV2ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
+        # FIXME: Use GetVersion to determin API # and RSpec type
         omniargs = ["--api-version", "2", "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
@@ -1714,6 +1727,7 @@ class GENIV3ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #
     def doRequest(self, tmp_filename, options):
+        # FIXME: Use GetVersion to determin API # and RSpec type
         omniargs = ["--api-version", "2", "-t", "GENI", "3", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
@@ -1816,6 +1830,10 @@ class ManRSpec(object):
             if reqRSpec.rspecType == subclass.rspecType:
                 #Use the correct subclass
                 return super(cls, subclass).__new__(subclass, *arguments, **keyword) 
+        for subclass2 in subclass.__subclasses__(): 
+            if reqRSpec.rspecType == subclass2.rspecType:
+                #Use the correct subclass
+                return super(cls, subclass2).__new__(subclass2, *arguments, **keyword) 
 
         raise Exception, 'Unsupported RSpec format %s!' % reqRSpec.rspecType
 
