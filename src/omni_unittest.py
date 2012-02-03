@@ -180,11 +180,20 @@ class OmniUnittest(unittest.TestCase):
     #         raise AssertionError, output_msg
         
     def assertV2ReturnStruct( self, method, aggName, dictionary):
-        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'code', dict )
-        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'value', dict )
-        self.assertKeyValue( 'GetVersion', aggName,  dictionary, 'output', str )
+        self.assertKeyValueType( 'GetVersion', aggName,  dictionary, 'code', dict )
+        self.assertKeyValueType( 'GetVersion', aggName,  dictionary, 'value', dict )
+        self.assertKeyValueType( 'GetVersion', aggName,  dictionary, 'output', str )
 
-    def assertKeyValue( self, method, aggName, dictionary, key, valueType=str):
+
+    def assertKeyValue( self, method, aggName, dictionary, key, value):
+#        self.assertKeyValueType( method, aggName, dictionary, key, type(value))
+        self.assertTrue( dictionary[key]==value,
+                        "Return from '%s' at %s " \
+                            "expected to have entry '%s' of value '%s' " \
+                            "but instead returned: %s" 
+                        % (method, aggName, key, str(value), str(dictionary[key])))                         
+                                 
+    def assertKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
         self.assertDict(dictionary, 
                         "Return from '%s' at %s " \

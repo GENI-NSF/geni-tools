@@ -43,9 +43,9 @@ import xml.etree.ElementTree as etree
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
-PGV2_RSPEC_NUM = 2
+PGV2_RSPEC_NUM = '2'
 RSPEC_NAME = "GENI"
-RSPEC_NUM = 3
+RSPEC_NUM = '3'
 
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
@@ -60,6 +60,10 @@ MANIFEST_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
 #GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
 #GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
+
+PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
+PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
+
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
@@ -234,14 +238,41 @@ class Test(ut.OmniUnittest):
                     'request_rspec_versions', 
                     'geni_request_rspec_versions', 
                     list )
+            if self.options_copy.protogeniv2:
+                exp_type = PGV2_RSPEC_NAME
+                exp_num = PGV2_RSPEC_NUM
+            else:
+                exp_type = RSPEC_NAME
+                exp_num = RSPEC_NUM
+            request = False
             for vers in request_rspec_versions:
-#                self.assertKeyValue( 'GetVersion', agg, vers, 'schema', str )
-                self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
-                self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
-#                rspecSchema = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'type', None, str)
-#                rspecType = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'type', None, str)
-#                rspecVersion = self.assertReturnPairKeyValue( 'GetVersion', agg, vers, 'version', None, str)
- #               if rspecType
+#                self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
+#                self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
+                try:
+                    print vers['type'], exp_type, vers['type']==exp_type
+                    print vers['version'], exp_num, vers['version']==exp_num
+                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                                         'type', exp_type )
+                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                                         'version', exp_num )
+                    request = True
+                    print request
+                except:
+                    pass
+
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', type([]) )
+
+
+            self.assertTrue( request,
+                        "Return from 'GetVersion' at %s " \
+                        "expected to have entry " \
+                        "'geni_request_rspec_versions' of " \
+                        "type='%s' and value='%s' " \
+                        "but did not." 
+                        % (agg, exp_type, exp_num) )
+
 
 
             if self.options_copy.api_version == 2:
@@ -256,9 +287,30 @@ class Test(ut.OmniUnittest):
                     'ad_rspec_versions',
                     'geni_ad_rspec_versions', 
                     list )
+            ad = False
             for vers in ad_rspec_versions:
-                self.assertKeyValue( 'GetVersion', agg, vers, 'type', str )
-                self.assertKeyValue( 'GetVersion', agg, vers, 'version', str )
+#                self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
+#                self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
+                try:
+                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                                         'type', exp_type )
+                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                                         'version', exp_num )
+                    ad = True
+                except:
+                    pass
+                self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', type([]) )
+            self.assertTrue( ad,
+                        "Return from 'GetVersion' at %s " \
+                        "expected to have entry " \
+                        "'geni_ad_rspec_versions' of " \
+                        "'type'=%s and 'value'=%s" \
+                        "but did not." 
+                        % (agg, exp_type, exp_num) )
+
+
 
         self.success = True
     def test_ListResources(self):
@@ -378,10 +430,69 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(slice) 
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
 
-#    def test_ListResources_delegatedSliceCred(self, slicecred):
-#        """ """
-#        # Check if slice credential is delegated.
-#        self.subtest_ListResources(slicename=, slicecred=slicecred)
+
+    def file_to_string( self, filename ):
+        with open(filename) as f:
+            contents = f.readlines()
+            output = "".join(contents)        
+        return output
+
+    def get_cred_schema_info( self, version ):
+        if version.lower() in ("protogeni", "pg"):
+            return (PG_CRED_NAMESPACE, 
+                    PG_CRED_SCHEMA)
+
+    def is_delegated_cred( cls, xml):
+        try:
+            root = etree.fromstring(xml)
+        except:
+            return False
+
+#        ns, schema = cls.get_cred_schema_info( version=version )
+#        prefix = "{%s}"%ns
+        parent = root.findall( 'credential/parent' )
+        if len(parent) > 0:
+            return True
+        else:
+            return False
+
+    def get_slice_name_from_cred( cls, xml):
+        """Get the slice_name from the credential (retrieve the first if there is more than one)"""
+        try:
+            root = etree.fromstring(xml)
+        except:
+            return False
+
+#        ns, schema = cls.get_cred_schema_info( version=version )
+#        prefix = "{%s}"%ns
+        target = root.findall( 'credential/parent/credential/target_urn' )
+        urn = target[0].text
+
+        # urn is of form: ...+slice+name
+        # (1) check that second to last part of URN is 'slice'
+        # (1) return the last part of the URN
+        urn_type = urn.rsplit("+")[-2]
+        if urn_type == 'slice':
+            slice_name = urn.rsplit("+")[-1]
+            return slice_name
+        else:
+            return None
+    def test_ListResources_delegatedSliceCred(self):
+        """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
+        # Check if slice credential is delegated.
+        xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
+        self.assertTrue( self.is_delegated_cred(xml), 
+                       "Slice credential is not delegated " \
+                       "but expected to be. " )
+        slice_name = self.get_slice_name_from_cred( xml )                
+        self.assertTrue( slice_name,
+                       "Credential is not a slice credential " \
+                       "but expected to be: \n%s\n\n<snip> " % xml[:100] )
+        # Run slice credential
+        self.subtest_ListResources(
+           slicename=slice_name,
+           slicecredfile=self.options_copy.delegated_slicecredfile)
+        self.success = True
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
         """
@@ -393,7 +504,7 @@ class Test(ut.OmniUnittest):
         self.success = True
 
 
-    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None):
+    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
 
@@ -423,7 +534,7 @@ class Test(ut.OmniUnittest):
                 f.write( usercred )
                 f.seek(0)
                 with tempfile.NamedTemporaryFile() as f2:
-                    # make a temporary file containing the user credential
+                    # make a temporary file containing the slice credential
                     f2.write( slicecred )
                     f2.seek(0)
                     omniargs = omniargs + ["--usercredfile", f.name] + ["--slicecredfile", f2.name] 
@@ -431,7 +542,7 @@ class Test(ut.OmniUnittest):
                     (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif slicecred and not(usercred):
             with tempfile.NamedTemporaryFile() as f2:
-                    # make a temporary file containing the user credential
+                    # make a temporary file containing the slice credential
                     f2.write( slicecred )
                     f2.seek(0)
                     omniargs = omniargs + ["--slicecredfile", f2.name] 
@@ -446,6 +557,10 @@ class Test(ut.OmniUnittest):
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif usercredfile:
             omniargs = omniargs + ["--usercredfile", usercredfile] 
+            # run command here while temporary file is open
+            (text, ret_dict) = self.call(omniargs, self.options_copy)
+        elif slicecredfile:
+            omniargs = omniargs + ["--slicecredfile", slicecredfile] 
             # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
@@ -504,12 +619,8 @@ class Test(ut.OmniUnittest):
                            % (agg_name, rspec[:100]))
 
             if slicename:
-#                pass
-#UNCOMMENT
                 self.assertRspecType( rspec, 'manifest')
             else:
-#                pass
-#UNCOMMENT
                 self.assertRspecType( rspec, 'advertisement')
 
             # Test if XML file passes rspeclint
@@ -532,6 +643,13 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_CreateSliverWorkflow(self, slicename=None):
+        # Check to see if 'rspeclint' can be found before doing the hard (and
+        # slow) work of calling ListResources at the aggregate
+        if self.options_copy.rspeclint:
+            rspec_util.rspeclint_exists()
+            rspec_namespace = MANIFEST_NAMESPACE
+            rspec_schema = MANIFEST_SCHEMA
+
         if slicename==None:
             slicename = self.create_slice_name()
 
@@ -552,7 +670,6 @@ class Test(ut.OmniUnittest):
             request = "".join(req)
 
         try:
-#UNCOMMENT
             self.assertRspecType( request, 'request')
             self.assertRspecType( manifest, 'manifest')
 
@@ -564,6 +681,19 @@ class Test(ut.OmniUnittest):
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
+
+
+            # Test if manifest passes rspeclint
+            if self.options_copy.rspeclint:
+                self.assertTrue(rspec_util.validate_rspec( manifest, 
+                                                       namespace=rspec_namespace, 
+                                                       schema=rspec_schema ),
+                            "Manifest RSpec returned from 'CreateSliver' " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (manifest[:100]))
 
             # Make sure the Manifest returned the nodes identified in the Request
             if rspec_util.has_child_node( manifest, self.RSpecVersion()):
@@ -587,7 +717,6 @@ class Test(ut.OmniUnittest):
             self.subtest_SliverStatus( slicename )        
             manifest2 = self.subtest_ListResources( slicename=slicename )
 
-#UNCOMMENT
             self.assertRspecType( manifest2, 'manifest')
 
             # manifest should be valid XML 
@@ -598,6 +727,20 @@ class Test(ut.OmniUnittest):
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest2[:100]))                         
+
+            # Test if manifest passes rspeclint
+            if self.options_copy.rspeclint:
+                self.assertTrue(rspec_util.validate_rspec( manifest2, 
+                                                       namespace=rspec_namespace, 
+                                                       schema=rspec_schema ),
+                            "Manifest RSpec returned from 'ListResources' " \
+                            "on a slice " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (manifest2[:100]))
+
 
             # Make sure the Manifest returned the nodes identified in the Request
             if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
@@ -616,18 +759,36 @@ class Test(ut.OmniUnittest):
                           % (slicename, manifest2))
 
 
-            # Attempting to CreateSliver again should fail
-            self.assertRaises(RefusedError, 
+            # Attempting to CreateSliver again should fail or return a manifest
+
+            if not self.options_copy.strict:
+                # if --less-strict, then accept a returned error
+                self.assertRaises(RefusedError, 
                               self.subtest_CreateSliver, slicename )
+            else:
+                # if --more-strict
+                # ListResources should return an RSpec containing no resources
+                manifest = self.subtest_ListResources( slicename )
+                self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+                             "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                             "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                             "\n%s\n" \
+                             "... edited for length ..."
+                         % (slicename, manifest[:100]))                         
+                self.assertFalse( rspec_util.has_child( manifest ),
+                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                              "expected to be empty " \
+                              "but was not. Return was: " \
+                              "\n%s\n" \
+                              "... edited for length ..."
+                          % (slicename, manifest[:100]))
+
+
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_RenewSliver_many( slicename )
-
-#            # Try to CreateSliver again, but it should fail
-#            self.assertRaises( Exception, 
-#                              self.subtest_CreateSliver, slicename )
-
         except:
             raise
         finally:
@@ -958,14 +1119,14 @@ class Test(ut.OmniUnittest):
                             "%s\n" \
                             "... edited for length ..." 
                             % (agg, status))
-            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_urn', str )
-            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_status', str )
-            self.assertKeyValue( 'SliverStatus', aggName, status, 'geni_resources', list )
+            self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_urn', str )
+            self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_status', str )
+            self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_resources', list )
             resources = status['geni_resources']
             for resource in resources:
-                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_urn', str )
-                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_status', str )
-                self.assertKeyValue( 'SliverStatus', aggName, resource, 'geni_error', str )
+                self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_urn', str )
+                self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_status', str )
+                self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_error', str )
 
 
         
@@ -1078,6 +1239,10 @@ class Test(ut.OmniUnittest):
 
         parser.add_option("--untrusted-usercredfile", default='untrusted-usercred.xml', metavar="UNTRUSTED_USER_CRED_FILENAME",
                       help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
+
+
+        parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
+                      help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
 
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
