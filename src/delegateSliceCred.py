@@ -106,7 +106,7 @@ The omni command to save the slicecred would be something like:\n\
 omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 \n%prog \n\
 \t--cert <filename of your cert, eg ~/.gcf/plc-jdoe-cert.pem>\n\
-\t--key <filename of your key, eg ~/.gcf/pld-jdoe-cert.pem>\n\
+\t--key <filename of your key, eg ~/.gcf/plc-jdoe-key.pem>\n\
 \t--slicecred <filename of saved slice credential to delegate,\n\
 \t\teg mySliceCred.xml>\n\
 \t--delegeegid <filename of co-workers cert you want to delegate to>\n\
