@@ -195,11 +195,11 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     # confirm cert hasn't expired
     if owner_cert.cert.has_expired():
-        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_expiration()))
+        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_notAfter()))
 
     # confirm cert to delegate to hasn't expired
     if delegee_cert.cert.has_expired():
-        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_expiration()))
+        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
