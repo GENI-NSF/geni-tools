@@ -285,4 +285,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     newname = os.path.join(path, delegee_hrn.translate(table) + "-delegated-" + filename)
     dcred.save_to_file(newname)
 
-    logger.info("Saved delegated slice cred to %s" % newname)
+    logger.info("\n\nSaved delegated slice cred to:\n\t %s" % newname)
+    logger.info("To use this with omni, be sure to supply '--slicecred %s'" % (newname))
+    logger.info("And if you delegated a slice from 1 slice authority to a user in another, you must specify the full slice URN of '%s'" % (object_gid.get_urn()))
+    logger.info("EG if you delegated a ProtoGENI slice to a PlanetLab user account and want to list resources:\n\t python src/omni.py -a http://www.some-PLC-affiliated-AM.org:12346 --slicecred %s --api-version 2 -t GENI 3 -o listresources %s" % (newname, object_gid.get_urn()))
