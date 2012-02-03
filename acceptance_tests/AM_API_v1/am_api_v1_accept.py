@@ -50,16 +50,16 @@ RSPEC_NUM = '3'
 # TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-#GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
+GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
+GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
 REQ_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/request.xsd"
-#GENI_REQ_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
+GENI_REQ_NAMESPACE = "http://www.geni.net/resources/rspec/3"
+GENI_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
 MANIFEST_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-#GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
+GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
+GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
 
 PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
 PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
@@ -101,16 +101,26 @@ class Test(ut.OmniUnittest):
 
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
-
-        if not self.options_copy.rspectype:
+            self.manifest_namespace = MANIFEST_NAMESPACE
+            self.manifest_schema = MANIFEST_SCHEMA
+            self.request_namespace = REQ_NAMESPACE
+            self.request_schema = REQ_SCHEMA
+            self.ad_namespace = AD_NAMESPACE
+            self.ad_schema = AD_SCHEMA
+        else:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
-
+            self.manifest_namespace = GENI_MANIFEST_NAMESPACE
+            self.manifest_schema = GENI_MANIFEST_SCHEMA
+            self.request_namespace = GENI_REQ_NAMESPACE
+            self.request_schema = GENI_REQ_SCHEMA
+            self.ad_namespace = GENI_AD_NAMESPACE
+            self.ad_schema = GENI_AD_SCHEMA
         self.success = False
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)
         if self.options_copy.monitoring:
             # MONITORING test_TestName 1
-            print "MONITORING %s %d" % (self.id().split('.',2)[-1],int(self.success))
+            print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(self.success))
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
@@ -251,14 +261,11 @@ class Test(ut.OmniUnittest):
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
                 try:
-                    print vers['type'], exp_type, vers['type']==exp_type
-                    print vers['version'], exp_num, vers['version']==exp_num
-                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                    self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'type', exp_type )
-                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                    self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'version', exp_num )
                     request = True
-                    print request
                 except:
                     pass
 
@@ -294,9 +301,9 @@ class Test(ut.OmniUnittest):
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
                 try:
-                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                    self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'type', exp_type )
-                    self.assertKeyValue( 'GetVersion', agg, vers, 
+                    self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'version', exp_num )
                     ad = True
                 except:
@@ -515,11 +522,11 @@ class Test(ut.OmniUnittest):
 
         self.options_copy.omnispec = False # omni will complaining if both true
         if slicename:
-            rspec_namespace = MANIFEST_NAMESPACE
-            rspec_schema = MANIFEST_SCHEMA
+            rspec_namespace = self.manifest_namespace
+            rspec_schema = self.manifest_schema
         else:
-            rspec_namespace = AD_NAMESPACE
-            rspec_schema = AD_SCHEMA
+            rspec_namespace = self.ad_namespace
+            rspec_schema = self.ad_schema
         
         omniargs = [] 
 
@@ -647,8 +654,9 @@ class Test(ut.OmniUnittest):
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
             rspec_util.rspeclint_exists()
-            rspec_namespace = MANIFEST_NAMESPACE
-            rspec_schema = MANIFEST_SCHEMA
+            rspec_namespace = self.manifest_namespace
+            rspec_schema = self.manifest_schema
+
 
         if slicename==None:
             slicename = self.create_slice_name()
@@ -670,6 +678,7 @@ class Test(ut.OmniUnittest):
             request = "".join(req)
 
         try:
+
             self.assertRspecType( request, 'request')
             self.assertRspecType( manifest, 'manifest')
 
@@ -868,6 +877,12 @@ class Test(ut.OmniUnittest):
 
     def test_CreateSliverWorkflow_multiSlice(self): 
         """test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential."""
+
+        if self.options_copy.rspeclint:
+            rspec_util.rspeclint_exists()
+            rspec_namespace = self.manifest_namespace
+            rspec_schema = self.manifest_schema
+
         request = []
         manifest = []
         manifest2 = []
@@ -933,6 +948,18 @@ class Test(ut.OmniUnittest):
                              "... edited for length ..."
                          % (slicenames[i], manifest[i][:100]))
 
+                if self.options_copy.rspeclint:
+                    self.assertTrue(rspec_util.validate_rspec( manifest[i], 
+                                                    namespace=rspec_namespace, 
+                                                    schema=rspec_schema ),
+                            "Return from 'CreateSliver' " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (manifest[i][:100]))
+
+
                 # Make sure the Manifest returned the nodes identified in the Request
                 if rspec_util.has_child_node( manifest[i], self.RSpecVersion()):
                     self.assertCompIDsEqual( "".join(request[i]), "".join(manifest[i]), self.RSpecVersion(), 
@@ -975,6 +1002,19 @@ class Test(ut.OmniUnittest):
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicenames[i], manifest[i][:100]))                         
+
+                if self.options_copy.rspeclint:
+                    self.assertTrue(rspec_util.validate_rspec( manifest2[i], 
+                                                    namespace=rspec_namespace, 
+                                                    schema=rspec_schema ),
+                            "Return from 'CreateSliver' " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (manifest2[i][:100]))
+
+
 
                 # Make sure the Manifest returned the nodes identified in the Request
                 if rspec_util.has_child_node( manifest2[i], self.RSpecVersion()):

@@ -165,7 +165,7 @@ class OmniUnittest(unittest.TestCase):
         if not rspec_util.is_rspec_of_type( rspec, type=type, version=version ):
             if msg is None:
                 msg =  "RSpec expected to have type '%s' " \
-                    "but did not." % type
+                    "but schema was not correct." % (type)
             raise WrongRspecType, msg        
     # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
     #     try:
@@ -185,9 +185,9 @@ class OmniUnittest(unittest.TestCase):
         self.assertKeyValueType( 'GetVersion', aggName,  dictionary, 'output', str )
 
 
-    def assertKeyValue( self, method, aggName, dictionary, key, value):
+    def assertKeyValueLower( self, method, aggName, dictionary, key, value):
 #        self.assertKeyValueType( method, aggName, dictionary, key, type(value))
-        self.assertTrue( dictionary[key]==value,
+        self.assertTrue( dictionary[key].lower()==value.lower(),
                         "Return from '%s' at %s " \
                             "expected to have entry '%s' of value '%s' " \
                             "but instead returned: %s" 
