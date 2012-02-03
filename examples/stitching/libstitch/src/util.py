@@ -78,6 +78,10 @@ def findRSpecFormat(rspecStr, logger):
 
     et = ElementTree.fromstring(rspecStr)
 
+    #Is it a Geni V3 Request?
+    if isGENIV3(et,logger):
+        return 'geniv3'
+
     #Is it a Protogeni V2 Request?
     if isPGV2(et,logger):
         return 'pgv2'
@@ -561,12 +565,51 @@ def getOmniConf(options, logger):
 
 
 ## Determines whether the given elementtree document is in Protogeni V2 format
-#     
+#
 #   @param et - elementtree document 
 #   @param logger - The logging object to log output to
 #   @return True if et is in Protogeni V2 format, False otherwise 
 #
 def isPGV2(et, logger):
+
+    elemList = list(et.iter())
+    if elemList < 1:
+        logger.info("No elements found")
+        return False
+
+    tag = str(elemList[0].tag)
+    if '{' not in tag or '}' not in tag:
+        #logger.info("Missing namespace prefix - looked in tag " + tag)
+        return False
+
+    namespaceStr = ""
+    try:
+        namespaceStr = tag[1:tag.rfind('}')]
+    except:
+        logger.info("Missing namespace prefix from tag " + tag)
+        return False
+
+    domains = getKnownAggregateData()
+
+    if domains['pgv2']['namespace'] != namespaceStr:
+        #logger.debug("The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['pgv2']['namespace'])
+        return False
+
+#    typeStr = strifyEle(elemList[0].get('type'))
+#    if typeStr is None or typeStr != 'request':
+#        logger.debug("This rspec is not a Request type: %s", typeStr)
+#        return False
+
+    return True
+
+
+## Determines whether the given elementtree document is in Geni V3 format
+#
+#   @param et - elementtree document
+#   @param logger - The logging object to log output to
+#   @return True if et is in Geni V3 format, False otherwise
+#
+def isGENIV3(et, logger):
 
     elemList = list(et.iter())
     if elemList < 1:
@@ -586,15 +629,15 @@ def isPGV2(et, logger):
         return False
 
     domains = getKnownAggregateData()
-    
-    if domains['pgv2']['namespace'] != namespaceStr:
-        #logger.debug("The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['pgv2']['namespace'])
+
+    if domains['geniv3']['namespace'] != namespaceStr:
+        #logger.debug("The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['geniv3']['namespace'])
         return False
 
-    typeStr = strifyEle(elemList[0].get('type'))
-    if typeStr is None or typeStr != 'request':
-        #logger.debug("This rspec is not a Request type: %s", typeStr)
-        return False
+#    typeStr = strifyEle(elemList[0].get('type'))
+#    if typeStr is None or typeStr != 'request':
+#        #logger.debug("This rspec is not a Request type: %s", typeStr)
+#        return False
 
     return True
 
@@ -635,7 +678,7 @@ def isMax(et, logger):
     domains = getKnownAggregateData()
     
     if domains['max']['namespace'] != namespaceStr:
-        logger.info("The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['max']['namespace'])
+        logger.info("Not MAX: The extracted namespace did not match the one I needed: %s != %s", namespaceStr, domains['max']['namespace'])
         return False
 
     return True
@@ -847,10 +890,23 @@ def getKnownAggregateData():
                 },
             'aggregates':[
                 {'name':'emulab.net', #not really used
-                'aggrURL':'http://www.emulab.net/protogeni/xmlrpc/am'
+                'aggrURL':'http://www.emulab.net/protogeni/xmlrpc/am/2.0'
                 },
                 {'name':'uky.emulab.net', #not really used
-                'aggrURL':'https://www.uky.emulab.net/protogeni/xmlrpc/am'
+                'aggrURL':'https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0'
+                }
+            ]
+        },
+        'geniv3':{'namespace':'http://www.geni.net/resources/rspec/3',
+            'ext_namespaces':{
+                'stitch':'http://hpn.east.isi.edu/rspec/ext/stitch/0.1/'
+                },
+            'aggregates':[
+                {'name':'emulab.net', #not really used
+                'aggrURL':'http://www.emulab.net/protogeni/xmlrpc/am/2.0'
+                },
+                {'name':'uky.emulab.net', #not really used
+                'aggrURL':'https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0'
                 }
             ]
         },

@@ -55,12 +55,23 @@ class AdRSpec(object):
     #   @param **keyword - See __new__ definition in python documentation
     #
     def __new__(cls, rspecStr, logger, *arguments, **keyword):
-        for subclass in AdRSpec.__subclasses__(): 
-            if subclass.rspecType == 'pgv2': 
-                #We really only support one type of Advert
+        rspecType = util.findRSpecFormat(rspecStr,logger)
 
-                return super(cls, subclass).__new__(subclass, *arguments, **keyword) 
-        raise Exception, 'Unsupported RSpec format!'
+        if rspecType is None:
+            raise Exception, 'Unsupported RSpec format (none)!'
+
+        # We really only support pgv2 or geniv3 types
+        if rspecType != 'pgv2' and rspecType != 'geniv3':
+            raise Exception, ('Unsupported RSpec format: %!' % rspecType)
+
+        for subclass in AdRSpec.__subclasses__():
+            if subclass.rspecType == rspecType:
+                return super(cls, subclass).__new__(subclass, *arguments, **keyword)
+            for subclass2 in subclass.__subclasses__():
+                if subclass2.rspecType == rspecType:
+                    return super(cls, subclass2).__new__(subclass2, *arguments, **keyword)
+
+        raise Exception, ('Unsupported RSpec format %s!' % rspecType)
 
 
     ## The Constructor
@@ -89,6 +100,8 @@ class AdRSpec(object):
 #
 class PGV2AdRSpec(AdRSpec):
     rspecType = 'pgv2'
+    ns_prefix = "{http://www.protogeni.net/resources/rspec/2}"
+    stitch_ns_prefix = ns_prefix
 
     ## The Constructor
     #     
@@ -110,24 +123,23 @@ class PGV2AdRSpec(AdRSpec):
     #
     def fromRSpec(self):
         presetRoutes = {}
-        ns_prefix = "{http://www.protogeni.net/resources/rspec/2}" 
-        #intentionally hardcoded
+        ns_prefix=self.__class__.ns_prefix
 
-        aggr_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+AGGR_TAG)
+        aggr_elems = self.rspecET.findall(self.stitch_ns_prefix+STCH_TAG+"/"+self.stitch_ns_prefix+AGGR_TAG)
         if len(aggr_elems)<1:
-            raise  exception.TopologyCalculationException("Problem parsing advert")
+            raise  exception.TopologyCalculationException("Problem parsing advert: found no aggregate elements")
         
         for aggr_elem in aggr_elems:
-            node_elems = aggr_elem.findall(ns_prefix+NODE_TAG)
+            node_elems = aggr_elem.findall(self.stitch_ns_prefix+NODE_TAG)
             aggr_url = util.strifyEle(aggr_elem.get(URL_ID))
 
             presetRoutes[aggr_url]={}
             for node_elem in node_elems:
-                link_elems = node_elem.findall(ns_prefix+PORT_TAG+"/"+ns_prefix+LINK_TAG)
+                link_elems = node_elem.findall(self.stitch_ns_prefix+PORT_TAG+"/"+self.stitch_ns_prefix+LINK_TAG)
 
                 for link_elem in link_elems:
                     link_id = util.strifyEle(link_elem.get(ID_TAG))
-                    remotelink_elem = link_elem.find(ns_prefix+RMOTLINK_TAG)
+                    remotelink_elem = link_elem.find(self.stitch_ns_prefix+RMOTLINK_TAG)
 
                     if remotelink_elem is None:
                         # FIXME: Exception or skip over this malformed element?
@@ -139,6 +151,22 @@ class PGV2AdRSpec(AdRSpec):
                     #self.logger.debug("AM %s: Added presetRoute %s=%s", aggr_url, link_id, remotelink_id)
 
         self.routes = presetRoutes
+
+
+##Wrapper class for a GENI3 Ad RSpec
+#
+class GENIV3AdRSpec(PGV2AdRSpec):
+    rspecType = 'geniv3'
+    ns_prefix = "{http://www.geni.net/resources/rspec/3}"
+    stitch_ns_prefix = "{http://hpn.east.isi.edu/rspec/ext/stitch/0.1/}"
+
+    ## The Constructor
+    #
+    #    @param rspecStr is the unprocessed XML string of an RSpec
+    #    @param logger - The logging object to log output to
+    #
+    def __init__(self, rspecStr, logger):
+        super(GENIV3AdRSpec,self).__init__(rspecStr,logger)
 
 
 ##Wrapper class for a Request RSpec
@@ -250,9 +278,15 @@ class ReqRSpec(object):
             
             # If that remote AM is not one of the requestRSpecs on this session, 
             # then error/return
+            if remoteAggrURL is None:
+                self.logger.error("Request of %s lists interface %s at remote interface %s, but the remote AM URL is unknown!", self.aggrURL, iface, remoteIface)
+                self.logger.debug("... one of your Ad RSpecs may have a typo in the remote interface name?")
+                continue
+
             remoteAggrReqRSpec = self.stitchSession.getAggregate(remoteAggrURL)
             if not remoteAggrReqRSpec:
                 self.logger.error("Request of %s lists interface %s that connects to AM at %s, interface %s. But we have no request RSpec for that remote aggregate!", self.aggrURL, iface, remoteAggrURL, remoteIface)
+                continue
                 # FIXME: Return? Raise?
 
             #If that remote AM is not one of my adjacent AMs, then
@@ -772,7 +806,8 @@ class MaxReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #      
     def doRequest(self, tmp_filename, options):
-        omniargs = ["-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        # FIXME: Use GetVersion to determin API # and RSpec type
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
         try:
@@ -794,7 +829,7 @@ class MaxReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts):
             self.logger.info("Polling MAX for sliver status...")
 
-            omniargs = ["-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -829,7 +864,7 @@ class MaxReqRSpec(ReqRSpec):
 
         self.logger.info("Slice created successfully at MAX, attempting to obtain manifest")
 
-        omniargs = ["-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
         try:
             text, result = omni.call(omniargs, options)
         except:
@@ -1108,7 +1143,8 @@ class IonReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
-        omniargs = ["-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename]
+        # FIXME: Use GetVersion to determin API # and RSpec type
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename]
         result = None
         text = ""
         try:
@@ -1129,7 +1165,7 @@ class IonReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts):
             self.logger.info("Polling ION for sliver status...")
 
-            omniargs = ["-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -1162,7 +1198,7 @@ class IonReqRSpec(ReqRSpec):
 
         self.logger.info("Slice created successfully at ION, attempting to obtain manifest")
 
-        omniargs = ["-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
+        omniargs = ["--api-version", "2", "-t", "SFA", "1", "-a",self.aggrURL,"-o","listresources",self.stitchSession.getSliceName()] 
         try:
             text, result = omni.call(omniargs, options)
         except:
@@ -1397,7 +1433,8 @@ class PGV2ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #     
     def doRequest(self, tmp_filename, options):
-        omniargs = ["-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        # FIXME: Use GetVersion to determin API # and RSpec type
+        omniargs = ["--api-version", "2", "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
         result = None
         text = ""
 
@@ -1442,7 +1479,7 @@ class PGV2ReqRSpec(ReqRSpec):
         for i in range(0,pollMaxAttempts*3):
             self.logger.info("Polling PG for sliver status...")
 
-            omniargs = ["-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            omniargs = ["--api-version", "2", "-t", "ProtoGENI", "2", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
             try:
                 text, result = omni.call(omniargs, options)
             except:
@@ -1480,6 +1517,300 @@ class PGV2ReqRSpec(ReqRSpec):
         return ready
 
 
+##Wrapper class for a GENIV3 formatted Request RSpec
+#
+class GENIV3ReqRSpec(ReqRSpec):
+    rspecType = 'geniv3'
+    fakeManifestPath = '../samples/utah-manifest.xml'
+
+    pathList = ()
+
+    # path:
+    #  ID
+    #  hop list (ordered)
+    #    hop: id, type, nextHopID, nextHopObj, link
+    #     link has
+    #      ID
+    #      switchingCapabilityDescriptor
+    #        type
+    #        encodingType
+    #        switchCapabilitySpecifyInfo
+    #          if type was l2sc:
+    #            vlanRangeAvailability
+    #            suggestedVLANRange
+
+    ## The Constructor
+    #
+    #    @param rspecStr is the unprocessed XML string of an RSpec
+    #    @param stitchSession is a dictionary of session information, global to
+    #    all RSpec objects
+    #    @param logger - The logging object to log output to
+    #
+    def __init__(self, rspecStr, stitchSession, logger):
+        super(GENIV3ReqRSpec,self).__init__(rspecStr,stitchSession,logger)
+
+
+    ## Interprets the associated RSpec document as an GENI V3 format RSpec.
+    # Nothing much is done here, but it exists for completions sake
+    #
+    #   @return True if success, False if failure
+    #
+    def fromRSpec(self):
+        self.logger.info("Using GENIV3 parser for this file for Agg "+self.aggrURL)
+        # Note that unlike MAX/ION, there is not slicename/expiry to do
+
+        # Fill in requestedInterfaces during calculateRestrictions
+
+        # GENIV3 Specific stuff here
+        # For now, this is just sample code
+        ns_prefix = "{"+self.stitchSession.getNamespaceFromType(self.rspecType)+"}"
+        path_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG)
+        hop_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG+"/"+ns_prefix+HOP_TAG)
+
+        if len(path_elems)<1:
+            # Switch to inner namespace
+            ns_prefix = "{"+self.stitchSession.getExtNamespaceFromType(self.rspecType,"stitch")+"}" 
+            path_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG)
+            hop_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG+"/"+ns_prefix+HOP_TAG)
+
+        for path in path_elems:
+            path_id = util.strifyEle(path.get(ID_TAG))
+            self.logger.debug("%s request specifies stitching path %s with %d hops", self.aggrURL, path_id, len(hop_elems))
+
+        self.path_list = path_elems
+
+        return True
+
+
+    ## Calculate the restrictions on this GENI V3 RSpec/aggregate based on
+    # the information in it's dom. This is the step before determining
+    # dependencies. Because so much of the topology information is stored in the
+    # GENIv3 RSpec, we actually use it to find restrictions on some of the other 
+    # RSpecs/aggregates.
+    # FIXME This function could be refactored to be cleaner and more readable
+    #
+    #     @return True if success, False if failure
+    #
+    def calculateRestrictions(self):
+        #print "geniv3"
+
+        # In stitching element, go through each hop
+        # Each hope has a link. If that link interface URN
+        # is advertised by this AM, then extract vlan range/translation
+        # restrictions, and fill them in to self.requestedInterfaces
+
+        ns_prefix = "{"+self.stitchSession.getNamespaceFromType(self.rspecType)+"}"
+        hop_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG+"/"+ns_prefix+HOP_TAG)
+
+        if len(hop_elems)<1:
+            ns_prefix = "{"+self.stitchSession.getExtNamespaceFromType(self.rspecType,"stitch")+"}" #Switch to inner namespace
+            hop_elems = self.rspecET.findall(ns_prefix+STCH_TAG+"/"+ns_prefix+PATH_TAG+"/"+ns_prefix+HOP_TAG)
+
+
+        if len(hop_elems)<1:
+            self.logger.error("Problem parsing GENIv3! I didn't find the nodes I was expecting. No hops in stitch/path/hop")
+            return False
+
+        # In stitching element, go through each hop
+        # Each hope has a link. If that link interface URN
+        # is advertised by this AM, then extract vlan range/translation
+        # restrictions, and fill them in to self.requestedInterfaces
+        for hop_elem in hop_elems:
+            link_elem = hop_elem.find(ns_prefix+LINK_TAG)
+            link_id = util.strifyEle(link_elem.get(ID_TAG))
+            #self.logger.debug("GENIv3 Req stitch section hop/link %s", link_id)
+
+            # If this is a local interface
+            if self.stitchSession.aggrHasIface(self.aggrURL,link_id):
+                # This is our interface from the ad,
+                # Apparently we are requesting it
+                remoteURN = self.stitchSession.getAggrURNRoute(self.aggrURL, link_id)
+                #self.logger.debug("    Is advertised locally, with remote end %s", remoteURN)
+                if not self.requestedInterfaces.has_key(link_id):
+                    self.logger.debug("Adding GENIV3 requested interface %s", link_id)
+                    self.requestedInterfaces[link_id] = {}
+                self.requestedInterfaces[link_id]['remoteIface']=remoteURN
+                self.requestedInterfaces[link_id]['remoteAggrURL']=self.stitchSession.getAggrURNRemoteAggr(self.aggrURL, link_id)
+
+                #######################################
+                #Determine vlan range restrictions
+                #######################################
+                vlan_range_avail_elem = hop_elem.find(ns_prefix+LINK_TAG+"/"+ns_prefix+SWTCCAPADESC_TAG+"/"+ns_prefix+SWTCCAPASPEC_TAG+"/"+ns_prefix+SWTCCAPASPEC_L2SC_TAG+"/"+ns_prefix+VLANRANGAVAI_TAG)
+                if vlan_range_avail_elem is None:
+                    vlan_range_avail_elem = hop_elem.find(ns_prefix+LINK_TAG+"/"+ns_prefix+SWTCCAPADESC_TAG+"/"+ns_prefix+SWTCCAPASPEC_TAG+"/"+ns_prefix+VLANRANGAVAI_TAG)
+
+                if vlan_range_avail_elem is not None:
+                    self.setIfaceRestriction(link_id, 'vlanRange',util.vlanListIntersection(util.vlanRangeToList(util.strifyEle(vlan_range_avail_elem.text)),self.getIfaceRestriction(link_id, 'vlanRange')))
+#                    self.logger.debug("Got vlanRangeAvail %s to set restriction to %s", vlan_range_avail_elem.text, self.getIfaceRestriction(link_id, 'vlanRange'))
+                    self.logger.debug("Got vlanRangeAvail %s to set restriction", vlan_range_avail_elem.text)
+                else:
+                    # Couldn't find the vlan_range element - malformed
+                    self.logger.error("No vlanRange element for link %s on hop %s in request to AM at %s", link_id, hop_elem.get(ID_TAG), self.aggrURL)
+
+                #######################################
+                #Determine vlan translation restrictions
+                #######################################
+                vlan_trans_elem = hop_elem.find(ns_prefix+LINK_TAG+"/"+ns_prefix+SWTCCAPADESC_TAG+"/"+ns_prefix+SWTCCAPASPEC_TAG+"/"+ns_prefix+SWTCCAPASPEC_L2SC_TAG+"/"+ns_prefix+VLANTRAN_TAG)
+
+                if vlan_trans_elem is None:
+                    vlan_trans_elem = hop_elem.find(ns_prefix+LINK_TAG+"/"+ns_prefix+SWTCCAPADESC_TAG+"/"+ns_prefix+SWTCCAPASPEC_TAG+"/"+ns_prefix+VLANTRAN_TAG)
+
+                if vlan_trans_elem is not None:
+                    #self.logger.debug("Got vlan_trans_elem to set restriction")
+                    if util.strifyEle(vlan_trans_elem.text).lower() == 'false':
+                        self.setRestriction('vlanTranslation',True)
+                        self.setIfaceRestriction(link_id, 'vlanTranslation',True) 
+                    else:
+                        self.setRestriction('vlanTranslation',False)
+                        self.setIfaceRestriction(link_id, 'vlanTranslation',False) 
+                else:
+                    # couldn't find vlan_trans_elem - malformed
+                    self.logger.error("No vlanTranslation element for link %s on hop %s in request to AM at %s", link_id, hop_elem.get(ID_TAG), self.aggrURL)
+
+            else:
+                # the interface that starts this link is not local
+                #self.logger.debug("GENIv3 Req stitch section hop/link %s NOT LOCALly advertised", link_id)
+                pass
+
+            ''' #We no longer set other's restrictions based on what we see in our RSpec
+            print "1: "+self.aggrURL
+            if vlan_trans_elem is not None and vlan_trans_elem.text == 'false':
+                print "2: "+link_id
+                for aggr in self.stitchSession.getPresetRouteAggrURLList():
+                    one = self.stitchSession.aggrHasIface(aggr,link_id)
+                    two = self.stitchSession.isValidAggrURL(aggr)
+                    print str(one)+" : "+str(two)
+
+                    if self.stitchSession.aggrHasIface(aggr,link_id) and self.stitchSession.isValidAggrURL(aggr):
+                        print "4"
+                        self.stitchSession.getAggregate(aggr).setRestriction('vlanTranslation',True)
+            '''
+
+        # end of loop over all hops in the stitching element
+
+        return True
+
+
+    ## Insert any relevant Vlan information into this RSpec
+    # This function is not required at this time for GENIV3, it is here for
+    # completions sake
+    #
+    #     @param vlan_map - A dictionary of interfaceUrn's -> Assigned Vlan Id's
+    #     @return True if success, False if failure
+    #
+    def insertVlanData(self, vlan_map):
+        # An AM that does vlan translation but talks PGV2 would require this
+        # We'd want to fill in the suggestedVLANRange and vlanRangeAvailability
+        # fields I believe
+
+        # for each key in vlan_map
+        # for each hop, get link_id
+        # If link_id==key
+        # set vlanRangeAvailability to the value in the map
+        # FIXME: Is it vlanRangeAvailability or suggestedVLANRange or both?
+
+        return True #Nothing to do here yet
+
+
+    ## Submit this RSpec to GENI aggregate
+    # This function calls 'createsliver' repeatedly until it gets an accept or
+    # until maximum attempts is reached. After a successful sliver creation, it
+    # stores the Manifest.
+    # Then it
+    # will continue to poll the aggregate with 'sliverstatus' until it get's a
+    # favourable response indicating that the sliver is ready. 
+    # Then it returns.
+    #
+    #     @param tmp_filename - The name of the temporary in which the XML RSpec
+    #     sits
+    #     @param options - The omni options to use in the submission 
+    #     @return True if success, False if failure
+    #
+    def doRequest(self, tmp_filename, options):
+        # FIXME: Use GetVersion to determin API # and RSpec type
+        omniargs = ["--api-version", "2", "-t", "GENI", "3", "-a",self.aggrURL,"-o","createsliver",self.stitchSession.getSliceName(), tmp_filename] 
+        result = None
+        text = ""
+
+        # PG is really slow at demo time
+        for i in range(0,pollMaxAttempts*2):
+            try:
+                text, result = omni.call(omniargs, options)
+                #self.logger.debug("omni createsliver to %s returned", self.aggrURL)
+            except:
+                self.logger.error("Failed to createsliver %s at %s", self.stitchSession.getSliceName(), self.aggrURL, exc_info=True)
+                # Hope that this is transient? Or fail?
+                return False
+
+            # PG actually returns a manifest
+            if result is None or str(result).strip() == "" or not "<rspec" in result:
+                # Error
+
+                if "try again later" in text:
+                    # Happens when PG is busy or slice is new
+                    time.sleep(aggrPollIntervalSec)
+                    continue
+
+                self.logger.error("No manifest returned by AM?! Got return string: "+text)
+                return False
+            else:
+                # Got the manifest, break out of loop retrying createSliver
+                break
+
+        try:
+            self.manRSpec = ManRSpec(result,self,self.stitchSession, self.logger)
+        except:
+            import traceback
+            self.logger.error("The GENIv3 format manifest received was not formatted correctly")
+            # Could print the result string, the malformed manifest
+            traceback.print_exc()
+            #self.logger.error(text)
+            #self.logger.error("Omni ran with args: "+str(omniargs))
+            return False
+
+        ready = False
+        # PG is really slow at demo time
+        for i in range(0,pollMaxAttempts*3):
+            self.logger.info("Polling GENI AM for sliver status...")
+
+            omniargs = ["--api-version", "2", "-t", "GENI", "3", "-a",self.aggrURL,"-o","sliverstatus",self.stitchSession.getSliceName()] 
+            try:
+                text, result = omni.call(omniargs, options)
+            except:
+                self.logger.error("Failed to get sliverstatus on %s at %s", self.stitchSession.getSliceName(), self.aggrURL, exc_info=True)
+                # Hope that this is transient? Or fail?
+                break
+
+            if isinstance(result,dict) and result.has_key(self.aggrURL) and isinstance(result[self.aggrURL],dict) and result[self.aggrURL].has_key('geni_status'):
+                if result[self.aggrURL]['geni_status'] == 'configuring':
+                    time.sleep(aggrPollIntervalSec)
+                    continue
+                elif result[self.aggrURL]['geni_status'] == 'failed':
+                    self.logger.error("Slice creation failed")
+                    break
+                elif result[self.aggrURL]['geni_status'] == 'unknown':
+                    # I think PG marks the state unknown while it is in process
+                    self.logger.info("Slice in Unknown State")
+                    time.sleep(aggrPollIntervalSec)
+                    continue
+                elif result[self.aggrURL]['geni_status'] == 'ready':
+                    ready = True
+                    break
+                else:
+                    self.logger.error("Slice at GENI AM in Unknown State "+str(result[self.aggrURL]['geni_status']))
+                    break
+            else:
+                if "try again" in text:
+                    # GENI am says it is busy
+                    time.sleep(aggrPollIntervalSec)
+                    continue
+
+                self.logger.error("Return sliverstatus from PG Aggregate was invalid: \n"+str(result))
+                break
+
+        return ready
+
+
 ##Wrapper class for a Manifest RSpec
 #
 class ManRSpec(object):
@@ -1499,6 +1830,10 @@ class ManRSpec(object):
             if reqRSpec.rspecType == subclass.rspecType:
                 #Use the correct subclass
                 return super(cls, subclass).__new__(subclass, *arguments, **keyword) 
+        for subclass2 in subclass.__subclasses__(): 
+            if reqRSpec.rspecType == subclass2.rspecType:
+                #Use the correct subclass
+                return super(cls, subclass2).__new__(subclass2, *arguments, **keyword) 
 
         raise Exception, 'Unsupported RSpec format %s!' % reqRSpec.rspecType
 
@@ -1790,18 +2125,18 @@ class PGV2ManRSpec(ManRSpec):
             ns_prefix = "{"+self.stitchSession.getExtNamespaceFromType(self.rspecType,"stitch")+"}" #Switch to inner namespace
             stitch_elem = self.rspecET.find(ns_prefix+STCH_TAG)
             if stitch_elem is None:
-                self.logger.error("Problem parsing PG! Didn't find stitch element: "+str(ns_prefix)+str(STCH_TAG))
+                self.logger.error("Problem parsing PG/GENI Manifest! Didn't find stitch element: "+str(ns_prefix)+str(STCH_TAG))
                 return False
 
         path_elem = stitch_elem.find(ns_prefix+PATH_TAG)
         if path_elem is None:
-            self.logger.error("Problem parsing PG! Within Stitch tag "+str(ns_prefix)+str(STCH_TAG)+" didn't find path tag "+str(ns_prefix)+str(PATH_TAG))
+            self.logger.error("Problem parsing PG/GENI Manifest! Within Stitch tag "+str(ns_prefix)+str(STCH_TAG)+" didn't find path tag "+str(ns_prefix)+str(PATH_TAG))
             return False
 
         hop_elems = path_elem.findall(ns_prefix+HOP_TAG)
 
         if len(hop_elems)<1:
-            self.logger.error("Problem parsing PG! I didn't find the nodes I was expecting. No hops ("+str(ns_prefix)+str(HOP_TAG)+") within "+str(ns_prefix)+str(STCH_TAG)+"/"+str(ns_prefix)+str(PATH_TAG))
+            self.logger.error("Problem parsing PG/GENI Manifest! I didn't find the nodes I was expecting. No hops ("+str(ns_prefix)+str(HOP_TAG)+") within "+str(ns_prefix)+str(STCH_TAG)+"/"+str(ns_prefix)+str(PATH_TAG))
             return False
 
         for hop_elem in hop_elems:
@@ -1936,6 +2271,11 @@ class PGV2ManRSpec(ManRSpec):
 
         return self.nodes
 
+
+##Wrapper class for a GENIV3 Manifest RSpec
+#
+class GENIV3ManRSpec(PGV2ManRSpec):
+    rspecType = 'geniv3'
 
 ## Wrapper for a set of aggregate/hop restrictions
 #

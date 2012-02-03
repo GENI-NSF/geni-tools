@@ -95,7 +95,9 @@ class Framework(Framework_Base):
                 auth = self.config['authority']
                 urn_fmt_auth = string_to_urn_format(urn.getAuthority())
                 if urn_fmt_auth != auth:
-                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+                    self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+                    self.logger.info("This may be OK though if you are using delegated slice credentials...")
+#                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
             return name
 
         if not self.config.has_key('authority'):

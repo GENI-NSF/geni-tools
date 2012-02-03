@@ -40,6 +40,16 @@ If you supply trusted root certificates, validates the full PKI chain.
 # which to mark delegatable
 # Note that this is messy since PG slice creds just say * and PL slice creds
 
+# FIXME
+# May need to re download PG and PL certs. PG cert may have expired. PL cert
+# may have been regenerated and the new one on your slice cred
+# To redownload PL do a getversion at PL after deleting your cert file
+# Once you delegate
+# If using Omni, to get Omni to infer the slice URN correctly, you must tell
+# Omni you are using the framework/SA of the original slice cred. So copy
+# the cert/key entries from the new slice cred owner to the original framework,
+# and be sure to include -a in all Omni commands
+
 import datetime
 import dateutil
 import logging
@@ -96,7 +106,7 @@ The omni command to save the slicecred would be something like:\n\
 omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 \n%prog \n\
 \t--cert <filename of your cert, eg ~/.gcf/plc-jdoe-cert.pem>\n\
-\t--key <filename of your key, eg ~/.gcf/pld-jdoe-cert.pem>\n\
+\t--key <filename of your key, eg ~/.gcf/plc-jdoe-key.pem>\n\
 \t--slicecred <filename of saved slice credential to delegate,\n\
 \t\teg mySliceCred.xml>\n\
 \t--delegeegid <filename of co-workers cert you want to delegate to>\n\
@@ -195,11 +205,11 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     # confirm cert hasn't expired
     if owner_cert.cert.has_expired():
-        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_expiration()))
+        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_notAfter()))
 
     # confirm cert to delegate to hasn't expired
     if delegee_cert.cert.has_expired():
-        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_expiration()))
+        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
@@ -217,7 +227,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     if not owner_cert.get_urn() == slicecred.get_gid_caller().get_urn():
         sys.exit("Can't delegate slice: not owner (mismatched URNs)")
     if not owner_cert.save_to_string(False) == slicecred.get_gid_caller().save_to_string(False):
-        sys.exit("Can't delegate slice: not owner (mismatched GIDs)")
+        sys.exit("Can't delegate slice: not owner (mismatched GIDs but same URN - try downloading your cert again)")
 
     object_gid = slicecred.get_gid_object()
 
@@ -268,7 +278,14 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         assert isinstance(delegee_hrn, str)
         table = string.maketrans(bad, '-' * len(bad))
 
-    newname = delegee_hrn.translate(table) + "-delegated-" + opts.slicecred
+    # splice slicecred into filename and dir
+    path = os.path.dirname(opts.slicecred)
+    filename = os.path.basename(opts.slicecred)
+
+    newname = os.path.join(path, delegee_hrn.translate(table) + "-delegated-" + filename)
     dcred.save_to_file(newname)
 
-    logger.info("Saved delegated slice cred to %s" % newname)
+    logger.info("\n\nSaved delegated slice cred to:\n\t %s" % newname)
+    logger.info("To use this with omni, be sure to supply '--slicecred %s'" % (newname))
+    logger.info("And if you delegated a slice from 1 slice authority to a user in another, you must specify the full slice URN of '%s'" % (object_gid.get_urn()))
+    logger.info("EG if you delegated a ProtoGENI slice to a PlanetLab user account and want to list resources:\n\t python src/omni.py -a http://www.some-PLC-affiliated-AM.org:12346 --slicecred %s --api-version 2 -t GENI 3 -o listresources %s" % (newname, object_gid.get_urn()))

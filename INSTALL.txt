@@ -160,7 +160,7 @@ Testing Shutdown... passed
 =============
 If you ran in to issues or your output looks different
 - Confirm you followed the install instructions including dependencies
-- See TROUBLESHOOTING.txt for more detailed help
+- See http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot for more detailed help
 
 Look at the source for the reference aggregate manager to understand
 how the API and credentials are used, or to implement your own AM.

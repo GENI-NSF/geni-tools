@@ -362,8 +362,11 @@ class StitchSession(object):
 
             for iface in self.aggregateDict[aggrURL].requestedInterfaces:
                 adjAggrURL = self.aggregateDict[aggrURL].requestedInterfaces[iface]['remoteAggrURL']
+                if adjAggrURL is None:
+                    self.logger.debug("Interface %s has None for the adjacent AM URL?" % iface)
+                    continue
                 exp_graph.add_node(adjAggrURL)
-                if self.aggregateDict[aggrURL].manRSpec is not None and self.aggregateDict[adjAggrURL].manRSpec is not None:
+                if self.aggregateDict.has_key(aggrURL) and self.aggregateDict.has_key(adjAggrURL) and self.aggregateDict[aggrURL].manRSpec is not None and self.aggregateDict[adjAggrURL].manRSpec is not None:
                     for iface in self.aggregateDict[aggrURL].manRSpec.definedVlans:
 #                        self.logger.debug("Looking at %s iface %s", aggrURL, iface)
                         outer_iface = self.getAggrURNRoute(adjAggrURL,iface)
