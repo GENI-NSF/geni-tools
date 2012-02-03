@@ -40,6 +40,16 @@ If you supply trusted root certificates, validates the full PKI chain.
 # which to mark delegatable
 # Note that this is messy since PG slice creds just say * and PL slice creds
 
+# FIXME
+# May need to re download PG and PL certs. PG cert may have expired. PL cert
+# may have been regenerated and the new one on your slice cred
+# To redownload PL do a getversion at PL after deleting your cert file
+# Once you delegate
+# If using Omni, to get Omni to infer the slice URN correctly, you must tell
+# Omni you are using the framework/SA of the original slice cred. So copy
+# the cert/key entries from the new slice cred owner to the original framework,
+# and be sure to include -a in all Omni commands
+
 import datetime
 import dateutil
 import logging
@@ -217,7 +227,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     if not owner_cert.get_urn() == slicecred.get_gid_caller().get_urn():
         sys.exit("Can't delegate slice: not owner (mismatched URNs)")
     if not owner_cert.save_to_string(False) == slicecred.get_gid_caller().save_to_string(False):
-        sys.exit("Can't delegate slice: not owner (mismatched GIDs)")
+        sys.exit("Can't delegate slice: not owner (mismatched GIDs but same URN - try downloading your cert again)")
 
     object_gid = slicecred.get_gid_object()
 
@@ -268,7 +278,11 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         assert isinstance(delegee_hrn, str)
         table = string.maketrans(bad, '-' * len(bad))
 
-    newname = delegee_hrn.translate(table) + "-delegated-" + opts.slicecred
+    # splice slicecred into filename and dir
+    path = os.path.dirname(opts.slicecred)
+    filename = os.path.basename(opts.slicecred)
+
+    newname = os.path.join(path, delegee_hrn.translate(table) + "-delegated-" + filename)
     dcred.save_to_file(newname)
 
     logger.info("Saved delegated slice cred to %s" % newname)
