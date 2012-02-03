@@ -772,8 +772,15 @@ class Test(ut.OmniUnittest):
 
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
-                self.assertRaises(RefusedError, 
-                              self.subtest_CreateSliver, slicename )
+                if self.options_copy.api_version == 2:
+                    # Be more specific when we can
+                    self.assertRaises(RefusedError, 
+                                      self.subtest_CreateSliver, slicename )
+                else:
+                    # This is a little generous, as this error is
+                    # raised for many reasons
+                    self.assertRaises(NotNoneAssertionError, 
+                                      self.subtest_CreateSliver, slicename )                    
             else:
                 # if --more-strict
                 # ListResources should return an RSpec containing no resources

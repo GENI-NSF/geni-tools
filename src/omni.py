@@ -940,8 +940,6 @@ class CallHandler(object):
                     else:
                         message = result['output']
                         result = None
-            elif result is None:
-                self._raise_omni_error( message, RefusedError)
 
             prettyresult = result
             
