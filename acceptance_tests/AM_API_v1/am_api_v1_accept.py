@@ -776,10 +776,10 @@ class Test(ut.OmniUnittest):
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
-                self.assertFalse( rspec_util.has_child( manifest ),
+                self.assertTrue( rspec_util.has_child( manifest ),
                           "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                              "expected to be empty " \
-                              "but was not. Return was: " \
+                              "expected to be non-empty " \
+                              "but was empty. Return was: " \
                               "\n%s\n" \
                               "... edited for length ..."
                           % (slicename, manifest[:100]))
@@ -921,7 +921,6 @@ class Test(ut.OmniUnittest):
 
 
             for i in xrange(num_slices):
-#UNCOMMENT
                 self.assertRspecType( "".join(request[i]), 'request')
                 self.assertRspecType( "".join(manifest[i]), 'manifest')
 
@@ -966,7 +965,6 @@ class Test(ut.OmniUnittest):
                 manifest2.append("")
                 manifest2[i] = "".join(self.subtest_ListResources( slicename=slicenames[i] ))
             for i in xrange(num_slices):
-#UNCOMMENT
                 self.assertRspecType( "".join(manifest2[i]), 'manifest')
 
                 # manifest should be valid XML 
@@ -1044,11 +1042,14 @@ class Test(ut.OmniUnittest):
         now = datetime.datetime.utcnow()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
-        fivedays = (now + datetime.timedelta(days=5)).isoformat()            
+        fivedays = (now + datetime.timedelta(days=5)).isoformat()           
         sixdays = (now + datetime.timedelta(days=6)).isoformat()            
         self.subtest_RenewSlice( slicename, sixdays )
+        time.sleep(self.options_copy.sleep_time)
 #        self.subtest_RenewSliver( slicename, fivemin )
+#        time.sleep(self.options_copy.sleep_time)
         self.subtest_RenewSliver( slicename, twodays )
+        time.sleep(self.options_copy.sleep_time)
         self.subtest_RenewSliver( slicename, fivedays )
 
     def subtest_CreateSliver(self, slice_name):
