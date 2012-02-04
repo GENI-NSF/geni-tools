@@ -209,10 +209,9 @@ def has_child_ids( xml, check_comp_id_list, version="GENI 3" ):
 def rspeclint_exists():
     """Try to run 'rspeclint' to see if we can find it."""
     # TODO: Hum....better way (or place) to do this? (wrapper? rspec_util?)
-    # TODO: silence this call
     try:
         cmd = [RSPECLINT]
-        output = subprocess.call( cmd )
+        output = subprocess.call( cmd, stderr=open('/dev/null', 'w') )
     except:
         # TODO: WHAT EXCEPTION TO RAISE HERE?
         raise Exception, "Failed to locate or run '%s'" % RSPECLINT
@@ -226,11 +225,10 @@ def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
     # rspeclint must be run on a file
     with tempfile.NamedTemporaryFile() as f:
         f.write( ad )
-        # TODO silence rspeclint
         # Run rspeclint "../rspec/3" "../rspec/3/ad.xsd" <rspecfile>
         cmd = [RSPECLINT, namespace, schema, f.name]
         f.seek(0)
-        output = subprocess.call( cmd )
+        output = subprocess.call( cmd, stderr=open('/dev/null', 'w') )
         # log something?
         # "Return from 'ListResources' at aggregate '%s' " \
         #     "expected to pass rspeclint " \
