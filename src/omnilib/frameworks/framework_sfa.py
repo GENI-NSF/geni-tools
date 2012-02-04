@@ -416,13 +416,15 @@ class Framework(Framework_Base):
             self.logger.error("Cannot list aggregates from SFA registry without a user credential. %s", message)
             return aggs
 
-        (sites, message) = _do_ssl(self, None, "List Aggregates at SFA registry %s" % self.config['registry'], self.registry.get_aggregates, user_cred)
+        (retVal, message) = _do_ssl(self, None, "Get Version at SFA Slice Manager %s" % self.config['slicemgr'], self.slicemgr.GetVersion, {'options':user_cred})
         _ = message #Appease eclipse
+        sites = retVal['value']['peers']
+
         if sites is None:
             # FIXME: Use message?
             sites = []
-        for site in sites:
-            aggs[site['urn']] = site['url']
+        for name, url in sites.iteritems():
+            aggs[name] = url
 
         return aggs
 
