@@ -226,7 +226,7 @@ class CallHandler(object):
         ad_key = 'ad_rspec_versions'
         if self.opts.api_version == 2:
             if not thisVersion.has_key('code'):
-                # you ask for v2, but you got v1 ignore this
+                # you ask for v2, but you got v1 so continue processing as v1
                 pass
                 # Or we could break out now
                 # return (None, "AM %s does not have '%s' argument" % (client.url, ad_key))
