@@ -225,7 +225,12 @@ class CallHandler(object):
         (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
         ad_key = 'ad_rspec_versions'
         if self.opts.api_version == 2:
-            if thisVersion['code']['geni_code'] == 0:
+            if not thisVersion.has_key('code'):
+                # you ask for v2, but you got v1 ignore this
+                pass
+                # Or we could break out now
+                # return (None, "AM %s does not have '%s' argument" % (client.url, ad_key))
+            elif thisVersion['code']['geni_code'] == 0:
                 thisVersion = thisVersion['value']
                 ad_key = 'geni_ad_rspec_versions'
             else:
@@ -639,7 +644,7 @@ class CallHandler(object):
                 # This prints or logs results, depending on filename None
                 self._printResults( header, content, filename)
                 if filename:
-                    savedFileDesc += "Saved listResources RSpec at %s to file %s" % (urn, filename)
+                    savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
 
             else:
                 # Convert RSpec to omnispec
