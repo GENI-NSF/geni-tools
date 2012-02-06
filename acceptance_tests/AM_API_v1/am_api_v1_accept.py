@@ -386,21 +386,6 @@ class Test(ut.OmniUnittest):
                         "... edited for length ..." 
                         % (usercred[:100]))
 
-        # TO DO Validate usercred xml file
-        # # Test if XML file passes rspeclint
-        # if self.options_copy.rspeclint:
-        #     self.assertTrue(rspec_util.validate_rspec( rspec, 
-        #                                                namespace=rspec_namespace, 
-        #                                                schema=rspec_schema ),
-        #                     "Return from 'ListResources' at aggregate '%s' " \
-        #                     "expected to pass rspeclint " \
-        #                     "but did not. Return was: " \
-        #                     "\n%s\n" \
-        #                     "... edited for length ..."
-        #                     % (agg_name, rspec[:100]))
-
-
-
         # (2) Create a broken usercred
         broken_usercred = mundgeFcn(usercred)
 
@@ -500,6 +485,7 @@ class Test(ut.OmniUnittest):
            slicename=slice_name,
            slicecredfile=self.options_copy.delegated_slicecredfile)
         self.success = True
+
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
         """
@@ -520,7 +506,7 @@ class Test(ut.OmniUnittest):
         if self.options_copy.rspeclint:
             rspec_util.rspeclint_exists()
 
-        self.options_copy.omnispec = False # omni will complaining if both true
+        self.options_copy.omnispec = False # omni will complain if both true
         if slicename:
             rspec_namespace = self.manifest_namespace
             rspec_schema = self.manifest_schema
@@ -592,14 +578,6 @@ class Test(ut.OmniUnittest):
 
         # Checks each aggregate
         for ((agg_name, agg_url), rspec) in ret_dict.items():
-#            print "+++++++++++++"
-#            print agg_name, agg_url, rspec
-#            print "+++++++++++++"
-#            if self.options_copy.api_version == 2: 
-#                self.assertV2ReturnStruct( 'ListResources', agg_name, rspec)
-#                rspec = rspec['value']
-
-
             ## In python 2.7: assertIsNotNone
             self.assertTrue(rspec,
                           "Return from 'ListResources' at aggregate '%s' " \
@@ -633,8 +611,8 @@ class Test(ut.OmniUnittest):
             # Test if XML file passes rspeclint
             if self.options_copy.rspeclint:
                 self.assertTrue(rspec_util.validate_rspec( rspec, 
-                                                       namespace=rspec_namespace, 
-                                                       schema=rspec_schema ),
+                                                     namespace=rspec_namespace, 
+                                                     schema=rspec_schema ),
                             "Return from 'ListResources' at aggregate '%s' " \
                             "expected to pass rspeclint " \
                             "but did not. Return was: " \
@@ -684,7 +662,7 @@ class Test(ut.OmniUnittest):
 
             # manifest should be valid XML 
             self.assertIsXML(  manifest,
-                         "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
@@ -695,8 +673,8 @@ class Test(ut.OmniUnittest):
             # Test if manifest passes rspeclint
             if self.options_copy.rspeclint:
                 self.assertTrue(rspec_util.validate_rspec( manifest, 
-                                                       namespace=rspec_namespace, 
-                                                       schema=rspec_schema ),
+                                                    namespace=rspec_namespace, 
+                                                    schema=rspec_schema ),
                             "Manifest RSpec returned from 'CreateSliver' " \
                             "expected to pass rspeclint " \
                             "but did not. Return was: " \
@@ -706,15 +684,15 @@ class Test(ut.OmniUnittest):
 
             # Make sure the Manifest returned the nodes identified in the Request
             if rspec_util.has_child_node( manifest, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest, self.RSpecVersion(), 
-                                     "Request RSpec and Manifest RSpec " \
-                                         "returned by 'ListResources' on slice '%s' " \
-                                         "expected to have same component_ids " \
-                                         "but did not." % slicename)
+                self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
+                             "Request RSpec and Manifest RSpec " \
+                             "returned by 'ListResources' on slice '%s' " \
+                             "expected to have same component_ids " \
+                             "but did not." % slicename)
             else:
                 # the top level node should have a child
                 self.assertResourcesExist( manifest,
-                          "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                    "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                               "expected to NOT be empty " \
                               "but was. Return was: " \
                               "\n%s\n" 
@@ -729,19 +707,19 @@ class Test(ut.OmniUnittest):
             self.assertRspecType( manifest2, 'manifest')
 
             # manifest should be valid XML 
-            self.assertIsXML(  manifest2,
-                         "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+            self.assertIsXML( manifest2,
+                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
-                         % (slicename, manifest2[:100]))                         
+                         % (slicename, manifest2[:100]))
 
             # Test if manifest passes rspeclint
             if self.options_copy.rspeclint:
                 self.assertTrue(rspec_util.validate_rspec( manifest2, 
-                                                       namespace=rspec_namespace, 
-                                                       schema=rspec_schema ),
+                                                    namespace=rspec_namespace, 
+                                                    schema=rspec_schema ),
                             "Manifest RSpec returned from 'ListResources' " \
                             "on a slice " \
                             "expected to pass rspeclint " \
@@ -751,25 +729,26 @@ class Test(ut.OmniUnittest):
                             % (manifest2[:100]))
 
 
-            # Make sure the Manifest returned the nodes identified in the Request
+            # Make sure the Manifest returned the nodes identified in
+            # the Request
             if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest2, self.RSpecVersion(),
-                                     "Request RSpec and Manifest RSpec " \
-                                         "returned by 'ListResources' on slice '%s' " \
-                                         "expected to have same component_ids " \
-                                         "but did not." % slicename )
+                self.assertCompIDsEqual( request, manifest2, 
+                                 self.RSpecVersion(),
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same component_ids " \
+                                 "but did not." % slicename )
             else:
                 # the top level node should have a child
                 self.assertResourcesExist( manifest2,
-                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                              "expected to NOT be empty " \
-                              "but was. Return was: " \
-                              "\n%s\n" 
+                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                   "expected to NOT be empty " \
+                   "but was. Return was: " \
+                   "\n%s\n" 
                           % (slicename, manifest2))
 
 
             # Attempting to CreateSliver again should fail or return a manifest
-
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
                 if self.options_copy.api_version == 2:
@@ -780,27 +759,25 @@ class Test(ut.OmniUnittest):
                     # This is a little generous, as this error is
                     # raised for many reasons
                     self.assertRaises(NotNoneAssertionError, 
-                                      self.subtest_CreateSliver, slicename )                    
+                                      self.subtest_CreateSliver, slicename )
             else:
                 # if --more-strict
                 # ListResources should return an RSpec containing no resources
                 manifest = self.subtest_ListResources( slicename )
                 self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                             "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                             "expected to be wellformed XML file " \
-                             "but was not. Return was: " \
-                             "\n%s\n" \
-                             "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "expected to be wellformed XML file " \
+                  "but was not. Return was: " \
+                  "\n%s\n" \
+                  "... edited for length ..."
+                  % (slicename, manifest[:100]))                         
                 self.assertTrue( rspec_util.has_child( manifest ),
-                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                              "expected to be non-empty " \
-                              "but was empty. Return was: " \
-                              "\n%s\n" \
-                              "... edited for length ..."
-                          % (slicename, manifest[:100]))
-
-
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "expected to be non-empty " \
+                  "but was empty. Return was: " \
+                  "\n%s\n" \
+                  "... edited for length ..."
+                  % (slicename, manifest[:100]))
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
@@ -848,9 +825,11 @@ class Test(ut.OmniUnittest):
     def test_CreateSliverWorkflow_fail_notexist( self ):
         """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
         slicename = self.create_slice_name_uniq(prefix='non')        
-        # Test SliverStatus, ListResources and DeleteSliver on a non-existant sliver
+        # Test SliverStatus, ListResources and DeleteSliver on a
+        # non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
         self.success = True
+
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
         self.assertRaises((NotDictAssertionError, NoSliceCredError), 
                           self.subtest_SliverStatus, slicename )
@@ -863,14 +842,14 @@ class Test(ut.OmniUnittest):
             # ListResources should return an RSpec containing no resources
             manifest = self.subtest_ListResources( slicename )
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                             "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
             self.assertFalse( rspec_util.has_child( manifest ),
-                          "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                               "expected to be empty " \
                               "but was not. Return was: " \
                               "\n%s\n" \
@@ -948,7 +927,7 @@ class Test(ut.OmniUnittest):
 
                 # manifest should be valid XML 
                 self.assertIsXML(  manifest[i],
-                         "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
+                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
@@ -967,13 +946,16 @@ class Test(ut.OmniUnittest):
                             % (manifest[i][:100]))
 
 
-                # Make sure the Manifest returned the nodes identified in the Request
+                # Make sure the Manifest returned the nodes identified
+                # in the Request
                 if rspec_util.has_child_node( manifest[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( "".join(request[i]), "".join(manifest[i]), self.RSpecVersion(), 
-                                         "Request RSpec and Manifest RSpec " \
-                                             "returned by 'ListResources' on slice '%s' " \
-                                             "expected to have same component_ids " \
-                                             "but did not." % slicenames[i])
+                    self.assertCompIDsEqual( "".join(request[i]), 
+                                             "".join(manifest[i]), 
+                                             self.RSpecVersion(), 
+                                  "Request RSpec and Manifest RSpec " \
+                                  "returned by 'ListResources' on slice '%s' " \
+                                  "expected to have same component_ids " \
+                                  "but did not." % slicenames[i])
                                          
                 else:
                     # the top level node should have a child
@@ -984,9 +966,8 @@ class Test(ut.OmniUnittest):
                     "\n%s\n" 
                     % (slicenames[i], "".join(manifest[i])))
             
-            time.sleep(self.options_copy.sleep_time)
-
             for i in xrange(num_slices):
+                time.sleep(self.options_copy.sleep_time)
                 self.subtest_SliverStatus( slicenames[i] )        
 
             # Make sure you can't list resources on other slices
@@ -1003,12 +984,12 @@ class Test(ut.OmniUnittest):
 
                 # manifest should be valid XML 
                 self.assertIsXML(  manifest2[i],
-                         "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
-                         % (slicenames[i], manifest[i][:100]))                         
+                         % (slicenames[i], manifest[i][:100]))
 
                 if self.options_copy.rspeclint:
                     self.assertTrue(rspec_util.validate_rspec( manifest2[i], 
@@ -1023,13 +1004,16 @@ class Test(ut.OmniUnittest):
 
 
 
-                # Make sure the Manifest returned the nodes identified in the Request
+                # Make sure the Manifest returned the nodes identified
+                # in the Request
                 if rspec_util.has_child_node( manifest2[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( request[i], manifest2[i], self.RSpecVersion(), 
-                                     "Request RSpec and Manifest RSpec " \
-                                         "returned by 'ListResources' on slice '%s' " \
-                                         "expected to have same component_ids " \
-                                         "but did not." % slicenames[i] )
+                    self.assertCompIDsEqual( request[i], 
+                                             manifest2[i], 
+                                             self.RSpecVersion(), 
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same component_ids " \
+                                 "but did not." % slicenames[i] )
                 else:
                     # the top level node should have a child
                     self.assertResourcesExist( "".join(manifest2[i]),
@@ -1066,6 +1050,7 @@ class Test(ut.OmniUnittest):
                 except:
                     pass
         self.success = True
+
     def subtest_RenewSliver( self, slicename, newtime ):
         omniargs = ["renewsliver", slicename, newtime] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
@@ -1129,7 +1114,6 @@ class Test(ut.OmniUnittest):
                         % (manifest[:100]))
 
         # Test if file is XML and contains "<rspec" or "<resv_rspec"
-        # TODO is_rspec_string() might not be exactly the right thing here
         self.assertTrue(rspec_util.is_rspec_string( manifest ),
                         "Return from 'CreateSliver' " \
                             "expected to be XML " \
@@ -1166,7 +1150,7 @@ class Test(ut.OmniUnittest):
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                            % (agg, status))
+                            % (aggName, status))
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_urn', str )
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_status', str )
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_resources', list )
@@ -1175,12 +1159,6 @@ class Test(ut.OmniUnittest):
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_urn', str )
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_status', str )
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_error', str )
-
-
-        
-
-
-
 
     def subtest_DeleteSliver(self, slice_name):
         omniargs = ["deletesliver", slice_name]
@@ -1193,7 +1171,6 @@ class Test(ut.OmniUnittest):
                          "Sliver deletion expected to work " \
                          "but instead sliver deletion failed for slice: %s"
                          % slice_name )
-
 
     def subtest_createslice(self, slice_name ):
         """Create a slice. Not an AM API call."""
@@ -1270,6 +1247,7 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
         self.success = True
+
     @classmethod
     def accept_parser( cls, parser=omni.getParser(), usage=None):
         parser.add_option( "--reuse-slice", 
