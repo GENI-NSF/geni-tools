@@ -117,6 +117,7 @@ for each step are in README.txt
 1. Copy gcf_config into place.
 
    In terminal one:
+     $ cd gcf
      $ cp gcf_config.sample gcf_config
 
    Optional: Edit gcf_config if you want to change settings from the default 
@@ -125,7 +126,6 @@ for each step are in README.txt
 2. Create certificates and run the GENI Clearinghouse
 
   In terminal one:
-    $ cd gcf
     $ python src/gen-certs.py
     $ python src/gcf-ch.py
 
