@@ -840,14 +840,14 @@ class Test(ut.OmniUnittest):
             # ListResources should return an RSpec containing no resources
             manifest = self.subtest_ListResources( slicename )
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on deleted slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
                          % (slicename, manifest[:100]))                         
             self.assertFalse( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on deleted slice '%s' " \
                               "expected to be empty " \
                               "but was not. Return was: " \
                               "\n%s\n" \
