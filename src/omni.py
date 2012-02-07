@@ -2060,11 +2060,13 @@ def load_config(opts, logger):
     # Load up the users the user wants us to see        
     config['users'] = []
     if 'users' in config['omni']:
-        for user in config['omni']['users'].split(','):
-            d = {}
-            for (key,val) in confparser.items(user.strip()):
-                d[key] = val
-            config['users'].append(d)
+        if config['omni']['users'].strip() is not '' :
+            for user in config['omni']['users'].split(','):
+                if user.strip() is not '' : 
+                    d = {}
+                    for (key,val) in confparser.items(user.strip()):
+                        d[key] = val
+                    config['users'].append(d)
 
     # Find aggregate nicknames
     config['aggregate_nicknames'] = {}
