@@ -99,7 +99,7 @@ def get_expected_schema_info( version="GENI 3" ):
                 GENI_3_MAN_SCHEMA)
 
 
-def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
+def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
     try:
         root = etree.fromstring(xml)
     except:
@@ -109,7 +109,12 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
     actual_type = root.get('type')
     if actual_type.lower() != type.lower():
         return False
+    elif typeOnly:
+        # only checking the type in the RSpec
+        # If I get this far, then RSpec is ok and return True
+        return True
     else:
+        # Also check the schema
         # location can contain many items
         location = root.get( "{"+XSI+"}"+"schemaLocation" )
         ns, ad_schema, req_schema, man_schema = get_expected_schema_info( version=version )
@@ -125,10 +130,6 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3" ):
             return True
         else:
             return False
-
-    # Should never get here
-    return False
-
 
 
 def get_comp_ids_from_rspec( xml, version="GENI 3" ):

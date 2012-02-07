@@ -155,14 +155,14 @@ class OmniUnittest(unittest.TestCase):
                     "but did not."
             raise NotEqualComponentIDsError, msg
 
-    def assertRspecType(self, rspec, type='request', version=None, msg=None):
+    def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
         if version == None:
             rspec_type = self.options_copy.rspectype
             if len(rspec_type) == 2:
                 version = "%s %s" % (rspec_type[0], str(rspec_type[1]))
             else:
                 version = "GENI 3"
-        if not rspec_util.is_rspec_of_type( rspec, type=type, version=version ):
+        if not rspec_util.is_rspec_of_type( rspec, type=type, version=version, typeOnly=typeOnly ):
             if msg is None:
                 msg =  "RSpec expected to have type '%s' " \
                     "but schema was not correct." % (type)

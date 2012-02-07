@@ -481,7 +481,8 @@ class Test(ut.OmniUnittest):
         # Run slice credential
         self.subtest_ListResources(
            slicename=slice_name,
-           slicecredfile=self.options_copy.delegated_slicecredfile)
+           slicecredfile=self.options_copy.delegated_slicecredfile,
+           typeOnly=True)
         self.success = True
 
     def test_ListResources_untrustedCredential(self):
@@ -495,7 +496,7 @@ class Test(ut.OmniUnittest):
         self.success = True
 
 
-    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None):
+    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
 
@@ -602,9 +603,9 @@ class Test(ut.OmniUnittest):
                            % (agg_name, rspec[:100]))
 
             if slicename:
-                self.assertRspecType( rspec, 'manifest')
+                self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
             else:
-                self.assertRspecType( rspec, 'advertisement')
+                self.assertRspecType( rspec, 'advertisement', typeOnly=typeOnly)
 
             # Test if XML file passes rspeclint
             if self.options_copy.rspeclint:
