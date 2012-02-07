@@ -146,6 +146,8 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
                     if inXterm is True:
                         output += "xterm -e "
                     output += "ssh -i %s %s@%s" % ( key, child['username'], child['hostname'])
+                    if str(child['port']) != '22' : 
+                      output += " -p %s" % child['port']
                     if inXterm is True:
                         output += " &"
                     output += "\n"
