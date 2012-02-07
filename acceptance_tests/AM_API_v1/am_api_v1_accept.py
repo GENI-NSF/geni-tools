@@ -40,14 +40,12 @@ import time
 import tempfile
 import xml.etree.ElementTree as etree 
 
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
 PGV2_RSPEC_NUM = '2'
 RSPEC_NAME = "GENI"
 RSPEC_NUM = '3'
 
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
 GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
@@ -120,7 +118,7 @@ class Test(ut.OmniUnittest):
         ut.OmniUnittest.tearDown(self)
         if self.options_copy.monitoring:
             # MONITORING test_TestName 1
-            print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(self.success))
+            print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(not self.success))
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
