@@ -33,7 +33,7 @@ def hrn_to_urn(hrn,type): return Xrn(hrn, type=type).urn
 def hrn_authfor_hrn(parenthrn, hrn): return Xrn.hrn_is_auth_for_hrn(parenthrn, hrn)
 
 def urn_to_sliver_id(urn, slice_id, node_id, index=0):
-    return ":".join(map(str, [urn, slice_id, node_id, index]))
+    return Xrn(urn).get_sliver_id(slice_id, node_id, index)
 
 class Xrn:
 
@@ -154,7 +154,11 @@ class Xrn:
     def get_authority_urn(self): 
         self._normalize()
         return ':'.join( [Xrn.unescape(x) for x in self.authority] )
-    
+
+    def get_sliver_id(self, slice_id, node_id, index=0):
+        self._normalize()
+        return ":".join(map(str, [self.get_urn(), slice_id, node_id, index]))
+
     def urn_to_hrn(self):
         """
         compute tuple (hrn, type) from urn
@@ -180,8 +184,8 @@ class Xrn:
         # 1. remove blank parts
         # 2. escape dots inside parts
         # 3. replace ':' with '.' inside parts
-        # 3. join parts using '.' 
-        hrn = '.'.join([Xrn.escape(part).replace(':','.') for part in parts if part]) 
+        # 3. join parts using '.'
+        hrn = '.'.join([Xrn.escape(part).replace(':','.') for part in parts if part])
         # dont replace ':' in the name section
         if name:
             hrn += '.%s' % Xrn.escape(name) 
