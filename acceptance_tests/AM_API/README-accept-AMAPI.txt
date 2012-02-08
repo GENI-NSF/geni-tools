@@ -55,7 +55,7 @@ Software Dependencies
 =====================
 Requires:
  * Omni 1.6 and the acceptance tests [3] which are distributed as part
-   of the gcf1.6 package
+   of the gcf-1.6 package
  * (optional) rspeclint (Code [4] and documentation [5] is available from ProtoGENI.)
    (1) Install LibXML (which rspeclint relies on) from CPAN.
      -- On Ubuntu Linux this is the libxml-libxml-perl package 
@@ -103,7 +103,7 @@ These instructions assume you have already done the following items:
 Usage Instructions
 ==================
 
- (1) Install gcf1.6 (which includes Omni and the acceptance tests)
+ (1) Install gcf-1.6 (which includes Omni and the acceptance tests)
      (a) Install and test it per the instructions in INSTALL.txt.
 	 All of the tests should return "passed".
      (b) Configure omni_config.
@@ -116,7 +116,7 @@ Usage Instructions
 	 Or add the following to your ~/.bashrc:
 	 export PYTHONPATH=${PYTHONPATH}:path/to/gcf-1.6/src
      (d) Change into the directory where you will run the acceptance test:
-          $ cd gcf/acceptance_tests/AM_API_v1
+          $ cd gcf-1.6/acceptance_tests/AM_API_v1
      (e) Run 'rspeclint' to make sure rspeclint is in your path so that
      am_api_v1_accept.py can find it.
      	  $ rspeclint
@@ -175,7 +175,7 @@ Usage Instructions
  (4) Run acceptance tests with a GENI credential accepted by the AM
      (double check) Make sure you are still in the directory where you
      will run the acceptance tests.
-          $ cd gcf/acceptance_tests/AM_API_v1
+          $ cd gcf-1.6/acceptance_tests/AM_API_v1
      (a) Run all of the tests:
           $ am_api_v1_accept.py -a am-undertest
          Optional: To run individual tests (replacing test_GetVersion
@@ -335,7 +335,7 @@ Traceback (most recent call last):
     slicecredfile=self.options_copy.delegated_slicecredfile)                            
   File "./am_api_v1_accept.py", line 569, in subtest_ListResources
     % (text))
-  File "/home/sedwards/gcf/src/omni_unittest.py", line 120, in assertDict
+  File "/home/sedwards/gcf-1.6/src/omni_unittest.py", line 120, in assertDict
     raise NotDictAssertionError, msg
 NotDictAssertionError: Call to 'ListResources' failed or not possible but expected to succeed. Error returned:
  Got no resources on slice ahtestbbn. No resources from AM https://www.emulab.net/protogeni/xmlrpc/am/2.0: Nothing here by that name
