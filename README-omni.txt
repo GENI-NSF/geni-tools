@@ -31,10 +31,15 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 New in v1.6:
  * Bug fix (ticket #95)
- * Make getversion implementation be consistent with other commands (#109)
+ * Make getversion AM API v2 implementation be consistent with other commands (#109)
  * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
  * Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
- * libstitch example scripts handle V2 AMs in some cases
+ * libstitch example scripts handle V2 AMs in some cases (#119)
+ * Updated get_aggregates() call due to changes in SFA (#94)
+ * Fix bug in _get_advertised_rspec() (#114)
+ * Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
+ * readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
+ * Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
 
 New in v1.5.2:
   * validate the API version argument (#92)
