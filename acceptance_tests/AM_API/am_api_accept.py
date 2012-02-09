@@ -1304,6 +1304,7 @@ class Test(ut.OmniUnittest):
                            help="Print output to allow tests to be used in monitoring. Output is of the form: 'MONITORING test_TestName 1' The third field is 1 if the test is successful and 0 is the test is unsuccessful." )
 
         parser.remove_option("-t")
+        parser.set_defaults(logoutput='acceptance.log')
 
         argv = Test.unittest_parser(parser=parser, usage=usage)
 

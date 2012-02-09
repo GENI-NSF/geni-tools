@@ -99,13 +99,6 @@ class OmniUnittest(unittest.TestCase):
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
-        # Use the default log configuration file provided with the test
-        # unless the -l option is used
-        if not self.options.logconfig:
-            log_config = os.path.join(sys.path[0], LOG_CONFIG_FILE)
-            if os.path.exists(log_config):
-                omni.applyLogConfig(log_config)
-
 
     def call( self, cmd, options ):
         """Make the Omni call"""
@@ -280,6 +273,11 @@ class OmniUnittest(unittest.TestCase):
         parser.add_option("--qq", action="store_true", 
                           help="Give -q to unittest", default=False)
         cls.options, cls.args = parser.parse_args(sys.argv[1:])
+
+        # Use the default log configuration file provided with the
+        # test unless the -l option is used
+        if not cls.options.logconfig:
+            cls.options.logconfig = LOG_CONFIG_FILE
 
         # Create a list of all omni options as they appear on commandline
         omni_options_with_arg = []
