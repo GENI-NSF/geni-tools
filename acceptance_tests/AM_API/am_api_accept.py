@@ -77,14 +77,14 @@ SLEEP_TIME=3
 # This script relies on the unittest module.
 #
 # To run all tests:
-# ./am_api_v1_accept.py -a <AM to test>
+# ./am_api_accept.py -a <AM to test>
 #
 # To run a single test:
-# ./am_api_v1_accept.py -a <AM to test> Test.test_GetVersion
+# ./am_api_accept.py -a <AM to test> Test.test_GetVersion
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
-# automatically be run when am_api_v1_accept.py is called.
+# automatically be run when am_api_accept.py is called.
 #
 ################################################################################
 
@@ -468,23 +468,23 @@ class Test(ut.OmniUnittest):
             return slice_name
         else:
             return None
-    def test_ListResources_delegatedSliceCred(self):
-        """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
-        # Check if slice credential is delegated.
-        xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
-        self.assertTrue( self.is_delegated_cred(xml), 
-                       "Slice credential is not delegated " \
-                       "but expected to be. " )
-        slice_name = self.get_slice_name_from_cred( xml )                
-        self.assertTrue( slice_name,
-                       "Credential is not a slice credential " \
-                       "but expected to be: \n%s\n\n<snip> " % xml[:100] )
-        # Run slice credential
-        self.subtest_ListResources(
-           slicename=slice_name,
-           slicecredfile=self.options_copy.delegated_slicecredfile,
-           typeOnly=True)
-        self.success = True
+    # def test_ListResources_delegatedSliceCred(self):
+    #     """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
+    #     # Check if slice credential is delegated.
+    #     xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
+    #     self.assertTrue( self.is_delegated_cred(xml), 
+    #                    "Slice credential is not delegated " \
+    #                    "but expected to be. " )
+    #     slice_name = self.get_slice_name_from_cred( xml )                
+    #     self.assertTrue( slice_name,
+    #                    "Credential is not a slice credential " \
+    #                    "but expected to be: \n%s\n\n<snip> " % xml[:100] )
+    #     # Run slice credential
+    #     self.subtest_ListResources(
+    #        slicename=slice_name,
+    #        slicecredfile=self.options_copy.delegated_slicecredfile,
+    #        typeOnly=True)
+    #     self.success = True
 
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
@@ -647,6 +647,7 @@ class Test(ut.OmniUnittest):
         # cleanup up any previous failed runs
         try:
             self.subtest_DeleteSliver( slicename )
+            time.sleep(self.options_copy.sleep_time)
         except:
             pass
 
@@ -748,7 +749,8 @@ class Test(ut.OmniUnittest):
                           % (slicename, manifest2))
 
 
-            # Attempting to CreateSliver again should fail or return a manifest
+            # Attempting to CreateSliver again should fail or return a
+            # manifest
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
                 if self.options_copy.api_version == 2:
@@ -901,6 +903,7 @@ class Test(ut.OmniUnittest):
         for i in xrange(num_slices):
             try:
                 self.subtest_DeleteSliver( slicenames[i] )
+                time.sleep(self.options_copy.sleep_time)
             except:
                 pass
 
@@ -1267,9 +1270,6 @@ class Test(ut.OmniUnittest):
                       help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
 
 
-        parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
-                      help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
-
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
                            dest='rspec_file_list', default=(REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
@@ -1303,6 +1303,8 @@ class Test(ut.OmniUnittest):
                            action="store_true",
                            default=False,
                            help="Print output to allow tests to be used in monitoring. Output is of the form: 'MONITORING test_TestName 1' The third field is 1 if the test is successful and 0 is the test is unsuccessful." )
+        parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
+                          help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
 
         parser.remove_option("-t")
         parser.set_defaults(logoutput='acceptance.log')
@@ -1317,7 +1319,7 @@ if __name__ == '__main__':
             "\n\n     Run an individual test using the following form..." \
             "\n     %s -a am-undertest Test.test_GetVersion" % (sys.argv[0], sys.argv[0])
     # Include default Omni_unittest command line options
-    Test.accept_parser(usage=usage)
+    argv = Test.accept_parser(usage=usage)
 
     # Invoke unit tests as usual
     unittest.main()
