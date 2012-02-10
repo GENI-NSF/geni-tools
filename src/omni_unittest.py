@@ -35,7 +35,7 @@ import os.path
 import pwd
 
 SLICE_NAME = 'acc'
-LOG_CONFIG_FILE = "omni_accept.conf"
+LOG_CONFIG_FILE = "logging.conf"
 
 
 class NotDictAssertionError( AssertionError ):
