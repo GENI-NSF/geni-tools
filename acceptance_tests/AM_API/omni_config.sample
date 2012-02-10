@@ -5,6 +5,13 @@ default_cf = pg-gpo
 # Should match am-undertest below
 aggregates = https://www.emulab.net/protogeni/xmlrpc/am
 
+users = alice
+
+[alice]
+# Should be PG
+urn=urn:publicid:IDN+plc:bbn+user+alice
+keys=~/.ssh/id_rsa.pg.pub
+
 [aggregate_nicknames]
 # Format: Nickname=URN,URL
 
@@ -14,6 +21,7 @@ am-undertest=,https://www.emulab.net/protogeni/xmlrpc/am
 # For reference: other AMs 
 pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
+pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
 plc=,https://www.planet-lab.org:12346
 
 [pg-gpo]
@@ -34,4 +42,5 @@ authority=geni:gpo:gcf
 ch=https://localhost:8000
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
+
 
