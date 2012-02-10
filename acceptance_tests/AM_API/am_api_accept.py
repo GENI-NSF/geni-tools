@@ -65,6 +65,7 @@ PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/pol
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
+REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
@@ -1271,8 +1272,8 @@ class Test(ut.OmniUnittest):
 
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
-                           dest='rspec_file_list', default=(REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
-                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
+                           dest='rspec_file_list', default=(REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
+                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
 
         parser.add_option( "--reuse-slice-list", 
                            action="store", type='string', nargs=3, dest='reuse_slice_list', 
