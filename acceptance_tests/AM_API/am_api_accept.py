@@ -764,17 +764,18 @@ class Test(ut.OmniUnittest):
                                       self.subtest_CreateSliver, slicename )
             else:
                 # if --more-strict
-                # ListResources should return an RSpec containing no resources
-                manifest = self.subtest_ListResources( slicename )
+                # CreateSliver should return an RSpec containing no
+                # resources
+                manifest = self.subtest_CreateSliver( slicename )
                 self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                   "expected to be wellformed XML file " \
                   "but was not. Return was: " \
                   "\n%s\n" \
                   "... edited for length ..."
                   % (slicename, manifest[:100]))                         
                 self.assertTrue( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                   "expected to be non-empty " \
                   "but was empty. Return was: " \
                   "\n%s\n" \
