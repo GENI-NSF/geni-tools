@@ -83,7 +83,7 @@ Software
    - the AM API acceptance tests
  * gcf-1.6/acceptance_tests/AM_API/omni_config.sample
    - default omni_config file 
- * gcf-1.6/acceptance_tests/AM_API/omni_accept.conf 
+ * gcf-1.6/acceptance_tests/AM_API/logging.conf 
    - logging configuration file for am_api_accept.py
    - used by default unless you override it with -l
  * gcf-1.6/src/omni_unittest.py 
