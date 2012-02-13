@@ -30,7 +30,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.6:
- * Bug fix (ticket #95)
+ * Fix bug in printout of CreateSliver error (ticket #95)
  * Make getversion AM API v2 implementation be consistent with other commands (#109)
  * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
  * Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
