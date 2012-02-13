@@ -8,8 +8,8 @@ aggregates = https://www.emulab.net/protogeni/xmlrpc/am
 users = alice
 
 [alice]
-# Should be PG
-urn=urn:publicid:IDN+plc:bbn+user+alice
+# Should be PG GPO
+urn=urn:publicid:IDN+pgeni.gpolab.bbn.com+user+alice
 keys=~/.ssh/id_rsa.pg.pub
 
 [aggregate_nicknames]
