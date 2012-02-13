@@ -1,4 +1,4 @@
-AM API v1 Acceptance Tests
+AM API Acceptance Tests
 ==========================
 
 Description
@@ -6,8 +6,7 @@ Description
 
 Acceptance tests verify compliance to the GENI Aggregate Manager (AM)
 API v1 specification [1] plus change set A of the AM API v2
-specification [2]. This is an early version of the acceptance test to
-get feedback on the test mechanism.
+specification [2a] (alternatively the tests can be run against AM API v2 [2b]). 
 
 Acceptance tests are intended to be run with credentials from the GPO
 ProtoGENI, but they work with any credentials that are trusted at the
@@ -31,12 +30,13 @@ Test verifies:
      - SliverStatus, ListResources <slice name>, and DeleteSliver fail when:
         * slice has been deleted
 	* slice never existed
-     - GetVersion return contains:
+     - GetVersion return contains either:
         * GENI AM API version 1 
         * 'geni_ad_rspec_versions' (or 'ad_rspec_versions') which in turn
           contains a 'type' and 'version'
         * 'geni_request_rspec_versions' (or 'request_rspec_versions')
           which in turn contains a 'type' and 'version'
+	* or alternatively contains expected return from AM API v2
      - ListResources returns an advertisement RSpec (that is
        optionally validated with rspeclint)
      - ListResources works properly with a delegated credential
@@ -78,7 +78,9 @@ By policy, requires:
 Software
 ==================
  * gcf-1.6/acceptance_tests/AM_API/am_api_accept.py 
-   - the AM API v1 acceptance tests
+ * gcf-1.6/acceptance_tests/AM_API/am_api_accept_shutdown.py 
+ * gcf-1.6/acceptance_tests/AM_API/am_api_accept_delegate.py 
+   - the AM API acceptance tests
  * gcf-1.6/acceptance_tests/AM_API/omni_config.sample
    - default omni_config file 
  * gcf-1.6/acceptance_tests/AM_API/omni_accept.conf 
@@ -194,12 +196,15 @@ Usage Instructions
                 AM returns an empty RSpec from ListResources when a
                 slice does not exist.
 
- (5) Run "Shutdown" acceptance tests.  Beware that this test likely
+ (5) Run "Credential Delegation" acceptance tests.  
+         $ am_api_accept_delegate.py -a am-undertest DelegateTest.test_CreateSliver_delegatedSliceCred
+
+ (6) Run "Shutdown" acceptance tests.  Beware that this test likely
  requires an admin to recover from as it runs the AM API command
  "Shutdown" on a slice.
-         $ am_api_accept.py -a am-undertest ShutdownTest.test_CreateSliverWorkflow_with_Shutdown
+         $ am_api_accept_shutdown.py -a am-undertest ShutdownTest.test_CreateSliverWorkflow_with_Shutdown
 
- (6) Congratulations! You are done.	 
+ (7) Congratulations! You are done.	 
 
 Variations
 ==========
@@ -483,8 +488,10 @@ Usage:
 Bibliography
 ===============
  [1] AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V1
- [2] AM API v2 change set A documentation: 
+ [2a] AM API v2 change set A documentation: 
      http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA
+ [2b] AM API v2 documentation: 
+     http://groups.geni.net/geni/wiki/GAPI_AM_API_V2
  [3] gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
  [4] rspeclint code: http://www.protogeni.net/resources/rspeclint
  [5] rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
