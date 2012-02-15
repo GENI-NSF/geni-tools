@@ -69,7 +69,7 @@ REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
-SLEEP_TIME=3
+SLEEP_TIME=20
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -824,8 +824,12 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliverWorkflow_fail_notexist( self ):
-        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
+        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the sliver has never existed."""
         slicename = self.create_slice_name_uniq(prefix='non')        
+
+        # Create slice so that lack of existance of the slice doesn't
+        # cause the AM test to fail
+        self.subtest_createslice( slicename )
         # Test SliverStatus, ListResources and DeleteSliver on a
         # non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -923,7 +927,7 @@ class Test(ut.OmniUnittest):
                     request[i] = "".join(f.readlines())
                 manifest.append("")
                 self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
-                
+                time.sleep(self.options_copy.sleep_time)
                 manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
 
 
