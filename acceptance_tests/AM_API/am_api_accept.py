@@ -550,11 +550,9 @@ class Test(ut.OmniUnittest):
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif usercredfile:
             omniargs = omniargs + ["--usercredfile", usercredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif slicecredfile:
             omniargs = omniargs + ["--slicecredfile", slicecredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
             (text, ret_dict) = self.call(omniargs, self.options_copy)
@@ -860,8 +858,12 @@ class Test(ut.OmniUnittest):
                           % (slicename, manifest[:100]))
         
         # Also repeated calls to DeleteSliver should now fail
-        self.assertRaises((AssertionError, NoSliceCredError), 
-                          self.subtest_DeleteSliver, slicename )
+        try:
+            self.assertRaises((AssertionError, NoSliceCredError), 
+                              self.subtest_DeleteSliver, slicename )
+        # Or succeed by returning True
+        except AssertionError:
+            self.subtest_DeleteSliver( slicename )
 
 
     def test_CreateSliverWorkflow_multiSlice(self): 
