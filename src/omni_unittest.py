@@ -86,7 +86,10 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return prefix+pwd.getpwuid(os.getuid())[0]
+            user = pwd.getpwuid(os.getuid())[0]
+            pre = prefix+user[:3]
+            return datetime.datetime.strftime(datetime.datetime.utcnow(), pre+"-%H%M%S")
+#            return prefix+pwd.getpwuid(os.getuid())[0]
 
     def create_slice_name_uniq( self, prefix=SLICE_NAME ):
         """Unique slice name to be used to create a test slice"""
