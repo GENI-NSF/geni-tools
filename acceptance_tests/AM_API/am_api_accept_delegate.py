@@ -73,7 +73,7 @@ SLEEP_TIME=3
 # This script relies on the unittest module.
 #
 # To run test:
-# ./am_api_accept.py -a <AM to test> DelegateTest.test_ListResources_delegatedSliceCred
+# ./am_api_accept.py -a <AM to test> 
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
@@ -109,10 +109,13 @@ class DelegateTest(accept.Test):
         self.success = True
 
 if __name__ == '__main__':
-    usage = "\n      %s -a am-undertest Test.test_ListResources_delegatedSliceCred" \
+    usage = "\n      %s -a am-undertest" \
             "\n      Also try --vv" % sys.argv[0]
     DelegateTest.accept_parser(usage=usage)
-    # Invoke unit tests as usual
-    unittest.main()
+
+    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_ListResources_delegatedSliceCred")
+#    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_GetVersion")
+    unittest.TextTestRunner().run(suite)
+
 
 
