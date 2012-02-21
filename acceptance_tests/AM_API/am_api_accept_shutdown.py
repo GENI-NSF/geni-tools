@@ -101,14 +101,15 @@ class ShutdownTest(accept.Test):
         if slicename==None:
             slicename = self.create_slice_name(prefix='down')
 
-#        self.cleanup_Shutdown( slicename=slicename )
-
         # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
         manifest = self.subtest_CreateSliver( slicename )
+        self.assertResourcesExist( manifest, 
+                       "Manifest RSpec returned by CreateSliver " \
+                       "expected to contain resources but does not.")
         try:
             self.subtest_Shutdown( slicename )
         except:
@@ -117,20 +118,6 @@ class ShutdownTest(accept.Test):
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
-
-    # def cleanup_Shutdown(self, slicename=None):
-    #     try:
-    #         self.subtest_DeleteSliver( slicename )
-    #     except: 
-    #         pass
-
-    #     if not self.options_copy.reuse_slice_name:
-    #         try:
-    #             self.subtest_deleteslice( slicename )
-    #         except:
-    #             pass
-
-
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \
