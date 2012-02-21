@@ -197,7 +197,7 @@ Usage Instructions
                 slice does not exist.
 
  (5) Run "Credential Delegation" acceptance tests.  
-         $ am_api_accept_delegate.py -a am-undertest DelegateTest.test_CreateSliver_delegatedSliceCred
+         $ am_api_accept_delegate.py -a am-undertest DelegateTest.test_ListResources_delegatedSliceCred
 
  (6) Run "Shutdown" acceptance tests.  Beware that this test likely
  requires an admin to recover from as it runs the AM API command
