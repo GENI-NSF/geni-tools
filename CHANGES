@@ -12,6 +12,7 @@ gcf 1.6:
    - Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
    - readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
    - Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
+   - Improve busy response handling to AM's running AM API v2 and SAs (#123)
  * gcf
    - Moved gcf_config template to be gcf_config.sample and changed instructions to match (#83)
    - Cleaned up TROUBLESHOOTING.txt (#110)
