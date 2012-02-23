@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.6"
+OMNI_VERSION="1.6.1"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.

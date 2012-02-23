@@ -1,5 +1,9 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.6.1:
+ * AM API v1 acceptance tests
+   - request3.xml.sample should point to a node that really exists. (#124)
+
 gcf 1.6:
  * omni
    - Log malformed XML exception correctly (#95)
