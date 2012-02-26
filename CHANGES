@@ -1,17 +1,32 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 1.6.1:
+ * AM API v1 acceptance tests
+   - request3.xml.sample should point to a node that really exists. (#124)
+
 gcf 1.6:
  * omni
    - Log malformed XML exception correctly (#95)
-   - Make getversion implementation be consistent with other commands (#109)
+   - Make getversion AM API v2 implementation be consistent with other commands (#109)
    - Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
    - Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
-   - Update libstitch to work with V2 AMs in some cases
+   - Update libstitch to work with V2 AMs in some cases (#119)
+   - Updated get_aggregates() call due to changes in SFA (#94)
+   - Fix bug in _get_advertised_rspec() (#114)
+   - Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
+   - readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
+   - Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
+   - Improve busy response handling to AM's running AM API v2 and SAs (#123)
  * gcf
    - Moved gcf_config template to be gcf_config.sample and changed instructions to match (#83)
    - Cleaned up TROUBLESHOOTING.txt (#110)
  * AM API v1 acceptance tests
    - Changed sample RSpec files to end in .xml.sample instead of .xml (#83)
+   - Added a test that delegated credentials are used properly (#99)
+   - Added a test that exercises CreateSliver on an existing sliver (#87)
+   - Added AM API v2 support for acceptance tests (#100)
+   - Fix bug in schemas passed into rspeclint (#112)
+   - Added --monitoring flag to acceptance tests to support their use in cross framework testing (#103)
 
 gcf 1.5.2:
  * omni    

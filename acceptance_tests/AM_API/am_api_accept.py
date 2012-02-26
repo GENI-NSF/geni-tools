@@ -40,14 +40,12 @@ import time
 import tempfile
 import xml.etree.ElementTree as etree 
 
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
 PGV2_RSPEC_NUM = '2'
 RSPEC_NAME = "GENI"
 RSPEC_NUM = '3'
 
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
 AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
 GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
@@ -67,10 +65,11 @@ PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/pol
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
+REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
-SLEEP_TIME=3
+SLEEP_TIME=20
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -78,14 +77,14 @@ SLEEP_TIME=3
 # This script relies on the unittest module.
 #
 # To run all tests:
-# ./am_api_v1_accept.py -a <AM to test>
+# ./am_api_accept.py -a <AM to test>
 #
 # To run a single test:
-# ./am_api_v1_accept.py -a <AM to test> Test.test_GetVersion
+# ./am_api_accept.py -a <AM to test> Test.test_GetVersion
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
-# automatically be run when am_api_v1_accept.py is called.
+# automatically be run when am_api_accept.py is called.
 #
 ################################################################################
 
@@ -120,7 +119,7 @@ class Test(ut.OmniUnittest):
         ut.OmniUnittest.tearDown(self)
         if self.options_copy.monitoring:
             # MONITORING test_TestName 1
-            print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(self.success))
+            print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(not self.success))
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
@@ -469,22 +468,23 @@ class Test(ut.OmniUnittest):
             return slice_name
         else:
             return None
-    def test_ListResources_delegatedSliceCred(self):
-        """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
-        # Check if slice credential is delegated.
-        xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
-        self.assertTrue( self.is_delegated_cred(xml), 
-                       "Slice credential is not delegated " \
-                       "but expected to be. " )
-        slice_name = self.get_slice_name_from_cred( xml )                
-        self.assertTrue( slice_name,
-                       "Credential is not a slice credential " \
-                       "but expected to be: \n%s\n\n<snip> " % xml[:100] )
-        # Run slice credential
-        self.subtest_ListResources(
-           slicename=slice_name,
-           slicecredfile=self.options_copy.delegated_slicecredfile)
-        self.success = True
+    # def test_ListResources_delegatedSliceCred(self):
+    #     """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
+    #     # Check if slice credential is delegated.
+    #     xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
+    #     self.assertTrue( self.is_delegated_cred(xml), 
+    #                    "Slice credential is not delegated " \
+    #                    "but expected to be. " )
+    #     slice_name = self.get_slice_name_from_cred( xml )                
+    #     self.assertTrue( slice_name,
+    #                    "Credential is not a slice credential " \
+    #                    "but expected to be: \n%s\n\n<snip> " % xml[:100] )
+    #     # Run slice credential
+    #     self.subtest_ListResources(
+    #        slicename=slice_name,
+    #        slicecredfile=self.options_copy.delegated_slicecredfile,
+    #        typeOnly=True)
+    #     self.success = True
 
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
@@ -497,7 +497,7 @@ class Test(ut.OmniUnittest):
         self.success = True
 
 
-    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None):
+    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
 
@@ -550,11 +550,9 @@ class Test(ut.OmniUnittest):
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif usercredfile:
             omniargs = omniargs + ["--usercredfile", usercredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif slicecredfile:
             omniargs = omniargs + ["--slicecredfile", slicecredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
             (text, ret_dict) = self.call(omniargs, self.options_copy)
@@ -604,9 +602,9 @@ class Test(ut.OmniUnittest):
                            % (agg_name, rspec[:100]))
 
             if slicename:
-                self.assertRspecType( rspec, 'manifest')
+                self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
             else:
-                self.assertRspecType( rspec, 'advertisement')
+                self.assertRspecType( rspec, 'advertisement', typeOnly=typeOnly)
 
             # Test if XML file passes rspeclint
             if self.options_copy.rspeclint:
@@ -647,6 +645,7 @@ class Test(ut.OmniUnittest):
         # cleanup up any previous failed runs
         try:
             self.subtest_DeleteSliver( slicename )
+            time.sleep(self.options_copy.sleep_time)
         except:
             pass
 
@@ -748,7 +747,8 @@ class Test(ut.OmniUnittest):
                           % (slicename, manifest2))
 
 
-            # Attempting to CreateSliver again should fail or return a manifest
+            # Attempting to CreateSliver again should fail or return a
+            # manifest
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
                 if self.options_copy.api_version == 2:
@@ -762,17 +762,18 @@ class Test(ut.OmniUnittest):
                                       self.subtest_CreateSliver, slicename )
             else:
                 # if --more-strict
-                # ListResources should return an RSpec containing no resources
-                manifest = self.subtest_ListResources( slicename )
+                # CreateSliver should return an RSpec containing no
+                # resources
+                manifest = self.subtest_CreateSliver( slicename )
                 self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                   "expected to be wellformed XML file " \
                   "but was not. Return was: " \
                   "\n%s\n" \
                   "... edited for length ..."
                   % (slicename, manifest[:100]))                         
                 self.assertTrue( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                   "expected to be non-empty " \
                   "but was empty. Return was: " \
                   "\n%s\n" \
@@ -823,8 +824,12 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliverWorkflow_fail_notexist( self ):
-        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
+        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the sliver has never existed."""
         slicename = self.create_slice_name_uniq(prefix='non')        
+
+        # Create slice so that lack of existance of the slice doesn't
+        # cause the AM test to fail
+        self.subtest_createslice( slicename )
         # Test SliverStatus, ListResources and DeleteSliver on a
         # non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -847,18 +852,22 @@ class Test(ut.OmniUnittest):
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
+                         % (slicename, manifest[:1000]))                         
             self.assertFalse( rspec_util.has_child( manifest ),
                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                               "expected to be empty " \
                               "but was not. Return was: " \
                               "\n%s\n" \
                               "... edited for length ..."
-                          % (slicename, manifest[:100]))
+                          % (slicename, manifest[:1000]))
         
         # Also repeated calls to DeleteSliver should now fail
-        self.assertRaises((AssertionError, NoSliceCredError), 
-                          self.subtest_DeleteSliver, slicename )
+        try:
+            self.assertRaises((AssertionError, NoSliceCredError), 
+                              self.subtest_DeleteSliver, slicename )
+        # Or succeed by returning True
+        except AssertionError:
+            self.subtest_DeleteSliver( slicename )
 
 
     def test_CreateSliverWorkflow_multiSlice(self): 
@@ -901,6 +910,7 @@ class Test(ut.OmniUnittest):
         for i in xrange(num_slices):
             try:
                 self.subtest_DeleteSliver( slicenames[i] )
+                time.sleep(self.options_copy.sleep_time)
             except:
                 pass
 
@@ -917,7 +927,7 @@ class Test(ut.OmniUnittest):
                     request[i] = "".join(f.readlines())
                 manifest.append("")
                 self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
-                
+                time.sleep(self.options_copy.sleep_time)
                 manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
 
 
@@ -1267,13 +1277,10 @@ class Test(ut.OmniUnittest):
                       help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
 
 
-        parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
-                      help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
-
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
-                           dest='rspec_file_list', default=(REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
-                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
+                           dest='rspec_file_list', default=(REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
+                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
 
         parser.add_option( "--reuse-slice-list", 
                            action="store", type='string', nargs=3, dest='reuse_slice_list', 
@@ -1303,6 +1310,11 @@ class Test(ut.OmniUnittest):
                            action="store_true",
                            default=False,
                            help="Print output to allow tests to be used in monitoring. Output is of the form: 'MONITORING test_TestName 1' The third field is 1 if the test is successful and 0 is the test is unsuccessful." )
+        parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
+                          help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
+
+        parser.remove_option("-t")
+        parser.set_defaults(logoutput='acceptance.log')
 
         argv = Test.unittest_parser(parser=parser, usage=usage)
 
@@ -1314,7 +1326,7 @@ if __name__ == '__main__':
             "\n\n     Run an individual test using the following form..." \
             "\n     %s -a am-undertest Test.test_GetVersion" % (sys.argv[0], sys.argv[0])
     # Include default Omni_unittest command line options
-    Test.accept_parser(usage=usage)
+    argv = Test.accept_parser(usage=usage)
 
     # Invoke unit tests as usual
     unittest.main()

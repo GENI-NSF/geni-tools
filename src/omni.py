@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.6"
+OMNI_VERSION="1.6.1"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -2332,8 +2332,16 @@ def configure_logging(opts):
     if opts.debug:
         level = logging.DEBUG
         optlevel = 'DEBUG'
+
+    deft = {}
+
+    # Add the ability to use %(logfilename)s in the logging config
+    # file
+    deft['logfilename'] = opts.logoutput
+
     if opts.logconfig:
-        applyLogConfig(opts.logconfig, defaults={'optlevel': optlevel})
+        deft['optlevel'] = optlevel
+        applyLogConfig(opts.logconfig, defaults=deft)
     else:
         logging.basicConfig(level=level)
 
@@ -2463,6 +2471,8 @@ def getParser():
                       help="Use ABAC authorization")
     parser.add_option("-l", "--logconfig", default=None,
                       help="Python logging config file")
+    parser.add_option("--logoutput", default='omni.log',
+                      help="Python logging output file [use %(logfilename)s in logging config file]")
     parser.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
     parser.add_option("-V", "--api-version", type="int", default=1,

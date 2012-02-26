@@ -35,7 +35,7 @@ import os.path
 import pwd
 
 SLICE_NAME = 'acc'
-LOG_CONFIG_FILE = "omni_accept.conf"
+LOG_CONFIG_FILE = "logging.conf"
 
 
 class NotDictAssertionError( AssertionError ):
@@ -86,7 +86,10 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            return prefix+pwd.getpwuid(os.getuid())[0]
+            user = pwd.getpwuid(os.getuid())[0]
+            pre = prefix+user[:3]
+            return datetime.datetime.strftime(datetime.datetime.utcnow(), pre+"-%H%M%S")
+#            return prefix+pwd.getpwuid(os.getuid())[0]
 
     def create_slice_name_uniq( self, prefix=SLICE_NAME ):
         """Unique slice name to be used to create a test slice"""
@@ -99,13 +102,6 @@ class OmniUnittest(unittest.TestCase):
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
-        # Use the default log configuration file provided with the test
-        # unless the -l option is used
-        if not self.options.logconfig:
-            log_config = os.path.join(sys.path[0], LOG_CONFIG_FILE)
-            if os.path.exists(log_config):
-                omni.applyLogConfig(log_config)
-
 
     def call( self, cmd, options ):
         """Make the Omni call"""
@@ -155,14 +151,14 @@ class OmniUnittest(unittest.TestCase):
                     "but did not."
             raise NotEqualComponentIDsError, msg
 
-    def assertRspecType(self, rspec, type='request', version=None, msg=None):
+    def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
         if version == None:
             rspec_type = self.options_copy.rspectype
             if len(rspec_type) == 2:
                 version = "%s %s" % (rspec_type[0], str(rspec_type[1]))
             else:
                 version = "GENI 3"
-        if not rspec_util.is_rspec_of_type( rspec, type=type, version=version ):
+        if not rspec_util.is_rspec_of_type( rspec, type=type, version=version, typeOnly=typeOnly ):
             if msg is None:
                 msg =  "RSpec expected to have type '%s' " \
                     "but schema was not correct." % (type)
@@ -280,6 +276,11 @@ class OmniUnittest(unittest.TestCase):
         parser.add_option("--qq", action="store_true", 
                           help="Give -q to unittest", default=False)
         cls.options, cls.args = parser.parse_args(sys.argv[1:])
+
+        # Use the default log configuration file provided with the
+        # test unless the -l option is used
+        if not cls.options.logconfig:
+            cls.options.logconfig = LOG_CONFIG_FILE
 
         # Create a list of all omni options as they appear on commandline
         omni_options_with_arg = []

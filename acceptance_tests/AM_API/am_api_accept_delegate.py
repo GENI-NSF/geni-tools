@@ -31,6 +31,7 @@ import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError
+import omni
 import os
 import pprint
 import re
@@ -84,52 +85,37 @@ SLEEP_TIME=3
 API_VERSION = 1
 
 
-class ShutdownTest(accept.Test):
-    """Shutdown acceptance test for GENI AM API v1."""
+class DelegateTest(accept.Test):
+    """Delegation acceptance test for GENI AM API v1."""
 
     def setUp( self ):
         accept.Test.setUp( self )
-    def subtest_Shutdown(self, slicename=None):
-        omniargs = ["shutdown", slicename, str(self.options_copy.rspec_file)] 
-        text, (succList, failList) = self.call(omniargs, self.options_copy)
-        self.assertTrue( (len(succList) >=1) and (len(failList)==0),
-                        "Return from 'Shutdown' " \
-                        "expected to succeed " \
-                        "but did not for: %s" % ", ".join(failList) )
-
-    def test_CreateSliverWorkflow_with_Shutdown(self, slicename=None):
-        if slicename==None:
-            slicename = self.create_slice_name(prefix='down')
-
-        # if reusing a slice name, don't create (or delete) the slice
-        if not self.options_copy.reuse_slice_name:
-            self.subtest_createslice( slicename )
-            time.sleep(self.options_copy.sleep_time)
-
-        manifest = self.subtest_CreateSliver( slicename )
-        self.assertResourcesExist( manifest, 
-                       "Manifest RSpec returned by CreateSliver " \
-                       "expected to contain resources but does not.")
-        try:
-            self.subtest_Shutdown( slicename )
-        except:
-            # If Shutdown fails, then DeleteSliver to clean up for next run
-            self.subtest_DeleteSliver( slicename )
-
-        if not self.options_copy.reuse_slice_name:
-            self.subtest_deleteslice( slicename )
+    def test_ListResources_delegatedSliceCred(self):
+        """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
+        # Check if slice credential is delegated.
+        xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
+        self.assertTrue( self.is_delegated_cred(xml), 
+                       "Slice credential is not delegated " \
+                       "but expected to be. " )
+        slice_name = self.get_slice_name_from_cred( xml )                
+        self.assertTrue( slice_name,
+                       "Credential is not a slice credential " \
+                       "but expected to be: \n%s\n\n<snip> " % xml[:100] )
+        # Run slice credential
+        self.subtest_ListResources(
+           slicename=slice_name,
+           slicecredfile=self.options_copy.delegated_slicecredfile,
+           typeOnly=True)
+        self.success = True
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \
-            "\n      Also try --vv" \
-            "\n  WARNING: Be very careful running this test. " \
-            "Administator support is likely to be needed to recover " \
-                "from running this test." % sys.argv[0]
-    # Include default Omni command line options
-    # Support unittest option by replacing -v and -q with --vv a --qq
-    # Also include acceptance test options
-    argv = ShutdownTest.accept_parser(usage=usage)
+            "\n      Also try --vv" % sys.argv[0]
+    DelegateTest.accept_parser(usage=usage)
 
-    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_shutdown.ShutdownTest.test_CreateSliverWorkflow_with_Shutdown")
-#    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_shutdown.ShutdownTest.test_GetVersion")
+    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_ListResources_delegatedSliceCred")
+#    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_GetVersion")
     unittest.TextTestRunner().run(suite)
+
+
+

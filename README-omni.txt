@@ -3,9 +3,7 @@
 Omni is a GENI experimenter tool that communicates with GENI Aggregate
 Managers via the GENI AM API.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
-enumerate available GENI Aggregate Managers.  Note that Omni 
-supports using control framework native RSpecs, or a (deprecated)
-common subset called an 'omnispec'.
+enumerate available GENI Aggregate Managers.  
 
 To configure Omni, please copy omni_config.sample to ~/.gcf/omni_config
 and fill in the parameters for at least one control
@@ -22,19 +20,22 @@ These include SFA, ProtoGENI, !OpenFlow and GCF.
 Omni performs the following functions:
  * Talks to each control framework in its native API
  * Contacts Aggregate Managers via the GENI API
- * Uses either native RSpecs or a common RSpec format called an
-   omnispec (deprecated).
 
 For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.6:
- * Bug fix (ticket #95)
- * Make getversion implementation be consistent with other commands (#109)
+ * Fix bug in printout of CreateSliver error (ticket #95)
+ * Make getversion AM API v2 implementation be consistent with other commands (#109)
  * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
  * Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
- * libstitch example scripts handle V2 AMs in some cases
+ * libstitch example scripts handle V2 AMs in some cases (#119)
+ * Updated get_aggregates() call due to changes in SFA (#94)
+ * Fix bug in _get_advertised_rspec() (#114)
+ * Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
+ * readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
+ * Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
 
 New in v1.5.2:
   * validate the API version argument (#92)
@@ -139,15 +140,6 @@ can modify the '-l' logging config file option between Omni
 calls. Alternatively, you can call the Omni function
 'omni.applyLogConfig(<path to your log config file>)'. See the
 documentation for 'applyLogConfig' for details.
-
-== Omnispecs ==
-
-'''Omnispecs are now deprecated. Use native Aggregate RSpecs.'''
-
-Each resource in an omnispec is referred to as an Omni Resource. Each
-Omni Resource has a name, a description, a type, booleans indicating
-whether the resource is allocated and whether the request wants to
-allocate it, and then dictionaries for options and misc fields.
 
 == Omni as a Library ==
 
@@ -269,8 +261,6 @@ In the omni.call method:
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension class.
 
-We recommend not trying to support omnispecs for different RSpec formats.
-
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
 http://groups.geni.net/geni/wiki/HowToUseOmni
@@ -298,13 +288,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
   d. Omni will then save the RSpec from each aggregate into a separate
      XML File (the -o option requested that). Files will be named
      'rspec-<server>.xml'
-     (With the --omnispec argument, Omni would convert the
-     proprietary RSPecs all into a single 'omnispec'.)
  4. Create a request Rspec, per the control framework
     documentation, to specify which resources you want to reserve.
-    [If you used an omnispec, do this by changing 'allocate: false'
-    to 'allocate: true' wherever the resource is not already allocated
-    ('allocated: true').]
  5. Create a Slice. Slices are created at your Clearinghouse. Slices
     are named based on the Clearinghouse authority that signs for
     them. Using the shorthand (just the name of your slice within PG,
@@ -315,12 +300,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     file, you are ready to allocate resources by creating slivers at
     each of the Aggregate Managers.  Omni will contact your
     Clearinghouse again, to get the credentials for your slice. 
-    (If you used an omnispec, omni will parse your omnispec file,
-    converting it back into the framework specific RSpec format.)
     Note you must specify the URL of the aggregate
-    where you want to reserve resources. (Otherwise with an omnispec,
-    omni will then contact each Aggregate Manager in your omnispec
-    where you are reserving resources.)
+    where you want to reserve resources. 
     Then omni will call the GENI AM API CreateSliver call on the
     Aggregate Manager. It will supply your Slice Credentials (from the
     Clearinghouse) plus your own user certificate, and the RSpec. 
@@ -587,9 +568,6 @@ Call the AM API ListResources function at specified aggregates.
   * omni.py listresources -a http://localhost:12348 -t GENI 3 myslice
             List resources in myslice at the localhost AM, requesting that
             the AM send a GENI v3 format RSpec.
-  * omni.py -a http://localhost:12348 --omnispec listresources myslice
-            List resources in myslice at the localhost AM, converting
-            them to the deprecated omnispec format.
   * omni.py -a http://localhost:12348 -o -p myprefix listresources myslice \
             -t geni 3
             List resources at a specific AM and save it to a file
@@ -604,7 +582,6 @@ through your chosen framework.
 It can save the result to a file so you can use the result to
 create a reservation RSpec, suitable for use in a call to
 createsliver.
-Omnispecs can be optionally generated with --omnispec.
 
 If a slice name is supplied, then resources for that slice only 
 will be displayed.  In this case, the slice credential is usually
@@ -657,8 +634,6 @@ The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
   * Save manifest RSpec to a file with a particular prefix: 
         omni.py -a http://localhost:12348 -o -p myPrefix \
              createsliver myslice resources.rspec 
-  * Use an omnispec to create sliver(s): 
-        omni.py --omnispec createsliver myslice resources.ospec
 
  * argument: the RSpec file should have been created by using
             availability information from a previous call to
@@ -674,11 +649,9 @@ To validate the syntax of a generated request RSpec, run:
 }}}
 
 This createsliver command will allocate the requested resources at
-the indicated aggregate (or in omnispecs those marked
-with allocate: true).
+the indicated aggregate.
 Note: This command operates by default in native mode "-n" by sending a
 native rspec to a single aggregate specified by the "-a" command.
-Omnispecs are deprecated and native format RSpecs are the default.
 
 Typically users save the resulting manifest RSpec, to learn details
 about what resources were actually granted to them. Use the -o
