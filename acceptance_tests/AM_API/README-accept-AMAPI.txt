@@ -290,77 +290,50 @@ OK
 
 A partially unsuccessful run looks like this (run against ProtoGENI):
 (NOTE that this may improve as PG modifies some minor issues with the RSpec format.)
-$ am_api_accept.py -a pg-utah2 -V 2 --rspeclint --sleep-time 10  --vv                                           
-test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec. ...                                                 
-ok                                                                                      
-test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed. ...                                                    
-ok                                                                                      
-test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential. ...                
-ok                                                                                      
-test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file. ...                                                 
-ok                                                                                      
-test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML. ...                                           
-ok                                                                                      
-test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative. ... FAIL                                                           
 
-test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A. ...                                      
-ok                                                                                      
-test_ListResources: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL  
-
-test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). ...                            
-ok                                                                                      
-test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). ...                   
-ok                                                                                      
-test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile ... FAIL                                                                             
-
-test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                                                           
-
-test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                                                          
-
-test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse. ...           
-ok                                                                                      
+$ ./am_api_accept.py -a pg-utah2 -V 2 --vv --rspeclint                                                          
+test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec. ... ok                  
+test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the sliver has never existed. ... ok                    
+test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential. ... ok                                                           
+test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file. ... ok                  
+test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML. ... ok            
+test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative. ... FAIL                 
+test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A. ... ok       
+test_ListResources: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                                              
+test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). ... ok                                                                       
+test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). ... ok                                                              
+test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                               
+test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                              
+test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse. ... ok                                                      
 
 ======================================================================
-FAIL: test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative.                                                              
-----------------------------------------------------------------------                  
-Traceback (most recent call last):                                                      
-  File "./am_api_accept.py", line 1248, in test_CreateSliver_badrspec_manifest       
-    self.subtest_MinCreateSliverWorkflow, slice_name)                                   
-AssertionError: NotNoneAssertionError not raised                                        
+FAIL: test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative.                    
+----------------------------------------------------------------------    
+Traceback (most recent call last):                                        
+  File "./am_api_accept.py", line 1258, in test_CreateSliver_badrspec_manifest                                                                      
+    self.subtest_MinCreateSliverWorkflow, slice_name)                     
+AssertionError: NotNoneAssertionError not raised                          
 
 ======================================================================
-FAIL: test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
-----------------------------------------------------------------------             
-Traceback (most recent call last):                                                 
-  File "./am_api_accept.py", line 329, in test_ListResources                    
-    self.subtest_ListResources()                                                   
-  File "./am_api_accept.py", line 621, in subtest_ListResources                 
-    % (agg_name, rspec[:100]))                                                     
-AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:                                               
-<?xml version="1.0" encoding="UTF-8"?>                                                  
-<rspec xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"                            
-... edited for length ...                                                               
-
-======================================================================
-FAIL: test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile                                                                                
-----------------------------------------------------------------------                  
-Traceback (most recent call last):                                                      
-  File "./am_api_accept.py", line 486, in test_ListResources_delegatedSliceCred      
-    slicecredfile=self.options_copy.delegated_slicecredfile)                            
-  File "./am_api_accept.py", line 569, in subtest_ListResources
-    % (text))
-  File "/home/sedwards/gcf-1.6/src/omni_unittest.py", line 120, in assertDict
-    raise NotDictAssertionError, msg
-NotDictAssertionError: Call to 'ListResources' failed or not possible but expected to succeed. Error returned:
- Got no resources on slice ahtestbbn. No resources from AM https://www.emulab.net/protogeni/xmlrpc/am/2.0: Nothing here by that name
+FAIL: test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.                                                                 
+----------------------------------------------------------------------    
+Traceback (most recent call last):                                        
+  File "./am_api_accept.py", line 328, in test_ListResources              
+    self.subtest_ListResources()
+  File "./am_api_accept.py", line 619, in subtest_ListResources
+    % (agg_name, rspec[:100]))
+AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
+<?xml version="1.0" encoding="UTF-8"?>
+<rspec xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+... edited for length ...
 
 ======================================================================
 FAIL: test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "./am_api_accept.py", line 343, in test_ListResources_geni_available
+  File "./am_api_accept.py", line 342, in test_ListResources_geni_available
     self.subtest_ListResources()
-  File "./am_api_accept.py", line 621, in subtest_ListResources
+  File "./am_api_accept.py", line 619, in subtest_ListResources
     % (agg_name, rspec[:100]))
 AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
 <?xml version="1.0" encoding="UTF-8"?>
@@ -371,9 +344,9 @@ AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' ex
 FAIL: test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "./am_api_accept.py", line 336, in test_ListResources_geni_compressed
+  File "./am_api_accept.py", line 335, in test_ListResources_geni_compressed
     self.subtest_ListResources()
-  File "./am_api_accept.py", line 621, in subtest_ListResources
+  File "./am_api_accept.py", line 619, in subtest_ListResources
     % (agg_name, rspec[:100]))
 AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
 <?xml version="1.0" encoding="UTF-8"?>
@@ -381,15 +354,15 @@ AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' ex
 ... edited for length ...
 
 ----------------------------------------------------------------------
-Ran 14 tests in 1041.449s
+Ran 13 tests in 1451.951s
 
-FAILED (failures=5)
+FAILED (failures=4)
 
 Output of help message:
-$ am_api_accept.py -h
-Usage:                                                                 
-      ./am_api_accept.py -a am-undertest                            
-      Also try --vv                                                    
+$ ./am_api_accept.py -h   
+Usage:                                                        
+      ./am_api_accept.py -a am-undertest                      
+      Also try --vv                                           
 
      Run an individual test using the following form...
      ./am_api_accept.py -a am-undertest Test.test_GetVersion
@@ -417,28 +390,29 @@ Options:
                         Filename prefix when saving results (used with -o)
   --usercredfile=USER_CRED_FILENAME                                       
                         Name of user credential file to read from if it   
-                        exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'                      
-  --slicecredfile=SLICE_CRED_FILENAME                                       
-                        Name of slice credential file to read from if it    
-                        exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'         
-  -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-                        Ad RSpec type and version to return, e.g. 'GENI 3'     
-  -v, --verbose         Turn on verbose command summary for omni commandline   
-                        tool                                                   
-  -q, --quiet           Turn off verbose command summary for omni commandline  
-                        tool                                                   
-  --tostdout            Print results like rspecs to STDOUT instead of to log  
-                        stream                                                 
-  --abac                Use ABAC authorization                                 
-  -l LOGCONFIG, --logconfig=LOGCONFIG                                          
-                        Python logging config file                             
-  --no-tz               Do not send timezone on RenewSliver
-  -V API_VERSION, --api-version=API_VERSION
-                        Specify version of AM API to use (1, 2, etc.)
-  --no-compress         Do not compress returned values
-  --available           Only return available resources
+                        exists, or save to when running like '--usercredfile                                                                        
+                        myUserCred.xml -o getusercred'                    
+  --slicecredfile=SLICE_CRED_FILENAME                                     
+                        Name of slice credential file to read from if it  
+                        exists, or save to when running like '--slicecredfile                                                                       
+                        mySliceCred.xml -o getslicecred mySliceName'      
+  -v, --verbose         Turn on verbose command summary for omni commandline                                                                        
+                        tool                                              
+  -q, --quiet           Turn off verbose command summary for omni commandline                                                                       
+                        tool                                              
+  --tostdout            Print results like rspecs to STDOUT instead of to log                                                                       
+                        stream                                            
+  --abac                Use ABAC authorization                            
+  -l LOGCONFIG, --logconfig=LOGCONFIG                                     
+                        Python logging config file                        
+  --logoutput=LOGOUTPUT                                                   
+                        Python logging output file [use %(logfilename)s in
+                        logging config file]                              
+  --no-tz               Do not send timezone on RenewSliver               
+  -V API_VERSION, --api-version=API_VERSION                               
+                        Specify version of AM API to use (1, 2, etc.)     
+  --no-compress         Do not compress returned values                   
+  --available           Only return available resources                   
   --arbitrary-option    Add an arbitrary option to ListResources (for testing
                         purposes)
   --reuse-slice=REUSE_SLICE_NAME
@@ -453,9 +427,6 @@ Options:
   --untrusted-usercredfile=UNTRUSTED_USER_CRED_FILENAME
                         Name of an untrusted user credential file to use in
                         test: test_ListResources_untrustedCredential
-  --delegated-slicecredfile=DELEGATED_SLICE_CRED_FILENAME
-                        Name of a delegated slice credential file to use in
-                        test: test_ListResources_delegatedSliceCred
   --rspec-file-list=RSPEC_FILE_LIST
                         In multi-slice CreateSliver tests, use _bounded_
                         request RSpec files provided instead of default of
@@ -469,22 +440,30 @@ Options:
   --ProtoGENIv2         Use ProtoGENI v2 RSpecs instead of GENI 3
   --sleep-time=SLEEP_TIME
                         Time to pause between some AM API calls in seconds
-                        (Default: 3 seconds)
+                        (Default: 20 seconds)
   --monitoring          Print output to allow tests to be used in monitoring.
                         Output is of the form: 'MONITORING test_TestName 1'
                         The third field is 1 if the test is successful and 0
                         is the test is unsuccessful.
+  --delegated-slicecredfile=DELEGATED_SLICE_CRED_FILENAME
+                        Name of a delegated slice credential file to use in
+                        test: test_ListResources_delegatedSliceCred
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
 
+$ ./am_api_accept_delegate.py -h      
+Usage:                                                                    
+      ./am_api_accept_delegate.py -a am-undertest                         
+      Also try --vv                                                       
+
+<snip>
 
 
-$ am_api_accept_shutdown.py -h     
-
-Usage:                                                                               
-      ./am_api_accept_shutdown.py -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown                                                                               
-      Also try --vv                                                                     
-  WARNING: Be very careful running this test. Administator support is likely to be needed to recover from running this test.              
+$ ./am_api_accept_shutdown.py -h   
+Usage:                                                                 
+      ./am_api_accept_shutdown.py -a am-undertest                      
+      Also try --vv                                                    
+  WARNING: Be very careful running this test. Administator support is likely to be needed to recover from running this test. 
 
 <snip>
 
