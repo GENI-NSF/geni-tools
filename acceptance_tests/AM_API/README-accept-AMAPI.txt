@@ -167,7 +167,7 @@ $ rm $GCF/acceptance_tests/AM_API/request1.xml
 $ rm $GCF/acceptance_tests/AM_API/request2.xml
 $ rm $GCF/acceptance_tests/AM_API/request3.xml
  }}}
-         (ii) Write three bounded [6] request RSpec for the AM under test and save as: 
+         (ii) Write three [#BoundRSpecs bound request RSpecs] for the AM under test and save as:
              * $GCF/acceptance_tests/AM_API/request.xml
              * $GCF/acceptance_tests/AM_API/request1.xml
              * $GCF/acceptance_tests/AM_API/request2.xml
@@ -433,7 +433,7 @@ Options:
                         Use slice name provided instead of creating/deleting a
                         new slice
   --rspec-file=RSPEC_FILE
-                        In CreateSliver tests, use _bounded_ request RSpec
+                        In CreateSliver tests, use _bound_ request RSpec
                         file provided instead of default of 'request.xml'
   --bad-rspec-file=BAD_RSPEC_FILE
                         In negative CreateSliver tests, use request RSpec file
@@ -442,7 +442,7 @@ Options:
                         Name of an untrusted user credential file to use in
                         test: test_ListResources_untrustedCredential
   --rspec-file-list=RSPEC_FILE_LIST
-                        In multi-slice CreateSliver tests, use _bounded_
+                        In multi-slice CreateSliver tests, use _bound_
                         request RSpec files provided instead of default of
                         '(request1.xml,request2.xml,request3.xml)'
   --reuse-slice-list=REUSE_SLICE_LIST
@@ -490,9 +490,12 @@ Usage:
  4. gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
  5. rspeclint code: http://www.protogeni.net/resources/rspeclint
  6. rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
- 7. A _bounded_ advertisement RSpec explicitly lists all resources in
- the RSpec.  (This is as oppossed to requesting some resource without
- specifying which instance is being requested.)  This is important
- because the acceptance tests compare the component IDs of the
- resources in the request RSpec with those in the manifest RSpecs to
- make sure that !CreateSliver and !ListResources are working properly.
+
+= Notes =
+== Bound RSpecs ==
+A ''bound'' request RSpec explicitly lists all resources in the
+RSpec. (This is as opposed to requesting some resource without
+specifying which instance is being requested.) This is important
+because the acceptance tests compare the component IDs of the
+resources in the request RSpec with those in the manifest RSpecs to
+make sure that !CreateSliver and !ListResources are working properly.

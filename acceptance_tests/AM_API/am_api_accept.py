@@ -1266,7 +1266,7 @@ class Test(ut.OmniUnittest):
         parser.add_option( "--rspec-file", 
                            action="store", type='string', 
                            dest='rspec_file', default=REQ_RSPEC_FILE,
-                           help="In CreateSliver tests, use _bounded_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
+                           help="In CreateSliver tests, use _bound_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
 
         parser.add_option( "--bad-rspec-file", 
                            action="store", type='string', 
@@ -1280,7 +1280,7 @@ class Test(ut.OmniUnittest):
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
                            dest='rspec_file_list', default=(REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
-                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
+                           help="In multi-slice CreateSliver tests, use _bound_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
 
         parser.add_option( "--reuse-slice-list", 
                            action="store", type='string', nargs=3, dest='reuse_slice_list', 
