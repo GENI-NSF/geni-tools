@@ -10,9 +10,12 @@ N.B. This page is formatted for a Trac Wiki.
 
 == Description ==
 
-Acceptance tests verify compliance to the GENI Aggregate Manager (AM)
-API v1 specification [1] plus change set A of the AM API v2
-specification [2a] (alternatively the tests can be run against AM API v2 [2b]). 
+Acceptance tests verify compliance to the
+[http://groups.geni.net/geni/wiki/GAPI_AM_API_V1 GENI Aggregate Manager (AM) API v1 specification]
+plus
+[http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA change set A of the AM API v2 specification]
+(alternatively the tests can be run against
+[http://groups.geni.net/geni/wiki/GAPI_AM_API_V2 GENI AM API v2]).
 
 Acceptance tests are intended to be run with credentials from the GPO
 ProtoGENI, but they work with any credentials that are trusted at the
@@ -60,9 +63,11 @@ Test verifies:
 == Software Dependencies ==
 
 Requires:
- * Omni and the acceptance tests [3] which are distributed as part
-   of the gcf package
- * (optional) rspeclint (Code [4] and documentation [5] is available from ProtoGENI.)
+ * Omni and the acceptance tests which are distributed as part
+   of the [http://trac.gpolab.bbn.com/gcf/wiki gcf] package
+ * (optional)
+   [http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging rspeclint]
+
    (1) Install LibXML (which rspeclint relies on) from CPAN.
      -- On Ubuntu Linux this is the libxml-libxml-perl package 
      	$ sudo apt-get install libxml-libxml-perl
@@ -77,8 +82,8 @@ Requires:
 
 By policy, requires:
  * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
-   is located at:
-   https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+   is located at
+   {{{https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa}}}
  * A colleague with a set of GENI credentials willing to delegate you a slice.
 
 == Software ==
@@ -480,10 +485,8 @@ Usage:
 = Bibliography =
 
  1. AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V1
- 2. AM API v2 change set A documentation:
-     http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA
- 3. AM API v2 documentation:
-     http://groups.geni.net/geni/wiki/GAPI_AM_API_V2
+ 2. AM API v2 change set A documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA
+ 3. AM API v2 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2
  4. gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
  5. rspeclint code: http://www.protogeni.net/resources/rspeclint
  6. rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
