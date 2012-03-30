@@ -1,5 +1,9 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.0:
+ * omni
+   - Log malformed sliverstatus (#128)
+
 gcf 1.6.1:
  * AM API v1 acceptance tests
    - request3.xml.sample should point to a node that really exists. (#124)
