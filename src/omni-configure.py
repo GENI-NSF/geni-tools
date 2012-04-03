@@ -151,16 +151,15 @@ def createSSHKeypair(opts):
     # Change the permission to something appropriate for keys
     os.chmod(private_key_file, 0600)
 
-    public_key_file = private_key_file + '.pub'
     args = ['ssh-keygen', '-y', '-f']
     args.append(private_key_file)
     p = Popen(args, stdout=PIPE)
     public_key = p.communicate()[0]
     if p.returncode != 0:
         raise Exception("Error creating public key")
-
+    public_key_file = private_key_file + '.pub'
     f = open(public_key_file,'w')
-    print >>f, public_key
+    f.write("%s" % public_key)
     f.close()
 
     return private_key_file, public_key_file
