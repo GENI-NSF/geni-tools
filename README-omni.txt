@@ -27,6 +27,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 New in v2.0:
  * Log malformed sliverstatus (#128)
+ * Better missing file error messages in delegateSliceCred (#129)
 
 New in v1.6:
  * Fix bug in printout of CreateSliver error (ticket #95)

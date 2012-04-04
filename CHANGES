@@ -3,6 +3,7 @@
 gcf 2.0:
  * omni
    - Log malformed sliverstatus (#128)
+   - Better missing file error messages in delegateSliceCred (#129)
 
 gcf 1.6.1:
  * AM API v1 acceptance tests
