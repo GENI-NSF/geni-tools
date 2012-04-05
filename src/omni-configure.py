@@ -193,14 +193,21 @@ def createConfigFile(opts, public_key_file):
     user = urn.split('+')[-1]
 
     if not cmp(opts.framework,'pg'):
+        if urn.find('emulab.net') != -1 :
+            sa = 'https://www.emulab.net:443/protogeni/xmlrpc/sa'
+        else :
+            if urn.find('pgeni.gpolab.bbn.com') != -1 :
+                sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
+            else : 
+                raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % urn.split('+')[-2]) 
         cf_section = """
 [%s]
 type = pg
 ch = https://www.emulab.net:443/protogeni/xmlrpc/ch
-sa = https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+sa = %s
 cert = %s
 key = %s
-""" %(opts.framework, opts.cert, opts.cert)
+""" %(opts.framework, sa, opts.cert, opts.cert)
 
     else:
       if not cmp(opts.framework, 'pl'):
