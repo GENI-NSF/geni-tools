@@ -69,7 +69,7 @@ REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
-SLEEP_TIME=3
+SLEEP_TIME=20
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -235,6 +235,11 @@ class Test(ut.OmniUnittest):
                           "but instead 'geni_api=%d.'"  
                            % (agg, self.options_copy.api_version, value))
 
+            # If we only want to test Pure AM API v1 stop here
+            if self.options_copy.api_version == 1 and self.options_copy.pure_v1:
+                self.success = True
+                return
+
             if self.options_copy.api_version == 2:
                 request_rspec_versions = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, ver_dict, 
@@ -315,8 +320,6 @@ class Test(ut.OmniUnittest):
                         "'type'=%s and 'value'=%s" \
                         "but did not." 
                         % (agg, exp_type, exp_num) )
-
-
 
         self.success = True
     def test_ListResources(self):
@@ -550,11 +553,9 @@ class Test(ut.OmniUnittest):
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif usercredfile:
             omniargs = omniargs + ["--usercredfile", usercredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif slicecredfile:
             omniargs = omniargs + ["--slicecredfile", slicecredfile] 
-            # run command here while temporary file is open
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
             (text, ret_dict) = self.call(omniargs, self.options_copy)
@@ -826,8 +827,12 @@ class Test(ut.OmniUnittest):
 
 
     def test_CreateSliverWorkflow_fail_notexist( self ):
-        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the slice has never existed."""
+        """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the sliver has never existed."""
         slicename = self.create_slice_name_uniq(prefix='non')        
+
+        # Create slice so that lack of existance of the slice doesn't
+        # cause the AM test to fail
+        self.subtest_createslice( slicename )
         # Test SliverStatus, ListResources and DeleteSliver on a
         # non-existant sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -845,23 +850,27 @@ class Test(ut.OmniUnittest):
             # ListResources should return an RSpec containing no resources
             manifest = self.subtest_ListResources( slicename )
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on deleted slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
                              "but was not. Return was: " \
                              "\n%s\n" \
                              "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
+                         % (slicename, manifest[:1000]))                         
             self.assertFalse( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on deleted slice '%s' " \
+                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                               "expected to be empty " \
                               "but was not. Return was: " \
                               "\n%s\n" \
                               "... edited for length ..."
-                          % (slicename, manifest[:100]))
+                          % (slicename, manifest[:1000]))
         
         # Also repeated calls to DeleteSliver should now fail
-        self.assertRaises((AssertionError, NoSliceCredError), 
-                          self.subtest_DeleteSliver, slicename )
+        try:
+            self.assertRaises((AssertionError, NoSliceCredError), 
+                              self.subtest_DeleteSliver, slicename )
+        # Or succeed by returning True
+        except AssertionError:
+            self.subtest_DeleteSliver( slicename )
 
 
     def test_CreateSliverWorkflow_multiSlice(self): 
@@ -921,7 +930,7 @@ class Test(ut.OmniUnittest):
                     request[i] = "".join(f.readlines())
                 manifest.append("")
                 self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
-                
+                time.sleep(self.options_copy.sleep_time)
                 manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
 
 
@@ -1260,7 +1269,7 @@ class Test(ut.OmniUnittest):
         parser.add_option( "--rspec-file", 
                            action="store", type='string', 
                            dest='rspec_file', default=REQ_RSPEC_FILE,
-                           help="In CreateSliver tests, use _bounded_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
+                           help="In CreateSliver tests, use _bound_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
 
         parser.add_option( "--bad-rspec-file", 
                            action="store", type='string', 
@@ -1274,7 +1283,7 @@ class Test(ut.OmniUnittest):
         parser.add_option( "--rspec-file-list", 
                            action="store", type='string', nargs=3, 
                            dest='rspec_file_list', default=(REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3),
-                           help="In multi-slice CreateSliver tests, use _bounded_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
+                           help="In multi-slice CreateSliver tests, use _bound_ request RSpec files provided instead of default of '(%s,%s,%s)'" % (REQ_RSPEC_FILE_1,REQ_RSPEC_FILE_2,REQ_RSPEC_FILE_3) )
 
         parser.add_option( "--reuse-slice-list", 
                            action="store", type='string', nargs=3, dest='reuse_slice_list', 
@@ -1304,6 +1313,10 @@ class Test(ut.OmniUnittest):
                            action="store_true",
                            default=False,
                            help="Print output to allow tests to be used in monitoring. Output is of the form: 'MONITORING test_TestName 1' The third field is 1 if the test is successful and 0 is the test is unsuccessful." )
+        parser.add_option( "--pure-v1", 
+                           action="store_true",
+                           default=False,
+                           help="Allows some tests to check for AM API v1 compliance without Change Set A.  -V must be set to '1'." )
         parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
                           help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
 

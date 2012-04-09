@@ -23,7 +23,7 @@
 
 from distutils.core import setup
 setup(name='gcf-lib',
-      version="1.6",
+      version="2.0",
       package_dir={'': 'src'},                   
       packages=['geni.util','sfa','sfa.trust','sfa.util'],
       py_modules=['geni.__init__', 'geni.SecureXMLRPCServer'],

@@ -5,7 +5,7 @@
  -->
 
 <rspec type="request" xmlns="http://www.geni.net/resources/rspec/3" xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:planetlab="http://www.planet-lab.org/resources/sfa/ext/planetlab/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd">  
-    <node component_id="urn:publicid:IDN+plc:bbn+node+plnode-04.gpolab.bbn.com" component_manager_id="urn:publicid:IDN+plc+authority+am" component_name="plnode-03.gpolab.bbn.com" exclusive="false" client_id="plnode-03">    
+    <node component_id="urn:publicid:IDN+plc:bbn+node+plnode-04.gpolab.bbn.com" component_manager_id="urn:publicid:IDN+plc+authority+am" component_name="plnode-04.gpolab.bbn.com" exclusive="false" client_id="plnode-04">    
         <hardware_type name="plab-pc"/>    
         <hardware_type name="pc"/>    
         <sliver_type name="plab-vnode"/>      

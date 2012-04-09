@@ -69,6 +69,7 @@ class GID(Certificate):
     uuid = None
     hrn = None
     urn = None
+    email = None # for adding to the SubjectAltName
 
     ##
     # Create a new GID object
@@ -121,6 +122,15 @@ class GID(Certificate):
             self.decode()
         return self.urn            
 
+    # Will be stuffed into subjectAltName
+    def set_email(self, email):
+        self.email = email
+
+    def get_email(self):
+        if not self.email:
+            self.decode()
+        return self.email
+
     def get_type(self):
         if not self.urn:
             self.decode()
@@ -143,6 +153,9 @@ class GID(Certificate):
         if self.uuid:
             str += ", " + "URI:" + uuid.UUID(int=self.uuid).urn
         
+        if self.email:
+            str += ", " + "email:" + self.email
+
         self.set_data(str, 'subjectAltName')
 
         
@@ -166,10 +179,15 @@ class GID(Certificate):
                         dict['uuid'] = uuid.UUID(val[4:]).int
                     elif val.lower().startswith('uri:urn:publicid:idn+'):
                         dict['urn'] = val[4:]
+                    elif val.lower().startswith('email:'):
+                        # FIXME: Ensure there isn't cruft in that address...
+                        # EG look for email:copy,....
+                        dict['email'] = val[6:]
                     
         self.uuid = dict.get("uuid", None)
         self.urn = dict.get("urn", None)
-        self.hrn = dict.get("hrn", None)    
+        self.hrn = dict.get("hrn", None)
+        self.email = dict.get("email", None)
         if self.urn:
             self.hrn = urn_to_hrn(self.urn)[0]
 
@@ -187,6 +205,8 @@ class GID(Certificate):
         result += " "*indent + "hrn:" + str(self.get_hrn()) +"\n"
         result += " "*indent + "urn:" + str(self.get_urn()) +"\n"
         result += " "*indent + "uuid:" + str(self.get_uuid()) + "\n"
+        if self.get_email() is not None:
+            result += " "*indent + "email:" + str(self.get_email()) + "\n"
         filename=self.get_filename()
         if filename: result += "Filename %s\n"%filename
 

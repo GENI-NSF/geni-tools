@@ -72,7 +72,7 @@ SLEEP_TIME=3
 # This script relies on the unittest module.
 #
 # To run test:
-# ./am_api_accept.py -a <AM to test> ShutdownTest.test_CreateSliverWorkflow_with_Shutdown
+# ./am_api_accept.py -a <AM to test> 
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
@@ -101,14 +101,15 @@ class ShutdownTest(accept.Test):
         if slicename==None:
             slicename = self.create_slice_name(prefix='down')
 
-#        self.cleanup_Shutdown( slicename=slicename )
-
         # if reusing a slice name, don't create (or delete) the slice
         if not self.options_copy.reuse_slice_name:
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
         manifest = self.subtest_CreateSliver( slicename )
+        self.assertResourcesExist( manifest, 
+                       "Manifest RSpec returned by CreateSliver " \
+                       "expected to contain resources but does not.")
         try:
             self.subtest_Shutdown( slicename )
         except:
@@ -118,22 +119,8 @@ class ShutdownTest(accept.Test):
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
 
-    # def cleanup_Shutdown(self, slicename=None):
-    #     try:
-    #         self.subtest_DeleteSliver( slicename )
-    #     except: 
-    #         pass
-
-    #     if not self.options_copy.reuse_slice_name:
-    #         try:
-    #             self.subtest_deleteslice( slicename )
-    #         except:
-    #             pass
-
-
-
 if __name__ == '__main__':
-    usage = "\n      %s -a am-undertest Test.test_CreateSliverWorkflow_with_Shutdown" \
+    usage = "\n      %s -a am-undertest" \
             "\n      Also try --vv" \
             "\n  WARNING: Be very careful running this test. " \
             "Administator support is likely to be needed to recover " \
@@ -142,7 +129,7 @@ if __name__ == '__main__':
     # Support unittest option by replacing -v and -q with --vv a --qq
     # Also include acceptance test options
     argv = ShutdownTest.accept_parser(usage=usage)
-    # Invoke unit tests as usual
-    unittest.main()
 
-
+    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_shutdown.ShutdownTest.test_CreateSliverWorkflow_with_Shutdown")
+#    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_shutdown.ShutdownTest.test_GetVersion")
+    unittest.TextTestRunner().run(suite)

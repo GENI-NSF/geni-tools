@@ -31,6 +31,7 @@ import logging
 import OpenSSL
 import socket
 import ssl
+import time
 import traceback
 import xmlrpclib
 import sfa.trust.gid as gid
@@ -38,6 +39,16 @@ import sfa.trust.gid as gid
 from omnilib.util.omnierror import OmniError
 
 from omnilib.util.faultPrinting import cln_xmlrpclib_fault
+
+def is_busy_reply(result):
+    """Examines the result to see if it is a V2 style result and
+    the error code is 14, which signals busy.
+    """
+    return (type(result) == dict
+            and result.has_key('code')
+            and result.has_key('value')
+            and result.has_key('output')
+            and result['code'] == 14)
 
 
 def _do_ssl(framework, suppresserrors, reason, fn, *args):
@@ -49,13 +60,20 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     # Change exception name?
     max_attempts = 2
     attempt = 0
+    retry_pause_seconds = 10
 
     failMsg = "Call for %s failed." % reason
     while(attempt <= max_attempts):
         attempt += 1
         try:
             result = fn(*args)
-            return (result, "")
+            if is_busy_reply(result) and attempt <= max_attempts:
+                framework.logger.info('Detected busy result for %s. Retrying in %d seconds.',
+                                      reason, retry_pause_seconds)
+                time.sleep(retry_pause_seconds)
+                continue
+            else:
+                return (result, "")
         except OpenSSL.crypto.Error, err:
             if str(err).find('bad decrypt') > -1:
                 framework.logger.debug("Doing %s got %s", reason, err)
@@ -146,10 +164,8 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
             clnfault = cln_xmlrpclib_fault(fault)
             framework.logger.error("%s Server says: %s" % (failMsg, clnfault))
             if str(fault).find("try again later") > -1 and attempt <= max_attempts:
-                import time
-                pause = 10
-                framework.logger.info(" ... pausing %d seconds and retrying ...." % pause)
-                time.sleep(pause)
+                framework.logger.info(" ... pausing %d seconds and retrying ...." % retry_pause_seconds)
+                time.sleep(retry_pause_seconds)
                 continue
             else:
                 return (None, clnfault)

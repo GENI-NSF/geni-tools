@@ -92,7 +92,7 @@ from geni.util import rspec_util
 
 #import sfa.trust.gid as gid
 
-OMNI_VERSION="1.6"
+OMNI_VERSION="2.0"
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -1215,6 +1215,11 @@ class CallHandler(object):
                     status = None
             if status:
                 prettyResult = pprint.pformat(status)
+                if not isinstance(status, dict):
+                    # malformed sliverstatus return
+                    self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                    if isinstance(status, str):
+                        prettyResult = str(status)
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:

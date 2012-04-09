@@ -1,5 +1,14 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.0:
+ * omni
+   - Log malformed sliverstatus (#128)
+   - Better missing file error messages in delegateSliceCred (#129)
+
+gcf 1.6.1:
+ * AM API v1 acceptance tests
+   - request3.xml.sample should point to a node that really exists. (#124)
+
 gcf 1.6:
  * omni
    - Log malformed XML exception correctly (#95)
@@ -12,6 +21,7 @@ gcf 1.6:
    - Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
    - readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
    - Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
+   - Improve busy response handling to AM's running AM API v2 and SAs (#123)
  * gcf
    - Moved gcf_config template to be gcf_config.sample and changed instructions to match (#83)
    - Cleaned up TROUBLESHOOTING.txt (#110)

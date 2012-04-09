@@ -145,17 +145,23 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     logger = configure_logging(opts)
 
     if not opts.cert:
-        sys.exit("No user cert given")
+        sys.exit("No user cert given: use --cert option")
+    elif not (os.path.exists(opts.cert) and os.path.isfile(opts.cert) and os.path.getsize(opts.cert) > 0):
+        sys.exit("User cert file (--cert option) %s missing or empty" % opts.cert)
     if not opts.key:
-        sys.exit("No user key given")
+        sys.exit("No user key given: use --key option")
+    elif not (os.path.exists(opts.key) and os.path.isfile(opts.key) and os.path.getsize(opts.key) > 0):
+        sys.exit("User key file (--key option)  %s missing or empty" % opts.key)
     if not opts.slicecred:
-        sys.exit("No slice to delegate given")
+        sys.exit("No slice to delegate given: use --slicecred option")
     if not opts.delegeegid:
-        sys.exit("No user cert to delegate to given")
+        sys.exit("No user cert to delegate to given: use --delegeegid option")
+    elif not (os.path.exists(opts.delegeegid) and os.path.isfile(opts.delegeegid) and os.path.getsize(opts.delegeegid) > 0):
+        sys.exit("User cert file to delegate to (--delegee gid option) %s missing or empty" % opts.delegeegid)
 
     slicecredstr = load_slice_cred(opts.slicecred)
     if slicecredstr is None:
-        sys.exit("No slice credential found")
+        sys.exit("No slice credential found (missing or empty): %s" % opts.slicecred)
 
     # Handle user supplied a set of trusted roots to use to validate the creds/certs
     roots = None
@@ -167,7 +173,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
             if os.path.isdir(root):
                 for file in os.listdir(root):
                     temp.append(os.path.join(root, file))
-            elif os.path.isfile(root):
+            elif os.path.isfile(root) and os.path.getsize(root) > 0:
                 if roots is None:
                     roots = []
                 roots.append(os.path.expanduser(root))
