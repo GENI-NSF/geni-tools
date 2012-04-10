@@ -142,7 +142,7 @@ def make_am_cert(dir, ch_cert, ch_key):
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
 
-def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None):
+def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None, uuid=None):
     '''Make a GID/Cert for given username signed by given CH GID/keys, 
     saved in given directory. Not returned.'''
     # Create a cert like PREFIX+TYPE+name
@@ -153,7 +153,8 @@ def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None):
                                           issuer_cert=ch_gid,
                                           ca=False,
                                           public_key=public_key,
-                                          email=email)
+                                          email=email,
+                                          uuidarg=uuid)
     alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
     if public_key is None:
         alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
@@ -182,6 +183,8 @@ def parse_args(argv):
                       help="Create experimenter cert/keys")
     parser.add_option("--email", default=None,
                       help="Set experimenter email")
+    parser.add_option("--uuid", default=None,
+                      help="Set experimenter uuid")
     parser.add_option("--pubkey", help="public key", default=None)
     parser.add_option("--authority", default=None, help="The Authority of the URN in publicid format (such as 'geni.net//gpo//gcf'). Overrides base_name from gcf_config file.")
     return parser.parse_args()
@@ -253,7 +256,8 @@ def main(argv=None):
     if not opts.notAll or opts.exp:
         make_user_cert(dir, username, ch_keys, ch_cert,
                        public_key=opts.pubkey,
-                       email=opts.email)
+                       email=opts.email,
+                       uuid=opts.uuid)
 
     return 0
 
