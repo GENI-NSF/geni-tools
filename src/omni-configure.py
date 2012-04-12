@@ -149,7 +149,7 @@ def createSSHKeypair(opts):
 
     k.save_to_file(private_key_file)
     # Change the permission to something appropriate for keys
-    os.chmod(private_key_file, 0600)
+    os.chmod(private_key_file, 0700)
 
     args = ['ssh-keygen', '-y', '-f']
     args.append(private_key_file)
@@ -160,6 +160,21 @@ def createSSHKeypair(opts):
     public_key_file = private_key_file + '.pub'
     f = open(public_key_file,'w')
     f.write("%s" % public_key)
+    f.close()
+
+    # Add the private key to ssh_config
+    ssh_conf_file = os.path.expanduser('~/.ssh/config')
+    if not os.path.exists(ssh_conf_file) :
+        ssh_conf_dir = os.path.expanduser('~/.ssh')
+        if not os.path.exists(ssh_conf_dir) :
+          os.makedirs(ssh_conf_dir)
+    f = open(ssh_conf_file, 'r+')
+    linetoadd = "IdentityFile %s" % private_key_file
+    # Check to see if there is already this line present
+    text = f.read()
+    index = text.find(linetoadd)
+    if index == -1 :
+        f.write(linetoadd)
     f.close()
 
     return private_key_file, public_key_file
