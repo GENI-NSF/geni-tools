@@ -168,7 +168,7 @@ def createSSHKeypair(opts):
         ssh_conf_dir = os.path.expanduser('~/.ssh')
         if not os.path.exists(ssh_conf_dir) :
           os.makedirs(ssh_conf_dir)
-    f = open(ssh_conf_file, 'r+')
+    f = open(ssh_conf_file, 'a+')
     linetoadd = "IdentityFile %s" % private_key_file
     # Check to see if there is already this line present
     text = f.read()
