@@ -225,7 +225,10 @@ class CallHandler(object):
         (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
         ad_key = 'ad_rspec_versions'
         if self.opts.api_version == 2:
-            if not thisVersion.has_key('code'):
+            if thisVersion is None:
+                self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+                return (None, 'AM %s did not respond to GetVersion: %s' % (client.url, message))
+            elif not thisVersion.has_key('code'):
                 # you ask for v2, but you got v1 so continue processing as v1
                 pass
                 # Or we could break out now

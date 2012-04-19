@@ -24,13 +24,14 @@
 Certificate (GID in SFA terms) creation and verification utilities.
 '''
 
+import uuid
 
 from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair
 from geni.util.urn_util import URN
 
 def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
-                public_key=None, lifeDays=1825, email=None):
+                public_key=None, lifeDays=1825, email=None, uuidarg=None):
     '''Create a new certificate and return it and the associated keys.
     If issuer cert and key are given, they sign the certificate. Otherwise
     it is a self-signed certificate. 
@@ -50,7 +51,33 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
     subject['CN'] = dotted[:64]
     if email:
         subject['emailAddress'] = email
-    newgid = GID(create=True, subject=subject, urn=urn, lifeDays=lifeDays)
+
+    uuidI = None
+    if uuidarg:
+        uuidO = None
+        try:
+            uuidO = uuid.UUID(uuidarg)
+        except:
+            try:
+                uuidO = uuid.UUID(int=uuidarg)
+            except Exception, e:
+                try:
+                    uuidO = uuid.UUID(int=int(uuidarg))
+                except Exception, e:
+                    try:
+                        uuidO = uuid.UUID(fields=uuidarg)
+                    except:
+                        try:
+                            uuidO = uuid.UUID(bytes=uuidarg)
+                        except:
+                            try:
+                                uuidO = uuid.UUID(bytes_le=uuidarg)
+                            except:
+                                pass
+        if uuidO is not None:
+            uuidI = uuidO.int
+
+    newgid = GID(create=True, subject=subject, uuid=uuidI, urn=urn, lifeDays=lifeDays)
     
     if public_key is None:
         # create a new key pair
