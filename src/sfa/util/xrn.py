@@ -32,8 +32,8 @@ def urn_to_hrn(urn): xrn=Xrn(urn); return (xrn.hrn, xrn.type)
 def hrn_to_urn(hrn,type): return Xrn(hrn, type=type).urn
 def hrn_authfor_hrn(parenthrn, hrn): return Xrn.hrn_is_auth_for_hrn(parenthrn, hrn)
 
-def urn_to_sliver_id(urn, slice_id, node_id, index=0):
-    return Xrn(urn).get_sliver_id(slice_id, node_id, index)
+def urn_to_sliver_id(urn, slice_id, node_id, index=0, authority=None):
+    return Xrn(urn).get_sliver_id(slice_id, node_id, index, authority)
 
 class Xrn:
 
@@ -82,7 +82,7 @@ class Xrn:
     # A better alternative than childHRN.startswith(parentHRN)
     # e.g. hrn_is_auth_for_hrn('a\.b', 'a\.b.c.d') -> True,
     # but hrn_is_auth_for_hrn('a', 'a\.b.c.d') -> False
-    # Also hrn_is_uauth_for_hrn('a\.b.c.d', 'a\.b.c.d') -> True
+    # Also hrn_is_auth_for_hrn('a\.b.c.d', 'a\.b.c.d') -> True
     @staticmethod
     def hrn_is_auth_for_hrn(parenthrn, hrn):
         if parenthrn == hrn:
@@ -155,9 +155,17 @@ class Xrn:
         self._normalize()
         return ':'.join( [Xrn.unescape(x) for x in self.authority] )
 
-    def get_sliver_id(self, slice_id, node_id, index=0):
+    def get_sliver_id(self, slice_id, node_id, index=0, authority=None):
         self._normalize()
-        return ":".join(map(str, [self.get_urn(), slice_id, node_id, index]))
+        urn = self.get_urn()
+        if authority:
+            authority_hrn = self.get_authority_hrn()
+            if not authority_hrn.startswith(authority):
+                hrn = ".".join([authority,authority_hrn, self.get_leaf()])
+            else:
+                hrn = ".".join([authority_hrn, self.get_leaf()])
+            urn = Xrn(hrn, self.get_type()).get_urn()
+        return ":".join(map(str, [urn, slice_id, node_id, index]))
 
     def urn_to_hrn(self):
         """
