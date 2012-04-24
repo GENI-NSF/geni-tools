@@ -28,6 +28,9 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.0:
  * Log malformed sliverstatus (#128)
  * Better missing file error messages in delegateSliceCred (#129)
+ * Update to SFA codebase as of 4/13/12
+ * Bug fix: Handle AM down when ListResources calls GetVersion and
+   gets a null (#131)
 
 New in v1.6:
  * Fix bug in printout of CreateSliver error (ticket #95)
