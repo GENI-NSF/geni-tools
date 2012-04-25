@@ -107,7 +107,7 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         return False
 
     actual_type = root.get('type')
-    if actual_type.lower() != type.lower():
+    if actual_type is None or actual_type.lower() != type.lower():
         return False
     elif typeOnly:
         # only checking the type in the RSpec
