@@ -116,6 +116,13 @@ class Framework_Base():
         """
         raise NotImplementedError('list_my_slices')
 
+    def list_my_ssh_keys(self):
+        """
+        Get a list of SSH public keys for this user.
+        Returns: a list of SSH public keys
+        """
+        raise NotImplementedError('list_my_ssh_keys')
+
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
         # Default implementation just converts to generic URN.
