@@ -169,7 +169,12 @@ class Framework(Framework_Base):
             if self.config.has_key('sa'):
                 url = urlparse(self.config['sa'])
                 sa_host = url.hostname
-                auth = sa_host[sa_host.index('.')+1:]
+                try:
+                    auth = sa_host[sa_host.index('.')+1:]
+                except:
+                    # funny SA?
+                    self.logger.debug("Found no . in sa hostname. Using whole hostname")
+                    auth = sa_host
                 urn_fmt_auth = string_to_urn_format(urn.getAuthority())
                 if urn_fmt_auth != auth:
                     self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
@@ -182,7 +187,12 @@ class Framework(Framework_Base):
 
         url = urlparse(self.config['sa'])
         sa_host = url.hostname
-        auth = sa_host[sa_host.index('.')+1:]
+        try:
+            auth = sa_host[sa_host.index('.')+1:]
+        except:
+            # Funny SA
+            self.logger.debug("Found no . in sa hostname. Using whole hostname")
+            auth = sa_host
 
         return URN(auth, "slice", name).urn_string()
     
