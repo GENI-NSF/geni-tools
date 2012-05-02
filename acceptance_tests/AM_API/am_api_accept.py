@@ -39,29 +39,13 @@ import sys
 import time
 import tempfile
 import xml.etree.ElementTree as etree 
+from geni.util.rspec_schema import *
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
 PGV2_RSPEC_NUM = '2'
 RSPEC_NAME = "GENI"
 RSPEC_NUM = '3'
-
-AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-REQ_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/request.xsd"
-GENI_REQ_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
-MANIFEST_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
-
-PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
-PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
-
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
@@ -100,20 +84,20 @@ class Test(ut.OmniUnittest):
 
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
-            self.manifest_namespace = MANIFEST_NAMESPACE
-            self.manifest_schema = MANIFEST_SCHEMA
-            self.request_namespace = REQ_NAMESPACE
-            self.request_schema = REQ_SCHEMA
-            self.ad_namespace = AD_NAMESPACE
-            self.ad_schema = AD_SCHEMA
+            self.manifest_namespace = PG_2_NAMESPACE
+            self.manifest_schema = PG_2_MAN_SCHEMA
+            self.request_namespace = PG_2_NAMESPACE
+            self.request_schema = PG_2_REQ_SCHEMA
+            self.ad_namespace = PG_2_NAMESPACE
+            self.ad_schema = PG_2_AD_SCHEMA
         else:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
-            self.manifest_namespace = GENI_MANIFEST_NAMESPACE
-            self.manifest_schema = GENI_MANIFEST_SCHEMA
-            self.request_namespace = GENI_REQ_NAMESPACE
-            self.request_schema = GENI_REQ_SCHEMA
-            self.ad_namespace = GENI_AD_NAMESPACE
-            self.ad_schema = GENI_AD_SCHEMA
+            self.manifest_namespace = GENI_3_NAMESPACE
+            self.manifest_schema = GENI_3_MAN_SCHEMA
+            self.request_namespace = GENI_3_NAMESPACE
+            self.request_schema = GENI_3_REQ_SCHEMA
+            self.ad_namespace = GENI_3_NAMESPACE
+            self.ad_schema = GENI_3_AD_SCHEMA
         self.success = False
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)

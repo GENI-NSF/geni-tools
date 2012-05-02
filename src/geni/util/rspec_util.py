@@ -29,22 +29,7 @@ import xml.etree.ElementTree as etree
 import subprocess
 import tempfile
 import xml.parsers.expat
-
-PG_2_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-PG_2_AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-PG_2_REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/request.xsd"
-PG_2_MAN_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-
-GENI_3_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_3_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-GENI_3_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
-GENI_3_MAN_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
-
-REQUEST = 'request'
-MANIFEST = 'manifest'
-ADVERTISEMENT = 'advertisement'
-
-XSI="http://www.w3.org/2001/XMLSchema-instance"
+from rspec_schema import *
 
 RSPECLINT = "rspeclint" 
 
