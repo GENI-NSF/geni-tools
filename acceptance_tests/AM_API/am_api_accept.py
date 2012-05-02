@@ -670,11 +670,18 @@ class Test(ut.OmniUnittest):
 
             # Make sure the Manifest returned the nodes identified in the Request
             if rspec_util.has_child_node( manifest, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
+                if self.options_copy.bound:
+                    self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
                              "Request RSpec and Manifest RSpec " \
                              "returned by 'ListResources' on slice '%s' " \
                              "expected to have same component_ids " \
                              "but did not." % slicename)
+                self.assertClientIDsEqual( request, manifest, self.RSpecVersion(),
+                             "Request RSpec and Manifest RSpec " \
+                             "returned by 'ListResources' on slice '%s' " \
+                             "expected to have same client_ids " \
+                             "but did not." % slicename)
+                             
             else:
                 # the top level node should have a child
                 self.assertResourcesExist( manifest,
@@ -718,11 +725,18 @@ class Test(ut.OmniUnittest):
             # Make sure the Manifest returned the nodes identified in
             # the Request
             if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest2, 
+                if self.options_copy.bound:
+                    self.assertCompIDsEqual( request, manifest2, 
                                  self.RSpecVersion(),
                                  "Request RSpec and Manifest RSpec " \
                                  "returned by 'ListResources' on slice '%s' " \
                                  "expected to have same component_ids " \
+                                 "but did not." % slicename )
+                self.assertClientIDsEqual( request, manifest2, 
+                                 self.RSpecVersion(),
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same client_ids " \
                                  "but did not." % slicename )
             else:
                 # the top level node should have a child
@@ -946,12 +960,20 @@ class Test(ut.OmniUnittest):
                 # Make sure the Manifest returned the nodes identified
                 # in the Request
                 if rspec_util.has_child_node( manifest[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( "".join(request[i]), 
+                    if self.options_copy.bound:
+                        self.assertCompIDsEqual( "".join(request[i]), 
                                              "".join(manifest[i]), 
                                              self.RSpecVersion(), 
                                   "Request RSpec and Manifest RSpec " \
                                   "returned by 'ListResources' on slice '%s' " \
                                   "expected to have same component_ids " \
+                                  "but did not." % slicenames[i])
+                    self.assertClientIDsEqual( "".join(request[i]), 
+                                             "".join(manifest[i]), 
+                                             self.RSpecVersion(), 
+                                  "Request RSpec and Manifest RSpec " \
+                                  "returned by 'ListResources' on slice '%s' " \
+                                  "expected to have same client_ids " \
                                   "but did not." % slicenames[i])
                                          
                 else:
@@ -1004,13 +1026,22 @@ class Test(ut.OmniUnittest):
                 # Make sure the Manifest returned the nodes identified
                 # in the Request
                 if rspec_util.has_child_node( manifest2[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( request[i], 
+                    if self.options_copy.bound:
+                        self.assertCompIDsEqual( request[i], 
                                              manifest2[i], 
                                              self.RSpecVersion(), 
                                  "Request RSpec and Manifest RSpec " \
                                  "returned by 'ListResources' on slice '%s' " \
                                  "expected to have same component_ids " \
                                  "but did not." % slicenames[i] )
+                    self.assertClientIDsEqual( request[i], 
+                                             manifest2[i], 
+                                             self.RSpecVersion(), 
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same client_ids " \
+                                 "but did not." % slicenames[i] )
+
                 else:
                     # the top level node should have a child
                     self.assertResourcesExist( "".join(manifest2[i]),
@@ -1303,6 +1334,12 @@ class Test(ut.OmniUnittest):
                            help="Allows some tests to check for AM API v1 compliance without Change Set A.  -V must be set to '1'." )
         parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
                           help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
+        parser.add_option( "--un-bound", 
+                           action="store_false",
+                           dest='bound',
+                           default=True,
+                           help="RSpecs are unbound (requesting some resources, not a particular resource)" )
+
 
         parser.remove_option("-t")
         parser.set_defaults(logoutput='acceptance.log')
