@@ -225,7 +225,10 @@ class CallHandler(object):
         (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
         ad_key = 'ad_rspec_versions'
         if self.opts.api_version == 2:
-            if not thisVersion.has_key('code'):
+            if thisVersion is None:
+                self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
+                return (None, 'AM %s did not respond to GetVersion: %s' % (client.url, message))
+            elif not thisVersion.has_key('code'):
                 # you ask for v2, but you got v1 so continue processing as v1
                 pass
                 # Or we could break out now
@@ -423,7 +426,10 @@ class CallHandler(object):
             if not rspec is None:
                 successCnt += 1
                 if options.get('geni_compressed', False):
-                    rspec = zlib.decompress(rspec.decode('base64'))
+                    try:
+                        rspec = zlib.decompress(rspec.decode('base64'))
+                    except Exception, e:
+                        self.logger.error("Failed to decompress RSpec: %s", e);
                 rspecs[(client.urn, client.url)] = rspec
             else:
                 if mymessage != "":
@@ -1627,14 +1633,35 @@ class CallHandler(object):
             self.logger.error("Failed to list slices for user '%s'"%(username))
             retStr += "Server error: %s. " % message
         elif len(slices) > 0:
-            self.logger.info("User '%s' has slices: \n\t%s"%(username,"\n\t".join(slices)))
+            self.logger.info("User '%s' has slice(s): \n\t%s"%(username,"\n\t".join(slices)))
         else:
             self.logger.info("User '%s' has NO slices."%username)
 
         # summary
-        retStr += "Found %d slices for user '%s'.\n"%(len(slices), username)
+        retStr += "Found %d slice(s) for user '%s'.\n"%(len(slices), username)
 
         return retStr, slices
+
+    def listmykeys(self, args):
+        """Provides a list of SSH public keys registered at the CH for the current user.
+        Not supported by all frameworks."""
+
+        retStr = ""
+        (keys, message) = _do_ssl(self.framework, None, "List Keys from Slice Authority", self.framework.list_my_ssh_keys)
+        if keys is None:
+            # only end up here if call to _do_ssl failed
+            keys = []
+            self.logger.error("Failed to list keys for you")
+            retStr += "Server error: %s. " % message
+        elif len(keys) > 0:
+            self.logger.info("User has key(s): \n\t%s"%("\n\t".join(keys)))
+        else:
+            self.logger.info("User has NO keys.")
+
+        # summary
+        retStr += "Found %d key(s) for user.\n"%(len(keys))
+
+        return retStr, keys
 
     def getusercred(self, args):
         """Save your user credential to <framework nickname>-usercred.xml
