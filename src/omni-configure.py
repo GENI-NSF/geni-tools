@@ -38,14 +38,19 @@ import sys, os
 from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
+import logging
 from sfa.trust.certificate import Certificate, Keypair
+
+logger = None
 
 def parseArgs(argv, options=None):
     """Construct an Options Parser for parsing omni-configure command line
     arguments, and parse them.
     """
 
-    parser = optparse.OptionParser()
+    usage = "\n Script for automatically configuring Omni."
+
+    parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
                       help="Config file location", metavar="FILE")
     parser.add_option("-p", "--cert", default="~/.ssl/geni_cert",
@@ -68,15 +73,18 @@ def parseArgs(argv, options=None):
     return opts, args
 
 def initialize(opts):
+    global logger
 
     #Check if directory for config file exists
     # Expand the configfile to a full path
     opts.configfile= os.path.expanduser(opts.configfile)
+    logger.info("Using configfile: %s", opts.configfile)
     configdir = os.path.dirname(opts.configfile)
     if not os.path.exists(configdir):
       # If the directory does not exist but it is the 
       # default directory, create it, if not print an error
       if not cmp(os.path.expanduser('~/.gcf'), configdir):
+        logger.info("Creating directory: %s", configdir)
         os.makedirs(configdir)
       else:
         sys.exit('Directory '+ configdir + ' does not exist!')
@@ -89,9 +97,11 @@ def initialize(opts):
         else : 
             if not cmp(opts.framework,'pl'):
                 opts.cert += ".gid"
+        logger.debug("Cert is the default add the appropriate extension. Certfile is %s", opts.cert)
             
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
+    logger.info("Using certfile %s", opts.cert)
 
     # Expand the plkey file to a full path
     opts.plkey = os.path.expanduser(opts.plkey)
@@ -116,17 +126,30 @@ the '-k' option to specify a custom location for the key.\n")
     
 
 def createSSHKeypair(opts):
+    global logger
+
+    logger.info("Creating ssh keypair")
+
     if not cmp(opts.framework,'pg'):
+      logger.debug("Framework is ProtoGENI use as Private SSH key the key in the cert: %s", opts.cert)
       pkey = opts.cert
     else :
       if not cmp(opts.framework,'pl'):
+        logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.plkey)
         pkey = opts.plkey
 
     k = Keypair()
+    logger.debug("Loading private key from: %s", pkey)
     k.load_from_file(pkey)
 
     # Figure out where to place the private key
     private_key_file = os.path.expanduser('~/.ssh/geni_key')
+
+    # Make sure that the .ssh directory exists, if it doesn't create it
+    ssh_dir = os.path.expanduser('~/.ssh')
+    if not os.path.exists(ssh_dir) :
+        logger.info("Creating directory: %s", ssh_dir)
+        os.makedirs(ssh_dir)
 
     if os.path.exists(private_key_file):
         k_exist = Keypair()
@@ -148,11 +171,14 @@ def createSSHKeypair(opts):
                 private_key_file = tmp_pk_file
 
     k.save_to_file(private_key_file)
+    logger.info("Private key stored at: %s", private_key_file)
     # Change the permission to something appropriate for keys
+    logger.debug("Changing permission on private key to 700")
     os.chmod(private_key_file, 0700)
 
     args = ['ssh-keygen', '-y', '-f']
     args.append(private_key_file)
+    logger.debug("Create public key using ssh-keygen: '%s'", args)
     p = Popen(args, stdout=PIPE)
     public_key = p.communicate()[0]
     if p.returncode != 0:
@@ -161,13 +187,11 @@ def createSSHKeypair(opts):
     f = open(public_key_file,'w')
     f.write("%s" % public_key)
     f.close()
+    logger.info("Public key stored at: %s", public_key_file)
 
     # Add the private key to ssh_config
     ssh_conf_file = os.path.expanduser('~/.ssh/config')
-    if not os.path.exists(ssh_conf_file) :
-        ssh_conf_dir = os.path.expanduser('~/.ssh')
-        if not os.path.exists(ssh_conf_dir) :
-          os.makedirs(ssh_conf_dir)
+    logger.debug("Modifying ssh config (%s) file to include generated public key.", ssh_conf_file)
     f = open(ssh_conf_file, 'a+')
     linetoadd = "IdentityFile %s" % private_key_file
     # Check to see if there is already this line present
@@ -175,23 +199,28 @@ def createSSHKeypair(opts):
     index = text.find(linetoadd)
     if index == -1 :
         f.write(linetoadd)
+        logger.info("Added to %s this line:\n\t'%s'" %(ssh_conf_file, linetoadd))
     f.close()
 
     return private_key_file, public_key_file
 
 def createConfigFile(opts, public_key_file):
+    global logger
 
     cert = Certificate(filename=opts.cert)
     # We need to get the issuer and the subject for SFA frameworks
     # issuer -> authority
     # subject -> user
     issuer = cert.get_issuer()
+    logger.debug("Issuer of the cert is: %s", issuer)
     subject = cert.get_subject()
+    logger.debug("Subject(user) of the cert is: %s", subject)
 
     # The user URN is in the Alternate Subject Data
     cert_alt_data = cert.get_data()
     data = cert_alt_data.split(',')
     user_urn_list = [o for o in data if o.find('+user+') != -1]
+    logger.debug("User URN list in the cert is: %s", user_urn_list)
 
     # If there is no data that has the string '+user+' this probably means that 
     # the provided cert is not a user cert
@@ -205,7 +234,9 @@ def createConfigFile(opts, public_key_file):
       sys.exit("There are more than one user URNs in the cert. Exit!")
 
     urn = user_urn_list[0].lstrip('URI:')
+    logger.debug("User URN in the cert is: %s", urn)
     user = urn.split('+')[-1]
+    logger.debug("User is: %s", user)
 
     if not cmp(opts.framework,'pg'):
         if urn.find('emulab.net') != -1 :
@@ -215,6 +246,7 @@ def createConfigFile(opts, public_key_file):
                 sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
             else : 
                 raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % urn.split('+')[-2]) 
+        logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
         cf_section = """
 [%s]
 type = pg
@@ -244,6 +276,7 @@ slicemgr=http://www.planet-lab.org:12347
                         'pkey' : public_key_file,
                         'cf_section' : cf_section,
                        }
+    logger.debug("omni_config_dict is: %s", omni_config_dict)
 
     omni_config_file="""
 [omni]
@@ -295,17 +328,30 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
     f = open(opts.configfile, 'w')
     print >>f, omni_config_file
     f.close()
+    logger.info("Wrote omni configuration file at: %s", opts.configfile)
    
 
-def main(argv=None):
-    # do initial setup & process the user's call
-    if argv is None:
-        argv = sys.argv[1:]
-        (opts, args) = parseArgs(argv)
-        initialize(opts)
-        (pr_key_file, pub_key_file) = createSSHKeypair(opts)
-        createConfigFile(opts,pub_key_file)
+def configLogging(opts) :
+    global logger
+    level = logging.INFO
+    if opts.verbose :
+        level = logging.DEBUG
 
+    logging.basicConfig(level=level)
+    logger = logging.getLogger("omniconfig")
+    
+def main():
+    global logger
+    # do initial setup & process the user's call
+    argv = sys.argv[1:]
+    (opts, args) = parseArgs(argv)
+    configLogging(opts)
+    logger.debug("Running %s with options %s" %(sys.argv[0], opts))
+    initialize(opts)
+    (pr_key_file, pub_key_file) = createSSHKeypair(opts)
+    createConfigFile(opts,pub_key_file)
+
+        
         
 if __name__ == "__main__":
     sys.exit(main())
