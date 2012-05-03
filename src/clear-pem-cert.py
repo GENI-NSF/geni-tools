@@ -32,6 +32,9 @@ import string
 import sys, os, shutil
 from subprocess import Popen, PIPE
 import optparse
+import logging
+
+logger = None
 
 def parseArgs(argv):
     """Construct an Options Parser for parsing omni-configure command line
@@ -52,20 +55,35 @@ def parseArgs(argv):
     (opts, args) = parser.parse_args(argv)
     return opts
 
+def configLogging(opts) :
+    global logger
+    level = logging.INFO
+    if opts.verbose :
+        level = logging.DEBUG
+
+    logging.basicConfig(level=level)
+    logger = logging.getLogger("clearcert")
+
 
 def clearCert(certFile):
+    global logger
     # Copy cert file to a new location
     certdir = os.path.dirname(certFile)
     certname = os.path.splitext(os.path.basename(certFile))[0]
     bakcertfile = os.path.join(certdir, certname + '_enc.pem')
+    logger.info("Backup encrypted certificate file at: %s", bakcertfile)
 
     tmpcertfile = "%s.tmp" % certFile
+    logger.debug("Using tmpcertfile: %s", tmpcertfile)
     shutil.copyfile(certFile, bakcertfile)
+
+    logger.info("Removing passphrase from cert...")
     command = ['openssl', 'rsa']
     command.append('-in')
     command.append(certFile)
     command.append("-out")
     command.append(tmpcertfile)
+    logger.debug("Run commnand: %s", command)
     p = Popen(command, stdout=PIPE)
     p.communicate()[0]
     if p.returncode != 0:
@@ -77,6 +95,7 @@ def clearCert(certFile):
     command = ['openssl', 'x509']
     command.append('-in')
     command.append(certFile)
+    logger.debug("Run commnand: %s", command)
     p = Popen(command, stdout=PIPE)
     tmpcert = p.communicate()[0]
     if p.returncode != 0:
@@ -87,13 +106,18 @@ def clearCert(certFile):
     f = open(tmpcertfile,'a')
     f.write("%s" % tmpcert)
     f.close()
+    logger.debug("Move tmpcertfile to certfile")
     shutil.move(tmpcertfile, certFile)
+    logger.info("Change permissions of %s to 0400", certFile)
     os.chmod(certFile, 0400)
 
 if __name__ == "__main__":
+    global logger
     argv = sys.argv[1:]
     opts = parseArgs(argv)
+    configLogging(opts)
     # Expand the cert file to a full path
+    logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     opts.cert= os.path.expanduser(opts.cert)
     if not os.path.exists(opts.cert):
         raise Exception("Certificate file %s does not exist" % opts.cert)
