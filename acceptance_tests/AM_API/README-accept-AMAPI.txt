@@ -287,6 +287,8 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
    other inappropriate file to verify !CreateSliver fails when passed
    a bad request RSpec.
 
+ * To run the test with unbound RSpecs add the --un-bound flag.
+
  * It is possible to edit the omni_config to support use of other
    frameworks. 
 
@@ -546,3 +548,5 @@ specifying which instance is being requested.) This is important
 because the acceptance tests compare the component IDs of the
 resources in the request RSpec with those in the manifest RSpecs to
 make sure that !CreateSliver and !ListResources are working properly.
+
+To run the test with unbound RSpecs, add the --un-bound flag.

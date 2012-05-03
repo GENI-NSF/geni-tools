@@ -41,26 +41,11 @@ import tempfile
 
 import am_api_accept as accept
 
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
 PGV2_RSPEC_NUM = 2
 RSPEC_NAME = "GENI"
 RSPEC_NUM = 3
-
-# TODO: TEMPORARILY USING PGv2 because test doesn't work with any of the others
-AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-#GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-REQ_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/request.xsd"
-#GENI_REQ_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
-MANIFEST_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-#GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-#GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
