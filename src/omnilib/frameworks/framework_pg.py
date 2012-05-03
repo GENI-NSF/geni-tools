@@ -169,7 +169,12 @@ class Framework(Framework_Base):
             if self.config.has_key('sa'):
                 url = urlparse(self.config['sa'])
                 sa_host = url.hostname
-                auth = sa_host[sa_host.index('.')+1:]
+                try:
+                    auth = sa_host[sa_host.index('.')+1:]
+                except:
+                    # funny SA?
+                    self.logger.debug("Found no . in sa hostname. Using whole hostname")
+                    auth = sa_host
                 urn_fmt_auth = string_to_urn_format(urn.getAuthority())
                 if urn_fmt_auth != auth:
                     self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
@@ -182,7 +187,12 @@ class Framework(Framework_Base):
 
         url = urlparse(self.config['sa'])
         sa_host = url.hostname
-        auth = sa_host[sa_host.index('.')+1:]
+        try:
+            auth = sa_host[sa_host.index('.')+1:]
+        except:
+            # Funny SA
+            self.logger.debug("Found no . in sa hostname. Using whole hostname")
+            auth = sa_host
 
         return URN(auth, "slice", name).urn_string()
     
@@ -265,6 +275,10 @@ class Framework(Framework_Base):
     def list_my_slices(self, user):
         slice_list = self._list_my_slices( user )
         return slice_list
+
+    def list_my_ssh_keys(self):
+        key_list = self._list_my_ssh_keys()
+        return key_list
 
     def list_aggregates(self):
         if self.aggs:
@@ -367,6 +381,36 @@ class Framework(Framework_Base):
         # value is a dict, containing a list of slices
         return pg_response['value']['slices']
 
+    def _list_my_ssh_keys(self):
+        """Gets the ProtoGENI stored SSH public keys from the ProtoGENI Slice Authority. """
+        cred, message = self.get_user_cred()
+        if not cred:
+            raise Exception("No user credential available. %s" % message)
+        (pg_response, message) = _do_ssl(self, None, "Get SSH Keys at PG SA %s" % (self.config['sa']), self.sa.GetKeys, {'credential': cred})
+        if pg_response is None:
+            self.logger.error("Cannot get user's public SSH keys: %s", message)
+            return list()
+
+        code = pg_response['code']
+        if code:
+            self.logger.error("Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message from PG: %s", output)
+            # Return an empty list.
+            return list()
+
+        # value is an array. For each entry, type=ssh, key=<key>
+        if not isinstance(pg_response['value'], list):
+            self.logger.error("Non list response for value: %r" % pg_response['value']);
+            return pg_response['value'];
+
+        keys = list()
+        for key in pg_response['value']:
+            if not key.has_key('key'):
+                self.logger.error("GetKeys list missing key value?");
+                continue
+            keys.append(key['key'])
+        return keys
         
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI

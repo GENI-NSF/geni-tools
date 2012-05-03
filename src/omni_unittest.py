@@ -48,6 +48,8 @@ class NotXMLAssertionError( AssertionError ):
     pass
 class NotEqualComponentIDsError( AssertionError ):
     pass
+class NotEqualClientIDsError( AssertionError ):
+    pass
 class WrongRspecType( AssertionError ):
     pass
 
@@ -150,6 +152,13 @@ class OmniUnittest(unittest.TestCase):
                 msg =  "Two RSpecs expected to have same component_ids " \
                     "but did not."
             raise NotEqualComponentIDsError, msg
+
+    def assertClientIDsEqual(self, rspec1, rspec2, version="GENI 3", msg=None):
+        if not rspec_util.compare_client_ids( rspec1, rspec2, version=version ):
+            if msg is None:
+                msg =  "Two RSpecs expected to have same client_ids " \
+                    "but did not."
+            raise NotEqualClientIDsError, msg
 
     def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
         if version == None:

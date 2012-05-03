@@ -4,6 +4,9 @@ gcf 2.0:
  * omni
    - Log malformed sliverstatus (#128)
    - Better missing file error messages in delegateSliceCred (#129)
+   - Update to SFA codebase as of 4/13/12
+   - Bug fix: Handle AM down when ListResources calls GetVersion and
+   gets a null (#131)
  
  * gcf
    - Allow putting a UUID in experimenter certs (#130)

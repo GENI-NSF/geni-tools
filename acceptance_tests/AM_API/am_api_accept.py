@@ -39,29 +39,13 @@ import sys
 import time
 import tempfile
 import xml.etree.ElementTree as etree 
+from geni.util.rspec_schema import *
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
 PGV2_RSPEC_NUM = '2'
 RSPEC_NAME = "GENI"
 RSPEC_NUM = '3'
-
-AD_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-GENI_AD_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-REQ_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/request.xsd"
-GENI_REQ_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
-MANIFEST_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-MANIFEST_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-GENI_MANIFEST_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_MANIFEST_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
-
-PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
-PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
-
 
 TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
@@ -100,20 +84,20 @@ class Test(ut.OmniUnittest):
 
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
-            self.manifest_namespace = MANIFEST_NAMESPACE
-            self.manifest_schema = MANIFEST_SCHEMA
-            self.request_namespace = REQ_NAMESPACE
-            self.request_schema = REQ_SCHEMA
-            self.ad_namespace = AD_NAMESPACE
-            self.ad_schema = AD_SCHEMA
+            self.manifest_namespace = PG_2_NAMESPACE
+            self.manifest_schema = PG_2_MAN_SCHEMA
+            self.request_namespace = PG_2_NAMESPACE
+            self.request_schema = PG_2_REQ_SCHEMA
+            self.ad_namespace = PG_2_NAMESPACE
+            self.ad_schema = PG_2_AD_SCHEMA
         else:
             self.options_copy.rspectype = (RSPEC_NAME, RSPEC_NUM)
-            self.manifest_namespace = GENI_MANIFEST_NAMESPACE
-            self.manifest_schema = GENI_MANIFEST_SCHEMA
-            self.request_namespace = GENI_REQ_NAMESPACE
-            self.request_schema = GENI_REQ_SCHEMA
-            self.ad_namespace = GENI_AD_NAMESPACE
-            self.ad_schema = GENI_AD_SCHEMA
+            self.manifest_namespace = GENI_3_NAMESPACE
+            self.manifest_schema = GENI_3_MAN_SCHEMA
+            self.request_namespace = GENI_3_NAMESPACE
+            self.request_schema = GENI_3_REQ_SCHEMA
+            self.ad_namespace = GENI_3_NAMESPACE
+            self.ad_schema = GENI_3_AD_SCHEMA
         self.success = False
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)
@@ -686,11 +670,18 @@ class Test(ut.OmniUnittest):
 
             # Make sure the Manifest returned the nodes identified in the Request
             if rspec_util.has_child_node( manifest, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
+                if self.options_copy.bound:
+                    self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
                              "Request RSpec and Manifest RSpec " \
                              "returned by 'ListResources' on slice '%s' " \
                              "expected to have same component_ids " \
                              "but did not." % slicename)
+                self.assertClientIDsEqual( request, manifest, self.RSpecVersion(),
+                             "Request RSpec and Manifest RSpec " \
+                             "returned by 'ListResources' on slice '%s' " \
+                             "expected to have same client_ids " \
+                             "but did not." % slicename)
+                             
             else:
                 # the top level node should have a child
                 self.assertResourcesExist( manifest,
@@ -734,11 +725,18 @@ class Test(ut.OmniUnittest):
             # Make sure the Manifest returned the nodes identified in
             # the Request
             if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
-                self.assertCompIDsEqual( request, manifest2, 
+                if self.options_copy.bound:
+                    self.assertCompIDsEqual( request, manifest2, 
                                  self.RSpecVersion(),
                                  "Request RSpec and Manifest RSpec " \
                                  "returned by 'ListResources' on slice '%s' " \
                                  "expected to have same component_ids " \
+                                 "but did not." % slicename )
+                self.assertClientIDsEqual( request, manifest2, 
+                                 self.RSpecVersion(),
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same client_ids " \
                                  "but did not." % slicename )
             else:
                 # the top level node should have a child
@@ -962,12 +960,20 @@ class Test(ut.OmniUnittest):
                 # Make sure the Manifest returned the nodes identified
                 # in the Request
                 if rspec_util.has_child_node( manifest[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( "".join(request[i]), 
+                    if self.options_copy.bound:
+                        self.assertCompIDsEqual( "".join(request[i]), 
                                              "".join(manifest[i]), 
                                              self.RSpecVersion(), 
                                   "Request RSpec and Manifest RSpec " \
                                   "returned by 'ListResources' on slice '%s' " \
                                   "expected to have same component_ids " \
+                                  "but did not." % slicenames[i])
+                    self.assertClientIDsEqual( "".join(request[i]), 
+                                             "".join(manifest[i]), 
+                                             self.RSpecVersion(), 
+                                  "Request RSpec and Manifest RSpec " \
+                                  "returned by 'ListResources' on slice '%s' " \
+                                  "expected to have same client_ids " \
                                   "but did not." % slicenames[i])
                                          
                 else:
@@ -1020,13 +1026,22 @@ class Test(ut.OmniUnittest):
                 # Make sure the Manifest returned the nodes identified
                 # in the Request
                 if rspec_util.has_child_node( manifest2[i], self.RSpecVersion()):
-                    self.assertCompIDsEqual( request[i], 
+                    if self.options_copy.bound:
+                        self.assertCompIDsEqual( request[i], 
                                              manifest2[i], 
                                              self.RSpecVersion(), 
                                  "Request RSpec and Manifest RSpec " \
                                  "returned by 'ListResources' on slice '%s' " \
                                  "expected to have same component_ids " \
                                  "but did not." % slicenames[i] )
+                    self.assertClientIDsEqual( request[i], 
+                                             manifest2[i], 
+                                             self.RSpecVersion(), 
+                                 "Request RSpec and Manifest RSpec " \
+                                 "returned by 'ListResources' on slice '%s' " \
+                                 "expected to have same client_ids " \
+                                 "but did not." % slicenames[i] )
+
                 else:
                     # the top level node should have a child
                     self.assertResourcesExist( "".join(manifest2[i]),
@@ -1319,6 +1334,12 @@ class Test(ut.OmniUnittest):
                            help="Allows some tests to check for AM API v1 compliance without Change Set A.  -V must be set to '1'." )
         parser.add_option("--delegated-slicecredfile", default='delegated.xml', metavar="DELEGATED_SLICE_CRED_FILENAME",
                           help="Name of a delegated slice credential file to use in test: test_ListResources_delegatedSliceCred")
+        parser.add_option( "--un-bound", 
+                           action="store_false",
+                           dest='bound',
+                           default=True,
+                           help="RSpecs are unbound (requesting some resources, not a particular resource)" )
+
 
         parser.remove_option("-t")
         parser.set_defaults(logoutput='acceptance.log')

@@ -29,22 +29,7 @@ import xml.etree.ElementTree as etree
 import subprocess
 import tempfile
 import xml.parsers.expat
-
-PG_2_NAMESPACE = "http://www.protogeni.net/resources/rspec/2"
-PG_2_AD_SCHEMA = "http://www.protogeni.net/resources/rspec/2/ad.xsd"
-PG_2_REQ_SCHEMA = "http://www.protogeni.net/resources/rspec/2/req.xsd"
-PG_2_MAN_SCHEMA = "http://www.protogeni.net/resources/rspec/2/manifest.xsd"
-
-GENI_3_NAMESPACE = "http://www.geni.net/resources/rspec/3"
-GENI_3_AD_SCHEMA = "http://www.geni.net/resources/rspec/3/ad.xsd"
-GENI_3_REQ_SCHEMA = "http://www.geni.net/resources/rspec/3/request.xsd"
-GENI_3_MAN_SCHEMA = "http://www.geni.net/resources/rspec/3/manifest.xsd"
-
-REQUEST = 'request'
-MANIFEST = 'manifest'
-ADVERTISEMENT = 'advertisement'
-
-XSI="http://www.w3.org/2001/XMLSchema-instance"
+from rspec_schema import *
 
 RSPECLINT = "rspeclint" 
 
@@ -107,7 +92,7 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         return False
 
     actual_type = root.get('type')
-    if actual_type.lower() != type.lower():
+    if actual_type is None or actual_type.lower() != type.lower():
         return False
     elif typeOnly:
         # only checking the type in the RSpec
@@ -152,6 +137,27 @@ def get_comp_ids_from_rspec( xml, version="GENI 3" ):
                 comp_id_list = comp_id_list + [node_comp_id]
     return set(comp_id_list)
 
+
+def get_client_ids_from_rspec( xml, version="GENI 3" ):
+    try:
+        root = etree.fromstring(xml)
+    except:
+        return False
+
+    tmp = get_expected_schema_info( version=version )
+    ns, ad_schema, req_schema, man_schema  = tmp
+    prefix = "{%s}"%ns
+    nodes = root.findall( prefix+'node' ) #get all nodes
+    # generate a list of node client_ids
+    client_id_list = []
+    for node in nodes:
+        # node must contain a sliver_type
+        if len(node.findall(prefix+'sliver_type')) > 0:
+            node_client_id = node.get('client_id')
+            if node_client_id is not None:
+                client_id_list = client_id_list + [node_client_id]
+    return set(client_id_list)
+
 def has_child_node( xml, version="GENI 3" ):
     try:
         root = etree.fromstring(xml)
@@ -172,6 +178,16 @@ def compare_comp_ids( xml1, xml2, version="GENI 3"):
     comp_id1 = get_comp_ids_from_rspec( xml1, version=version )
     comp_id2 = get_comp_ids_from_rspec( xml2, version=version )
     if comp_id1 == comp_id2:
+        return True
+    else:
+        return False
+
+def compare_client_ids( xml1, xml2, version="GENI 3"):
+    """Determines that the list of client IDs in two RSpecs are the same. (Useful for compare request and manifest RSpecs.) """
+
+    client_id1 = get_client_ids_from_rspec( xml1, version=version )
+    client_id2 = get_client_ids_from_rspec( xml2, version=version )
+    if client_id1 == client_id2:
         return True
     else:
         return False
