@@ -1479,7 +1479,7 @@ class CallHandler(object):
 #            retStr += "%s: %s\n" % (urn, url)
             retVal[urn] = url
         if aggs == {} and message != "":
-            retStr += "No aggregates found: %s"
+            retStr += ("No aggregates found: %s" % message)
         elif len(aggList)==0:
             retStr = "No aggregates found."
         elif len(aggList) == 1:
@@ -1951,6 +1951,7 @@ class CallHandler(object):
             if aggs is None:
                 # FIXME: Return the message?
                 return ({}, message)
+            # FIXME: Check that each agg has both a urn and url key?
             return (aggs, "")
 
 # End of CallHandler
