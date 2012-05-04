@@ -251,7 +251,7 @@ class GID(Certificate):
             #    trusted_hrn = trusted_hrn[:trusted_hrn.rindex('.')]
             cur_hrn = self.get_hrn()
             if not hrn_authfor_hrn(trusted_hrn, cur_hrn):
-                raise GidParentHrn("Trusted root with HRN %s isn't a namespace authority for this cert %s" % (trusted_hrn, cur_hrn))
+                raise GidParentHrn("Trusted root with HRN %s isn't a namespace authority for this cert: %s" % (trusted_hrn, cur_hrn))
 
             # There are multiple types of authority - accept them all here
             if not trusted_type.find('authority') == 0:
