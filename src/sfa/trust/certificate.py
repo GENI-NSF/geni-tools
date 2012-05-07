@@ -714,7 +714,7 @@ class Certificate:
         # if there is no parent, then no way to verify the chain
         if not self.parent:
             logger.debug("verify_chain: NO. %s has no parent and issuer %s is not in %d trusted roots"%(self.get_printable_subject(), self.get_issuer(), len(trusted_certs)))
-            raise CertMissingParent(self.get_printable_subject() + ": Issuer %s not trusted by any of %d trusted roots, and cert has no parent." % (self.get_issuer(), len(trusted_certs)))
+            raise CertMissingParent(self.get_printable_subject() + ": Issuer %s is not one of the %d trusted roots, and cert has no parent." % (self.get_issuer(), len(trusted_certs)))
 
         # if it wasn't signed by the parent...
         if not self.is_signed_by_cert(self.parent):

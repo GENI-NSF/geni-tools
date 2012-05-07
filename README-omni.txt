@@ -25,12 +25,14 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.0:
+New in v1.6.2:
  * Log malformed sliverstatus (#128)
  * Better missing file error messages in delegateSliceCred (#129)
  * Update to SFA codebase as of 4/13/12
  * Bug fix: Handle AM down when ListResources calls GetVersion and
    gets a null (#131)
+ * Implement list my slices for SFA (PlanetLab (#137)
+ * Allow listing public keys installed by / known by the CH (#136)
 
 New in v1.6:
  * Fix bug in printout of CreateSliver error (ticket #95)
