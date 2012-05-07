@@ -128,7 +128,7 @@ the '-k' option to specify a custom location for the key.\n")
 def createSSHKeypair(opts):
     global logger
 
-    logger.info("Creating ssh keypair")
+    logger.info("\n\n\tCREATING SSH KEYPAIR")
 
     if not cmp(opts.framework,'pg'):
       logger.debug("Framework is ProtoGENI use as Private SSH key the key in the cert: %s", opts.cert)
@@ -138,11 +138,8 @@ def createSSHKeypair(opts):
         logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.plkey)
         pkey = opts.plkey
 
-    k = Keypair()
-    logger.debug("Loading private key from: %s", pkey)
-    k.load_from_file(pkey)
 
-    # Figure out where to place the private key
+    # Create a simlink for the private key
     private_key_file = os.path.expanduser('~/.ssh/geni_key')
 
     # Make sure that the .ssh directory exists, if it doesn't create it
@@ -152,13 +149,18 @@ def createSSHKeypair(opts):
         os.makedirs(ssh_dir)
 
     if os.path.exists(private_key_file):
+        # Load current and existing keys to see if they are the same
+        k = Keypair()
+        logger.debug("Loading current private key from: %s", pkey)
+        k.load_from_file(pkey)
         k_exist = Keypair()
+        logger.debug("Loading existing private key from: %s", private_key_file)
         k_exist.load_from_file(private_key_file)
         # If the file exists and it is not the same as the existing key ask the
         # user to replace it or not
         if not k_exist.is_same(k) : 
             valid_ans=['','y', 'n']
-            replace_flag = raw_input("File " + private_key_file + " exists, do you want to replace it [Y,n]?").lower()
+            replace_flag = raw_input("Symlink " + private_key_file + " exists, do you want to replace it [Y,n]?").lower()
             while replace_flag not in valid_ans:
                 replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
             if replace_flag == 'n' :
@@ -170,11 +172,18 @@ def createSSHKeypair(opts):
                 print tmp_pk_file
                 private_key_file = tmp_pk_file
 
-    k.save_to_file(private_key_file)
-    logger.info("Private key stored at: %s", private_key_file)
+    
+
+    args = ['ln', '-f', '-s']
+    args.append(pkey)
+    args.append(private_key_file)
+    logger.debug("Creating a simlink for the private key using: '%s'", args)
+    p = Popen(args, stdout=PIPE)
+    logger.info("Private key linked at: %s", private_key_file)
     # Change the permission to something appropriate for keys
-    logger.debug("Changing permission on private key to 700")
-    os.chmod(private_key_file, 0700)
+    logger.debug("Changing permission on private key to 400")
+    os.chmod(private_key_file, 0400)
+    os.chmod(pkey, 0400)
 
     args = ['ssh-keygen', '-y', '-f']
     args.append(private_key_file)
