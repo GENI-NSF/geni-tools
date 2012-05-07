@@ -13,6 +13,11 @@ gcf 1.6.2:
  * gcf
    - Allow putting a UUID in experimenter certs (#130)
 
+ * AM API acceptance tests
+   - Added --pure-v1 which when used with -V 1 will only test for things required by AM API v1 (and not test for things required by Change Set A).  (#126)
+   - Fix a bug in the RSpec schema urls and create a standard place to store these constants (#134)
+   - When comparing request and manifest RSpecs, compare `component_id` for bound RSpecs only and compare `client_id` for both bound and unbound RSpecs. (#135)
+
 gcf 1.6.1:
  * AM API v1 acceptance tests
    - request3.xml.sample should point to a node that really exists. (#124)
