@@ -475,12 +475,16 @@ class Framework(Framework_Base):
         # Resolve has 2 relevant keys: slices, slice_ids
         self.logger.debug("Slices: %r", record['slices'])
         self.logger.debug("Slice_ids: %r", record['slice_ids'])
-        # FIXME: These are slice HRNs. Return as is? Turn into URNs?
+
+        # These are slice HRNs. Supposed to be names
         slice_hrns = record['slices']
-        slice_urns = list()
+#        slice_urns = list()
+#        for hrn in slice_hrns:
+#            slice_urns.append(hrn_to_urn(hrn, type="slice"))
+        slice_names = list()
         for hrn in slice_hrns:
-            slice_urns.append(hrn_to_urn(hrn, type="slice"))
-        return slice_urns
+            slice_names.append(get_leaf(hrn))
+        return slice_names
 
     def list_my_ssh_keys(self):
         user_cred, message = self.get_user_cred()
