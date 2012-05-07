@@ -2,6 +2,7 @@
 
 gcf 1.6.2:
  * omni
+   - Added omni-configure.py script to autogenerate the omni_config (#127)
    - Log malformed sliverstatus (#128)
    - Better missing file error messages in delegateSliceCred (#129)
    - Update to SFA codebase as of 4/13/12
