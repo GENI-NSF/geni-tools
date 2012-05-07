@@ -52,14 +52,14 @@ def parseArgs(argv, options=None):
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
-                      help="Config file location", metavar="FILE")
+                      help="Config file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-p", "--cert", default="~/.ssl/geni_cert",
-                      help="User certificate file location", metavar="FILE")
+                      help="User certificate file location [DEFAULT: %default.pem]", metavar="FILE")
     parser.add_option("-k", "--plkey", default="~/.ssh/geni_pl_key",
-                      help="PlanetLab private key file location", metavar="FILE")
+                      help="PlanetLab private key file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl'],
-                      help="Control framework that you have an account with")
+                      help="Control framework that you have an account with [options: [pg, pl], DEFAULT: %default]")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 

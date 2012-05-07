@@ -25,22 +25,22 @@ If you have an account with a ProtoGENI site then:
 
 = Usage of omni-configure.py =
 
-nriga@pella:~/gcf$ omni-configure.py -h 
 Usage: 
  Script for automatically configuring Omni.
 
 Options:
   -h, --help            show this help message and exit
   -c FILE, --configfile=FILE
-                        Config file location (DEFAULT: ~/.gcf/omni_config)
-  -p FILE, --cert=FILE  User certificate file location (DEFAULT: ~/.ssl/geni_cert.pem)
+                        Config file location [DEFAULT: ~/.gcf/omni_config]
+  -p FILE, --cert=FILE  User certificate file location [DEFAULT:
+                        ~/.ssl/geni_cert.pem]
   -k FILE, --plkey=FILE
-                        PlanetLab private key file location (DEFAULT: ~/.ssh/geni_pl_key) 
+                        PlanetLab private key file location [DEFAULT:
+                        ~/.ssh/geni_pl_key]
   -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework that you have an account with
-                        (DEFAULT: pg)
+                        [options: [pg, pl], DEFAULT: pg]
   -v, --verbose         Turn on verbose command summary for omni-configure
                         script
-
 
 
