@@ -214,13 +214,13 @@ class CredentialVerifier(object):
                 tried_creds = cred.get_gid_caller().get_urn()
 
             if not self.verify_source(gid, cred):
-                failure = "Cred %s fails: Source URNs dont match" % cred.get_gid_caller().get_urn()
+                failure = "Cred %s fails: Credential doesn't grant rights to you (%s), but to %s (over object %s)" % (cred.get_gid_caller().get_urn(), gid.get_urn(), cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
                 continue
             if not self.verify_target(target_urn, cred):
-                failure = "Cred %s on %s fails: Target URNs dont match" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
+                failure = "Cred granting rights to %s on %s fails: It grants permissions over a different target, not %s (URNs dont match)" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn(), target_urn)
                 continue
             if not self.verify_privileges(privileges, cred):
-                failure = "Cert %s doesn't have sufficient privileges" % cred.get_gid_caller().get_urn()
+                failure = "Cred for %s over %s doesn't provide sufficient privileges" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
                 continue
 
 
