@@ -440,7 +440,14 @@ class Framework(Framework_Base):
         """
         result = list()
         for cm_dict in cm_dicts:
-            cm_url = cm_dict['url']
+            if cm_dict.has_key("url"):
+                cm_url = cm_dict['url']
+            else:
+                self.logger.error("Missing url key for CM %s", cm_dict)
+                continue
+            if not cm_dict.has_key("urn"):
+                self.logger.error("Missing urn key for CM %s", cm_dict)
+                cm_dict["urn"] = ''
             self.logger.debug('Checking for AM at %s', cm_url)
             am_url = self._cm_to_am(cm_url)
             self.logger.debug('AM URL = %s', am_url)

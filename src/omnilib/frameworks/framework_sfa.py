@@ -455,4 +455,46 @@ class Framework(Framework_Base):
         auth = self.config['authority'].replace('.',':')
 
         return URN(auth, "slice", name).urn_string()
-        
+
+    def list_my_slices(self, user):
+        user_cred, message = self.get_user_cred()
+        if user_cred is None:
+            self.logger.error("Cannot get SFA slices for user %s - could not get your user credential. %s", user, message)
+            return None
+
+        # Turn user into an HRN, or refuse
+        # If user has no "." then prepend authority.
+        # Else use as is
+        if not "." in user:
+            user = self.config['authority'] + "." + user
+
+        (res, message) = _do_ssl(self, None, ("Look up user %s from SFA registry %s" % (user, self.config['registry'])), self.registry.Resolve, user, user_cred)
+        record = self.get_record_from_resolve_by_type(res, 'user')
+        self.logger.debug("Resolve returned %r", record)
+
+        # Resolve has 2 relevant keys: slices, slice_ids
+        self.logger.debug("Slices: %r", record['slices'])
+        self.logger.debug("Slice_ids: %r", record['slice_ids'])
+
+        # These are slice HRNs. Supposed to be names
+        slice_hrns = record['slices']
+#        slice_urns = list()
+#        for hrn in slice_hrns:
+#            slice_urns.append(hrn_to_urn(hrn, type="slice"))
+        slice_names = list()
+        for hrn in slice_hrns:
+            slice_names.append(get_leaf(hrn))
+        return slice_names
+
+    def list_my_ssh_keys(self):
+        user_cred, message = self.get_user_cred()
+        if user_cred is None:
+            self.logger.error("Cannot get SFA SSH keys - could not get your user credential. %s", message)
+            return None
+
+        (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (self.config['user'], self.config['registry'])), self.registry.Resolve, self.config['user'], user_cred)
+        record = self.get_record_from_resolve_by_type(res, 'user')
+        self.logger.debug("Resolve returned %r", record)
+        self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
+        # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
+        return record['keys']
