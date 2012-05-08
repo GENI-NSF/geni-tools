@@ -43,7 +43,7 @@ def parseArgs(argv):
 
     parser = optparse.OptionParser()
     parser.add_option("-p", "--cert", default="~/.ssl/geni_cert.pem",
-                      help="User certificate file location", metavar="FILE")
+                      help="User certificate file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
