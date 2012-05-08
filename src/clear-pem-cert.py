@@ -67,6 +67,13 @@ def configLogging(opts) :
 
 def clearCert(certFile):
     global logger
+    #Check if the certificate has key that is encrypted
+    f = open(certFile, 'r')
+    text = f.read()
+    index = text.find("ENCRYPTED")
+    if index == -1 :
+        logger.info("Certificate does not have a passphrase. Exit.")
+        sys.exit()
     # Copy cert file to a new location
     certdir = os.path.dirname(certFile)
     certname = os.path.splitext(os.path.basename(certFile))[0]
@@ -121,6 +128,7 @@ def main():
     opts.cert= os.path.expanduser(opts.cert)
     if not os.path.exists(opts.cert):
         raise Exception("Certificate file %s does not exist" % opts.cert)
+    logger.info("\n\tTHIS SCRIPT WILL REPLACE %s WITH AN UNENCREPTED CERT. A BACKUP OF THE ORIGINAL CERT WILL BE CREATED\n" % opts.cert)
     clearCert(opts.cert)
 
 
