@@ -64,6 +64,27 @@ def configLogging(opts) :
     logging.basicConfig(level=level)
     logger = logging.getLogger("clearcert")
 
+def getBackupFilename(certFile):
+    certdir = os.path.dirname(certFile)
+    certname = os.path.splitext(os.path.basename(certFile))[0]
+    bakcertfile = os.path.join(certdir, certname + '_enc.pem')
+    
+    if os.path.exists(bakcertfile):
+        valid_ans=['','y', 'n']
+        replace_flag = raw_input("Backup file: " + bakcertfile + " exists, do you want to replace it [Y,n]?").lower()
+        while replace_flag not in valid_ans:
+            replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+        if replace_flag == 'n' :
+            i = 1
+            tmp_pk_file = os.path.join(certdir, certname + '_enc_' + str(i) + '.pem')
+            while os.path.exists(tmp_pk_file):
+                i = i+1
+                tmp_pk_file = os.path.join(certdir, certname + '_enc_' + str(i) + '.pem')
+            bakcertfile = tmp_pk_file
+
+    logger.info("Backup encrypted certificate file at: %s", bakcertfile)
+    return bakcertfile
+
 
 def clearCert(certFile):
     global logger
@@ -74,11 +95,9 @@ def clearCert(certFile):
     if index == -1 :
         logger.info("Certificate does not have a passphrase. Exit.")
         sys.exit()
+
     # Copy cert file to a new location
-    certdir = os.path.dirname(certFile)
-    certname = os.path.splitext(os.path.basename(certFile))[0]
-    bakcertfile = os.path.join(certdir, certname + '_enc.pem')
-    logger.info("Backup encrypted certificate file at: %s", bakcertfile)
+    bakcertfile = getBackupFilename(certFile)
 
     tmpcertfile = "%s.tmp" % certFile
     logger.debug("Using tmpcertfile: %s", tmpcertfile)
@@ -115,8 +134,8 @@ def clearCert(certFile):
     f.close()
     logger.debug("Move tmpcertfile to certfile")
     shutil.move(tmpcertfile, certFile)
-    logger.info("Change permissions of %s to 0400", certFile)
-    os.chmod(certFile, 0400)
+    logger.info("Change permissions of %s to 0600", certFile)
+    os.chmod(certFile, 0600)
 
 def main():
     global logger
