@@ -111,7 +111,7 @@ def clearCert(certFile):
     logger.info("Change permissions of %s to 0400", certFile)
     os.chmod(certFile, 0400)
 
-if __name__ == "__main__":
+def main():
     global logger
     argv = sys.argv[1:]
     opts = parseArgs(argv)
@@ -123,4 +123,8 @@ if __name__ == "__main__":
         raise Exception("Certificate file %s does not exist" % opts.cert)
     clearCert(opts.cert)
 
+
+if __name__ == "__main__":
+    sys.exit(main())
+ 
 
