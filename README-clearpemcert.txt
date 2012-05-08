@@ -6,6 +6,8 @@ private key of your certificate.
 This script will:
   * create a backup of the current certificate file
   * replace the existing certificate file with the unencrypted one
+  * exit, if the certificate file does not contain a private key with a
+  passphrase since there is no passphrase to be removed. 
 
 = Usage of omni-configure.py =
 
