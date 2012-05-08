@@ -116,7 +116,8 @@ def clearCert(certFile):
         shutil.move(bakcertfile, certFile)
         if os.path.exists(tmpcertfile):
             os.remove(tmpcertfile)
-        raise Exception("Error removing passphrase from certificate")
+        logger.critical("\n\nError removing passphrase from certificate! \nMake sure you are using the right passphrase.\n")
+        sys.exit(-1)
     
     command = ['openssl', 'x509']
     command.append('-in')
