@@ -12,17 +12,40 @@ users = alice
 urn=urn:publicid:IDN+pgeni.gpolab.bbn.com+user+alice
 keys=~/.ssh/id_rsa.pg.pub
 
+#------AM nicknames
+# Format :
+# Nickname=URN, URL
+# URN is optional
 [aggregate_nicknames]
-# Format: Nickname=URN,URL
 
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
 am-undertest=,https://www.emulab.net/protogeni/xmlrpc/am
 
-# For reference: other AMs 
-pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+am,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
-pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
 plc=,https://www.planet-lab.org:12346
+pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am
+
+# Private myplc installations
+plc-gpo=,http://myplc.gpolab.bbn.com:12346/
+plc-clemson=,http://myplc.clemson.edu:12346/
+plc-stanford=,https://myplc.stanford.edu:12346/
+plc-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
+plc-washington=,https://of.cs.washington.edu:12346/
+plc-rutgers=,https://plc.orbit-lab.org:12346/
+plc-indiana=,https://myplc.grnoc.iu.edu:12346/
+plc-gatech=,https://myplc.cip.gatech.edu:12346/
+
+# OpenFlow AMs
+of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
+of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
+of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
+of-wisconsin=,https://foam.wail.wisc.edu:3626/foam/gapi/1
+of-rutgers=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
+of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
+of-gatech=,https://nox.orbit-lab.org:3626/foam/gapi/1
+of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
+of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
 [pg-gpo]
 type=pg
