@@ -421,10 +421,11 @@ FAILED (failures=4)
 
 Acceptance Tests output of help message:
 {{{
-$ ./am_api_accept.py -h   
-Usage:                                                        
-      ./am_api_accept.py -a am-undertest                      
-      Also try --vv                                           
+
+$ ./am_api_accept.py -h      
+Usage:                                                           
+      ./am_api_accept.py -a am-undertest                         
+      Also try --vv                                              
 
      Run an individual test using the following form...
      ./am_api_accept.py -a am-undertest Test.test_GetVersion
@@ -448,41 +449,41 @@ Options:
   -o, --output          Write output of getversion, listresources,       
                         createsliver, sliverstatus, getslicecred to a file
                         (Omni picks the name)                             
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                            
-                        Filename prefix when saving results (used with -o)
-  --usercredfile=USER_CRED_FILENAME                                       
-                        Name of user credential file to read from if it   
-                        exists, or save to when running like '--usercredfile                                                                        
-                        myUserCred.xml -o getusercred'                    
-  --slicecredfile=SLICE_CRED_FILENAME                                     
-                        Name of slice credential file to read from if it  
-                        exists, or save to when running like '--slicecredfile                                                                       
-                        mySliceCred.xml -o getslicecred mySliceName'      
-  -v, --verbose         Turn on verbose command summary for omni commandline                                                                        
-                        tool                                              
-  -q, --quiet           Turn off verbose command summary for omni commandline                                                                       
-                        tool                                              
-  --tostdout            Print results like rspecs to STDOUT instead of to log                                                                       
-                        stream                                            
-  --abac                Use ABAC authorization                            
-  -l LOGCONFIG, --logconfig=LOGCONFIG                                     
-                        Python logging config file                        
-  --logoutput=LOGOUTPUT                                                   
-                        Python logging output file [use %(logfilename)s in
-                        logging config file]                              
-  --no-tz               Do not send timezone on RenewSliver               
-  -V API_VERSION, --api-version=API_VERSION                               
-                        Specify version of AM API to use (1, 2, etc.)     
-  --no-compress         Do not compress returned values                   
-  --available           Only return available resources                   
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                                          
+                        Filename prefix when saving results (used with -o)              
+  --usercredfile=USER_CRED_FILENAME                                                     
+                        Name of user credential file to read from if it                 
+                        exists, or save to when running like '--usercredfile            
+                        myUserCred.xml -o getusercred'                                  
+  --slicecredfile=SLICE_CRED_FILENAME                                                   
+                        Name of slice credential file to read from if it                
+                        exists, or save to when running like '--slicecredfile           
+                        mySliceCred.xml -o getslicecred mySliceName'                    
+  -v, --verbose         Turn on verbose command summary for omni commandline            
+                        tool                                                            
+  -q, --quiet           Turn off verbose command summary for omni commandline           
+                        tool                                                            
+  --tostdout            Print results like rspecs to STDOUT instead of to log           
+                        stream                                                          
+  --abac                Use ABAC authorization                                          
+  -l LOGCONFIG, --logconfig=LOGCONFIG                                                   
+                        Python logging config file                                      
+  --logoutput=LOGOUTPUT                                                                 
+                        Python logging output file [use %(logfilename)s in              
+                        logging config file]                                            
+  --no-tz               Do not send timezone on RenewSliver                             
+  -V API_VERSION, --api-version=API_VERSION                                             
+                        Specify version of AM API to use (1, 2, etc.)                   
+  --no-compress         Do not compress returned values
+  --available           Only return available resources
   --arbitrary-option    Add an arbitrary option to ListResources (for testing
                         purposes)
   --reuse-slice=REUSE_SLICE_NAME
                         Use slice name provided instead of creating/deleting a
                         new slice
   --rspec-file=RSPEC_FILE
-                        In CreateSliver tests, use _bound_ request RSpec
-                        file provided instead of default of 'request.xml'
+                        In CreateSliver tests, use _bound_ request RSpec file
+                        provided instead of default of 'request.xml'
   --bad-rspec-file=BAD_RSPEC_FILE
                         In negative CreateSliver tests, use request RSpec file
                         provided instead of default of 'bad.xml'
@@ -490,8 +491,8 @@ Options:
                         Name of an untrusted user credential file to use in
                         test: test_ListResources_untrustedCredential
   --rspec-file-list=RSPEC_FILE_LIST
-                        In multi-slice CreateSliver tests, use _bound_
-                        request RSpec files provided instead of default of
+                        In multi-slice CreateSliver tests, use _bound_ request
+                        RSpec files provided instead of default of
                         '(request1.xml,request2.xml,request3.xml)'
   --reuse-slice-list=REUSE_SLICE_LIST
                         In multi-slice CreateSliver tests, use slice names
@@ -507,11 +508,16 @@ Options:
                         Output is of the form: 'MONITORING test_TestName 1'
                         The third field is 1 if the test is successful and 0
                         is the test is unsuccessful.
+  --pure-v1             Allows some tests to check for AM API v1 compliance
+                        without Change Set A.  -V must be set to '1'.
   --delegated-slicecredfile=DELEGATED_SLICE_CRED_FILENAME
                         Name of a delegated slice credential file to use in
                         test: test_ListResources_delegatedSliceCred
+  --un-bound            RSpecs are unbound (requesting some resources, not a
+                        particular resource)
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
+
 
 $ ./am_api_accept_delegate.py -h      
 Usage:                                                                    
