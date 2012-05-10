@@ -3,15 +3,9 @@
 Omni is a GENI experimenter tool that communicates with GENI Aggregate
 Managers via the GENI AM API.  The Omni client can also communicate with
 control frameworks in order to create slices, delete slices, and
-enumerate available GENI Aggregate Managers.  
+enumerate available GENI Aggregate Managers (AMs). A Control Framework (CF) is a framework of resources that provides users with GENI accounts (credentials) that they can use to reserve resources in GENI AMs.
 
-To configure Omni, please copy omni_config.sample to ~/.gcf/omni_config
-and fill in the parameters for at least one control
-framework - particularly the location of your certificate and key, in
-its appropriate section.  Edit the [omni] section to specify that
-framework as your default. Embedded comments describe the meaning of
-each field. (Note that keys for the GCF framework are stored in ~/.gcf
-by default.)
+See README-omniconfigure.txt for details about how to configure omni.  
 
 The currently supported control frameworks are SFA (!PlanetLab),
 ProtoGENI and GCF. Any AM API compliant aggregate should work.
@@ -26,6 +20,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v1.6.2:
+ * Added omni-configure.py script to autogenerate the omni_config (#127)
  * Log malformed sliverstatus (#128)
  * Better missing file error messages in delegateSliceCred (#129)
  * Update to SFA codebase as of 4/13/12
@@ -120,11 +115,11 @@ Full changes are listed in the CHANGES file.
 == Handling Omni Output ==
 In Omni versions prior to v1.3, some output went to STDOUT. Callers could
 redirect STDOUT ('>') to a file.
-In all cases where users would do that, Omni now supports the
+In all cases where users would do that, Omni supports the
 '-o' option to have Omni save the output to one or more files for
-you. See the documentation for individual commands for details.
+you. See the [#RunningOmni documentation] for individual commands for details.
 
-Remaining output is done through the python logging package, and
+Omni output is done through the python logging package, and
 prints to STDERR by default. Logging levels, format, and output
 destinations are configurable by supplying a custom Python logging
 configuration file, using the '-l' option. Note that these settings
@@ -136,15 +131,16 @@ in your configuration file, Omni will use the special variable
 'optlevel' to set logging to INFO by default, and DEBUG if you
 specify the '--debug' option to Omni.
 
-Note also that when you do 'omni.call' or 'omni.applyLogConfig' to load a
-logging configuration from a file, existing loggers are NOT disabled
-(which is the python logging default). However, those existing logers
-will not be modified with the new logging settings, unless they are
-explicitly named in the logging config file (they or their ancestor,
-where 'root' does not count).
+When using Omni as a [#OmniasaLibrary script] and you do 'omni.call'
+or 'omni.applyLogConfig' to load a logging configuration from a file,
+existing loggers are NOT disabled (which is the python logging
+default). However, those existing loggers will not be modified with
+the new logging settings, unless they are explicitly named in the
+logging config file (they or their ancestor, where 'root' does not
+count).
 
 For further control of Omni output, use Omni as a library from your
-own python script (see below for details). For example, your script
+own python script (see [#OmniasaLibrary below] for details). For example, your script
 can modify the '-l' logging config file option between Omni
 calls. Alternatively, you can call the Omni function
 'omni.applyLogConfig(<path to your log config file>)'. See the
@@ -280,54 +276,51 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     (sfa/gcf/pg) has appropriate settings for contacting that
     Clearinghouse, and user credentials that are valid for that
     Clearinghouse. And be sure the [omni] section refers to your
-    framework as the default.
- 3. Run omni -o listresources
+    framework as the default.  If you ran src/omni-configure.py this
+    should automatically be configured.
+ 3. Run `omni.py -o listresources`
   a. When you do this, Omni will contact your designated
      Clearinghouse, using your framework-specific user credentials.
-  b. The clearinghouse will list the Aggregates it knows about. For
-     example for GCF, the am_* entries in gcf_config. For SFA, it will
-     return the contents of /etc/sfa/geni_aggregates.xml.
-  c. Omni will then contact each of the Aggregates that the
+  b. The clearinghouse will list the AMs it knows about. 
+  c. Omni will then contact each of the AMs that the
      Clearinghouse told it about, and use the GENI AM API to ask each
-     for its resources. Again, it will use your user credentials. So
-     each Aggregate Manager must trust the signer of your user
-     credentials, in order for you to talk to it. [This is why you add
-     the CH certificate to /etc/sfa/trusted_roots or to the -r
-     argument of your GCF gcf-am.py.]
+     for its resources. 
   d. Omni will then save the RSpec from each aggregate into a separate
-     XML File (the -o option requested that). Files will be named
-     'rspec-<server>.xml'
- 4. Create a request Rspec, per the control framework
-    documentation, to specify which resources you want to reserve.
- 5. Create a Slice. Slices are created at your Clearinghouse. Slices
-    are named based on the Clearinghouse authority that signs for
-    them. Using the shorthand (just the name of your slice within PG,
-    for example) allows Omni to ensure your Slice is named
-    correctly. 
-    So run: omni.py createslice MyGreatTestSlice
- 6. Allocate your Resources. Given a slice, and your edited request rspec
+     XML File (the `-o` option requested that). Files will be named
+     `rspec-<server>.xml`
+ 4. Create a request Rspec to specify which resources you want to
+    reserve. (See XXX for more details.)
+ 5. Create a Slice. 
+    Run: `omni.py createslice MySlice`
+ 6. Allocate your Resources. Given a slice, and your request rspec
     file, you are ready to allocate resources by creating slivers at
-    each of the Aggregate Managers.  Omni will contact your
-    Clearinghouse again, to get the credentials for your slice. 
-    Note you must specify the URL of the aggregate
-    where you want to reserve resources. 
-    Then omni will call the GENI AM API CreateSliver call on the
-    Aggregate Manager. It will supply your Slice Credentials (from the
-    Clearinghouse) plus your own user certificate, and the RSpec. 
-
+    each of the AMs.   Note you must specify the URL or nickname of the aggregate
+    where you want to reserve resources using the `-a` option. 
+    Run: `omni.py createsliver -a pg-utah MySlice request.rspec`
     At this point, you have resources and can do your experiment.
 
- 7. Renew or Delete.  After a while you may want to Renew your Sliver
-    that is expiring, or Delete it. Omni will contact the
-    Clearinghouse, get a list of all Aggregates, and invoke
-    RenewSliver or DeleteSliver on each, for your slice name.
+ 7. Sliver Status.  Use the `sliverstatus` command to determine the
+    status of your resources.  When `geni_status` is `ready`, your
+    resources are ready to use for your experiment.
 
- 8. Optional: listmyslices and print_slice_expiration. Occasionally you
-    may run listmyslices to remind yourself of your outstanding
+    Run: `omni.py sliverstatus -a pg-utah MySlice`
+
+    Note: If you `geni_status` is `unknown`, then your resources might be ready.
+ 
+ 7. Renew or Delete.  Both slices and slivers have distinct expiration times. 
+    After a while you may want to Renew your Sliver
+    that is expiring, or Delete it. 
+
+    To Renew: `omni.py renewsliver -a pg-utah MySlice 20120531`
+    
+    To Delete: `omni.py deletesliver -a pg-utah MySlice`
+
+ 8. Optional: `listmyslices` and `print_slice_expiration`. Occasionally you
+    may run `listmyslices` to remind yourself of your outstanding
     slices. Then you can choose to delete or renew them as needed. If
     you don't recall when your slice expires, use
-    print_slice_expiration to remind yourself.
-
+    `print_slice_expiration` to remind yourself.
+    
 == Running Omni ==
 
 === Supported options ===
