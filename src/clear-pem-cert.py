@@ -29,12 +29,42 @@
 """
 
 import string
-import sys, os, shutil
+import sys, os, shutil, platform
 from subprocess import Popen, PIPE
 import optparse
 import logging
 
 logger = None
+
+def getFileName(filename):
+    """ This function takes as input a filename and if it already 
+        exists it will ask the user whether to replace it or not 
+        and if the file shouldn't be replaced it comes up with a
+        unique name
+    """
+    # If the file exists ask the # user to replace it or not
+    filename = os.path.expanduser(filename)
+    if os.path.exists(filename):
+        (basename, extension) = os.path.splitext(filename)
+        valid_ans=['','y', 'n']
+        replace_flag = raw_input("File " + filename + " exists, do you want to replace it [Y,n]?").lower()
+        while replace_flag not in valid_ans:
+            replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+        if replace_flag == 'n' :
+            i = 1
+            if platform.system().lower().find('darwin') != -1 :
+                tmp_pk_file = basename + '(' + str(i) + ')' + extension
+            else :
+                tmp_pk_file = basename + '-' + str(i) + extension
+            
+            while os.path.exists(tmp_pk_file):
+                i = i+1
+                if platform.system().lower().find('darwin'):
+                    tmp_pk_file = basename + '(' + str(i) + ')' + extension
+                else :
+                    tmp_pk_file = basename + '-' + str(i) + extension
+            filename = tmp_pk_file
+    return filename
 
 def parseArgs(argv):
     """Construct an Options Parser for parsing omni-configure command line
@@ -64,28 +94,6 @@ def configLogging(opts) :
     logging.basicConfig(level=level)
     logger = logging.getLogger("clearcert")
 
-def getBackupFilename(certFile):
-    certdir = os.path.dirname(certFile)
-    certname = os.path.splitext(os.path.basename(certFile))[0]
-    bakcertfile = os.path.join(certdir, certname + '_enc.pem')
-    
-    if os.path.exists(bakcertfile):
-        valid_ans=['','y', 'n']
-        replace_flag = raw_input("Backup file: " + bakcertfile + " exists, do you want to replace it [Y,n]?").lower()
-        while replace_flag not in valid_ans:
-            replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
-        if replace_flag == 'n' :
-            i = 1
-            tmp_pk_file = os.path.join(certdir, certname + '_enc_' + str(i) + '.pem')
-            while os.path.exists(tmp_pk_file):
-                i = i+1
-                tmp_pk_file = os.path.join(certdir, certname + '_enc_' + str(i) + '.pem')
-            bakcertfile = tmp_pk_file
-
-    logger.info("Backup encrypted certificate file at: %s", bakcertfile)
-    return bakcertfile
-
-
 def clearCert(certFile):
     global logger
     #Check if the certificate has key that is encrypted
@@ -97,11 +105,15 @@ def clearCert(certFile):
         sys.exit()
 
     # Copy cert file to a new location
-    bakcertfile = getBackupFilename(certFile)
+    certdir = os.path.dirname(certFile)
+    certname = os.path.splitext(os.path.basename(certFile))[0]
+    bakcertfile = os.path.join(certdir, certname + '_enc.pem')
+    bakcertfile = getFileName(bakcertfile)
 
     tmpcertfile = "%s.tmp" % certFile
     logger.debug("Using tmpcertfile: %s", tmpcertfile)
     shutil.copyfile(certFile, bakcertfile)
+    logger.info("The encoded certificate file is backed up at %s" % bakcertfile)
 
     logger.info("Removing passphrase from cert...")
     command = ['openssl', 'rsa']
