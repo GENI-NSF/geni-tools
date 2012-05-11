@@ -46,7 +46,7 @@ logger = None
 def modifySSHConfigFile(private_key_file):
     """ This function will modify the ssh config file (~/.ssh/config) 
         to include the 'private_key_file' as a default identity
-        Also adds the Identity of 'id_rsa' in the file to ensure
+        Also adds the Identity of 'id_rsa' if it exists in the file to ensure
         that it will still be used. 
         The Identities are added only if they are not already there.
     """
@@ -57,16 +57,19 @@ def modifySSHConfigFile(private_key_file):
 
     # Before adding the private key to the config file 
     # ensure that there is a line about the default id_rsa file
-    linetoadd = "IdentityFile id_rsa" 
-    # Check to see if there is already this line present
-    index = text.find(linetoadd)
-    if index == -1 :
-        f.write(linetoadd)
+
+    filename = os.path.expanduser('~/.ssh/id_rsa')
+    if os.path.exists(filename):
+        linetoadd = "IdentityFile %s\n" % filename 
+        # Check to see if there is already this line present
+        index = text.find(linetoadd)
+        if index == -1 :
+            f.write(linetoadd)
+            logger.info("Added to %s this line:\n\t'%s'" %(ssh_conf_file, linetoadd))
 
     # Add the private key to ssh_config to be used without having to specify it
     # with the -i option
-    linetoadd = "IdentityFile %s" % private_key_file
-    text = f.read()
+    linetoadd = "IdentityFile %s\n" % private_key_file
     index = text.find(linetoadd)
     if index == -1 :
         f.write(linetoadd)
