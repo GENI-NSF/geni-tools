@@ -33,8 +33,8 @@
     manually by editing the omni configuration file. 
 """
 
-import string
-import sys, os
+import string, re
+import sys, os, platform, shutil
 from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
@@ -42,6 +42,154 @@ import logging
 from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
+
+def modifySSHConfigFile(private_key_file):
+    """ This function will modify the ssh config file (~/.ssh/config) 
+        to include the 'private_key_file' as a default identity
+        Also adds the Identity of 'id_rsa' in the file to ensure
+        that it will still be used. 
+        The Identities are added only if they are not already there.
+    """
+    ssh_conf_file = os.path.expanduser('~/.ssh/config')
+    logger.debug("Modifying ssh config (%s) file to include generated public key.", ssh_conf_file)
+    f = open(ssh_conf_file, 'a+')
+    text = f.read()
+
+    # Before adding the private key to the config file 
+    # ensure that there is a line about the default id_rsa file
+    linetoadd = "IdentityFile id_rsa" 
+    # Check to see if there is already this line present
+    index = text.find(linetoadd)
+    if index == -1 :
+        f.write(linetoadd)
+
+    # Add the private key to ssh_config to be used without having to specify it
+    # with the -i option
+    linetoadd = "IdentityFile %s" % private_key_file
+    text = f.read()
+    index = text.find(linetoadd)
+    if index == -1 :
+        f.write(linetoadd)
+        logger.info("Added to %s this line:\n\t'%s'" %(ssh_conf_file, linetoadd))
+
+    f.close()
+
+def generatePublicKey(private_key_file):
+    """ This function generates a public key using ssh-keygen 
+        shell command. The public key is based on the 
+        the private key in the 'private_key_file'
+        The function returns the name of the public key file
+        or None if the creation failed
+    """
+    args = ['ssh-keygen', '-y', '-f']
+    args.append(private_key_file)
+    logger.debug("Create public key using ssh-keygen: '%s'", args)
+
+    succ = False
+    for i in range(0,3) :
+        p = Popen(args, stdout=PIPE)
+        public_key = p.communicate()[0]
+        if p.returncode != 0:
+            logger.warning("Error creating public key, passphrase might be wrong.")
+            continue
+        succ = True
+        break
+    # If the key was not loaded properly return None
+    if not succ:
+        logger.warning("Unable to create public key.")
+        return None
+    public_key_file = private_key_file + '.pub'
+    f = open(public_key_file,'w')
+    f.write("%s" % public_key)
+    f.close()
+    logger.info("Public key stored at: %s", public_key_file)
+    return public_key_file
+
+def getFileName(filename):
+    """ This function takes as input a filename and if it already 
+        exists it will ask the user whether to replace it or not 
+        and if the file shouldn't be replaced it comes up with a
+        unique name
+    """
+    # If the file exists ask the # user to replace it or not
+    filename = os.path.expanduser(filename)
+    if os.path.exists(filename):
+        (basename, extension) = os.path.splitext(filename)
+        valid_ans=['','y', 'n']
+        replace_flag = raw_input("File " + filename + " exists, do you want to replace it [Y,n]?").lower()
+        while replace_flag not in valid_ans:
+            replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+        if replace_flag == 'n' :
+            i = 1
+            if platform.system().lower().find('darwin') != -1 :
+                tmp_pk_file = basename + '(' + str(i) + ')' + extension
+            else :
+                tmp_pk_file = basename + '-' + str(i) + extension
+            
+            while os.path.exists(tmp_pk_file):
+                i = i+1
+                if platform.system().lower().find('darwin'):
+                    tmp_pk_file = basename + '(' + str(i) + ')' + extension
+                else :
+                    tmp_pk_file = basename + '-' + str(i) + extension
+            filename = tmp_pk_file
+    return filename
+
+def loadKeyFromFile(key_file):
+    """ This function loads a private key from a file 
+        giving the user three chances to get the passphrase right
+    """
+    k = Keypair()
+    logger.debug("Loading current private key from: %s", key_file)
+    # Keep track if the effort was successful
+    succ = False
+    for i in range(0,3) :
+        try :
+            k.load_from_file(key_file)
+        except :
+            logger.info("Unable to load private key, maybe you misstyped the passphrase. Try again.")
+            continue
+        succ = True
+        break
+    # If the key was not loaded properly return None
+    if not succ:
+        k = None
+    return k
+
+def copyPrivateKeyFile(src_file, dst_file):
+    """ This function creates a copy of a private key file
+        from 'src_file' to 'dst_file'. The src_file might be in .pem format
+        so it is not a simple file copy, but we parse the file to only get
+        the private key and write it to the destination file
+    """
+
+    if os.path.exists(dst_file):
+        # Load current and existing keys to see if they are the same
+        k = loadKeyFromFile(src_file)
+        if k:
+            logger.info("File %s already exists. Loading existing key...", dst_file)
+            k_exist = loadKeyFromFile(dst_file)
+        if not k or not k_exist or not k_exist.is_same(k) : 
+            dst_file = getFileName(dst_file)
+
+    # We don't do a blind copy in case the src file is in .pem format but we
+    # extract the key from the file
+    f = open(src_file, 'r')
+    text = f.read()
+    f.close()
+    pkey_match = re.search("^-+BEGIN RSA PRIVATE KEY-+$.*^-+END RSA PRIVATE KEY-+$", text, re.MULTILINE|re.S)
+
+    if not pkey_match:
+        logger.info("No private key in the file. Exit!")
+        sys.exit()
+    f = open(dst_file, 'w+')
+    f.write(pkey_match.group(0))
+    f.close()
+    logger.info("Private key stored at: %s", dst_file)
+    # Change the permission to something appropriate for keys
+    logger.debug("Changing permission on private key to 600")
+    os.chmod(dst_file, 0600)
+    os.chmod(src_file, 0600)
 
 def parseArgs(argv, options=None):
     """Construct an Options Parser for parsing omni-configure command line
@@ -138,8 +286,7 @@ def createSSHKeypair(opts):
         logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.plkey)
         pkey = opts.plkey
 
-
-    # Create a simlink for the private key
+    # Use the default place for the geni private key
     private_key_file = os.path.expanduser('~/.ssh/geni_key')
 
     # Make sure that the .ssh directory exists, if it doesn't create it
@@ -148,72 +295,23 @@ def createSSHKeypair(opts):
         logger.info("Creating directory: %s", ssh_dir)
         os.makedirs(ssh_dir)
 
-    if os.path.exists(private_key_file):
-        # Load current and existing keys to see if they are the same
-        k = Keypair()
-        logger.debug("Loading current private key from: %s", pkey)
-        k.load_from_file(pkey)
-        k_exist = Keypair()
-        logger.debug("Loading existing private key from: %s", private_key_file)
-        k_exist.load_from_file(private_key_file)
-        # If the file exists and it is not the same as the existing key ask the
-        # user to replace it or not
-        if not k_exist.is_same(k) : 
-            valid_ans=['','y', 'n']
-            replace_flag = raw_input("Symlink " + private_key_file + " exists, do you want to replace it [Y,n]?").lower()
-            while replace_flag not in valid_ans:
-                replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
-            if replace_flag == 'n' :
-                i = 1
-                tmp_pk_file = private_key_file + '_' + str(i)
-                while os.path.exists(tmp_pk_file):
-                    i = i+1
-                    tmp_pk_file = private_key_file + '_' + str(i)
-                print tmp_pk_file
-                private_key_file = tmp_pk_file
+    copyPrivateKeyFile(pkey, private_key_file)
 
+    public_key_file = generatePublicKey(private_key_file)
+    if not public_key_file:
+        #we failed at generating a public key, remove the private key
+        os.remove(private_key_file)
+
+    modifySSHConfigFile(private_key_file)
     
-
-    args = ['ln', '-f', '-s']
-    args.append(pkey)
-    args.append(private_key_file)
-    logger.debug("Creating a simlink for the private key using: '%s'", args)
-    p = Popen(args, stdout=PIPE)
-    logger.info("Private key linked at: %s", private_key_file)
-    # Change the permission to something appropriate for keys
-    logger.debug("Changing permission on private key to 400")
-    os.chmod(private_key_file, 0400)
-    os.chmod(pkey, 0400)
-
-    args = ['ssh-keygen', '-y', '-f']
-    args.append(private_key_file)
-    logger.debug("Create public key using ssh-keygen: '%s'", args)
-    p = Popen(args, stdout=PIPE)
-    public_key = p.communicate()[0]
-    if p.returncode != 0:
-        raise Exception("Error creating public key")
-    public_key_file = private_key_file + '.pub'
-    f = open(public_key_file,'w')
-    f.write("%s" % public_key)
-    f.close()
-    logger.info("Public key stored at: %s", public_key_file)
-
-    # Add the private key to ssh_config
-    ssh_conf_file = os.path.expanduser('~/.ssh/config')
-    logger.debug("Modifying ssh config (%s) file to include generated public key.", ssh_conf_file)
-    f = open(ssh_conf_file, 'a+')
-    linetoadd = "IdentityFile %s" % private_key_file
-    # Check to see if there is already this line present
-    text = f.read()
-    index = text.find(linetoadd)
-    if index == -1 :
-        f.write(linetoadd)
-        logger.info("Added to %s this line:\n\t'%s'" %(ssh_conf_file, linetoadd))
-    f.close()
-
     return private_key_file, public_key_file
 
 def createConfigFile(opts, public_key_file):
+    """ This function creates the omni_config file. 
+        It will rewrite any existing omni_config file
+        and makes a backup of the omni_config file 
+        of the form omni_config_<i> 
+    """
     global logger
 
     cert = Certificate(filename=opts.cert)
@@ -334,6 +432,12 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
 """ % omni_config_dict
 
+    omni_bak_file = opts.configfile
+    omni_bak_file = getFileName(omni_bak_file)
+    if omni_bak_file is not opts.configfile:
+        logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
+        shutil.copyfile(opts.configfile, omni_bak_file)
+        
     f = open(opts.configfile, 'w')
     print >>f, omni_config_file
     f.close()
@@ -360,7 +464,5 @@ def main():
     (pr_key_file, pub_key_file) = createSSHKeypair(opts)
     createConfigFile(opts,pub_key_file)
 
-        
-        
 if __name__ == "__main__":
     sys.exit(main())
