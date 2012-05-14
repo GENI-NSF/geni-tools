@@ -1,19 +1,23 @@
 = The Omni GENI Client =
 
 Omni is a GENI experimenter tool that communicates with GENI Aggregate
-Managers via the GENI AM API.  The Omni client can also communicate with
+Managers(AMs) via the GENI AM API (GENI AM API is a common API that 
+many AMs support).  The Omni client also communicates with
 control frameworks in order to create slices, delete slices, and
-enumerate available GENI Aggregate Managers (AMs). A Control Framework (CF) is a framework of resources that provides users with GENI accounts (credentials) that they can use to reserve resources in GENI AMs.
+enumerate available GENI Aggregate Managers (AMs). 
+A Control Framework (CF) is a framework of resources that provides 
+users with GENI accounts (credentials) that they can use to 
+reserve resources in GENI AMs.
 
 See README-omniconfigure.txt for details about how to configure omni.  
 
-The currently supported control frameworks are SFA (!PlanetLab),
-ProtoGENI and GCF. Any AM API compliant aggregate should work.
+The currently supported CFs are SFA (!PlanetLab),
+ProtoGENI and GCF. Omni works with any GENI AM API compliant AM.
 These include SFA, ProtoGENI, !OpenFlow and GCF.
 
 Omni performs the following functions:
- * Talks to each control framework in its native API
- * Contacts Aggregate Managers via the GENI API
+ * Talks to each CF in its native API
+ * Contacts AMs via the GENI API
 
 For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
@@ -131,6 +135,14 @@ in your configuration file, Omni will use the special variable
 'optlevel' to set logging to INFO by default, and DEBUG if you
 specify the '--debug' option to Omni.
 
+For further control of Omni output, use Omni as a library from your
+own python script (see [#OmniasaLibrary below] for details). 
+For example, your script can modify the '-l' logging config file 
+option between Omni calls. 
+Alternatively, you can call the Omni function
+'omni.applyLogConfig(<path to your log config file>)'. See the
+documentation for 'applyLogConfig' for details.
+
 When using Omni as a [#OmniasaLibrary script] and you do 'omni.call'
 or 'omni.applyLogConfig' to load a logging configuration from a file,
 existing loggers are NOT disabled (which is the python logging
@@ -138,13 +150,6 @@ default). However, those existing loggers will not be modified with
 the new logging settings, unless they are explicitly named in the
 logging config file (they or their ancestor, where 'root' does not
 count).
-
-For further control of Omni output, use Omni as a library from your
-own python script (see [#OmniasaLibrary below] for details). For example, your script
-can modify the '-l' logging config file option between Omni
-calls. Alternatively, you can call the Omni function
-'omni.applyLogConfig(<path to your log config file>)'. See the
-documentation for 'applyLogConfig' for details.
 
 == Omni as a Library ==
 
@@ -274,18 +279,18 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     will use.
  2. Be sure the appropriate section of omni_config for your framework
     (sfa/gcf/pg) has appropriate settings for contacting that
-    Clearinghouse, and user credentials that are valid for that
-    Clearinghouse. And be sure the [omni] section refers to your
-    framework as the default.  If you ran src/omni-configure.py this
+    CF, and user credentials that are valid for that
+    CF. Make sure the [omni] section refers to your
+    CF as the default.  If you ran src/omni-configure.py this
     should automatically be configured.
  3. Run `omni.py -o listresources`
   a. When you do this, Omni will contact your designated
      Clearinghouse, using your framework-specific user credentials.
-  b. The clearinghouse will list the AMs it knows about. 
+  b. The Clearinghouse will list the AMs it knows about. 
   c. Omni will then contact each of the AMs that the
      Clearinghouse told it about, and use the GENI AM API to ask each
      for its resources. 
-  d. Omni will then save the RSpec from each aggregate into a separate
+  d. Omni will save the Advertisement RSpec from each aggregate into a separate
      XML File (the `-o` option requested that). Files will be named
      `rspec-<server>.xml`
  4. Create a request Rspec to specify which resources you want to
@@ -298,7 +303,6 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     where you want to reserve resources using the `-a` option. 
     Run: `omni.py createsliver -a pg-utah MySlice request.rspec`
     At this point, you have resources and can do your experiment.
-
  7. Sliver Status.  Use the `sliverstatus` command to determine the
     status of your resources.  When `geni_status` is `ready`, your
     resources are ready to use for your experiment.
@@ -320,6 +324,10 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     slices. Then you can choose to delete or renew them as needed. If
     you don't recall when your slice expires, use
     `print_slice_expiration` to remind yourself.
+
+    To List your slices : `omni.py listmyslices <username>`
+
+    To Print slice expiration : `omni.py print_slice_expiration MySlice`
     
 == Running Omni ==
 
