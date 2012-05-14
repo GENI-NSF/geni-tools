@@ -10,6 +10,7 @@ You SOULD manually configure Omni if :
     with emulab.net as well as with pgeni.gpolab.bbn.com)
   * you want multiple uses to have access to the reserved compute resources. 
 
+
 == omni-configure.py script ==
 
 omni-configure.py is a script that will automatically create
@@ -55,7 +56,7 @@ Options:
   -p FILE, --cert=FILE  User certificate file location [DEFAULT:
                         ~/.ssl/geni_cert.pem]
   -k FILE, --plkey=FILE
-                        PlanetLab private key file location [DEFAULT:
+                        GPlanetLab private key file location [DEFAULT:
                         ~/.ssh/geni_pl_key]
   -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework that you have an account with
@@ -75,3 +76,13 @@ Embedded comments describe the meaning of each field.
 
 For step-by-step instructions about how to configure Omni, please look at:
 http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure
+
+== Certificate passphrase ==
+While executing Omni, you will be prompted for the passphrase of your
+certificate multiple times per call. You should keep a passphrase on 
+your certificate for security best practices. If you just want a way 
+to type your passphrase only once per session look at:
+http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot#Q.WhydoesOmnipromptformyPEMpassphrasesomanytimesCantOmnipromptonlyonce
+
+Also there is a script that will help removing the passphrase from the
+certificate. Look at README-clearpassphrases.txt. 
