@@ -294,7 +294,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
      XML File (the `-o` option requested that). Files will be named
      `rspec-<server>.xml`
  4. Create a request Rspec to specify which resources you want to
-    reserve. (See XXX for more details.)
+    reserve. (See [http://groups.geni.net/geni/wiki/GENIExperimenter/RSpecs RSpec Documentation] for more details.)
  5. Create a Slice. 
     Run: `omni.py createslice MySlice`
  6. Allocate your Resources. Given a slice, and your request rspec
