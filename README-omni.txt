@@ -334,54 +334,87 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 === Supported options ===
 Omni supports the following command-line options.
 
--c FILE   Location of your config file (default ~/.gcf/omni_config)
+{{{
+$ ./omni.py -h                                
+Usage:                                                                         
+GENI Omni Command Line Aggregate Manager Tool Version 1.6.2                    
+Copyright (c) 2011 Raytheon BBN Technologies                                   
 
--f FRAMEWORK   Control framework to use (e.g. my_sfa), overriding
-        default in config file.  The framework is a section named in the config file.
+omni.py [options] <command and arguments> 
 
--n, --native   Use native RSpecs (default)
+         Commands and their arguments are: 
+                AM API functions:          
+                         getversion        
+                         listresources [optional: slicename] 
+                         createsliver <slicename> <rspec file> 
+                         sliverstatus <slicename>              
+                         renewsliver <slicename> <new expiration time in UTC> 
+                         deletesliver <slicename>                             
+                         shutdown <slicename>                                 
+                Clearinghouse / Slice Authority functions:                    
+                         listaggregates                                       
+                         createslice <slicename>                              
+                         getslicecred <slicename>                             
+                         renewslice <slicename> <new expiration time in UTC>  
+                         deleteslice <slicename>                              
+                         listmyslices <username>                              
+                         getusercred                                          
+                         print_slice_expiration <slicename>                   
 
---omnispec     Use Omnispecs (deprecated)
+         See README-omni.txt for details.
+         And see the Omni website at http://trac.gpolab.bbn.com/gcf
 
--a AGGREGATE_URL, --aggregate=AGGREGATE_URL or nickname defined in omni_config
-                Communicate with a specific aggregate
-
---debug   Enable debugging output
-
---no-ssl   Do not use ssl
-
---orca-slice-id=ORCA_SLICE_ID
-        Use the given Orca slice id
-
--o, --output   Write output of getversion, listresources,
-        createsliver, sliverstatus, or getslicecred to a file (Omni
-        picks the name)
-
--p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
-        Filename prefix (used with -o)
-
---slicecredfile SLICE_CRED_FILENAME
-        Name of slice credential file to read from if it exists, or
-	save to when running like 
-	'--slicecredfile mySliceCred.xml -o getslicecred mySliceName'
-
--t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-        Ad RSpec type and version to return, e.g. 'GENI 3'.
-        Required when using AM API version 2 or greater.
-
--v, --verbose  (default True)
-        Turn on verbose command summary for omni commandline tool
-
--q, --quiet    (default False)
-        Turn off verbose command summary for omni commandline tool
-
---tostdout (default True)
-        Print results like RSpecs to STDOUT instead of logging.
-	Only relevant when not saving results to a file with the -o option.
-
--V, --api-version (default 1)
-        Specify the API version to use when talking to
-        aggregates. Available options are "1" and "2".
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit       
+  -c FILE, --configfile=FILE                                  
+                        Config file name                      
+  -f FRAMEWORK, --framework=FRAMEWORK                         
+                        Control framework to use for creation/deletion of
+                        slices
+  -n, --native          Use native RSpecs (default)
+  --omnispec            Use Omnispecs (deprecated)
+  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
+                        Communicate with a specific aggregate
+  --debug               Enable debugging output
+  --no-ssl              do not use ssl
+  --orca-slice-id=ORCA_SLICE_ID
+                        Use the given Orca slice id
+  -o, --output          Write output of getversion, listresources,
+                        createsliver, sliverstatus, getslicecred to a file
+                        (Omni picks the name)
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
+                        Filename prefix when saving results (used with -o)
+  --usercredfile=USER_CRED_FILENAME
+                        Name of user credential file to read from if it
+                        exists, or save to when running like '--usercredfile
+                        myUserCred.xml -o getusercred'
+  --slicecredfile=SLICE_CRED_FILENAME
+                        Name of slice credential file to read from if it
+                        exists, or save to when running like '--slicecredfile
+                        mySliceCred.xml -o getslicecred mySliceName'
+  -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
+                        Ad RSpec type and version to return, e.g. 'GENI 3'
+  -v, --verbose         Turn on verbose command summary for omni commandline
+                        tool
+  -q, --quiet           Turn off verbose command summary for omni commandline
+                        tool
+  --tostdout            Print results like rspecs to STDOUT instead of to log
+                        stream
+  --abac                Use ABAC authorization
+  -l LOGCONFIG, --logconfig=LOGCONFIG
+                        Python logging config file
+  --logoutput=LOGOUTPUT
+                        Python logging output file [use %(logfilename)s in
+                        logging config file]
+  --no-tz               Do not send timezone on RenewSliver
+  -V API_VERSION, --api-version=API_VERSION
+                        Specify version of AM API to use (1, 2, etc.)
+  --no-compress         Do not compress returned values
+  --available           Only return available resources
+  --arbitrary-option    Add an arbitrary option to ListResources (for testing
+                        purposes)
+}}}
 
 === Supported commands ===
 Omni supports the following commands.
