@@ -43,6 +43,16 @@ from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
 
+def getYNAns(question):
+    valid_ans=['','y', 'n']
+    answer = raw_input("%s [Y,n]?" % question).lower()
+    while answer not in valid_ans:
+        answer = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+    if answer == 'n':
+        return False
+    return True
+
+
 def modifySSHConfigFile(private_key_file):
     """ This function will modify the ssh config file (~/.ssh/config) 
         to include the 'private_key_file' as a default identity
@@ -118,11 +128,8 @@ def getFileName(filename):
     filename = os.path.expanduser(filename)
     if os.path.exists(filename):
         (basename, extension) = os.path.splitext(filename)
-        valid_ans=['','y', 'n']
-        replace_flag = raw_input("File " + filename + " exists, do you want to replace it [Y,n]?").lower()
-        while replace_flag not in valid_ans:
-            replace_flag = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
-        if replace_flag == 'n' :
+        question = "File " + filename + " exists, do you want to replace it "
+        if not getYNAns(question):
             i = 1
             if platform.system().lower().find('darwin') != -1 :
                 tmp_pk_file = basename + '(' + str(i) + ')' + extension
