@@ -468,22 +468,28 @@ class Framework(Framework_Base):
         if not "." in user:
             user = self.config['authority'] + "." + user
 
+        slice_names = list()
         (res, message) = _do_ssl(self, None, ("Look up user %s from SFA registry %s" % (user, self.config['registry'])), self.registry.Resolve, user, user_cred)
+        if res is None:
+            self.logger.error("No user record for user %s found in SFA registry %s. Error: %s", user, self.config['registry'], message)
+            return slice_names
         record = self.get_record_from_resolve_by_type(res, 'user')
+
+        if record is None or not isinstance(record, dict) or not record.has_key('slices'):
+            self.logger.error("No user record for user %s found in SFA registry %s", user, self.config['registry'])
+            return slice_names
+
         self.logger.debug("Resolve returned %r", record)
 
         # Resolve has 2 relevant keys: slices, slice_ids
         self.logger.debug("Slices: %r", record['slices'])
         self.logger.debug("Slice_ids: %r", record['slice_ids'])
 
-        # These are slice HRNs. Supposed to be names
+        # These are slice HRNs. Supposed to be names. No wait - URNs
         slice_hrns = record['slices']
-#        slice_urns = list()
-#        for hrn in slice_hrns:
-#            slice_urns.append(hrn_to_urn(hrn, type="slice"))
-        slice_names = list()
         for hrn in slice_hrns:
-            slice_names.append(get_leaf(hrn))
+#            slice_names.append(get_leaf(hrn))
+            slice_names.append(hrn_to_urn(hrn, 'slice'))
         return slice_names
 
     def list_my_ssh_keys(self):
