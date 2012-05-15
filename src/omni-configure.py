@@ -112,7 +112,11 @@ def generatePublicKey(private_key_file):
         logger.warning("Unable to create public key.")
         return None
     public_key_file = private_key_file + '.pub'
-    f = open(public_key_file,'w')
+    try :
+        f = open(public_key_file,'w')
+    except :
+        logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % public_key_file)
+        return None
     f.write("%s" % public_key)
     f.close()
     logger.info("Public key stored at: %s", public_key_file)
@@ -309,8 +313,9 @@ def createSSHKeypair(opts):
 
     public_key_file = generatePublicKey(private_key_file)
     if not public_key_file:
-        #we failed at generating a public key, remove the private key
+        #we failed at generating a public key, remove the private key and exit
         os.remove(private_key_file)
+        sys.exit(-1)
 
     modifySSHConfigFile(private_key_file)
     
@@ -448,7 +453,12 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
         logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
         shutil.copyfile(opts.configfile, omni_bak_file)
         
-    f = open(opts.configfile, 'w')
+    try: 
+        f = open(opts.configfile, 'w')
+    except:
+        logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % opts.configfile)
+        sys.exit(-1)
+
     print >>f, omni_config_file
     f.close()
     logger.info("Wrote omni configuration file at: %s", opts.configfile)
