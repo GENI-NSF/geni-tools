@@ -1,5 +1,12 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.0:
+ * omni
+
+ * gcf
+
+ * AM API acceptance tests
+
 gcf 1.6.2:
  * omni
    - Added omni-configure.py script to autogenerate the omni_config (#127)

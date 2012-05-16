@@ -23,6 +23,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.0:
+
 New in v1.6.2:
  * Added omni-configure.py script to autogenerate the omni_config (#127)
  * Log malformed sliverstatus (#128)
