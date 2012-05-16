@@ -5,18 +5,18 @@ that will automatically configure Omni for users with a standard setup.
 Users with more complicated setups should manually configure Omni. 
 
 You SOULD manually configure Omni if :
-  * you want to use your account with PlanetLab to reserve GENI resources
-  * you want to configure to use multiple GENI accounts (e.g. your account 
+  * you want to use your account with PlanetLab to reserve GENI resources and 
+    you don't already have a copy of your certificate file
+  * you want to use multiple GENI accounts (e.g. your account 
     with emulab.net as well as with pgeni.gpolab.bbn.com)
-  * you want multiple uses to have access to the reserved compute resources. 
-
+  * you want multiple users to have access to the reserved compute resources. 
 
 == omni-configure.py script ==
 
 omni-configure.py is a script that will automatically create
 the configuration file that Omni requires to run. 
 
-The script is intended for new users that want a default configuration 
+The script is intended for new users that want a standard configuration 
 for using omni. 
 
 Currently the omni-configure.py script fully supports ProtoGENI certificates,
