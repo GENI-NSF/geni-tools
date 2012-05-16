@@ -142,7 +142,7 @@ def getFileName(filename):
             
             while os.path.exists(tmp_pk_file):
                 i = i+1
-                if platform.system().lower().find('darwin'):
+                if platform.system().lower().find('darwin') != -1 :
                     tmp_pk_file = basename + '(' + str(i) + ')' + extension
                 else :
                     tmp_pk_file = basename + '-' + str(i) + extension
