@@ -109,6 +109,14 @@ def main(argv=None):
     if opts.rootcadir is None:
         sys.exit('Missing path to trusted root certificate directory (-r argument)')
     
+    certfile = getAbsPath(opts.certfile)
+    keyfile = getAbsPath(opts.keyfile)
+    if not os.path.exists(certfile):
+        sys.exit("Aggregate certfile %s doesn't exist" % certfile)
+    
+    if not os.path.exists(keyfile):
+        sys.exit("Aggregate keyfile %s doesn't exist" % keyfile)
+
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
@@ -119,14 +127,14 @@ def main(argv=None):
     if opts.api_version == 1:
         ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
                                           delegate=delegate,
-                                          keyfile=getAbsPath(opts.keyfile),
-                                          certfile=getAbsPath(opts.certfile),
+                                          keyfile=keyfile,
+                                          certfile=certfile,
                                           ca_certs=comboCertsFile,
                                           base_name=config['global']['base_name'])
     elif opts.api_version == 2:
         ams = geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=getAbsPath(opts.keyfile),
-                                          certfile=getAbsPath(opts.certfile),
+                                          keyfile=keyfile,
+                                          certfile=certfile,
                                           trust_roots_dir=getAbsPath(opts.rootcadir),
                                           ca_certs=comboCertsFile,
                                           base_name=config['global']['base_name'])

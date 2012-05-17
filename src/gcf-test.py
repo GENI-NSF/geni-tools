@@ -294,6 +294,11 @@ def main(argv=None):
 
     keyf = getAbsPath(opts.keyfile)
     certf = getAbsPath(opts.certfile)
+    if not os.path.exists(certf):
+        sys.exit("Client certfile %s doesn't exist" % certf)
+    
+    if not os.path.exists(keyf):
+        sys.exit("Client keyfile %s doesn't exist" % keyf)
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
     ch_server = make_client(opts.ch, keyf, certf, opts.debug_rpc)
