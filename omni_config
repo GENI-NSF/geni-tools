@@ -1,0 +1,17 @@
+[omni]
+default_cf = my_gcf
+
+[my_gcf]
+type=gcf
+
+# Authority part of the control frameworks URN
+authority=geni:gpo:gcf
+
+# Where the gcf-ch server is listening
+ch=https://localhost:8000
+
+cert=~/.gcf/mbrinn-cert.pem
+key=~/.gcf/mbrinn-key.pem
+
+
+
