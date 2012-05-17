@@ -33,6 +33,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 import ssl
 import base64
 import textwrap
+import os
 
 class SecureXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
     """A request handler that grabs the socket peer's certificate and
@@ -78,6 +79,11 @@ class SecureXMLRPCServer(SimpleXMLRPCServer):
                  ca_certs=None):
         SimpleXMLRPCServer.__init__(self, addr, requestHandler, logRequests,
                                     allow_none, encoding, False)
+        if certfile and not os.path.exists(certfile):
+            raise Exception("certfile %s doesn't exist" % certfile)
+
+        if keyfile and not os.path.exists(keyfile):
+            raise Exception("keyfile %s doesn't exist" % keyfile)
         self.socket = ssl.wrap_socket(self.socket,
                                       keyfile=keyfile,
                                       certfile=certfile,

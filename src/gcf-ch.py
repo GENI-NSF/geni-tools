@@ -71,8 +71,17 @@ class CommandHandler(object):
         ch = geni.Clearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
+
+        certfile = getAbsPath(opts.certfile)
+        keyfile = getAbsPath(opts.keyfile)
+        if not os.path.exists(certfile):
+            sys.exit("Clearinghouse certfile %s doesn't exist" % certfile)
+    
+        if not os.path.exists(keyfile):
+            sys.exit("Clearinghouse keyfile %s doesn't exist" % keyfile)
+
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
-        ch.runserver(addr, getAbsPath(opts.keyfile), getAbsPath(opts.certfile), 
+        ch.runserver(addr, keyfile, certfile, 
                      getAbsPath(opts.rootcadir), config['global']['base_name'],
                      opts.user_cred_duration, opts.slice_duration, config)
 

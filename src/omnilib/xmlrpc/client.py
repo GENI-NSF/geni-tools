@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 
 import xmlrpclib
+import os
 
 class SafeTransportWithCert(xmlrpclib.SafeTransport):
 
@@ -55,6 +56,12 @@ def make_client(url, keyfile, certfile, verbose=False, timeout=None,
     """
     cert_transport = None
     if keyfile and certfile:
+        if not os.path.exists(certfile):
+            raise Exception("certfile %s doesn't exist" % certfile)
+
+        if not os.path.exists(keyfile):
+            raise Exception("keyfile %s doesn't exist" % keyfile)
+
         cert_transport = SafeTransportWithCert(keyfile=keyfile,
                                                certfile=certfile,
                                                timeout=timeout)
