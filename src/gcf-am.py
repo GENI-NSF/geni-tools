@@ -66,7 +66,7 @@ def parse_args(argv):
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
     parser.add_option("-V", "--api-version", type=int,
-                      help="AM API Version", default=1)
+                      help="AM API Version", default=2)
     return parser.parse_args()
 
 def getAbsPath(path):

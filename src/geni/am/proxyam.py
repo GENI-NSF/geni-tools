@@ -14,7 +14,7 @@ from geni.am.am2 import AggregateManager
 from geni.am.am2 import AggregateManagerServer
 from geni.am.am2 import ReferenceAggregateManager
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
-from geni.pgch import invokeCH;
+from geni.ch_interface import *
 from omnilib.xmlrpc.client import make_client
 from resource import Resource
 from aggregate import Aggregate
@@ -100,21 +100,21 @@ class ProxyAggregateManager(ReferenceAggregateManager):
         client = self.make_proxy_client();
         # Why do I need to add this?
         options['geni_rspec_version'] = dict(type='geni', version='3');
-        print("OPTS = " + str(options));
-        print("CREDS = " + str(credentials));
+#        print("OPTS = " + str(options));
+#        print("CREDS = " + str(credentials));
         client_ret = client.ListResources(credentials, options);
-        print("ListResources.CLIENT_RET = " + str(client_ret));
+#        print("ListResources.CLIENT_RET = " + str(client_ret));
         # Why do I need to do this?
         client_ret = client_ret['value'];
         self.close_proxy_client(client);
         return client_ret;
 
     def CreateSliver(self, slice_urn, credentials, rspec, users, options):
-        print("URN = " + str(slice_urn));
-        print("OPTS = " + str(options));
-        print("CREDS = " + str(credentials));
-        print("RSPEC = " + str(rspec));
-        print("USERS = " + str(users));
+#        print("URN = " + str(slice_urn));
+#        print("OPTS = " + str(options));
+#        print("CREDS = " + str(credentials));
+#        print("RSPEC = " + str(rspec));
+#        print("USERS = " + str(users));
         client = self.make_proxy_client();
         client_ret = client.CreateSliver(slice_urn, credentials, rspec, users, options);
 #       print("CLIENT_RET = " + str(client_ret));
@@ -122,22 +122,28 @@ class ProxyAggregateManager(ReferenceAggregateManager):
         return client_ret;
             
     def DeleteSliver(self, slice_urn, credentials, options):
-        return dict(code=dict(geni_code=-1, am_type="gcf2", am_code=-1), 
-                    value="NOT_IMPLEMENTED", output="");
+        client = self.make_proxy_client();
+        client_ret = client.DeleteSliver(slice_urn, credentials, options);
+        self.close_proxy_client(client);
+        return client_ret;
 
     def SliverStatus(self, slice_urn, credentials, options):
-        return dict(code=dict(geni_code=-1, am_type="gcf2", am_code=-1), 
-                    value="NOT_IMPLEMENTED", output="");
+        client = self.make_proxy_client();
+        client_ret = client.SliverStatus(slice_urn, credentials, options);
+        self.close_proxy_client(client);
+        return client_ret;
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
-        return dict(code=dict(geni_code=-1, am_type="gcf2", am_code=-1), 
-                    value="NOT_IMPLEMENTED", output="");
+        client = self.make_proxy_client();
+        client_ret = client.RenewSliver(slice_urn, credentials, expiration_time, options);
+        self.close_proxy_client(client);
+        return client_ret;
 
     def Shutdown(self, slice_urn, credentials, options):
-        return dict(code=dict(geni_code=-1, am_type="gcf2", am_code=-1), 
-                    value="NOT_IMPLEMENTED", output="");
-
-
+        client = self.make_proxy_client();
+        client_ret = client.Shutdown(slice_urn, credentials, options);
+        self.close_proxy_client(client);
+        return client_ret;
 
 class ProxyAggregateManagerServer(AggregateManagerServer):
     "A server that provides the AM API to tools, but passes requests"
