@@ -43,6 +43,7 @@ import os
 import geni
 import geni.am
 import geni.am.am2
+import geni.am.proxyam
 from geni.config import read_config
 
 
@@ -98,25 +99,20 @@ def main(argv=None):
 
     config = read_config(optspath)   
         
-    for (key,val) in config['aggregate_manager'].items():                  
+    for (key,val) in config['proxy aggregate_manager'].items():                  
         if hasattr(opts,key) and getattr(opts,key) is None:
             setattr(opts,key,val)
         if not hasattr(opts,key):
-            setattr(opts,key,val)            
+            setattr(opts,key,val)
     if getattr(opts,'rootcadir') is None:
         setattr(opts,'rootcadir',config['global']['rootcadir'])        
+
+#    print("CONFIG = " + str(config))
+#    print("OPTS = " + str(opts))
 
     if opts.rootcadir is None:
         sys.exit('Missing path to trusted root certificate directory (-r argument)')
     
-    certfile = getAbsPath(opts.certfile)
-    keyfile = getAbsPath(opts.keyfile)
-    if not os.path.exists(certfile):
-        sys.exit("Aggregate certfile %s doesn't exist" % certfile)
-    
-    if not os.path.exists(keyfile):
-        sys.exit("Aggregate keyfile %s doesn't exist" % keyfile)
-
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
@@ -124,23 +120,19 @@ def main(argv=None):
     # certs possibly concatenated together
     comboCertsFile = geni.CredentialVerifier.getCAsFileFromDir(getAbsPath(opts.rootcadir))
 
-    if opts.api_version == 1:
-        ams = geni.AggregateManagerServer((opts.host, int(opts.port)),
-                                          delegate=delegate,
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
-    elif opts.api_version == 2:
-        ams = geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          trust_roots_dir=getAbsPath(opts.rootcadir),
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
+    am_host = getattr(opts,'am_host');
+    am_port = getattr(opts,'am_port');
+    am_url = "http://" + am_host + ":" + am_port + "/";
+    pams = geni.am.proxyam.ProxyAggregateManagerServer((opts.host, int(opts.port)),
+                                                       am_url,
+                                             keyfile=getAbsPath(opts.keyfile),
+                                             certfile=getAbsPath(opts.certfile),
+                                             trust_roots_dir=getAbsPath(opts.rootcadir),
+                                             ca_certs=comboCertsFile,
+                                             base_name=config['global']['base_name'])
 
     logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
-    ams.serve_forever()
+    pams.serve_forever()
 
 if __name__ == "__main__":
     sys.exit(main())

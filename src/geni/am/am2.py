@@ -564,6 +564,7 @@ class AggregateManager(object):
 
     def __init__(self, delegate):
         self._delegate = delegate
+        self.logger = logging.getLogger('gcf.am2')
 
     def _exception_result(self, exception):
         output = str(exception)

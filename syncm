@@ -1,0 +1,1 @@
+/usr/bin/rsync --exclude .git -aztv ../gcf marilac.gpolab.bbn.com:
