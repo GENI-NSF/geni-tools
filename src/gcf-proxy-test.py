@@ -118,21 +118,26 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
 #    print("REQUEST_RSPEC = " + str(request_rspec));
     users = [{'key':''}]
     options = dict();
-    manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
+    result = server.CreateSliver(slice_urn, slice_credential,
                                          request_rspec, users, options)
-#    print "MANIFEST_RSPEC = " + str(manifest_rspec);
-    print 'passed'
+#    print "MANIFEST_RSPEC = " + str(result);
+    error_code = result['code']['geni_code']
+    if (error_code != 0):
+        print "CreateSliver failed " + str(result);
+    else:
+        print 'passed'
 
 def test_delete_sliver(server, slice_urn, slice_credential):
     print 'Testing DeleteSliver...',
     options = dict()
     try:
         result = server.DeleteSliver(slice_urn, slice_credential, options)
-        print("DS.result = " + str(result))
-        if result is True:
-            print 'passed'
+#        print("DS.result = " + str(result))
+        error_code = result['code']['geni_code'];
+        if error_code != 0:
+            print 'Delete Sliver failed';
         else:
-            print 'failed'
+            print 'passed'
     except xmlrpclib.Error, v:
         print 'ERROR', v
 
@@ -168,10 +173,11 @@ def test_sliver_status(server, slice_urn, credentials):
         
     # Note expiration_time is in UTC
 def test_renew_sliver(server, slice_urn, credentials, expiration_time):
-    print 'Testing RenewSliver...'
+    print 'Testing RenewSliver...',
     options = dict();
     result = server.RenewSliver(slice_urn, credentials, expiration_time, options)
-    if (result['code'] != 0):
+#    print "RenewSliver.RESULT = " + str(result);
+    if (result['code']['geni_code'] != 0):
         print "Renew Sliver failed " + str(result);
 
     result = result['value'];
@@ -186,7 +192,7 @@ def test_shutdown(server, slice_urn, credentials):
     print 'Testing Shutdown...',
     options = dict()
     result = server.Shutdown(slice_urn, credentials, options)
-    if (result['code'] != 0):
+    if (result['code']['geni_code'] != 0):
         print "Shutdown failed " + str(result);
         return;
 
@@ -246,6 +252,7 @@ def exercise_am(ch_server, am_server, certfile):
 
     # Create a slice at the clearinghouse
     slice_name = "Slice-" + str(uuid.uuid4());
+    slice_name = 'SliceA';
     slice_result = ch_server.CreateSlice(slice_name, project_id, user_uuid)
     if (slice_result['code'] != 0):
         print "Failed to create slice " + str(slice_result);

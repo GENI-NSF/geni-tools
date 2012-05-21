@@ -93,6 +93,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
     def GetVersion(self, options):
         client = self.make_proxy_client();
         client_ret = client.GetVersion();
+        print("GetVersion.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
 
@@ -103,7 +104,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
 #        print("OPTS = " + str(options));
 #        print("CREDS = " + str(credentials));
         client_ret = client.ListResources(credentials, options);
-#        print("ListResources.CLIENT_RET = " + str(client_ret));
+        print("ListResources.CLIENT_RET = " + str(client_ret));
         # Why do I need to do this?
         client_ret = client_ret['value'];
         self.close_proxy_client(client);
@@ -117,7 +118,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
 #        print("USERS = " + str(users));
         client = self.make_proxy_client();
         client_ret = client.CreateSliver(slice_urn, credentials, rspec, users, options);
-#       print("CLIENT_RET = " + str(client_ret));
+        print("CreateSliver.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
             
