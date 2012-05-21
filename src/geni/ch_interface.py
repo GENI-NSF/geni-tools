@@ -6,6 +6,46 @@
 
 import json
 import urllib2
+import tempfile
+import os
+
+# Helper function to get the insert cert/key for a given connection
+# Based on the SSL cert on the given connection
+def get_inside_cert_and_key(peercert, ma_url, logger):
+
+#   print(str(peercert))
+    san = peercert.get('subjectAltName');
+    uri = None
+    uuid = None
+    for e in san:
+        key = e[0];
+        value = e[1];
+        if(key == 'URI' and "IDN+" in value):
+            uri = value;
+        if(key == 'URI' and 'uuid' in value):
+            uuid_parts = value.split(':');
+            uuid = uuid_parts[2];
+#           print "URI = " + str(uri) +  " UUID = " + str(uuid)
+            args = dict(member_id = uuid)
+            row = invokeCH(ma_url, 'lookup_keys_and_certs', logger, args)
+        
+#    logger.info("ROW = " + str(row))
+    result = dict();
+    if(row['code'] == 0):
+        row_raw = row['value'];
+        private_key = row_raw['private_key']
+        certificate = row_raw['certificate']
+        (key_fid, key_fname) = tempfile.mkstemp()
+        os.write(key_fid, private_key);
+        os.close(key_fid);
+        (cert_fid, cert_fname) = tempfile.mkstemp();
+        os.write(cert_fid, certificate);
+        os.close(cert_fid);
+        result = {'key': key_fname, 'cert':cert_fname};
+        
+    return result;
+            
+
 
 # Force the unicode strings python creates to be ascii
 def _decode_list(data):

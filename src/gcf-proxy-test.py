@@ -47,6 +47,7 @@ import uuid
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
+import time
 from geni.config import read_config
 from omnilib.xmlrpc.client import make_client
 import sfa.trust.credential as cred
@@ -116,7 +117,8 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
 '  <node client_id="foo"/>' + \
 '</rspec>'
 #    print("REQUEST_RSPEC = " + str(request_rspec));
-    users = [{'key':''}]
+#    users = [{'key':''}]
+    users = [];
     options = dict();
     result = server.CreateSliver(slice_urn, slice_credential,
                                          request_rspec, users, options)
@@ -142,13 +144,34 @@ def test_delete_sliver(server, slice_urn, slice_credential):
         print 'ERROR', v
 
 def test_sliver_status(server, slice_urn, credentials):
+    should_retry = True;
+    num_retries = 0;
+    while (should_retry):
+        result  = test_sliver_status_internal(server, slice_urn, credentials);
+        should_retry = result['retry'];
+        success = result['success'];
+        if(should_retry == False):
+            break;
+        print "Busy ...", 
+        time.sleep(10);
+        num_retries = num_retries + 1;
+        if (num_retries > 10):
+            break;
+    return success;
+
+def test_sliver_status_internal(server, slice_urn, credentials):
     print 'Testing SliverStatus...',
     options = dict()
     result = server.SliverStatus(slice_urn, credentials, options)
-#    print "SS.RESULT = " + str(result)
+    print "SS.RESULT = " + str(result)
     error_code = result['code']['geni_code']
+    error_message = result['output'];
     if (error_code != 0):
-        print "Sliver Status failed " + str(result);
+        if ("resource is busy" in error_message):
+            return {'retry':True, 'success':False};
+        else:
+            print "Sliver Status failed " + str(result);
+            return {'retry':False, 'success':False};
     
     result = result['value']
 #    import pprint
@@ -156,7 +179,9 @@ def test_sliver_status(server, slice_urn, credentials):
     sliver_keys = frozenset(('geni_urn', 'geni_status', 'geni_resources'))
     resource_keys = frozenset(('geni_urn', 'geni_status', 'geni_error'))
     errors = list()
-    missing = sliver_keys - set(result.keys())
+    missing = sliver_keys;
+    if (type(result).__name__ == "dict"):
+        missing = sliver_keys - set(result.keys())
     if missing:
         errors.append('missing keys %r' % (missing))
     if 'geni_resources' in result:
@@ -164,12 +189,16 @@ def test_sliver_status(server, slice_urn, credentials):
             missing = resource_keys - set(resource.keys())
             if missing:
                 errors.append('missing resource keys %r' % (missing))
+    success=True;
     if errors:
         print 'failed'
         for x in errors:
             print '\t', x
+        success=False;
     else:
         print 'passed'
+
+    return {'retry': False, 'success': success }
         
     # Note expiration_time is in UTC
 def test_renew_sliver(server, slice_urn, credentials, expiration_time):
@@ -252,7 +281,7 @@ def exercise_am(ch_server, am_server, certfile):
 
     # Create a slice at the clearinghouse
     slice_name = "Slice-" + str(uuid.uuid4());
-    slice_name = 'SliceA';
+    slice_name = slice_name[:15]; # Can't have slice names too big
     slice_result = ch_server.CreateSlice(slice_name, project_id, user_uuid)
     if (slice_result['code'] != 0):
         print "Failed to create slice " + str(slice_result);
@@ -291,6 +320,7 @@ def exercise_am(ch_server, am_server, certfile):
 
     # Now create a slice and shut it down instead of deleting it.
     slice_name = "Slice-" + str(uuid.uuid4());
+    slice_name = slice_name[:15]; # Can't have slice names too big
     slice_result = ch_server.CreateSlice(slice_name, project_id, user_uuid)
     if(slice_result['code'] != 0):
         print "Failed to create slice " + str(slice_result);

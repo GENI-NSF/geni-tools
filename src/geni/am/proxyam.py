@@ -53,34 +53,10 @@ class ProxyAggregateManager(ReferenceAggregateManager):
     # Helper function to create a proxy client that talks 
     # to real AM using inside keys
     def make_proxy_client(self):
-        pc = self._server.peercert;
-#        print(str(pc))
-        san = pc.get('subjectAltName');
-        uri = None
-        uuid = None
-        for e in san:
-            key = e[0];
-            value = e[1];
-            if(key == 'URI' and "IDN+" in value):
-                uri = value;
-            if(key == 'URI' and 'uuid' in value):
-                uuid_parts = value.split(':');
-                uuid = uuid_parts[2];
-#        print "URI = " + str(uri) +  " UUID = " + str(uuid)
-        args = dict(member_id = uuid)
-        row = invokeCH(self.ma_url, 'lookup_keys_and_certs', self.logger, args)
-        
-        if(row['code'] == 0):
-            row_raw = row['value'];
-            private_key = row_raw['private_key']
-            certificate = row_raw['certificate']
-            (key_fid, key_fname) = tempfile.mkstemp()
-            os.write(key_fid, private_key);
-            os.close(key_fid);
-            (cert_fid, cert_fname) = tempfile.mkstemp();
-            os.write(cert_fid, certificate);
-            os.close(cert_fid);
-            
+        key_certs = get_inside_cert_and_key(self._server.peercert, \
+                                                self.ma_url, self.logger);
+        key_fname = key_certs['key'];
+        cert_fname = key_certs['cert'];
         client = make_client(self.am_url, key_fname, cert_fname)
         client.key_fname = key_fname;
         client.cert_fname = cert_fname;
@@ -93,7 +69,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
     def GetVersion(self, options):
         client = self.make_proxy_client();
         client_ret = client.GetVersion();
-        print("GetVersion.CLIENT_RET = " + str(client_ret));
+#        print("GetVersion.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
 
@@ -104,7 +80,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
 #        print("OPTS = " + str(options));
 #        print("CREDS = " + str(credentials));
         client_ret = client.ListResources(credentials, options);
-        print("ListResources.CLIENT_RET = " + str(client_ret));
+#        print("ListResources.CLIENT_RET = " + str(client_ret));
         # Why do I need to do this?
         client_ret = client_ret['value'];
         self.close_proxy_client(client);
@@ -118,7 +94,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
 #        print("USERS = " + str(users));
         client = self.make_proxy_client();
         client_ret = client.CreateSliver(slice_urn, credentials, rspec, users, options);
-        print("CreateSliver.CLIENT_RET = " + str(client_ret));
+#        print("CreateSliver.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
             
