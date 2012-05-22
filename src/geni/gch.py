@@ -182,6 +182,7 @@ class GENIClearinghouse(object):
         return None
     
     def CreateUserCredential(self, user_gid):
+        print "GID = " + str(user_gid)
         self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
         return ""
 

@@ -60,7 +60,7 @@ name=am1
 api_version=2
 
 # Address that the AM listens on
-host=127.0.0.1
+host=0.0.0.0
 port=8001
 # Cert/key locations
 keyfile=~/.gcf/am-key.pem
@@ -72,14 +72,16 @@ name=am_px1
 api_version=2
 
 # Address that the proxy AM listens on
-host=127.0.0.1
+host=0.0.0.0
 port=8002
 # Cert/key locations
-keyfile=~/.gcf/am_px1-key.pem
-certfile=~/.gcf/am_px1-cert.pem
+#keyfile=~/.gcf/am_px1-key.pem
+#certfile=~/.gcf/am_px1-cert.pem
+keyfile=/usr/share/geni-ch/sr/certs/pgeni3-proxy-key.pem
+certfile=/usr/share/geni-ch/sr/certs/pgeni3-proxy-cert.pem
 
 # Address of the true AM to which the proxy AM talks
-am_host=127.0.0.1
+am_host=0.0.0.0
 am_port=8001
 
 am_url=https://www.pgeni3.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0

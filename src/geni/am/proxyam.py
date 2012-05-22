@@ -69,7 +69,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
     def GetVersion(self, options):
         client = self.make_proxy_client();
         client_ret = client.GetVersion();
-#        print("GetVersion.CLIENT_RET = " + str(client_ret));
+        print("GetVersion.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
 
@@ -77,12 +77,12 @@ class ProxyAggregateManager(ReferenceAggregateManager):
         client = self.make_proxy_client();
         # Why do I need to add this?
         options['geni_rspec_version'] = dict(type='geni', version='3');
-#        print("OPTS = " + str(options));
-#        print("CREDS = " + str(credentials));
+        print("OPTS = " + str(options));
+        print("CREDS = " + str(credentials));
         client_ret = client.ListResources(credentials, options);
-#        print("ListResources.CLIENT_RET = " + str(client_ret));
+        print("ListResources.CLIENT_RET = " + str(client_ret));
         # Why do I need to do this?
-        client_ret = client_ret['value'];
+#        client_ret = client_ret['value'];
         self.close_proxy_client(client);
         return client_ret;
 
