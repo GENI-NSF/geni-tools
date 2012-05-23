@@ -39,7 +39,7 @@ import dateutil.parser
 from ch import SampleClearinghouseServer
 from SecureXMLRPCServer import SecureXMLRPCServer
 import geni.util.cred_util as cred_util
-from geni.ch_interface import *
+from geni.util.ch_interface import *
 
 # Clearinghouse interface that communicates with the 
 # new clearinghouse controllers (SA, PA, MA, CS, AUTHZ, LOG, etc.)
