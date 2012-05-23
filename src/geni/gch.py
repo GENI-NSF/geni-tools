@@ -182,9 +182,14 @@ class GENIClearinghouse(object):
         return None
     
     def CreateUserCredential(self, user_gid):
-        print "GID = " + str(user_gid)
-        self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
-        return ""
+#        print "GID = " + str(user_gid)
+        argsdict=dict(experimenter_certificate=user_gid);
+        result = invokeCH(self.sa_url, 'get_user_credential', 
+                          self.logger, argsdict, self.certfile, self.keyfile);
+        if(result['code'] == 0):
+            result = result['value']['user_credential'];
+#        print "RES = " + str(result)
+        return result;
 
     def establish_ch_interface(self):
         self.sr_url = "https://" + socket.gethostname() + "/sr/sr_controller.php";
