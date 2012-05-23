@@ -2,13 +2,13 @@
 default_cf = my_gcf
 
 [my_gcf]
-type=gcf
+type=gch
 
 # Authority part of the control frameworks URN
 authority=geni:gpo:gcf
 
 # Where the gcf-ch server is listening
-ch=https://localhost:8000
+ch=https://localhost:8003
 
 cert=~/.gcf/mbrinn-cert.pem
 key=~/.gcf/mbrinn-key.pem

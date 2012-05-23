@@ -118,8 +118,20 @@ class GENIClearinghouse(object):
                         project_id=project_id, 
                         project_name=project_name, 
                         owner_id=owner_id)
+
+        key_and_cert_files = get_inside_cert_and_key(self._server.peercert, \
+                                                         self.ma_url, \
+                                                         self.logger);
+        inside_keyfile = key_and_cert_files['key'];
+        inside_certfile = key_and_cert_files['cert'];
+#        print("KF = " + inside_keyfile + " CF = " + inside_certfile);
+
+#        print("SA_URL = " + self.sa_url);
         result = invokeCH(self.sa_url, 'create_slice', self.logger, 
-                          argsdict, self.certfile, self.keyfile)
+                          argsdict, inside_certfile, inside_certfile);
+#        print("RES = " + str(result));
+        os.unlink(inside_certfile);
+        os.unlink(inside_keyfile);
         
         # Don't understand why, but this returns a 'None' output so I need 
         # to fill it in with a ''
@@ -127,12 +139,33 @@ class GENIClearinghouse(object):
 #        print("CreateSlice RET = " + str(result));
         return result;
 
-    def GetSliceCredential(self, slice_id, cert):
-        self.logger.info("Called GetSliceCredential (%s)", slice_id)
+    def GetSliceCredential(self, slice_id, cert, slice_urn=None):
+        self.logger.info("Called GetSliceCredential (ID=%s URN=%s)", \
+                             slice_id, slice_urn)
+        key_and_cert_files = get_inside_cert_and_key(self._server.peercert, \
+                                                         self.ma_url, \
+                                                         self.logger);
+        inside_keyfile = key_and_cert_files['key'];
+        inside_certfile = key_and_cert_files['cert'];
+#        print("KF = " + inside_keyfile + " CF = " + inside_certfile);
+
+        if (slice_urn != None):
+            argsdict = dict(slice_urn=slice_urn);
+            row = invokeCH(self.sa_url, 'lookup_slice_by_urn', 
+                            self.logger, argsdict, 
+                            inside_certfile, inside_keyfile);
+#            print("Row = " + str(row));
+            if (row['code'] != 0):
+                return False;
+            slice_id = row['value']['slice_id']
+#            print "SLICE_ID = " + str(slice_id);
+
         argsdict = dict(slice_id=slice_id, experimenter_certificate=cert)
         result = invokeCH(self.sa_url, 'get_slice_credential',
-                          self.logger, argsdict, self.certfile, self.keyfile);
+                          self.logger, argsdict, inside_certfile, inside_keyfile);
 #        print("SC return = " + str(result))
+        os.unlink(inside_certfile);
+        os.unlink(inside_keyfile);
         return result
 
     
@@ -149,8 +182,14 @@ class GENIClearinghouse(object):
         return None
     
     def CreateUserCredential(self, user_gid):
-        self.logger.info("Called CreateUserCredential for GID %s" % user_gid.get_hrn())
-        return ""
+#        print "GID = " + str(user_gid)
+        argsdict=dict(experimenter_certificate=user_gid);
+        result = invokeCH(self.sa_url, 'get_user_credential', 
+                          self.logger, argsdict, self.certfile, self.keyfile);
+        if(result['code'] == 0):
+            result = result['value']['user_credential'];
+#        print "RES = " + str(result)
+        return result;
 
     def establish_ch_interface(self):
         self.sr_url = "https://" + socket.gethostname() + "/sr/sr_controller.php";
@@ -189,8 +228,8 @@ class SampleGENIClearinghouseServer(object):
     def CreateSlice(self, slice_name, project_id, owner_id):
         return self._delegate.CreateSlice(slice_name, project_id, owner_id);
     
-    def GetSliceCredential(self, slice_id, cert):
-        return self._delegate.GetSliceCredential(slice_id, cert);
+    def GetSliceCredential(self, slice_id, cert, slice_urn=None):
+        return self._delegate.GetSliceCredential(slice_id, cert, slice_urn);
 
     def RenewSlice(self, urn, expire_str):
         try:

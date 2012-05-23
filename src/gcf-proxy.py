@@ -123,6 +123,11 @@ def main(argv=None):
     am_host = getattr(opts,'am_host');
     am_port = getattr(opts,'am_port');
     am_url = "http://" + am_host + ":" + am_port + "/";
+    if (hasattr(opts, 'am_url')):
+        am_url = getattr(opts, 'am_url');
+
+    logger = logging.getLogger('gcf-am');
+    logger.info('Talking to AM ' + am_url);
     pams = geni.am.proxyam.ProxyAggregateManagerServer((opts.host, int(opts.port)),
                                                        am_url,
                                              keyfile=getAbsPath(opts.keyfile),
@@ -131,7 +136,7 @@ def main(argv=None):
                                              ca_certs=comboCertsFile,
                                              base_name=config['global']['base_name'])
 
-    logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
+    logger.info('GENI AM Listening on port %s...' % (opts.port))
     pams.serve_forever()
 
 if __name__ == "__main__":
