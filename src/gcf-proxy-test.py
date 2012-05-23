@@ -23,8 +23,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Simple test client for testing the GENI GCF Clearinghouse and 
-AggregateManager.
+Simple test client for testing the GENI proxy AM that talks to the GENI Clearinghouse 
+(gch) and then to an aggregate manager (eg gcf-am)
 
 Run with "-h" flag to see usage and command line options.
 """

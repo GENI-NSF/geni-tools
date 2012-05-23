@@ -20,6 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
+# Framework for talking to the GENI Clearinghouse
+
+# TODO
+# CreateSlice
+# Check slice_name_to_urn
+# handle return codes != 0
+# Clean up debug printouts
+
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
@@ -32,10 +41,10 @@ class Framework(Framework_Base):
         Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
-            sys.exit('GCF Framework certfile %s doesnt exist' % config['cert'])
+            sys.exit('GCH Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
         if not os.path.exists(config['key']):
-            sys.exit('GCF Framework keyfile %s doesnt exist' % config['key'])
+            sys.exit('GCH Framework keyfile %s doesnt exist' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
         self.config = config
@@ -49,7 +58,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
-            (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
+            (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCH CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
 
         return self.user_cred, message
     
@@ -58,7 +67,7 @@ class Framework(Framework_Base):
 #        print "SLICE URN = " + str(slice_urn)
         (cred, message) = \
             _do_ssl(self, None, \
-                        ("GetSliceCredential slice %s on GCF CH %s" % (slice_urn, self.config['ch'])), 
+                        ("GetSliceCredential slice %s on GCH CH %s" % (slice_urn, self.config['ch'])), 
                     self.ch.GetSliceCredential, '', self.cert_string, slice_urn);
 
         if (cred['code'] == 0):
@@ -74,13 +83,13 @@ class Framework(Framework_Base):
         return self.get_slice_cred(urn)
     
     def delete_slice(self, urn):
-        (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
+        (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCH CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
         # FIXME: use any message?
         _ = message #Appease eclipse
         return bool
      
     def list_aggregates(self):
-        (sites, message) = _do_ssl(self, None, ("List Aggregates at GCF CH %s" % self.config['ch']), self.ch.ListAggregates)
+        (sites, message) = _do_ssl(self, None, ("List Aggregates at GCH CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
             # FIXME: use any message?
             _ = message #Appease eclipse
@@ -121,7 +130,7 @@ class Framework(Framework_Base):
         """See framework_base for doc.
         """
         expiration = expiration_dt.isoformat()
-        (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCF CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
+        (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCH CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
         if bool:
             return expiration_dt
         else:

@@ -1,3 +1,29 @@
+#----------------------------------------------------------------------
+# Copyright (c) 2011 Raytheon BBN Technologies
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+#
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+# IN THE WORK.
+#----------------------------------------------------------------------
+
+# An AM that proxies for another AM
+# It retrieves a cert/key from the GENI Clearinghouse to use to identify itself
+
 import base64
 import datetime
 import dateutil.parser
@@ -20,6 +46,11 @@ from resource import Resource
 from aggregate import Aggregate
 import tempfile
 from fakevm import FakeVM
+
+# TODO
+# - Remove hardcoded sr_url
+# - GetVersion should return something to indicate there is a proxy
+# - Factor out getting the cert/key so this is a more general proxy?
 
 SR_URL = "https://marilac.gpolab.bbn.com/sr/sr_controller.php"
 
