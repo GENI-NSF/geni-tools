@@ -1,5 +1,7 @@
+#!/usr/bin/python
+
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2011 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -20,8 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+import dateutil
 
-all = ['rspec_sfa',
-       'rspec_gcf',
-       'rspec_pg',
-       'rspec_of']
+def naiveUTC(dt):
+    """Converts dt to a naive datetime in UTC.
+
+    if 'dt' has a timezone then
+        convert to UTC
+        strip off timezone (make it "naive" in Python parlance)
+    """
+    if dt.tzinfo:
+        tz_utc = dateutil.tz.tzutc()
+        dt = dt.astimezone(tz_utc)
+        dt = dt.replace(tzinfo=None)
+    return dt
+
