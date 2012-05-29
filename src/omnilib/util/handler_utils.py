@@ -21,8 +21,14 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import datetime
+import logging
+import os
 import string
+
 from dossl import _do_ssl
+import credparsing as credutils
+from dates import naiveUTC
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -122,7 +128,7 @@ def _print_slice_expiration(handler, urn, sliceCred=None):
         # failed to get a slice string. Can't check
         return ""
 
-    sliceexp = credutils.get_cred_exp(logger, sliceCred)
+    sliceexp = credutils.get_cred_exp(handler.logger, sliceCred)
     sliceexp = naiveUTC(sliceexp)
     now = datetime.datetime.utcnow()
     if sliceexp <= now:
