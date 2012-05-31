@@ -46,89 +46,10 @@ import omnilib.util.credparsing as credutils
 import omnilib.util.handler_utils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
     _print_slice_expiration
+from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 
 from geni.util import rspec_util 
-
-# Force the unicode strings python creates to be ascii
-def _decode_list(data):
-    rv = []
-    for item in data:
-        if isinstance(item, unicode):
-            item = item.encode('utf-8')
-        elif isinstance(item, list):
-            item = _decode_list(item)
-        elif isinstance(item, dict):
-            item = _decode_dict(item)
-        rv.append(item)
-    return rv
-
-# Force the unicode strings python creates to be ascii
-def _decode_dict(data):
-    rv = {}
-    for key, value in data.iteritems():
-        if isinstance(key, unicode):
-           key = key.encode('utf-8')
-        if isinstance(value, unicode):
-           value = value.encode('utf-8')
-        elif isinstance(value, list):
-           value = _decode_list(value)
-        elif isinstance(value, dict):
-           value = _decode_dict(value)
-        rv[key] = value
-    return rv
-
-class DateTimeAwareJSONEncoder(json.JSONEncoder):
-    """
-    Converts a python object, where datetime and timedelta objects are converted
-    into objects that can be decoded using the DateTimeAwareJSONDecoder.
-    """
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return {
-                '__type__' : 'datetime',
-                'year' : obj.year,
-                'month' : obj.month,
-                'day' : obj.day,
-                'hour' : obj.hour,
-                'minute' : obj.minute,
-                'second' : obj.second,
-                'microsecond' : obj.microsecond,
-            }
-
-        elif isinstance(obj, datetime.timedelta):
-            return {
-                '__type__' : 'timedelta',
-                'days' : obj.days,
-                'seconds' : obj.seconds,
-                'microseconds' : obj.microseconds,
-            }   
-
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-class DateTimeAwareJSONDecoder(json.JSONDecoder):
-    """
-    Converts a json string, where datetime and timedelta objects were converted
-    into objects using the DateTimeAwareJSONEncoder, back into a python object.
-    """
-
-    def __init__(self, **kw):
-            json.JSONDecoder.__init__(self, object_hook=self.dict_to_object, **kw)
-
-    def dict_to_object(self, d):
-        if '__type__' not in d:
-            return _decode_dict(d)
-
-        type = d.pop('__type__')
-        if type == 'datetime':
-            return datetime.datetime(**d)
-        elif type == 'timedelta':
-            return datetime.timedelta(**d)
-        else:
-            # Oops... better put this back together.
-            d['__type__'] = type
-            return d
 
 # FIXMEFIXME: Use this lots places
 def _append_geni_error_output(retStruct, message):
