@@ -191,7 +191,7 @@ class AMCallHandler(object):
             self._cache_getversion(client, thisVersion, message)
         else:
             thisVersion = cachedVersion['version']
-            message = "From Cache at %s" % cachedVersion['timestamp']
+            message = "From Cached result from %s" % cachedVersion['timestamp']
         return (thisVersion, message)
 
     def _do_getversion_output(self, thisVersion, client, message):
@@ -199,6 +199,8 @@ class AMCallHandler(object):
         pp = pprint.PrettyPrinter(indent=4)
         prettyVersion = pp.pformat(thisVersion)
         header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
+        if message:
+            header += " (" + message + ")"
         filename = None
         if self.opts.output:
             # Create HEADER
@@ -304,6 +306,9 @@ class AMCallHandler(object):
         if topVer > 1 and topVer != innerVer:
             # error
             self.logger.warning("AM %s corrupt getversion top %d != inner %d", client.url, topVer, innerVer)
+        # This will indicate it came from the cache
+        if message:
+            self.logger.info("Got client version: %s", message)
         return topVer
 
     # Basic check that you got a code/value/output struct, producing a message with a proper error message
@@ -397,7 +402,11 @@ class AMCallHandler(object):
         if versionSpot is None:
             return (None, message)
         elif not versionSpot.has_key(key):
-            message = "AM %s getversion has no key %s" % (client.url, key)
+            message2 = "AM %s getversion has no key %s" % (client.url, key)
+            if message:
+                message = message2 + "; " + message
+            else:
+                message = message2
             return (None, message)
         else:
             return (versionSpot[key], message)
@@ -470,87 +479,20 @@ class AMCallHandler(object):
 
         if len(clients)==0:
             retVal += "No aggregates to query. %s\n\n" % message
-        elif len(clients)>1:
-            # FIXME: If I have a message from getclients, want it here?
-            retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
         else:
-            if successCnt == 1:
-                retVal += "\nGot version for %s\n" % clients[0].url
-            else:
-                retVal += "\nFailed to get version for %s\n" % clients[0].url
-        return (retVal, version)
-
-    def getversion_orig(self, args):
-        """AM API GetVersion
-
-        Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
-        nickname in omni_config, if provided, ELSE
-        - List of URLs given in omni_config aggregates option, if provided, ELSE
-        - List of URNs and URLs provided by the selected clearinghouse
-
-        -o Save result (JSON format) in per-Aggregate files
-        -p (used with -o) Prefix for resulting version information files
-        If not saving results to a file, they are logged.
-        If --tostdout option, then instead of logging, print to STDOUT.
-
-        """
-        retVal = ""
-        version = {}
-        (clients, message) = self._getclients()
-        successCnt = 0
-
-        for client in clients:
-            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
-            # If return is a dict
-            if isinstance(thisVersion, dict) and thisVersion.has_key('code'):
-                # AM API v2
-                if thisVersion['code']['geni_code'] == 0:
-                    version[ client.url ] = thisVersion['value']
+            if len(clients)>1:
+                # FIXME: If I have a message from getclients, want it here?
+                if "From Cache" in message:
+                    retVal += "\nGot version for %d out of %d aggregates using GetVersion cache\n" % (successCnt,len(clients))
                 else:
-                    message2 = thisVersion['output']
-                    version[ client.url ] = None
+                    retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
             else:
-                version[ client.url ] = thisVersion
-
-            if thisVersion is None:
-                retVal = retVal + "Cannot GetVersion at %s: %s\n" % (client.url, message)
-                self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
-            elif version[ client.url ] is None:
-                retVal = retVal + "Cannot GetVersion at %s: %s\n" % (client.url, message2)
-                self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message2) )                
-            else:
-                # FIXME only print 'peers' on verbose
-                pp = pprint.PrettyPrinter(indent=4)
-                prettyVersion = pp.pformat(thisVersion)
-                successCnt += 1
-                header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
-                filename = None
-                if self.opts.output:
-                    # Create HEADER
-                    # But JSON cant have any
-                    #header = None
-                    # Create filename
-                    server = self._filename_part_from_am_url(client.url)
-                    filename = "getversion-"+server+".xml"
-                    if self.opts.prefix and self.opts.prefix.strip() != "":
-                        filename  = self.opts.prefix.strip() + "-" + filename
-                    self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
-                # Create File
-                # This logs or prints, depending on whether filename
-                # is None
-                self._printResults( header, prettyVersion, filename)
-
-                # FIXME: include filename in summary: always? only if 1 aggregate?
-                if filename:
-                    retVal += "Saved getversion at AM %s (%s) to file '%s'.\n" % (client.urn, client.url, filename)
-
-        if len(clients)==0:
-            retVal += "No aggregates to query. %s\n\n" % message
-        else:
-            # FIXME: If I have a message from getclients, want it here?
-            # FIXME: If it is 1 just return the getversion?
-            retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
+                if successCnt == 1:
+                    retVal += "\nGot version for %s\n" % clients[0].url
+                else:
+                    retVal += "\nFailed to get version for %s\n" % clients[0].url
+                if "From Cache" in message:
+                    retVal += message + "\n"
         return (retVal, version)
 
     def _get_advertised_rspecs(self, client):
