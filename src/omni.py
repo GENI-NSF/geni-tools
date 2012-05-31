@@ -550,7 +550,7 @@ def getParser():
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
     # Note that type and version are case in-sensitive strings.
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", 3], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
-                      help="Ad RSpec type and version to return, e.g. 'GENI 3'")
+                      help="Ad RSpec type and version to return, default 'GENI 3'")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
@@ -566,7 +566,7 @@ def getParser():
     parser.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
     parser.add_option("-V", "--api-version", type="int", default=2,
-                      help="Specify version of AM API to use (1, 2, etc.)")
+                      help="Specify version of AM API to use (default 2)")
     parser.add_option("--no-compress", dest='geni_compressed', 
                       default=True, action="store_false",
                       help="Do not compress returned values")
@@ -579,12 +579,15 @@ def getParser():
     parser.add_option("--NoGetVersionCache", dest='noGetVersionCache',
                       default=False, action="store_true",
                       help="Disable using cached GetVersion results (forces refresh of cache)")
+    parser.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
+                      default=False, action="store_true",
+                      help="Require using the GetVersion cache if possible (default false)")
     parser.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
                       default=7,
-                      help="Age in days of GetVersion cache info before refreshing")
+                      help="Age in days of GetVersion cache info before refreshing (default is 7)")
     parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
-                      help="File where GetVersion info will be cached")
+                      help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
     return parser
 
 def parse_args(argv, options=None):
@@ -623,6 +626,9 @@ def parse_args(argv, options=None):
     options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.GetVersionCacheAge)
 
     options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
+
+    if options.noGetVersionCache and options.useGetVersionCache:
+        parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
 
     return options, args
 

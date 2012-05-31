@@ -462,6 +462,9 @@ class AMCallHandler(object):
         (clients, message) = self._getclients()
         successCnt = 0
 
+        if not self.opts.useGetVersionCache:
+            self.opts.noGetVersionCache = True
+
         for client in clients:
             # Pulls from cache or caches latest, error checks return
             #FIXME: This makes the getversion output be only the value
