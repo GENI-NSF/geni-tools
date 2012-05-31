@@ -63,6 +63,7 @@
 
 import ConfigParser
 from copy import deepcopy
+import datetime
 import logging.config
 import optparse
 import os
@@ -548,7 +549,7 @@ def getParser():
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
     # Note that type and version are case in-sensitive strings.
-    parser.add_option("-t", "--rspectype", nargs=2, default=None, metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
+    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", 3], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, e.g. 'GENI 3'")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
@@ -564,7 +565,7 @@ def getParser():
                       help="Python logging output file [use %(logfilename)s in logging config file]")
     parser.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
-    parser.add_option("-V", "--api-version", type="int", default=1,
+    parser.add_option("-V", "--api-version", type="int", default=2,
                       help="Specify version of AM API to use (1, 2, etc.)")
     parser.add_option("--no-compress", dest='geni_compressed', 
                       default=True, action="store_false",
@@ -575,6 +576,15 @@ def getParser():
     parser.add_option("--arbitrary-option", dest='arbitrary_option',
                       default=False, action="store_true",
                       help="Add an arbitrary option to ListResources (for testing purposes)")
+    parser.add_option("--NoGetVersionCache", dest='noGetVersionCache',
+                      default=False, action="store_true",
+                      help="Disable using cached GetVersion results (forces refresh of cache)")
+    parser.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
+                      default=7,
+                      help="Age in days of GetVersion cache info before refreshing")
+    parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
+                      default="~/.gcf/get_version_cache.json",
+                      help="File where GetVersion info will be cached")
     return parser
 
 def parse_args(argv, options=None):
@@ -608,6 +618,11 @@ def parse_args(argv, options=None):
     if options.api_version not in supported_versions:
         parser.error('API version "%s" is not a supported version. Valid versions are: %r.'
                      % (options.api_version, supported_versions))
+
+    # From GetVersionCacheAge (int days) produce options.GetVersionCacheOldestDate as a datetime.datetime
+    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.GetVersionCacheAge)
+
+    options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
 
     return options, args
 
