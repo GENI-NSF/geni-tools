@@ -31,6 +31,7 @@ Handle calls to AM API functions
 from copy import copy
 import datetime
 import dateutil.parser
+import json
 import os
 import pprint
 import string
@@ -49,6 +50,100 @@ import omnilib.xmlrpc.client
 
 from geni.util import rspec_util 
 
+# Force the unicode strings python creates to be ascii
+def _decode_list(data):
+    rv = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _decode_list(item)
+        elif isinstance(item, dict):
+            item = _decode_dict(item)
+        rv.append(item)
+    return rv
+
+# Force the unicode strings python creates to be ascii
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+           key = key.encode('utf-8')
+        if isinstance(value, unicode):
+           value = value.encode('utf-8')
+        elif isinstance(value, list):
+           value = _decode_list(value)
+        elif isinstance(value, dict):
+           value = _decode_dict(value)
+        rv[key] = value
+    return rv
+
+class DateTimeAwareJSONEncoder(json.JSONEncoder):
+    """
+    Converts a python object, where datetime and timedelta objects are converted
+    into objects that can be decoded using the DateTimeAwareJSONDecoder.
+    """
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return {
+                '__type__' : 'datetime',
+                'year' : obj.year,
+                'month' : obj.month,
+                'day' : obj.day,
+                'hour' : obj.hour,
+                'minute' : obj.minute,
+                'second' : obj.second,
+                'microsecond' : obj.microsecond,
+            }
+
+        elif isinstance(obj, datetime.timedelta):
+            return {
+                '__type__' : 'timedelta',
+                'days' : obj.days,
+                'seconds' : obj.seconds,
+                'microseconds' : obj.microseconds,
+            }   
+
+        else:
+            return json.JSONEncoder.default(self, obj)
+
+class DateTimeAwareJSONDecoder(json.JSONDecoder):
+    """
+    Converts a json string, where datetime and timedelta objects were converted
+    into objects using the DateTimeAwareJSONEncoder, back into a python object.
+    """
+
+    def __init__(self, **kw):
+            json.JSONDecoder.__init__(self, object_hook=self.dict_to_object, **kw)
+
+    def dict_to_object(self, d):
+        if '__type__' not in d:
+            return _decode_dict(d)
+
+        type = d.pop('__type__')
+        if type == 'datetime':
+            return datetime.datetime(**d)
+        elif type == 'timedelta':
+            return datetime.timedelta(**d)
+        else:
+            # Oops... better put this back together.
+            d['__type__'] = type
+            return d
+
+# FIXMEFIXME: Use this lots places
+def _append_geni_error_output(retStruct, message):
+    # If return is a dict
+    if isinstance(retStruct, dict) and retStruct.has_key('code'):
+        if retStruct['code']['geni_code'] != 0:
+            message2 = "Error: " . str(retStruct['code'])
+            if retStruct.has_key('output'):
+                message2 += ": %s" % retStruct['output']
+            if message is not None:
+                message += " (%s)" % message
+            else:
+                message = message2
+    return message
+
 class AMCallHandler(object):
     def __init__(self, framework, config, opts):
         self.framework = framework
@@ -56,6 +151,7 @@ class AMCallHandler(object):
         self.omni_config = config['omni']
         self.config = config
         self.opts = opts
+        self.GetVersionCache = None
         if self.opts.abac:
             aconf = self.config['selected_framework']
             if 'abac' in aconf and 'abac_log' in aconf:
@@ -83,7 +179,305 @@ class AMCallHandler(object):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
+    def _do_getversion(self, client):
+        cachedVersion = self._get_cached_getversion(client)
+        if self.opts.noGetVersionCache or cachedVersion is None or (self.opts.GetVersionCacheOldestDate and cachedVersion['timestamp'] < self.opts.GetVersionCacheOldestDate):
+            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+
+            # This next line is experimter-only maybe?
+            message = _append_geni_error_output(thisVersion, message)
+
+            # Cache result, even on error (when we note the error message)
+            self._cache_getversion(client, thisVersion, message)
+        else:
+            thisVersion = cachedVersion['version']
+            message = "From Cache at %s" % cachedVersion['timestamp']
+        return (thisVersion, message)
+
+    def _do_getversion_output(self, thisVersion, client, message):
+        # FIXME only print 'peers' on verbose
+        pp = pprint.PrettyPrinter(indent=4)
+        prettyVersion = pp.pformat(thisVersion)
+        header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
+        filename = None
+        if self.opts.output:
+            # Create HEADER
+            # But JSON cant have any
+                    #header = None
+            # Create filename
+            server = self._filename_part_from_am_url(client.url)
+            filename = "getversion-"+server+".xml"
+            if self.opts.prefix and self.opts.prefix.strip() != "":
+                filename  = self.opts.prefix.strip() + "-" + filename
+            self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
+        # Create File
+        # This logs or prints, depending on whether filename
+        # is None
+        self._printResults( header, prettyVersion, filename)
+
+        # FIXME: include filename in summary: always? only if 1 aggregate?
+        if filename:
+            return "Saved getversion at AM %s (%s) to file '%s'.\n" % (client.urn, client.url, filename)
+        else:
+            return ""
+
+    def _save_getversion_cache(self):
+        #client url->
+        #      timestamp (a datetime.datetime)
+        #      version struct, including code/value/etc as appropriate
+        #      urn
+        #      url
+        #      lasterror
+        if not os.path.exists(os.path.dirname(self.opts.getversionCacheName)):
+            os.makedirs(os.path.dirname(self.opts.getversionCacheName))
+        with open(self.opts.getversionCacheName, 'w') as file:
+            json.dump(self.GetVersionCache, file, cls=DateTimeAwareJSONEncoder)
+
+    def _load_getversion_cache(self):
+        self.GetVersionCache = {}
+        #client url->
+        #      timestamp (a datetime.datetime)
+        #      version struct, including code/value/etc as appropriate
+        #      urn
+        #      url
+        #      lasterror
+        if not os.path.exists(self.opts.getversionCacheName) or os.path.getsize(self.opts.getversionCacheName) < 1:
+            return
+        with open(self.opts.getversionCacheName, 'r') as f:
+#            self.GetVersionCache = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder, object_hook=_decode_dict)
+            self.GetVersionCache = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+#            self.GetVersionCache = json.load(f)
+
+    def _cache_getversion(self, client, thisVersion, error=None):
+        # url, urn, timestamp, apiversion, rspecversions (type version, type version, ..), credtypes (type version, ..), single_alloc, allocate, last error and message
+        res = {}
+        if error:
+            # On error, pretend this is old, to force refetch
+            res['timestamp'] = datetime.datetime.min
+        else:
+            res['timestamp'] = datetime.datetime.utcnow()
+        res['version'] = thisVersion
+        res['urn'] = client.urn
+        res['url'] = client.url
+        res['error'] = error
+        if self.GetVersionCache is None:
+            # Read the file as serialized JSON
+            self._load_getversion_cache()
+        if error and self.GetVersionCache.has_key(client.url):
+            # On error, leave existing data alone - just record the last error
+            self.GetVersionCache[client.url]['lasterror'] = error
+        else:
+            self.GetVersionCache[client.url] = res
+
+        # Write the file as serialized JSON
+        self._save_getversion_cache()
+        return
+
+    def _get_cached_getversion(self, client):
+        if self.GetVersionCache is None:
+            self._load_getversion_cache()
+        if self.GetVersionCache is None:
+            return None
+        self.logger.debug("Checking cache for %s", client.url)
+        if isinstance(self.GetVersionCache, dict) and self.GetVersionCache.has_key(client.url):
+            # FIXME: Could check that the cached URN is same as the client urn?
+            return self.GetVersionCache[client.url]
+
+    def _get_client_version(self, client):
+        (thisVersion, message) = self._do_getversion(client)
+        if thisVersion is None:
+            # error
+            self.logger.warning("AM %s failed getversion (empty): %s", client.url, message)
+            return None
+        elif not isinstance(thisVersion, dict):
+            # error
+            self.logger.warning("AM %s failed getversion (returned %s): %s", client.url, thisVersion, message)
+            return None
+        elif not thisVersion.has_key('geni_api'):
+            # error
+            self.logger.warning("AM %s failed getversion (malformed return %s): %s", client.url, thisVersion, message)
+            return None
+        topVer = thisVersion['geni_api']
+        innerVer = None
+        if thisVersion.has_key['value'] and thisVersion['value'].has_key('geni_api'):
+            innerVer = thiVersion['value']['geni_api']
+        if topVer > 1 and topVer != innerVer:
+            # error
+            self.logger.warning("AM %s corrupt getversion top %d != inner %d", client.url, topVer, innerVer)
+        return topVer
+
+    # Basic check that you got a code/value/output struct, producing a message with a proper error message
+    # FIXME: Use this frequently in experimenter mode
+    def _check_valid_return_struct(self, client, thisVersion, message, call):
+        if thisVersion is None:
+            # error
+            message = "AM %s failed %s (empty): %s" % (client.url, call, message)
+            return (None, message)
+        elif not isinstance(thisVersion, dict):
+            # error
+            message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
+            return (None, message)
+        elif not thisVersion.has_key('value'):
+            message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
+            return (None, message)
+        elif not thisVersion.has_key('code'):
+            message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
+            return (None, message)
+        elif not thisVersion['code'].has_key('geni_code'):
+            message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
+            # error
+            return (None, message)
+        elif thisVersion['code']['geni_code'] != 0:
+            # error
+            # This next line is experimenter-only maybe?
+            message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
+            return (None, message)
+#        elif not isinstance(thisVersion['value'], dict):
+#            message = "AM %s failed %s (non dict value %s): %s" % (client.url, call, thisVersion['value'], message)
+#            return (None, message)
+        else:
+            return (thisVersion, message)
+
+    # FIXME: Is this too much checking/etc for developers?
+    def _do_and_check_getversion(self, client):
+        message = None
+        (thisVersion, message) = self._do_getversion(client)
+        if thisVersion is None:
+            # error
+            message = "AM %s failed getversion (empty): %s" % (client.url, message)
+            return (None, message)
+        elif not isinstance(thisVersion, dict):
+            # error
+            message = "AM %s failed getversion (returned %s): %s" % (client.url, thisVersion, message)
+            return (None, message)
+        elif not thisVersion.has_key('geni_api'):
+            # error
+            message = "AM %s failed getversion (no geni_api at top: %s): %s" % (client.url, thisVersion, message)
+            return (None, message)
+        elif thisVersion['geni_api'] == 1:
+            # No more checking to do - return it as is
+            return (thisVersion, message)
+        elif not thisVersion.has_key('value'):
+            message = "AM %s failed getversion (no value: %s): %s" % (client.url, thisVersion, message)
+            return (None, message)
+        elif not thisVersion.has_key('code'):
+            message = "AM %s failed getversion (no code: %s): %s" % (client.url, thisVersion, message)
+            return (None, message)
+        elif not thisVersion['code'].has_key('geni_code'):
+            message = "AM %s failed getversion (no geni_code: %s): %s" % (client.url, thisVersion, message)
+            # error
+            return (None, message)
+        elif thisVersion['code']['geni_code'] != 0:
+            # error
+            # This next line is experimenter-only maybe?
+            message = "AM %s failed getversion: %s" % (client.url, _append_geni_error_output(thisVersion, message))
+            return (None, message)
+        elif not isinstance(thisVersion['value'], dict):
+            message = "AM %s failed getversion (non dict value %s): %s" % (client.url, thisVersion['value'], message)
+            return (None, message)
+        # OK, we have a good result
+        return (thisVersion, message)
+
+    def _get_getversion_value(self, client):
+        message = None
+        (thisVersion, message) = self._do_and_check_getversion(client)
+        if thisVersion is None:
+            # error
+            return (thisVersion, message)
+        elif thisVersion['geni_api'] == 1:
+            versionSpot = thisVersion
+        else:
+            versionSpot = thisVersion['value']
+        return (versionSpot, message)
+
+    def _get_getversion_key(self, client, key):
+        if key is None or key.strip() == '':
+            return (None, "no key specified")
+        (versionSpot, message) = self._get_getversion_value(client)
+        if versionSpot is None:
+            return (None, message)
+        elif not versionSpot.has_key(key):
+            message = "AM %s getversion has no key %s" % (client.url, key)
+            return (None, message)
+        else:
+            return (versionSpot[key], message)
+
+    def _get_request_rspecs(self, client):
+        (ads, message) = self._get_getversion_key(client, 'request_rspec_versions')
+        if ads is None:
+            if message and "has no key" in message:
+                (ads, message) = self._get_getversion_key(client, 'geni_request_rspec_versions')
+
+        if ads is None:
+            self.logger.warning("Couldnt get Request supported RSpec versions from GetVersion: %s" % message)
+
+        return (ads, message)
+
+    def _get_cred_versions(self, client):
+        (res, message) = self._get_getversion_key(client, 'geni_credential_types')
+        if res is None:
+            self.logger.warning("Couldnt get credential types supported from GetVersion: %s" % message)
+        return (res, message)
+
+    def _get_singlealloc_Style(Self, client):
+        (res, message) = self._get_getversion_key(client, 'geni_single_allocation')
+        if res is None:
+            self.logger.debug("Couldnt get single_allocation mode supported from GetVersion; will use default of False: %s" % message)
+            res = False
+        return (res, message)
+
+    def _get_alloc_style(self, client):
+        (res, message) = self._get_getversion_key(client, 'geni_allocate')
+        if res is None:
+            self.logger.debug("Couldnt get allocate style supported from GetVersion; will use default of 'geni_single': %s" % message)
+            res = 'geni_single'
+        return (res, message)
+
     def getversion(self, args):
+        """AM API GetVersion
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result (JSON format) in per-Aggregate files
+        -p (used with -o) Prefix for resulting version information files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        """
+        retVal = ""
+        version = {}
+        (clients, message) = self._getclients()
+        successCnt = 0
+
+        for client in clients:
+            # Pulls from cache or caches latest, error checks return
+            #FIXME: This makes the getversion output be only the value
+            # But for developers, I want the whole thing I think
+            (thisVersion, message) = self._get_getversion_value(client)
+
+            version[ client.url ] = thisVersion
+
+            if version[client.url] is None:
+                self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
+                retVal += "Cannot GetVersion at %s: %s\n" % (client.url, message)
+            else:
+                successCnt += 1
+                retVal += self._do_getversion_output(thisVersion, client, message)
+
+        if len(clients)==0:
+            retVal += "No aggregates to query. %s\n\n" % message
+        elif len(clients)>1:
+            # FIXME: If I have a message from getclients, want it here?
+            retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
+        else:
+            retVal += "\nGot version for %s\n" % clients[0].url
+        return (retVal, version)
+
+    def getversion_orig(self, args):
         """AM API GetVersion
 
         Aggregates queried:
@@ -157,30 +551,15 @@ class AMCallHandler(object):
         return (retVal, version)
 
     def _get_advertised_rspecs(self, client):
-        (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
-        ad_key = 'ad_rspec_versions'
-        if self.opts.api_version == 2:
-            if thisVersion is None:
-                self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
-                return (None, 'AM %s did not respond to GetVersion: %s' % (client.url, message))
-            elif not thisVersion.has_key('code'):
-                # you ask for v2, but you got v1 so continue processing as v1
-                pass
-                # Or we could break out now
-                # return (None, "AM %s does not have '%s' argument" % (client.url, ad_key))
-            elif thisVersion['code']['geni_code'] == 0:
-                thisVersion = thisVersion['value']
-                ad_key = 'geni_ad_rspec_versions'
-            else:
-                return (None, 'Error code %s from AM %s: %s' % (client.url, thisVersion['output']))
-        if thisVersion is None:
-            self.logger.warning("Couldnt do GetVersion so won't do ListResources at %s [%s]", client.urn, client.url)
-            return (None, 'AM %s did not respond to GetVersion: %s' % (client.url, message))
-        if not thisVersion.has_key(ad_key):
-            self.logger.warning("AM GetVersion has no ad_rspec_versions key for AM %s [%s]", client.urn, client.url)
-            return (None, 'AM %s did not advertise RSpec versions' % (client.url))
-        # Looks ok, return the 'ad_rspec_versions' value.
-        return (thisVersion[ad_key], "")
+        (ads, message) = self._get_getversion_key(client, 'ad_rspec_versions')
+        if ads is None:
+            if message and "has no key" in message:
+                (ads, message) = self._get_getversion_key(client, 'geni_ad_rspec_versions')
+
+        if ads is None:
+            self.logger.warning("Couldnt get Advertised supported RSpec versions from GetVersion so can't do ListResources: %s" % message)
+
+        return (ads, message)
 
     def _listresources(self, args):
         """Queries resources on various aggregates.
@@ -213,6 +592,7 @@ class AMCallHandler(object):
             options['arbitrary_option'] = self.opts.arbitrary_option
 
         # An optional slice name might be specified.
+        # FIXME: This should be done by caller so this method takes slicename that may be null
         slicename = None
         if len(args) > 0:
             slicename = args[0].strip()
@@ -303,9 +683,9 @@ class AMCallHandler(object):
                     options['rspec_version'] = dict(type=rtype, version=rver)
                 else:
                     options['geni_rspec_version'] = dict(type=rtype, version=rver)
-            elif self.opts.api_version == 2:
+            elif self.opts.api_version >= 2:
                 # User did not specify an rspec type but did request version 2.
-                # Make an attempt to do the right thing, othewise bail and tell the user.
+                # Make an attempt to do the right thing, otherwise bail and tell the user.
                 (ad_rspec_version, message) = self._get_advertised_rspecs(client)
                 if ad_rspec_version is None:
                     if mymessage != "":
@@ -739,7 +1119,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds, rspec, slice_users]
-            if self.opts.api_version == 2:
+            if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
             (result, message) = _do_ssl(self.framework,
@@ -907,7 +1287,7 @@ class AMCallHandler(object):
                 time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
             args = [urn, creds, time_string]
-            if self.opts.api_version == 2:
+            if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
             (res, message) = _do_ssl(self.framework,
@@ -1015,7 +1395,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds]
-            if self.opts.api_version == 2:
+            if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
             (status, message) = _do_ssl(self.framework,
@@ -1132,7 +1512,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds]
-            if self.opts.api_version == 2:
+            if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
             (res, message) = _do_ssl(self.framework,
@@ -1227,7 +1607,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds]
-            if self.opts.api_version == 2:
+            if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
             (res, message) = _do_ssl(self.framework,
