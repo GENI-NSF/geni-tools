@@ -474,7 +474,10 @@ class AMCallHandler(object):
             # FIXME: If I have a message from getclients, want it here?
             retVal += "\nGot version for %d out of %d aggregates\n" % (successCnt,len(clients))
         else:
-            retVal += "\nGot version for %s\n" % clients[0].url
+            if successCnt == 1:
+                retVal += "\nGot version for %s\n" % clients[0].url
+            else:
+                retVal += "\nFailed to get version for %s\n" % clients[0].url
         return (retVal, version)
 
     def getversion_orig(self, args):
