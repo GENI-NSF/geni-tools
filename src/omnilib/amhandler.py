@@ -51,8 +51,39 @@ import omnilib.xmlrpc.client
 
 from geni.util import rspec_util 
 
+# FIXME: Use this frequently in experimenter mode, for all API calls
+def _check_valid_return_struct(client, thisVersion, message, call):
+    '''Basic check that any API method returned code/value/output struct, 
+    producing a message with a proper error message'''
+    if thisVersion is None:
+        # error
+        message = "AM %s failed %s (empty): %s" % (client.url, call, message)
+        return (None, message)
+    elif not isinstance(thisVersion, dict):
+        # error
+        message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion.has_key('value'):
+        message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion.has_key('code'):
+        message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion['code'].has_key('geni_code'):
+        message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
+        # error
+        return (None, message)
+    elif thisVersion['code']['geni_code'] != 0:
+        # error
+        # This next line is experimenter-only maybe?
+        message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
+        return (None, message)
+    else:
+        return (thisVersion, message)
+
 # FIXMEFIXME: Use this lots places
 def _append_geni_error_output(retStruct, message):
+    '''Add to given error message the code and output if code != 0'''
     # If return is a dict
     if isinstance(retStruct, dict) and retStruct.has_key('code'):
         if retStruct['code']['geni_code'] != 0:
@@ -72,7 +103,7 @@ class AMCallHandler(object):
         self.omni_config = config['omni']
         self.config = config
         self.opts = opts
-        self.GetVersionCache = None
+        self.GetVersionCache = None # The cache of GetVersion info in memory
         if self.opts.abac:
             aconf = self.config['selected_framework']
             if 'abac' in aconf and 'abac_log' in aconf:
@@ -100,9 +131,20 @@ class AMCallHandler(object):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
+# FIXME: This method manipulates the message. Need to separate Dev/Exp
+# Also, it marks whether it used the cache through the message. Is there a better way?
     def _do_getversion(self, client):
+        '''Pull GetVersion for this client from cache; otherwise actually call GetVersion if this
+        client wasn't in the cache, the options say not to use the cache, or the cache is too old.
+
+        If we actually called GetVersion:
+        Construct full error message including string version of code/output slots.
+        Then cache the result.
+        If we got the result from the cache, set the message to say so.
+        '''
         cachedVersion = self._get_cached_getversion(client)
         if self.opts.noGetVersionCache or cachedVersion is None or (self.opts.GetVersionCacheOldestDate and cachedVersion['timestamp'] < self.opts.GetVersionCacheOldestDate):
+            self.logger.debug("Actually calling GetVersion")
             (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
 
             # This next line is experimter-only maybe?
@@ -111,12 +153,16 @@ class AMCallHandler(object):
             # Cache result, even on error (when we note the error message)
             self._cache_getversion(client, thisVersion, message)
         else:
+            self.logger.debug("Pulling GetVersion from cache")
             thisVersion = cachedVersion['version']
             message = "From Cached result from %s" % cachedVersion['timestamp']
         return (thisVersion, message)
 
     def _do_getversion_output(self, thisVersion, client, message):
-        # FIXME only print 'peers' on verbose
+        '''Write GetVersion output to file or log depending on options.
+        Return a retVal string to print that we saved it to a file, if that's what we did.
+        '''
+        # FIXME only print 'peers' on verbose? (Or is peers gone now?)
         pp = pprint.PrettyPrinter(indent=4)
         prettyVersion = pp.pformat(thisVersion)
         header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
@@ -145,6 +191,7 @@ class AMCallHandler(object):
             return ""
 
     def _save_getversion_cache(self):
+        '''Write GetVersionCache object to file as JSON (creating it and directories if needed)'''
         #client url->
         #      timestamp (a datetime.datetime)
         #      version struct, including code/value/etc as appropriate
@@ -153,10 +200,15 @@ class AMCallHandler(object):
         #      lasterror
         if not os.path.exists(os.path.dirname(self.opts.getversionCacheName)):
             os.makedirs(os.path.dirname(self.opts.getversionCacheName))
-        with open(self.opts.getversionCacheName, 'w') as file:
-            json.dump(self.GetVersionCache, file, cls=DateTimeAwareJSONEncoder)
+        try:
+            with open(self.opts.getversionCacheName, 'w') as f:
+                json.dump(self.GetVersionCache, f, cls=DateTimeAwareJSONEncoder)
+            self.logger.debug("Wrote GetVersionCache to %s", self.opts.getversionCacheName)
+        except Exception, e:
+            self.logger.error("Failed to write GetVersion cache: %s", e)
 
     def _load_getversion_cache(self):
+        '''Load GetVersion cache from JSON encoded file, if any'''
         self.GetVersionCache = {}
         #client url->
         #      timestamp (a datetime.datetime)
@@ -166,12 +218,20 @@ class AMCallHandler(object):
         #      lasterror
         if not os.path.exists(self.opts.getversionCacheName) or os.path.getsize(self.opts.getversionCacheName) < 1:
             return
-        with open(self.opts.getversionCacheName, 'r') as f:
-#            self.GetVersionCache = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder, object_hook=_decode_dict)
-            self.GetVersionCache = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
-#            self.GetVersionCache = json.load(f)
+        try:
+            with open(self.opts.getversionCacheName, 'r') as f:
+                self.GetVersionCache = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+            self.logger.debug("Read GetVersionCache from %s", self.opts.getversionCacheName)
+        except Exception, e:
+            self.logger.error("Failed to read GetVersion cache: %s", e)
 
+    # FIXME: This saves every time we add to the cache. Is that riht?
     def _cache_getversion(self, client, thisVersion, error=None):
+        '''Add to Cache the GetVersion output for this client.
+        If this was an error, don't over-write any existing good result, but record the error message
+
+        This methods both loads and saves the cache from file
+        '''
         # url, urn, timestamp, apiversion, rspecversions (type version, type version, ..), credtypes (type version, ..), single_alloc, allocate, last error and message
         res = {}
         if error:
@@ -189,14 +249,16 @@ class AMCallHandler(object):
         if error and self.GetVersionCache.has_key(client.url):
             # On error, leave existing data alone - just record the last error
             self.GetVersionCache[client.url]['lasterror'] = error
+            self.logger.debug("Added GetVersion error output to cache")
         else:
             self.GetVersionCache[client.url] = res
+            self.logger.debug("Added GetVersion success output to cache")
 
         # Write the file as serialized JSON
         self._save_getversion_cache()
-        return
 
     def _get_cached_getversion(self, client):
+        '''Get GetVersion from cache or this client, if any.'''
         if self.GetVersionCache is None:
             self._load_getversion_cache()
         if self.GetVersionCache is None:
@@ -206,7 +268,13 @@ class AMCallHandler(object):
             # FIXME: Could check that the cached URN is same as the client urn?
             return self.GetVersionCache[client.url]
 
+    # FIXME: This pulls only the value slot out - losing the code&output, the top-level geni_api,
+    # and any extra slots. Is that what we want?
+    # FIXME: Unused
     def _get_client_version(self, client):
+        '''Get the actual GetVersion value - not the full struct - for this client.
+        Get this from the cache or the AM, depending on the options.
+        For APIv1, the actual version is the full struct; else it is the value'''
         (thisVersion, message) = self._do_getversion(client)
         if thisVersion is None:
             # error
@@ -232,40 +300,13 @@ class AMCallHandler(object):
             self.logger.info("Got client version: %s", message)
         return topVer
 
-    # Basic check that you got a code/value/output struct, producing a message with a proper error message
-    # FIXME: Use this frequently in experimenter mode
-    def _check_valid_return_struct(self, client, thisVersion, message, call):
-        if thisVersion is None:
-            # error
-            message = "AM %s failed %s (empty): %s" % (client.url, call, message)
-            return (None, message)
-        elif not isinstance(thisVersion, dict):
-            # error
-            message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
-            return (None, message)
-        elif not thisVersion.has_key('value'):
-            message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
-            return (None, message)
-        elif not thisVersion.has_key('code'):
-            message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
-            return (None, message)
-        elif not thisVersion['code'].has_key('geni_code'):
-            message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
-            # error
-            return (None, message)
-        elif thisVersion['code']['geni_code'] != 0:
-            # error
-            # This next line is experimenter-only maybe?
-            message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
-            return (None, message)
-#        elif not isinstance(thisVersion['value'], dict):
-#            message = "AM %s failed %s (non dict value %s): %s" % (client.url, call, thisVersion['value'], message)
-#            return (None, message)
-        else:
-            return (thisVersion, message)
-
     # FIXME: Is this too much checking/etc for developers?
+    # See _check_valid_return_struct: lots of overlap, but this checks the top-level geni_api
+    # FIXME: The return from the cache doesn't really need to be rechecked, does it? Or will that not happen?
     def _do_and_check_getversion(self, client):
+        '''Do GetVersion (possibly from cache), then check return for errors,
+        constructing a good message. 
+        Basically, add return checks to _do_getversion'''
         message = None
         (thisVersion, message) = self._do_getversion(client)
         if thisVersion is None:
@@ -304,11 +345,14 @@ class AMCallHandler(object):
         # OK, we have a good result
         return (thisVersion, message)
 
+    # This is the real place that ends up calling GetVersion
     def _get_getversion_value(self, client):
+        '''Do GetVersion (possibly from cache), check error returns to produce a message,
+        pull out the value slot (dropping any code/output).'''
         message = None
         (thisVersion, message) = self._do_and_check_getversion(client)
         if thisVersion is None:
-            # error
+            # error - return what the error check had
             return (thisVersion, message)
         elif thisVersion['geni_api'] == 1:
             versionSpot = thisVersion
@@ -317,6 +361,7 @@ class AMCallHandler(object):
         return (versionSpot, message)
 
     def _get_getversion_key(self, client, key):
+        '''Pull the given key from the GetVersion value object'''
         if key is None or key.strip() == '':
             return (None, "no key specified")
         (versionSpot, message) = self._get_getversion_value(client)
@@ -333,6 +378,7 @@ class AMCallHandler(object):
             return (versionSpot[key], message)
 
     def _get_request_rspecs(self, client):
+        '''Get the supported request rspec versions for this client (from GetVersion)'''
         (ads, message) = self._get_getversion_key(client, 'request_rspec_versions')
         if ads is None:
             if message and "has no key" in message:
@@ -344,12 +390,14 @@ class AMCallHandler(object):
         return (ads, message)
 
     def _get_cred_versions(self, client):
+        '''Get the supported credential types for this client (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_credential_types')
         if res is None:
             self.logger.warning("Couldnt get credential types supported from GetVersion: %s" % message)
         return (res, message)
 
-    def _get_singlealloc_Style(Self, client):
+    def _get_singlealloc_style(self, client):
+        '''Get the supported single_allocation for this client (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_single_allocation')
         if res is None:
             self.logger.debug("Couldnt get single_allocation mode supported from GetVersion; will use default of False: %s" % message)
@@ -357,6 +405,7 @@ class AMCallHandler(object):
         return (res, message)
 
     def _get_alloc_style(self, client):
+        '''Get the supported geni_allocate allocation style for this client (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_allocate')
         if res is None:
             self.logger.debug("Couldnt get allocate style supported from GetVersion; will use default of 'geni_single': %s" % message)
@@ -383,6 +432,7 @@ class AMCallHandler(object):
         (clients, message) = self._getclients()
         successCnt = 0
 
+        # Ensure GetVersion skips the cache, unless commandline option forces the cache
         if not self.opts.useGetVersionCache:
             self.opts.noGetVersionCache = True
 
@@ -420,6 +470,7 @@ class AMCallHandler(object):
         return (retVal, version)
 
     def _get_advertised_rspecs(self, client):
+        '''Get the supported advertisement rspec versions for this client (from GetVersion)'''
         (ads, message) = self._get_getversion_key(client, 'ad_rspec_versions')
         if ads is None:
             if message and "has no key" in message:
@@ -429,6 +480,8 @@ class AMCallHandler(object):
             self.logger.warning("Couldnt get Advertised supported RSpec versions from GetVersion so can't do ListResources: %s" % message)
 
         return (ads, message)
+
+    # ------- End of GetVersion stuff
 
     def _listresources(self, args):
         """Queries resources on various aggregates.
