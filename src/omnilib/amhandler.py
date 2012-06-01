@@ -53,7 +53,7 @@ from geni.util import rspec_util
 
 # FIXME: Use this frequently in experimenter mode, for all API calls
 def _check_valid_return_struct(client, thisVersion, message, call):
-    '''Basic check that any API method returned code/value/output struct, 
+    '''Basic check that any API method returned code/value/output struct,
     producing a message with a proper error message'''
     if thisVersion is None:
         # error
