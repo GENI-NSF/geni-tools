@@ -822,11 +822,6 @@ class AMCallHandler(object):
         And check the sliver expiration time: you may want to call RenewSliver.
         """
 
-        retVal=''
-#--- Should dev mode allow wrong arg count?
-        if len(args) < 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('createsliver requires 2 args: slicename and an rspec filename')
-
         # check command line args
         if not self.opts.aggregate:
             # the user must supply an aggregate.
@@ -836,27 +831,20 @@ class AMCallHandler(object):
             # Maybe there's a gentler way.
             self._raise_omni_error(msg)
 
-        name = args[0]
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name.strip())
-        (slice_cred, message) = _get_slice_cred(self, urn)
-        if slice_cred is None:
-#--- Dev mode allow missing slice cred
-            self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
-
-#--- Dev vs Exp diffs here:
-        expd, slice_exp = self._has_slice_expired(slice_cred)
-        if expd:
-            self._raise_omni_error('Cannot create sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
-
-        retVal += _print_slice_expiration(self, urn, slice_cred)+"\n"
-#---
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
 
         # Load up the user's request rspec
-        specfile = args[1]
+        specfile = None
+        if not (self.opts.devmode and len(args) < 2):
+            specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
 #--- Dev mode should allow missing RSpec
-            self._raise_omni_error('File of resources to request missing: %s' % specfile)
+            msg = 'File of resources to request missing: %s' % specfile
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error()
 
         rspecs = None
         # read the rspec into a string, and add it to the rspecs dict
@@ -866,8 +854,13 @@ class AMCallHandler(object):
             rspecs[_derefAggNick(self, self.opts.aggregate)[0]] = rspec
         except Exception, exc:
 #--- Should dev mode allow this?
-            self._raise_omni_error('Unable to read rspec file %s: %s'
-                                   % (specfile, str(exc)))
+            msg = 'Unable to read rspec file %s: %s' % (specfile, str(exc))
+            if self.opts.devmode:
+                rspec = ""
+                rspecs[_derefAggNick(self, self.opts.aggregate)[0]] = rspec
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
 
         result = None
         # Copy the user config and read the keys from the files into the structure
@@ -882,7 +875,11 @@ class AMCallHandler(object):
             for req in required:
 #--- Dev vs Exp: allow this in dev mode:
                 if not req in user:
-                    self._raise_omni_error("%s in omni_config is not specified for user %s" % (req,user))
+                    msg = "%s in omni_config is not specified for user %s" % (req,user)
+                    if self.opts.devmode:
+                        self.logger.warn(msg)
+                    else:
+                        self._raise_omni_error()
 #---
 
             for key in user['keys'].split(','):        
@@ -1053,56 +1050,50 @@ class AMCallHandler(object):
         not allow you to _shorten_ your sliver expiration time.
         """
 
-#--- Dev mode allow passing too few args?
-        if len(args) < 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewsliver requires arg of slice name and new expiration time in UTC')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        (slice_cred, message) = _get_slice_cred(self, urn)
-        if slice_cred is None:
-#--- Dev mode allow passing no slice cred?
-            self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
-
-#--- Dev mode skip this:
-        expd, slice_exp = self._has_slice_expired(slice_cred)
-        if expd:
-            self._raise_omni_error('Cannot get renewsliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "RenewSliver", "and new expiration time in UTC")
 
 #--- Should dev mode allow passing time as is?
-        time = None
+        time = datetime.datetime.max
         try:
-            time = dateutil.parser.parse(args[1])
+            if not (self.opts.devmode and len(args) < 2):
+                time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            self._raise_omni_error('renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc))
+            msg = 'renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
 
         # Convert to naive UTC time if necessary for ease of comparison
-        time = naiveUTC(time)
-
-        retVal = ''
+        try:
+            time = naiveUTC(time)
+        except:
+            if self.opts.devmode:
+                pass
+            else:
+                raise
 
         # Compare requested time with slice expiration time
-        retVal += _print_slice_expiration(self, urn, slice_cred) +"\n"
         if time > slice_exp:
 #--- Dev mode allow this
-            self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slice_exp))
+            msg = 'Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error()
         elif time <= datetime.datetime.utcnow():
-            self.logger.info('Sliver %s will be set to expire now' % urn)
 #--- Dev mode allow earlier time
-            time = datetime.datetime.utcnow()
+            if not self.opts.devmode:
+                self.logger.info('Sliver %s will be set to expire now' % name)
+                time = datetime.datetime.utcnow()
         else:
             self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
 
-        self.logger.info('Renewing Sliver %s until %s (UTC)' % (urn, time_with_tz))
-
-        if self.opts.orca_slice_id:
-            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
-            urn = self.opts.orca_slice_id
+        self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
         successCnt = 0
         successList = []
@@ -1194,29 +1185,9 @@ class AMCallHandler(object):
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
         """
-#--- Dev mode allow this
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('sliverstatus requires arg of slice name')
 
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        (slice_cred, message) = _get_slice_cred(self, urn)
-        if slice_cred is None:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
-
-        expd, slice_exp = self._has_slice_expired(slice_cred)
-        if expd:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot get sliverstatus for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
-
-        retVal = _print_slice_expiration(self, urn, slice_cred) + "\n"
-
-        if self.opts.orca_slice_id:
-            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
-            urn = self.opts.orca_slice_id
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "SliverStatus")
 
         successCnt = 0
         retItem = {}
@@ -1308,32 +1279,9 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-#--- Dev mode allow this
-            self._raise_omni_error('deletesliver requires arg of slice name')
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "DeleteSliver")
 
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        (slice_cred, message) = _get_slice_cred(self, urn)
-        if slice_cred is None:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
-
-        # Here we would abort if the slice has expired
-        # But perhaps we should keep going so if there are resources
-        # at the aggregate, it can use this cue to free them?
-        expd, slice_exp = self._has_slice_expired(slice_cred)
-        if expd:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot delete sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
-
-        if self.opts.orca_slice_id:
-            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
-            urn = self.opts.orca_slice_id
-
-        retVal = ""
         successList = []
         failList = []
         successCnt = 0
@@ -1423,30 +1371,10 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
-        if len(args) == 0 or args[0] == None or args[0].strip() == "":
-#--- Dev mode allow this
-            self._raise_omni_error('shutdown requires arg of slice name')
-
-        name = args[0]
-
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        (slice_cred, message) = _get_slice_cred(self, urn)
-        if slice_cred is None:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
-
-        expd, slice_exp = self._has_slice_expired(slice_cred)
-        if expd:
-#--- Dev mode allow this
-            self._raise_omni_error('Cannot shutdown slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
-
-        if self.opts.orca_slice_id:
-            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
-            urn = self.opts.orca_slice_id
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "Shutdown")
 
         #Call shutdown on each AM
-        retVal = ""
         successCnt = 0
         successList = []
         failList = []
@@ -1507,6 +1435,66 @@ class AMCallHandler(object):
     # End of AM API operations
     #######
     # Helper functions follow
+
+    def _args_to_slicecred(self, args, num_args, methodname, otherargstring=""):
+#- pull slice name
+#- get urn
+#- get slice_cred
+#- check expiration
+#- get printout of expiration
+#- if orca_id reset urn
+#- return name, urn, slice_cred, retVal, slice_exp
+#users: SliverStatus, CreateSliver, Describe, renewSliver, DeleteSliver,
+
+        if num_args < 1:
+            return ("", "", "", "", datetime.datetime.max)
+
+#--- Dev mode allow this
+        if len(args) == 0 or len(args) < num_args or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
+            msg = '%s requires arg of slice name %s' % (methodname, otherargstring)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+                if len(args) == 0 or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
+                    return ("", "", "", "", datetime.datetime.max)
+            else:
+                self._raise_omni_error(msg)
+
+        name = args[0]
+
+        # FIXME: catch errors getting slice URN to give prettier error msg?
+        urn = self.framework.slice_name_to_urn(name)
+        (slice_cred, message) = _get_slice_cred(self, urn)
+        if slice_cred is None:
+#--- Dev mode allow this
+            msg = 'Cannot do %s for %s: Could not get slice credential: %s' % (methodname, urn, message)
+            if self.opts.devmode:
+                slice_cred = ""
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg, NoSliceCredError)
+
+        slice_exp = None
+        expd = True
+        if not self.opts.devmode or slice_cred != "":
+            expd, slice_exp = self._has_slice_expired(slice_cred)
+        if slice_exp is None:
+            slice_exp = datetime.datetime.min
+        if expd:
+#--- Dev mode allow this
+            msg = 'Cannot do %s for slice %s: Slice has expired at %s' % (methodname, urn, slice_exp.isoformat())
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        retVal = ""
+        if not self.opts.devmode or slice_cred != "":
+            retVal = _print_slice_expiration(self, urn, slice_cred) + "\n"
+
+        if self.opts.orca_slice_id:
+            self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
+            urn = self.opts.orca_slice_id
+        return name, urn, slice_cred, retVal, slice_exp
 
     def _raise_omni_error( self, msg, err=OmniError ):
         self.logger.error( msg )
