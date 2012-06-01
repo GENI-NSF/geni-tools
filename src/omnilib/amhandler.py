@@ -82,6 +82,7 @@ def _check_valid_return_struct(client, thisVersion, message, call):
         return (thisVersion, message)
 
 # FIXMEFIXME: Use this lots places
+# FIXME: How factor this for Dev/Exp?
 def _append_geni_error_output(retStruct, message):
     '''Add to given error message the code and output if code != 0'''
     # If return is a dict
@@ -115,10 +116,6 @@ class AMCallHandler(object):
                 self.abac_dir = None
                 self.abac_log = None
 
-    def _raise_omni_error( self, msg, err=OmniError ):
-        self.logger.error( msg )
-        raise err, msg
-
     def _handle(self, args):
         if len(args) == 0:
             self._raise_omni_error('Insufficient number of arguments - Missing command to run')
@@ -130,6 +127,109 @@ class AMCallHandler(object):
         if not hasattr(self,call):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
+
+# ----- Utility methods follow
+
+    def _raise_omni_error( self, msg, err=OmniError ):
+        self.logger.error( msg )
+        raise err, msg
+
+    def _printResults(self, header, content, filename=None):
+        """Print header string and content string to file of given
+        name. If filename is none, then log to info.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+        cstart = 0
+        # if content starts with <?xml ..... ?> then put the header after that bit
+        if content is not None and content.find("<?xml") > -1:
+            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
+        # used by listresources
+        if filename is None:
+            if header is not None:
+                if cstart > 0:
+                    if not self.opts.tostdout:
+                        self.logger.info(content[:cstart])
+                    else:
+                        print content[:cstart] + "\n"
+                if not self.opts.tostdout:
+                    self.logger.info(header)
+                else:
+                    # If cstart is 0 maybe still log the header so it
+                    # isn't written to STDOUT and non-machine-parsable
+                    if cstart == 0:
+                        self.logger.info(header)
+                    else:
+                        print header + "\n"
+            elif content is not None:
+                if not self.opts.tostdout:
+                    self.logger.info(content[:cstart])
+                else:
+                    print content[:cstart] + "\n"
+            if content is not None:
+                if not self.opts.tostdout:
+                    self.logger.info(content[cstart:])
+                else:
+                    print content[cstart:] + "\n"
+        else:
+            with open(filename,'w') as file:
+                self.logger.info( "Writing to '%s'"%(filename))
+                if header is not None:
+                    if cstart > 0:
+                        file.write (content[:cstart] + '\n')
+                    # this will fail for JSON output. 
+                    # only write header to file if have xml like
+                    # above, else do log thing per above
+                    if cstart > 0:
+                        file.write( header )
+                        file.write( "\n" )
+                    else:
+                        self.logger.info(header)
+                elif cstart > 0:
+                    file.write(content[:cstart] + '\n')
+                if content is not None:
+                    file.write( content[cstart:] )
+                    file.write( "\n" )
+
+    def _filename_part_from_am_url(self, url):
+        """Strip uninteresting parts from an AM URL 
+        to help construct part of a filename.
+        """
+        # see listresources and createsliver
+
+        if url is None or url.strip() == "":
+            return url
+
+        # remove all punctuation and use url
+        server = url
+        # strip leading protocol bit
+        if url.find('://') > -1:
+            server = url[(url.find('://') + 3):]
+
+        # strip standard url endings that dont tell us anything
+        if server.endswith("/xmlrpc/am"):
+            server = server[:(server.index("/xmlrpc/am"))]
+        elif server.endswith("/xmlrpc"):
+            server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/openflow/gapi/"):
+            server = server[:(server.index("/openflow/gapi/"))]
+        elif server.endswith(":3626/foam/gapi/1"):
+            server = server[:(server.index(":3626/foam/gapi/1"))]
+        elif server.endswith("/gapi"):
+            server = server[:(server.index("/gapi"))]
+        elif server.endswith(":12346"):
+            server = server[:(server.index(":12346"))]
+
+        # remove punctuation. Handle both unicode and ascii gracefully
+        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+        if isinstance(server, unicode):
+            table = dict((ord(char), unicode('-')) for char in bad)
+        else:
+            assert isinstance(server, str)
+            table = string.maketrans(bad, '-' * len(bad))
+        server = server.translate(table)
+        return server
+
+# ------- AM API methods and direct support methods follow
 
 # FIXME: This method manipulates the message. Need to separate Dev/Exp
 # Also, it marks whether it used the cache through the message. Is there a better way?
@@ -346,6 +446,8 @@ class AMCallHandler(object):
         return (thisVersion, message)
 
     # This is the real place that ends up calling GetVersion
+    # FIXME: As above: this loses the code/output slots and any other top-level slots.
+    #  Maybe only for experimenters?
     def _get_getversion_value(self, client):
         '''Do GetVersion (possibly from cache), check error returns to produce a message,
         pull out the value slot (dropping any code/output).'''
@@ -376,6 +478,18 @@ class AMCallHandler(object):
             return (None, message)
         else:
             return (versionSpot[key], message)
+
+    def _get_advertised_rspecs(self, client):
+        '''Get the supported advertisement rspec versions for this client (from GetVersion)'''
+        (ads, message) = self._get_getversion_key(client, 'ad_rspec_versions')
+        if ads is None:
+            if message and "has no key" in message:
+                (ads, message) = self._get_getversion_key(client, 'geni_ad_rspec_versions')
+
+        if ads is None:
+            self.logger.warning("Couldnt get Advertised supported RSpec versions from GetVersion so can't do ListResources: %s" % message)
+
+        return (ads, message)
 
     def _get_request_rspecs(self, client):
         '''Get the supported request rspec versions for this client (from GetVersion)'''
@@ -412,6 +526,13 @@ class AMCallHandler(object):
             res = 'geni_single'
         return (res, message)
 
+    # FIXME: Must still factor dev vs exp
+    # For experimenters: If exactly 1 AM, then show only the value slot, formatted nicely, printed to STDOUT.
+    # If it fails, show only why
+    # If saving to file, print out 'saved to file <foo>', or the error if it failed
+    # If querying multiple, then print a header for each before printing to STDOUT, otherwise like above.
+
+    # For developers, maybe leave it like this? Print whole struct not just the value?
     def getversion(self, args):
         """AM API GetVersion
 
@@ -469,18 +590,6 @@ class AMCallHandler(object):
                     retVal += message + "\n"
         return (retVal, version)
 
-    def _get_advertised_rspecs(self, client):
-        '''Get the supported advertisement rspec versions for this client (from GetVersion)'''
-        (ads, message) = self._get_getversion_key(client, 'ad_rspec_versions')
-        if ads is None:
-            if message and "has no key" in message:
-                (ads, message) = self._get_getversion_key(client, 'geni_ad_rspec_versions')
-
-        if ads is None:
-            self.logger.warning("Couldnt get Advertised supported RSpec versions from GetVersion so can't do ListResources: %s" % message)
-
-        return (ads, message)
-
     # ------- End of GetVersion stuff
 
     def _listresources(self, args):
@@ -510,9 +619,14 @@ class AMCallHandler(object):
         options['geni_available'] = self.opts.geni_available
 
         # Pass in a dummy option for testing that is actually ok
+        # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
+        # of the form Name=Value
+        # Then a standard helper function could be used here to split them apart
         if self.opts.arbitrary_option:
             options['arbitrary_option'] = self.opts.arbitrary_option
 
+#--- Maybe dev mode gets both user and slice creds? Somehow let caller decide?
+#-- AM API v2-3 differences here:
         # An optional slice name might be specified.
         # FIXME: This should be done by caller so this method takes slicename that may be null
         slicename = None
@@ -525,6 +639,7 @@ class AMCallHandler(object):
             cred = None
             (cred, message) = self.framework.get_user_cred()
             if cred is None:
+#--- Dev mode allow doing the call anyhow?
                 self.logger.error('Cannot list resources: Could not get user credential')
                 return (None, "Could not get user credential: %s" % message)
         else:
@@ -535,6 +650,7 @@ class AMCallHandler(object):
                 if message != "":
                     prstr += message
                 self.logger.error(prstr)
+#--- Dev mode allow doing the call anyhow?
                 return (None, prstr)
 
             self.logger.info('Gathering resources reserved for slice %s.' % slicename)
@@ -542,6 +658,7 @@ class AMCallHandler(object):
             options['geni_slice_urn'] = urn
 
         # We now have a credential
+#----
 
         # Query each aggregate for resources
         successCnt = 0
@@ -558,6 +675,10 @@ class AMCallHandler(object):
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
 
+
+#---
+# In Dev mode, just use the requested type/version - don't check what is supported
+
             # If the user specified a specific rspec type and version,
             # then we ONLY get rspecs from each AM that is capable
             # of talking that type&version.
@@ -569,6 +690,7 @@ class AMCallHandler(object):
                 rver = self.opts.rspectype[1]
                 self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
 
+                # Note this call uses the GetVersion cache, if available
                 (ad_rspec_version, message) = self._get_advertised_rspecs(client)
                 if ad_rspec_version is None:
                     if mymessage != "":
@@ -601,10 +723,12 @@ class AMCallHandler(object):
                         mymessage += ". "
                     mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
                     continue
+#--- API version differences:
                 if self.opts.api_version == 1:
                     options['rspec_version'] = dict(type=rtype, version=rver)
                 else:
                     options['geni_rspec_version'] = dict(type=rtype, version=rver)
+#--- Dev mode should not force supplying this option maybe?
             elif self.opts.api_version >= 2:
                 # User did not specify an rspec type but did request version 2.
                 # Make an attempt to do the right thing, otherwise bail and tell the user.
@@ -626,6 +750,7 @@ class AMCallHandler(object):
                         mymessage += ". "
                     mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
                     continue
+#-----
 
             self.logger.debug("Doing listresources with options %r", options)
             # If ABAC then creds are ABAC creds. Else Creds are the user cred or slice cred
@@ -645,8 +770,8 @@ class AMCallHandler(object):
                         save_proof(self.framework.abac_log, resp['proof'])
                 if 'manifest' in resp:
                     rspec = resp['manifest']
+#--- AM API version specific
                 elif 'code' in resp:
-
                     # AM API v2
                     if resp['code']['geni_code'] == 0:
                         rspec = resp['value']
@@ -663,6 +788,7 @@ class AMCallHandler(object):
                         rspec = zlib.decompress(rspec.decode('base64'))
                     except Exception, e:
                         self.logger.error("Failed to decompress RSpec: %s", e);
+                # FIXME: In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
                 rspecs[(client.urn, client.url)] = rspec
             else:
                 if mymessage != "":
@@ -671,99 +797,6 @@ class AMCallHandler(object):
 
         self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
-
-    def _printResults(self, header, content, filename=None):
-        """Print header string and content string to file of given
-        name. If filename is none, then log to info.
-        If --tostdout option, then instead of logging, print to STDOUT.
-        """
-        cstart = 0
-        # if content starts with <?xml ..... ?> then put the header after that bit
-        if content is not None and content.find("<?xml") > -1:
-            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
-        # used by listresources
-        if filename is None:
-            if header is not None:
-                if cstart > 0:
-                    if not self.opts.tostdout:
-                        self.logger.info(content[:cstart])
-                    else:
-                        print content[:cstart] + "\n"
-                if not self.opts.tostdout:
-                    self.logger.info(header)
-                else:
-                    # If cstart is 0 maybe still log the header so it
-                    # isn't written to STDOUT and non-machine-parsable
-                    if cstart == 0:
-                        self.logger.info(header)
-                    else:
-                        print header + "\n"
-            elif content is not None:
-                if not self.opts.tostdout:
-                    self.logger.info(content[:cstart])
-                else:
-                    print content[:cstart] + "\n"
-            if content is not None:
-                if not self.opts.tostdout:
-                    self.logger.info(content[cstart:])
-                else:
-                    print content[cstart:] + "\n"
-        else:
-            with open(filename,'w') as file:
-                self.logger.info( "Writing to '%s'"%(filename))
-                if header is not None:
-                    if cstart > 0:
-                        file.write (content[:cstart] + '\n')
-                    # this will fail for JSON output. 
-                    # only write header to file if have xml like
-                    # above, else do log thing per above
-                    if cstart > 0:
-                        file.write( header )
-                        file.write( "\n" )
-                    else:
-                        self.logger.info(header)
-                elif cstart > 0:
-                    file.write(content[:cstart] + '\n')
-                if content is not None:
-                    file.write( content[cstart:] )
-                    file.write( "\n" )
-
-    def _filename_part_from_am_url(self, url):
-        """Strip uninteresting parts from an AM URL 
-        to help construct part of a filename.
-        """
-        # see listresources and createsliver
-
-        if url is None or url.strip() == "":
-            return url
-
-        # remove all punctuation and use url
-        server = url
-        # strip leading protocol bit
-        if url.find('://') > -1:
-            server = url[(url.find('://') + 3):]
-
-        # strip standard url endings that dont tell us anything
-        if server.endswith("/xmlrpc/am"):
-            server = server[:(server.index("/xmlrpc/am"))]
-        elif server.endswith("/xmlrpc"):
-            server = server[:(server.index("/xmlrpc"))]
-        elif server.endswith("/openflow/gapi/"):
-            server = server[:(server.index("/openflow/gapi/"))]
-        elif server.endswith("/gapi"):
-            server = server[:(server.index("/gapi"))]
-        elif server.endswith(":12346"):
-            server = server[:(server.index(":12346"))]
-
-        # remove punctuation. Handle both unicode and ascii gracefully
-        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
-        if isinstance(server, unicode):
-            table = dict((ord(char), unicode('-')) for char in bad)
-        else:
-            assert isinstance(server, str)
-            table = string.maketrans(bad, '-' * len(bad))
-        server = server.translate(table)
-        return server
 
     def listresources(self, args):
         """Optional arg is a slice name limiting results. Call ListResources
@@ -792,11 +825,12 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
         """
-
+#--- API version specific
         # An optional slice name might be specified.
         slicename = None
         if len(args) > 0:
             slicename = args[0].strip()
+#---
 
         # check command line args
         if self.opts.output:
@@ -829,8 +863,10 @@ class AMCallHandler(object):
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
 
             # Create HEADER
+#--- AM API specific
             if slicename is not None:
                 header = "Resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+#---
             else:
                 header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
             header = "<!-- "+header+" -->"
@@ -864,8 +900,10 @@ class AMCallHandler(object):
                     # remove all punctuation and use url
                     server = self._filename_part_from_am_url(url)
                 filename = "rspec-" + server+".xml"
+#--- AM API specific
                 if slicename:
                     filename = slicename+"-" + filename
+#--- 
 
                 if self.opts.prefix and self.opts.prefix.strip() != "":
                     filename  = self.opts.prefix.strip() + "-" + filename
@@ -879,8 +917,10 @@ class AMCallHandler(object):
 
         # Create RETURNS
         # FIXME: If numAggs is 1 then retVal should just be the rspec?
+#--- AM API specific:
         if slicename:
             retVal = "Retrieved resources for slice %s from %d aggregates."%(slicename, numAggs)
+#---
         else:
             retVal = "Retrieved resources from %d aggregates."%(numAggs)
         if numAggs > 0:
@@ -897,7 +937,9 @@ class AMCallHandler(object):
         retItem = returnedRspecs
 
         return retVal, retItem
-            
+
+# --- End ListResources, start CreateSliver
+
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
@@ -928,6 +970,7 @@ class AMCallHandler(object):
         """
 
         retVal=''
+#--- Should dev mode allow wrong arg count?
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('createsliver requires 2 args: slicename and an rspec filename')
 
@@ -935,6 +978,7 @@ class AMCallHandler(object):
         if not self.opts.aggregate:
             # the user must supply an aggregate.
             msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
             # Calling exit here is a bit of a hammer.
             # Maybe there's a gentler way.
             self._raise_omni_error(msg)
@@ -944,17 +988,21 @@ class AMCallHandler(object):
         urn = self.framework.slice_name_to_urn(name.strip())
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
+#--- Dev mode allow missing slice cred
             self._raise_omni_error('Cannot create sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
+#--- Dev vs Exp diffs here:
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
             self._raise_omni_error('Cannot create sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         retVal += _print_slice_expiration(self, urn, slice_cred)+"\n"
+#---
 
-        # Load up the user's edited rspec
+        # Load up the user's request rspec
         specfile = args[1]
         if specfile is None or not os.path.isfile(specfile):
+#--- Dev mode should allow missing RSpec
             self._raise_omni_error('File of resources to request missing: %s' % specfile)
 
         rspecs = None
@@ -964,6 +1012,7 @@ class AMCallHandler(object):
             rspec = file(specfile).read()
             rspecs[_derefAggNick(self, self.opts.aggregate)[0]] = rspec
         except Exception, exc:
+#--- Should dev mode allow this?
             self._raise_omni_error('Unable to read rspec file %s: %s'
                                    % (specfile, str(exc)))
 
@@ -978,8 +1027,10 @@ class AMCallHandler(object):
             newkeys = []
             required = ['urn', 'keys']
             for req in required:
+#--- Dev vs Exp: allow this in dev mode:
                 if not req in user:
                     self._raise_omni_error("%s in omni_config is not specified for user %s" % (req,user))
+#---
 
             for key in user['keys'].split(','):        
                 try:
@@ -1041,9 +1092,12 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds, rspec, slice_users]
+#--- API version diff:
             if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
+#---
+
             (result, message) = _do_ssl(self.framework,
                                         None,
                                         ("Create Sliver %s at %s" % (urn, url)),
@@ -1060,6 +1114,7 @@ class AMCallHandler(object):
                         save_proof(self.framework.abac_log, result['proof'])
                 if 'manifest' in result:
                     result = result['manifest']
+#--- AM API version specific
                 elif 'code' in result:
                     # Probably V2 API
                     if result['code']['geni_code'] == 0:
@@ -1071,7 +1126,8 @@ class AMCallHandler(object):
                         result = None
 
             prettyresult = result
-            
+
+#--- Dev vs Exp diff?:            
             if rspec_util.is_rspec_string( result, self.logger ):
                 try:
                     newl = ''
@@ -1143,6 +1199,8 @@ class AMCallHandler(object):
         time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
         """
+
+#--- Dev mode allow passing too few args?
         if len(args) < 2 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('renewsliver requires arg of slice name and new expiration time in UTC')
 
@@ -1152,12 +1210,15 @@ class AMCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
+#--- Dev mode allow passing no slice cred?
             self._raise_omni_error('Cannot renew sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
+#--- Dev mode skip this:
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
             self._raise_omni_error('Cannot get renewsliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
+#--- Should dev mode allow passing time as is?
         time = None
         try:
             time = dateutil.parser.parse(args[1])
@@ -1172,9 +1233,11 @@ class AMCallHandler(object):
         # Compare requested time with slice expiration time
         retVal += _print_slice_expiration(self, urn, slice_cred) +"\n"
         if time > slice_exp:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (urn, time, slice_exp))
         elif time <= datetime.datetime.utcnow():
             self.logger.info('Sliver %s will be set to expire now' % urn)
+#--- Dev mode allow earlier time
             time = datetime.datetime.utcnow()
         else:
             self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
@@ -1209,6 +1272,7 @@ class AMCallHandler(object):
                 time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
             args = [urn, creds, time_string]
+#--- AM API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
@@ -1227,6 +1291,7 @@ class AMCallHandler(object):
                         save_proof(self.framework.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+#--- AM API version specific
                 if 'code' in res:
                     # AM API v2
                     if res['code']['geni_code'] == 0:
