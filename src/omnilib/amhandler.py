@@ -51,52 +51,6 @@ import omnilib.xmlrpc.client
 
 from geni.util import rspec_util 
 
-# FIXME: Use this frequently in experimenter mode, for all API calls
-def _check_valid_return_struct(client, thisVersion, message, call):
-    '''Basic check that any API method returned code/value/output struct,
-    producing a message with a proper error message'''
-    if thisVersion is None:
-        # error
-        message = "AM %s failed %s (empty): %s" % (client.url, call, message)
-        return (None, message)
-    elif not isinstance(thisVersion, dict):
-        # error
-        message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
-        return (None, message)
-    elif not thisVersion.has_key('value'):
-        message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
-        return (None, message)
-    elif not thisVersion.has_key('code'):
-        message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
-        return (None, message)
-    elif not thisVersion['code'].has_key('geni_code'):
-        message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
-        # error
-        return (None, message)
-    elif thisVersion['code']['geni_code'] != 0:
-        # error
-        # This next line is experimenter-only maybe?
-        message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
-        return (None, message)
-    else:
-        return (thisVersion, message)
-
-# FIXMEFIXME: Use this lots places
-# FIXME: How factor this for Dev/Exp?
-def _append_geni_error_output(retStruct, message):
-    '''Add to given error message the code and output if code != 0'''
-    # If return is a dict
-    if isinstance(retStruct, dict) and retStruct.has_key('code'):
-        if retStruct['code']['geni_code'] != 0:
-            message2 = "Error: " . str(retStruct['code'])
-            if retStruct.has_key('output'):
-                message2 += ": %s" % retStruct['output']
-            if message is not None:
-                message += " (%s)" % message
-            else:
-                message = message2
-    return message
-
 class AMCallHandler(object):
     def __init__(self, framework, config, opts):
         self.framework = framework
@@ -128,111 +82,10 @@ class AMCallHandler(object):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
-# ----- Utility methods follow
+    # ------- AM API methods and direct support methods follow
 
-    def _raise_omni_error( self, msg, err=OmniError ):
-        self.logger.error( msg )
-        raise err, msg
-
-    def _printResults(self, header, content, filename=None):
-        """Print header string and content string to file of given
-        name. If filename is none, then log to info.
-        If --tostdout option, then instead of logging, print to STDOUT.
-        """
-        cstart = 0
-        # if content starts with <?xml ..... ?> then put the header after that bit
-        if content is not None and content.find("<?xml") > -1:
-            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
-        # used by listresources
-        if filename is None:
-            if header is not None:
-                if cstart > 0:
-                    if not self.opts.tostdout:
-                        self.logger.info(content[:cstart])
-                    else:
-                        print content[:cstart] + "\n"
-                if not self.opts.tostdout:
-                    self.logger.info(header)
-                else:
-                    # If cstart is 0 maybe still log the header so it
-                    # isn't written to STDOUT and non-machine-parsable
-                    if cstart == 0:
-                        self.logger.info(header)
-                    else:
-                        print header + "\n"
-            elif content is not None:
-                if not self.opts.tostdout:
-                    self.logger.info(content[:cstart])
-                else:
-                    print content[:cstart] + "\n"
-            if content is not None:
-                if not self.opts.tostdout:
-                    self.logger.info(content[cstart:])
-                else:
-                    print content[cstart:] + "\n"
-        else:
-            with open(filename,'w') as file:
-                self.logger.info( "Writing to '%s'"%(filename))
-                if header is not None:
-                    if cstart > 0:
-                        file.write (content[:cstart] + '\n')
-                    # this will fail for JSON output. 
-                    # only write header to file if have xml like
-                    # above, else do log thing per above
-                    if cstart > 0:
-                        file.write( header )
-                        file.write( "\n" )
-                    else:
-                        self.logger.info(header)
-                elif cstart > 0:
-                    file.write(content[:cstart] + '\n')
-                if content is not None:
-                    file.write( content[cstart:] )
-                    file.write( "\n" )
-
-    def _filename_part_from_am_url(self, url):
-        """Strip uninteresting parts from an AM URL 
-        to help construct part of a filename.
-        """
-        # see listresources and createsliver
-
-        if url is None or url.strip() == "":
-            return url
-
-        # remove all punctuation and use url
-        server = url
-        # strip leading protocol bit
-        if url.find('://') > -1:
-            server = url[(url.find('://') + 3):]
-
-        # strip standard url endings that dont tell us anything
-        if server.endswith("/xmlrpc/am"):
-            server = server[:(server.index("/xmlrpc/am"))]
-        elif server.endswith("/xmlrpc"):
-            server = server[:(server.index("/xmlrpc"))]
-        elif server.endswith("/openflow/gapi/"):
-            server = server[:(server.index("/openflow/gapi/"))]
-        elif server.endswith(":3626/foam/gapi/1"):
-            server = server[:(server.index(":3626/foam/gapi/1"))]
-        elif server.endswith("/gapi"):
-            server = server[:(server.index("/gapi"))]
-        elif server.endswith(":12346"):
-            server = server[:(server.index(":12346"))]
-
-        # remove punctuation. Handle both unicode and ascii gracefully
-        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
-        if isinstance(server, unicode):
-            table = dict((ord(char), unicode('-')) for char in bad)
-        else:
-            assert isinstance(server, str)
-            table = string.maketrans(bad, '-' * len(bad))
-        server = server.translate(table)
-        return server
-
-# ------- AM API methods and direct support methods follow
-
-# FIXME: This method manipulates the message. Need to separate Dev/Exp
-# Also, it marks whether it used the cache through the message. Is there a better way?
+    # FIXME: This method manipulates the message. Need to separate Dev/Exp
+    # Also, it marks whether it used the cache through the message. Is there a better way?
     def _do_getversion(self, client):
         '''Pull GetVersion for this client from cache; otherwise actually call GetVersion if this
         client wasn't in the cache, the options say not to use the cache, or the cache is too old.
@@ -1341,6 +1194,7 @@ class AMCallHandler(object):
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
         """
+#--- Dev mode allow this
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
             self._raise_omni_error('sliverstatus requires arg of slice name')
 
@@ -1350,10 +1204,12 @@ class AMCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot get sliver status for %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot get sliverstatus for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         retVal = _print_slice_expiration(self, urn, slice_cred) + "\n"
@@ -1382,6 +1238,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds]
+#--- API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
@@ -1395,6 +1252,7 @@ class AMCallHandler(object):
                     save_proof(self.framework.abac_log, status['proof'])
                     # XXX: may not need to do delete the proof dict entry
                     del status['proof']
+#--- API version specific
             if status and 'code' in status:
                 # AM API v2
                 if status['code']['geni_code'] == 0:
@@ -1451,6 +1309,7 @@ class AMCallHandler(object):
         - List of URNs and URLs provided by the selected clearinghouse
         """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
+#--- Dev mode allow this
             self._raise_omni_error('deletesliver requires arg of slice name')
 
         name = args[0]
@@ -1459,6 +1318,7 @@ class AMCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot delete sliver %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         # Here we would abort if the slice has expired
@@ -1466,6 +1326,7 @@ class AMCallHandler(object):
         # at the aggregate, it can use this cue to free them?
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot delete sliver for slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         if self.opts.orca_slice_id:
@@ -1499,6 +1360,7 @@ class AMCallHandler(object):
                 creds = [slice_cred]
 
             args = [urn, creds]
+#--- API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
@@ -1514,6 +1376,7 @@ class AMCallHandler(object):
                         save_proof(self.framework.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+#--- API version specific
                 if 'code' in res:
                     # AM API v2
                     if res['code']['geni_code'] == 0:
@@ -1561,6 +1424,7 @@ class AMCallHandler(object):
         - List of URNs and URLs provided by the selected clearinghouse
         """
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
+#--- Dev mode allow this
             self._raise_omni_error('shutdown requires arg of slice name')
 
         name = args[0]
@@ -1569,10 +1433,12 @@ class AMCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot shutdown slice %s: Could not get slice credential: %s' % (urn, message), NoSliceCredError)
 
         expd, slice_exp = self._has_slice_expired(slice_cred)
         if expd:
+#--- Dev mode allow this
             self._raise_omni_error('Cannot shutdown slice %s: Slice has expired at %s' % (urn, slice_exp.isoformat()))
 
         if self.opts.orca_slice_id:
@@ -1609,6 +1475,7 @@ class AMCallHandler(object):
                         save_proof(self.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
+#--- API version specific
                 if 'code' in res:
                     # AM API v2
                     if res['code']['geni_code'] == 0:
@@ -1641,6 +1508,105 @@ class AMCallHandler(object):
     #######
     # Helper functions follow
 
+    def _raise_omni_error( self, msg, err=OmniError ):
+        self.logger.error( msg )
+        raise err, msg
+
+    def _printResults(self, header, content, filename=None):
+        """Print header string and content string to file of given
+        name. If filename is none, then log to info.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+        cstart = 0
+        # if content starts with <?xml ..... ?> then put the header after that bit
+        if content is not None and content.find("<?xml") > -1:
+            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
+        # used by listresources
+        if filename is None:
+            if header is not None:
+                if cstart > 0:
+                    if not self.opts.tostdout:
+                        self.logger.info(content[:cstart])
+                    else:
+                        print content[:cstart] + "\n"
+                if not self.opts.tostdout:
+                    self.logger.info(header)
+                else:
+                    # If cstart is 0 maybe still log the header so it
+                    # isn't written to STDOUT and non-machine-parsable
+                    if cstart == 0:
+                        self.logger.info(header)
+                    else:
+                        print header + "\n"
+            elif content is not None:
+                if not self.opts.tostdout:
+                    self.logger.info(content[:cstart])
+                else:
+                    print content[:cstart] + "\n"
+            if content is not None:
+                if not self.opts.tostdout:
+                    self.logger.info(content[cstart:])
+                else:
+                    print content[cstart:] + "\n"
+        else:
+            with open(filename,'w') as file:
+                self.logger.info( "Writing to '%s'"%(filename))
+                if header is not None:
+                    if cstart > 0:
+                        file.write (content[:cstart] + '\n')
+                    # this will fail for JSON output. 
+                    # only write header to file if have xml like
+                    # above, else do log thing per above
+                    if cstart > 0:
+                        file.write( header )
+                        file.write( "\n" )
+                    else:
+                        self.logger.info(header)
+                elif cstart > 0:
+                    file.write(content[:cstart] + '\n')
+                if content is not None:
+                    file.write( content[cstart:] )
+                    file.write( "\n" )
+
+    def _filename_part_from_am_url(self, url):
+        """Strip uninteresting parts from an AM URL 
+        to help construct part of a filename.
+        """
+        # see listresources and createsliver
+
+        if url is None or url.strip() == "":
+            return url
+
+        # remove all punctuation and use url
+        server = url
+        # strip leading protocol bit
+        if url.find('://') > -1:
+            server = url[(url.find('://') + 3):]
+
+        # strip standard url endings that dont tell us anything
+        if server.endswith("/xmlrpc/am"):
+            server = server[:(server.index("/xmlrpc/am"))]
+        elif server.endswith("/xmlrpc"):
+            server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/openflow/gapi/"):
+            server = server[:(server.index("/openflow/gapi/"))]
+        elif server.endswith(":3626/foam/gapi/1"):
+            server = server[:(server.index(":3626/foam/gapi/1"))]
+        elif server.endswith("/gapi"):
+            server = server[:(server.index("/gapi"))]
+        elif server.endswith(":12346"):
+            server = server[:(server.index(":12346"))]
+
+        # remove punctuation. Handle both unicode and ascii gracefully
+        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+        if isinstance(server, unicode):
+            table = dict((ord(char), unicode('-')) for char in bad)
+        else:
+            assert isinstance(server, str)
+            table = string.maketrans(bad, '-' * len(bad))
+        server = server.translate(table)
+        return server
+
     def _has_slice_expired(self, sliceCred):
         """Return (boolean, expiration datetime) whether given slicecred (string) has expired)"""
         if sliceCred is None:
@@ -1671,6 +1637,7 @@ class AMCallHandler(object):
             clients.append(client)
 
         return (clients, message)
+# End of AMHandler
 
 def make_client(url, framework, opts):
     """ Create an xmlrpc client, skipping the client cert if not opts.ssl"""
@@ -1693,4 +1660,50 @@ def make_client(url, framework, opts):
         return omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
+
+# FIXME: Use this frequently in experimenter mode, for all API calls
+def _check_valid_return_struct(client, thisVersion, message, call):
+    '''Basic check that any API method returned code/value/output struct,
+    producing a message with a proper error message'''
+    if thisVersion is None:
+        # error
+        message = "AM %s failed %s (empty): %s" % (client.url, call, message)
+        return (None, message)
+    elif not isinstance(thisVersion, dict):
+        # error
+        message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion.has_key('value'):
+        message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion.has_key('code'):
+        message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
+        return (None, message)
+    elif not thisVersion['code'].has_key('geni_code'):
+        message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
+        # error
+        return (None, message)
+    elif thisVersion['code']['geni_code'] != 0:
+        # error
+        # This next line is experimenter-only maybe?
+        message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
+        return (None, message)
+    else:
+        return (thisVersion, message)
+
+# FIXMEFIXME: Use this lots places
+# FIXME: How factor this for Dev/Exp?
+def _append_geni_error_output(retStruct, message):
+    '''Add to given error message the code and output if code != 0'''
+    # If return is a dict
+    if isinstance(retStruct, dict) and retStruct.has_key('code'):
+        if retStruct['code']['geni_code'] != 0:
+            message2 = "Error: " . str(retStruct['code'])
+            if retStruct.has_key('output'):
+                message2 += ": %s" % retStruct['output']
+            if message is not None:
+                message += " (%s)" % message
+            else:
+                message = message2
+    return message
 
