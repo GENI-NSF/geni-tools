@@ -588,6 +588,8 @@ def getParser():
     parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
                       help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
+    parser.add_option("--devmode", default=False, action="store_true",
+                      help="Run in developer mode: more verbose, less error checking of inputs")
     return parser
 
 def parse_args(argv, options=None):
