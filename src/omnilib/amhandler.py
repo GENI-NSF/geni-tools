@@ -606,13 +606,7 @@ class AMCallHandler(object):
 #-----
 
             self.logger.debug("Doing listresources with options %r", options)
-            # If ABAC then creds are ABAC creds. Else Creds are the user cred or slice cred
-            # as retrieved above, as normal
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(cred)
-            else:
-                creds = [cred]
+            creds = _maybe_add_abac_creds(self.framework, cred)
 
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
@@ -934,12 +928,7 @@ class AMCallHandler(object):
             client = make_client(url, self.framework, self.opts)
             self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
 
-            # If ABAC then creds are ABAC creds, else creds are slice_cred
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(slice_cred)
-            else:
-                creds = [slice_cred]
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds, rspec, slice_users]
 #--- API version diff:
@@ -1100,12 +1089,8 @@ class AMCallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            # Add ABAC Creds if necessary, else it is just the slice_cred
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(slice_cred)
-            else:
-                creds = [slice_cred]
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
             # Note that the time arg includes UTC offset as needed
             time_string = time_with_tz.isoformat()
             if self.opts.no_tz:
@@ -1201,12 +1186,7 @@ class AMCallHandler(object):
             self.logger.warn(prstr)
 
         for client in clientList:
-            # Add ABAC Creds if necessary to the normal slice_cred
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(slice_cred)
-            else:
-                creds = [slice_cred]
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
 #--- API version specific
@@ -1300,12 +1280,7 @@ class AMCallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
-            #Gather ABAC certs if we need them to add to the slice_cred
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(slice_cred)
-            else:
-                creds = [slice_cred]
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
 #--- API version specific
@@ -1380,12 +1355,7 @@ class AMCallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            # Add ABAC Creds if necessary to the slice_cred
-            if is_ABAC_framework(self.framework):
-                creds = get_abac_creds(self.framework.abac_dir)
-                creds.append(slice_cred)
-            else:
-                creds = [slice_cred]
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
             if self.opts.api_version >= 2:
@@ -1400,7 +1370,7 @@ class AMCallHandler(object):
             if isinstance(res, dict):
                 if is_ABAC_framework(self.framework):
                     if 'proof' in res:
-                        save_proof(self.abac_log, res['proof'])
+                        save_proof(self.framework.abac_log, res['proof'])
                 if 'success' in res:
                     res = res['success']
 #--- API version specific
@@ -1436,7 +1406,56 @@ class AMCallHandler(object):
     #######
     # Helper functions follow
 
+    def _retrieve_value(result, message, framework):
+        '''Extract ABAC proof and creds from the result if any.
+        Then pull the actual value out, checking for errors
+        '''
+        # Stuff is inconsistent on whether it is if code or elif code. 
+        # IE is the whole code struct shoved inside the success thing maybe?
+        if not result:
+            return (result, message)
+        value = result
+        # If ABAC return is a dict with proof and the regular return
+        if isinstance(result, dict):
+            if is_ABAC_framework(framework):
+                if 'proof' in result:
+                    save_proof(framework.abac_log, result['proof'])
+                    # XXX: may not need to do delete the proof dict entry
+                    # This was only there for SliverStatus, where the return is already a dict
+                    del result['proof']
+                if 'abac_credentials' in result:
+                    save_abac_creds(result['abac_credentials'],
+                                    framework.abac_dir)
+                # For ListR and CreateS
+                if 'manifest' in result:
+                    value = result['manifest']
+                # For Renew, Delete, Shutdown
+                elif 'success' in result:
+                    value = result['success']
+#--- AM API version specific
+            #FIXME Should that be if 'code' or elif 'code'?
+            # FIXME: See _check_vaid_return_struct
+            if 'code' in result and isinstance(result['code'], dict) and 'geni_code' in result['code']:
+                # AM API v2
+                if result['code']['geni_code'] == 0:
+                    value = result['value']
+                # FIXME: More complete error code handling!
+                elif result['code']['geni_code'] == 7: # REFUSED
+                    self._raise_omni_error( result['output'], RefusedError)
+                else:
+                    if message:
+                        message = result['output'] + " (" + message + ")"
+                    else:
+                        message = result['output']
+                    value = None
+
+        return (value, message)
+
     def _args_to_slicecred(self, args, num_args, methodname, otherargstring=""):
+        '''Confirm got the specified number of arguments. First arg is taken as slice name.
+        Try to get the slice credential. Check it for expiration and print the expiration date.
+        Raise an OmniError on error, unless in devmode, when we just log a warning.
+        '''
 #- pull slice name
 #- get urn
 #- get slice_cred
@@ -1649,35 +1668,45 @@ def make_client(url, framework, opts):
     else:
         return omnilib.xmlrpc.client.make_client(url, None, None)
 
+def _maybe_add_abac_creds(framework, cred):
+    '''Construct creds list. If using ABAC then creds are ABAC creds. Else creds are the user cred or slice cred
+    as supplied, as normal.'''
+    if is_ABAC_framework(framework):
+        creds = get_abac_creds(framework.abac_dir)
+        creds.append(cred)
+    else:
+        creds = [cred]
+    return creds
+
 # FIXME: Use this frequently in experimenter mode, for all API calls
-def _check_valid_return_struct(client, thisVersion, message, call):
+def _check_valid_return_struct(client, resultObj, message, call):
     '''Basic check that any API method returned code/value/output struct,
     producing a message with a proper error message'''
-    if thisVersion is None:
+    if resultObj is None:
         # error
         message = "AM %s failed %s (empty): %s" % (client.url, call, message)
         return (None, message)
-    elif not isinstance(thisVersion, dict):
+    elif not isinstance(resultObj, dict):
         # error
-        message = "AM %s failed %s (returned %s): %s" % (client.url, call, thisVersion, message)
+        message = "AM %s failed %s (returned %s): %s" % (client.url, call, resultObj, message)
         return (None, message)
-    elif not thisVersion.has_key('value'):
-        message = "AM %s failed %s (no value: %s): %s" % (client.url, call, thisVersion, message)
+    elif not resultObj.has_key('value'):
+        message = "AM %s failed %s (no value: %s): %s" % (client.url, call, resultObj, message)
         return (None, message)
-    elif not thisVersion.has_key('code'):
-        message = "AM %s failed %s (no code: %s): %s" % (client.url, call, thisVersion, message)
+    elif not resultObj.has_key('code'):
+        message = "AM %s failed %s (no code: %s): %s" % (client.url, call, resultObj, message)
         return (None, message)
-    elif not thisVersion['code'].has_key('geni_code'):
-        message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, thisVersion, message)
+    elif not resultObj['code'].has_key('geni_code'):
+        message = "AM %s failed %s (no geni_code: %s): %s" % (client.url, call, resultObj, message)
         # error
         return (None, message)
-    elif thisVersion['code']['geni_code'] != 0:
+    elif resultObj['code']['geni_code'] != 0:
         # error
         # This next line is experimenter-only maybe?
-        message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(thisVersion, message))
+        message = "AM %s failed %s: %s" % (client.url, call, _append_geni_error_output(resultObj, message))
         return (None, message)
     else:
-        return (thisVersion, message)
+        return (resultObj, message)
 
 # FIXMEFIXME: Use this lots places
 # FIXME: How factor this for Dev/Exp?
