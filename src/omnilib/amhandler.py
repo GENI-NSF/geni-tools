@@ -610,23 +610,8 @@ class AMCallHandler(object):
 
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
-            # If ABAC return is a dict with proof and the regular return
-            if isinstance(resp, dict):
-                if is_ABAC_framework(self.framework):
-                    if 'proof' in resp:
-                        save_proof(self.framework.abac_log, resp['proof'])
-                if 'manifest' in resp:
-                    rspec = resp['manifest']
-#--- AM API version specific
-                elif 'code' in resp:
-                    # AM API v2
-                    if resp['code']['geni_code'] == 0:
-                        rspec = resp['value']
-                    else:
-                        message = resp['output']
-                        resp = None
-            else:
-                rspec = resp
+            # Get the RSpec out of the result (accounting for API version diffs, ABAC)
+            (rspec, message) = self._retrieve_value(resp, message, self.framework)
 
             if not rspec is None:
                 successCnt += 1
@@ -943,26 +928,8 @@ class AMCallHandler(object):
                                         client.CreateSliver,
                                         *args)
 
-            # If ABAC then return is a dict with abac_credentials, proof, and normal return
-            if isinstance(result, dict):
-                if is_ABAC_framework(self.framework):
-                    if 'abac_credentials' in result:
-                        save_abac_creds(result['abac_credentials'],
-                                self.framework.abac_dir)
-                    if 'proof' in result:
-                        save_proof(self.framework.abac_log, result['proof'])
-                if 'manifest' in result:
-                    result = result['manifest']
-#--- AM API version specific
-                elif 'code' in result:
-                    # Probably V2 API
-                    if result['code']['geni_code'] == 0:
-                        result = result['value']
-                    elif result['code']['geni_code'] == 7: # REFUSED
-                        self._raise_omni_error( result['output'], RefusedError)
-                    else:
-                        message = result['output']
-                        result = None
+            # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
+            (result, message) = self._retrieve_value(result, message, self.framework)
 
             prettyresult = result
 
@@ -1110,24 +1077,9 @@ class AMCallHandler(object):
                                      ("Renew Sliver %s on %s" % (urn, client.url)),
                                      client.RenewSliver,
                                      *args)
-            # Unpack ABAC results: A dict with abac_credentials, proof, and the normal return
-            if isinstance(res, dict):
-                if is_ABAC_framework(self.framework):
-                    if 'abac_credentials' in res:
-                        save_abac_creds(res['abac_credentials'],
-                                self.framework.abac_dir)
-                    if 'proof' in res:
-                        save_proof(self.framework.abac_log, res['proof'])
-                if 'success' in res:
-                    res = res['success']
-#--- AM API version specific
-                if 'code' in res:
-                    # AM API v2
-                    if res['code']['geni_code'] == 0:
-                        res = res['value']
-                    else:
-                        message = res['output']
-                        res = None
+
+            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+            (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
@@ -1197,20 +1149,10 @@ class AMCallHandler(object):
                                         None,
                                         "Sliver status of %s at %s" % (urn, client.url),
                                         client.SliverStatus, *args)
-            # Unpack ABAC results from a dict that includes proof
-            if status and 'proof' in status:
-                if is_ABAC_framework(self.framework):
-                    save_proof(self.framework.abac_log, status['proof'])
-                    # XXX: may not need to do delete the proof dict entry
-                    del status['proof']
-#--- API version specific
-            if status and 'code' in status:
-                # AM API v2
-                if status['code']['geni_code'] == 0:
-                    status = status['value']
-                else:
-                    message = status['output']
-                    status = None
+
+            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+            (status, message) = self._retrieve_value(status, message, self.framework)
+
             if status:
                 prettyResult = pprint.pformat(status)
                 if not isinstance(status, dict):
@@ -1292,21 +1234,8 @@ class AMCallHandler(object):
                                      ("Delete Sliver %s on %s" % (urn, client.url)),
                                      client.DeleteSliver,
                                      *args)
-            # Unpack ABAC results from a dict with proof and normal result
-            if isinstance(res, dict):
-                if is_ABAC_framework(self.framework):
-                    if 'proof' in res:
-                        save_proof(self.framework.abac_log, res['proof'])
-                if 'success' in res:
-                    res = res['success']
-#--- API version specific
-                if 'code' in res:
-                    # AM API v2
-                    if res['code']['geni_code'] == 0:
-                        res = res['value']
-                    else:
-                        message = res['output']
-                        res = None
+            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+            (res, message) = self._retrieve_value(res, message, self.framework)
 
             if res:
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
@@ -1366,21 +1295,9 @@ class AMCallHandler(object):
                                      "Shutdown %s on %s" % (urn, client.url),
                                      client.Shutdown,
                                      *args)
-            # Unpack ABAC results from a dict with proof, normal result
-            if isinstance(res, dict):
-                if is_ABAC_framework(self.framework):
-                    if 'proof' in res:
-                        save_proof(self.framework.abac_log, res['proof'])
-                if 'success' in res:
-                    res = res['success']
-#--- API version specific
-                if 'code' in res:
-                    # AM API v2
-                    if res['code']['geni_code'] == 0:
-                        res = res['value']
-                    else:
-                        message = res['output']
-                        res = None
+            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+            (res, message) = self._retrieve_value(res, message, self.framework)
+
             if res:
                 prStr = "Shutdown Sliver %s on AM %s at %s" % (urn, client.urn, client.url)
                 self.logger.info(prStr)
@@ -1406,11 +1323,11 @@ class AMCallHandler(object):
     #######
     # Helper functions follow
 
-    def _retrieve_value(result, message, framework):
+    def _retrieve_value(self, result, message, framework):
         '''Extract ABAC proof and creds from the result if any.
         Then pull the actual value out, checking for errors
         '''
-        # Stuff is inconsistent on whether it is if code or elif code. 
+        # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
             return (result, message)
@@ -1434,7 +1351,7 @@ class AMCallHandler(object):
                     value = result['success']
 #--- AM API version specific
             #FIXME Should that be if 'code' or elif 'code'?
-            # FIXME: See _check_vaid_return_struct
+            # FIXME: See _check_valid_return_struct
             if 'code' in result and isinstance(result['code'], dict) and 'geni_code' in result['code']:
                 # AM API v2
                 if result['code']['geni_code'] == 0:
