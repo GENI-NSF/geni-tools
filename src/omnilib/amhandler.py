@@ -127,10 +127,16 @@ class AMCallHandler(object):
             # But JSON cant have any
                     #header = None
             # Create filename
-            server = self._filename_part_from_am_url(client.url)
-            filename = "getversion-"+server+".xml"
-            if self.opts.prefix and self.opts.prefix.strip() != "":
-                filename  = self.opts.prefix.strip() + "-" + filename
+            if self.opts.outputfile:
+                # FIXME: Really only want this if there is only a single AM
+                # FIXME: substitute %a for URL or URN?
+                # FIXME: prefix/postfix URL/URN?
+                filename = self.opts.outputfile
+            else:
+                server = self._filename_part_from_am_url(client.url)
+                filename = "getversion-"+server+".xml"
+                if self.opts.prefix and self.opts.prefix.strip() != "":
+                    filename  = self.opts.prefix.strip() + "-" + filename
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
         # This logs or prints, depending on whether filename
@@ -151,8 +157,10 @@ class AMCallHandler(object):
         #      urn
         #      url
         #      lasterror
-        if not os.path.exists(os.path.dirname(self.opts.getversionCacheName)):
-            os.makedirs(os.path.dirname(self.opts.getversionCacheName))
+        fdir = os.path.dirname(self.opts.getversionCacheName)
+        if fdir and fdir != "":
+            if not os.path.exists(fdir):
+                os.makedirs(fdir)
         try:
             with open(self.opts.getversionCacheName, 'w') as f:
                 json.dump(self.GetVersionCache, f, cls=DateTimeAwareJSONEncoder)
@@ -717,28 +725,34 @@ class AMCallHandler(object):
             # Create FILENAME
             if self.opts.output:
                 fileCtr += 1 
-                # Instead of fileCtr: if have a urn, then use that to produce an HRN. Else
-                # remove all punctuation and use URL
-                server = str(fileCtr)
-                if urn and urn is not "unspecified_AM_URN" and (not urn.startswith("http")):
-                    # construct hrn
-                    # strip off any leading urn:publicid:IDN
-                    if urn.find("IDN+") > -1:
-                        urn = urn[(urn.find("IDN+") + 4):]
-                    urnParts = urn.split("+")
-                    server = urnParts.pop(0)
-                    server = server.translate(string.maketrans(' .:', '---'))
+                if self.opts.outputfile and len(rspecs) == 1:
+                    # FIXME: Do we really only want this if there is only a single AM?
+                    # FIXME: substitute %a for URL or URN?
+                    # FIXME: prefix/postfix URL/URN?
+                    filename = self.opts.outputfile
                 else:
-                    # remove all punctuation and use url
-                    server = self._filename_part_from_am_url(url)
-                filename = "rspec-" + server+".xml"
+                    # Instead of fileCtr: if have a urn, then use that to produce an HRN. Else
+                    # remove all punctuation and use URL
+                    server = str(fileCtr)
+                    if urn and urn is not "unspecified_AM_URN" and (not urn.startswith("http")):
+                        # construct hrn
+                        # strip off any leading urn:publicid:IDN
+                        if urn.find("IDN+") > -1:
+                            urn = urn[(urn.find("IDN+") + 4):]
+                        urnParts = urn.split("+")
+                        server = urnParts.pop(0)
+                        server = server.translate(string.maketrans(' .:', '---'))
+                    else:
+                        # remove all punctuation and use url
+                        server = self._filename_part_from_am_url(url)
+                    filename = "rspec-" + server+".xml"
 #--- AM API specific
-                if slicename:
-                    filename = slicename+"-" + filename
+                    if slicename:
+                        filename = slicename+"-" + filename
 #--- 
 
-                if self.opts.prefix and self.opts.prefix.strip() != "":
-                    filename  = self.opts.prefix.strip() + "-" + filename
+                    if self.opts.prefix and self.opts.prefix.strip() != "":
+                        filename  = self.opts.prefix.strip() + "-" + filename
 
             # Create FILE
             # This prints or logs results, depending on filename None
@@ -966,15 +980,21 @@ class AMCallHandler(object):
             header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
             filename = None
             if self.opts.output:
-                # create filename
-                # remove all punctuation and use url
-                server = self._filename_part_from_am_url(url)
-                filename = name+"-manifest-rspec-"+server+".xml"
-                if self.opts.prefix and self.opts.prefix.strip() != "":
-                    filename  = self.opts.prefix.strip() + "-" + filename
+                if self.opts.outputfile and len(rspecs) == 1:
+                    # FIXME: Do we really only want this if there is only a single AM?
+                    # FIXME: substitute %a for URL or URN?
+                    # FIXME: prefix/postfix URL/URN?
+                    filename = self.opts.outputfile
+                else:
+                    # create filename
+                    # remove all punctuation and use url
+                    server = self._filename_part_from_am_url(url)
+                    filename = name+"-manifest-rspec-"+server+".xml"
+                    if self.opts.prefix and self.opts.prefix.strip() != "":
+                        filename  = self.opts.prefix.strip() + "-" + filename
                         
-                self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
-                retVal += '\n   Saved createsliver results to %s. ' % (filename)
+                    self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
+                    retVal += '\n   Saved createsliver results to %s. ' % (filename)
             else:
                 self.logger.info('Asked %s to reserve resources. Result:' % (url))
 
@@ -1167,12 +1187,18 @@ class AMCallHandler(object):
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:
-                    # better filename
-                    # remove all punctuation and use url
-                    server = self._filename_part_from_am_url(client.url)
-                    filename = name+"-sliverstatus-"+server+".json"
-                    if self.opts.prefix and self.opts.prefix.strip() != "":
-                        filename  = self.opts.prefix.strip() + "-" + filename
+                    if self.opts.outputfile and len(clientList) == 1:
+                        # FIXME: Do we really only want this if there is only a single AM?
+                        # FIXME: substitute %a for URL or URN?
+                        # FIXME: prefix/postfix URL/URN?
+                        filename = self.opts.outputfile
+                    else:
+                        # better filename
+                        # remove all punctuation and use url
+                        server = self._filename_part_from_am_url(client.url)
+                        filename = name+"-sliverstatus-"+server+".json"
+                        if self.opts.prefix and self.opts.prefix.strip() != "":
+                            filename  = self.opts.prefix.strip() + "-" + filename
                         
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
                     
@@ -1479,6 +1505,10 @@ class AMCallHandler(object):
                 else:
                     print content[cstart:] + "\n"
         else:
+            fdir = os.path.dirname(filename)
+            if fdir and fdir != "":
+                if not os.path.exists(fdir):
+                    os.makedirs(fdir)
             with open(filename,'w') as file:
                 self.logger.info( "Writing to '%s'"%(filename))
                 if header is not None:

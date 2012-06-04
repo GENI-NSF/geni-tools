@@ -163,6 +163,8 @@ def validate_url(url):
 
     # Look for common errors in contructing the urls
 
+    # FIXME: check cache to find common URL typos?
+
 # GCF Ticket #66: This check is just causing confusion. And will be OBE with FOAM.
 #    # if the urn part of the urn is openflow/gapi (no trailing slash)
 #    # then warn it needs a trailing slash for Expedient

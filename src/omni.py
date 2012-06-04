@@ -542,6 +542,8 @@ def getParser():
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
                       help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file (Omni picks the name)")
+    parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
+                      help="Name of file to write output for only aggregate from getversion, listresources, createsliver, sliverstatus, getslicecred to (instead of Omni picked name). Implies -o.")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix when saving results (used with -o)")
     parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
@@ -631,6 +633,9 @@ def parse_args(argv, options=None):
 
     if options.noGetVersionCache and options.useGetVersionCache:
         parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
+
+    if options.outputfile:
+        options.output = True
 
     return options, args
 
