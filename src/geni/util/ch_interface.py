@@ -1,3 +1,26 @@
+#----------------------------------------------------------------------
+# Copyright (c) 2011 Raytheon BBN Technologies
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+#
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+# IN THE WORK.
+#----------------------------------------------------------------------
+
 # Library of tools for communicating with GENI clearinghouse
 # services via XML signed encrypted messages
 # Receiving back a tuple with [code, value, output]
@@ -8,6 +31,28 @@ import json
 import urllib2
 import tempfile
 import os
+
+# TODO: 
+# - Should this be in util?
+# - Change get_inside_cert_and_key to use GID.py to get URN and UUID from cert
+# --- caller needs to pass in _server.pem_cert
+#        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+#
+#        try:
+#            user_gid = gid.GID(string=user_certstr)
+#        except Exception, exc:
+#            self.logger.error("GetCredential failed to create user_gid from SSL client cert: %s", traceback.format_exc())
+#            raise Exception("Failed to GetCredential. Cant get user GID from SSL client certificate." % exc)
+#
+#        try:
+#            user_gid.verify_chain(self.trusted_roots)
+#        except Exception, exc:
+#            self.logger.error("GetCredential got unverifiable experimenter cert: %s", exc)
+#            raise
+
+# Then getting a UUID or URN is something like this:
+#        user_uuid = str(uuid.UUID(int=user_gid.get_uuid()))
+#        user_urn = user_gid.get_urn()
 
 # Helper function to get the insert cert/key for a given connection
 # Based on the SSL cert on the given connection
