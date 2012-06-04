@@ -21,8 +21,9 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Reference GENI GCF Clearinghouse. Uses SFA Certificate and credential objects.
-Run from gcf-ch.py
+Reference GENI GCH Clearinghouse, for talking to the GENI Clearinghouse
+via xmlrpc instead of smime (its native interface)
+Run from gcf-gch.py
 Will produce signed user credentials from a GID, return a
 list of aggregates read from a config file, and create a new Slice Credential.
 
