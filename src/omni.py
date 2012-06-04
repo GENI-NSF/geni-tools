@@ -543,7 +543,7 @@ def getParser():
     parser.add_option("-o", "--output",  default=False, action="store_true",
                       help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file (Omni picks the name)")
     parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
-                      help="Name of file to write output for only aggregate from getversion, listresources, createsliver, sliverstatus, getslicecred to (instead of Omni picked name). Implies -o.")
+                      help="Name of file to write output for only aggregate from getversion, listresources, createsliver, sliverstatus, getslicecred to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o.")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
                       help="Filename prefix when saving results (used with -o)")
     parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",

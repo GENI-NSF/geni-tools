@@ -127,16 +127,7 @@ class AMCallHandler(object):
             # But JSON cant have any
                     #header = None
             # Create filename
-            if self.opts.outputfile:
-                # FIXME: Really only want this if there is only a single AM
-                # FIXME: substitute %a for URL or URN?
-                # FIXME: prefix/postfix URL/URN?
-                filename = self.opts.outputfile
-            else:
-                server = self._filename_part_from_am_url(client.url)
-                filename = "getversion-"+server+".xml"
-                if self.opts.prefix and self.opts.prefix.strip() != "":
-                    filename  = self.opts.prefix.strip() + "-" + filename
+            filename = self._construct_output_filename(None, client.url, client.urn, "getversion", ".xml", 1)
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
         # This logs or prints, depending on whether filename
@@ -725,34 +716,10 @@ class AMCallHandler(object):
             # Create FILENAME
             if self.opts.output:
                 fileCtr += 1 
-                if self.opts.outputfile and len(rspecs) == 1:
-                    # FIXME: Do we really only want this if there is only a single AM?
-                    # FIXME: substitute %a for URL or URN?
-                    # FIXME: prefix/postfix URL/URN?
-                    filename = self.opts.outputfile
-                else:
-                    # Instead of fileCtr: if have a urn, then use that to produce an HRN. Else
-                    # remove all punctuation and use URL
-                    server = str(fileCtr)
-                    if urn and urn is not "unspecified_AM_URN" and (not urn.startswith("http")):
-                        # construct hrn
-                        # strip off any leading urn:publicid:IDN
-                        if urn.find("IDN+") > -1:
-                            urn = urn[(urn.find("IDN+") + 4):]
-                        urnParts = urn.split("+")
-                        server = urnParts.pop(0)
-                        server = server.translate(string.maketrans(' .:', '---'))
-                    else:
-                        # remove all punctuation and use url
-                        server = self._filename_part_from_am_url(url)
-                    filename = "rspec-" + server+".xml"
-#--- AM API specific
-                    if slicename:
-                        filename = slicename+"-" + filename
-#--- 
-
-                    if self.opts.prefix and self.opts.prefix.strip() != "":
-                        filename  = self.opts.prefix.strip() + "-" + filename
+                mname = "rspec"
+                if slicename:
+                    mname = "manifest-rspec"
+                filename = self._construct_output_filename(slicename, url, urn, mname, ".xml", len(rspecs))
 
             # Create FILE
             # This prints or logs results, depending on filename None
@@ -980,21 +947,10 @@ class AMCallHandler(object):
             header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
             filename = None
             if self.opts.output:
-                if self.opts.outputfile and len(rspecs) == 1:
-                    # FIXME: Do we really only want this if there is only a single AM?
-                    # FIXME: substitute %a for URL or URN?
-                    # FIXME: prefix/postfix URL/URN?
-                    filename = self.opts.outputfile
-                else:
-                    # create filename
-                    # remove all punctuation and use url
-                    server = self._filename_part_from_am_url(url)
-                    filename = name+"-manifest-rspec-"+server+".xml"
-                    if self.opts.prefix and self.opts.prefix.strip() != "":
-                        filename  = self.opts.prefix.strip() + "-" + filename
+                filename = self._construct_output_filename(name, url, urn, "manifest-rspec", ".xml", len(rspecs))
                         
-                    self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
-                    retVal += '\n   Saved createsliver results to %s. ' % (filename)
+                self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
+                retVal += '\n   Saved createsliver results to %s. ' % (filename)
             else:
                 self.logger.info('Asked %s to reserve resources. Result:' % (url))
 
@@ -1187,18 +1143,7 @@ class AMCallHandler(object):
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:
-                    if self.opts.outputfile and len(clientList) == 1:
-                        # FIXME: Do we really only want this if there is only a single AM?
-                        # FIXME: substitute %a for URL or URN?
-                        # FIXME: prefix/postfix URL/URN?
-                        filename = self.opts.outputfile
-                    else:
-                        # better filename
-                        # remove all punctuation and use url
-                        server = self._filename_part_from_am_url(client.url)
-                        filename = name+"-sliverstatus-"+server+".json"
-                        if self.opts.prefix and self.opts.prefix.strip() != "":
-                            filename  = self.opts.prefix.strip() + "-" + filename
+                    filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
                         
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
                     
@@ -1354,6 +1299,50 @@ class AMCallHandler(object):
     # End of AM API operations
     #######
     # Helper functions follow
+
+    def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
+        '''Construct a name for omni command outputs; return that name.
+        If outputfile specified, use that.
+        Else, overall form is [prefix-][slicename-]methodname-server.filetype
+        filetype should be .xml or .json'''
+
+        # Construct server bit. Get HRN from URN, else use url
+        # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
+        if clienturn and clienturn is not "unspecified_AM_URN" and (not clienturn.startswith("http")):
+            # construct hrn
+            # strip off any leading urn:publicid:IDN
+            if clienturn.find("IDN+") > -1:
+                clienturn = clienturn[(clienturn.find("IDN+") + 4):]
+            urnParts = clienturn.split("+")
+            server = urnParts.pop(0)
+            server = server.translate(string.maketrans(' .:', '---'))
+        else:
+            # remove all punctuation and use url
+            server = self._filename_part_from_am_url(clienturl)
+            
+        if self.opts.outputfile:
+            filename = self.opts.outputfile
+            if "%a" in self.opts.outputfile:
+                # replace %a with server
+                filename = string.replace(filename, "%a", server)
+            elif clientcount > 1:
+                # FIXME: How do we distinguish? Let's just prefix server
+                filename = server + "-" + filename
+            if "%s" in self.opts.outputfile:
+                # replace %s with slicename
+                if not slicename:
+                    slicename = 'noslice'
+                filename = string.replace(filename, "%s", slicename)
+            return filename
+
+        filename = methodname + "-" + server + filetype
+#--- AM API specific
+        if slicename:
+            filename = slicename+"-" + filename
+#--- 
+        if self.opts.prefix and self.opts.prefix.strip() != "":
+            filename  = self.opts.prefix.strip() + "-" + filename
+        return filename
 
     def _retrieve_value(self, result, message, framework):
         '''Extract ABAC proof and creds from the result if any.
