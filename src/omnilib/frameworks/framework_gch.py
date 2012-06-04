@@ -20,21 +20,25 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
+# Framework for talking to the GENI Clearinghouse
+
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
 import sys
+from geni.util.ch_interface import *;
 
 class Framework(Framework_Base):
     def __init__(self, config, opts):
         Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
-            sys.exit('GCF Framework certfile %s doesnt exist' % config['cert'])
+            sys.exit('GCH Framework certfile %s doesnt exist' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])        
         if not os.path.exists(config['key']):
-            sys.exit('GCF Framework keyfile %s doesnt exist' % config['key'])
+            sys.exit('GCH Framework keyfile %s doesnt exist' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
         self.config = config
@@ -48,31 +52,20 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
-            try:
-                (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
-            except Exception:
-                raise 
+            (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCH CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
 
         return self.user_cred, message
     
     def get_slice_cred(self, slice_urn):
         
 #        print "SLICE URN = " + str(slice_urn)
-        try:
-            (cred, message) = \
-                _do_ssl(self, None, \
-                            ("GetSliceCredential slice %s on GCF CH %s" % \
-                                 (slice_urn, self.config['ch'])), 
-                        self.ch.GetSliceCredential, '', self.cert_string, \
-                            slice_urn);
-        except Exception:
-            raise 
+        (cred, message) = \
+            _do_ssl(self, None, \
+                        ("GetSliceCredential slice %s on GCH CH %s" % (slice_urn, self.config['ch'])),
+                    self.ch.GetSliceCredential, '', self.cert_string, slice_urn);
 
         if (cred['code'] == 0):
             cred = cred['value']['slice_credential'];
-        else:
-            raise Exception("Failed to get slice credential");
-
 #        print "CRED = " + str(cred)
 #        print "MSG = " + str(message)
         # FIXME: use any message?
@@ -94,23 +87,16 @@ class Framework(Framework_Base):
             raise Exception("Falure to create slice " + slice_name);
 
         return slice_info;
+
     
     def delete_slice(self, urn):
-        try:
-            (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCF CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
-        except Exception:
-            raise;
-
+        (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCH CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
         # FIXME: use any message?
         _ = message #Appease eclipse
         return bool
      
     def list_aggregates(self):
-        try:
-            (sites, message) = _do_ssl(self, None, ("List Aggregates at GCF CH %s" % self.config['ch']), self.ch.ListAggregates)
-        except Exception:
-            raise;
-
+        (sites, message) = _do_ssl(self, None, ("List Aggregates at GCH CH %s" % self.config['ch']), self.ch.ListAggregates)
         if sites is None:
             # FIXME: use any message?
             _ = message #Appease eclipse
@@ -124,18 +110,13 @@ class Framework(Framework_Base):
     
     def slice_name_to_urn(self, name):
         "This method is unsupported in this framework"
-        raise Exception("Can't generate a URN from a slice URN in this framework: need to provide full URN including project name");
-
+        raise Exception("Can't generate a URN from a slice URN in this framewor
 
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
         """
         expiration = expiration_dt.isoformat()
-        try:
-            (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCF CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
-        except Exception:
-            raise;
-
+        (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCH CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
         if bool:
             return expiration_dt
         else:
