@@ -1274,7 +1274,7 @@ class AMCallHandler(object):
                         self._raise_omni_error()
 #---
 
-            for key in user['keys'].split(','):        
+            for key in user['keys'].split(','):
                 try:
                     newkeys.append(file(os.path.expanduser(key.strip())).read())
                 except Exception, exc:
