@@ -521,6 +521,8 @@ class AMCallHandler(object):
             mymessage = "No aggregates available to query: %s" % message
         # FIXME: What if got a message and still got some aggs?
 
+        creds = _maybe_add_abac_creds(self.framework, cred)
+
         # Connect to each available GENI AM to list their resources
         for client in clientList:
             if cred is None:
@@ -606,8 +608,6 @@ class AMCallHandler(object):
 #-----
 
             self.logger.debug("Doing listresources with options %r", options)
-            creds = _maybe_add_abac_creds(self.framework, cred)
-
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
             # Get the RSpec out of the result (accounting for API version diffs, ABAC)
@@ -894,6 +894,8 @@ class AMCallHandler(object):
         if aggs == {} and message != "":
             retVal += "No aggregates to reserve on: %s" % message
 
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
         aggregate_urls = aggs.values()
         for (url, rspec) in rspecs.items():
             # Is this AM listed in the CH or our list of aggregates?
@@ -912,8 +914,6 @@ class AMCallHandler(object):
             result = None
             client = make_client(url, self.framework, self.opts)
             self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
-
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds, rspec, slice_users]
 #--- API version diff:
@@ -1051,27 +1051,28 @@ class AMCallHandler(object):
 
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        # Note that the time arg includes UTC offset as needed
+        time_string = time_with_tz.isoformat()
+        if self.opts.no_tz:
+            # The timezone causes an error in older sfa
+            # implementations as deployed in mesoscale GENI. Strip
+            # off the timezone if the user specfies --no-tz
+            self.logger.info('Removing timezone at user request (--no-tz)')
+            time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+        args = [urn, creds, time_string]
+#--- AM API version specific
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            args.append(dict())
+
         successCnt = 0
         successList = []
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-            # Note that the time arg includes UTC offset as needed
-            time_string = time_with_tz.isoformat()
-            if self.opts.no_tz:
-                # The timezone causes an error in older sfa
-                # implementations as deployed in mesoscale GENI. Strip
-                # off the timezone if the user specfies --no-tz
-                self.logger.info('Removing timezone at user request (--no-tz)')
-                time_string = time_with_tz.replace(tzinfo=None).isoformat()
-
-            args = [urn, creds, time_string]
-#--- AM API version specific
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                args.append(dict())
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      ("Renew Sliver %s on %s" % (urn, client.url)),
@@ -1128,16 +1129,13 @@ class AMCallHandler(object):
 
         successCnt = 0
         retItem = {}
+        args = []
+        creds = []
         # Query status at each client
         (clientList, message) = self._getclients()
         if len(clientList) > 0:
             self.logger.info('Status of Slice %s:' % urn)
-        else:
-            prstr = "No aggregates available to get slice status at: %s" % message
-            retVal += prstr + "\n"
-            self.logger.warn(prstr)
 
-        for client in clientList:
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
@@ -1145,6 +1143,12 @@ class AMCallHandler(object):
             if self.opts.api_version >= 2:
                 # Add the options dict
                 args.append(dict())
+        else:
+            prstr = "No aggregates available to get slice status at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
+        for client in clientList:
             (status, message) = _do_ssl(self.framework,
                                         None,
                                         "Sliver status of %s at %s" % (urn, client.url),
@@ -1204,6 +1208,14 @@ class AMCallHandler(object):
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "DeleteSliver")
 
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        args = [urn, creds]
+#--- API version specific
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            args.append(dict())
+
         successList = []
         failList = []
         successCnt = 0
@@ -1222,13 +1234,6 @@ class AMCallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-            args = [urn, creds]
-#--- API version specific
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                args.append(dict())
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      ("Delete Sliver %s on %s" % (urn, client.url)),
@@ -1278,18 +1283,19 @@ class AMCallHandler(object):
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "Shutdown")
 
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        args = [urn, creds]
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            args.append(dict())
+
         #Call shutdown on each AM
         successCnt = 0
         successList = []
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-            args = [urn, creds]
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                args.append(dict())
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      "Shutdown %s on %s" % (urn, client.url),
