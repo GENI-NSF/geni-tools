@@ -795,81 +795,34 @@ class AMCallHandler(object):
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
 
         # Load up the user's request rspec
-        specfile = None
+        rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
-            specfile = args[1]
-        if specfile is None or not os.path.isfile(specfile):
+            rspecfile = args[1]
+        if rspecfile is None or not os.path.isfile(rspecfile):
 #--- Dev mode should allow missing RSpec
-            msg = 'File of resources to request missing: %s' % specfile
+            msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
                 self._raise_omni_error()
 
-        rspecs = None
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+
         # read the rspec into a string, and add it to the rspecs dict
-        rspecs = {}
         try:
-            rspec = file(specfile).read()
-            rspecs[_derefAggNick(self, self.opts.aggregate)[0]] = rspec
+            rspec = file(rspecfile).read()
         except Exception, exc:
 #--- Should dev mode allow this?
-            msg = 'Unable to read rspec file %s: %s' % (specfile, str(exc))
+            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
-                rspecs[_derefAggNick(self, self.opts.aggregate)[0]] = rspec
                 self.logger.warn(msg)
             else:
                 self._raise_omni_error(msg)
 
-        result = None
         # Copy the user config and read the keys from the files into the structure
-        slice_users = copy(self.config['users'])
-        if len(slice_users) == 0:
-            self.logger.warn("No users defined. No keys will be uploaded to support SSH access.")
+        slice_users = self._get_users_arg()
 
-        #slice_users = copy(self.omni_config['slice_users'])
-        for user in slice_users:
-            newkeys = []
-            required = ['urn', 'keys']
-            for req in required:
-#--- Dev vs Exp: allow this in dev mode:
-                if not req in user:
-                    msg = "%s in omni_config is not specified for user %s" % (req,user)
-                    if self.opts.devmode:
-                        self.logger.warn(msg)
-                    else:
-                        self._raise_omni_error()
-#---
-
-            for key in user['keys'].split(','):        
-                try:
-                    newkeys.append(file(os.path.expanduser(key.strip())).read())
-                except Exception, exc:
-                    self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
-            user['keys'] = newkeys
-            if len(newkeys) == 0:
-                self.logger.warn("Empty keys for user %s", user['urn'])
-            else:
-                self.logger.debug("Newkeys: %r", newkeys)
-
-#            # Now error check the URN. It has to match that in the cert
-#            # for AMs of type pg with tag < Tag v4.240? or stable-20110420?
-#            # FIXME: Complain if NO urn is that in the cert?
-#            # Only do the complaint if there is a PG AM that is old?
-#            # Or somehow hold of complaining until per AM we have an issue?
-#            certurn = ''
-#            try:
-#                certurn = gid.GID(filename=self.framework.cert).get_urn()
-#            except Exception, exc:
-#                self.logger.warn("Failed to get URN from cert %s: %s", self.framework.cert, exc)
-#            if certurn != user['urn']:
-#                self.logger.warn("Keys MAY not be installed for user %s. In PG prior to stable-20110420, the user URN must match that in your certificate. Your cert has urn %s but you specified that user %s has URN %s. Try making your omni_config user have a matching URN.", user, certurn, user, user['urn'])
-#                # FIXME: if len(slice_users) == 1 then use the certurn?
-
-#        if len(slice_users) < 1:
-#            self.logger.warn("No user keys found to be uploaded")
-        
         # Perform the allocations
         (aggs, message) = _listaggregates(self)
         if aggs == {} and message != "":
@@ -878,11 +831,10 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         aggregate_urls = aggs.values()
-        for (url, rspec) in rspecs.items():
-            # Is this AM listed in the CH or our list of aggregates?
-            # If not we won't be able to check its status and delete it later
-            if not url in aggregate_urls:
-                self.logger.info("""Be sure to remember (write down) AM URL:
+        # Is this AM listed in the CH or our list of aggregates?
+        # If not we won't be able to check its status and delete it later
+        if not url in aggregate_urls:
+            self.logger.info("""Be sure to remember (write down) AM URL:
              %s. 
              You are reserving resources there, and your clearinghouse
              and config file won't remind you to check that sliver later. 
@@ -891,71 +843,72 @@ class AMCallHandler(object):
                    '-a %s'
              arguments again to act on this sliver.""" % (url, url))
 
-            # Okay, send a message to the AM this resource came from
-            result = None
-            client = make_client(url, self.framework, self.opts)
-            self.logger.info("Creating sliver(s) from rspec file %s for slice %s", specfile, urn)
+        # Okay, send a message to the AM this resource came from
+        result = None
+        client = make_client(url, self.framework, self.opts)
+        self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
 
-            args = [urn, creds, rspec, slice_users]
+        args = [urn, creds, rspec, slice_users]
 #--- API version diff:
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                args.append(dict())
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            args.append(dict())
 #---
 
-            (result, message) = _do_ssl(self.framework,
-                                        None,
-                                        ("Create Sliver %s at %s" % (urn, url)),
-                                        client.CreateSliver,
-                                        *args)
 
-            # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
-            (result, message) = self._retrieve_value(result, message, self.framework)
+        (result, message) = _do_ssl(self.framework,
+                                    None,
+                                    ("Create Sliver %s at %s" % (urn, url)),
+                                    client.CreateSliver,
+                                    *args)
 
-            prettyresult = result
+        # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
+        (result, message) = self._retrieve_value(result, message, self.framework)
+
+        prettyresult = result
 
 #--- Dev vs Exp diff?:            
-            if rspec_util.is_rspec_string( result, self.logger ):
-                try:
-                    newl = ''
-                    if '\n' not in result:
-                        newl = '\n'
-                    prettyresult = md.parseString(result).toprettyxml(indent=' '*2, newl=newl)
-                except:
-                    pass
-                # summary
-                retVal += 'Reserved resources on %s. ' % (url)
+        if rspec_util.is_rspec_string( result, self.logger ):
+            try:
+                newl = ''
+                if '\n' not in result:
+                    newl = '\n'
+                prettyresult = md.parseString(result).toprettyxml(indent=' '*2, newl=newl)
+            except:
+                pass
+            # summary
+            retVal += 'Reserved resources on %s. ' % (url)
 
-            else:
-                # summary
-                retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
-                if result is None and message != "":
-                    retVal += message
+        else:
+            # summary
+            retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
+            if result is None and message != "":
+                retVal += message
 
-            # FIXME: When Tony revises the rspec, fix this test
-            if '<RSpec' in rspec and 'type="SFA"' in rspec:
-                # Figure out the login name
-                # We could of course do this for the user.
-                prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % name
-                self.logger.info(prstr)
-                retVal += ". " + prstr
+        # FIXME: When Tony revises the rspec, fix this test
+        if '<RSpec' in rspec and 'type="SFA"' in rspec:
+            # Figure out the login name
+            # We could of course do this for the user.
+            prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % name
+            self.logger.info(prstr)
+            retVal += ". " + prstr
 
-            # If the user specified -o then we save the return from
-            # each AM as though it is a manifest RSpec in a
-            # separate file
-            # Create HEADER
-            header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
-            filename = None
-            if self.opts.output:
-                filename = self._construct_output_filename(name, url, urn, "manifest-rspec", ".xml", len(rspecs))
+        # If the user specified -o then we save the return from
+        # each AM as though it is a manifest RSpec in a
+        # separate file
+        # Create HEADER
+        header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
+        filename = None
+        if self.opts.output:
+            filename = self._construct_output_filename(name, url, urn, "manifest-rspec", ".xml", len(rspecs))
                         
-                self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
-                retVal += '\n   Saved createsliver results to %s. ' % (filename)
-            else:
-                self.logger.info('Asked %s to reserve resources. Result:' % (url))
+            self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
+            retVal += '\n   Saved createsliver results to %s. ' % (filename)
+        else:
+            self.logger.info('Asked %s to reserve resources. Result:' % (url))
 
-            # Print or log results, putting header first
-            self._printResults( header, prettyresult, filename)
+        # Print or log results, putting header first
+        self._printResults( header, prettyresult, filename)
 
         return retVal, result
 
@@ -1299,6 +1252,56 @@ class AMCallHandler(object):
     # End of AM API operations
     #######
     # Helper functions follow
+
+    def _get_users_arg(self):
+        '''Get the users argument for SSH public keys to install.'''
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = copy(self.config['users'])
+        if len(slice_users) == 0:
+            self.logger.warn("No users defined. No keys will be uploaded to support SSH access.")
+
+        #slice_users = copy(self.omni_config['slice_users'])
+        for user in slice_users:
+            newkeys = []
+            required = ['urn', 'keys']
+            for req in required:
+#--- Dev vs Exp: allow this in dev mode:
+                if not req in user:
+                    msg = "%s in omni_config is not specified for user %s" % (req,user)
+                    if self.opts.devmode:
+                        self.logger.warn(msg)
+                    else:
+                        self._raise_omni_error()
+#---
+
+            for key in user['keys'].split(','):        
+                try:
+                    newkeys.append(file(os.path.expanduser(key.strip())).read())
+                except Exception, exc:
+                    self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
+            user['keys'] = newkeys
+            if len(newkeys) == 0:
+                self.logger.warn("Empty keys for user %s", user['urn'])
+            else:
+                self.logger.debug("Newkeys: %r", newkeys)
+
+#            # Now error check the URN. It has to match that in the cert
+#            # for AMs of type pg with tag < Tag v4.240? or stable-20110420?
+#            # FIXME: Complain if NO urn is that in the cert?
+#            # Only do the complaint if there is a PG AM that is old?
+#            # Or somehow hold of complaining until per AM we have an issue?
+#            certurn = ''
+#            try:
+#                certurn = gid.GID(filename=self.framework.cert).get_urn()
+#            except Exception, exc:
+#                self.logger.warn("Failed to get URN from cert %s: %s", self.framework.cert, exc)
+#            if certurn != user['urn']:
+#                self.logger.warn("Keys MAY not be installed for user %s. In PG prior to stable-20110420, the user URN must match that in your certificate. Your cert has urn %s but you specified that user %s has URN %s. Try making your omni_config user have a matching URN.", user, certurn, user, user['urn'])
+#                # FIXME: if len(slice_users) == 1 then use the certurn?
+
+#        if len(slice_users) < 1:
+#            self.logger.warn("No user keys found to be uploaded")
+        return slice_users
 
     def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
         '''Construct a name for omni command outputs; return that name.
