@@ -714,39 +714,10 @@ class AMCallHandler(object):
         fileCtr = 0
         savedFileDesc = ""
         for ((urn,url), rspec) in rspecs.items():                        
+            returnedRspecs[(urn,url)] = rspec
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
 
-            # Create HEADER
-#--- AM API specific
-            if slicename is not None:
-                header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
-#---
-            else:
-                header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
-            header = "<!-- "+header+" -->"
-
-            # Create BODY
-            returnedRspecs[(urn,url)] = rspec
-            if rspec_util.is_rspec_string( rspec, self.logger ):
-                content = rspec_util.getPrettyRSpec(rspec)
-            else:
-                content = "<!-- No valid RSpec returned. -->"
-                if rspec is not None:
-                    self.logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
-                    content += "\n<!-- \n" + rspec + "\n -->"
-
-            filename=None
-            # Create FILENAME
-            if self.opts.output:
-                fileCtr += 1 
-                mname = "rspec"
-                if slicename:
-                    mname = "manifest-rspec"
-                filename = self._construct_output_filename(slicename, url, urn, mname, ".xml", len(rspecs))
-
-            # Create FILE
-            # This prints or logs results, depending on filename None
-            self._printResults( header, content, filename)
+            retVal, filename = self._writeRSpec(rspec, slicename, urn, url, len(rspecs))
             if filename:
                 savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
         # End of loop over rspecs
@@ -765,7 +736,7 @@ class AMCallHandler(object):
             if len(returnedRspecs.keys()) > 0:
                 retVal += "Wrote rspecs from %d aggregate(s)" % numAggs
                 if self.opts.output:
-                    retVal +=" to %d file(s)"% fileCtr
+                    retVal +=" to %d file(s)"% len(rspecs)
                     retVal += "\n" + savedFileDesc
             else:
                 retVal +="No Rspecs succesfully parsed from %d aggregate(s)" % numAggs
@@ -816,7 +787,7 @@ class AMCallHandler(object):
             self._raise_omni_error(msg)
 
         # prints slice expiration. Warns or raises an Omni error on problems
-        (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
 
         # Load up the user's request rspec
         rspecfile = None
@@ -891,55 +862,21 @@ class AMCallHandler(object):
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
+        if result:
+            self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
 
-        prettyresult = result
-
-#--- Dev vs Exp diff?:
-        if rspec_util.is_rspec_string( result, self.logger ):
-            prettyresult = rspec_util.getPrettyRSpec(result)
-            # summary
-            retVal += 'Reserved resources on %s. ' % (url)
-
-        else:
-            # summary
-            prettyresult = "<!-- No manifest RSpec returned. -->"
-            retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
-            if result is None and message != "":
-                self.logger.warn("No manifest returned: %s", message)
-                retVal += message
-                prettyresult += "\n<!-- " + message + " -->"
-            elif result is None:
-                self.logger.warn("No manifest RSpec returned")
-            else:
-                self.logger.warn("No manifest RSpec returned: Invalid RSpec? Starts: %s...", str(result)[:min(40, len(result))])
-                prettyresult += "\n<!-- \n" + result + "\n -->"
+        (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url)
+        if filename:
+            self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
+            retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
         # FIXME: When Tony revises the rspec, fix this test
-        if '<RSpec' in rspec and 'type="SFA"' in rspec:
+        if result and '<RSpec' in result and 'type="SFA"' in result:
             # Figure out the login name
             # We could of course do this for the user.
-            prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % name
+            prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
             self.logger.info(prstr)
             retVal += ". " + prstr
-
-        # If the user specified -o then we save the return from
-        # each AM as though it is a manifest RSpec in a
-        # separate file
-        # Create HEADER
-        header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (name, clienturn, url)
-        header = "<!-- "+header+" -->"
-        #header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
-        filename = None
-        if self.opts.output:
-            filename = self._construct_output_filename(name, url, urn, "manifest-rspec", ".xml", len(rspecs))
-                        
-            self.logger.info("Writing result of createsliver for slice: %s at AM: %s to file %s", name, url, filename)
-            retVal += '\n   Saved createsliver results to %s. ' % (filename)
-        else:
-            self.logger.info('Asked %s to reserve resources. Result:' % (url))
-
-        # Print or log results, putting header first
-        self._printResults( header, prettyresult, filename)
 
         return retVal, result
 
@@ -1284,6 +1221,58 @@ class AMCallHandler(object):
     #######
     # Helper functions follow
 
+    def _writeRSpec(self, rspec, slicename, urn, url, clientcount=1):
+        # return just filename? retVal?
+        # Does this do logging? Or return what it would log? I think it logs, but....
+
+        # Create HEADER
+        if slicename:
+            header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+        else:
+            header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
+        header = "<!-- "+header+" -->"
+
+        server = self._get_server_name(url, urn)
+
+        # Create BODY
+        if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+            content = rspec_util.getPrettyRSpec(rspec)
+            if slicename:
+                retVal = "Got Reserved resources RSpec from %s" % server
+            else:
+                retVal = "Got RSpec from %s" % server
+        else:
+            content = "<!-- No valid RSpec returned. -->"
+            if rspec is not None:
+                # FIXME: Diff for dev here?
+                self.logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
+                content += "\n<!-- \n" + rspec + "\n -->"
+                if slicename:
+                    retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
+                else:
+                    retVal = "Invalid RSpec returned from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
+            else:
+                if slicename:
+                    retVal = "No RSpec returned for slice %s from %s" % (slicename, server)
+                    self.logger.warn("No RSpec returned for slice %s from %s" % (slicename, server))
+                else:
+                    retVal = "No RSpec returned from %s" % (server)
+                    self.logger.warn("No RSpec returned from %s" % (server))
+
+        filename=None
+        # Create FILENAME
+        if self.opts.output:
+            mname = "rspec"
+            if slicename:
+                mname = "manifest-rspec"
+            filename = self._construct_output_filename(slicename, url, urn, mname, ".xml", clientcount)
+            # FIXME: Could add note to retVal here about file it was saved to?
+
+        # Create FILE
+        # This prints or logs results, depending on filename None
+        self._printResults( header, content, filename)
+        return retVal, filename
+
     def _get_users_arg(self):
         '''Get the users argument for SSH public keys to install.'''
         # Copy the user config and read the keys from the files into the structure
@@ -1334,14 +1323,8 @@ class AMCallHandler(object):
 #            self.logger.warn("No user keys found to be uploaded")
         return slice_users
 
-    def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
-        '''Construct a name for omni command outputs; return that name.
-        If outputfile specified, use that.
-        Else, overall form is [prefix-][slicename-]methodname-server.filetype
-        filetype should be .xml or .json'''
-
-        # Construct server bit. Get HRN from URN, else use url
-        # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
+    def _get_server_name(self, clienturl, clienturn):
+        '''Get a short server name from the AM URL and URN'''
         if clienturn and clienturn is not "unspecified_AM_URN" and (not clienturn.startswith("http")):
             # construct hrn
             # strip off any leading urn:publicid:IDN
@@ -1353,6 +1336,17 @@ class AMCallHandler(object):
         else:
             # remove all punctuation and use url
             server = self._filename_part_from_am_url(clienturl)
+        return server
+
+    def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
+        '''Construct a name for omni command outputs; return that name.
+        If outputfile specified, use that.
+        Else, overall form is [prefix-][slicename-]methodname-server.filetype
+        filetype should be .xml or .json'''
+
+        # Construct server bit. Get HRN from URN, else use url
+        # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
+        server = self._get_server_name(clienturl, clienturn)
             
         if self.opts.outputfile:
             filename = self.opts.outputfile
