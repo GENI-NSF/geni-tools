@@ -23,12 +23,13 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-RSpec validation utilities.
+RSpec validation and printing utilities.
 """
 import xml.etree.ElementTree as etree 
 import subprocess
 import tempfile
 import xml.parsers.expat
+import xml.dom.minidom as md
 from rspec_schema import *
 
 RSPECLINT = "rspeclint" 
@@ -284,6 +285,19 @@ def is_rspec_string( rspec, logger=None ):
 
     # (3) TBD: Validate rspec against schema
     return False
+
+
+def getPrettyRSpec(rspec):
+    '''Produce a pretty print string for an XML RSpec'''
+    prettyrspec = rspec
+    try:
+        newl = ''
+        if '\n' not in rspec:
+            newl = '\n'
+        prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
+    except:
+        pass
+    return prettyrspec
 
 if __name__ == "__main__":
     request_str = """<?xml version='1.0'?>

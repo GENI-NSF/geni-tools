@@ -35,7 +35,6 @@ import json
 import os
 import pprint
 import string
-import xml.dom.minidom as md
 import zlib
 
 from omnilib.util import OmniError, NoSliceCredError, RefusedError, naiveUTC
@@ -331,6 +330,14 @@ class AMCallHandler(object):
         else:
             return (versionSpot[key], message)
 
+    def _get_api_versions(self, client):
+        '''Get the supported API versions and URLs for this client (from GetVersion)'''
+        (res, message) = self._get_getversion_key(client, 'geni_api_versions')
+        if res is None:
+            self.logger.warning("Couldnt get api versions supported from GetVersion: %s" % message)
+        # Return is a dict: Int API version -> string URL of AM
+        return (res, message)
+
     def _get_advertised_rspecs(self, client):
         '''Get the supported advertisement rspec versions for this client (from GetVersion)'''
         (ads, message) = self._get_getversion_key(client, 'ad_rspec_versions')
@@ -341,6 +348,7 @@ class AMCallHandler(object):
         if ads is None:
             self.logger.warning("Couldnt get Advertised supported RSpec versions from GetVersion so can't do ListResources: %s" % message)
 
+        # Return is array of dicts with type, version, schema, namespace, array of extensions 
         return (ads, message)
 
     def _get_request_rspecs(self, client):
@@ -353,6 +361,7 @@ class AMCallHandler(object):
         if ads is None:
             self.logger.warning("Couldnt get Request supported RSpec versions from GetVersion: %s" % message)
 
+        # Return is array of dicts with type, version, schema, namespace, array of extensions 
         return (ads, message)
 
     def _get_cred_versions(self, client):
@@ -360,6 +369,7 @@ class AMCallHandler(object):
         (res, message) = self._get_getversion_key(client, 'geni_credential_types')
         if res is None:
             self.logger.warning("Couldnt get credential types supported from GetVersion: %s" % message)
+        # Return is array of dicts: geni_type, geni_version
         return (res, message)
 
     def _get_singlealloc_style(self, client):
@@ -368,6 +378,7 @@ class AMCallHandler(object):
         if res is None:
             self.logger.debug("Couldnt get single_allocation mode supported from GetVersion; will use default of False: %s" % message)
             res = False
+        # return is boolean
         return (res, message)
 
     def _get_alloc_style(self, client):
@@ -376,6 +387,7 @@ class AMCallHandler(object):
         if res is None:
             self.logger.debug("Couldnt get allocate style supported from GetVersion; will use default of 'geni_single': %s" % message)
             res = 'geni_single'
+        # Return is string: geni_single, geni_disjoint, or geni_many
         return (res, message)
 
     # FIXME: Must still factor dev vs exp
@@ -400,30 +412,37 @@ class AMCallHandler(object):
         If --tostdout option, then instead of logging, print to STDOUT.
 
         """
-        retVal = ""
-        version = {}
-        (clients, message) = self._getclients()
-        successCnt = 0
+
+        ### Method specific arg handling
 
         # Ensure GetVersion skips the cache, unless commandline option forces the cache
         if not self.opts.useGetVersionCache:
             self.opts.noGetVersionCache = True
 
+        # Start basic loop over clients
+        retVal = ""
+        version = {}
+        (clients, message) = self._getclients()
+        successCnt = 0
         for client in clients:
             # Pulls from cache or caches latest, error checks return
             #FIXME: This makes the getversion output be only the value
             # But for developers, I want the whole thing I think
             (thisVersion, message) = self._get_getversion_value(client)
 
+            # Method specific result handling
             version[ client.url ] = thisVersion
 
+            # Per client result outputs:
             if version[client.url] is None:
                 self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
                 retVal += "Cannot GetVersion at %s: %s\n" % (client.url, message)
             else:
                 successCnt += 1
                 retVal += self._do_getversion_output(thisVersion, client, message)
+        # End of loop over clients
 
+        ### Method specific all-results handling, printing
         if len(clients)==0:
             retVal += "No aggregates to query. %s\n\n" % message
         else:
@@ -529,7 +548,6 @@ class AMCallHandler(object):
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
 
-
 #---
 # In Dev mode, just use the requested type/version - don't check what is supported
 
@@ -556,7 +574,7 @@ class AMCallHandler(object):
                 # foreach item in the list that is the val
                 match = False
                 for availversion in ad_rspec_version:
-                    if not availversion.has_key('type') and availversion.has_key('version'):
+                    if not (availversion.has_key('type') and availversion.has_key('version')):
                         self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or version")
                         continue
 
@@ -570,6 +588,8 @@ class AMCallHandler(object):
                         break
                 # if no success
                 if match == False:
+                    # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
+
                     #   return error showing ad_rspec_versions
                     pp = pprint.PrettyPrinter(indent=4)
                     self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
@@ -597,6 +617,8 @@ class AMCallHandler(object):
                     options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
                                                          version=ad_rspec_version[0]['version'])
                 else:
+                    # FIXME: Could we pick GENI v3 if there, else PG v2?
+
                     # Inform the user that they have to pick.
                     ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
                     self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
@@ -604,6 +626,7 @@ class AMCallHandler(object):
                         mymessage += ". "
                     mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
                     continue
+            # Done constructing options to ListResources
 #-----
 
             self.logger.debug("Doing listresources with options %r", options)
@@ -612,6 +635,7 @@ class AMCallHandler(object):
             # Get the RSpec out of the result (accounting for API version diffs, ABAC)
             (rspec, message) = self._retrieve_value(resp, message, self.framework)
 
+            # Per client result saving
             if not rspec is None:
                 successCnt += 1
                 if options.get('geni_compressed', False):
@@ -685,7 +709,6 @@ class AMCallHandler(object):
             self.logger.info( prtStr )
             return prtStr, None
 
- 
         # Loop over RSpecs and print them
         returnedRspecs = {}
         fileCtr = 0
@@ -696,7 +719,7 @@ class AMCallHandler(object):
             # Create HEADER
 #--- AM API specific
             if slicename is not None:
-                header = "Resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+                header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
 #---
             else:
                 header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
@@ -704,13 +727,13 @@ class AMCallHandler(object):
 
             # Create BODY
             returnedRspecs[(urn,url)] = rspec
-            try:
-                newl = ''
-                if '\n' not in rspec:
-                    newl = '\n'
-                content = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
-            except:
-                content = rspec
+            if rspec_util.is_rspec_string( rspec, self.logger ):
+                content = rspec_util.getPrettyRSpec(rspec)
+            else:
+                content = "<!-- No valid RSpec returned. -->"
+                if rspec is not None:
+                    self.logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
+                    content += "\n<!-- \n" + rspec + "\n -->"
 
             filename=None
             # Create FILENAME
@@ -732,19 +755,20 @@ class AMCallHandler(object):
         # FIXME: If numAggs is 1 then retVal should just be the rspec?
 #--- AM API specific:
         if slicename:
-            retVal = "Retrieved resources for slice %s from %d aggregates."%(slicename, numAggs)
+            retVal = "Retrieved resources for slice %s from %d aggregate(s)."%(slicename, numAggs)
 #---
         else:
-            retVal = "Retrieved resources from %d aggregates."%(numAggs)
+            retVal = "Retrieved resources from %d aggregate(s)."%(numAggs)
+
         if numAggs > 0:
             retVal +="\n"
             if len(returnedRspecs.keys()) > 0:
-                retVal += "Wrote rspecs from %d aggregates" % numAggs
+                retVal += "Wrote rspecs from %d aggregate(s)" % numAggs
                 if self.opts.output:
-                    retVal +=" to %d files"% fileCtr
+                    retVal +=" to %d file(s)"% fileCtr
                     retVal += "\n" + savedFileDesc
             else:
-                retVal +="No Rspecs succesfully parsed from %d aggregates" % numAggs
+                retVal +="No Rspecs succesfully parsed from %d aggregate(s)" % numAggs
             retVal +="."
 
         retItem = returnedRspecs
@@ -806,8 +830,6 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error()
 
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-
         # read the rspec into a string, and add it to the rspecs dict
         try:
             rspec = file(rspecfile).read()
@@ -820,15 +842,15 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # Copy the user config and read the keys from the files into the structure
-        slice_users = self._get_users_arg()
+        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
+        # out of the RSpec
+
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
 
         # Perform the allocations
         (aggs, message) = _listaggregates(self)
         if aggs == {} and message != "":
             retVal += "No aggregates to reserve on: %s" % message
-
-        creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         aggregate_urls = aggs.values()
         # Is this AM listed in the CH or our list of aggregates?
@@ -847,6 +869,11 @@ class AMCallHandler(object):
         result = None
         client = make_client(url, self.framework, self.opts)
         self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = self._get_users_arg()
 
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
@@ -867,23 +894,25 @@ class AMCallHandler(object):
 
         prettyresult = result
 
-#--- Dev vs Exp diff?:            
+#--- Dev vs Exp diff?:
         if rspec_util.is_rspec_string( result, self.logger ):
-            try:
-                newl = ''
-                if '\n' not in result:
-                    newl = '\n'
-                prettyresult = md.parseString(result).toprettyxml(indent=' '*2, newl=newl)
-            except:
-                pass
+            prettyresult = rspec_util.getPrettyRSpec(result)
             # summary
             retVal += 'Reserved resources on %s. ' % (url)
 
         else:
             # summary
+            prettyresult = "<!-- No manifest RSpec returned. -->"
             retVal += 'Asked %s to reserve resources. No manifest Rspec returned. ' % (url)
             if result is None and message != "":
+                self.logger.warn("No manifest returned: %s", message)
                 retVal += message
+                prettyresult += "\n<!-- " + message + " -->"
+            elif result is None:
+                self.logger.warn("No manifest RSpec returned")
+            else:
+                self.logger.warn("No manifest RSpec returned: Invalid RSpec? Starts: %s...", str(result)[:min(40, len(result))])
+                prettyresult += "\n<!-- \n" + result + "\n -->"
 
         # FIXME: When Tony revises the rspec, fix this test
         if '<RSpec' in rspec and 'type="SFA"' in rspec:
@@ -897,7 +926,9 @@ class AMCallHandler(object):
         # each AM as though it is a manifest RSpec in a
         # separate file
         # Create HEADER
-        header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
+        header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (name, clienturn, url)
+        header = "<!-- "+header+" -->"
+        #header = "<!-- Reserved resources for:\n\tSlice: %s\n\tAt AM:\n\tURL: %s\n -->" % (name, url)
         filename = None
         if self.opts.output:
             filename = self._construct_output_filename(name, url, urn, "manifest-rspec", ".xml", len(rspecs))
@@ -980,8 +1011,6 @@ class AMCallHandler(object):
 
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
-        creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
         # Note that the time arg includes UTC offset as needed
         time_string = time_with_tz.isoformat()
         if self.opts.no_tz:
@@ -990,6 +1019,8 @@ class AMCallHandler(object):
             # off the timezone if the user specfies --no-tz
             self.logger.info('Removing timezone at user request (--no-tz)')
             time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         args = [urn, creds, time_string]
 #--- AM API version specific
