@@ -1129,7 +1129,7 @@ class Test(ut.OmniUnittest):
         pprinter = pprint.PrettyPrinter(indent=4)
         ## In python 2.7: assertIsNotNone
         self.assertIsNotNone(manifest,
-                          "Return from 'CreateSliver'" \
+                          "Return from 'CreateSliver' " \
                           "expected to be XML file " \
                           "but instead nothing returned. AM returned:\n %s"%text)
         # TODO: more elegant truncation
@@ -1173,7 +1173,7 @@ class Test(ut.OmniUnittest):
                         % (agg))
         for aggName, status in agg.items():
             self.assertDict(status, 
-                            "Return from 'SliverStatus' for Aggregate %s" \
+                            "Return from 'SliverStatus' for Aggregate %s " \
                             "expected to be XMLRPC struct " \
                             "but instead returned: \n" \
                             "%s\n" \
