@@ -435,6 +435,7 @@ class AMCallHandler(object):
 
             # Per client result outputs:
             if version[client.url] is None:
+                # FIXME: SliverStatus sets these to False. Should this for consistency?
                 self.logger.warn( "URN: %s (url:%s) call failed: %s\n" % (client.urn, client.url, message) )
                 retVal += "Cannot GetVersion at %s: %s\n" % (client.url, message)
             else:
@@ -512,7 +513,11 @@ class AMCallHandler(object):
             if cred is None:
 #--- Dev mode allow doing the call anyhow?
                 self.logger.error('Cannot list resources: Could not get user credential')
-                return (None, "Could not get user credential: %s" % message)
+                if not self.opts.devmode:
+                    return (None, "Could not get user credential: %s" % message)
+                else:
+                    self.logger.info('... but continuing')
+                    cred = ""
         else:
             urn = self.framework.slice_name_to_urn(slicename)
             (cred, message) = _get_slice_cred(self, urn)
@@ -522,7 +527,11 @@ class AMCallHandler(object):
                     prstr += message
                 self.logger.error(prstr)
 #--- Dev mode allow doing the call anyhow?
-                return (None, prstr)
+                if not self.opts.devmode:
+                    return (None, prstr)
+                else:
+                    self.logger.info('... but continuing')
+                    cred = ""
 
             self.logger.info('Gathering resources reserved for slice %s.' % slicename)
 
@@ -563,19 +572,27 @@ class AMCallHandler(object):
                 self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
 
                 # Note this call uses the GetVersion cache, if available
-                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                # If got a slicename, should we be using request rspecs to better match manifest support?
+                if not slicename:
+                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                else:
+                    (ad_rspec_version, message) = self._get_request_rspecs(client)
                 if ad_rspec_version is None:
-                    if mymessage != "":
-                        mymessage += ". "
-                    mymessage = mymessage + message
-                    continue
+                    if message:
+                        if mymessage != "":
+                            mymessage += ". "
+                        mymessage = mymessage + message
+                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                    # Allow developers to call an AM that fails to advertise
+                    if not self.opts.devmode:
+                        continue
 
                 self.logger.debug("Got %d supported ad_rspec_versions", len(ad_rspec_version))
                 # foreach item in the list that is the val
                 match = False
                 for availversion in ad_rspec_version:
                     if not (availversion.has_key('type') and availversion.has_key('version')):
-                        self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or version")
+                        self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or no version")
                         continue
 
                     # version is also a string
@@ -595,23 +612,37 @@ class AMCallHandler(object):
                     self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
                     if mymessage != "":
                         mymessage += ". "
-                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
-                    continue
+
+                    if not self.opts.devmode:
+                        mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                        continue
+                    else:
+                        mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
+
 #--- API version differences:
                 if self.opts.api_version == 1:
                     options['rspec_version'] = dict(type=rtype, version=rver)
                 else:
                     options['geni_rspec_version'] = dict(type=rtype, version=rver)
+
 #--- Dev mode should not force supplying this option maybe?
             elif self.opts.api_version >= 2:
                 # User did not specify an rspec type but did request version 2.
                 # Make an attempt to do the right thing, otherwise bail and tell the user.
-                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                if not slicename:
+                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+                else:
+                    (ad_rspec_version, message) = self._get_request_rspecs(client)
                 if ad_rspec_version is None:
-                    if mymessage != "":
-                        mymessage += ". "
-                    mymessage = mymessage + message
-                    continue
+                    if message:
+                        if mymessage != "":
+                            mymessage += ". "
+                        mymessage = mymessage + message
+                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                    # Allow developers to call an AM that fails to advertise
+                    if not self.opts.devmode:
+                        continue
+
                 if len(ad_rspec_version) == 1:
                     # there is only one advertisement, so use it.
                     options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
@@ -625,11 +656,12 @@ class AMCallHandler(object):
                     if mymessage != "":
                         mymessage += ". "
                     mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
-                    continue
+                    if not self.opts.devmode:
+                        continue
             # Done constructing options to ListResources
 #-----
 
-            self.logger.debug("Doing listresources with options %r", options)
+            self.logger.debug("Doing listresources with %d creds, options %r", len(creds), options)
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
             # Get the RSpec out of the result (accounting for API version diffs, ABAC)
@@ -643,7 +675,14 @@ class AMCallHandler(object):
                         rspec = zlib.decompress(rspec.decode('base64'))
                     except Exception, e:
                         self.logger.error("Failed to decompress RSpec: %s", e);
-                # FIXME: In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
+                # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
+                elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
+                    try:
+                        rspec2 = zlib.decompress(rspec.decode('base64'))
+                        if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
+                            rspec = rspec2
+                    except Exception, e:
+                        pass
                 rspecs[(client.urn, client.url)] = rspec
             else:
                 if mymessage != "":
@@ -717,7 +756,7 @@ class AMCallHandler(object):
             returnedRspecs[(urn,url)] = rspec
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
 
-            retVal, filename = self._writeRSpec(rspec, slicename, urn, url, len(rspecs))
+            retVal, filename = self._writeRSpec(rspec, slicename, urn, url, None, len(rspecs))
             if filename:
                 savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
         # End of loop over rspecs
@@ -799,7 +838,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
-                self._raise_omni_error()
+                self._raise_omni_error(msg)
 
         # read the rspec into a string, and add it to the rspecs dict
         try:
@@ -846,14 +885,16 @@ class AMCallHandler(object):
         # Copy the user config and read the keys from the files into the structure
         slice_users = self._get_users_arg()
 
+        options = None
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
         if self.opts.api_version >= 2:
+            options = dict()
             # Add the options dict
-            args.append(dict())
+            args.append(options)
 #---
 
-
+        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
         (result, message) = _do_ssl(self.framework,
                                     None,
                                     ("Create Sliver %s at %s" % (urn, url)),
@@ -865,7 +906,7 @@ class AMCallHandler(object):
         if result:
             self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
 
-        (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url)
+        (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
         if filename:
             self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
             retVal += '\n   Saved createsliver results to %s. ' % (filename)
@@ -932,9 +973,9 @@ class AMCallHandler(object):
 #--- Dev mode allow this
             msg = 'Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
             if self.opts.devmode:
-                self.logger.warn(msg)
+                self.logger.warn(msg + ", but continuing...")
             else:
-                self._raise_omni_error()
+                self._raise_omni_error(msg)
         elif time <= datetime.datetime.utcnow():
 #--- Dev mode allow earlier time
             if not self.opts.devmode:
@@ -959,11 +1000,15 @@ class AMCallHandler(object):
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
+        options = None
         args = [urn, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            args.append(dict())
+            options = dict()
+            args.append(options)
+
+        self.logger.debug("Doing renewsliver with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
 
         successCnt = 0
         successList = []
@@ -1036,10 +1081,13 @@ class AMCallHandler(object):
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
+            options = None
 #--- API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
-                args.append(dict())
+                options = dict()
+                args.append(options)
+            self.logger.debug("Doing sliverstatus with urn %s, %d creds, options %r", urn, len(creds), options)
         else:
             prstr = "No aggregates available to get slice status at: %s" % message
             retVal += prstr + "\n"
@@ -1059,6 +1107,7 @@ class AMCallHandler(object):
                 if not isinstance(status, dict):
                     # malformed sliverstatus return
                     self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                    # FIXME: Add something to retVal that the result was malformed?
                     if isinstance(status, str):
                         prettyResult = str(status)
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
@@ -1075,6 +1124,7 @@ class AMCallHandler(object):
                 successCnt+=1
             else:
                 # FIXME: Put the message error in retVal?
+                # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
 
@@ -1103,10 +1153,14 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         args = [urn, creds]
+        options = None
 #--- API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            args.append(dict())
+            options = dict()
+            args.append(options)
+
+        self.logger.debug("Doing deletesliver with urn %s, %d creds, options %r", urn, len(creds), options)
 
         successList = []
         failList = []
@@ -1178,9 +1232,13 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         args = [urn, creds]
+        options = None
         if self.opts.api_version >= 2:
             # Add the options dict
-            args.append(dict())
+            options = dict()
+            args.append(options)
+
+        self.logger.debug("Doing shutdown with urn %s, %d creds, options %r", urn, len(creds), options)
 
         #Call shutdown on each AM
         successCnt = 0
@@ -1221,7 +1279,12 @@ class AMCallHandler(object):
     #######
     # Helper functions follow
 
-    def _writeRSpec(self, rspec, slicename, urn, url, clientcount=1):
+    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
+        '''Write the given RSpec using _printResults.
+        If given a slicename, label the output as a manifest.
+        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
+        Use _construct_output_filename to build the output filename.
+        '''
         # return just filename? retVal?
         # Does this do logging? Or return what it would log? I think it logs, but....
 
@@ -1251,13 +1314,20 @@ class AMCallHandler(object):
                     retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
                 else:
                     retVal = "Invalid RSpec returned from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
+                if message:
+                    self.logger.warn("Server said: %s", message)
+                    retVal += "; Server said: %s" % message
+
             else:
+                forslice = ""
                 if slicename:
-                    retVal = "No RSpec returned for slice %s from %s" % (slicename, server)
-                    self.logger.warn("No RSpec returned for slice %s from %s" % (slicename, server))
-                else:
-                    retVal = "No RSpec returned from %s" % (server)
-                    self.logger.warn("No RSpec returned from %s" % (server))
+                    forslice = "for slice %s " % slicename
+                serversaid = ""
+                if message:
+                    serversaid = ": %s" % message
+
+                retVal = "No RSpec returned %sfrom %s%s" % (forslice, server, serversaid)
+                self.logger.warn(retVal)
 
         filename=None
         # Create FILENAME
@@ -1266,10 +1336,10 @@ class AMCallHandler(object):
             if slicename:
                 mname = "manifest-rspec"
             filename = self._construct_output_filename(slicename, url, urn, mname, ".xml", clientcount)
-            # FIXME: Could add note to retVal here about file it was saved to?
+            # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
 
         # Create FILE
-        # This prints or logs results, depending on filename None
+        # This prints or logs results, depending on whether filename is None
         self._printResults( header, content, filename)
         return retVal, filename
 
@@ -1291,7 +1361,7 @@ class AMCallHandler(object):
                     if self.opts.devmode:
                         self.logger.warn(msg)
                     else:
-                        self._raise_omni_error()
+                        self._raise_omni_error(msg)
 #---
 
             for key in user['keys'].split(','):
@@ -1438,7 +1508,7 @@ class AMCallHandler(object):
         if len(args) == 0 or len(args) < num_args or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
             msg = '%s requires arg of slice name %s' % (methodname, otherargstring)
             if self.opts.devmode:
-                self.logger.warn(msg)
+                self.logger.warn(msg + ", but continuging...")
                 if len(args) == 0 or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
                     return ("", "", "", "", datetime.datetime.max)
             else:
@@ -1454,7 +1524,7 @@ class AMCallHandler(object):
             msg = 'Cannot do %s for %s: Could not get slice credential: %s' % (methodname, urn, message)
             if self.opts.devmode:
                 slice_cred = ""
-                self.logger.warn(msg)
+                self.logger.warn(msg + ", but continuing....")
             else:
                 self._raise_omni_error(msg, NoSliceCredError)
 
@@ -1468,7 +1538,7 @@ class AMCallHandler(object):
 #--- Dev mode allow this
             msg = 'Cannot do %s for slice %s: Slice has expired at %s' % (methodname, urn, slice_exp.isoformat())
             if self.opts.devmode:
-                self.logger.warn(msg)
+                self.logger.warn(msg + ", but continuing...")
             else:
                 self._raise_omni_error(msg)
 
