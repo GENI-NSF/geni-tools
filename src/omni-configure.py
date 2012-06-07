@@ -130,6 +130,7 @@ def getFileName(filename):
     """
     # If the file exists ask the # user to replace it or not
     filename = os.path.expanduser(filename)
+    filename = os.path.abspath(filename)
     if os.path.exists(filename):
         (basename, extension) = os.path.splitext(filename)
         question = "File " + filename + " exists, do you want to replace it "
@@ -240,6 +241,7 @@ def initialize(opts):
     #Check if directory for config file exists
     # Expand the configfile to a full path
     opts.configfile= os.path.expanduser(opts.configfile)
+    opts.configfile= os.path.abspath(opts.configfile)
     logger.info("Using configfile: %s", opts.configfile)
     configdir = os.path.dirname(opts.configfile)
     if not os.path.exists(configdir):
@@ -263,10 +265,12 @@ def initialize(opts):
             
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
+    opts.cert= os.path.abspath(opts.cert)
     logger.info("Using certfile %s", opts.cert)
 
     # Expand the plkey file to a full path
     opts.plkey = os.path.expanduser(opts.plkey)
+    opts.plkey = os.path.abspath(opts.plkey)
 
     # If framework is pgeni, check that the cert file is in the right place
     if not cmp(opts.framework,'pg'):
