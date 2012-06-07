@@ -220,6 +220,8 @@ def parseArgs(argv, options=None):
                       help="User certificate file location [DEFAULT: %default.pem]", metavar="FILE")
     parser.add_option("-k", "--plkey", default="~/.ssh/geni_pl_key",
                       help="PlanetLab private key file location [DEFAULT: %default]", metavar="FILE")
+    parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
+                      help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl'],
                       help="Control framework that you have an account with [options: [pg, pl], DEFAULT: %default]")
@@ -272,6 +274,10 @@ def initialize(opts):
     opts.plkey = os.path.expanduser(opts.plkey)
     opts.plkey = os.path.abspath(opts.plkey)
 
+    # Expand the private file to a full path
+    opts.prkey = os.path.expanduser(opts.prkey)
+    opts.prkey = os.path.abspath(opts.prkey)
+
     # If framework is pgeni, check that the cert file is in the right place
     if not cmp(opts.framework,'pg'):
         if not os.path.exists(opts.cert):
@@ -305,7 +311,7 @@ def createSSHKeypair(opts):
         pkey = opts.plkey
 
     # Use the default place for the geni private key
-    private_key_file = os.path.expanduser('~/.ssh/geni_key')
+    private_key_file = opts.prkey
 
     # Make sure that the .ssh directory exists, if it doesn't create it
     ssh_dir = os.path.expanduser('~/.ssh')
