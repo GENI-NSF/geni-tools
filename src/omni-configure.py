@@ -452,7 +452,7 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
-    if omni_bak_file is not opts.configfile:
+    if omni_bak_file != opts.configfile:
         logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
         shutil.copyfile(opts.configfile, omni_bak_file)
         
