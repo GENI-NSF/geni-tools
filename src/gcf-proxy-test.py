@@ -23,8 +23,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Simple test client for testing the GENI GCF Clearinghouse and 
-AggregateManager.
+Simple test client for testing the GENI proxy AM that talks to the GENI Clearinghouse
+(gch) and then to an aggregate manager (eg gcf-am)
 
 Run with "-h" flag to see usage and command line options.
 """
@@ -43,12 +43,15 @@ import logging
 import optparse
 import os
 import random
+import uuid
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
+import time
 from geni.config import read_config
 from omnilib.xmlrpc.client import make_client
 import sfa.trust.credential as cred
+import sfa.trust.gid as gid
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -89,49 +92,96 @@ def verify_rspec(rspec):
     return dom
 
 def test_create_sliver(server, slice_urn, slice_credential, dom):
+#    print("SERVER = " + str(server));
+#    print("URN = " + str(slice_urn));
+#    print("SC = " + str(slice_credential));
+#    print("DOM = " + str(dom));
     print 'Testing CreateSliver...',
-    resources = dom.getElementsByTagName('resource')
-    dom_impl = minidom.getDOMImplementation()
-    request_rspec = dom_impl.createDocument(None, 'rspec', None)
-    top = request_rspec.documentElement
-    if resources.length == 0:
-        print 'failed: no resources available'
-    elif resources.length == 1:
-        top.appendChild(resources.item(0).cloneNode(True))
+    nodes = dom.getElementsByTagName('node')
+#    print("NODES = " + str(nodes));
+    some_available = False;
+    # If there aren't any nodes that are available, error
+    if (nodes.length == 0):
+        # *** Should check if they are available
+        print "No nodes available"
+        return
+
+    # Otherwise make an unbounded request
+    # from src/geni/am/amapi2-request.xml
+    request_rspec = \
+'<?xml version="1.0" encoding="UTF-8"?>' + \
+'<rspec xmlns="http://www.geni.net/resources/rspec/3"' + \
+'       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' + \
+'       xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd"' + \
+'       type="request">' + \
+'  <node client_id="foo"/>' + \
+'</rspec>'
+#    print("REQUEST_RSPEC = " + str(request_rspec));
+#    users = [{'key':''}]
+    users = [];
+    options = dict();
+    result = server.CreateSliver(slice_urn, slice_credential,
+                                         request_rspec, users, options)
+#    print "MANIFEST_RSPEC = " + str(result);
+    error_code = result['code']['geni_code']
+    if (error_code != 0):
+        print "CreateSliver failed " + str(result);
     else:
-        # pick two at random
-        indices = range(resources.length)
-        for _ in range(2):
-            index = random.choice(indices)
-            indices.remove(index)
-            top.appendChild(resources.item(index).cloneNode(True))
-    users = [{'key':''}]
-    manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
-                                         request_rspec.toxml(), users)
-    # TODO: verify manifest_rspec
-    logging.getLogger('gcf-test').debug(manifest_rspec)
-    print 'passed'
+        print 'passed'
 
 def test_delete_sliver(server, slice_urn, slice_credential):
     print 'Testing DeleteSliver...',
+    options = dict()
     try:
-        result = server.DeleteSliver(slice_urn, slice_credential)
-        if result is True:
-            print 'passed'
+        result = server.DeleteSliver(slice_urn, slice_credential, options)
+#        print("DS.result = " + str(result))
+        error_code = result['code']['geni_code'];
+        if error_code != 0:
+            print 'Delete Sliver failed';
         else:
-            print 'failed'
+            print 'passed'
     except xmlrpclib.Error, v:
         print 'ERROR', v
 
 def test_sliver_status(server, slice_urn, credentials):
+    should_retry = True;
+    num_retries = 0;
+    while (should_retry):
+        result  = test_sliver_status_internal(server, slice_urn, credentials);
+        should_retry = result['retry'];
+        success = result['success'];
+        if(should_retry == False):
+            break;
+        print "Busy ...", 
+        time.sleep(10);
+        num_retries = num_retries + 1;
+        if (num_retries > 10):
+            break;
+    return success;
+
+def test_sliver_status_internal(server, slice_urn, credentials):
     print 'Testing SliverStatus...',
-    result = server.SliverStatus(slice_urn, credentials)
+    options = dict()
+    result = server.SliverStatus(slice_urn, credentials, options)
+    print "SS.RESULT = " + str(result)
+    error_code = result['code']['geni_code']
+    error_message = result['output'];
+    if (error_code != 0):
+        if ("resource is busy" in error_message):
+            return {'retry':True, 'success':False};
+        else:
+            print "Sliver Status failed " + str(result);
+            return {'retry':False, 'success':False};
+    
+    result = result['value']
 #    import pprint
 #    pprint.pprint(result)
     sliver_keys = frozenset(('geni_urn', 'geni_status', 'geni_resources'))
     resource_keys = frozenset(('geni_urn', 'geni_status', 'geni_error'))
     errors = list()
-    missing = sliver_keys - set(result.keys())
+    missing = sliver_keys;
+    if (type(result).__name__ == "dict"):
+        missing = sliver_keys - set(result.keys())
     if missing:
         errors.append('missing keys %r' % (missing))
     if 'geni_resources' in result:
@@ -139,17 +189,28 @@ def test_sliver_status(server, slice_urn, credentials):
             missing = resource_keys - set(resource.keys())
             if missing:
                 errors.append('missing resource keys %r' % (missing))
+    success=True;
     if errors:
         print 'failed'
         for x in errors:
             print '\t', x
+        success=False;
     else:
         print 'passed'
+
+    return {'retry': False, 'success': success }
         
     # Note expiration_time is in UTC
 def test_renew_sliver(server, slice_urn, credentials, expiration_time):
     print 'Testing RenewSliver...',
-    result = server.RenewSliver(slice_urn, credentials, expiration_time)
+    options = dict();
+    result = server.RenewSliver(slice_urn, credentials, expiration_time, options)
+#    print "RenewSliver.RESULT = " + str(result);
+    if (result['code']['geni_code'] != 0):
+        print "Renew Sliver failed " + str(result);
+
+    result = result['value'];
+
     if result is True or result is False:
         print 'passed. (Result: %r)' % (result)
     else:
@@ -158,7 +219,13 @@ def test_renew_sliver(server, slice_urn, credentials, expiration_time):
 
 def test_shutdown(server, slice_urn, credentials):
     print 'Testing Shutdown...',
-    result = server.Shutdown(slice_urn, credentials)
+    options = dict()
+    result = server.Shutdown(slice_urn, credentials, options)
+    if (result['code']['geni_code'] != 0):
+        print "Shutdown failed " + str(result);
+        return;
+
+    result = result['value']
     if result is True or result is False:
         print 'passed'
     else:
@@ -169,7 +236,7 @@ def test_get_version(server):
     print 'Testing GetVersion...',
     # This next throws exceptions on errors
     vdict = server.GetVersion()
-    if vdict['geni_api'] == 1:
+    if vdict['geni_api'] == 2:
         print 'passed'
     else:
         print 'failed'
@@ -181,6 +248,7 @@ def test_list_resources(server, credentials, compressed=False, available=True,
     if slice_urn:
         options['geni_slice_urn'] = slice_urn
     rspec = server.ListResources(credentials, options)
+#    print("TLR.rspec = " + str(rspec))
     if compressed:
         rspec = zlib.decompress(base64.b64decode(rspec))
     logging.getLogger('gcf-test').debug(rspec)
@@ -191,9 +259,42 @@ def test_list_resources(server, credentials, compressed=False, available=True,
         print 'failed'
     return dom
 
-def exercise_am(ch_server, am_server):
+def exercise_am(ch_server, am_server, certfile):
+
+    # Get UUID out of certfile
+    user_certstr = file(certfile, 'r').read()
+    user_gid = gid.GID(string=user_certstr)
+    user_uuid = str(uuid.UUID(int=user_gid.get_uuid()));
+
+    # Create a project at the clearinghouse
+    project_name = "Proj-" + str(uuid.uuid4());
+    lead_id = user_uuid; 
+    project_purpose = "DUMMY";
+    project_result = ch_server.CreateProject(project_name, 
+                                             lead_id, project_purpose);
+    if(project_result['code'] != 0):
+        print "Failed to create project " + str(project_result);
+        return
+
+    project_id = project_result['value'];
+    print("PROJECT_RESULT = " + str(project_id));
+
     # Create a slice at the clearinghouse
-    slice_cred_string = ch_server.CreateSlice()
+    slice_name = "Slice-" + str(uuid.uuid4());
+    slice_name = slice_name[:15]; # Can't have slice names too big
+    slice_result = ch_server.CreateSlice(slice_name, project_id, user_uuid)
+    if (slice_result['code'] != 0):
+        print "Failed to create slice " + str(slice_result);
+        return;
+    slice_info = slice_result['value']
+    slice_id = slice_info['slice_id']
+
+    slice_credential_result = ch_server.GetSliceCredential(slice_id, user_certstr)
+    if(slice_credential_result['code'] != 0):
+        print "Failed to get slice credential " + str(slice_credential_result);
+        return
+
+    slice_cred_string = slice_credential_result['value']['slice_credential']
     slice_credential = cred.Credential(string=slice_cred_string)
     slice_gid = slice_credential.get_gid_object()
     slice_urn = slice_gid.get_urn()
@@ -218,7 +319,21 @@ def exercise_am(ch_server, am_server):
                               available=False)
 
     # Now create a slice and shut it down instead of deleting it.
-    slice_cred_string = ch_server.CreateSlice()
+    slice_name = "Slice-" + str(uuid.uuid4());
+    slice_name = slice_name[:15]; # Can't have slice names too big
+    slice_result = ch_server.CreateSlice(slice_name, project_id, user_uuid)
+    if(slice_result['code'] != 0):
+        print "Failed to create slice " + str(slice_result);
+        return
+
+    slice_info = slice_result['value'];
+    sllice_id = slice_info['slice_id']
+    slice_credential_result = ch_server.GetSliceCredential(slice_id, user_certstr)
+    if(slice_credential_result['code'] != 0):
+        print "Failed to get slice credential " + str(slice_credential_result)
+        return
+
+    slice_cred_string = slice_credential_result['value']['slice_credential']
     slice_credential = cred.Credential(string=slice_cred_string)
     slice_gid = slice_credential.get_gid_object()
     slice_urn = slice_gid.get_urn()
@@ -270,23 +385,21 @@ def main(argv=None):
     
     # Determine the AM and CH hostnames from the config file
     if getattr(opts,'ch') is None:
-        host = config['clearinghouse']['host']
-        port = config['clearinghouse']['port']
+        host = config['geni clearinghouse']['host']
+        port = config['geni clearinghouse']['port']
         if not host.startswith('http'):
             host = 'https://%s' % host.strip('/')
         url = "%s:%s/" % (host,port)
         setattr(opts,'ch',url)
         
     if getattr(opts,'am') is None:
-        host = config['aggregate_manager']['host']
-        port = config['aggregate_manager']['port']
+        host = config['proxy aggregate_manager']['host']
+        port = config['proxy aggregate_manager']['port']
         if not host.startswith('http'):
             host = 'https://%s' % host.strip('/')
         url = "%s:%s/" % (host,port)
         setattr(opts,'am',url)
 
-            
-                    
     logging.basicConfig(level=level)
     logger = logging.getLogger('gcf-test')
     if not opts.keyfile or not opts.certfile:
@@ -294,16 +407,11 @@ def main(argv=None):
 
     keyf = getAbsPath(opts.keyfile)
     certf = getAbsPath(opts.certfile)
-    if not os.path.exists(certf):
-        sys.exit("Client certfile %s doesn't exist" % certf)
-    
-    if not os.path.exists(keyf):
-        sys.exit("Client keyfile %s doesn't exist" % keyf)
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
     ch_server = make_client(opts.ch, keyf, certf, opts.debug_rpc)
     am_server = make_client(opts.am, keyf, certf, opts.debug_rpc)
-    exercise_am(ch_server, am_server)
+    exercise_am(ch_server, am_server, certf)
 
     return 0
 

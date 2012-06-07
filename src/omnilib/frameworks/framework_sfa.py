@@ -417,8 +417,19 @@ class Framework(Framework_Base):
             return aggs
 
         (retVal, message) = _do_ssl(self, None, "Get Version at SFA Slice Manager %s" % self.config['slicemgr'], self.slicemgr.GetVersion, {'options':user_cred})
-        _ = message #Appease eclipse
-        sites = retVal['value']['peers']
+        if retVal is None:
+            self.logger.error("Empty return from SFA Slice Manager GetVersion? Message: %s" % message)
+            raise Exception("Empty return from SFA Slice Manager GetVersion? SM: %s, message %s" % (self.config['slicemgr'], message))
+
+        if retVal.has_key('peers'):
+            self.logger.debug("peers was at top level, not in value? %r", retVal)
+            sites = retVal['peers']
+        elif not retVal.has_key('value') or retVal['value'] is None or not retVal['value'].has_key('peers'):
+            self.logger.error("Malformed return from SFA Slice Manager GetVersion? %r. Message %s" % (retVal, message))
+            raise Exception("Malformed return from SFA Slice Manager GetVersion? SM: %s, result %r, message %s" % (self.config['slicemgr'], retVal, messa
+        else:
+            self.logger.debug("peers was in value? %r", retVal)
+            sites = retVal['value']['peers']
 
         if sites is None:
             # FIXME: Use message?

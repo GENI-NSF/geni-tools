@@ -23,8 +23,8 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Framework to run a GENI Clearinghouse. See geni/ch.py for the 
-Reference Clearinghouse that this runs.
+Framework to run a 'new' GENI Clearinghouse. See geni/gch.py for the 
+GENI Clearinghouse interface that this runs.
 
 Run with "-h" flag to see usage and command line options.
 """
@@ -41,6 +41,7 @@ import logging
 import optparse
 import os
 import geni
+from geni.gch import GENIClearinghouse
 from geni.config import read_config
 
 config = None
@@ -68,22 +69,15 @@ class CommandHandler(object):
         """Run the clearinghouse server."""
         # XXX Verify that opts.keyfile exists
         # XXX Verify that opts.directory exists
-        ch = geni.Clearinghouse()
+        ch = GENIClearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
-
-        certfile = getAbsPath(opts.certfile)
-        keyfile = getAbsPath(opts.keyfile)
-        if not os.path.exists(certfile):
-            sys.exit("Clearinghouse certfile %s doesn't exist" % certfile)
-    
-        if not os.path.exists(keyfile):
-            sys.exit("Clearinghouse keyfile %s doesn't exist" % keyfile)
-
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
-        ch.runserver(addr, keyfile, certfile, 
-                     getAbsPath(opts.rootcadir), config['global']['base_name'],
-                     opts.user_cred_duration, opts.slice_duration, config)
+        ch.runserver(addr, 
+                     getAbsPath(opts.keyfile), 
+                     getAbsPath(opts.certfile), 
+                     getAbsPath(opts.rootcadir), 
+                     config)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -129,7 +123,7 @@ def main(argv=None):
 
     config = read_config(optspath)   
 
-    for (key,val) in config['clearinghouse'].items():
+    for (key,val) in config['geni clearinghouse'].items():
         if hasattr(opts,key) and getattr(opts,key) is None:
             setattr(opts,key,val)
         if not hasattr(opts,key):
