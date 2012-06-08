@@ -330,6 +330,14 @@ class AMCallHandler(object):
         else:
             return (versionSpot[key], message)
 
+    def _get_this_api_version(self, client):
+        '''Get the supported API version for this client (from GetVersion)'''
+        (res, message) = self._get_getversion_key(client, 'geni_api')
+        if res is None:
+            self.logger.warning("Couldnt get api version supported from GetVersion: %s" % message)
+        # Return is an int API version
+        return (res, message)
+
     def _get_api_versions(self, client):
         '''Get the supported API versions and URLs for this client (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_api_versions')
@@ -536,18 +544,29 @@ class AMCallHandler(object):
         successCnt = 0
         mymessage = ""
         (clientList, message) = self._getclients()
-        if len(clientList) == 0 and message != "":
-            mymessage = "No aggregates available to query: %s" % message
+        if len(clientList) == 0:
+            if message != "":
+                mymessage = "No aggregates available to query: %s" % message
         # FIXME: What if got a message and still got some aggs?
-
-        creds = _maybe_add_abac_creds(self.framework, cred)
+        else:
+            creds = _maybe_add_abac_creds(self.framework, cred)
 
         # Connect to each available GENI AM to list their resources
         for client in clientList:
             if cred is None:
                 self.logger.debug("Have null credential in call to ListResources!")
-            self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
             rspec = None
+
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
+            self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
 
 #---
 # In Dev mode, just use the requested type/version - don't check what is supported
@@ -681,7 +700,8 @@ class AMCallHandler(object):
                     mymessage += ". "
                 mymessage += "No resources from AM %s: %s" % (client.url, message)
 
-        self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+        if len(clientList) > 0:
+            self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
 
     def listresources(self, args):
@@ -886,6 +906,15 @@ class AMCallHandler(object):
             args.append(options)
 #---
 
+        (ver, newc) = self._checkValidClient(client)
+        if newc is None:
+            return "Cannot CreateSliver at %s; it uses APIv%d, but you requested v%d" % (ver, self.opts.api_version), None
+        elif newc.url != client.url:
+            client = newc
+            if ver != self.opts.api_version:
+                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                self.opts.api_version = ver
+
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
         (result, message) = _do_ssl(self.framework,
                                     None,
@@ -1007,6 +1036,15 @@ class AMCallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      ("Renew Sliver %s on %s" % (urn, client.url)),
@@ -1086,6 +1124,15 @@ class AMCallHandler(object):
             self.logger.warn(prstr)
 
         for client in clientList:
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
             (status, message) = _do_ssl(self.framework,
                                         None,
                                         "Sliver status of %s at %s" % (urn, client.url),
@@ -1121,7 +1168,8 @@ class AMCallHandler(object):
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
 
         # FIXME: Return the status if there was only 1 client?
-        retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        if len(clientList > 0):
+            retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
                 
     def deletesliver(self, args):
@@ -1172,6 +1220,16 @@ class AMCallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
+            # Confirm this client speaks the right API Version.
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      ("Delete Sliver %s on %s" % (urn, client.url)),
@@ -1238,6 +1296,15 @@ class AMCallHandler(object):
         failList = []
         (clientList, message) = self._getclients()
         for client in clientList:
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
             (res, message) = _do_ssl(self.framework,
                                      None,
                                      "Shutdown %s on %s" % (urn, client.url),
@@ -1270,6 +1337,66 @@ class AMCallHandler(object):
     # End of AM API operations
     #######
     # Helper functions follow
+
+    def _checkValidClient(self, client):
+        '''Confirm this client speaks the right AM API version. 
+        Return the API version spoken by this AM, and a client to talk to it.
+        In particular, the returned client may be different, if the AM you asked about advertised
+        a different URL as supporting your desired API Version.
+        Check for None client to indicate an error, so you can bail.'''
+
+        # Use the GetVersion cache
+        # Make sure the client we are talking to speaks the expected AM API (or claims to)
+        # What else would this do? See if it is reachable? We'll do that elsewhere
+        # What should this return?
+        # Is this where we could auto-switch client URLs to match the desired AM API version?
+        # Return API version, client to use. May be new. If None, bail - error
+
+        cver, message = self._get_this_api_version(client)
+        configver = self.opts.api_version
+        if cver and cver == configver:
+            return (cver, client)
+        elif not cver:
+            self.logger.warn("Got no api_version from getversion at %s? %s", client.url, message)
+            if not self.opts.devmode:
+                self.logger.warn("... skipping this client")
+                return (0, None)
+            else:
+                return (configver, client)
+
+        svers, message = self._get_api_versions(client)
+        if svers:
+            if svers.has_key(configver):
+                self.logger.warn("Requested API version %d, but client %s uses version %d. Same client talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[configver])
+                # FIXME: Could do a makeclient with the corrected URL and return that client?
+                if not self.opts.devmode:
+                    newclient = make_client(svers[configver], self.framework, self.opts)
+                    (ver, c) = self._checkValidClient(newclient)
+                    if ver == configver and c.url == newclient.url and c is not None:
+                        return (ver, c)
+                self.logger.warn("... skipping this client")
+                return (configver, None)
+            else:
+                self.logger.warn("Requested API version %d, but client %s uses version %d. This client does not talk that version. It advertises: %s", configver, client.url, cver, pprint.pformat(svers))
+                # FIXME: If we're continuing, change api_version to be correct, or we will get errors
+                if not self.opts.devmode:
+                    self.logger.warn("Changing to use API version %d", cver)
+                    return (cver, client)
+                else:
+                    # FIXME: Pick out the max API version supported at this client, and use that?
+                    self.logger.warn("... skipping this client")
+                    return (cver, None)
+        else:
+                self.logger.warn("Requested API version %d, but client %s uses version %d. This client does not advertise other versions.", configver, client.url, cver)
+                # FIXME: If we're continuing, change api_version to be correct, or we will get errors
+                if not self.opts.devmode:
+                    self.logger.warn("Changing to use API version %d", cver)
+                    return (cver, client)
+                else:
+                    self.logger.warn("... skipping this client")
+                    return (cver, None)
+        self.logger.warn("... skipping this client")
+        return (cver, None)
 
     def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
         '''Write the given RSpec using _printResults.
