@@ -519,19 +519,11 @@ class AMCallHandler(object):
                     self.logger.info('... but continuing')
                     cred = ""
         else:
-            urn = self.framework.slice_name_to_urn(slicename)
-            (cred, message) = _get_slice_cred(self, urn)
-            if cred is None:
-                prstr = "Cannot list resources for slice %s: Could not get slice credential. " % urn
-                if message != "":
-                    prstr += message
-                self.logger.error(prstr)
+            (slicename, urn, cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "listresources")
+            if cred is None or cred == "":
 #--- Dev mode allow doing the call anyhow?
                 if not self.opts.devmode:
                     return (None, prstr)
-                else:
-                    self.logger.info('... but continuing')
-                    cred = ""
 
             self.logger.info('Gathering resources reserved for slice %s.' % slicename)
 
@@ -1527,6 +1519,9 @@ class AMCallHandler(object):
                 self.logger.warn(msg + ", but continuing....")
             else:
                 self._raise_omni_error(msg, NoSliceCredError)
+
+        # FIXME: Check that the returned slice_cred is actually for the given URN?
+        # Or mayb do that in _get_slice_cred?
 
         slice_exp = None
         expd = True
