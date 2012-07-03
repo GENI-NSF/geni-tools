@@ -217,6 +217,10 @@ class ReqRSpec(object):
         self.rspecStr = rspecStr
         ## @var self.aggrURL - String URL of the aggregate manager
         self.aggrURL = util.stripHint(rspecStr)['url']
+        ## @var self.fakeManifest - String path to a fake manifest to match this request
+        fakeMan = util.findFakeManifest(rspecStr)
+        if fakeMan:
+            self.fakeManifestPath = fakeMan
         ## @var self.rspecET - The ElementTree DOM for the XML string
         self.rspecET = ElementTree.fromstring(self.rspecStr)
         ## @var self.manRSpec - A reference to this ReqRSpec's corresponding 
@@ -514,7 +518,7 @@ class ReqRSpec(object):
 #
 class MaxReqRSpec(ReqRSpec):
     rspecType = 'max'
-    fakeManifestPath = "../samples/max-manifest.xml"
+#    fakeManifestPath = "../samples/max-manifest.xml"
 
     ## The Constructor
     #
@@ -895,7 +899,7 @@ class IonReqRSpec(ReqRSpec):
     # FIXME: Make this a subclass of MaxReqRSpec
 
     rspecType = 'ion'
-    fakeManifestPath = "../samples/ion-manifest.xml"
+#    fakeManifestPath = "../samples/ion-manifest.xml"
 
     ## The Constructor
     #     
@@ -1227,7 +1231,7 @@ class IonReqRSpec(ReqRSpec):
 #
 class PGV2ReqRSpec(ReqRSpec):
     rspecType = 'pgv2'
-    fakeManifestPath = '../samples/utah-manifest.xml'
+#    fakeManifestPath = '../samples/utah-manifest.xml'
 
     pathList = ()
     
@@ -1521,7 +1525,7 @@ class PGV2ReqRSpec(ReqRSpec):
 #
 class GENIV3ReqRSpec(ReqRSpec):
     rspecType = 'geniv3'
-    fakeManifestPath = '../samples/utah-manifest.xml'
+#    fakeManifestPath = '../samples/utah-manifest.xml'
 
     pathList = ()
 
@@ -1758,6 +1762,7 @@ class GENIV3ReqRSpec(ReqRSpec):
                 break
 
         try:
+            self.logger.debug("Got GENIv3 Manifest RSpec from %s for slice %s:\n%s", self.aggrURL, self.stitchSession.getSliceName(), result)
             self.manRSpec = ManRSpec(result,self,self.stitchSession, self.logger)
         except:
             import traceback
