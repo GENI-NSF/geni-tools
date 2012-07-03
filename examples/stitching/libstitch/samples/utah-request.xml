@@ -3,6 +3,7 @@
 	URN: unspecified_AM_URN
 	URL: http://www.emulab.net/protogeni/xmlrpc/am
  -->
+<!-- Fake manifest relative path: ../samples/utah-manifest.xml -->
 <rspec xmlns="http://www.protogeni.net/resources/rspec/2"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.protogeni.net/resources/rspec/2

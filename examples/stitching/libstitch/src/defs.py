@@ -71,6 +71,7 @@ SWTCCAPASPEC_L2SC_TAG="switchingCapabilitySpecificInfo_L2sc" # PG uses this
 
 ##Shared Regexes
 rspecHintRegex = "<!-- Resources at AM:\s+URN: (\S+)\s+URL: (\S+)\s+ -->"
+fakeManRegex = "<!-- Fake manifest relative path: (\S+)\s*-->"
 maxURNSliceNameRegex = "(^urn:.*:rspec=)(.+?)($|:.+$)"
 maxNodeNameRegex = "(^urn:.*:domain=)(.+?)(:node=)(.+?)($|:.+$)"
 ipAddrExcludeSub = "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/?.*"

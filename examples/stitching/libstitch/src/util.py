@@ -68,6 +68,23 @@ def stripHint(rspecStr):
     return False
 
 
+## Tries to extract a fake manifest file path from the given RSpec string using the
+# regular expression for parsing the XML comment at the top.
+#
+#   @param rspecStr - XML String content of RSpec file
+#   @return A string with the relative path to a fake manifest matching this request.
+#   If no information is found, return False.
+#
+def findFakeManifest(rspecStr):
+
+    result = re.search(fakeManRegex,rspecStr)
+
+    if result and result.group and result.groups>0:
+        return result.group(1).strip()
+
+    return False
+
+
 ## Attempt to find the version of the given RSpec string
 #     
 #   @param rspecStr - XML String content of RSpec file
