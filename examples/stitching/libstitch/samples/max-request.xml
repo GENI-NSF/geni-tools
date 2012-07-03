@@ -3,6 +3,7 @@
 	URN: unspecified_AM_URN
 	URL: http://max-myplc.dragon.maxgigapop.net:12346
  -->
+<!-- Fake manifest relative path: ../samples/max-manifest.xml -->
 <RSpec type="SFA">
 <rspec id="bbn_ahtest" xmlns="http://geni.maxgigapop.net/aggregate/rspec/20100412/" xmlns:CtrlPlane="http://ogf.org/schema/network/topology/ctrlPlane/20080828/">
     <aggregate>geni.maxgigapop.net</aggregate>

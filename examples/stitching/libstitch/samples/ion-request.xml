@@ -3,6 +3,7 @@
 	URN: unspecified_AM_URN
 	URL: http://alpha.east.isi.edu:12346
  -->
+<!-- Fake manifest relative path: ../samples/ion-manifest.xml -->
 <RSpec type="SFA">
 <rspec id="bbn_ahtest" xmlns="http://geni.maxgigapop.net/aggregate/rspec/20100412/" xmlns:CtrlPlane="http://ogf.org/schema/network/topology/ctrlPlane/20080828/">
     <aggregate>ion.internet2.edu</aggregate>
