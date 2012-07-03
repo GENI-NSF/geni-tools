@@ -1596,6 +1596,7 @@ class GENIV3ReqRSpec(ReqRSpec):
     #     @return True if success, False if failure
     #
     def calculateRestrictions(self):
+        self.logger.debug("Calculating restrictions / requested interfaces for %s:", self.aggrURL)
         #print "geniv3"
 
         # In stitching element, go through each hop
@@ -1673,7 +1674,7 @@ class GENIV3ReqRSpec(ReqRSpec):
 
             else:
                 # the interface that starts this link is not local
-                #self.logger.debug("GENIv3 Req stitch section hop/link %s NOT LOCALly advertised", link_id)
+                self.logger.debug("GENIv3 Req stitch section hop/link %s NOT LOCALly advertised", link_id)
                 pass
 
             ''' #We no longer set other's restrictions based on what we see in our RSpec
@@ -2175,7 +2176,9 @@ class PGV2ManRSpec(ManRSpec):
                 else:
                     # no remote interface URN - not an advertised link
                     # this is normal
-                    pass
+                    vlan_id = util.strifyEle(vlan_avail_elem.text)
+                    self.logger.debug("No remote ifc URN for req AM URL %s and link %s, but got vlan ID %s. Not an advertised link?! Sometimes this is normal, but sometimes its an RSpec error.", self.reqRSpec.aggrURL, link_id, vlan_id)
+                    #pass
         # end of loop over hops
 
         if len(self.definedVlans)<1:
@@ -2219,8 +2222,13 @@ class PGV2ManRSpec(ManRSpec):
             # managed node and add it
             mine = True
             idnIx = component_manager_id.find('IDN+')
-            cmAuth = component_manager_id[idnIx+len('IDN+'):component_manager_id[idnIx+len('IDN+'):].find('+')+idnIx+len('IDN+')]
-            self.logger.debug("This node %s has is managed by an AM with authority %s", component_id, cmAuth)
+            idn2 = component_manager_id[idnIx+len('IDN+'):].find('+')
+            if not idn2 or idn2 < 0:
+                self.logger.warn("Node %s has malformed component_manager_id %s", component_id, component_manager_id)
+                cmAuth = component_manager_id[idnIx+len('IDN+'):]
+            else:
+                cmAuth = component_manager_id[idnIx+len('IDN+'):idn2+idnIx+len('IDN+')]
+            self.logger.debug("This node %s is managed by an AM with authority %s", component_id, cmAuth)
 
             reqIfc1 = ""
             reqIfc2 = ""
@@ -2271,7 +2279,7 @@ class PGV2ManRSpec(ManRSpec):
                 username = util.strifyEle(login_elem.get('username'))
                 if username != self.stitchSession.getUserName():
                     self.logger.warning("Manifest says username is %s, but stitchSession infers %s", username, self.stitchSession.getUserName())
-            self.logger.debug("Adding node %s from AM %s", hostname, self.reqRSpec.aggrURL)
+            self.logger.debug("Adding node hostname %s from AM %s, client_id %s", hostname, self.reqRSpec.aggrURL, client_id)
             self.nodes.append({'hostname':hostname,'int_ip':int_ip,'username':self.stitchSession.getUserName(),'client_id':client_id,'component_id':component_id}) 
 
         return self.nodes
