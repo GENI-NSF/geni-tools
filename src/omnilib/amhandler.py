@@ -1802,7 +1802,6 @@ class AMCallHandler(object):
         for (urn, url) in aggs.items():
             client = make_client(url, self.framework, self.opts)
             client.urn = urn
-            client.url = url
             clients.append(client)
 
         return (clients, message)
@@ -1826,9 +1825,12 @@ def make_client(url, framework, opts):
             raise OmniError(err)
 
     if opts.ssl:
-        return omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
+        tmp_client =  omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
     else:
-        return omnilib.xmlrpc.client.make_client(url, None, None)
+        tmp_client = omnilib.xmlrpc.client.make_client(url, None, None)
+    tmp_client.url = str(url)
+    return tmp_client
+        
 
 def _maybe_add_abac_creds(framework, cred):
     '''Construct creds list. If using ABAC then creds are ABAC creds. Else creds are the user cred or slice cred
