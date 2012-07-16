@@ -23,18 +23,12 @@
 
 # Framework for talking to the GENI Clearinghouse
 
-# TODO
-# CreateSlice
-# Check slice_name_to_urn
-# handle return codes != 0
-# Clean up debug printouts
-
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import os
 import sys
-from geni.ch_interface import *;
+from geni.util.ch_interface import *;
 
 class Framework(Framework_Base):
     def __init__(self, config, opts):
@@ -67,7 +61,7 @@ class Framework(Framework_Base):
 #        print "SLICE URN = " + str(slice_urn)
         (cred, message) = \
             _do_ssl(self, None, \
-                        ("GetSliceCredential slice %s on GCH CH %s" % (slice_urn, self.config['ch'])), 
+                        ("GetSliceCredential slice %s on GCH CH %s" % (slice_urn, self.config['ch'])),
                     self.ch.GetSliceCredential, '', self.cert_string, slice_urn);
 
         if (cred['code'] == 0):
@@ -78,9 +72,22 @@ class Framework(Framework_Base):
         _ = message #Appease eclipse
         return cred
     
-    def create_slice(self, urn):    
+    def create_slice(self, slice_name, project_id, owner_id):    
         print "In Create Slice"
-        return self.get_slice_cred(urn)
+        try:
+            (slice_info, message) = _do_ssl(self, None, \
+                                                ("Create Slice %s on GCF CH %s" % \
+                                                     (slice_name, self.config['ch'])), 
+                                            self.ch.CreateSlice, slice_name, project_id, owner_id)
+        except Exception:
+            raise;
+        if (slice_info['code'] == 0):
+            slice_info = slice_info['value'];
+        else:
+            raise Exception("Falure to create slice " + slice_name);
+
+        return slice_info;
+
     
     def delete_slice(self, urn):
         (bool, message) = _do_ssl(self, None, ("Delete Slice %s on GCH CH %s" % (urn, self.config['ch'])), self.ch.DeleteSlice, urn)
@@ -102,29 +109,8 @@ class Framework(Framework_Base):
 
     
     def slice_name_to_urn(self, name):
-        """Convert a slice name to a slice urn."""
-        if name is None or name.strip() == '':
-            raise Exception('Empty slice name')
-        if is_valid_urn(name):
-            urn = URN(None, None, None, name)
-            if not urn.getType() == "slice":
-                raise Exception("Invalid Slice name: got a non Slice URN %s", name)
-            # if config has an authority, make sure it matches
-            if self.config.has_key('authority'):
-                auth = self.config['authority']
-                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
-                if urn_fmt_auth != auth:
-                    self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
-                    self.logger.info("This may be OK though if you are using delegated slice credentials...")
-#                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
-            return name
-
-        if not self.config.has_key('authority'):
-            raise Exception("Invalid configuration: no authority defined")
-
-        auth = self.config['authority']
-
-        return URN(auth, "slice", name).urn_string()
+        "This method is unsupported in this framework"
+        raise Exception("Can't generate a URN from a slice URN in this framewor
 
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.

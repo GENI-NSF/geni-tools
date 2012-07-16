@@ -130,6 +130,7 @@ def getFileName(filename):
     """
     # If the file exists ask the # user to replace it or not
     filename = os.path.expanduser(filename)
+    filename = os.path.abspath(filename)
     if os.path.exists(filename):
         (basename, extension) = os.path.splitext(filename)
         question = "File " + filename + " exists, do you want to replace it "
@@ -219,6 +220,8 @@ def parseArgs(argv, options=None):
                       help="User certificate file location [DEFAULT: %default.pem]", metavar="FILE")
     parser.add_option("-k", "--plkey", default="~/.ssh/geni_pl_key",
                       help="PlanetLab private key file location [DEFAULT: %default]", metavar="FILE")
+    parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
+                      help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl'],
                       help="Control framework that you have an account with [options: [pg, pl], DEFAULT: %default]")
@@ -240,6 +243,7 @@ def initialize(opts):
     #Check if directory for config file exists
     # Expand the configfile to a full path
     opts.configfile= os.path.expanduser(opts.configfile)
+    opts.configfile= os.path.abspath(opts.configfile)
     logger.info("Using configfile: %s", opts.configfile)
     configdir = os.path.dirname(opts.configfile)
     if not os.path.exists(configdir):
@@ -263,10 +267,16 @@ def initialize(opts):
             
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
+    opts.cert= os.path.abspath(opts.cert)
     logger.info("Using certfile %s", opts.cert)
 
     # Expand the plkey file to a full path
     opts.plkey = os.path.expanduser(opts.plkey)
+    opts.plkey = os.path.abspath(opts.plkey)
+
+    # Expand the private file to a full path
+    opts.prkey = os.path.expanduser(opts.prkey)
+    opts.prkey = os.path.abspath(opts.prkey)
 
     # If framework is pgeni, check that the cert file is in the right place
     if not cmp(opts.framework,'pg'):
@@ -301,7 +311,7 @@ def createSSHKeypair(opts):
         pkey = opts.plkey
 
     # Use the default place for the geni private key
-    private_key_file = os.path.expanduser('~/.ssh/geni_key')
+    private_key_file = opts.prkey
 
     # Make sure that the .ssh directory exists, if it doesn't create it
     ssh_dir = os.path.expanduser('~/.ssh')
@@ -452,7 +462,7 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
-    if omni_bak_file is not opts.configfile:
+    if omni_bak_file != opts.configfile:
         logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
         shutil.copyfile(opts.configfile, omni_bak_file)
         

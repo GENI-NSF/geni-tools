@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -21,9 +21,6 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-# An AM that proxies for another AM
-# It retrieves a cert/key from the GENI Clearinghouse to use to identify itself
-
 import base64
 import datetime
 import dateutil.parser
@@ -40,20 +37,15 @@ from geni.am.am2 import AggregateManager
 from geni.am.am2 import AggregateManagerServer
 from geni.am.am2 import ReferenceAggregateManager
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
-from geni.ch_interface import *
+from geni.util.ch_interface import *
 from omnilib.xmlrpc.client import make_client
 from resource import Resource
 from aggregate import Aggregate
 import tempfile
 from fakevm import FakeVM
 
-# TODO
-# - Remove hardcoded sr_url
-# - GetVersion should return something to indicate there is a proxy
-# - Factor out getting the cert/key so this is a more general proxy?
 
-SR_URL = "https://marilac.gpolab.bbn.com/sr/sr_controller.php"
-
+SR_URL = "https://" + socket.gethostname() + "/sr/sr_controller.php"
 
 class ProxyAggregateManager(ReferenceAggregateManager):
 
@@ -97,20 +89,28 @@ class ProxyAggregateManager(ReferenceAggregateManager):
         os.unlink(client.key_fname);
         os.unlink(client.cert_fname);
 
+    // *** GetVersion should return something to indicate there is a proxy
     def GetVersion(self, options):
         client = self.make_proxy_client();
-        client_ret = client.GetVersion();
+        client_ret = None;
+        try:
+            client_ret = client.GetVersion();
+        except Exception:
+            print "Error in remote GetVersion call";
         print("GetVersion.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
 
     def ListResources(self, credentials, options):
         client = self.make_proxy_client();
-        # Why do I need to add this?
-        options['geni_rspec_version'] = dict(type='geni', version='3');
-        print("OPTS = " + str(options));
-        print("CREDS = " + str(credentials));
-        client_ret = client.ListResources(credentials, options);
+#        # Shouldn't need this - it is an indication of an version mismatch
+#        options['geni_rspec_version'] = dict(type='geni', version='3');
+#        print("OPTS = " + str(options));
+#        print("CREDS = " + str(credentials));
+        try:
+            client_ret = client.ListResources(credentials, options);
+        except Exception:
+            print "Error in remote ListResources call";
         print("ListResources.CLIENT_RET = " + str(client_ret));
         # Why do I need to do this?
 #        client_ret = client_ret['value'];
@@ -124,32 +124,47 @@ class ProxyAggregateManager(ReferenceAggregateManager):
 #        print("RSPEC = " + str(rspec));
 #        print("USERS = " + str(users));
         client = self.make_proxy_client();
-        client_ret = client.CreateSliver(slice_urn, credentials, rspec, users, options);
+        try:
+            client_ret = client.CreateSliver(slice_urn, credentials, rspec, users, options);
+        except Exception:
+            print "Error in remote CreateSliver call";
 #        print("CreateSliver.CLIENT_RET = " + str(client_ret));
         self.close_proxy_client(client);
         return client_ret;
             
     def DeleteSliver(self, slice_urn, credentials, options):
         client = self.make_proxy_client();
-        client_ret = client.DeleteSliver(slice_urn, credentials, options);
+        try:
+            client_ret = client.DeleteSliver(slice_urn, credentials, options);
+        except Exception:
+            print "Error in remote DeleteSliver call";
         self.close_proxy_client(client);
         return client_ret;
 
     def SliverStatus(self, slice_urn, credentials, options):
         client = self.make_proxy_client();
-        client_ret = client.SliverStatus(slice_urn, credentials, options);
+        try:
+            client_ret = client.SliverStatus(slice_urn, credentials, options);
+        except Exception:
+            print "Error in remote SliverStatus call";
         self.close_proxy_client(client);
         return client_ret;
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         client = self.make_proxy_client();
-        client_ret = client.RenewSliver(slice_urn, credentials, expiration_time, options);
+        try:
+            client_ret = client.RenewSliver(slice_urn, credentials, expiration_time, options);
+        except Exception:
+            print "Error in remote RenewSliver call"
         self.close_proxy_client(client);
         return client_ret;
 
     def Shutdown(self, slice_urn, credentials, options):
         client = self.make_proxy_client();
-        client_ret = client.Shutdown(slice_urn, credentials, options);
+        try:
+            client_ret = client.Shutdown(slice_urn, credentials, options);
+        except Exception:
+            print "Error in remote Shutdown call"
         self.close_proxy_client(client);
         return client_ret;
 
