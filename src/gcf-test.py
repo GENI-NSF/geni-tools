@@ -88,34 +88,86 @@ def verify_rspec(rspec):
         return None
     return dom
 
-def test_create_sliver(server, slice_urn, slice_credential, dom):
+def test_create_sliver(server, slice_urn, slice_credential, dom, api_version=2):
     print 'Testing CreateSliver...',
-    resources = dom.getElementsByTagName('resource')
-    dom_impl = minidom.getDOMImplementation()
-    request_rspec = dom_impl.createDocument(None, 'rspec', None)
-    top = request_rspec.documentElement
-    if resources.length == 0:
-        print 'failed: no resources available'
-    elif resources.length == 1:
-        top.appendChild(resources.item(0).cloneNode(True))
+    options = None
+    if api_version >= 2:
+        options = dict()
+        # FIXME: Build up a request_rspec for real
+        nodes = dom.getElementsByTagName('node')
+        dom_impl = minidom.getDOMImplementation()
+        request_rspec = dom_impl.createDocument(None, 'rspec', None)
+        top = request_rspec.documentElement
+        if nodes.length == 0:
+            print 'failed: no nodes available'
+        elif nodes.length == 1:
+            top.appendChild(nodes.item(0).cloneNode(True))
+        else:
+            # pick two at random
+            indices = range(nodes.length)
+            for _ in range(2):
+                index = random.choice(indices)
+                indices.remove(index)
+                top.appendChild(nodes.item(index).cloneNode(True))
     else:
-        # pick two at random
-        indices = range(resources.length)
-        for _ in range(2):
-            index = random.choice(indices)
-            indices.remove(index)
-            top.appendChild(resources.item(index).cloneNode(True))
+        resources = dom.getElementsByTagName('resource')
+        dom_impl = minidom.getDOMImplementation()
+        request_rspec = dom_impl.createDocument(None, 'rspec', None)
+        top = request_rspec.documentElement
+        if resources.length == 0:
+            print 'failed: no resources available'
+        elif resources.length == 1:
+            top.appendChild(resources.item(0).cloneNode(True))
+        else:
+            # pick two at random
+            indices = range(resources.length)
+            for _ in range(2):
+                index = random.choice(indices)
+                indices.remove(index)
+                top.appendChild(resources.item(index).cloneNode(True))
     users = [{'key':''}]
-    manifest_rspec = server.CreateSliver(slice_urn, slice_credential,
-                                         request_rspec.toxml(), users)
+    if options is not None:
+        result = server.CreateSliver(slice_urn, slice_credential,
+                                     request_rspec.toxml(), users, options)
+    else:
+        result = server.CreateSliver(slice_urn, slice_credential,
+                                     request_rspec.toxml(), users)
+    if api_version >= 2:
+        if not isinstance(result, dict):
+            print 'failed'
+            print 'didnt get APIV2 dict'
+            return
+        if not result.has_key('value'):
+            print 'failed'
+            print 'missing value'
+            return
+        manifest_rspec = result['value']
+    else:
+        manifest_rspec = result
     # TODO: verify manifest_rspec
     logging.getLogger('gcf-test').debug(manifest_rspec)
     print 'passed'
 
-def test_delete_sliver(server, slice_urn, slice_credential):
+def test_delete_sliver(server, slice_urn, slice_credential, api_version=2):
     print 'Testing DeleteSliver...',
+    options = None
+    if api_version >= 2:
+        options = dict()
     try:
-        result = server.DeleteSliver(slice_urn, slice_credential)
+        if options is not None:
+            result = server.DeleteSliver(slice_urn, slice_credential, options)
+        else:
+            result = server.DeleteSliver(slice_urn, slice_credential)
+        if api_version >= 2:
+            if not isinstance(result, dict):
+                print 'failed'
+                print 'didnt get APIV2 dict'
+                return
+            if not result.has_key('value'):
+                print 'failed'
+                print 'missing value'
+                return
+            result = result['value']
         if result is True:
             print 'passed'
         else:
@@ -123,9 +175,25 @@ def test_delete_sliver(server, slice_urn, slice_credential):
     except xmlrpclib.Error, v:
         print 'ERROR', v
 
-def test_sliver_status(server, slice_urn, credentials):
+def test_sliver_status(server, slice_urn, credentials, api_version=2):
     print 'Testing SliverStatus...',
-    result = server.SliverStatus(slice_urn, credentials)
+    options = None
+    if api_version >= 2:
+        options = dict()
+        result = server.SliverStatus(slice_urn, credentials, options)
+    else:
+        result = server.SliverStatus(slice_urn, credentials)
+
+    if api_version >= 2:
+        if not isinstance(result, dict):
+            print 'failed'
+            print 'didnt get APIV2 dict'
+            return
+        if not result.has_key('value'):
+            print 'failed'
+            print 'missing value'
+            return
+        result = result['value']
 #    import pprint
 #    pprint.pprint(result)
     sliver_keys = frozenset(('geni_urn', 'geni_status', 'geni_resources'))
@@ -147,40 +215,123 @@ def test_sliver_status(server, slice_urn, credentials):
         print 'passed'
         
     # Note expiration_time is in UTC
-def test_renew_sliver(server, slice_urn, credentials, expiration_time):
+def test_renew_sliver(server, slice_urn, credentials, expiration_time, api_version=2):
     print 'Testing RenewSliver...',
-    result = server.RenewSliver(slice_urn, credentials, expiration_time)
+    options = None
+    if api_version >= 2:
+        options = dict()
+        result = server.RenewSliver(slice_urn, credentials, expiration_time, options)
+    else:
+        result = server.RenewSliver(slice_urn, credentials, expiration_time)
+#    print 'renew returned: %r' % result
+    if api_version >= 2:
+        if not isinstance(result, dict):
+            print 'failed'
+            print 'didnt get APIV2 dict'
+            return
+        if not result.has_key('value'):
+            print 'failed'
+            print 'missing value'
+            return
+        if not result.has_key('code'):
+            print 'failed'
+            print 'missing code'
+            return
+        if not result['code'].has_key('geni_code'):
+            print 'failed'
+            print 'missing geni_code'
+            return
+        if result['code']['geni_code'] == 0 and (result['value'] is True or result['value'] is False):
+            print 'passed'
+            return
+        elif result['code']['geni_code'] != 0:
+            # If you request an expiration too far past teh slice cred expiration,
+            # this should fail. And that's actually OK.
+            print 'passed. (Result code: %r, output: %s)' % (result['code'], result['output'])
+            return
+        else:
+            print 'failed'
+            print 'returned %r instead of boolean value' % (result)
+            return
     if result is True or result is False:
         print 'passed. (Result: %r)' % (result)
     else:
         print 'failed'
         print 'returned %r instead of boolean value' % (result)
 
-def test_shutdown(server, slice_urn, credentials):
+def test_shutdown(server, slice_urn, credentials, api_version=2):
     print 'Testing Shutdown...',
-    result = server.Shutdown(slice_urn, credentials)
+    options = None
+    if api_version >= 2:
+        options = dict()
+        result = server.Shutdown(slice_urn, credentials, options)
+    else:
+        result = server.Shutdown(slice_urn, credentials)
+    if api_version >= 2:
+        if not isinstance(result, dict):
+            print 'failed'
+            print 'didnt get APIV2 dict'
+            return
+        if not result.has_key('value'):
+            print 'failed'
+            print 'missing value'
+            return
+        result = result['value']
     if result is True or result is False:
         print 'passed'
     else:
         print 'failed'
         print 'returned %r instead of boolean value' % (result)
 
-def test_get_version(server):
+def test_get_version(server, api_version=2):
     print 'Testing GetVersion...',
     # This next throws exceptions on errors
-    vdict = server.GetVersion()
-    if vdict['geni_api'] == 1:
+    options = None
+    if api_version >= 2:
+        options = dict()
+        try:
+            vdict = server.GetVersion(options)
+        except Exception, e:
+            if 'GetVersion() takes exactly 1 argument' in str(e):
+                print 'failed: Used API V%d but AM talks v1: %s' % (api_version, e)
+            print 'failed: %s' % e
+            return
+    else:
+        try:
+            vdict = server.GetVersion()
+        except Exception, e:
+            print 'failed: %s' % e
+            return
+    if vdict['geni_api'] == api_version:
         print 'passed'
     else:
-        print 'failed'
+        print 'failed: expected API V%d, got V%d' % (api_version, vdict['geni_api'])
 
 def test_list_resources(server, credentials, compressed=False, available=True,
-                        slice_urn=None):
+                        slice_urn=None, apiver=2):
     print 'Testing ListResources...',
-    options = dict(geni_compressed=compressed, geni_available=available)
+    if apiver == 1:
+        options = dict(geni_compressed=compressed, geni_available=available)
+    else:
+        options = dict(geni_compressed=compressed, geni_available=available, geni_rspec_version=(dict(type="geni", version="3")))
     if slice_urn:
         options['geni_slice_urn'] = slice_urn
-    rspec = server.ListResources(credentials, options)
+    res = server.ListResources(credentials, options)
+    if apiver == 1:
+        rspec = res
+        if not isinstance(rspec, str):
+            print 'failed: Result not a string. Got %r' % rspec
+            if isinstance(rspec, dict) and rspec.has_key('value') and rspec['value'] is not None and rspec['value'].strip() != '':
+                rspec = rspec['value']
+                if compressed:
+                    rspec = zlib.decompress(base64.b64decode(rspec))
+                return verify_rspec(rspec)
+            return None
+    else:
+        if res is None or not isinstance(res, dict) or not res.has_key('value'):
+            print 'failed: Result %r' % (res)
+            return None
+        rspec = res['value']
     if compressed:
         rspec = zlib.decompress(base64.b64decode(rspec))
     logging.getLogger('gcf-test').debug(rspec)
@@ -191,7 +342,7 @@ def test_list_resources(server, credentials, compressed=False, available=True,
         print 'failed'
     return dom
 
-def exercise_am(ch_server, am_server):
+def exercise_am(ch_server, am_server, api_version=2):
     # Create a slice at the clearinghouse
     slice_cred_string = ch_server.CreateSlice()
     slice_credential = cred.Credential(string=slice_cred_string)
@@ -202,20 +353,23 @@ def exercise_am(ch_server, am_server):
     # Set up the array of credentials as just the slice credential
     credentials = [slice_cred_string]
 
-    test_get_version(am_server)
-    dom = test_list_resources(am_server, credentials)
-    test_create_sliver(am_server, slice_urn, credentials, dom)
-    test_sliver_status(am_server, slice_urn, credentials)
-    test_list_resources(am_server, credentials, slice_urn=slice_urn)
-    
-    expiration = datetime.datetime.utcnow() + datetime.timedelta(days=1)
-    test_renew_sliver(am_server, slice_urn, credentials, expiration)
-    
-    test_delete_sliver(am_server, slice_urn, credentials)
+    test_get_version(am_server, api_version)
+    dom = test_list_resources(am_server, credentials, apiver=api_version)
+    if dom is None:
+        print 'No Ad RSpec - cannot create a sliver'
+    else:
+        test_create_sliver(am_server, slice_urn, credentials, dom, api_version)
+        test_sliver_status(am_server, slice_urn, credentials, api_version)
+        test_list_resources(am_server, credentials, slice_urn=slice_urn, apiver=api_version)
+
+        expiration = datetime.datetime.utcnow() + datetime.timedelta(seconds=1800)
+        test_renew_sliver(am_server, slice_urn, credentials, expiration, api_version)
+
+        test_delete_sliver(am_server, slice_urn, credentials, api_version)
     
     # Test compression on list resources
     dom = test_list_resources(am_server, credentials, compressed=True,
-                              available=False)
+                              available=False, apiver=api_version)
 
     # Now create a slice and shut it down instead of deleting it.
     slice_cred_string = ch_server.CreateSlice()
@@ -224,9 +378,12 @@ def exercise_am(ch_server, am_server):
     slice_urn = slice_gid.get_urn()
     print 'Second Slice URN = %s' % (slice_urn)
     credentials = [slice_cred_string]
-    dom = test_list_resources(am_server, credentials)
-    test_create_sliver(am_server, slice_urn, credentials, dom)
-    test_shutdown(am_server, slice_urn, credentials)
+    dom = test_list_resources(am_server, credentials, apiver=api_version)
+    if dom is None:
+        print 'No Ad RSpec - cannot create a sliver'
+    else:
+        test_create_sliver(am_server, slice_urn, credentials, dom, api_version)
+        test_shutdown(am_server, slice_urn, credentials, api_version)
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -244,6 +401,8 @@ def parse_args(argv):
                        help="enable debugging output")
     parser.add_option("--debug-rpc", action="store_true", default=False,
                       help="enable XML RPC debugging")
+    parser.add_option("-V", "--api-version", type=int,
+                      help="AM API Version", default=2)
     return parser.parse_args()
 
 def main(argv=None):
@@ -299,11 +458,12 @@ def main(argv=None):
     
     if not os.path.exists(keyf):
         sys.exit("Client keyfile %s doesn't exist" % keyf)
+    print 'a_v: %d' % opts.api_version
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
     ch_server = make_client(opts.ch, keyf, certf, opts.debug_rpc)
     am_server = make_client(opts.am, keyf, certf, opts.debug_rpc)
-    exercise_am(ch_server, am_server)
+    exercise_am(ch_server, am_server, opts.api_version)
 
     return 0
 
