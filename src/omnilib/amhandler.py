@@ -1168,7 +1168,7 @@ class AMCallHandler(object):
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
 
         # FIXME: Return the status if there was only 1 client?
-        if len(clientList > 0):
+        if len(clientList) > 0:
             retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
                 
