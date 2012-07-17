@@ -428,10 +428,12 @@ class ReferenceAggregateManager(object):
             # But since the slice cred may not (per ISO8601), convert
             # it to naiveUTC for comparison
             requested = self._naiveUTC(requested)
-            lastexp = 0
+            maxexp = datetime.datetime.min
             for cred in creds:
                 credexp = self._naiveUTC(cred.expiration)
-                lastexp = credexp
+                if credexp > maxexp:
+                    maxexp = credexp
+                maxexp = credexp
                 if credexp >= requested:
                     sliver.expiration = requested
                     self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
@@ -441,10 +443,10 @@ class ReferenceAggregateManager(object):
 
             # Fell through then no credential expires at or after
             # newly requested expiration time
-            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
+            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (latest expires at %r)", slice_urn, expiration_time, len(creds), maxexp)
             # FIXME: raise an exception so the client knows what
             # really went wrong?
-            return self.errorResult(19, "Out of range: Expiration %r is out of range." % (expiration_time))
+            return self.errorResult(19, "Out of range: Expiration %s is out of range (past last credential expiration of %s)." % (expiration_time, maxexp))
 
         else:
             return self._no_such_slice(slice_urn)
