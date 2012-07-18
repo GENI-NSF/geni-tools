@@ -102,15 +102,17 @@ class ReferenceAggregateManager(object):
 
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
-    def __init__(self, root_cert, urn_authority):
+    def __init__(self, root_cert, urn_authority, url):
+        self._api_version = 3
+        self._urn_authority = urn_authority
+        self._url = url
+        self._cred_verifier = geni.CredentialVerifier(root_cert)
         self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM() for _ in range(3)])
-        self._cred_verifier = geni.CredentialVerifier(root_cert)
-        self._urn_authority = urn_authority
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
-        self.logger = logging.getLogger('gcf.am2')
+        self.logger = logging.getLogger('gcf.am3')
 
     def GetVersion(self, options):
         '''Specify version information about this AM. That could
@@ -127,9 +129,15 @@ class ReferenceAggregateManager(object):
                       schema="http://www.geni.net/resources/rspec/3/ad.xsd",
                       namespace="http://www.geni.net/resources/rspec/3",
                       extensions=[])]
-        versions = dict(geni_api=3,
+        api_versions = dict()
+        api_versions[str(self._api_version)] = self._url
+        credential_types = [dict(geni_type = "geni_sfa",
+                                 geni_version = "3")]
+        versions = dict(geni_api=self._api_version,
+                        geni_api_versions=api_versions,
                         geni_request_rspec_versions=reqver,
-                        geni_ad_rspec_versions=adver)
+                        geni_ad_rspec_versions=adver,
+                        geni_credential_types=credential_types)
         return dict(geni_api=versions['geni_api'],
                     code=dict(geni_code=0,
                               am_type="gcf3",
@@ -639,7 +647,10 @@ class AggregateManagerServer(object):
         elif not os.path.isfile(os.path.expanduser(ca_certs)):
             raise Exception('CA Certs must be an existing file of accepted root certs: %s' % ca_certs)
 
-        delegate = ReferenceAggregateManager(trust_roots_dir, base_name)
+        # Decode the addr into a URL. Is there a pythonic way to do this?
+        server_url = "https://%s:%d/" % addr
+        delegate = ReferenceAggregateManager(trust_roots_dir, base_name,
+                                             server_url)
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         self._server.register_instance(AggregateManager(delegate))
