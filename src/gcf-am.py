@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -43,6 +43,7 @@ import os
 import geni
 import geni.am
 import geni.am.am2
+import geni.am.am3
 from geni.config import read_config
 
 
@@ -138,6 +139,16 @@ def main(argv=None):
                                           trust_roots_dir=getAbsPath(opts.rootcadir),
                                           ca_certs=comboCertsFile,
                                           base_name=config['global']['base_name'])
+    elif opts.api_version == 3:
+        ams = geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
+                                          keyfile=keyfile,
+                                          certfile=certfile,
+                                          trust_roots_dir=getAbsPath(opts.rootcadir),
+                                          ca_certs=comboCertsFile,
+                                          base_name=config['global']['base_name'])
+    else:
+        msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
+        sys.exit(msg % (opts.api_version))
 
     logging.getLogger('gcf-am').info('GENI AM Listening on port %s...' % (opts.port))
     ams.serve_forever()
