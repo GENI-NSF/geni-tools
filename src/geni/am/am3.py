@@ -103,10 +103,11 @@ class ReferenceAggregateManager(object):
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
     def __init__(self, root_cert, urn_authority, url):
-        self._api_version = 3
         self._urn_authority = urn_authority
         self._url = url
         self._cred_verifier = geni.CredentialVerifier(root_cert)
+        self._api_version = 3
+        self._am_type = "gcf" + str(self._api_version)
         self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM() for _ in range(3)])
@@ -140,7 +141,7 @@ class ReferenceAggregateManager(object):
                         geni_credential_types=credential_types)
         return dict(geni_api=versions['geni_api'],
                     code=dict(geni_code=0,
-                              am_type="gcf3",
+                              am_type=self._am_type,
                               am_code=0),
                     value=versions,
                     output="")
@@ -151,10 +152,8 @@ class ReferenceAggregateManager(object):
     # this is just the current implementation
     def ListResources(self, credentials, options):
         '''Return an RSpec of resources managed at this AM.
-        If a geni_slice_urn
-        is given in the options, then only return resources assigned
-        to that slice. If geni_available is specified in the options,
-        then only report available resources. And if geni_compressed
+        If geni_available is specified in the options,
+        then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
         self.logger.info('ListResources(%r)' % (options))
         # Note this list of privileges is really the name of an operation
@@ -201,21 +200,28 @@ class ReferenceAggregateManager(object):
         self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
-            slice_urn = options['geni_slice_urn']
-            if slice_urn in self._slices:
-                result = self.manifest_rspec(slice_urn)
-            else:
-                # return an empty rspec
-                return self._no_such_slice(slice_urn)
-        else:
-            all_resources = self._agg.catalog(None)
-            available = 'geni_available' in options and options['geni_available']
-            resource_xml = ""
-            for r in all_resources:
-                if available and not r.available:
-                    continue
-                resource_xml = resource_xml + self.advert_resource(r)
-            result = self.advert_header() + resource_xml + self.advert_footer()
+            self.logger.error('ListResources: geni_slice_urn is no longer a supported option.')
+            msg = 'Bad Arguments:'
+            msg += 'option geni_slice_urn is no longer a supported option.'
+            msg += ' Use "Describe" instead.'
+            return self.errorResult(1, msg)
+
+#        if 'geni_slice_urn' in options:
+#            slice_urn = options['geni_slice_urn']
+#            if slice_urn in self._slices:
+#                result = self.manifest_rspec(slice_urn)
+#            else:
+#                # return an empty rspec
+#                return self._no_such_slice(slice_urn)
+#        else:
+        all_resources = self._agg.catalog(None)
+        available = 'geni_available' in options and options['geni_available']
+        resource_xml = ""
+        for r in all_resources:
+            if available and not r.available:
+                continue
+            resource_xml = resource_xml + self.advert_resource(r)
+        result = self.advert_header() + resource_xml + self.advert_footer()
         self.logger.debug("Result is now \"%s\"", result)
         # Optionally compress the result
         if 'geni_compressed' in options and options['geni_compressed']:
@@ -227,7 +233,7 @@ class ReferenceAggregateManager(object):
                 raise Exception("Server error compressing resource list", exc)
 
         return dict(code=dict(geni_code=0,
-                              am_type="gcf2",
+                              am_type=self._am_type,
                               am_code=0),
                     value=result,
                     output="")
@@ -595,15 +601,15 @@ class AggregateManager(object):
         except Exception as e:
             return self._exception_result(e)
 
-#    def ListResources(self, credentials, options):
-#        '''Return an RSpec of resources managed at this AM.
-#        If a geni_slice_urn
-#        is given in the options, then only return resources assigned
-#        to that slice. If geni_available is specified in the options,
-#        then only report available resources. And if geni_compressed
-#        option is specified, then compress the result.'''
-#        return self._delegate.ListResources(credentials, options)
-#
+    def ListResources(self, credentials, options):
+        '''Return an RSpec of resources managed at this AM.
+        If a geni_slice_urn
+        is given in the options, then only return resources assigned
+        to that slice. If geni_available is specified in the options,
+        then only report available resources. And if geni_compressed
+        option is specified, then compress the result.'''
+        return self._delegate.ListResources(credentials, options)
+
 #    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
 #        """Create a sliver with the given URN from the resources in
 #        the given RSpec.
