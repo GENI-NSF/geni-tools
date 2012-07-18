@@ -621,7 +621,7 @@ def parse_args(argv, options=None):
 
     # Validate the API version. The parser has already converted the argument to
     # an integer, so check against a list of valid versions.
-    supported_versions = [1, 2]
+    supported_versions = [1, 2, 3]
     if options.api_version not in supported_versions:
         parser.error('API version "%s" is not a supported version. Valid versions are: %r.'
                      % (options.api_version, supported_versions))
