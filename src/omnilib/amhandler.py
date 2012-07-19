@@ -799,6 +799,59 @@ class AMCallHandler(object):
 
 # --- End ListResources, start CreateSliver
 
+    def allocate(self, args):
+        """A minimal implementation of Allocate().
+
+        This minimal version allows for testing a v3 aggregate, but
+        does not provide sufficient error checking or experimenter
+        support to be the final implementation.
+        """
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "Allocate",
+                                                      "and a request rspec filename")
+        # Load up the user's request rspec
+        rspecfile = None
+        if not (self.opts.devmode and len(args) < 2):
+            rspecfile = args[1]
+        if rspecfile is None or not os.path.isfile(rspecfile):
+#--- Dev mode should allow missing RSpec
+            msg = 'File of resources to request missing: %s' % rspecfile
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # read the rspec into a string, and add it to the rspecs dict
+        try:
+            rspec = file(rspecfile).read()
+        except Exception, exc:
+#--- Should dev mode allow this?
+            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            if self.opts.devmode:
+                rspec = ""
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+        client = make_client(url, self.framework, self.opts)
+        args = [urn, [slice_cred], rspec, {}]
+        (result, message) = _do_ssl(self.framework,
+                                    None,
+                                    ("Allocate %s at %s" % (urn, url)),
+                                    client.Allocate,
+                                    *args)
+        result_code = result['code']['geni_code']
+        if (result_code == 0):
+            # Success
+            retVal = ("Allocation was successful.", result['value'])
+        else:
+            # Failure
+            retVal = ('Error %d: %s' % (result_code,
+                                        result['output']),
+                      None)
+        return retVal
+
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
