@@ -26,6 +26,8 @@ import geni
 class Resource(object):
     """A Resource has an id, a type, and a boolean indicating availability."""
 
+    STATUS_ALLOCATED = 'allocated'
+    STATUS_PROVISIONED = 'provisioned'
     STATUS_CONFIGURING = 'configuring'
     STATUS_READY = 'ready'
     STATUS_FAILED = 'failed'
