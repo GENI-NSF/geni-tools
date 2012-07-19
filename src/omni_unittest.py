@@ -222,6 +222,10 @@ class OmniUnittest(unittest.TestCase):
                             "but instead returned: %s" 
                         % (method, aggName, key, str(valueType), str(dictionary[key])))
 
+    def assertReturnKeyValueType( self, method, aggName, dictionary, key, valueType=str):
+        self.assertKeyValueType( method, aggName, dictionary, key, valueType=valueType)
+        return dictionary[key]
+    
 
     def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
         """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyA will be tested."""

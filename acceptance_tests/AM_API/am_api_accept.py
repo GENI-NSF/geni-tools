@@ -129,12 +129,11 @@ class Test(ut.OmniUnittest):
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
             value = thisVersion               
-            if self.options_copy.api_version == 2: 
+            if self.options_copy.api_version >= 2: 
 #                value = thisVersion['value']
-                rspec_version = self.assertReturnPairKeyValue( 
+                rspec_version = self.assertReturnKeyValueType( 
                     'GetVersion', agg, value, 
                     'geni_'+rspec_type, 
-                    None,
                     list )
             else:
                 rspec_version = self.assertReturnPairKeyValue( 
@@ -224,11 +223,20 @@ class Test(ut.OmniUnittest):
                 self.success = True
                 return
 
-            if self.options_copy.api_version == 2:
-                request_rspec_versions = self.assertReturnPairKeyValue( 
+            if self.options_copy.api_version >= 2:
+                api_vers = self.assertReturnKeyValueType( 
+                    'GetVersion', agg, ver_dict, 
+                    'geni_api_versions', 
+                    dict )
+                
+                self.assertKeyValueType( 'GetVersion', agg, api_vers, 
+                                         str(self.options_copy.api_version), 
+                                         str )
+
+            if self.options_copy.api_version >= 2:
+                request_rspec_versions = self.assertReturnKeyValueType( 
                     'GetVersion', agg, ver_dict, 
                     'geni_request_rspec_versions', 
-                    None,
                     list )
             else:
                 request_rspec_versions = self.assertReturnPairKeyValue( 
@@ -244,10 +252,13 @@ class Test(ut.OmniUnittest):
                 exp_num = RSPEC_NUM
             request = False
             for vers in request_rspec_versions:
-#                self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
-#                self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
+                if self.options_copy.api_version == 3:
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', list )
+
                 try:
                     self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'type', exp_type )
@@ -270,11 +281,10 @@ class Test(ut.OmniUnittest):
 
 
 
-            if self.options_copy.api_version == 2:
-                ad_rspec_versions = self.assertReturnPairKeyValue( 
+            if self.options_copy.api_version >= 2:
+                ad_rspec_versions = self.assertReturnKeyValueType( 
                     'GetVersion', agg, ver_dict, 
                     'geni_ad_rspec_versions', 
-                    None,
                     list )
             else:
                 ad_rspec_versions = self.assertReturnPairKeyValue( 
@@ -284,10 +294,16 @@ class Test(ut.OmniUnittest):
                     list )
             ad = False
             for vers in ad_rspec_versions:
-#                self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
-#                self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
+                if self.options_copy.api_version == 3:
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 
+                                             'schema', str )
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 
+                                             'namespace', str )
+                    self.assertKeyValueType( 'GetVersion', agg, vers, 
+                                             'extensions', list )
+
                 try:
                     self.assertKeyValueLower( 'GetVersion', agg, vers, 
                                          'type', exp_type )
@@ -296,7 +312,8 @@ class Test(ut.OmniUnittest):
                     ad = True
                 except:
                     pass
-                self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', type([]) )
+                self.assertKeyValueType( 'GetVersion', agg, vers, 
+                                         'extensions', list )
             self.assertTrue( ad,
                         "Return from 'GetVersion' at %s " \
                         "expected to have entry " \
@@ -305,7 +322,19 @@ class Test(ut.OmniUnittest):
                         "but did not." 
                         % (agg, exp_type, exp_num) )
 
+
+            if self.options_copy.api_version == 3:
+                cred_types = self.assertReturnKeyValueType( 
+                    'GetVersion', agg, ver_dict, 
+                    'geni_credential_types', 
+                    list )
+                for creds in cred_types:
+                    self.assertKeyValueType( 'GetVersion', agg, creds, 
+                                             'geni_type', str)
+                    self.assertKeyValueType( 'GetVersion', agg, creds, 
+                                             'geni_version', str )
         self.success = True
+
     def test_ListResources(self):
         """test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
         """
