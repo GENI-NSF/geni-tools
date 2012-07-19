@@ -51,7 +51,9 @@ from fakevm import FakeVM
 # map to these operations, giving the caller permission
 # to perform the functions
 RENEWSLIVERPRIV = 'renewsliver'
-CREATESLIVERPRIV = 'createsliver'
+
+# Map the Allocate call to the CreateSliver privilege.
+ALLOCATE_PRIV = 'createsliver'
 DELETESLIVERPRIV = 'deleteslice'
 SLIVERSTATUSPRIV = 'getsliceresources'
 SHUTDOWNSLIVERPRIV = 'shutdown'
@@ -242,21 +244,18 @@ class ReferenceAggregateManager(object):
     # must give the caller required permissions.
     # The semantics of the API are unclear on this point, so
     # this is just the current implementation
-    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
-        """Create a sliver with the given URN from the resources in
-        the given RSpec.
+    def Allocate(self, slice_urn, credentials, rspec, options):
+        """Allocate slivers to the given slice according to the given RSpec.
         Return an RSpec of the actually allocated resources.
-        users argument provides extra information on configuring the resources
-        for runtime access.
         """
-        self.logger.info('CreateSliver(%r)' % (slice_urn))
+        self.logger.info('Allocate(%r)' % (slice_urn))
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
         # confers the right to perform a list of operations.
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
-        privileges = (CREATESLIVERPRIV,)
+        privileges = (ALLOCATE_PRIV,)
         # Note that verify throws an exception on failure.
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
@@ -282,7 +281,7 @@ class ReferenceAggregateManager(object):
         # Make sure it is supported
         # Then make sure that you return an RSpec in the same format
         # EG if both V1 and V2 are supported, and the user gives V2 request,
-        # then you must return a V2 request and not V1
+        # then you must return a V2 manifest and not V1
 
         allresources = self._agg.catalog()
         allrdict = dict()
@@ -318,10 +317,13 @@ class ReferenceAggregateManager(object):
         self._agg.allocate(slice_urn, resources.values())
         for cid, r in resources.items():
             newslice.resources[cid] = r.id
-            r.status = Resource.STATUS_READY
+            r.status = Resource.STATUS_ALLOCATED
         self._slices[slice_urn] = newslice
 
         self.logger.info("Created new slice %s" % slice_urn)
+        for res_id in newslice.resources:
+            self.logger.info("Allocated resource %s to slice %s",
+                             res_id, slice_urn)
         result = self.manifest_rspec(slice_urn)
         self.logger.debug('Result = %s', result)
         return dict(code=dict(geni_code=0,
@@ -609,6 +611,15 @@ class AggregateManager(object):
         then only report available resources. And if geni_compressed
         option is specified, then compress the result.'''
         return self._delegate.ListResources(credentials, options)
+
+    def Allocate(self, slice_urn, credentials, rspec, options):
+        """
+        """
+        try:
+            return self._delegate.Allocate(slice_urn, credentials, rspec,
+                                           options)
+        except Exception as e:
+            return self._exception_result(e)
 
 #    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
 #        """Create a sliver with the given URN from the resources in
