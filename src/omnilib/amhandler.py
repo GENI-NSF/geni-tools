@@ -1680,7 +1680,7 @@ class AMCallHandler(object):
         if len(args) == 0 or len(args) < num_args or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
             msg = '%s requires arg of slice name %s' % (methodname, otherargstring)
             if self.opts.devmode:
-                self.logger.warn(msg + ", but continuging...")
+                self.logger.warn(msg + ", but continuing...")
                 if len(args) == 0 or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
                     return ("", "", "", "", datetime.datetime.max)
             else:
