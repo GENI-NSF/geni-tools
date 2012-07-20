@@ -343,6 +343,7 @@ class Test(ut.OmniUnittest):
         # omni sets 'geni_compress' = True
         self.subtest_ListResources()
         self.success = True
+
     def test_ListResources_geni_compressed(self):
         """test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
         """
@@ -512,7 +513,6 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
-
     def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
@@ -531,8 +531,12 @@ class Test(ut.OmniUnittest):
             rspec_schema = self.ad_schema
         
         omniargs = [] 
-
-        if slicename:
+        
+        AMAPI_call = "ListResources"
+        if slicename and (self.options_copy.api_version >= 3):
+            AMAPI_call = "Describe"            
+            omniargs = omniargs + ["describe", str(slicename)]
+        if slicename and (self.options_copy.api_version < 3):
             omniargs = omniargs + ["listresources", str(slicename)]
         else:
             omniargs = omniargs + ["listresources"]
@@ -575,47 +579,46 @@ class Test(ut.OmniUnittest):
 
         pprinter = pprint.PrettyPrinter(indent=4)
 
-        ## In python 2.7: assertIs
         self.assertDict(ret_dict,
-                       "Call to 'ListResources' failed or not possible " \
+                       "Call to '%s' failed or not possible " \
                         "but expected to succeed. " \
                         "Error returned:\n %s"
-                        % (text))
+                        % (AMAPI_call, text))
 
         # An empty dict indicates a misconfiguration!
         self.assertTrue(ret_dict,
-                        "Return from 'ListResources' " \
+                        "Return from '%s' " \
                         "expected to contain dictionary keyed by aggregates " \
                         "but instead returned empty dictionary. " \
                         "This indicates there were no aggregates checked. " \
-                        "Look for misconfiguration.")
+                        "Look for misconfiguration." % (AMAPI_call) )
 
         # Checks each aggregate
         for ((agg_name, agg_url), rspec) in ret_dict.items():
             ## In python 2.7: assertIsNotNone
             self.assertTrue(rspec,
-                          "Return from 'ListResources' at aggregate '%s' " \
+                          "Return from '%s' at aggregate '%s' " \
                           "expected to be XML file " \
                           "but instead nothing returned." 
-                           % (agg_name))
+                           % (AMAPI_call, agg_name))
             # TODO: more elegant truncation
             self.assertTrue(type(rspec) is str,
-                          "Return from 'ListResources' at aggregate '%s' " \
+                          "Return from '%s' at aggregate '%s' " \
                           "expected to be string " \
                           "but instead returned: \n" \
                           "%s\n" \
                           "... edited for length ..." 
-                          % (agg_name, rspec[:100]))
+                          % (AMAPI_call, agg_name, rspec[:100]))
 
             # Test if file is XML and contains "<rspec" or "<resv_rspec"
             # TODO is_rspec_string() might not be exactly the right thing here
             self.assertTrue(rspec_util.is_rspec_string( rspec ),
-                          "Return from 'ListResources' at aggregate '%s' " \
+                          "Return from '%s' at aggregate '%s' " \
                           "expected to be XML " \
                           "but instead returned: \n" \
                           "%s\n" \
                           "... edited for length ..." 
-                           % (agg_name, rspec[:100]))
+                           % (AMAPI_call, agg_name, rspec[:100]))
 
             if slicename:
                 self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
@@ -627,23 +630,23 @@ class Test(ut.OmniUnittest):
                 self.assertTrue(rspec_util.validate_rspec( rspec, 
                                                      namespace=rspec_namespace, 
                                                      schema=rspec_schema ),
-                            "Return from 'ListResources' at aggregate '%s' " \
+                            "Return from '%s' at aggregate '%s' " \
                             "expected to pass rspeclint " \
                             "but did not. Return was: " \
                             "\n%s\n" \
                             "... edited for length ..."
-                            % (agg_name, rspec[:100]))
+                            % (AMAPI_call, agg_name, rspec[:100]))
             if self.options_copy.geni_available:
                 self.assertTrue(rspec_util.rspec_available_only( rspec, 
                                                      namespace=rspec_namespace, 
                                                      schema=rspec_schema, 
                                                      version=self.RSpecVersion() ),
-                            "Return from 'ListResources' at aggregate '%s' " \
+                            "Return from '%s' at aggregate '%s' " \
                             "expected to only include available nodes " \
                             "but did not. Return was: " \
                             "\n%s\n" \
                             "... edited for length ..."
-                            % (agg_name, rspec[:100]))
+                            % (AMAPI_call, agg_name, rspec[:100]))
                 
 
         return rspec
@@ -837,6 +840,9 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
             
+    def test_Allocate( self, slicename='foobar'):
+        # THIS IS TEMPORARY TEST
+        self.subtest_Allocate( slicename )
     def subtest_MinCreateSliverWorkflow(self, slicename=None):
         if slicename==None:
             slicename = self.create_slice_name()
@@ -1153,45 +1159,110 @@ class Test(ut.OmniUnittest):
         time.sleep(self.options_copy.sleep_time)
         self.subtest_RenewSliver( slicename, fivedays )
 
+
     def subtest_CreateSliver(self, slice_name):
+        return self.subtest_CreateSliverPiece( slice_name, 
+                                        omni_method='createsliver', 
+                                        AMAPI_call="CreateSliver")
+
+    def subtest_Allocate(self, slice_name):
+        return self.subtest_CreateSliverPiece( slice_name, 
+                                        omni_method='allocate', 
+                                        AMAPI_call="Allocate")
+
+    def subtest_CreateSliverPiece(self, slice_name, 
+                                  omni_method='createsliver', 
+                                  AMAPI_call="CreateSliver"):
+        """Handle CreateSliver and Allocate both of which take in a request RSpec and return a manifest RSpec.
+        """
+        self.assertTrue(omni_method in ['createsliver', 'allocate'],
+                        "omni_method is %s and not one of " \
+                            " 'createsliver' or 'allocate'." % omni_method)
+            
+        self.assertTrue( AMAPI_call in ['CreateSliver', 'Allocate'],
+                        "AMAPI_call is %s and not one of " \
+                            " 'CreateSliver' or 'Allocate'." % AMAPI_call)
+
+                                       
         self.assertTrue( self.checkRequestRSpecVersion() )
 
         # Check for the existance of the Request RSpec file
         self.assertTrue( os.path.exists(self.options_copy.rspec_file),
-                         "Request RSpec file, '%s' for 'CreateSliver' call " \
+                         "Request RSpec file, '%s' for '%s' call " \
                              "expected to exist " \
                              "but does not." 
-                         % self.options_copy.rspec_file )
+                         % (self.options_copy.rspec_file, AMAPI_call) )
         
-        # CreateSliver
-        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
-        text, manifest = self.call(omniargs, self.options_copy)
+        # CreateSliver() or Allocate()
+        omniargs = [omni_method, slice_name, str(self.options_copy.rspec_file)] 
+        text, retVal = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
-        ## In python 2.7: assertIsNotNone
-        self.assertIsNotNone(manifest,
-                          "Return from 'CreateSliver' " \
+        self.assertIsNotNone(retVal,
+                          "Return from '%s' " \
                           "expected to be XML file " \
-                          "but instead nothing returned. AM returned:\n %s"%text)
-        # TODO: more elegant truncation
+                          "but instead nothing returned. AM returned:\n %s"
+                             % (AMAPI_call, text))
+
+        if self.options_copy.api_version < 3:
+            manifest = retVal
+        else:
+            manifest = self.assertReturnKeyValueType( 
+                    AMAPI_call, None, retVal, 
+                    'geni_rspec', str )
+
         self.assertTrue(type(manifest) is str,
-                        "Return from 'CreateSliver' " \
+                        "Return from '%s' " \
                             "expected to be string " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (manifest[:100]))
+                        % (AMAPI_call, manifest[:100]))
 
         # Test if file is XML and contains "<rspec" or "<resv_rspec"
         self.assertTrue(rspec_util.is_rspec_string( manifest ),
-                        "Return from 'CreateSliver' " \
+                        "Return from '%s' " \
                             "expected to be XML " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (manifest[:100]))
+                        % (AMAPI_call, manifest[:100]))
 
+
+        self.assertTrue( rspec_util.has_child( manifest ),
+                  "Manifest RSpec returned by '%s' on slice '%s' " \
+                  "expected to be non-empty " \
+                  "but was empty. Return was: " \
+                  "\n%s\n" \
+                  "... edited for length ..."
+                  % (AMAPI_call, slice_name, manifest[:100]))
+
+
+        if self.options_copy.api_version >= 3:
+            slivers = self.assertReturnKeyValueType( 
+                    AMAPI_call, None, retVal, 
+                    'geni_slivers', list )
+            self.assertTrue( len(slivers) > 0,
+                             "Return from '%s' " \
+                                 "expected to list allocated slivers " \
+                                 "but did not instead returned: \n" \
+                                 "%s\n" \
+                                 "... edited for length ..." 
+                             % (AMAPI_call, manifest[:100]))
+
+            for sliver in slivers:
+                self.assertKeyValueType( 
+                    AMAPI_call, None, sliver, 
+                    'geni_sliver_urn', str )
+                self.assertKeyValueType( 
+                    AMAPI_call, None, sliver, 
+                    'geni_expires', str )
+                self.assertKeyValueType( 
+                    AMAPI_call, None, sliver, 
+                    'geni_allocation_status', str )
+            return manifest, slivers
         return manifest
+
 
     def subtest_SliverStatus(self, slice_name):
         # SliverStatus
