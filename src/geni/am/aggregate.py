@@ -50,6 +50,10 @@ class Aggregate(object):
                 r.available = False
 
     def deallocate(self, container, resources):
+        if container and not self.containers.has_key(container):
+            # Be flexible: if a container is specified but unknown
+            # ignore the call
+            return
         if container and resources:
             # deallocate the given resources from the container
             for r in resources:
