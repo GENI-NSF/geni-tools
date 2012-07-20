@@ -96,6 +96,7 @@ def determine_rights(type, name):
         rl.add("bind")
         rl.add("control")
         rl.add("info")
+# wouldn't that be authority+cm instead ?
     elif type == "component":
         rl.add("operator")
     return rl
@@ -115,6 +116,8 @@ class Right:
     def __init__(self, kind, delegate=False):
         self.kind = kind
         self.delegate = delegate
+
+    def __repr__ (self): return "<Rgt:%s>"%self.kind
 
     ##
     # Test to see if this right object is allowed to perform an operation.
@@ -169,6 +172,8 @@ class Rights:
         self.rights = []
         if string:
             self.load_from_string(string)
+
+    def __repr__ (self): return "[" + " ".join( ["%s"%r for r in self.rights]) + "]"
 
     def is_empty(self):
         return self.rights == []
