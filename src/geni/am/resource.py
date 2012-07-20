@@ -26,37 +26,53 @@ import geni
 class Resource(object):
     """A Resource has an id, a type, and a boolean indicating availability."""
 
-    STATUS_ALLOCATED = 'allocated'
-    STATUS_PROVISIONED = 'provisioned'
     STATUS_CONFIGURING = 'configuring'
     STATUS_READY = 'ready'
     STATUS_FAILED = 'failed'
     STATUS_UNKNOWN = 'unknown'
     STATUS_SHUTDOWN = 'shutdown'
 
+    STATE_GENI_UNALLOCATED = 'geni_unallocated'
+    STATE_GENI_ALLOCATED = 'geni_allocated'
+    STATE_GENI_PROVISIONED = 'geni_provisioned'
+
+    OPSTATE_GENI_PENDING_ALLOCATION = 'geni_pending_allocation'
+    OPSTATE_GENI_NOT_READY = 'geni_notready'
+    OPSTATE_GENI_CONFIGURING = 'geni_configuring'
+    OPSTATE_GENI_STOPPING = 'geni_stopping'
+    OPSTATE_GENI_READY = 'geni_ready'
+    OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
+    OPSTATE_GENI_FAILED = 'geni_failed'
+
+
     def __init__(self, rid, rtype):
         self.id = rid
         self.type = rtype
         self.available = True
+        self.external_id = None
+        # For V2 AMs
         self.status = Resource.STATUS_UNKNOWN
+        # For V3 AMs
+        self.state = Resource.STATE_GENI_UNALLOCATED
+        self.operational_state = None
 
     def urn(self):
         # User in SliverStatus
         # NAMESPACE has no business here. The URN should be at an upper level, not here.
         RESOURCE_NAMESPACE = 'geni//gpo//gcf'
-        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self._type, str(self._id))
+        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
         template = ('<resource><urn>%s</urn><type>%s</type><id>%s</id>'
                     + '<available>%r</available></resource>')
-        return template % (self.urn(), self._type, self._id, self.available)
+        return template % (self.urn(), self.type, self.id, self.available)
 
     def __eq__(self, other):
-        return self._id == other._id
+        return self.id == other.id
 
     def __neq__(self, other):
-        return self._id != other._id
+        return self.id != other.id
 
     @classmethod
     def fromdom(cls, element):
