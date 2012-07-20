@@ -26,19 +26,33 @@ import geni
 class Resource(object):
     """A Resource has an id, a type, and a boolean indicating availability."""
 
-    STATUS_ALLOCATED = 'allocated'
-    STATUS_PROVISIONED = 'provisioned'
     STATUS_CONFIGURING = 'configuring'
     STATUS_READY = 'ready'
     STATUS_FAILED = 'failed'
     STATUS_UNKNOWN = 'unknown'
     STATUS_SHUTDOWN = 'shutdown'
 
+    STATE_GENI_UNALLOCATED = 'geni_unallocated'
+    STATE_GENI_ALLOCATED = 'geni_allocated'
+    STATE_GENI_PROVISIONED = 'geni_provisioned'
+
+    OPSTATE_GENI_PENDING_ALLOCATION = 'geni_pending_allocation'
+    OPSTATE_GENI_NOT_READY = 'geni_notready'
+    OPSTATE_GENI_CONFIGURING = 'geni_configuring'
+    OPSTATE_GENI_STOPPING = 'geni_stopping'
+    OPSTATE_GENI_READY = 'geni_ready'
+    OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
+    OPSTATE_GENI_FAILED = 'geni_failed'
+
+
     def __init__(self, rid, rtype):
         self.id = rid
         self.type = rtype
         self.available = True
         self.status = Resource.STATUS_UNKNOWN
+        # For V3 AMs
+        self.state = Resource.STATE_GENI_UNALLOCATED
+        self.operational_state = None
 
     def urn(self):
         # User in SliverStatus
