@@ -60,19 +60,19 @@ class Resource(object):
         # User in SliverStatus
         # NAMESPACE has no business here. The URN should be at an upper level, not here.
         RESOURCE_NAMESPACE = 'geni//gpo//gcf'
-        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self._type, str(self._id))
+        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
         template = ('<resource><urn>%s</urn><type>%s</type><id>%s</id>'
                     + '<available>%r</available></resource>')
-        return template % (self.urn(), self._type, self._id, self.available)
+        return template % (self.urn(), self.type, self.id, self.available)
 
     def __eq__(self, other):
-        return self._id == other._id
+        return self.id == other.id
 
     def __neq__(self, other):
-        return self._id != other._id
+        return self.id != other.id
 
     @classmethod
     def fromdom(cls, element):
