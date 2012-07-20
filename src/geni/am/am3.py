@@ -632,6 +632,7 @@ class AggregateManager(object):
         try:
             return self._delegate.GetVersion(options)
         except Exception as e:
+            traceback.print_exc()
             return self._exception_result(e)
 
     def ListResources(self, credentials, options):
@@ -641,7 +642,11 @@ class AggregateManager(object):
         to that slice. If geni_available is specified in the options,
         then only report available resources. And if geni_compressed
         option is specified, then compress the result.'''
-        return self._delegate.ListResources(credentials, options)
+        try:
+            return self._delegate.ListResources(credentials, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
 
     def Allocate(self, slice_urn, credentials, rspec, options):
         """
