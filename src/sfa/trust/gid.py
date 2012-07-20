@@ -158,8 +158,6 @@ class GID(Certificate):
 
         self.set_data(str, 'subjectAltName')
 
-        
-
 
     ##
     # Decode the subject-alt-name field of the X509 certificate into the

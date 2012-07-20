@@ -51,7 +51,7 @@ from sfa.util.sfalogging import logger
 glo_passphrase_callback = None
 
 ##
-# A global callback msy be implemented for requesting passphrases from the
+# A global callback may be implemented for requesting passphrases from the
 # user. The function will be called with three arguments:
 #
 #    keypair_obj: the keypair object that is calling the passphrase

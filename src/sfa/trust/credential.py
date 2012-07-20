@@ -278,6 +278,7 @@ class Credential(object):
             self.decode()
         return self.gidObject.get_printable_subject()
 
+    # sounds like this should be __repr__ instead ??
     def get_summary_tostring(self):
         if not self.gidObject:
             self.decode()
@@ -363,8 +364,6 @@ class Credential(object):
         if not self.gidObject:
             self.decode()
         return self.gidObject
-
-
             
     ##
     # Expiration: an absolute UTC time of expiration (as either an int or string or datetime)
@@ -403,8 +402,7 @@ class Credential(object):
         if isinstance(privs, str):
             self.privileges = Rights(string = privs)
         else:
-            self.privileges = privs
-        
+            self.privileges = privs        
 
     ##
     # return the privileges as a Rights object
