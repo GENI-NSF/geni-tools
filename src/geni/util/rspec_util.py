@@ -258,6 +258,28 @@ def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
             return True
         else: 
             return False
+
+
+def rspec_available_only( rspec, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA, version="GENI 3" ):
+    """ Return True if all nodes in rspec say:
+     <available now="true">
+    Otherwise, return False.
+    rspec - a string containing an RSpec
+    """
+    try:
+        root = etree.fromstring(rspec)
+    except:
+        return False
+    ns, ad_schema, req_schema, man_schema  = get_expected_schema_info( version=version )
+    prefix = "{%s}"%ns
+    nodes = root.findall( prefix+'node' ) #get all nodes
+    available=True
+    for node in nodes:
+        avail = node.find( prefix+"available" )
+        if avail.get("now").lower() == "false":
+            available = False
+            return available
+    return available
     
 #def is_valid_rspec(): 
 # Call is_rspec_string()
@@ -309,7 +331,7 @@ if __name__ == "__main__":
 
     xml_str = """<?xml version='1.0'?>
 <!--Comment-->
-<rspec><node component_id='a'><sliver_type/></node><node component_id='b'><sliver_type/></node><node component_id='d'><!--no sliver_type--></node></rspec>"""
+<rspec><node component_id='a'><sliver_type/><available </node><node component_id='b'><sliver_type/></node><node component_id='d'><!--no sliver_type--></node></rspec>"""
 
     xml_str2 = """<?xml version='1.0'?>
 <!--Comment-->

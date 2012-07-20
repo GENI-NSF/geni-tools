@@ -633,6 +633,18 @@ class Test(ut.OmniUnittest):
                             "\n%s\n" \
                             "... edited for length ..."
                             % (agg_name, rspec[:100]))
+            if self.options_copy.geni_available:
+                self.assertTrue(rspec_util.rspec_available_only( rspec, 
+                                                     namespace=rspec_namespace, 
+                                                     schema=rspec_schema, 
+                                                     version=self.RSpecVersion() ),
+                            "Return from 'ListResources' at aggregate '%s' " \
+                            "expected to only include available nodes " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (agg_name, rspec[:100]))
+                
 
         return rspec
 
