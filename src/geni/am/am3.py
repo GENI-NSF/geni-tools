@@ -32,6 +32,7 @@ import datetime
 import dateutil.parser
 import logging
 import os
+import traceback
 import uuid
 import xml.dom.minidom as minidom
 import zlib
@@ -66,6 +67,9 @@ RESOURCE_NAMESPACE = 'geni//gpo//gcf'
 
 REFAM_MAXLEASE_DAYS = 365
 
+# Expiration on Allocated resources is 10 minutes.
+ALLOCATE_EXPIRATION_SECONDS = 10 * 60
+
 
 class Slice(object):
     """A slice has a URN, a list of resources, and an expiration time in UTC."""
@@ -74,7 +78,13 @@ class Slice(object):
         self.id = str(uuid.uuid4())
         self.urn = urn
         self.expiration = expiration
-        self.resources = dict()
+        self._resources = dict()
+
+    def add_resource(self, resource):
+        self._resources[resource.id] = resource
+
+    def resources(self):
+        return self._resources.values()
 
     def status(self, resources):
         """Determine the status of the sliver by examining the status
@@ -109,7 +119,7 @@ class ReferenceAggregateManager(object):
         self._url = url
         self._cred_verifier = geni.CredentialVerifier(root_cert)
         self._api_version = 3
-        self._am_type = "gcf" + str(self._api_version)
+        self._am_type = "gcf"
         self._slices = dict()
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM() for _ in range(3)])
@@ -283,51 +293,54 @@ class ReferenceAggregateManager(object):
         # EG if both V1 and V2 are supported, and the user gives V2 request,
         # then you must return a V2 manifest and not V1
 
-        allresources = self._agg.catalog()
-        allrdict = dict()
-        for r in allresources:
-            if r.available:
-                allrdict[r.id] = r
+        available = self.resources(available=True)
 
         # Note: This only handles unbound nodes. Any attempt by the client
         # to specify a node is ignored.
-        resources = dict()
         unbound = list()
         for elem in rspec_dom.documentElement.getElementsByTagName('node'):
             unbound.append(elem)
+        if len(unbound) > len(available):
+            # There aren't enough resources
+            return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
+
+        resources = list()
         for elem in unbound:
             client_id = elem.getAttribute('client_id')
-            keys = allrdict.keys()
-            if keys:
-                rid = keys[0]
-                resources[client_id] = allrdict[rid]
-                del allrdict[rid]
-            else:
-                return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
+            resource = available.pop(0)
+            resource.external_id = client_id
+            resource.available = False
+            resources.append(resource)
 
         # determine max expiration time from credentials
         # do not create a sliver that will outlive the slice!
-        expiration = datetime.datetime.utcnow() + self.max_lease
+        expiration = (datetime.datetime.utcnow()
+                      + datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS))
         for cred in creds:
             credexp = self._naiveUTC(cred.expiration)
             if credexp < expiration:
                 expiration = credexp
 
         newslice = Slice(slice_urn, expiration)
-        self._agg.allocate(slice_urn, resources.values())
-        for cid, r in resources.items():
-            newslice.resources[cid] = r.id
-            r.status = Resource.STATUS_ALLOCATED
+        for resource in resources:
+            newslice.add_resource(resource)
+            resource.state = Resource.STATE_GENI_ALLOCATED
         self._slices[slice_urn] = newslice
 
-        self.logger.info("Created new slice %s" % slice_urn)
-        for res_id in newslice.resources:
+        self.logger.info("Allocated new slice %s" % slice_urn)
+        slivers = list()
+        expiration = self.rfc3339format(newslice.expiration)
+        for resource in newslice.resources():
             self.logger.info("Allocated resource %s to slice %s",
-                             res_id, slice_urn)
-        result = self.manifest_rspec(slice_urn)
-        self.logger.debug('Result = %s', result)
+                             resource.id, slice_urn)
+            slivers.append(dict(geni_sliver_urn=resource.urn(),
+                                geni_expires=expiration,
+                                geni_allocation_status=resource.state))
+        manifest = self.manifest_rspec(slice_urn)
+        result = dict(geni_rspec=manifest,
+                      geni_slivers=slivers)
         return dict(code=dict(geni_code=0,
-                              am_type="gcf2",
+                              am_type=self._am_type,
                               am_code=0),
                     value=result,
                     output="")
@@ -558,8 +571,8 @@ class ReferenceAggregateManager(object):
     def manifest_slice(self, slice_urn):
         tmpl = '<node client_id="%s"/>'
         result = ""
-        for cid in self._slices[slice_urn].resources.keys():
-            result = result + tmpl % (cid)
+        for resource in self._slices[slice_urn].resources():
+            result = result + tmpl % (resource.external_id)
         return result
 
     def manifest_footer(self):
@@ -573,6 +586,24 @@ class ReferenceAggregateManager(object):
                                             str(resource.type),
                                             str(resource.id)))
         return urn
+
+    def resources(self, available=None):
+        """Get the list of managed resources. If available is not None,
+        it is interpreted as boolean and only resources whose availability
+        matches will be included in the returned list.
+        """
+        result = self._agg.catalog()
+        if available is not None:
+            result = [r for r in result if r.available is available]
+        return result
+
+    def rfc3339format(self, dt):
+        """Return a string representing the given datetime in rfc3339 format.
+        """
+        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+        self._naiveUTC(dt)
+        time_with_tz = dt.replace(tzinfo=dateutil.tz.tzutc())
+        return time_with_tz.isoformat()
 
 
 class AggregateManager(object):
@@ -619,6 +650,7 @@ class AggregateManager(object):
             return self._delegate.Allocate(slice_urn, credentials, rspec,
                                            options)
         except Exception as e:
+            traceback.print_exc()
             return self._exception_result(e)
 
 #    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
