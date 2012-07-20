@@ -39,6 +39,7 @@ import zlib
 
 import geni
 from geni.util.urn_util import publicid_to_urn
+import geni.util.urn_util as urn
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from resource import Resource
 from aggregate import Aggregate
@@ -102,7 +103,7 @@ class Slice(object):
             return Resource.STATUS_FAILED
         elif Resource.STATUS_CONFIGURING in rstat:
             return Resource.STATUS_CONFIGURING
-        elif rstat == [Resource.STATUS_READY for res in self.resources.values()]:
+        elif rstat == [Resource.STATUS_READY for res in self.resources()]:
             # All resources report status of ready
             return Resource.STATUS_READY
         else:
@@ -132,6 +133,7 @@ class ReferenceAggregateManager(object):
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
+        self.expire_slices()
         reqver = [dict(type="geni",
                        version="3",
                        schema="http://www.geni.net/resources/rspec/3/request.xsd",
@@ -168,6 +170,7 @@ class ReferenceAggregateManager(object):
         then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
         self.logger.info('ListResources(%r)' % (options))
+        self.expire_slices()
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -240,7 +243,6 @@ class ReferenceAggregateManager(object):
             try:
                 result = base64.b64encode(zlib.compress(result))
             except Exception, exc:
-                import traceback
                 self.logger.error("Error compressing and encoding resource list: %s", traceback.format_exc())
                 raise Exception("Server error compressing resource list", exc)
 
@@ -259,6 +261,7 @@ class ReferenceAggregateManager(object):
         Return an RSpec of the actually allocated resources.
         """
         self.logger.info('Allocate(%r)' % (slice_urn))
+        self.expire_slices()
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -345,13 +348,28 @@ class ReferenceAggregateManager(object):
                     value=result,
                     output="")
 
-    # The list of credentials are options - some single cred
-    # must give the caller required permissions.
-    # The semantics of the API are unclear on this point, so
-    # this is just the current implementation
-    def DeleteSliver(self, slice_urn, credentials, options):
-        '''Stop and completely delete the named sliver, and return True.'''
-        self.logger.info('DeleteSliver(%r)' % (slice_urn))
+    def Delete(self, urns, credentials, options):
+        """Stop and completely delete the named slivers and/or slice.
+        """
+        self.logger.info('DeleteSliver(%r)' % (urns))
+
+        parsed_urns = [urn.URN(urn=u) for u in urns]
+        all_urn_types = [u.getType() for u in parsed_urns]
+        if len(set(all_urn_types)) > 1:
+            # Error - all URNs must be the same type, either slice or sliver
+            msg = ('Bad Arguments: URN types cannot be mixed.'
+                   + ' Received types: %r' % all_urn_types)
+            return self.errorResult(1, msg)
+
+        urn_type = all_urn_types[0]
+        if urn_type == 'sliver':
+            # We'll need to deduce the slice of the slivers, verifying that
+            # all slivers are in the same slice. Then we need to check
+            # permissions on the deduced slice, and then operate
+            # on the individual slivers.
+            return self.errorResult(5, ('Server Error: teach me how to'
+                                        + ' delete individual slivers.'))
+        slice_urn = urns[0]
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -363,6 +381,7 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 slice_urn,
@@ -370,15 +389,15 @@ class ReferenceAggregateManager(object):
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
-            sliver = self._slices[slice_urn]
-            resources = self._agg.catalog(slice_urn)
-            if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
+            theslice = self._slices[slice_urn]
+            resources = theslice.resources()
+            if theslice.status(resources) == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not deleted because it is shutdown",
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
             self._agg.deallocate(slice_urn, None)
             for r in resources:
-                r.status = Resource.STATUS_UNKNOWN
+                r.reset()
             del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
             return self.successResult(True)
@@ -605,6 +624,24 @@ class ReferenceAggregateManager(object):
         time_with_tz = dt.replace(tzinfo=dateutil.tz.tzutc())
         return time_with_tz.isoformat()
 
+    def expire_slices(self):
+        """Look for expired slices and clean them up. Ultimately this
+        should be run by a daemon, but until then, it is called at the
+        beginning of all methods.
+        """
+        expired = list()
+        now = datetime.datetime.utcnow()
+        for s in self._slices.values():
+            if s.expiration < now:
+                expired.append(s)
+        self.logger.debug('Expiring %d slices', len(expired))
+        self.logger.info('Expiring %d slices', len(expired))
+        for s in expired:
+            self._agg.deallocate(s.urn, None)
+            for r in s.resources():
+                r.reset()
+            del self._slices[s.urn]
+
 
 class AggregateManager(object):
     """The public API for a GENI Aggregate Manager.  This class provides the
@@ -666,11 +703,17 @@ class AggregateManager(object):
 #        for runtime access.
 #        """
 #        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
-#
-#    def DeleteSliver(self, slice_urn, credentials, options):
-#        """Delete the given sliver. Return true on success."""
-#        return self._delegate.DeleteSliver(slice_urn, credentials, options)
-#
+
+    def DeleteSliver(self, slice_urn, credentials, options):
+        """Delete the given sliver. Return true on success."""
+        self.logger.warning("Mapping DeleteSliver to Delete")
+        try:
+            return self._delegate.Delete([slice_urn], credentials,
+                                           options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
 #    def SliverStatus(self, slice_urn, credentials, options):
 #        '''Report as much as is known about the status of the resources
 #        in the sliver. The AM may not know.'''
