@@ -49,6 +49,8 @@ class Resource(object):
         self.id = rid
         self.type = rtype
         self.available = True
+        self.external_id = None
+        # For V2 AMs
         self.status = Resource.STATUS_UNKNOWN
         # For V3 AMs
         self.state = Resource.STATE_GENI_UNALLOCATED
