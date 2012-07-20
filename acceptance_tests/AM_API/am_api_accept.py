@@ -1204,7 +1204,7 @@ class Test(ut.OmniUnittest):
                           "but instead nothing returned. AM returned:\n %s"
                              % (AMAPI_call, text))
 
-        if self.options_copy.api_version < 3:
+        if AMAPI_call is "CreateSliver":
             manifest = retVal
         else:
             manifest = self.assertReturnKeyValueType( 
@@ -1238,7 +1238,7 @@ class Test(ut.OmniUnittest):
                   % (AMAPI_call, slice_name, manifest[:100]))
 
 
-        if self.options_copy.api_version >= 3:
+        if AMAPI_call is "Allocate":
             slivers = self.assertReturnKeyValueType( 
                     AMAPI_call, None, retVal, 
                     'geni_slivers', list )
