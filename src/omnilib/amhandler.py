@@ -844,6 +844,7 @@ class AMCallHandler(object):
         result_code = result['code']['geni_code']
         if (result_code == 0):
             # Success
+            self.logger.info(pprint.pformat(result['value']))
             retVal = ("Allocation was successful.", result['value'])
         else:
             # Failure
