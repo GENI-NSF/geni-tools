@@ -92,16 +92,21 @@ class Xrn:
                 return True
         return False
 
-    URN_PREFIX = "urn:publicid:IDN"
-
     ########## basic tools on URNs
+    URN_PREFIX = "urn:publicid:IDN"
+    URN_PREFIX_lower = "urn:publicid:idn"
+
+    @staticmethod
+    def is_urn (text):
+        return text.lower().startswith(Xrn.URN_PREFIX_lower)
+
     @staticmethod
     def urn_full (urn):
-        if urn.startswith(Xrn.URN_PREFIX): return urn
+        if Xrn.is_urn(urn): return urn
         else: return Xrn.URN_PREFIX+urn
     @staticmethod
     def urn_meaningful (urn):
-        if urn.startswith(Xrn.URN_PREFIX): return urn[len(Xrn.URN_PREFIX):]
+        if Xrn.is_urn(urn): return urn[len(Xrn.URN_PREFIX):]
         else: return urn
     @staticmethod
     def urn_split (urn):
@@ -117,7 +122,7 @@ class Xrn:
     def __init__ (self, xrn, type=None):
         if not xrn: xrn = ""
         # user has specified xrn : guess if urn or hrn
-        if xrn.startswith(Xrn.URN_PREFIX):
+        if Xrn.is_urn(xrn):
             self.hrn=None
             self.urn=xrn
             self.urn_to_hrn()
@@ -129,6 +134,13 @@ class Xrn:
 # happens all the time ..
 #        if not type:
 #            debug_logger.debug("type-less Xrn's are not safe")
+
+    def __repr__ (self):
+        result="<XRN u=%s h=%s"%(self.urn,self.hrn)
+        if hasattr(self,'leaf'): result += " leaf=%s"%self.leaf
+        if hasattr(self,'authority'): result += " auth=%s"%self.authority
+        result += ">"
+        return result
 
     def get_urn(self): return self.urn
     def get_hrn(self): return self.hrn
@@ -147,7 +159,7 @@ class Xrn:
         self._normalize()
         return self.leaf
 
-    def get_authority_hrn(self): 
+    def get_authority_hrn(self):
         self._normalize()
         return '.'.join( self.authority )
     
@@ -173,7 +185,7 @@ class Xrn:
         """
         
 #        if not self.urn or not self.urn.startswith(Xrn.URN_PREFIX):
-        if not self.urn.startswith(Xrn.URN_PREFIX):
+        if not Xrn.is_urn(self.urn):
             raise SfaAPIError, "Xrn.urn_to_hrn"
 
         parts = Xrn.urn_split(self.urn)
@@ -207,21 +219,25 @@ class Xrn:
         """
 
 #        if not self.hrn or self.hrn.startswith(Xrn.URN_PREFIX):
-        if self.hrn.startswith(Xrn.URN_PREFIX):
+        if Xrn.is_urn(self.hrn):
             raise SfaAPIError, "Xrn.hrn_to_urn, hrn=%s"%self.hrn
 
         if self.type and self.type.startswith('authority'):
-            self.authority = Xrn.hrn_split(self.hrn)
+            self.authority = Xrn.hrn_auth_list(self.hrn)
+            leaf = self.get_leaf()
+            #if not self.authority:
+            #    self.authority = [self.hrn]
             type_parts = self.type.split("+")
             self.type = type_parts[0]
             name = 'sa'
             if len(type_parts) > 1:
                 name = type_parts[1]
+            auth_parts = [part for part in [self.get_authority_urn(), leaf] if part]
+            authority_string = ":".join(auth_parts)
         else:
             self.authority = Xrn.hrn_auth_list(self.hrn)
             name = Xrn.hrn_leaf(self.hrn)
-
-        authority_string = self.get_authority_urn()
+            authority_string = self.get_authority_urn()
 
         if self.type == None:
             urn = "+".join(['',authority_string,Xrn.unescape(name)])
