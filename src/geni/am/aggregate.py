@@ -45,27 +45,26 @@ class Aggregate(object):
         if container not in self.containers:
             self.containers[container] = []
         for r in resources:
-            if r.available:
-                self.containers[container].append(r)
-                r.available = False
+            self.containers[container].append(r)
 
     def deallocate(self, container, resources):
+        if container and not self.containers.has_key(container):
+            # Be flexible: if a container is specified but unknown
+            # ignore the call
+            return
         if container and resources:
             # deallocate the given resources from the container
             for r in resources:
-                r.available = True
                 self.containers[container].remove(r)
         elif container:
             # deallocate all the resources in the container
             for r in self.containers[container]:
-                r.available = True
                 self.containers[container].remove(r)
         elif resources:
             # deallocate the resources from their container
             for r in resources:
                 for c in self.containers.values():
                     if r in c:
-                        r.available = True
                         c.remove(r)
         # Finally, check if container is empty. If so, delete it.
         # Note cache the keys because we will be modifying the dict
