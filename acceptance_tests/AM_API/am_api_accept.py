@@ -25,7 +25,9 @@
 """ Acceptance tests for AM API v1."""
 
 import datetime
+import dateutil.parser
 from geni.util import rspec_util 
+from geni.util import urn_util
 import unittest
 import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
@@ -1251,18 +1253,60 @@ class Test(ut.OmniUnittest):
                              % (AMAPI_call, manifest[:100]))
 
             for sliver in slivers:
-                self.assertKeyValueType( 
+                sliver_urn = self.assertReturnKeyValueType( 
                     AMAPI_call, None, sliver, 
                     'geni_sliver_urn', str )
-                self.assertKeyValueType( 
+                expires = self.assertReturnKeyValueType( 
                     AMAPI_call, None, sliver, 
                     'geni_expires', str )
-                self.assertKeyValueType( 
+                alloc_status = self.assertReturnKeyValueType( 
                     AMAPI_call, None, sliver, 
                     'geni_allocation_status', str )
+                self.assertTrue( self.validate_URN(sliver_urn),
+                                 "Return from '%s' " \
+                                 "expected to have 'geni_sliver_urn' " \
+                                 "be a URN of type 'sliver' " \
+                                 "but instead returned: \n" \
+                                 "%s\n"
+                             % (AMAPI_call, sliver_urn))
+
+                self.assertTrue( self.validate_timestamp(expires),
+                                 "Return from '%s' " \
+                                 "expected to have 'geni_expires' " \
+                                 "in form of a timestamp " \
+                                 "but instead returned: \n" \
+                                 "%s\n" 
+                             % (AMAPI_call, expires))
+
+                self.assertTrue( alloc_status in ['geni_unallocated', 'geni_allocated', 'geni_provisioned'],
+                                 "Return from '%s' " \
+                                 "expected to have 'geni_allocation_status' " \
+                                 "of one of 'geni_unallocated', " \
+                                 " 'geni_allocated', or 'geni_provisioned' " \
+                                 "but instead returned: \n" \
+                                 "%s\n" 
+                             % (AMAPI_call, alloc_status))
+
             return manifest, slivers
         return manifest
 
+
+    def validate_timestamp( self, timestamp ):
+        """
+        Returns true if timestamp is a valid timestamp
+        Otherwise returns false
+        """
+        retVal = False
+        try:
+            datetimeStruct = dateutil.parser.parse( timestamp )
+            if type(datetimeStruct) is datetime.datetime:
+                retVal = True
+        except:
+            retVal = False
+        return retVal
+
+    def validate_URN( self, urn ):
+        return urn_util.is_valid_urn( urn )
 
     def subtest_SliverStatus(self, slice_name):
         # SliverStatus
