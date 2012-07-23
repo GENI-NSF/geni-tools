@@ -66,7 +66,8 @@ SHUTDOWNSLIVERPRIV = 'shutdown'
 # See gen-certs.CERT_AUTHORITY
 RESOURCE_NAMESPACE = 'geni//gpo//gcf'
 
-REFAM_MAXLEASE_DAYS = 365
+# MAX LEASE is 8 hours (arbitrarily)
+REFAM_MAXLEASE_MINUTES = 8 * 60
 
 # Expiration on Allocated resources is 10 minutes.
 ALLOCATE_EXPIRATION_SECONDS = 10 * 60
@@ -102,6 +103,9 @@ class Sliver(object):
 
     def resource(self):
         return self._resource
+
+    def slice(self):
+        return self._slice
 
     def setAllocationState(self, new_state):
         # FIXME: Do some error checking on the state transition
@@ -206,7 +210,7 @@ class ReferenceAggregateManager(object):
         self._agg = Aggregate()
         self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
-        self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
+        self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.logger = logging.getLogger('gcf.am3')
 
     def GetVersion(self, options):
@@ -424,6 +428,59 @@ class ReferenceAggregateManager(object):
         manifest = self.manifest_rspec(slice_urn)
         result = dict(geni_rspec=manifest,
                       geni_slivers=slivers)
+        return dict(code=dict(geni_code=0,
+                              am_type=self._am_type,
+                              am_code=0),
+                    value=result,
+                    output="")
+
+    def Provision(self, urns, credentials, options):
+        """Allocate slivers to the given slice according to the given RSpec.
+        Return an RSpec of the actually allocated resources.
+        """
+        self.logger.info('Provision(%r)' % (urns))
+        self.expire_slices()
+
+        the_slice, slivers = self.decode_urns(urns)
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
+        privileges = (ALLOCATE_PRIV,)
+        # Note that verify throws an exception on failure.
+        # Use the client PEM format cert as retrieved
+        # from the https connection by the SecureXMLRPCServer
+        # to identify the caller.
+        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                        credentials,
+                                                        the_slice.urn,
+                                                        privileges)
+
+        expiration = self.compute_slice_expiration(creds)
+        expiration = min(expiration,
+                         datetime.datetime.now() + self.max_lease)
+        for sliver in slivers:
+            # Extend the lease and set to PROVISIONED
+            sliver.setExpiration(expiration)
+            sliver.setAllocationState(STATE_GENI_PROVISIONED)
+            sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
+
+        # Compute result
+        geni_slivers = list()
+        for sliver in slivers:
+            expiration = self.rfc3339format(sliver.expiration())
+            allocation_state = sliver.allocationState()
+            operational_state = sliver.operationalState()
+            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
+                                     geni_expires=expiration,
+                                     geni_allocation_status=allocation_state,
+                                     geni_operational_status=operational_state,
+                                     geni_error=""))
+        manifest = self.manifest_rspec(the_slice.urn)
+        result = dict(geni_rspec=manifest,
+                      geni_slivers=geni_slivers)
         return dict(code=dict(geni_code=0,
                               am_type=self._am_type,
                               am_code=0),
@@ -733,6 +790,53 @@ class ReferenceAggregateManager(object):
                 r.reset()
             del self._slices[s.urn]
 
+    def decode_urns(self, urns):
+        """Several methods need to map URNs to slivers and/or deduce
+        a slice based on the slivers specified.
+
+        Returns a slice and a list of slivers.
+        """
+        slivers = list()
+        for urn_str in urns:
+            myurn = urn.URN(urn=urn_str)
+            urn_type = myurn.getType()
+            if urn_type == 'slice':
+                if self._slices.has_key(urn_str):
+                    the_slice = self._slices[urn_str]
+                    slivers.extend(the_slice.slivers())
+                else:
+                    raise Exception('Unknown slice "%s"', urn_str)
+            elif urn_type == 'sliver':
+                # Gross linear search. Maybe keep a map of known sliver urns?
+                needle = None
+                for a_slice in self._slices:
+                    for sliver in a_slice.slivers():
+                        if sliver.urn() == urn_str:
+                            needle = sliver
+                            break
+                    if needle:
+                        break
+                if needle:
+                    object.append(needle)
+                else:
+                    raise Exception('Unknown sliver "%s"', urn_str)
+            else:
+                raise Exception('Bad URN type "%s"', urn_type)
+        # Now verify that everything is part of the same slice
+        all_slices = set([o.slice() for o in slivers])
+        if len(all_slices) == 1:
+            return all_slices.pop(), slivers
+        else:
+            raise Exception('Objects specify multiple slices')
+
+    def compute_slice_expiration(self, credentials):
+        maxexp = datetime.datetime.min
+        for cred in credentials:
+            credexp = self._naiveUTC(cred.expiration)
+            if credexp > maxexp:
+                maxexp = credexp
+        return maxexp
+
 
 class AggregateManager(object):
     """The public API for a GENI Aggregate Manager.  This class provides the
@@ -741,14 +845,14 @@ class AggregateManager(object):
 
     def __init__(self, delegate):
         self._delegate = delegate
-        self.logger = logging.getLogger('gcf.am2')
+        self.logger = logging.getLogger('gcf.am3')
 
     def _exception_result(self, exception):
         output = str(exception)
         self.logger.warning(output)
         # XXX Code for no slice here?
         return dict(code=dict(geni_code=102,
-                              am_type="gcf3",
+                              am_type="gcf",
                               am_code=0),
                     value="",
                     output=output)
@@ -782,6 +886,22 @@ class AggregateManager(object):
         try:
             return self._delegate.Allocate(slice_urn, credentials, rspec,
                                            options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
+#    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
+#        """Create a sliver with the given URN from the resources in
+#        the given RSpec.
+#        Return an RSpec of the actually allocated resources.
+#        users argument provides extra information on configuring the resources
+#        for runtime access.
+#        """
+#        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
+
+    def Provision(self, slice_urn, credentials, options):
+        try:
+            return self._delegate.Provision(slice_urn, credentials, options)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
