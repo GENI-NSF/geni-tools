@@ -81,6 +81,9 @@ class Resource(object):
         rid = int(element.getElementsByTagName('id')[0].firstChild.data)
         return Resource(rid, rtype)
 
+    def deprovision(self):
+        pass
+
     def reset(self):
         self.available = True
         self.state = Resource.STATE_GENI_UNALLOCATED
