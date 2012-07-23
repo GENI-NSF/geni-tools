@@ -200,27 +200,32 @@ class OmniUnittest(unittest.TestCase):
                                  
     def assertKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        if aggName is None:
+            agg = ""
+        else:
+            agg = "at %s "%aggName
+
         self.assertDict(dictionary, 
-                        "Return from '%s' at %s " \
+                        "Return from '%s' %s " \
                             "expected to be a dictionary " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (method, aggName, str(dictionary)))
+                        % (method, agg, str(dictionary)))
 
         self.assertTrue(dictionary.has_key(key),
-                        "Return from '%s' at %s " \
+                        "Return from '%s' %s" \
                             "expected to have entry '%s' " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
-                        % (method, aggName, key, str(dictionary)))
+                        % (method, agg, key, str(dictionary)))
 
         self.assertTrue(type(dictionary[key])==valueType,
-                        "Return from '%s' at %s " \
+                        "Return from '%s' %s " \
                             "expected to have entry '%s' of type '%s' " \
                             "but instead returned: %s" 
-                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+                        % (method, agg, key, str(valueType), str(dictionary[key])))
 
     def assertReturnKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         self.assertKeyValueType( method, aggName, dictionary, key, valueType=valueType)

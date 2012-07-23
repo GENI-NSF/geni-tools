@@ -60,7 +60,7 @@ class Resource(object):
         # User in SliverStatus
         # NAMESPACE has no business here. The URN should be at an upper level, not here.
         RESOURCE_NAMESPACE = 'geni//gpo//gcf'
-        publicid = 'IDN %s//resource//%s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
+        publicid = 'IDN %s sliver %s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
@@ -80,3 +80,9 @@ class Resource(object):
         rtype = element.getElementsByTagName('type')[0].firstChild.data
         rid = int(element.getElementsByTagName('id')[0].firstChild.data)
         return Resource(rid, rtype)
+
+    def reset(self):
+        self.available = True
+        self.state = Resource.STATE_GENI_UNALLOCATED
+        self.status = Resource.STATUS_UNKNOWN
+        self.operational_state = None
