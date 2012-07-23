@@ -71,6 +71,76 @@ REFAM_MAXLEASE_DAYS = 365
 # Expiration on Allocated resources is 10 minutes.
 ALLOCATE_EXPIRATION_SECONDS = 10 * 60
 
+# GENI Allocation States
+STATE_GENI_UNALLOCATED = 'geni_unallocated'
+STATE_GENI_ALLOCATED = 'geni_allocated'
+STATE_GENI_PROVISIONED = 'geni_provisioned'
+
+# GENI Operational States
+# These are in effect when the allocation state is PROVISIONED.
+OPSTATE_GENI_PENDING_ALLOCATION = 'geni_pending_allocation'
+OPSTATE_GENI_NOT_READY = 'geni_notready'
+OPSTATE_GENI_CONFIGURING = 'geni_configuring'
+OPSTATE_GENI_STOPPING = 'geni_stopping'
+OPSTATE_GENI_READY = 'geni_ready'
+OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
+OPSTATE_GENI_FAILED = 'geni_failed'
+
+class Sliver(object):
+    """A sliver is a single resource assigned to a single slice
+    at an aggregate.
+    """
+
+    def __init__(self, parent_slice, resource):
+        self._resource = resource
+        self._slice = parent_slice
+        self._expiration = None
+        self._allocation_state = STATE_GENI_UNALLOCATED
+        self._operational_state = None
+        self._urn = None
+        self._setUrnFromParent(parent_slice.urn)
+
+    def resource(self):
+        return self._resource
+
+    def setAllocationState(self, new_state):
+        # FIXME: Do some error checking on the state transition
+        self._allocation_state = new_state
+
+    def allocationState(self):
+        return self._allocation_state
+
+    def setOperationalState(self, new_state):
+        # FIXME: Do some error checking on the state transition
+        self._operational_state = new_state
+
+    def operationalState(self):
+        return self._operational_state
+
+    def setExpiration(self, new_expiration):
+        self._expiration = new_expiration
+
+    def expiration(self):
+        return self._expiration
+
+    def _setUrnFromParent(self, parent_urn):
+        authority = urn.URN(urn=parent_urn).getAuthority()
+        # What should the name be?
+        name = str(uuid.uuid4())
+        self._urn = str(urn.URN(authority=authority,
+                                type='sliver',
+                                name=name))
+
+    def urn(self):
+        return self._urn
+
+    def delete(self):
+        if self.allocationState() == STATE_GENI_PROVISIONED:
+            self._resource.deprovision()
+        self.resource().reset()
+        self._resource = None
+        self.setAllocationState(STATE_GENI_UNALLOCATED)
+
 
 class Slice(object):
     """A slice has a URN, a list of resources, and an expiration time in UTC."""
@@ -79,13 +149,24 @@ class Slice(object):
         self.id = str(uuid.uuid4())
         self.urn = urn
         self.expiration = expiration
+        self._slivers = list()
         self._resources = dict()
 
     def add_resource(self, resource):
-        self._resources[resource.id] = resource
+        sliver = Sliver(self, resource)
+        sliver.setExpiration(self.expiration)
+        self._slivers.append(sliver)
+        return sliver
+
+    def delete_sliver(self, sliver):
+        sliver.delete()
+        self._slivers.remove(sliver)
+
+    def slivers(self):
+        return self._slivers
 
     def resources(self):
-        return self._resources.values()
+        return [sliver.resource() for sliver in self._slivers]
 
     def status(self, resources):
         """Determine the status of the sliver by examining the status
@@ -96,7 +177,7 @@ class Slice(object):
         # Else if any resource is 'configuring', the sliver is 'configuring'
         # Else if all resources are 'ready', the sliver is 'ready'
         # Else the sliver is 'unknown'
-        rstat = [res.status for res in resources]
+        rstat = [res.status for res in self.resources()]
         if Resource.STATUS_SHUTDOWN in rstat:
             return Resource.STATUS_SHUTDOWN
         elif Resource.STATUS_FAILED in rstat:
@@ -123,7 +204,7 @@ class ReferenceAggregateManager(object):
         self._am_type = "gcf"
         self._slices = dict()
         self._agg = Aggregate()
-        self._agg.add_resources([FakeVM() for _ in range(3)])
+        self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(days=REFAM_MAXLEASE_DAYS)
         self.logger = logging.getLogger('gcf.am3')
@@ -287,7 +368,7 @@ class ReferenceAggregateManager(object):
         try:
             rspec_dom = minidom.parseString(rspec)
         except Exception, exc:
-            self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+            self.logger.error("Cannot create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
             return self.errorResult(1, 'Bad Args: RSpec is unparseable')
 
         # Look at the version of the input request RSpec
@@ -326,19 +407,20 @@ class ReferenceAggregateManager(object):
 
         newslice = Slice(slice_urn, expiration)
         for resource in resources:
-            newslice.add_resource(resource)
-            resource.state = Resource.STATE_GENI_ALLOCATED
+            sliver = newslice.add_resource(resource)
+            sliver.setAllocationState(STATE_GENI_ALLOCATED)
         self._slices[slice_urn] = newslice
 
         self.logger.info("Allocated new slice %s" % slice_urn)
         slivers = list()
-        expiration = self.rfc3339format(newslice.expiration)
-        for resource in newslice.resources():
-            self.logger.info("Allocated resource %s to slice %s",
-                             resource.id, slice_urn)
-            slivers.append(dict(geni_sliver_urn=resource.urn(),
+        for sliver in newslice.slivers():
+            self.logger.info("Allocated resource %s to slice %s as sliver %s",
+                             sliver.resource().id, slice_urn, sliver.urn())
+            expiration = self.rfc3339format(sliver.expiration())
+            allocation_state = sliver.allocationState()
+            slivers.append(dict(geni_sliver_urn=sliver.urn(),
                                 geni_expires=expiration,
-                                geni_allocation_status=resource.state))
+                                geni_allocation_status=allocation_state))
         manifest = self.manifest_rspec(slice_urn)
         result = dict(geni_rspec=manifest,
                       geni_slivers=slivers)
@@ -351,7 +433,7 @@ class ReferenceAggregateManager(object):
     def Delete(self, urns, credentials, options):
         """Stop and completely delete the named slivers and/or slice.
         """
-        self.logger.info('DeleteSliver(%r)' % (urns))
+        self.logger.info('Delete(%r)' % (urns))
 
         parsed_urns = [urn.URN(urn=u) for u in urns]
         all_urn_types = [u.getType() for u in parsed_urns]
@@ -388,18 +470,27 @@ class ReferenceAggregateManager(object):
                                                 privileges)
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
+
+        # FIXME: if we get individual slivers, we deduce the slice,
+        # but we don't delete all the resources in the slice. Really,
+        # we need to get a list of resources either by mapping the
+        # sliver URNs or by listing the slice via its URN. Then we
+        # delete all those resources, then we delete the slice if it
+        # is now empty.
         if slice_urn in self._slices:
             theslice = self._slices[slice_urn]
+            slivers = theslice.slivers()
+            for s in slivers:
+                theslice.delete_sliver(s)
             resources = theslice.resources()
             if theslice.status(resources) == Resource.STATUS_SHUTDOWN:
                 self.logger.info("Sliver %s not deleted because it is shutdown",
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
-            self._agg.deallocate(slice_urn, None)
-            for r in resources:
-                r.reset()
-            del self._slices[slice_urn]
-            self.logger.info("Sliver %r deleted" % slice_urn)
+            if not theslice.slivers():
+                self._agg.deallocate(slice_urn, None)
+                del self._slices[slice_urn]
+                self.logger.info("Slice %r deleted" % slice_urn)
             return self.successResult(True)
         else:
             return self._no_such_slice(slice_urn)
