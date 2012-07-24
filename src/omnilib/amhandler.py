@@ -1112,6 +1112,8 @@ class AMCallHandler(object):
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
                 if message != "":
                     prStr += " " + message
+                else:
+                    prStr += " (no reason given)"
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
