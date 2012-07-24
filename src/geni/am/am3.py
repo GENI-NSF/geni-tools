@@ -102,6 +102,7 @@ class Sliver(object):
         self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
         self._setUrnFromParent(parent_slice.urn)
+        self._shutdown = False
 
     def resource(self):
         return self._resource
@@ -147,6 +148,12 @@ class Sliver(object):
         self._resource = None
         self.setAllocationState(STATE_GENI_UNALLOCATED)
 
+    def shutdown(self):
+        self._shutdown = True
+
+    def isShutdown(self):
+        return self._shutdown
+
 
 class Slice(object):
     """A slice has a URN, a list of resources, and an expiration time in UTC."""
@@ -157,6 +164,7 @@ class Slice(object):
         self.expiration = expiration
         self._slivers = list()
         self._resources = dict()
+        self._shutdown = False
 
     def add_resource(self, resource):
         sliver = Sliver(self, resource)
@@ -195,6 +203,14 @@ class Slice(object):
             return Resource.STATUS_READY
         else:
             return Resource.STATUS_UNKNOWN
+
+    def shutdown(self):
+        for sliver in self.slivers():
+            sliver.shutdown()
+        self._shutdown = True
+
+    def isShutdown(self):
+        return self._shutdown
 
 
 class ReferenceAggregateManager(object):
@@ -745,20 +761,20 @@ class ReferenceAggregateManager(object):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
         self.logger.info('Shutdown(%r)' % (slice_urn))
+        self.expire_slices()
         privileges = (SHUTDOWNSLIVERPRIV,)
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         slice_urn,
                                                         privileges)
-        if slice_urn in self._slices:
-            resources = self._agg.catalog(slice_urn)
-            for resource in resources:
-                resource.status = Resource.STATUS_SHUTDOWN
-            self.logger.info("Sliver %r shut down" % slice_urn)
-            return self.successResult(True)
-        else:
-            self.logger.info("Shutdown: No such slice: %s.", slice_urn)
-            return self._no_such_slice(slice_urn)
+        the_urn = urn.URN(urn=slice_urn)
+        if the_urn.getType() != 'slice':
+            return self.errorResult(1, "Bad Args: Not a slice URN", 0)
+        the_slice, _ = self.decode_urns([slice_urn])
+        if the_slice.isShutdown():
+            return self.errorResult(3, "Already shut down.", 0)
+        the_slice.shutdown()
+        return self.successResult(True)
 
     def successResult(self, value):
         code_dict = dict(geni_code=0,
@@ -923,7 +939,10 @@ class ReferenceAggregateManager(object):
         # Now verify that everything is part of the same slice
         all_slices = set([o.slice() for o in slivers])
         if len(all_slices) == 1:
-            return all_slices.pop(), slivers
+            the_slice = all_slices.pop()
+            if the_slice.isShutdown():
+                raise Exception('Slice %s is shut down.' % (the_slice.urn))
+            return the_slice, slivers
         else:
             raise Exception('Objects specify multiple slices')
 
@@ -995,11 +1014,11 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-    def DeleteSliver(self, slice_urn, credentials, options):
+    def Delete(self, urns, credentials, options):
         """Delete the given sliver. Return true on success."""
         self.logger.warning("Mapping DeleteSliver to Delete")
         try:
-            return self._delegate.Delete([slice_urn], credentials,
+            return self._delegate.Delete(urns, credentials,
                                            options)
         except Exception as e:
             traceback.print_exc()
@@ -1015,11 +1034,11 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-    def SliverStatus(self, slice_urn, credentials, options):
+    def Status(self, urns, credentials, options):
         """Report the status of the specified URNs.
         """
         try:
-            return self._delegate.Status([slice_urn], credentials, options)
+            return self._delegate.Status(urns, credentials, options)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1034,6 +1053,44 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
+    def Renew(self, slice_urn, credentials, expiration_time, options):
+        """Extend the life of the given slice until the given
+        expiration time."""
+        try:
+            return self._delegate.Renew([slice_urn], credentials,
+                                        expiration_time, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
+    def Shutdown(self, slice_urn, credentials, options):
+        '''For Management Authority / operator use: shut down a badly
+        behaving sliver, without deleting it to allow for forensics.'''
+        try:
+            return self._delegate.Shutdown(slice_urn, credentials, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+        return self._delegate.Shutdown(slice_urn, credentials, options)
+
+    #------------------------------------------------------------
+    # Backward compatibility
+    #
+    # The medthods below exist to invoke v3 functions from a
+    # v2 omni. Delete them once omni supports the new methods
+    # in AM API v3
+    #------------------------------------------------------------
+
+    def DeleteSliver(self, slice_urn, credentials, options):
+        """Delete the given sliver. Return true on success."""
+        self.logger.warning("Mapping DeleteSliver to Delete")
+        try:
+            return self._delegate.Delete([slice_urn], credentials,
+                                           options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         """Extend the life of the given slice until the given
         expiration time."""
@@ -1044,10 +1101,14 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-#    def Shutdown(self, slice_urn, credentials, options):
-#        '''For Management Authority / operator use: shut down a badly
-#        behaving sliver, without deleting it to allow for forensics.'''
-#        return self._delegate.Shutdown(slice_urn, credentials, options)
+    def SliverStatus(self, slice_urn, credentials, options):
+        """Report the status of the specified URNs.
+        """
+        try:
+            return self._delegate.Status([slice_urn], credentials, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
 
 
 class AggregateManagerServer(object):
