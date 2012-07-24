@@ -914,6 +914,39 @@ class AMCallHandler(object):
                       None)
         return retVal
 
+    def describe(self, args):
+        """A minimal implementation of Describe().
+
+        This minimal version allows for testing a v3 aggregate, but
+        does not provide sufficient error checking or experimenter
+        support to be the final implementation.
+        """
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
+                                                      "Describe",)
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+        client = make_client(url, self.framework, self.opts)
+        options = dict()
+        options['geni_rspec_version'] = dict(type=self.opts.rspectype[0],
+                                             version=self.opts.rspectype[1])
+        args = [[urn], [slice_cred], options]
+        (result, message) = _do_ssl(self.framework,
+                                    None,
+                                    ("Describe %s at %s" % (urn, url)),
+                                    client.Describe,
+                                    *args)
+        result_code = result['code']['geni_code']
+        if (result_code == 0):
+            # Success
+            self.logger.info(pprint.pformat(result['value']))
+            retVal = ("Describe was successful.",
+                      result['value'])
+        else:
+            # Failure
+            retVal = ('Error %d: %s' % (result_code,
+                                        result['output']),
+                      None)
+        return retVal
+
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
