@@ -25,5 +25,10 @@ import uuid
 from resource import Resource
 
 class FakeVM(Resource):
-    def __init__(self):
+    def __init__(self, agg):
         super(FakeVM, self).__init__(str(uuid.uuid4()), "fakevm")
+        self._agg = agg
+
+    def deprovision(self):
+        """Deprovision this resource at the resource provider."""
+        self._agg.deallocate(containers=None, resources=[self])
