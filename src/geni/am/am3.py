@@ -89,6 +89,15 @@ OPSTATE_GENI_READY = 'geni_ready'
 OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
 OPSTATE_GENI_FAILED = 'geni_failed'
 
+class ApiErrorException(Exception):
+    def __init__(self, code, output):
+        self.code = code
+        self.output = output
+
+    def __str__(self):
+        return "ApiError(%r, %r)" % (self.code, self.output)
+
+
 class Sliver(object):
     """A sliver is a single resource assigned to a single slice
     at an aggregate.
@@ -941,7 +950,7 @@ class ReferenceAggregateManager(object):
         if len(all_slices) == 1:
             the_slice = all_slices.pop()
             if the_slice.isShutdown():
-                raise Exception('Slice %s is shut down.' % (the_slice.urn))
+                raise ApiErrorException(7, 'Operation Refused: slice %s is shut down.' % (the_slice.urn))
             return the_slice, slivers
         else:
             raise Exception('Objects specify multiple slices')
@@ -974,12 +983,20 @@ class AggregateManager(object):
                     value="",
                     output=output)
 
+    def _api_error(self, exception):
+        return dict(code=dict(geni_code=exception.code,
+                              am_type='gcf'),
+                    value="",
+                    output=exception.output)
+
     def GetVersion(self, options=dict()):
         '''Specify version information about this AM. That could
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         try:
             return self._delegate.GetVersion(options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -993,6 +1010,8 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         try:
             return self._delegate.ListResources(credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1003,6 +1022,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Allocate(slice_urn, credentials, rspec,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1010,6 +1031,8 @@ class AggregateManager(object):
     def Provision(self, urns, credentials, options):
         try:
             return self._delegate.Provision(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1020,6 +1043,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Delete(urns, credentials,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1030,6 +1055,8 @@ class AggregateManager(object):
         try:
             return self._delegate.PerformOperationalAction(urns, credentials,
                                                            action, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1039,6 +1066,8 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Status(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1049,6 +1078,8 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Describe(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1059,6 +1090,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Renew([slice_urn], credentials,
                                         expiration_time, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1068,6 +1101,8 @@ class AggregateManager(object):
         behaving sliver, without deleting it to allow for forensics.'''
         try:
             return self._delegate.Shutdown(slice_urn, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1087,6 +1122,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Delete([slice_urn], credentials,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1097,6 +1134,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Renew([slice_urn], credentials,
                                         expiration_time, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1106,6 +1145,8 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Status([slice_urn], credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
