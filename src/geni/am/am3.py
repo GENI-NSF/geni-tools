@@ -99,7 +99,7 @@ class Sliver(object):
         self._slice = parent_slice
         self._expiration = None
         self._allocation_state = STATE_GENI_UNALLOCATED
-        self._operational_state = None
+        self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
         self._setUrnFromParent(parent_slice.urn)
 
@@ -608,99 +608,138 @@ class ReferenceAggregateManager(object):
                     output="")
 
 
-    def SliverStatus(self, slice_urn, credentials, options):
+    def Status(self, urns, credentials, options):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.
         Return a dict of sliver urn, status, and a list of dicts resource
         statuses.'''
         # Loop over the resources in a sliver gathering status.
-        self.logger.info('SliverStatus(%r)' % (slice_urn))
-        # Note this list of privileges is really the name of an operation
-        # from the privilege_table in sfa/trust/rights.py
-        # Credentials will specify a list of privileges, each of which
-        # confers the right to perform a list of operations.
-        # EG the 'info' privilege in a credential allows the operations
-        # listslices, listnodes, policy
+        self.logger.info('Status(%r)' % (urns))
+        self.expire_slices()
+        the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
-                                                slice_urn,
+                                                the_slice.urn,
                                                 privileges)
-        if slice_urn in self._slices:
-            theSlice = self._slices[slice_urn]
-            # Now calculate the status of the sliver
-            res_status = list()
-            resources = self._agg.catalog(slice_urn)
-            for res in resources:
-                self.logger.debug('Resource = %s', str(res))
-                # Gather the status of all the resources
-                # in the sliver. This could be actually
-                # communicating with the resources, or simply
-                # reporting the state of initialized, started, stopped, ...
-                res_status.append(dict(geni_urn=self.resource_urn(res),
-                                       geni_status=res.status,
-                                       geni_error=''))
-            self.logger.info("Calculated and returning slice %s status", slice_urn)
-            result = dict(geni_urn=slice_urn,
-                          geni_status=theSlice.status(resources),
-                          geni_resources=res_status)
-            return dict(code=dict(geni_code=0,
-                                  am_type="gcf2",
-                                  am_code=0),
-                        value=result,
-                        output="")
-        else:
-            return self._no_such_slice(slice_urn)
+        geni_slivers = list()
+        for sliver in slivers:
+            expiration = self.rfc3339format(sliver.expiration())
+            allocation_state = sliver.allocationState()
+            operational_state = sliver.operationalState()
+            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
+                                     geni_expires=expiration,
+                                     geni_allocation_status=allocation_state,
+                                     geni_operational_status=operational_state,
+                                     geni_error=''))
+        result = dict(geni_urn=the_slice.urn,
+                      geni_slivers=geni_slivers)
+        return dict(code=dict(geni_code=0,
+                              am_type=self._am_type,
+                              am_code=0),
+                    value=result,
+                    output="")
 
-    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
+    def Describe(self, urns, credentials, options):
+        """Generate a manifest RSpec for the given resources.
+        """
+        self.logger.info('Describe(%r)' % (urns))
+        self.expire_slices()
+        the_slice, slivers = self.decode_urns(urns)
+        privileges = (SLIVERSTATUSPRIV,)
+        self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                credentials,
+                                                the_slice.urn,
+                                                privileges)
+        if 'geni_rspec_version' not in options:
+            # This is a required option, so error out with bad arguments.
+            self.logger.error('No geni_rspec_version supplied to ListResources.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version was not supplied.')
+        if 'type' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a type field.')
+        if 'version' not in options['geni_rspec_version']:
+            self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
+            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a version field.')
+
+        # Look to see what RSpec version the client requested
+        # Error-check that the input value is supported.
+        rspec_type = options['geni_rspec_version']['type']
+        rspec_version = options['geni_rspec_version']['version']
+        if rspec_type != 'geni':
+            self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
+            return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+        if rspec_version != '3':
+            self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
+            return self.errorResult(4, 'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
+        self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
+
+        manifest_body = ""
+        for sliver in slivers:
+            manifest_body += self.manifest_sliver(sliver)
+        result = self.manifest_header() + manifest_body + self.manifest_footer()
+        self.logger.debug("Result is now \"%s\"", result)
+        # Optionally compress the result
+        if 'geni_compressed' in options and options['geni_compressed']:
+            try:
+                result = base64.b64encode(zlib.compress(result))
+            except Exception, exc:
+                self.logger.error("Error compressing and encoding resource list: %s", traceback.format_exc())
+                raise Exception("Server error compressing resource list", exc)
+
+        return dict(code=dict(geni_code=0,
+                              am_type=self._am_type,
+                              am_code=0),
+                    value=result,
+                    output="")
+
+    def Renew(self, urns, credentials, expiration_time, options):
         '''Renew the local sliver that is part of the named Slice
         until the given expiration time (in UTC with a TZ per RFC3339).
         Requires at least one credential that is valid until then.
         Return False on any error, True on success.'''
 
-        self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
+        self.logger.info('Renew(%r, %r)' % (urns, expiration_time))
+        self.expire_slices()
+        the_slice, slivers = self.decode_urns(urns)
+
         privileges = (RENEWSLIVERPRIV,)
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
-                                                        slice_urn,
+                                                        the_slice.urn,
                                                         privileges)
         # All the credentials we just got are valid
-        if slice_urn in self._slices:
-            # If any credential will still be valid at the newly
-            # requested time, then we can do this.
-            resources = self._agg.catalog(slice_urn)
-            sliver = self._slices.get(slice_urn)
-            if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
-                self.logger.info("Sliver %s not renewed because it is shutdown",
-                                 slice_urn)
-                return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
-            requested = dateutil.parser.parse(str(expiration_time))
-            # Per the AM API, the input time should be TZ-aware
-            # But since the slice cred may not (per ISO8601), convert
-            # it to naiveUTC for comparison
-            requested = self._naiveUTC(requested)
-            maxexp = datetime.datetime.min
-            for cred in creds:
-                credexp = self._naiveUTC(cred.expiration)
-                if credexp > maxexp:
-                    maxexp = credexp
-                maxexp = credexp
-                if credexp >= requested:
-                    sliver.expiration = requested
-                    self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
-                    return self.successResult(True)
-                else:
-                    self.logger.debug("Valid cred %r expires at %r before %r", cred, credexp, requested)
-
-            # Fell through then no credential expires at or after
-            # newly requested expiration time
-            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (latest expires at %r)", slice_urn, expiration_time, len(creds), maxexp)
-            # FIXME: raise an exception so the client knows what
-            # really went wrong?
-            return self.errorResult(19, "Out of range: Expiration %s is out of range (past last credential expiration of %s)." % (expiration_time, maxexp))
-
+        expiration = self.compute_slice_expiration(creds)
+        requested = dateutil.parser.parse(str(expiration_time))
+        # Per the AM API, the input time should be TZ-aware
+        # But since the slice cred may not (per ISO8601), convert
+        # it to naiveUTC for comparison
+        requested = self._naiveUTC(requested)
+        if requested > expiration:
+            # Fail the call, the requested expiration exceeds the slice expir.
+            msg = (("Out of range: Expiration %s is out of range"
+                   + " (past last credential expiration of %s).")
+                   % (expiration_time, expiration))
+            return self.errorResult(19, msg)
         else:
-            return self._no_such_slice(slice_urn)
+            # Renew all the named slivers
+            for sliver in slivers:
+                sliver.setExpiration(requested)
+
+        geni_slivers = list()
+        for sliver in slivers:
+            expiration = self.rfc3339format(sliver.expiration())
+            allocation_state = sliver.allocationState()
+            operational_state = sliver.operationalState()
+            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
+                                     geni_expires=expiration,
+                                     geni_allocation_status=allocation_state,
+                                     geni_operational_status=operational_state))
+        return dict(code=dict(geni_code=0,
+                              am_type=self._am_type,
+                              am_code=0),
+                    value=geni_slivers,
+                    output="")
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
@@ -789,6 +828,10 @@ class ReferenceAggregateManager(object):
        xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd"
        type="manifest">'''
         return header
+
+    def manifest_sliver(self, sliver):
+        tmpl = '<node client_id="%s"/>'
+        return tmpl % (sliver.resource().external_id)
 
     def manifest_slice(self, slice_urn):
         tmpl = '<node client_id="%s"/>'
@@ -972,17 +1015,35 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-#    def SliverStatus(self, slice_urn, credentials, options):
-#        '''Report as much as is known about the status of the resources
-#        in the sliver. The AM may not know.'''
-#        return self._delegate.SliverStatus(slice_urn, credentials, options)
-#
-#    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
-#        """Extend the life of the given sliver until the given
-#        expiration time. Return False on error."""
-#        return self._delegate.RenewSliver(slice_urn, credentials,
-#                                          expiration_time, options)
-#
+    def SliverStatus(self, slice_urn, credentials, options):
+        """Report the status of the specified URNs.
+        """
+        try:
+            return self._delegate.Status([slice_urn], credentials, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
+    def Describe(self, urns, credentials, options):
+        """Describe the specified URNs.
+        Return a manifest RSpec of the resources named by 'urns'.
+        """
+        try:
+            return self._delegate.Describe(urns, credentials, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
+    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
+        """Extend the life of the given slice until the given
+        expiration time."""
+        try:
+            return self._delegate.Renew([slice_urn], credentials,
+                                        expiration_time, options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
 #    def Shutdown(self, slice_urn, credentials, options):
 #        '''For Management Authority / operator use: shut down a badly
 #        behaving sliver, without deleting it to allow for forensics.'''
