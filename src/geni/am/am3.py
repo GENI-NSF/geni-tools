@@ -54,8 +54,10 @@ from fakevm import FakeVM
 # to perform the functions
 RENEWSLIVERPRIV = 'renewsliver'
 
-# Map the Allocate call to the CreateSliver privilege.
+# Map the Allocate, Provision and POA calls to the CreateSliver privilege.
 ALLOCATE_PRIV = 'createsliver'
+PROVISION_PRIV = 'createsliver'
+PERFORM_ACTION_PRIV = 'createsliver'
 DELETESLIVERPRIV = 'deleteslice'
 SLIVERSTATUSPRIV = 'getsliceresources'
 SHUTDOWNSLIVERPRIV = 'shutdown'
@@ -448,7 +450,7 @@ class ReferenceAggregateManager(object):
         # confers the right to perform a list of operations.
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
-        privileges = (ALLOCATE_PRIV,)
+        privileges = (PROVISION_PRIV,)
         # Note that verify throws an exception on failure.
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
@@ -551,6 +553,59 @@ class ReferenceAggregateManager(object):
             return self.successResult(True)
         else:
             return self._no_such_slice(slice_urn)
+
+
+    def PerformOperationalAction(self, urns, credentials, action, options):
+        """Peform the specified action on the set of objects specified by
+        urns.
+        """
+        self.logger.info('PerformOperationalAction(%r)' % (urns))
+        self.expire_slices()
+
+        the_slice, slivers = self.decode_urns(urns)
+        # Note this list of privileges is really the name of an operation
+        # from the privilege_table in sfa/trust/rights.py
+        # Credentials will specify a list of privileges, each of which
+        # confers the right to perform a list of operations.
+        # EG the 'info' privilege in a credential allows the operations
+        # listslices, listnodes, policy
+        privileges = (PERFORM_ACTION_PRIV,)
+        # Note that verify throws an exception on failure.
+        _ = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                        credentials,
+                                                        the_slice.urn,
+                                                        privileges)
+
+        # ensure that the slivers are provisioned
+        for sliver in slivers:
+            if sliver.allocationState() != STATE_GENI_PROVISIONED:
+                output = "REFUSED: sliver %s is not provisioned." % (sliver.urn())
+                return self.errorResult(7, output , 0)
+
+        # perform the action
+        if (action == 'geni_start'):
+            for sliver in slivers:
+                sliver.setOperationalState(OPSTATE_GENI_READY)
+        else:
+            # Unknown action
+            output = "REFUSED: Unknown action %s." % (action)
+            return self.errorResult(7, output , 0)
+
+        # Compute result
+        geni_slivers = list()
+        for sliver in slivers:
+            expiration = self.rfc3339format(sliver.expiration())
+            allocation_state = sliver.allocationState()
+            operational_state = sliver.operationalState()
+            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
+                                     geni_expires=expiration,
+                                     geni_allocation_status=allocation_state,
+                                     geni_operational_status=operational_state))
+        return dict(code=dict(geni_code=0,
+                              am_type=self._am_type,
+                              am_code=0),
+                    value=geni_slivers,
+                    output="")
 
 
     def SliverStatus(self, slice_urn, credentials, options):
@@ -805,7 +860,7 @@ class ReferenceAggregateManager(object):
                     the_slice = self._slices[urn_str]
                     slivers.extend(the_slice.slivers())
                 else:
-                    raise Exception('Unknown slice "%s"', urn_str)
+                    raise Exception('Unknown slice "%s"' % (urn_str))
             elif urn_type == 'sliver':
                 # Gross linear search. Maybe keep a map of known sliver urns?
                 needle = None
@@ -890,30 +945,12 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-#    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
-#        """Create a sliver with the given URN from the resources in
-#        the given RSpec.
-#        Return an RSpec of the actually allocated resources.
-#        users argument provides extra information on configuring the resources
-#        for runtime access.
-#        """
-#        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
-
-    def Provision(self, slice_urn, credentials, options):
+    def Provision(self, urns, credentials, options):
         try:
-            return self._delegate.Provision(slice_urn, credentials, options)
+            return self._delegate.Provision(urns, credentials, options)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
-
-#    def CreateSliver(self, slice_urn, credentials, rspec, users, options):
-#        """Create a sliver with the given URN from the resources in
-#        the given RSpec.
-#        Return an RSpec of the actually allocated resources.
-#        users argument provides extra information on configuring the resources
-#        for runtime access.
-#        """
-#        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
 
     def DeleteSliver(self, slice_urn, credentials, options):
         """Delete the given sliver. Return true on success."""
@@ -921,6 +958,16 @@ class AggregateManager(object):
         try:
             return self._delegate.Delete([slice_urn], credentials,
                                            options)
+        except Exception as e:
+            traceback.print_exc()
+            return self._exception_result(e)
+
+    def PerformOperationalAction(self, urns, credentials, action, options):
+        """Perform the given action on the objects named by the given URNs.
+        """
+        try:
+            return self._delegate.PerformOperationalAction(urns, credentials,
+                                                           action, options)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
