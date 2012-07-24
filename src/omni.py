@@ -575,6 +575,13 @@ def getParser():
     parser.add_option("--available", dest='geni_available',
                       default=False, action="store_true",
                       help="Only return available resources")
+    parser.add_option("--best-effort", dest='geni_best_effort',
+                      default=False, action="store_true",
+                      help="Should AMs attempt to complete the operation on only some slivers, if others fail")
+    parser.add_option("-u", "--sliver-urn", dest="slivers", action="append",
+                      help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
+    parser.add_option("--end-time", dest='geni_end_time',
+                      help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
     parser.add_option("--arbitrary-option", dest='arbitrary_option',
                       default=False, action="store_true",
                       help="Add an arbitrary option to ListResources (for testing purposes)")
