@@ -947,6 +947,37 @@ class AMCallHandler(object):
                       None)
         return retVal
 
+    def delete(self, args):
+        """A minimal implementation of Delete().
+
+        This minimal version allows for testing a v3 aggregate, but
+        does not provide sufficient error checking or experimenter
+        support to be the final implementation.
+        """
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
+                                                      "Delete",)
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+        client = make_client(url, self.framework, self.opts)
+        options = dict()
+        args = [[urn], [slice_cred], options]
+        (result, message) = _do_ssl(self.framework,
+                                    None,
+                                    ("Delete %s at %s" % (urn, url)),
+                                    client.Delete,
+                                    *args)
+        result_code = result['code']['geni_code']
+        if (result_code == 0):
+            # Success
+            self.logger.info(pprint.pformat(result['value']))
+            retVal = ("Delete was successful.",
+                      result['value'])
+        else:
+            # Failure
+            retVal = ('Error %d: %s' % (result_code,
+                                        result['output']),
+                      None)
+        return retVal
+
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
