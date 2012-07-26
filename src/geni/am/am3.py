@@ -788,7 +788,7 @@ class ReferenceAggregateManager(object):
         component_name="%s"
         component_id="%s"
         exclusive="%s">
-    <sliver_type name="fake-vm">
+    <sliver_type name="fake-vm"/>
     <available now="%s"/>
   </node>
   '''
@@ -804,10 +804,14 @@ class ReferenceAggregateManager(object):
 
     # See https://www.protogeni.net/trac/protogeni/wiki/RspecAdOpState
     def advert_header(self):
+        schema_locs = ["http://www.geni.net/resources/rspec/3",
+                       "http://www.geni.net/resources/rspec/3/ad.xsd",
+                       "http://www.geni.net/resources/rspec/ext/opstate/1",
+                       "http://www.geni.net/resources/rspec/ext/opstate/1/ad.xsd"]
         header = '''<?xml version="1.0" encoding="UTF-8"?>
 <rspec xmlns="http://www.geni.net/resources/rspec/3"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/ad.xsd"
+       xsi:schemaLocation="%s"
        type="advertisement">
 <!-- Operational states for fake-vm nodes -->
 <rspec_opstate xmlns="http://www.geni.net/resources/rspec/ext/opstate/1"
@@ -825,7 +829,7 @@ class ReferenceAggregateManager(object):
   </state>
 </rspec_opstate>
 '''
-        return header % (self._my_urn)
+        return header % (' '.join(schema_locs), self._my_urn)
 
     def advert_footer(self):
         return '</rspec>'
