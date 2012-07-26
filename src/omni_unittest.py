@@ -160,6 +160,26 @@ class OmniUnittest(unittest.TestCase):
                     "but did not."
             raise NotEqualClientIDsError, msg
 
+    def assertRspec( self, rspec ):
+        self.assertTrue(type(rspec) is str,
+                        "Return from '%s' " \
+                            "expected to be string " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (AMAPI_call, rspec[:100]))
+
+        # Test if file is XML and contains "<rspec" or "<resv_rspec"
+        self.assertTrue(rspec_util.is_rspec_string( rspec ),
+                        "Return from '%s' " \
+                            "expected to be XML " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (AMAPI_call, rspec[:100]))
+
+
+
     def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
         if version == None:
             rspec_type = self.options_copy.rspectype
@@ -272,8 +292,283 @@ class OmniUnittest(unittest.TestCase):
         else:
             return dictionary[keyB]            
 
+    def assertDescribeReturn( self, agg, retVal ):
+        """Checks retVal fits form:
+{
+   geni_rspec: <geni.rspec, a Manifest RSpec>
+   geni_urn: <string slice urn of the containing slice>
+   geni_slivers: [
+               {
+                  geni_sliver_urn: <string sliver urn>
+                  geni_expires: <dateTime.rfc3339 allocation expiration string, as in geni_expires from SliversStatus>,
+                  geni_allocation_status: <string sliver state - e.g. geni_allocated or geni_provisioned >,
+                  geni_operational_status: <string sliver operational state>,
+                  geni_error: <optional string, may be omitted entirely, explaining any failure for a sliver>
+               },
+               ...
+         ]
+}
+        """
+        AMAPI_call = "Describe"
+        self.assertDict( retVal )
+        manifest = self.assertGeniRspec( AMAPI_call, agg, 
+                                         retVal, type='manifest')        
+        self.assertGeniUrn(AMAPI_call, agg, retVal)        
+        self.assertGeniSlivers(AMAPI_call, agg, retVal)        
+        for sliver in retVal:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+        return len(slivers)
 
 
+    def assertStatusReturn( self, agg, retVal ):
+        """Checks retVal fits form:
+{
+   geni_rspec: <geni.rspec, a Manifest RSpec>
+   geni_urn: <string slice urn of the containing slice>
+   geni_slivers: [
+               {
+                  geni_sliver_urn: <string sliver urn>
+                  geni_expires: <dateTime.rfc3339 allocation expiration string, as in geni_expires from SliversStatus>,
+                  geni_allocation_status: <string sliver state - e.g. geni_allocated or geni_provisioned >,
+                  geni_operational_status: <string sliver operational state>,
+                  geni_error: <optional string, may be omitted entirely, explaining any failure for a sliver>
+               },
+               ...
+         ]
+}
+        """
+        AMAPI_call = "Status"
+        self.assertDict( retVal )
+        manifest = self.assertGeniRspec( AMAPI_call, agg, 
+                                         retVal, type='manifest')        
+        self.assertGeniUrn(AMAPI_call, agg, retVal)        
+        self.assertGeniSlivers(AMAPI_call, agg, retVal)        
+        for sliver in retVal:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+        return len(slivers)
+
+
+
+    def assertDeleteReturn( self, agg, retVal ):
+        """Checks retVal fits form:
+[
+  {
+   geni_sliver_urn: <string>,
+   geni_allocation_status: <string>,
+   geni_expires: <dateTime.rfc3339 when the sliver expires from its current state>,
+   [optional: 'geni_error': string indicating any AM failure deleting the sliver.]
+  },
+  ...
+]
+        """
+        AMAPI_call = "Delete"
+        self.assertTrue( type(retVal) is list )
+        for sliver in retVal:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+        return len(slivers)
+
+    def assertRenewReturn( self, agg, retVal ):
+        """Returns:
+        [
+  {
+   geni_sliver_urn: <string>,
+   geni_allocation_status: <string>,
+   geni_operational_status: <string>,
+   geni_expires: <dateTime.rfc3339 when the sliver expires from its current state>,
+   geni_error: <optional string, may be omitted entirely, explaining any renewal failure for this sliver>
+  },
+  ...
+]
+        """
+        AMAPI_call = "Renew"
+        self.assertTrue( type(retVal) is list )
+        for sliver in retVal:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+        return len(slivers)
+
+
+
+    def assertProvisionReturn( self, agg, retVal ):
+        """Returns:
+geni_rspec: <geni.rspec, RSpec manifest>,
+  geni_slivers: 
+  [
+    {
+     geni_sliver_urn: <string>,
+     geni_allocation_status: <string>,
+     geni_operational_status: <string>,
+     geni_expires <dateTime.rfc3339 when the sliver expires from its current state>,
+     geni_error: <optional string, may be omitted entirely, explaining any failure to Provision this sliver>
+    },
+    ...
+  ]
+        """
+        AMAPI_call = "Provision"
+        self.assertDict( retVal )
+        manifest = self.assertGeniRspec( AMAPI_call, agg, 
+                                         retVal, type='manifest')        
+        slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)  
+        for sliver in slivers:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+        return len(slivers)
+
+    def assertAllocateReturn( self, retVal ):
+        """Returns:
+{
+ geni_rspec: <geni.rspec manifest of newly allocated slivers>,
+ geni_slivers: [
+        {
+                  geni_sliver_urn: <string sliver urn>
+                  geni_expires: <dateTime.rfc3339 allocation expiration string, as in geni_expires from Status>,
+                  geni_allocation_status: <string sliver state - e.g. geni_allocated>
+        },
+        ...
+    ]
+}
+        """
+        AMAPI_call = "Allocate"
+        agg="NONE"
+        self.assertDict( retVal )
+        manifest = self.assertGeniRspec( AMAPI_call, agg, 
+                                         retVal, type='manifest')        
+        slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)        
+        for sliver in slivers:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+        return len(slivers), manifest
+    def assertGeniUrn( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_urn
+        """
+        slice_urn = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_urn', str )        
+        self.assertURNandType( slice_urn, 'slice' )
+
+    def assertGeniRspec( self, AMAPI_call, agg, retVal, type='manifest' ):
+        self.assertDict( retVal )
+        manifest = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_rspec', str )        
+
+        self.assertRspec( manifest )
+        self.assertRspecType( manifest, type=type, 
+                              version=self.RSpecVersion(), typeOnly=False)
+
+        return manifest
+    def assertGeniSlivers( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_slivers
+        """
+        slivers = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_slivers', list )        
+        return slivers
+    def assertGeniError( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_error
+        """
+        self.assertDict( retVal )
+        self.assertKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_error', str )        
+    def assertGeniOperationalStatus( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_operational_status
+        """
+        self.assertDict( retVal )
+        self.assertKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_operational_status', str )
+
+    def assertGeniSliverUrn( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_sliver_urn
+        """
+        self.assertDict( retVal )
+        self.assertKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_sliver_urn', str )
+        self.assertURNandType( sliver_urn, 'sliver' )
+
+
+    def assertGeniExpires( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_expires
+        """
+        self.assertDict( retVal )
+        self.assertKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_expires', str ) # RFC3339 dateTime
+        self.assertTimestamp( expires )
+
+    def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_allocation_status
+        """
+        self.assertDict( retVal )
+        alloc_status = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                 'geni_allocation_status', str )
+        self.assertTrue( alloc_status in ['geni_unallocated', 'geni_allocated', 'geni_provisioned'],
+                         "Return from '%s' " \
+                             "expected to have 'geni_allocation_status' " \
+                             "of one of 'geni_unallocated', " \
+                             " 'geni_allocated', or 'geni_provisioned' " \
+                             "but instead returned: \n" \
+                             "%s\n" 
+                         % (AMAPI_call, alloc_status))
+
+
+
+
+    def assertTimestamp( self, timestamp ):
+        self.assertTrue( self.validate_timestamp(expires),
+                         "Return expected to have 'geni_expires' " \
+                         "in form of a timestamp " \
+                         "but instead returned: \n" \
+                         "%s\n" 
+                         % (expires))
+
+    def assertURN( self, urn ):
+        self.assertTrue( self.validate_URN(sliver_urn),
+                         "Return expected to " \
+                         "be a URN but instead returned: \n" \
+                         "%s\n"
+                         % (sliver_urn))
+
+    def assertURNandType( self, urn, type ):
+        self.assertURN( sliver_urn)
+        self.assertTrue( rspec_util.getType(sliver_urn) == type,
+                         "Return expected to " \
+                         "be a URN of type '%s' but instead returned: \n" \
+                         "%s\n"
+                         % (type, sliver_urn))
+
+
+    def validate_timestamp( self, timestamp ):
+        """
+        Returns true if timestamp is parseable by dateutil.parser.parse
+        Otherwise returns false
+        """
+        retVal = False
+        try:
+            datetimeStruct = dateutil.parser.parse( timestamp )
+            if type(datetimeStruct) is datetime.datetime:
+                retVal = True
+        except:
+            retVal = False
+        return retVal
+
+    def validate_URN( self, urn ):
+        return urn_util.is_valid_urn( urn )
 
     @classmethod
     def unittest_parser( cls, parser = omni.getParser(), usage=None):
