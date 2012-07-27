@@ -89,6 +89,11 @@ OPSTATE_GENI_READY = 'geni_ready'
 OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
 OPSTATE_GENI_FAILED = 'geni_failed'
 
+class AM_API(object):
+    REFUSED = 7
+    SEARCH_FAILED = 12
+
+
 class ApiErrorException(Exception):
     def __init__(self, code, output):
         self.code = code
@@ -916,7 +921,8 @@ class ReferenceAggregateManager(object):
                     the_slice = self._slices[urn_str]
                     slivers.extend(the_slice.slivers())
                 else:
-                    raise Exception('Unknown slice "%s"' % (urn_str))
+                    raise ApiErrorException(AM_API.SEARCH_FAILED,
+                                            'Unknown slice "%s"' % (urn_str))
             elif urn_type == 'sliver':
                 # Gross linear search. Maybe keep a map of known sliver urns?
                 needle = None
@@ -930,7 +936,8 @@ class ReferenceAggregateManager(object):
                 if needle:
                     object.append(needle)
                 else:
-                    raise Exception('Unknown sliver "%s"', urn_str)
+                    raise ApiErrorException(AM_API.SEARCH_FAILED,
+                                            'Unknown sliver "%s"', (urn_str))
             else:
                 raise Exception('Bad URN type "%s"', urn_type)
         # Now verify that everything is part of the same slice
@@ -938,7 +945,8 @@ class ReferenceAggregateManager(object):
         if len(all_slices) == 1:
             the_slice = all_slices.pop()
             if the_slice.isShutdown():
-                raise ApiErrorException(7, 'Operation Refused: slice %s is shut down.' % (the_slice.urn))
+                msg = 'Refused: slice %s is shut down.' % (the_slice.urn)
+                raise ApiErrorException(AM_API.REFUSED, msg)
             return the_slice, slivers
         else:
             raise Exception('Objects specify multiple slices')
