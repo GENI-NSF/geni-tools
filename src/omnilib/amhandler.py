@@ -947,6 +947,104 @@ class AMCallHandler(object):
                       None)
         return retVal
 
+    def status(self, args):
+        """AM API Status  <slice name>
+
+        Added in AM API v3.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Status")
+
+        successCnt = 0
+        retItem = {}
+        args = []
+        creds = []
+        # Query status at each client
+        (clientList, message) = self._getclients()
+        if len(clientList) > 0:
+            self.logger.info('Status of Slice %s:' % urn)
+
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+            args = [[urn], creds]
+#--- API version specific
+            if self.opts.api_version >= 2:
+                # Add the options dict
+                options = dict()
+                args.append(options)
+            self.logger.debug("Doing sliverstatus with urn %s, %d creds, options %r", urn, len(creds), options)
+        else:
+            prstr = "No aggregates available to get slice status at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
+        for client in clientList:
+            (ver, newc) = self._checkValidClient(client)
+            if newc is None:
+                continue
+            elif newc.url != client.url:
+                client = newc
+                if ver != self.opts.api_version:
+                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    self.opts.api_version = ver
+
+            (status, message) = _do_ssl(self.framework,
+                                        None,
+                                        "Status of %s at %s" % (urn, client.url),
+                                        client.Status, *args)
+            retItem[client.url] = status
+
+            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+            (status, message) = self._retrieve_value(status, message, self.framework)
+
+            if status:
+                prettyResult = pprint.pformat(status)
+                if not isinstance(status, dict):
+                    # malformed sliverstatus return
+                    self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                    # FIXME: Add something to retVal that the result was malformed?
+                    if isinstance(status, str):
+                        prettyResult = str(status)
+                header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
+                filename = None
+                if self.opts.output:
+                    filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
+                    #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
+                successCnt+=1
+            else:
+                # FIXME: Put the message error in retVal?
+                # FIXME: getVersion uses None as the value in this case. Be consistent
+                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
+
+        # FIXME: Return the status if there was only 1 client?
+        if len(clientList) > 0:
+            retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        self.logger.debug(pprint.pformat(retItem))
+        return retVal, retItem
+
     def delete(self, args):
         """A minimal implementation of Delete().
 
