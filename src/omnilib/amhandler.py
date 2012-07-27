@@ -944,31 +944,77 @@ class AMCallHandler(object):
         does not provide sufficient error checking or experimenter
         support to be the final implementation.
         """
-        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
-                                                      "Describe",)
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-        client = make_client(url, self.framework, self.opts)
-        options = dict()
-        options['geni_rspec_version'] = dict(type=self.opts.rspectype[0],
-                                             version=self.opts.rspectype[1])
-        args = [[urn], [slice_cred], options]
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("Describe %s at %s" % (urn, url)),
-                                    client.Describe,
-                                    *args)
-        result_code = result['code']['geni_code']
-        if (result_code == 0):
-            # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = ("Describe was successful.",
-                      result['value'])
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+
+        successCnt = 0
+        retItem = {}
+        args = []
+        creds = []
+        # Query status at each client
+        (clientList, message) = self._getclients()
+        if len(clientList) > 0:
+            self.logger.info('Describe Slice %s:' % urn)
+
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+            args = [[urn], creds]
+#--- API version specific
+            if self.opts.api_version >= 2:
+                # Add the options dict
+                options = dict()
+                rspec_version = dict(type=self.opts.rspectype[0],
+                                     version=self.opts.rspectype[1])
+                options['geni_rspec_version'] = rspec_version
+                args.append(options)
+            self.logger.debug("Doing describe with urn %s, %d creds, options %r", urn, len(creds), options)
         else:
-            # Failure
-            retVal = ('Error %d: %s' % (result_code,
-                                        result['output']),
-                      None)
-        return retVal
+            prstr = "No aggregates available to describe slice at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
+        op = 'Describe'
+        msg = "Describe %s at " % (urn)
+        for client in clientList:
+            try:
+                (status, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
+                continue
+
+            retItem[client.url] = status
+            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+            (status, message) = self._retrieve_value(status, message, self.framework)
+            if not status:
+                # FIXME: Put the message error in retVal?
+                # FIXME: getVersion uses None as the value in this case. Be consistent
+                fmt = "\nFailed to Describe %s at AM %s: %s\n"
+                retVal += fmt % (name, client.url, message)
+                continue
+
+            prettyResult = pprint.pformat(status)
+            if not isinstance(status, dict):
+                # malformed sliverstatus return
+                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+            header="Describe Slice %s at AM URL %s" % (urn, client.url)
+            filename = None
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "describe", ".json", len(clientList))
+                #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved description on %s at AM %s to file %s. \n" % (name, client.url, filename)
+            successCnt+=1
+
+        # FIXME: Return the status if there was only 1 client?
+        if len(clientList) > 0:
+            retVal += "Found description of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        self.logger.debug(pprint.pformat(retItem))
+        return retVal, retItem
 
     def status(self, args):
         """AM API Status  <slice name>
