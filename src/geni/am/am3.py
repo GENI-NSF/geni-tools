@@ -336,7 +336,7 @@ class ReferenceAggregateManager(object):
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'geni':
+        if rspec_type != 'GENI':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
@@ -676,7 +676,7 @@ class ReferenceAggregateManager(object):
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'geni':
+        if rspec_type != 'GENI':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
