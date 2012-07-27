@@ -1080,11 +1080,11 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
 
-    def Renew(self, slice_urn, credentials, expiration_time, options):
+    def Renew(self, urns, credentials, expiration_time, options):
         """Extend the life of the given slice until the given
         expiration time."""
         try:
-            return self._delegate.Renew([slice_urn], credentials,
+            return self._delegate.Renew(urns, credentials,
                                         expiration_time, options)
         except ApiErrorException as e:
             return self._api_error(e)
