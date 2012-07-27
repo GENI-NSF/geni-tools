@@ -937,6 +937,133 @@ class AMCallHandler(object):
                       None)
         return retVal
 
+    def renew(self, args):
+        """AM API Renew <slicename> <new expiration time in UTC
+        or with a timezone>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice). Some aggregates will
+        not allow you to _shorten_ your sliver expiration time.
+        """
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "RenewSliver",
+                                                      "and new expiration time in UTC")
+
+#--- Should dev mode allow passing time as is?
+        time = datetime.datetime.max
+        try:
+            if not (self.opts.devmode and len(args) < 2):
+                time = dateutil.parser.parse(args[1])
+        except Exception, exc:
+            msg = 'renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # Convert to naive UTC time if necessary for ease of comparison
+        try:
+            time = naiveUTC(time)
+        except:
+            if self.opts.devmode:
+                pass
+            else:
+                raise
+
+        # Compare requested time with slice expiration time
+        if time > slice_exp:
+#--- Dev mode allow this
+            msg = 'Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+            if self.opts.devmode:
+                self.logger.warn(msg + ", but continuing...")
+            else:
+                self._raise_omni_error(msg)
+        elif time <= datetime.datetime.utcnow():
+#--- Dev mode allow earlier time
+            if not self.opts.devmode:
+                self.logger.info('Sliver %s will be set to expire now' % name)
+                time = datetime.datetime.utcnow()
+        else:
+            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
+
+        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+
+        self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
+
+        # Note that the time arg includes UTC offset as needed
+        time_string = time_with_tz.isoformat()
+        if self.opts.no_tz:
+            # The timezone causes an error in older sfa
+            # implementations as deployed in mesoscale GENI. Strip
+            # off the timezone if the user specfies --no-tz
+            self.logger.info('Removing timezone at user request (--no-tz)')
+            time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        options = None
+        args = [[urn], creds, time_string]
+#--- AM API version specific
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            options = dict()
+            args.append(options)
+
+        self.logger.debug("Doing renew with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
+
+        successCnt = 0
+        (clientList, message) = self._getclients()
+        retItem = dict()
+        msg = "Renew %s at " % (urn)
+        op = 'Renew'
+        for client in clientList:
+            try:
+                (res, message) = self._api_call(client, msg + client.url, op,
+                                                args)
+            except BadClientException:
+                continue
+            retItem[client.url] = res
+            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+            (res, message) = self._retrieve_value(res, message, self.framework)
+
+            if not res:
+                prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                if message != "":
+                    prStr += " " + message
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
+                self.logger.warn(prStr)
+            else:
+                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
+                self.logger.info(prStr)
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
+                successCnt += 1
+        if len(clientList) == 0:
+            retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
+        elif len(clientList) > 1:
+            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
+        self.logger.debug(pprint.pformat(retItem))
+        return retVal, retItem
+
     def describe(self, args):
         """A minimal implementation of Describe().
 
