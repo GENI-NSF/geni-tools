@@ -50,6 +50,10 @@ import omnilib.xmlrpc.client
 
 from geni.util import rspec_util 
 
+class BadClientException(Exception):
+    def __init__(self, client):
+        self.client = client
+
 class AMCallHandler(object):
     def __init__(self, framework, config, opts):
         self.framework = framework
@@ -397,6 +401,19 @@ class AMCallHandler(object):
             res = 'geni_single'
         # Return is string: geni_single, geni_disjoint, or geni_many
         return (res, message)
+
+    def _api_call(self, client, msg, op, args):
+        (ver, newc) = self._checkValidClient(client)
+        if newc is None:
+            raise BadClientException(client)
+        elif newc.url != client.url:
+            client = newc
+            if ver != self.opts.api_version:
+                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                self.opts.api_version = ver
+
+        return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
+
 
     # FIXME: Must still factor dev vs exp
     # For experimenters: If exactly 1 AM, then show only the value slot, formatted nicely, printed to STDOUT.
@@ -998,46 +1015,42 @@ class AMCallHandler(object):
             retVal += prstr + "\n"
             self.logger.warn(prstr)
 
+        op = 'Status'
+        msg = "Status of %s at " % (urn)
         for client in clientList:
-            (ver, newc) = self._checkValidClient(client)
-            if newc is None:
+            try:
+                (status, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
                 continue
-            elif newc.url != client.url:
-                client = newc
-                if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    self.opts.api_version = ver
 
-            (status, message) = _do_ssl(self.framework,
-                                        None,
-                                        "Status of %s at %s" % (urn, client.url),
-                                        client.Status, *args)
             retItem[client.url] = status
-
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
-
-            if status:
-                prettyResult = pprint.pformat(status)
-                if not isinstance(status, dict):
-                    # malformed sliverstatus return
-                    self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
-                    # FIXME: Add something to retVal that the result was malformed?
-                    if isinstance(status, str):
-                        prettyResult = str(status)
-                header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
-                filename = None
-                if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
-                    #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
-                self._printResults(header, prettyResult, filename)
-                if filename:
-                    retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
-                successCnt+=1
-            else:
+            if not status:
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
-                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
+                fmt = "\nFailed to get SliverStatus on %s at AM %s: %s\n"
+                retVal += fmt % (name, client.url, message)
+                continue
+
+            prettyResult = pprint.pformat(status)
+            if not isinstance(status, dict):
+                # malformed sliverstatus return
+                self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+            header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
+            filename = None
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
+                #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
+            successCnt+=1
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
