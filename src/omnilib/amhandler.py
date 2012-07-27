@@ -410,6 +410,9 @@ class AMCallHandler(object):
             client = newc
             if ver != self.opts.api_version:
                 self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                # FIXME: changing the api_version is not a great idea if
+                # there are multiple clients. Push this into _checkValidClient
+                # and only do it if there is one client.
                 self.opts.api_version = ver
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
@@ -581,6 +584,9 @@ class AMCallHandler(object):
                 client = newc
                 if ver != self.opts.api_version:
                     self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    # FIXME: changing the api_version is not a great idea if
+                    # there are multiple clients. Push this into _checkValidClient
+                    # and only do it if there is one client.
                     self.opts.api_version = ver
 
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
@@ -1203,6 +1209,9 @@ class AMCallHandler(object):
             client = newc
             if ver != self.opts.api_version:
                 self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                # FIXME: changing the api_version is not a great idea if
+                # there are multiple clients. Push this into _checkValidClient
+                # and only do it if there is one client.
                 self.opts.api_version = ver
 
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
@@ -1333,6 +1342,9 @@ class AMCallHandler(object):
                 client = newc
                 if ver != self.opts.api_version:
                     self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    # FIXME: changing the api_version is not a great idea if
+                    # there are multiple clients. Push this into _checkValidClient
+                    # and only do it if there is one client.
                     self.opts.api_version = ver
 
             (res, message) = _do_ssl(self.framework,
@@ -1421,6 +1433,9 @@ class AMCallHandler(object):
                 client = newc
                 if ver != self.opts.api_version:
                     self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    # FIXME: changing the api_version is not a great idea if
+                    # there are multiple clients. Push this into _checkValidClient
+                    # and only do it if there is one client.
                     self.opts.api_version = ver
 
             (status, message) = _do_ssl(self.framework,
@@ -1518,6 +1533,9 @@ class AMCallHandler(object):
                 client = newc
                 if ver != self.opts.api_version:
                     self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    # FIXME: changing the api_version is not a great idea if
+                    # there are multiple clients. Push this into _checkValidClient
+                    # and only do it if there is one client.
                     self.opts.api_version = ver
 
             (res, message) = _do_ssl(self.framework,
@@ -1593,6 +1611,9 @@ class AMCallHandler(object):
                 client = newc
                 if ver != self.opts.api_version:
                     self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+                    # FIXME: changing the api_version is not a great idea if
+                    # there are multiple clients. Push this into _checkValidClient
+                    # and only do it if there is one client.
                     self.opts.api_version = ver
 
             (res, message) = _do_ssl(self.framework,
