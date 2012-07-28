@@ -551,7 +551,7 @@ def getParser():
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
                       help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
     # Note that type and version are case in-sensitive strings.
-    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", 3], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
+    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, default 'GENI 3'")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
