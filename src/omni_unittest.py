@@ -458,6 +458,31 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)     
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)           
         return len(slivers), manifest
+
+    def assertPerformOperationalActionReturn( self, agg, retVal ):
+        """Returns:
+[ {
+        geni_sliver_urn : <string>,
+        geni_allocation_status: <string, eg provisioned>,
+        geni_operational_status : <string>,
+        geni_expires: <dateTime.rfc3339 of individual sliver expiration>,
+        [optional: 'geni_resource_status' : string],
+        [optional: 'geni_error': string explanation of operation failure for this sliver]
+        }, 
+        ... 
+]        """
+        AMAPI_call = "PerformOperationalAction"
+        self.assertTrue( type(retVal) is list )
+        for sliver in retVal:
+            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
+            self.assertGeniResourceStatusIfExists(AMAPI_call, agg, sliver)
+            self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
+        return len(retVal)
+
+
     def assertGeniUrn( self, AMAPI_call, agg, retVal ):
         """Check that the dictionary retVal has keys: 
               geni_urn
@@ -711,7 +736,8 @@ sliver = dict(
                   geni_expires="2012-07-27T12:12:12Z", 
                   geni_allocation_status= 'geni_allocated',
                   geni_operational_status= 'geni_started',
-                    geni_error= "an error message"
+                  geni_error= "an error message",
+#                  geni_resource_status="testing"
                   )
  
 
@@ -750,9 +776,13 @@ class Test(OmniUnittest):
         self.assertStatusReturn( "foobar", status )
 
 
-    # def test_PerformOperationalAction( self ):
-    #     opaction = [sliver, sliver]
-    #     self.assertPerformOperationalActionReturn( "foobar", opaction )
+    def test_PerformOperationalAction( self ):
+        opaction = [sliver, sliver]
+        self.assertPerformOperationalActionReturn( "foobar", opaction )
+
+    def test_Delete( self ):
+        delete = [sliver, sliver]
+        self.assertPerformOperationalActionReturn( "foobar", delete )
 
 
 
