@@ -264,12 +264,12 @@ class ReferenceAggregateManager(object):
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
         self.expire_slices()
-        reqver = [dict(type="geni",
+        reqver = [dict(type="GENI",
                        version="3",
                        schema="http://www.geni.net/resources/rspec/3/request.xsd",
                        namespace="http://www.geni.net/resources/rspec/3",
                        extensions=[])]
-        adver = [dict(type="geni",
+        adver = [dict(type="GENI",
                       version="3",
                       schema="http://www.geni.net/resources/rspec/3/ad.xsd",
                       namespace="http://www.geni.net/resources/rspec/3",
