@@ -511,7 +511,7 @@ class Framework(Framework_Base):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
-        ret = dict(geni_type="sfa", geni_version="3", geni_value=cred)
+        ret = dict(geni_type="geni_sfa", geni_version="3", geni_value=cred)
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"
         return ret

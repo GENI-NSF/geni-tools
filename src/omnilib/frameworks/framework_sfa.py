@@ -427,7 +427,7 @@ class Framework(Framework_Base):
             sites = retVal['peers']
         elif not retVal.has_key('value') or retVal['value'] is None or not retVal['value'].has_key('peers'):
             self.logger.error("Malformed return from SFA Slice Manager GetVersion? %r. Message %s" % (retVal, message))
-            raise Exception("Malformed return from SFA Slice Manager GetVersion? SM: %s, result %r, message %s" % (self.config['slicemgr'], retVal, messa
+            raise Exception("Malformed return from SFA Slice Manager GetVersion? SM: %s, result %r, message %s" % (self.config['slicemgr'], retVal, message))
         else:
             self.logger.debug("peers was in value? %r", retVal)
             sites = retVal['value']['peers']
@@ -549,7 +549,7 @@ class Framework(Framework_Base):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
-        ret = dict(geni_type="sfa", geni_version="3", geni_value=cred)
+        ret = dict(geni_type="geni_sfa", geni_version="3", geni_value=cred)
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"
         return ret

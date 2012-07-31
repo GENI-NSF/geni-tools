@@ -91,7 +91,7 @@ OPSTATE_GENI_FAILED = 'geni_failed'
 
 
 def isGeniCred(cred):
-    """Filter (for use with filter()) to yield all 'geni' credentials
+    """Filter (for use with filter()) to yield all 'geni_sfa' credentials
     regardless over version.
     """
     if not isinstance(cred, dict):
@@ -99,7 +99,7 @@ def isGeniCred(cred):
         msg = msg % (type(cred))
         raise ApiErrorException(AM_API.BAD_ARGS, msg)
     return ('geni_type' in cred
-            and str(cred['geni_type']).lower() == 'geni')
+            and str(cred['geni_type']).lower() == 'geni_sfa')
 
 class AM_API(object):
     BAD_ARGS = 1
