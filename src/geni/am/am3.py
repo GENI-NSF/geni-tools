@@ -1081,7 +1081,6 @@ class AggregateManager(object):
 
     def Delete(self, urns, credentials, options):
         """Delete the given sliver. Return true on success."""
-        self.logger.warning("Mapping DeleteSliver to Delete")
         try:
             return self._delegate.Delete(urns, credentials,
                                            options)
