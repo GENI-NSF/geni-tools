@@ -907,6 +907,15 @@ class AMCallHandler(object):
                       None)
         return retVal
 
+    def performoperationalaction(self, args):
+        """A minimal implementation of PerformOperationalAction().
+
+        This minimal version allows for testing a v3 aggregate, but
+        does not provide sufficient error checking or experimenter
+        support to be the final implementation.
+        """
+        return self.poa(args)
+
     def poa(self, args):
         """A minimal implementation of Provision().
 
@@ -1377,24 +1386,14 @@ class AMCallHandler(object):
             args.append(options)
 #---
 
-        (ver, newc) = self._checkValidClient(client)
-        if newc is None:
-            return "Cannot CreateSliver at %s; it uses APIv%d, but you requested v%d" % (ver, self.opts.api_version), None
-        elif newc.url != client.url:
-            client = newc
-            if ver != self.opts.api_version:
-                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                # FIXME: changing the api_version is not a great idea if
-                # there are multiple clients. Push this into _checkValidClient
-                # and only do it if there is one client.
-                self.opts.api_version = ver
-
+        op = "CreateSliver"
+        msg = "Create Sliver %s at %s" % (urn, url)
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("Create Sliver %s at %s" % (urn, url)),
-                                    client.CreateSliver,
-                                    *args)
+        try:
+            (result, message) = self._api_call(client, msg, op,
+                                                args)
+        except BadClientException:
+            return "Cannot CreateSliver at %s; it uses APIv%d, but you requested v%d" % (ver, self.opts.api_version), None
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -1515,24 +1514,15 @@ class AMCallHandler(object):
         successList = []
         failList = []
         (clientList, message) = self._getclients()
+        op = "RenewSliver"
+        msg = "Renew Sliver %s on " % (urn)
         for client in clientList:
-            (ver, newc) = self._checkValidClient(client)
-            if newc is None:
+            try:
+                (res, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
                 continue
-            elif newc.url != client.url:
-                client = newc
-                if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    # FIXME: changing the api_version is not a great idea if
-                    # there are multiple clients. Push this into _checkValidClient
-                    # and only do it if there is one client.
-                    self.opts.api_version = ver
-
-            (res, message) = _do_ssl(self.framework,
-                                     None,
-                                     ("Renew Sliver %s on %s" % (urn, client.url)),
-                                     client.RenewSliver,
-                                     *args)
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
@@ -1608,23 +1598,15 @@ class AMCallHandler(object):
             retVal += prstr + "\n"
             self.logger.warn(prstr)
 
+        op = 'SliverStatus'
+        msg = "%s of %s at " % (op, urn)
         for client in clientList:
-            (ver, newc) = self._checkValidClient(client)
-            if newc is None:
+            try:
+                (status, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
                 continue
-            elif newc.url != client.url:
-                client = newc
-                if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    # FIXME: changing the api_version is not a great idea if
-                    # there are multiple clients. Push this into _checkValidClient
-                    # and only do it if there is one client.
-                    self.opts.api_version = ver
-
-            (status, message) = _do_ssl(self.framework,
-                                        None,
-                                        "Sliver status of %s at %s" % (urn, client.url),
-                                        client.SliverStatus, *args)
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
@@ -1694,6 +1676,8 @@ class AMCallHandler(object):
         failList = []
         successCnt = 0
         (clientList, message) = self._getclients()
+        op = 'DeleteSliver'
+        msg = "%s %s at " % (op, urn)
 
         # Connect to each available GENI AM
         ## The AM API does not cleanly state how to deal with
@@ -1708,24 +1692,13 @@ class AMCallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         for client in clientList:
-            # Confirm this client speaks the right API Version.
-            (ver, newc) = self._checkValidClient(client)
-            if newc is None:
+            try:
+                (res, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
                 continue
-            elif newc.url != client.url:
-                client = newc
-                if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    # FIXME: changing the api_version is not a great idea if
-                    # there are multiple clients. Push this into _checkValidClient
-                    # and only do it if there is one client.
-                    self.opts.api_version = ver
 
-            (res, message) = _do_ssl(self.framework,
-                                     None,
-                                     ("Delete Sliver %s on %s" % (urn, client.url)),
-                                     client.DeleteSliver,
-                                     *args)
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -1786,24 +1759,13 @@ class AMCallHandler(object):
         successList = []
         failList = []
         (clientList, message) = self._getclients()
+        msg = "Shutdown %s on " % (urn)
+        op = "Shutdown"
         for client in clientList:
-            (ver, newc) = self._checkValidClient(client)
-            if newc is None:
+            try:
+                (res, message) = self._api_call(client, msg + client.url, op, args)
+            except BadClientException:
                 continue
-            elif newc.url != client.url:
-                client = newc
-                if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    # FIXME: changing the api_version is not a great idea if
-                    # there are multiple clients. Push this into _checkValidClient
-                    # and only do it if there is one client.
-                    self.opts.api_version = ver
-
-            (res, message) = _do_ssl(self.framework,
-                                     None,
-                                     "Shutdown %s on %s" % (urn, client.url),
-                                     client.Shutdown,
-                                     *args)
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
