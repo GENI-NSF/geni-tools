@@ -141,6 +141,35 @@ def is_valid_urn(inurn):
     ''' Check that this string is a valid URN'''
     return is_valid_urn_string(inurn) and inurn.startswith(publicid_urn_prefix)
 
+def is_valid_urn_bytype(inurn, urntype, logger=None):
+    if not is_valid_urn(inurn):
+        return False
+    urnObj = URN(urn=inurn)
+    if not urnObj.getType() == urntype:
+        if logger:
+            logger.debug("URN %s not of right type %s", inurn, urntype)
+        return False
+    name = urnObj.getName()
+    if urntype == 'slice':
+        # Slice names are <=19 characters, only alphanumeric plus hyphen (no hyphen in first character): '^[a-zA-Z0-9][-a-zA-Z0-9]\{0,18\}$'
+        if len(name) > 19:
+            if logger:
+                logger.debug("URN %s too long. Slice names are max 19 characters", inurn)
+            return False
+        logger.debug("FIXME: Check the name matches the right regex")
+    elif urntype == 'sliver':
+        # May use only alphanumeric characters plus hyphen
+        logger.debug("FIXME: Check the name matches the right regex")
+    elif urntype == 'user':
+        # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]\{1,8\}$').
+        # Usernames are limited to 8 characters.
+        if len(name) > 8:
+            if logger:
+                logger.debug("URN %s too long. User names are max 8 characters", inurn)
+            return False
+        logger.debug("FIXME: Check the name matches the right regex")
+    return True
+
 def urn_to_publicid(urn):
     '''Convert a URN like urn:publicid:... to a publicid'''
     # Remove prefix
