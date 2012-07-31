@@ -723,7 +723,7 @@ class AMCallHandler(object):
             else:
                 if mymessage != "":
                     mymessage += ". "
-                mymessage += "No resources from AM %s: %s" % (client.url, message)
+                mymessage += "No resources from AM %s: AM says: %s" % (client.url, message)
 
         if len(clientList) > 0:
             self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
@@ -1049,7 +1049,7 @@ class AMCallHandler(object):
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
                 if message != "":
-                    prStr += " " + message
+                    prStr += ": AM says: " + message
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
@@ -1118,7 +1118,7 @@ class AMCallHandler(object):
             if not status:
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
-                fmt = "\nFailed to Describe %s at AM %s: %s\n"
+                fmt = "\nFailed to Describe %s at AM %s: AM says: %s\n"
                 retVal += fmt % (name, client.url, message)
                 continue
 
@@ -1212,7 +1212,7 @@ class AMCallHandler(object):
             if not status:
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
-                fmt = "\nFailed to get SliverStatus on %s at AM %s: %s\n"
+                fmt = "\nFailed to get SliverStatus on %s at AM %s: AM says: %s\n"
                 retVal += fmt % (name, client.url, message)
                 continue
 
@@ -1401,18 +1401,24 @@ class AMCallHandler(object):
         if result:
             self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
 
-        (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
-        if filename:
-            self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
-            retVal += '\n   Saved createsliver results to %s. ' % (filename)
+            (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
+            if filename:
+                self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
+                retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
-        # FIXME: When Tony revises the rspec, fix this test
-        if result and '<RSpec' in result and 'type="SFA"' in result:
-            # Figure out the login name
-            # We could of course do this for the user.
-            prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
-            self.logger.info(prstr)
-            retVal += ". " + prstr
+            # FIXME: When Tony revises the rspec, fix this test
+            if result and '<RSpec' in result and 'type="SFA"' in result:
+                # Figure out the login name
+                # We could of course do this for the user.
+                prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
+                self.logger.info(prstr)
+                retVal += ". " + prstr
+        else:
+            prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
+            if message:
+                prStr += " AM says: %s" % message
+            self.logger.warn(prStr)
+            retVal = prStr
 
         return retVal, result
 
@@ -1534,7 +1540,7 @@ class AMCallHandler(object):
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
                 if message != "":
-                    prStr += " " + message
+                    prStr += ". AM says: " + message
                 else:
                     prStr += " (no reason given)"
                 if len(clientList) == 1:
@@ -1647,7 +1653,7 @@ class AMCallHandler(object):
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
-                retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
+                retVal += "\nFailed to get SliverStatus on %s at AM %s: AM says: %s\n" % (name, client.url, message)
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -1735,7 +1741,7 @@ class AMCallHandler(object):
             else:
                 prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
                 if message != "":
-                    prStr += " " + message
+                    prStr += ". AM says: " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -1811,7 +1817,7 @@ class AMCallHandler(object):
             else:
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
                 if message != "":
-                    prStr += ". " + message
+                    prStr += ". AM says: " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -2091,7 +2097,6 @@ class AMCallHandler(object):
                     else:
                         message = result['output']
                     value = None
-
         return (value, message)
 
     def _args_to_slicecred(self, args, num_args, methodname, otherargstring=""):
