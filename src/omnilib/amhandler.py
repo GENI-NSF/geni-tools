@@ -1253,35 +1253,88 @@ class AMCallHandler(object):
         return retVal, retItem
 
     def delete(self, args):
-        """A minimal implementation of Delete().
+        """AM API DeleteSliver <slicename>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
         """
-        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
-                                                      "Delete",)
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-        client = make_client(url, self.framework, self.opts)
-        options = dict()
-        args = [[urn], [slice_cred], options]
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("Delete %s at %s" % (urn, url)),
-                                    client.Delete,
-                                    *args)
-        result_code = result['code']['geni_code']
-        if (result_code == 0):
-            # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = ("Delete was successful.",
-                      result['value'])
-        else:
-            # Failure
-            retVal = ('Error %d: %s' % (result_code,
-                                        result['output']),
-                      None)
-        return retVal
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        args = [[urn], creds]
+        options = None
+#--- API version specific
+        if self.opts.api_version >= 2:
+            # Add the options dict
+            options = dict()
+            args.append(options)
+
+        self.logger.debug("Doing delete with urn %s, %d creds, options %r",
+                          urn, len(creds), options)
+
+        successList = []
+        failList = []
+        successCnt = 0
+        (clientList, message) = self._getclients()
+
+        # Connect to each available GENI AM
+        ## The AM API does not cleanly state how to deal with
+        ## aggregates which do not have a sliver in this slice.  We
+        ## know at least one aggregate (PG) returns an Exception in
+        ## this case.
+        ## FIX ME: May need to look at handling of this more in the future.
+        ## Also, if the user supplied the aggregate list, a failure is
+        ## more interesting.  We can figure out what the error strings
+        ## are at the various aggregates if they don't know about the
+        ## slice and make those more quiet.  Finally, we can try
+        ## sliverstatus at places where it fails to indicate places
+        ## where you still have resources.
+        op = 'Delete'
+        msg = "Delete of %s at " % (urn)
+        retItem = {}
+        for client in clientList:
+            try:
+                (result, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
+                continue
+
+            retItem[client.url] = result
+
+            if result['code']['geni_code'] == 0:
+                prStr = "Deleted sliver %s on %s at %s" % (urn,
+                                                           client.urn,
+                                                           client.url)
+                if len(clientList) == 1:
+                    retVal = prStr
+                self.logger.info(prStr)
+                successCnt += 1
+            else:
+                prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                msg = " Error %d: %s" % (result['code']['geni_code'],
+                                        result['output'])
+                prStr += msg
+                self.logger.warn(prStr)
+                if len(clientList) == 1:
+                    retVal = prStr
+        if len(clientList) == 0:
+            retVal = "No aggregates specified on which to delete slivers. %s" % message
+        elif len(clientList) > 1:
+            retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
+        return retVal, retItem
 
     def createsliver(self, args):
         """AM API CreateSliver call
