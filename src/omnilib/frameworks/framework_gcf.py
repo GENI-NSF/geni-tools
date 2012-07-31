@@ -154,4 +154,6 @@ class Framework(Framework_Base):
         ret = dict(geni_type="sfa", geni_version="2", geni_value=cred)
         if credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "3"
-        return ret
+#        return ret
+        self.logger.warn("NOT WRAPPING CRED YET")
+        return cred
