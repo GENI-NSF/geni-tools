@@ -1029,7 +1029,8 @@ class AMCallHandler(object):
         urnsarg = self._build_urns(urn)
 
         options = None
-        args = [urnsarg, creds, time_string]
+        args = [[urn], creds, time_string]
+#        args = [urnsarg, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
@@ -2312,12 +2313,12 @@ class AMCallHandler(object):
 
         return (clients, message)
 
-    def _build_urns(slice_urn):
+    def _build_urns(self, slice_urn):
         '''Build up the URNs argument, using given slice URN and the option sliver-urn.
         Only gather sliver URNs if they are valid.
         If no valid sliver URNs supplied, list is just the slice URN.'''
         urns = list()
-        if self.opts.slivers and len(self.opts.slivers > 0):
+        if self.opts.slivers and len(self.opts.slivers) > 0:
             for sliver in self.opts.slivers:
                 if not urn_util.is_valid_urn_bytype(sliver, 'sliver', self.logger):
                     self.logger.warn("Supplied sliver URN %s - not a valid sliver URN.", sliver)

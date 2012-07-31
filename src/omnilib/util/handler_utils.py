@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 
 import datetime
+import json
 import logging
 import os
 import string
@@ -29,6 +30,7 @@ import string
 from dossl import _do_ssl
 import credparsing as credutils
 from dates import naiveUTC
+import json_encoding
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -106,10 +108,11 @@ def _load_cred(handler, filename):
         cred = f.read()
 
     try:
-        cred = json.loads(cred, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+        cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
         isStruct = True
-    except:
+    except Exception, e:
         handler.logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string.", filename)
+        handler.logger.debug(e)
 
     if not handler.opts.devmode:
         if handler.opts.api_version >= 3 and credutils.is_cred_xml(cred) and not isStruct:

@@ -30,11 +30,13 @@ Also based on invocation mode, skip experimenter checks of inputs/outputs.
 """
 
 import dateutil.parser
+import json
 
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration
+import omnilib.util.json_encoding as json_encoding
 
 class CHCallHandler(object):
     """
@@ -441,7 +443,7 @@ class CHCallHandler(object):
 
         if not credutils.is_cred_xml(cred):
             ftype = ".json"
-            credout = json.dumps(cred, cls=DateTimeAwareJSONEncoder)
+            credout = json.dumps(cred, cls=json_encoding.DateTimeAwareJSONEncoder)
             # then read:                 cred = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
         else:
             credout = cred
