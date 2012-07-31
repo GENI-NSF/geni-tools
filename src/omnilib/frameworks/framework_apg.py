@@ -71,3 +71,5 @@ class Framework(pg_framework):
                 return None, message
 
         return pg_framework.get_user_cred(self)
+
+    # At some point in future, this might do something interesting....

@@ -174,3 +174,33 @@ class Framework_Base():
                     else:
                         logger.info('.... please retry.')
         return self.sslctx
+
+    def get_user_cred_struct(self):
+        """
+        Returns a user credential from the control framework as a string in a struct. And an error message if any.
+        Struct is as per AM API v3:
+        {
+           geni_type: <string>,
+           geni_version: <string>,
+           geni_value: <the credential as a string>
+        }
+        """
+        raise NotImplementedError('get_user_cred_struct')
+
+    def get_slice_cred_struct(self, urn):
+        """
+        Retrieve a slice with the given urn and returns the signed
+        credential as a string in the AM API v3 struct:
+        {
+           geni_type: <string>,
+           geni_version: <string>,
+           geni_value: <the credential as a string>
+        }
+        """
+        raise NotImplementedError('get_slice_cred_struct')
+
+    def wrap_cred(self, cred):
+        """
+        Wrap the given cred in the appropriate struct for this framework.
+        """
+        raise NotImplementedError('wrap_cred')

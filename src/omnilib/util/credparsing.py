@@ -32,11 +32,33 @@ import logging
 import traceback
 import xml.dom.minidom as md
 
-def get_cred_exp(logger, credString):
+def is_valid_v3(logger, credString):
+    '''Is the given credential a valid sfa style v3 credential?'''
+# 1) Call:
+#    sfa.trust.credential.cred.verify(trusted_certs=None, schema=FIXME, trusted_certs_required=False)
+    # Will have to check in the xsd I think
+
+# 2)
+    # also for each cert:
+    #   retrieve gid from cred
+    #   check not expired
+    #   check version is 3
+    #   get email, urn, uuid - all not empty
+    #   more? CA:TRUE/FALSE? real serialNum? Has a DN?
+    #    if type is slice or user, CA:FALSE. It type is authority, CA:TRUE
+    #   Should this be in gid.py? or in geni.util.cert_util?
+    #
+
+    return True
+
+
+def get_cred_exp(logger, cred):
     '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
 
     # Don't fully parse credential: grab the expiration from the string directly
     credexp = datetime.datetime.fromordinal(1)
+
+    credString = get_cred_xml(cred)
 
     if credString is None:
         # failed to get a credential string. Can't check
@@ -75,4 +97,30 @@ def get_cred_exp(logger, credString):
         logger.debug(traceback.format_exc())
 
     return credexp
+
+def is_cred_xml(cred):
+    '''Is this a cred in XML format, or a struct? Return true if XML'''
+    if cred is None:
+        return False
+    if not isinstance(cred, str):
+        return False
+    # Anything else? Starts with <?
+    return True
+
+def get_cred_xml(cred):
+    '''Return the cred XML, from the struct if any, else None'''
+    if is_cred_xml(cred):
+        return cred
+    # Make sure the cred is the right struct?
+    # extract the real cred
+#        {
+#           geni_type: <string>,
+#           geni_version: <string>,
+#           geni_value: <the credential as a string>
+#        }
+
+    if isinstance(cred, dict) and cred.has_key("geni_value"):
+        return cred["geni_value"]
+
+    return None
 

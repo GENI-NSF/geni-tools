@@ -86,18 +86,47 @@ def _listaggregates(handler):
         # FIXME: Check that each agg has both a urn and url key?
         return (aggs, "")
 
+def _load_cred(handler, filename):
+    '''
+    Load a credential from the given filename. Return None on error.
+    Based on AM API version, returned cred will be a struct or raw XML.
+    In dev Mode, file contents are returned as is.
+    '''
+    if not filename or not os.path.exists(filename) or not os.path.isfile(filename) or os.path.getsize(filename) <= 0:
+        handler.logger.warn("Credential file %s missing or empty", filename)
+        return None
+
+    handler.logger.info("Getting credential from file %s", filename)
+    cred = None
+    isStruct = False
+    with open(filename, 'r') as f:
+        cred = f.read()
+
+    try:
+        cred = json.loads(cred, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+        isStruct = True
+    except:
+        handler.logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string.", filename)
+
+    if not handler.opts.devMode:
+        if handler.opts.api_version >= 3 and credutils.is_cred_xml(cred) and not isStruct:
+            handler.logger.debug("Using APIv3+ and got XML cred. Wrapping it.")
+            cred = handler.framework.wrap_cred(cred)
+        elif handler.opts.api_version < 3 and not credutils.is_cred_xml(cred) and isStruct:
+            handler.logger.debug("Using APIv2 or 1 and got a struct cred. Unwrapping it.")
+            cred = credutils.get_cred_xml(cred)
+    return cred
+
 def _get_slice_cred(handler, urn):
     """Try a couple times to get the given slice credential.
     Retry on wrong pass phrase.
     Return the slice credential, and a string message of any error.
+    Returned credential will be a struct in AM API v3+.
     """
 
-    if handler.opts.slicecredfile and os.path.exists(handler.opts.slicecredfile) and os.path.isfile(handler.opts.slicecredfile) and os.path.getsize(handler.opts.slicecredfile) > 0:
-        # read the slice cred from the given file
-        handler.logger.info("Getting slice %s credential from file %s", urn, handler.opts.slicecredfile)
-        cred = None
-        with open(handler.opts.slicecredfile, 'r') as f:
-            cred = f.read()
+    cred = _load_cred(handler, handler.opts.slicecredfile)
+    if cred:
+        handler.logger.info("Got slice %s credential from file %s", urn, handler.opts.slicecredfile)
         return (cred, "")
 
     # Check that the return is either None or a valid slice cred
@@ -109,6 +138,8 @@ def _get_slice_cred(handler, urn):
         handler.logger.error("Got invalid slice credential for slice %s: %s" % (urn, cred))
         cred = None
         message = "Invalid slice credential returned"
+    if handler.opts.api_version >= 3:
+        cred = handler.framework.wrap_cred(cred)
     return (cred, message)
 
 def _print_slice_expiration(handler, urn, sliceCred=None):

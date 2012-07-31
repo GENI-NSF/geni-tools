@@ -42,7 +42,6 @@ from omnilib.util.dossl import _do_ssl
 from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
-import omnilib.util.handler_utils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
     _print_slice_expiration
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
@@ -126,7 +125,7 @@ class AMCallHandler(object):
             # But JSON cant have any
                     #header = None
             # Create filename
-            filename = self._construct_output_filename(None, client.url, client.urn, "getversion", ".xml", 1)
+            filename = self._construct_output_filename(None, client.url, client.urn, "getversion", ".json", 1)
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
         # This logs or prints, depending on whether filename
@@ -517,7 +516,10 @@ class AMCallHandler(object):
         if slicename is None or slicename == "":
             slicename = None
             cred = None
-            (cred, message) = self.framework.get_user_cred()
+            if self.opts.api_version >= 3:
+                (cred, message) = self.framework.get_user_cred_struct()
+            else:
+                (cred, message) = self.framework.get_user_cred()
             if cred is None:
 #--- Dev mode allow doing the call anyhow?
                 self.logger.error('Cannot list resources: Could not get user credential')
@@ -1798,7 +1800,7 @@ class AMCallHandler(object):
                 self._raise_omni_error(msg, NoSliceCredError)
 
         # FIXME: Check that the returned slice_cred is actually for the given URN?
-        # Or mayb do that in _get_slice_cred?
+        # Or maybe do that in _get_slice_cred?
 
         slice_exp = None
         expd = True
