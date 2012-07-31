@@ -92,7 +92,10 @@ def _load_cred(handler, filename):
     Based on AM API version, returned cred will be a struct or raw XML.
     In dev Mode, file contents are returned as is.
     '''
-    if not filename or not os.path.exists(filename) or not os.path.isfile(filename) or os.path.getsize(filename) <= 0:
+    if not filename:
+        handler.logger.debug("No filename provided for credential")
+        return None
+    if not os.path.exists(filename) or not os.path.isfile(filename) or os.path.getsize(filename) <= 0:
         handler.logger.warn("Credential file %s missing or empty", filename)
         return None
 
@@ -108,7 +111,7 @@ def _load_cred(handler, filename):
     except:
         handler.logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string.", filename)
 
-    if not handler.opts.devMode:
+    if not handler.opts.devmode:
         if handler.opts.api_version >= 3 and credutils.is_cred_xml(cred) and not isStruct:
             handler.logger.debug("Using APIv3+ and got XML cred. Wrapping it.")
             cred = handler.framework.wrap_cred(cred)

@@ -294,11 +294,10 @@ class CHCallHandler(object):
         
         if cred is None:
             self._raise_omni_error("Got no user credential from framework: %s" % message)
-        # FIXME: switch on API version
         fname = self.opts.framework + "-usercred"
         filename = self._save_cred(fname, cred)
         self.logger.info("Wrote your user credential to %s" % filename)
-        self.logger.info("User credential:\n%r", cred)
+        self.logger.debug("User credential:\n%r", cred)
         return "Saved user credential to %s" % filename, cred
 
     def getslicecred(self, args):
@@ -422,7 +421,7 @@ class CHCallHandler(object):
                 filename = name + "-cred"
                 if self.opts.prefix and self.opts.prefix.strip() != "":
                     filename = self.opts.prefix.strip() + "-" + filename
-            filename = self._save_cred(filename, cred)
+            filename = self._save_cred(filename, slicecred)
         elif self.opts.tostdout:
             self.logger.info("Writing slice %s cred to STDOUT per options", name)
             print slicecred
