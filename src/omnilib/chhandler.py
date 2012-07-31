@@ -410,7 +410,7 @@ class CHCallHandler(object):
         --slicecredfile if supplied
         else [<--p value>-]-<slicename>-cred.[xml or json, depending on credential format]
         """
-        if name is None or name.strip() == "" or slicecred is None or slicecred.strip() is None:
+        if name is None or name.strip() == "" or slicecred is None or (credutils.is_cred_xml(slicecred) and slicecred.strip() is None):
             return None
 
         filename = None
