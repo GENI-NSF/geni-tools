@@ -47,7 +47,7 @@ from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 
-from geni.util import rspec_util 
+from geni.util import rspec_util, urn_util
 
 class BadClientException(Exception):
     def __init__(self, client):
@@ -978,7 +978,7 @@ class AMCallHandler(object):
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
          retVal, slice_exp) = self._args_to_slicecred(args, 2,
-                                                      "RenewSliver",
+                                                      "Renew",
                                                       "and new expiration time in UTC")
 
 #--- Should dev mode allow passing time as is?
@@ -987,7 +987,7 @@ class AMCallHandler(object):
             if not (self.opts.devmode and len(args) < 2):
                 time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            msg = 'renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            msg = 'Renew couldnt parse new expiration time from %s: %r' % (args[1], exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -1005,7 +1005,7 @@ class AMCallHandler(object):
         # Compare requested time with slice expiration time
         if time > slice_exp:
 #--- Dev mode allow this
-            msg = 'Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+            msg = 'Cannot renew slivers in slice %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
             if self.opts.devmode:
                 self.logger.warn(msg + ", but continuing...")
             else:
@@ -1013,7 +1013,7 @@ class AMCallHandler(object):
         elif time <= datetime.datetime.utcnow():
 #--- Dev mode allow earlier time
             if not self.opts.devmode:
-                self.logger.info('Sliver %s will be set to expire now' % name)
+                self.logger.info('Slivers in slice %s will be set to expire now' % name)
                 time = datetime.datetime.utcnow()
         else:
             self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
@@ -1021,7 +1021,7 @@ class AMCallHandler(object):
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
 
-        self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
+        self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
 
         # Note that the time arg includes UTC offset as needed
         time_string = time_with_tz.isoformat()
@@ -1034,8 +1034,10 @@ class AMCallHandler(object):
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
+        urnsarg = self._build_urns(urn)
+
         options = None
-        args = [[urn], creds, time_string]
+        args = [urnsarg, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
@@ -1060,14 +1062,16 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
-                prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                prStr = "Failed to renew slivers in slice %s on %s (%s)" % (urn, client.urn, client.url)
                 if message != "":
                     prStr += ": AM says: " + message
+                else:
+                    prTr += " (no reasone given)"
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
             else:
-                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
+                prStr = "Renewed slivers in slice %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
@@ -2264,6 +2268,26 @@ class AMCallHandler(object):
             clients.append(client)
 
         return (clients, message)
+
+    def _build_urns(slice_urn):
+        '''Build up the URNs argument, using given slice URN and the option sliver-urn.
+        Only gather sliver URNs if they are valid.
+        If no valid sliver URNs supplied, list is just the slice URN.'''
+        urns = list()
+        if self.opts.slivers and len(self.opts.slivers > 0):
+            for sliver in self.opts.slivers:
+                if not urn_util.is_valid_urn_bytype(sliver, 'sliver', self.logger):
+                    self.logger.warn("Supplied sliver URN %s - not a valid sliver URN.", sliver)
+                    if self.opts.devmode:
+                        urns.append(sliver)
+                    else:
+                        self.logger.warn("... skipping")
+                else:
+                    urns.append(sliver)
+        if len(urns) == 0:
+            urns.append(slice_urn)
+        return urns
+
 # End of AMHandler
 
 def make_client(url, framework, opts):
