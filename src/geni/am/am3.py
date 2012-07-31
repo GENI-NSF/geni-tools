@@ -89,7 +89,20 @@ OPSTATE_GENI_READY = 'geni_ready'
 OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
 OPSTATE_GENI_FAILED = 'geni_failed'
 
+
+def isGeniCred(cred):
+    """Filter (for use with filter()) to yield all 'geni' credentials
+    regardless over version.
+    """
+    if not isinstance(cred, dict):
+        msg = "Bad Arguments: Received credential of unknown type %r"
+        msg = msg % (type(cred))
+        raise ApiErrorException(AM_API.BAD_ARGS, msg)
+    return ('geni_type' in cred
+            and str(cred['geni_type']).lower() == 'geni')
+
 class AM_API(object):
+    BAD_ARGS = 1
     REFUSED = 7
     SEARCH_FAILED = 12
 
@@ -314,6 +327,8 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 None,
@@ -403,6 +418,8 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         slice_urn,
@@ -494,6 +511,8 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         the_slice.urn,
@@ -548,7 +567,8 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
-
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 slice_urn,
@@ -600,6 +620,8 @@ class ReferenceAggregateManager(object):
         # listslices, listnodes, policy
         privileges = (PERFORM_ACTION_PRIV,)
         # Note that verify throws an exception on failure.
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         _ = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         the_slice.urn,
@@ -632,6 +654,8 @@ class ReferenceAggregateManager(object):
         self.expire_slices()
         the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 the_slice.urn,
@@ -657,6 +681,8 @@ class ReferenceAggregateManager(object):
         self.expire_slices()
         the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
                                                 the_slice.urn,
@@ -712,6 +738,8 @@ class ReferenceAggregateManager(object):
         the_slice, slivers = self.decode_urns(urns)
 
         privileges = (RENEWSLIVERPRIV,)
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         the_slice.urn,
@@ -743,6 +771,8 @@ class ReferenceAggregateManager(object):
         self.logger.info('Shutdown(%r)' % (slice_urn))
         self.expire_slices()
         privileges = (SHUTDOWNSLIVERPRIV,)
+        credentials = [self.normalize_credential(c) for c in credentials]
+        credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         slice_urn,
@@ -958,6 +988,22 @@ class ReferenceAggregateManager(object):
             if credexp > maxexp:
                 maxexp = credexp
         return maxexp
+
+    def normalize_credential(self, cred, ctype='geni', cversion='3'):
+        """This is a temporary measure to play nice with omni
+        until it supports the v3 credential arg (list of dicts)."""
+        # Play nice...
+        cversion = str(cversion)
+        if isinstance(cred, str):
+            return dict(geni_type=ctype,
+                        geni_version=cversion,
+                        geni_value=cred)
+        elif isinstance(cred, dict):
+            return cred
+        else:
+            msg = "Bad Arguments: Received credential of unknown type %r"
+            msg = msg % (type(cred))
+            raise ApiErrorException(AM_API.BAD_ARGS, msg)
 
 
 class AggregateManager(object):
