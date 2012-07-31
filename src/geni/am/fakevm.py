@@ -31,4 +31,4 @@ class FakeVM(Resource):
 
     def deprovision(self):
         """Deprovision this resource at the resource provider."""
-        self._agg.deallocate(containers=None, resources=[self])
+        self._agg.deallocate(container=None, resources=[self])
