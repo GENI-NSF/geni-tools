@@ -1284,8 +1284,6 @@ class AMCallHandler(object):
         self.logger.debug("Doing delete with urn %s, %d creds, options %r",
                           urn, len(creds), options)
 
-        successList = []
-        failList = []
         successCnt = 0
         (clientList, message) = self._getclients()
 
