@@ -908,18 +908,10 @@ class AMCallHandler(object):
         return retVal, retItem
 
     def performoperationalaction(self, args):
-        """ Alias of "poa" which is an implementation of Provision().
+        """ Alias of "poa" which is an implementation of v3
+        PerformOperationalAction.
         """
         return self.poa( args )
-
-    def performoperationalaction(self, args):
-        """A minimal implementation of PerformOperationalAction().
-
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
-        """
-        return self.poa(args)
 
     def poa(self, args):
         """A minimal implementation of Provision().
