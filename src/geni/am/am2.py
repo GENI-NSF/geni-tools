@@ -107,7 +107,7 @@ class ReferenceAggregateManager(object):
         self._api_version = 2
         self._slices = dict()
         self._agg = Aggregate()
-        self._agg.add_resources([FakeVM() for _ in range(3)])
+        self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._cred_verifier = geni.CredentialVerifier(root_cert)
         self._urn_authority = urn_authority
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
