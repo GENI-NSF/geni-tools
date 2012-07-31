@@ -23,6 +23,7 @@
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+import omnilib.util.credparsing as credutils
 import os
 import sys
 
