@@ -1293,7 +1293,7 @@ class Test(ut.OmniUnittest):
 
     def validate_timestamp( self, timestamp ):
         """
-        Returns true if timestamp is a valid timestamp
+        Returns true if timestamp is parseable by dateutil.parser.parse
         Otherwise returns false
         """
         retVal = False

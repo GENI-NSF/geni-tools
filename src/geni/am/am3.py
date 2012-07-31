@@ -89,6 +89,20 @@ OPSTATE_GENI_READY = 'geni_ready'
 OPSTATE_GENI_READY_BUSY = 'geni_ready_busy'
 OPSTATE_GENI_FAILED = 'geni_failed'
 
+class AM_API(object):
+    REFUSED = 7
+    SEARCH_FAILED = 12
+
+
+class ApiErrorException(Exception):
+    def __init__(self, code, output):
+        self.code = code
+        self.output = output
+
+    def __str__(self):
+        return "ApiError(%r, %r)" % (self.code, self.output)
+
+
 class Sliver(object):
     """A sliver is a single resource assigned to a single slice
     at an aggregate.
@@ -147,12 +161,25 @@ class Sliver(object):
         self.resource().reset()
         self._resource = None
         self.setAllocationState(STATE_GENI_UNALLOCATED)
+        self.setOperationalState(OPSTATE_GENI_PENDING_ALLOCATION)
 
     def shutdown(self):
         self._shutdown = True
 
     def isShutdown(self):
         return self._shutdown
+
+    def status(self, geni_error=''):
+        """Returns a status dict for this sliver. Used in numerous
+        return values for AM API v3 calls.
+        """
+        expire_with_tz = self.expiration().replace(tzinfo=dateutil.tz.tzutc())
+        expire_string = expire_with_tz.isoformat()
+        return dict(geni_sliver_urn=self.urn(),
+                    geni_expires=expire_string,
+                    geni_allocation_status=self.allocationState(),
+                    geni_operational_status=self.operationalState(),
+                    geni_error=geni_error)
 
 
 class Slice(object):
@@ -237,12 +264,12 @@ class ReferenceAggregateManager(object):
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
         self.expire_slices()
-        reqver = [dict(type="geni",
+        reqver = [dict(type="GENI",
                        version="3",
                        schema="http://www.geni.net/resources/rspec/3/request.xsd",
                        namespace="http://www.geni.net/resources/rspec/3",
                        extensions=[])]
-        adver = [dict(type="geni",
+        adver = [dict(type="GENI",
                       version="3",
                       schema="http://www.geni.net/resources/rspec/3/ad.xsd",
                       namespace="http://www.geni.net/resources/rspec/3",
@@ -309,7 +336,7 @@ class ReferenceAggregateManager(object):
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'geni':
+        if rspec_type != 'GENI':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
@@ -433,19 +460,15 @@ class ReferenceAggregateManager(object):
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
         self._slices[slice_urn] = newslice
 
+        # Log the allocation
         self.logger.info("Allocated new slice %s" % slice_urn)
-        slivers = list()
         for sliver in newslice.slivers():
             self.logger.info("Allocated resource %s to slice %s as sliver %s",
                              sliver.resource().id, slice_urn, sliver.urn())
-            expiration = self.rfc3339format(sliver.expiration())
-            allocation_state = sliver.allocationState()
-            slivers.append(dict(geni_sliver_urn=sliver.urn(),
-                                geni_expires=expiration,
-                                geni_allocation_status=allocation_state))
+
         manifest = self.manifest_rspec(slice_urn)
         result = dict(geni_rspec=manifest,
-                      geni_slivers=slivers)
+                      geni_slivers=[s.status() for s in newslice.slivers()])
         return dict(code=dict(geni_code=0,
                               am_type=self._am_type,
                               am_code=0),
@@ -484,21 +507,8 @@ class ReferenceAggregateManager(object):
             sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
             sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
-
-        # Compute result
-        geni_slivers = list()
-        for sliver in slivers:
-            expiration = self.rfc3339format(sliver.expiration())
-            allocation_state = sliver.allocationState()
-            operational_state = sliver.operationalState()
-            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
-                                     geni_expires=expiration,
-                                     geni_allocation_status=allocation_state,
-                                     geni_operational_status=operational_state,
-                                     geni_error=""))
-        manifest = self.manifest_rspec(the_slice.urn)
-        result = dict(geni_rspec=manifest,
-                      geni_slivers=geni_slivers)
+        result = dict(geni_rspec=self.manifest_rspec(the_slice.urn),
+                      geni_slivers=[s.status() for s in slivers])
         return dict(code=dict(geni_code=0,
                               am_type=self._am_type,
                               am_code=0),
@@ -554,7 +564,10 @@ class ReferenceAggregateManager(object):
         # is now empty.
         if slice_urn in self._slices:
             theslice = self._slices[slice_urn]
-            slivers = theslice.slivers()
+            # Note: copy the list of slivers because the slice
+            # removes items from the list. We need the complete list
+            # later to generate the result.
+            slivers = list(theslice.slivers())
             for s in slivers:
                 theslice.delete_sliver(s)
             resources = theslice.resources()
@@ -566,7 +579,7 @@ class ReferenceAggregateManager(object):
                 self._agg.deallocate(slice_urn, None)
                 del self._slices[slice_urn]
                 self.logger.info("Slice %r deleted" % slice_urn)
-            return self.successResult(True)
+            return self.successResult([s.status() for s in slivers])
         else:
             return self._no_such_slice(slice_urn)
 
@@ -606,22 +619,7 @@ class ReferenceAggregateManager(object):
             # Unknown action
             output = "REFUSED: Unknown action %s." % (action)
             return self.errorResult(7, output , 0)
-
-        # Compute result
-        geni_slivers = list()
-        for sliver in slivers:
-            expiration = self.rfc3339format(sliver.expiration())
-            allocation_state = sliver.allocationState()
-            operational_state = sliver.operationalState()
-            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
-                                     geni_expires=expiration,
-                                     geni_allocation_status=allocation_state,
-                                     geni_operational_status=operational_state))
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=geni_slivers,
-                    output="")
+        return self.successResult([s.status() for s in slivers])
 
 
     def Status(self, urns, credentials, options):
@@ -649,12 +647,8 @@ class ReferenceAggregateManager(object):
                                      geni_operational_status=operational_state,
                                      geni_error=''))
         result = dict(geni_urn=the_slice.urn,
-                      geni_slivers=geni_slivers)
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=result,
-                    output="")
+                      geni_slivers=[s.status() for s in slivers])
+        return self.successResult(result)
 
     def Describe(self, urns, credentials, options):
         """Generate a manifest RSpec for the given resources.
@@ -682,7 +676,7 @@ class ReferenceAggregateManager(object):
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'geni':
+        if rspec_type != 'GENI':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
@@ -693,21 +687,19 @@ class ReferenceAggregateManager(object):
         manifest_body = ""
         for sliver in slivers:
             manifest_body += self.manifest_sliver(sliver)
-        result = self.manifest_header() + manifest_body + self.manifest_footer()
-        self.logger.debug("Result is now \"%s\"", result)
-        # Optionally compress the result
+        manifest = self.manifest_header() + manifest_body + self.manifest_footer()
+        self.logger.debug("Result is now \"%s\"", manifest)
+        # Optionally compress the manifest
         if 'geni_compressed' in options and options['geni_compressed']:
             try:
-                result = base64.b64encode(zlib.compress(result))
+                manifest = base64.b64encode(zlib.compress(manifest))
             except Exception, exc:
                 self.logger.error("Error compressing and encoding resource list: %s", traceback.format_exc())
                 raise Exception("Server error compressing resource list", exc)
-
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=result,
-                    output="")
+        value = dict(geni_rspec=manifest,
+                     geni_urn=the_slice.urn,
+                     geni_slivers=[s.status() for s in slivers])
+        return self.successResult(value)
 
     def Renew(self, urns, credentials, expiration_time, options):
         '''Renew the local sliver that is part of the named Slice
@@ -742,20 +734,8 @@ class ReferenceAggregateManager(object):
             for sliver in slivers:
                 sliver.setExpiration(requested)
 
-        geni_slivers = list()
-        for sliver in slivers:
-            expiration = self.rfc3339format(sliver.expiration())
-            allocation_state = sliver.allocationState()
-            operational_state = sliver.operationalState()
-            geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
-                                     geni_expires=expiration,
-                                     geni_allocation_status=allocation_state,
-                                     geni_operational_status=operational_state))
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=geni_slivers,
-                    output="")
+        geni_slivers = [s.status() for s in slivers]
+        return self.successResult(geni_slivers)
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
@@ -778,7 +758,7 @@ class ReferenceAggregateManager(object):
 
     def successResult(self, value):
         code_dict = dict(geni_code=0,
-                         am_type="gcf2",
+                         am_type=self._am_type,
                          am_code=0)
         return dict(code=code_dict,
                     value=value,
@@ -813,6 +793,7 @@ class ReferenceAggregateManager(object):
         component_name="%s"
         component_id="%s"
         exclusive="%s">
+    <sliver_type name="fake-vm"/>
     <available now="%s"/>
   </node>
   '''
@@ -826,13 +807,34 @@ class ReferenceAggregateManager(object):
                        resource_exclusive,
                        resource_available)
 
+    # See https://www.protogeni.net/trac/protogeni/wiki/RspecAdOpState
     def advert_header(self):
+        schema_locs = ["http://www.geni.net/resources/rspec/3",
+                       "http://www.geni.net/resources/rspec/3/ad.xsd",
+                       "http://www.geni.net/resources/rspec/ext/opstate/1",
+                       "http://www.geni.net/resources/rspec/ext/opstate/1/ad.xsd"]
         header = '''<?xml version="1.0" encoding="UTF-8"?>
 <rspec xmlns="http://www.geni.net/resources/rspec/3"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/ad.xsd"
-       type="advertisement">'''
-        return header
+       xsi:schemaLocation="%s"
+       type="advertisement">
+<!-- Operational states for fake-vm nodes -->
+<rspec_opstate xmlns="http://www.geni.net/resources/rspec/ext/opstate/1"
+  aggregate_manager_id="%s"
+  start="geni_notready">
+  <sliver_type name="fake-vm"/>
+  <state name="geni_notready">
+    <action name="geni_start" next="geni_ready">
+      <description>Transition the node to a ready state.</description>
+    </action>
+    <description>Fake VMs are immediately ready once started.</description>
+  </state>
+  <state name="geni_ready">
+    <description>The Fake VM node is up and ready to use.</description>
+  </state>
+</rspec_opstate>
+'''
+        return header % (' '.join(schema_locs), self._my_urn)
 
     def advert_footer(self):
         return '</rspec>'
@@ -919,7 +921,8 @@ class ReferenceAggregateManager(object):
                     the_slice = self._slices[urn_str]
                     slivers.extend(the_slice.slivers())
                 else:
-                    raise Exception('Unknown slice "%s"' % (urn_str))
+                    raise ApiErrorException(AM_API.SEARCH_FAILED,
+                                            'Unknown slice "%s"' % (urn_str))
             elif urn_type == 'sliver':
                 # Gross linear search. Maybe keep a map of known sliver urns?
                 needle = None
@@ -933,7 +936,8 @@ class ReferenceAggregateManager(object):
                 if needle:
                     object.append(needle)
                 else:
-                    raise Exception('Unknown sliver "%s"', urn_str)
+                    raise ApiErrorException(AM_API.SEARCH_FAILED,
+                                            'Unknown sliver "%s"', (urn_str))
             else:
                 raise Exception('Bad URN type "%s"', urn_type)
         # Now verify that everything is part of the same slice
@@ -941,7 +945,8 @@ class ReferenceAggregateManager(object):
         if len(all_slices) == 1:
             the_slice = all_slices.pop()
             if the_slice.isShutdown():
-                raise Exception('Slice %s is shut down.' % (the_slice.urn))
+                msg = 'Refused: slice %s is shut down.' % (the_slice.urn)
+                raise ApiErrorException(AM_API.REFUSED, msg)
             return the_slice, slivers
         else:
             raise Exception('Objects specify multiple slices')
@@ -974,12 +979,20 @@ class AggregateManager(object):
                     value="",
                     output=output)
 
+    def _api_error(self, exception):
+        return dict(code=dict(geni_code=exception.code,
+                              am_type='gcf'),
+                    value="",
+                    output=exception.output)
+
     def GetVersion(self, options=dict()):
         '''Specify version information about this AM. That could
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         try:
             return self._delegate.GetVersion(options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -993,6 +1006,8 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         try:
             return self._delegate.ListResources(credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1003,6 +1018,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Allocate(slice_urn, credentials, rspec,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1010,6 +1027,8 @@ class AggregateManager(object):
     def Provision(self, urns, credentials, options):
         try:
             return self._delegate.Provision(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1020,6 +1039,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Delete(urns, credentials,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1030,6 +1051,8 @@ class AggregateManager(object):
         try:
             return self._delegate.PerformOperationalAction(urns, credentials,
                                                            action, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1039,6 +1062,8 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Status(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1049,16 +1074,20 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Describe(urns, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
 
-    def Renew(self, slice_urn, credentials, expiration_time, options):
+    def Renew(self, urns, credentials, expiration_time, options):
         """Extend the life of the given slice until the given
         expiration time."""
         try:
-            return self._delegate.Renew([slice_urn], credentials,
+            return self._delegate.Renew(urns, credentials,
                                         expiration_time, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1068,6 +1097,8 @@ class AggregateManager(object):
         behaving sliver, without deleting it to allow for forensics.'''
         try:
             return self._delegate.Shutdown(slice_urn, credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1087,6 +1118,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Delete([slice_urn], credentials,
                                            options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1097,6 +1130,8 @@ class AggregateManager(object):
         try:
             return self._delegate.Renew([slice_urn], credentials,
                                         expiration_time, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
@@ -1106,6 +1141,8 @@ class AggregateManager(object):
         """
         try:
             return self._delegate.Status([slice_urn], credentials, options)
+        except ApiErrorException as e:
+            return self._api_error(e)
         except Exception as e:
             traceback.print_exc()
             return self._exception_result(e)
