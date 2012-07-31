@@ -868,13 +868,13 @@ class AMCallHandler(object):
         if (result_code == 0):
             # Success
             self.logger.info(pprint.pformat(result['value']))
-            retVal = ("Allocation was successful.", result['value'])
+            retVal = "Allocation was successful."
         else:
             # Failure
-            retVal = ('Error %d: %s' % (result_code,
-                                        result['output']),
-                      None)
-        return retVal
+            retVal = 'Error %d: %s' % (result_code, result['output'])
+        retItem = {}
+        retItem[ client.url ] = result
+        return retVal, retItem
 
     def provision(self, args):
         """A minimal implementation of Provision().
@@ -897,13 +897,18 @@ class AMCallHandler(object):
         if (result_code == 0):
             # Success
             self.logger.info(pprint.pformat(result['value']))
-            retVal = ("Provision was successful.", result['value'])
+            retVal = "Provision was successful."
         else:
             # Failure
-            retVal = ('Error %d: %s' % (result_code,
-                                        result['output']),
-                      None)
-        return retVal
+            retVal = 'Error %d: %s' % (result_code, result['output'])
+        retItem = {}
+        retItem[ client.url ] = result
+        return retVal, retItem
+
+    def performoperationalaction(self, args):
+        """ Alias of "poa" which is an implementation of Provision().
+        """
+        return self.poa( args )
 
     def poa(self, args):
         """A minimal implementation of Provision().
@@ -928,14 +933,13 @@ class AMCallHandler(object):
         if (result_code == 0):
             # Success
             self.logger.info(pprint.pformat(result['value']))
-            retVal = ("PerformOperationalAction was successful.",
-                      result['value'])
+            retVal = "PerformOperationalAction was successful."
         else:
             # Failure
-            retVal = ('Error %d: %s' % (result_code,
-                                        result['output']),
-                      None)
-        return retVal
+            retVal = 'Error %d: %s' % (result_code, result['output'])
+        retItem = {}
+        retItem[ client.url ] = result
+        return retVal, retItem
 
     def renew(self, args):
         """AM API Renew <slicename> <new expiration time in UTC
