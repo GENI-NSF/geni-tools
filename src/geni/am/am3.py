@@ -28,6 +28,7 @@ The GENI AM API is defined in the AggregateManager class.
 """
 
 import base64
+import collections
 import datetime
 import dateutil.parser
 import logging
@@ -105,6 +106,7 @@ class AM_API(object):
     BAD_ARGS = 1
     REFUSED = 7
     SEARCH_FAILED = 12
+    UNSUPPORTED = 13
 
 
 class ApiErrorException(Exception):
@@ -627,21 +629,63 @@ class ReferenceAggregateManager(object):
                                                         the_slice.urn,
                                                         privileges)
 
-        # ensure that the slivers are provisioned
-        for sliver in slivers:
-            if sliver.allocationState() != STATE_GENI_PROVISIONED:
-                output = "REFUSED: sliver %s is not provisioned." % (sliver.urn())
-                return self.errorResult(7, output , 0)
-
-        # perform the action
-        if (action == 'geni_start'):
-            for sliver in slivers:
-                sliver.setOperationalState(OPSTATE_GENI_READY)
+        # A place to store errors on a per-sliver basis.
+        # {sliverURN --> "error", sliverURN --> "error", etc.}
+        astates = []
+        ostates = []
+        if action == 'geni_start':
+            astates = [STATE_GENI_PROVISIONED]
+            ostates = [OPSTATE_GENI_NOT_READY]
+        elif action == 'geni_restart':
+            astates = [STATE_GENI_PROVISIONED]
+            ostates = [OPSTATE_GENI_READY]
+        elif action == 'geni_stop':
+            astates = [STATE_GENI_PROVISIONED]
+            ostates = [OPSTATE_GENI_READY]
         else:
-            # Unknown action
-            output = "REFUSED: Unknown action %s." % (action)
-            return self.errorResult(7, output , 0)
-        return self.successResult([s.status() for s in slivers])
+            msg = "Unsupported: action %s is not supported" % (action)
+            raise ApiErrorException(AM_API.UNSUPPORTED, msg)
+
+        # Handle best effort. Look ahead to see if the operation
+        # can be done. If the client did not specify best effort and
+        # any resources are in the wrong state, stop and return an error.
+        # But if the client specified best effort, trundle on and
+        # do the best you can do.
+        errors = collections.defaultdict(str)
+        for sliver in slivers:
+            # ensure that the slivers are provisioned
+            if (sliver.allocationState() not in astates
+                or sliver.operationalState() not in ostates):
+                msg = "Sliver %s is not in the right state for action %s."
+                msg = msg % (sliver.urn(), action)
+                errors[sliver.urn()] = msg
+        best_effort = False
+        if 'geni_best_effort' in options:
+            best_effort = bool(options['geni_best_effort'])
+        if not best_effort and errors:
+            raise ApiErrorException(AM_API.UNSUPPORTED,
+                                    "\n".join(errors.values()))
+
+        # Perform the state changes:
+        for sliver in slivers:
+            if (action == 'geni_start'):
+                if (sliver.allocationState() in astates
+                    and sliver.operationalState() in ostates):
+                    sliver.setOperationalState(OPSTATE_GENI_READY)
+            elif (action == 'geni_restart'):
+                if (sliver.allocationState() in astates
+                    and sliver.operationalState() in ostates):
+                    sliver.setOperationalState(OPSTATE_GENI_READY)
+            elif (action == 'geni_stop'):
+                if (sliver.allocationState() in astates
+                    and sliver.operationalState() in ostates):
+                    sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
+            else:
+                # This should have been caught above
+                msg = "Unsupported: action %s is not supported" % (action)
+                raise ApiErrorException(AM_API.UNSUPPORTED, msg)
+        return self.successResult([s.status(errors[s.urn()])
+                                   for s in slivers])
 
 
     def Status(self, urns, credentials, options):
@@ -861,6 +905,12 @@ class ReferenceAggregateManager(object):
   </state>
   <state name="geni_ready">
     <description>The Fake VM node is up and ready to use.</description>
+    <action name="geni_restart" next="geni_ready">
+      <description>Reboot the node</description>
+    </action>
+    <action name="geni_stop" next="geni_notready">
+      <description>Power down or stop the node.</description>
+    </action>
   </state>
 </rspec_opstate>
 '''
