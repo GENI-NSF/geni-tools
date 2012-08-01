@@ -1006,7 +1006,7 @@ class ReferenceAggregateManager(object):
             elif urn_type == 'sliver':
                 # Gross linear search. Maybe keep a map of known sliver urns?
                 needle = None
-                for a_slice in self._slices:
+                for a_slice in self._slices.values():
                     for sliver in a_slice.slivers():
                         if sliver.urn() == urn_str:
                             needle = sliver
@@ -1014,10 +1014,10 @@ class ReferenceAggregateManager(object):
                     if needle:
                         break
                 if needle:
-                    object.append(needle)
+                    slivers.append(needle)
                 else:
                     raise ApiErrorException(AM_API.SEARCH_FAILED,
-                                            'Unknown sliver "%s"', (urn_str))
+                                            'Unknown sliver "%s"' % (urn_str))
             else:
                 raise Exception('Bad URN type "%s"', urn_type)
         # Now verify that everything is part of the same slice
