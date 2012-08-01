@@ -485,11 +485,7 @@ class ReferenceAggregateManager(object):
         manifest = self.manifest_rspec(slice_urn)
         result = dict(geni_rspec=manifest,
                       geni_slivers=[s.status() for s in newslice.slivers()])
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=result,
-                    output="")
+        return self.successResult(result)
 
     def Provision(self, urns, credentials, options):
         """Allocate slivers to the given slice according to the given RSpec.
@@ -527,11 +523,7 @@ class ReferenceAggregateManager(object):
             sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
         result = dict(geni_rspec=self.manifest_rspec(the_slice.urn),
                       geni_slivers=[s.status() for s in slivers])
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=result,
-                    output="")
+        return self.successResult(result)
 
     def Delete(self, urns, credentials, options):
         """Stop and completely delete the named slivers and/or slice.
