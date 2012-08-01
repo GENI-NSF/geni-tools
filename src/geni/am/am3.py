@@ -271,6 +271,7 @@ class ReferenceAggregateManager(object):
         self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
+        self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
         self.logger = logging.getLogger('gcf.am3')
 
     def GetVersion(self, options):
@@ -466,12 +467,9 @@ class ReferenceAggregateManager(object):
 
         # determine max expiration time from credentials
         # do not create a sliver that will outlive the slice!
-        expiration = (datetime.datetime.utcnow()
-                      + datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS))
-        for cred in creds:
-            credexp = self._naiveUTC(cred.expiration)
-            if credexp < expiration:
-                expiration = credexp
+        expiration = self.min_expire(creds, self.max_alloc,
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
 
         newslice = Slice(slice_urn, expiration)
         for resource in resources:
@@ -520,9 +518,9 @@ class ReferenceAggregateManager(object):
                                                         the_slice.urn,
                                                         privileges)
 
-        expiration = self.compute_slice_expiration(creds)
-        expiration = min(expiration,
-                         datetime.datetime.now() + self.max_lease)
+        expiration = self.min_expire(creds, self.max_lease,
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
             sliver.setExpiration(expiration)
@@ -789,7 +787,7 @@ class ReferenceAggregateManager(object):
                                                         the_slice.urn,
                                                         privileges)
         # All the credentials we just got are valid
-        expiration = self.compute_slice_expiration(creds)
+        expiration = self.min_expire(creds, self.max_lease)
         requested = dateutil.parser.parse(str(expiration_time))
         # Per the AM API, the input time should be TZ-aware
         # But since the slice cred may not (per ISO8601), convert
@@ -1031,14 +1029,6 @@ class ReferenceAggregateManager(object):
         else:
             raise Exception('Objects specify multiple slices')
 
-    def compute_slice_expiration(self, credentials):
-        maxexp = datetime.datetime.min
-        for cred in credentials:
-            credexp = self._naiveUTC(cred.expiration)
-            if credexp > maxexp:
-                maxexp = credexp
-        return maxexp
-
     def normalize_credential(self, cred, ctype='geni', cversion='3'):
         """This is a temporary measure to play nice with omni
         until it supports the v3 credential arg (list of dicts)."""
@@ -1054,6 +1044,18 @@ class ReferenceAggregateManager(object):
             msg = "Bad Arguments: Received credential of unknown type %r"
             msg = msg % (type(cred))
             raise ApiErrorException(AM_API.BAD_ARGS, msg)
+
+    def min_expire(self, creds, max_duration=None, requested=None):
+        expires = [self._naiveUTC(c.expiration) for c in creds]
+        if max_duration:
+            expires.append(datetime.datetime.utcnow() + max_duration)
+        if requested:
+            dt = dateutil.parser.parse(str(requested))
+            expires.append(self._naiveUTC(dt))
+        # Support geni_end_time here as another possible limit to expiration.
+        # Need to parse the geni_end_time...
+        print expires
+        return min(expires)
 
 
 class AggregateManager(object):
