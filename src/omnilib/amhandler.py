@@ -879,8 +879,9 @@ class AMCallHandler(object):
 
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
-        options = self._build_options(None)
+        options = self._build_options('Allocate', None)
         args = [urn, [slice_cred], rspec, options]
+        self.logger.debug("Doing Allocate with urn %s, 1 cred, rspec starting: \'%s\', and options %s", urn, rspec[:40], options)
         # FIXME: Handle multiple clients
         (result, message) = _do_ssl(self.framework,
                                     None,
@@ -918,7 +919,7 @@ class AMCallHandler(object):
                                                       "Provision")
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
-        options = self._build_options(None)
+        options = self._build_options('Provision', None)
         urnsarg, slivers = self._build_urns(urn)
         args = [urnsarg, [slice_cred], options]
         # FIXME: Handle multiple clients
@@ -1029,7 +1030,7 @@ class AMCallHandler(object):
         action = args[1]
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
-        options = self._build_options(None)
+        options = self._build_options('PerformOperationalAction', None)
         urnsarg, slivers = self._build_urns(urn)
         args = [urnsarg, [slice_cred], action, options]
         # FIXME: Handle multiple clients
@@ -1140,7 +1141,8 @@ class AMCallHandler(object):
 
         urnsarg, slivers = self._build_urns(urn)
 
-        options = self._build_options(None)
+        op = 'Renew'
+        options = self._build_options(op, None)
 
         args = [urnsarg, creds, time_string]
 #--- AM API version specific
@@ -1154,7 +1156,6 @@ class AMCallHandler(object):
         (clientList, message) = self._getclients()
         retItem = dict()
         msg = "Renew %s at " % (urn)
-        op = 'Renew'
         for client in clientList:
             try:
                 (res, message) = self._api_call(client, msg + client.url, op,
@@ -1221,7 +1222,7 @@ class AMCallHandler(object):
 #--- API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
-                options = self._build_options(None)
+                options = self._build_options('Describe', None)
                 rspec_version = dict(type=self.opts.rspectype[0],
                                      version=self.opts.rspectype[1])
                 options['geni_rspec_version'] = rspec_version
@@ -1326,7 +1327,7 @@ class AMCallHandler(object):
             options = dict()
             if self.opts.api_version >= 2:
                 # Add the options dict
-                options = self._build_options(None)
+                options = self._build_options('Status', None)
                 args.append(options)
             self.logger.debug("Doing status with urn %s, %d creds, options %r", urn, len(creds), options)
         else:
@@ -1410,7 +1411,7 @@ class AMCallHandler(object):
 #--- API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = self._build_options(None)
+            options = self._build_options('Delete', None)
             args.append(options)
 
         self.logger.debug("Doing delete with urn %s, %d creds, options %r",
@@ -2493,36 +2494,45 @@ class AMCallHandler(object):
             urns.append(slice_urn)
         return urns, slivers
 
-    def _build_options(self, options):
+    def _build_options(self, op, options):
         '''Add geni_best_effort and geni_end_time to options if supplied'''
         if not options or options is None:
             options = {}
 
         if self.opts.api_version >= 3 and self.opts.geni_end_time:
-            time = datetime.datetime.max
-            try:
-                time = dateutil.parser.parse(self.opts.geni_end_time)
-                # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
-                time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
-                # Note that the time arg includes UTC offset as needed
-                time_string = time_with_tz.isoformat()
-                if self.opts.no_tz:
-                    # The timezone causes an error in older sfa
-                    # implementations as deployed in mesoscale GENI. Strip
-                    # off the timezone if the user specfies --no-tz
-                    self.logger.info('Removing timezone at user request (--no-tz)')
-                    time_string = time_with_tz.replace(tzinfo=None).isoformat()
+            if op in ('Allocate', 'Provision') or self.opts.devmode:
+                if self.opts.devmode and not op in ('Allocate', 'Provision'):
+                    self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
+                time = datetime.datetime.max
+                try:
+                    time = dateutil.parser.parse(self.opts.geni_end_time)
+                    # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+                    time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+                    # Note that the time arg includes UTC offset as needed
+                    time_string = time_with_tz.isoformat()
+                    if self.opts.no_tz:
+                        # The timezone causes an error in older sfa
+                        # implementations as deployed in mesoscale GENI. Strip
+                        # off the timezone if the user specfies --no-tz
+                        self.logger.info('Removing timezone at user request (--no-tz)')
+                        time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
-                options["geni_end_time"] = time_string
-            except Exception, exc:
-                msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
-                self.logger.warn(msg)
-                if self.opts.devmode:
-                    self.logger.info(" ... passing raw geni_end_time")
-                    options["geni_end_time"] = self.opts.geni_end_time
+                    options["geni_end_time"] = time_string
+                except Exception, exc:
+                    msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
+                    self.logger.warn(msg)
+                    if self.opts.devmode:
+                        self.logger.info(" ... passing raw geni_end_time")
+                        options["geni_end_time"] = self.opts.geni_end_time
+
 
         if self.opts.api_version >= 3 and self.opts.geni_best_effort:
-            options["geni_best_effort"] = self.opts.geni_best_effort
+            # FIXME: What about Describe? Status?
+            if op in ('Provision', 'Renew', 'Delete', 'PerformOperationalAction'):
+                options["geni_best_effort"] = self.opts.geni_best_effort
+            elif self.opts.devmode:
+                self.logger.warn("Got geni_best_effort for method %s but using anyhow", op)
+                options["geni_best_effort"] = self.opts.geni_best_effort
 
         return options
 
