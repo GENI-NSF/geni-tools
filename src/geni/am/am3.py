@@ -200,17 +200,15 @@ class Sliver(object):
 class Slice(object):
     """A slice has a URN, a list of resources, and an expiration time in UTC."""
 
-    def __init__(self, urn, expiration):
+    def __init__(self, urn):
         self.id = str(uuid.uuid4())
         self.urn = urn
-        self.expiration = expiration
         self._slivers = list()
         self._resources = dict()
         self._shutdown = False
 
     def add_resource(self, resource):
         sliver = Sliver(self, resource)
-        sliver.setExpiration(self.expiration)
         self._slivers.append(sliver)
         return sliver
 
@@ -279,7 +277,7 @@ class ReferenceAggregateManager(object):
         include API version information, RSpec format and version
         information, etc. Return a dict.'''
         self.logger.info("Called GetVersion")
-        self.expire_slices()
+        self.expire_slivers()
         reqver = [dict(type="GENI",
                        version="3",
                        schema="http://www.geni.net/resources/rspec/3/request.xsd",
@@ -316,7 +314,7 @@ class ReferenceAggregateManager(object):
         then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
         self.logger.info('ListResources(%r)' % (options))
-        self.expire_slices()
+        self.expire_slivers()
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -409,7 +407,7 @@ class ReferenceAggregateManager(object):
         Return an RSpec of the actually allocated resources.
         """
         self.logger.info('Allocate(%r)' % (slice_urn))
-        self.expire_slices()
+        self.expire_slivers()
         # Note this list of privileges is really the name of an operation
         # from the privilege_table in sfa/trust/rights.py
         # Credentials will specify a list of privileges, each of which
@@ -471,9 +469,10 @@ class ReferenceAggregateManager(object):
                                      ('geni_end_time' in options
                                       and options['geni_end_time']))
 
-        newslice = Slice(slice_urn, expiration)
+        newslice = Slice(slice_urn)
         for resource in resources:
             sliver = newslice.add_resource(resource)
+            sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
         self._slices[slice_urn] = newslice
 
@@ -497,7 +496,7 @@ class ReferenceAggregateManager(object):
         Return an RSpec of the actually allocated resources.
         """
         self.logger.info('Provision(%r)' % (urns))
-        self.expire_slices()
+        self.expire_slivers()
 
         the_slice, slivers = self.decode_urns(urns)
         # Note this list of privileges is really the name of an operation
@@ -609,7 +608,7 @@ class ReferenceAggregateManager(object):
         urns.
         """
         self.logger.info('PerformOperationalAction(%r)' % (urns))
-        self.expire_slices()
+        self.expire_slivers()
 
         the_slice, slivers = self.decode_urns(urns)
         # Note this list of privileges is really the name of an operation
@@ -693,7 +692,7 @@ class ReferenceAggregateManager(object):
         statuses.'''
         # Loop over the resources in a sliver gathering status.
         self.logger.info('Status(%r)' % (urns))
-        self.expire_slices()
+        self.expire_slivers()
         the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
@@ -720,7 +719,7 @@ class ReferenceAggregateManager(object):
         """Generate a manifest RSpec for the given resources.
         """
         self.logger.info('Describe(%r)' % (urns))
-        self.expire_slices()
+        self.expire_slivers()
         the_slice, slivers = self.decode_urns(urns)
         privileges = (SLIVERSTATUSPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
@@ -776,7 +775,7 @@ class ReferenceAggregateManager(object):
         Return False on any error, True on success.'''
 
         self.logger.info('Renew(%r, %r)' % (urns, expiration_time))
-        self.expire_slices()
+        self.expire_slivers()
         the_slice, slivers = self.decode_urns(urns)
 
         privileges = (RENEWSLIVERPRIV,)
@@ -793,11 +792,17 @@ class ReferenceAggregateManager(object):
         # But since the slice cred may not (per ISO8601), convert
         # it to naiveUTC for comparison
         requested = self._naiveUTC(requested)
+        now = datetime.datetime.utcnow()
         if requested > expiration:
             # Fail the call, the requested expiration exceeds the slice expir.
             msg = (("Out of range: Expiration %s is out of range"
                    + " (past last credential expiration of %s).")
                    % (expiration_time, expiration))
+            return self.errorResult(19, msg)
+        elif requested < now:
+            msg = (("Out of range: Expiration %s is out of range"
+                   + " (prior to now %s).")
+                   % (expiration_time, now.isoformat()))
             return self.errorResult(19, msg)
         else:
             # Renew all the named slivers
@@ -811,7 +816,7 @@ class ReferenceAggregateManager(object):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
         self.logger.info('Shutdown(%r)' % (slice_urn))
-        self.expire_slices()
+        self.expire_slivers()
         privileges = (SHUTDOWNSLIVERPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
@@ -966,23 +971,29 @@ class ReferenceAggregateManager(object):
         time_with_tz = dt.replace(tzinfo=dateutil.tz.tzutc())
         return time_with_tz.isoformat()
 
-    def expire_slices(self):
-        """Look for expired slices and clean them up. Ultimately this
+    def expire_slivers(self):
+        """Look for expired slivers and clean them up. Ultimately this
         should be run by a daemon, but until then, it is called at the
         beginning of all methods.
         """
         expired = list()
         now = datetime.datetime.utcnow()
-        for s in self._slices.values():
-            if s.expiration < now:
-                expired.append(s)
-        self.logger.debug('Expiring %d slices', len(expired))
-        self.logger.info('Expiring %d slices', len(expired))
-        for s in expired:
-            self._agg.deallocate(s.urn, None)
-            for r in s.resources():
-                r.reset()
-            del self._slices[s.urn]
+        for slyce in self._slices.values():
+            for sliver in slyce.slivers():
+                self.logger.debug('Checking sliver %s (expiration = %r) at %r',
+                                  sliver.urn(), sliver.expiration(), now)
+                if sliver.expiration() < now:
+                    self.logger.debug('Expring sliver %s (expiration = %r) at %r',
+                                      sliver.urn(), sliver.expiration(), now)
+                    expired.append(sliver)
+        self.logger.info('Expiring %d slivers', len(expired))
+        for sliver in expired:
+            slyce = sliver.slice()
+            slyce.delete_sliver(sliver)
+            # If slice is now empty, delete it.
+            if not slyce.slivers():
+                self.logger.debug("Deleting empty slice %r", slyce.urn)
+                del self._slices[slyce.urn]
 
     def decode_urns(self, urns):
         """Several methods need to map URNs to slivers and/or deduce
@@ -1046,15 +1057,19 @@ class ReferenceAggregateManager(object):
             raise ApiErrorException(AM_API.BAD_ARGS, msg)
 
     def min_expire(self, creds, max_duration=None, requested=None):
+        """Compute the expiration time from the supplied credentials,
+        a max duration, and an optional requested duration. The shortest
+        time amongst all of these is the resulting expiration.
+        """
+        now = datetime.datetime.utcnow()
         expires = [self._naiveUTC(c.expiration) for c in creds]
         if max_duration:
-            expires.append(datetime.datetime.utcnow() + max_duration)
+            expires.append(now + max_duration)
         if requested:
-            dt = dateutil.parser.parse(str(requested))
-            expires.append(self._naiveUTC(dt))
-        # Support geni_end_time here as another possible limit to expiration.
-        # Need to parse the geni_end_time...
-        print expires
+            requested = self._naiveUTC(dateutil.parser.parse(str(requested)))
+            # Ignore requested time in the past.
+            if requested > now:
+                expires.append(self._naiveUTC(requested))
         return min(expires)
 
 
