@@ -1046,15 +1046,16 @@ class ReferenceAggregateManager(object):
             raise ApiErrorException(AM_API.BAD_ARGS, msg)
 
     def min_expire(self, creds, max_duration=None, requested=None):
+        """Compute the expiration time from the supplied credentials,
+        a max duration, and an optional requested duration. The shortest
+        time amongst all of these is the resulting expiration.
+        """
         expires = [self._naiveUTC(c.expiration) for c in creds]
         if max_duration:
             expires.append(datetime.datetime.utcnow() + max_duration)
         if requested:
             dt = dateutil.parser.parse(str(requested))
             expires.append(self._naiveUTC(dt))
-        # Support geni_end_time here as another possible limit to expiration.
-        # Need to parse the geni_end_time...
-        print expires
         return min(expires)
 
 
