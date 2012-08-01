@@ -1487,6 +1487,7 @@ class AMCallHandler(object):
             retVal = "No aggregates specified on which to delete slivers. %s" % message
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
+        self.logger.debug(pprint.pformat(retItem))
         return retVal, retItem
 
     def createsliver(self, args):
