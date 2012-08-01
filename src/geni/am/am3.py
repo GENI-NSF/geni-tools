@@ -105,6 +105,7 @@ def isGeniCred(cred):
 class AM_API(object):
     BAD_ARGS = 1
     REFUSED = 7
+    UNAVAILABLE = 11
     SEARCH_FAILED = 12
     UNSUPPORTED = 13
 
@@ -221,28 +222,6 @@ class Slice(object):
 
     def resources(self):
         return [sliver.resource() for sliver in self._slivers]
-
-    def status(self, resources):
-        """Determine the status of the sliver by examining the status
-        of each resource in the sliver.
-        """
-        # If any resource is 'shutdown', the sliver is 'shutdown'
-        # Else if any resource is 'failed', the sliver is 'failed'
-        # Else if any resource is 'configuring', the sliver is 'configuring'
-        # Else if all resources are 'ready', the sliver is 'ready'
-        # Else the sliver is 'unknown'
-        rstat = [res.status for res in self.resources()]
-        if Resource.STATUS_SHUTDOWN in rstat:
-            return Resource.STATUS_SHUTDOWN
-        elif Resource.STATUS_FAILED in rstat:
-            return Resource.STATUS_FAILED
-        elif Resource.STATUS_CONFIGURING in rstat:
-            return Resource.STATUS_CONFIGURING
-        elif rstat == [Resource.STATUS_READY for res in self.resources()]:
-            # All resources report status of ready
-            return Resource.STATUS_READY
-        else:
-            return Resource.STATUS_UNKNOWN
 
     def shutdown(self):
         for sliver in self.slivers():
@@ -529,71 +508,32 @@ class ReferenceAggregateManager(object):
         """Stop and completely delete the named slivers and/or slice.
         """
         self.logger.info('Delete(%r)' % (urns))
+        self.expire_slivers()
 
-        parsed_urns = [urn.URN(urn=u) for u in urns]
-        all_urn_types = [u.getType() for u in parsed_urns]
-        if len(set(all_urn_types)) > 1:
-            # Error - all URNs must be the same type, either slice or sliver
-            msg = ('Bad Arguments: URN types cannot be mixed.'
-                   + ' Received types: %r' % all_urn_types)
-            return self.errorResult(1, msg)
-
-        urn_type = all_urn_types[0]
-        if urn_type == 'sliver':
-            # We'll need to deduce the slice of the slivers, verifying that
-            # all slivers are in the same slice. Then we need to check
-            # permissions on the deduced slice, and then operate
-            # on the individual slivers.
-            return self.errorResult(5, ('Server Error: teach me how to'
-                                        + ' delete individual slivers.'))
-        slice_urn = urns[0]
-        # Note this list of privileges is really the name of an operation
-        # from the privilege_table in sfa/trust/rights.py
-        # Credentials will specify a list of privileges, each of which
-        # confers the right to perform a list of operations.
-        # EG the 'info' privilege in a credential allows the operations
-        # listslices, listnodes, policy
+        the_slice, slivers = self.decode_urns(urns)
         privileges = (DELETESLIVERPRIV,)
-        # Note that verify throws an exception on failure.
-        # Use the client PEM format cert as retrieved
-        # from the https connection by the SecureXMLRPCServer
-        # to identify the caller.
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
         self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                 credentials,
-                                                slice_urn,
+                                                the_slice.urn,
                                                 privileges)
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
-
-        # FIXME: if we get individual slivers, we deduce the slice,
-        # but we don't delete all the resources in the slice. Really,
-        # we need to get a list of resources either by mapping the
-        # sliver URNs or by listing the slice via its URN. Then we
-        # delete all those resources, then we delete the slice if it
-        # is now empty.
-        if slice_urn in self._slices:
-            theslice = self._slices[slice_urn]
-            # Note: copy the list of slivers because the slice
-            # removes items from the list. We need the complete list
-            # later to generate the result.
-            slivers = list(theslice.slivers())
-            for s in slivers:
-                theslice.delete_sliver(s)
-            resources = theslice.resources()
-            if theslice.status(resources) == Resource.STATUS_SHUTDOWN:
-                self.logger.info("Sliver %s not deleted because it is shutdown",
-                                 slice_urn)
-                return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
-            if not theslice.slivers():
-                self._agg.deallocate(slice_urn, None)
-                del self._slices[slice_urn]
-                self.logger.info("Slice %r deleted" % slice_urn)
-            return self.successResult([s.status() for s in slivers])
-        else:
-            return self._no_such_slice(slice_urn)
-
+        if the_slice.isShutdown():
+            self.logger.info("Slice %s not deleted because it is shutdown",
+                             the_slice.urn)
+            return self.errorResult(AM_API.UNAVAILABLE,
+                                    ("Unavailable: Slice %s is unavailable."
+                                     % (the_slice.urn)))
+        for sliver in slivers:
+            slyce = sliver.slice()
+            slyce.delete_sliver(sliver)
+            # If slice is now empty, delete it.
+            if not slyce.slivers():
+                self.logger.debug("Deleting empty slice %r", slyce.urn)
+                del self._slices[slyce.urn]
+        return self.successResult([s.status() for s in slivers])
 
     def PerformOperationalAction(self, urns, credentials, action, options):
         """Peform the specified action on the set of objects specified by
