@@ -1030,16 +1030,17 @@ class AMCallHandler(object):
 
         urnsarg = self._build_urns(urn)
 
-        options = None
-        args = [[urn], creds, time_string]
-#        args = [urnsarg, creds, time_string]
+        options = self._build_options(None)
+
+        # FIXME HACK: Pull next line out once gcfam does lists of sliver urns
+        urnsarg = [urn]
+        args = [urnsarg, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = dict()
             args.append(options)
 
-        self.logger.debug("Doing renew with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
+        self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
 
         successCnt = 0
         (clientList, message) = self._getclients()
@@ -2320,6 +2321,8 @@ class AMCallHandler(object):
         Only gather sliver URNs if they are valid.
         If no valid sliver URNs supplied, list is just the slice URN.'''
         urns = list()
+
+        # FIXME: Check that all URNs are for same AM?
         if self.opts.slivers and len(self.opts.slivers) > 0:
             for sliver in self.opts.slivers:
                 if not urn_util.is_valid_urn_bytype(sliver, 'sliver', self.logger):
@@ -2329,10 +2332,44 @@ class AMCallHandler(object):
                     else:
                         self.logger.warn("... skipping")
                 else:
+#                    self.logger.debug("Adding sliver URN %s", sliver)
                     urns.append(sliver)
         if len(urns) == 0:
             urns.append(slice_urn)
         return urns
+
+    def _build_options(self, options):
+        '''Add geni_best_effort and geni_end_time to options if supplied'''
+        if not options or options is None:
+            options = {}
+
+        if self.opts.api_version >= 3 and self.opts.geni_end_time:
+            time = datetime.datetime.max
+            try:
+                time = dateutil.parser.parse(self.opts.geni_end_time)
+                # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+                time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+                # Note that the time arg includes UTC offset as needed
+                time_string = time_with_tz.isoformat()
+                if self.opts.no_tz:
+                    # The timezone causes an error in older sfa
+                    # implementations as deployed in mesoscale GENI. Strip
+                    # off the timezone if the user specfies --no-tz
+                    self.logger.info('Removing timezone at user request (--no-tz)')
+                    time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+                options["geni_end_time"] = time_string
+            except Exception, exc:
+                msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
+                self.logger.warn(msg)
+                if self.opts.devmode:
+                    self.logger.info(" ... passing raw geni_end_time")
+                    options["geni_end_time"] = self.opts.geni_end_time
+
+        if self.opts.api_version >= 3 and self.opts.geni_best_effort:
+            options["geni_best_effort"] = self.opts.geni_best_effort
+
+        return options
 
 # End of AMHandler
 
