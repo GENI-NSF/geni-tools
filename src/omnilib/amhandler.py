@@ -795,6 +795,8 @@ class AMCallHandler(object):
                 prtStr = "Got no resources" 
             if message is not None:
                 prtStr = prtStr + ". " + message
+            else:
+                prtStr += " (no reason given)"
             self.logger.info( prtStr )
             return prtStr, None
 
@@ -896,6 +898,8 @@ class AMCallHandler(object):
             # FIXME: say more
         else:
             # Failure
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
             retVal = "Allocation at %s failed: %s" % (client.url, message)
             # FIXME: Better message?
         retItem = {}
@@ -999,6 +1003,8 @@ class AMCallHandler(object):
             retVal = "Provision was successful."
         else:
             # Failure
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
             retVal = "Provision at %s failed: %s" % (client.url, message)
             # FIXME: Better message?
         retItem = {}
@@ -1046,6 +1052,8 @@ class AMCallHandler(object):
             retVal = "PerformOperationalAction was successful."
         else:
             # Failure
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
             retVal = "PerformOperationalAction %s on %s at %s failed: %s" % (action, urn, url, message)
         retItem = {}
         retItem[ client.url ] = result
@@ -1072,6 +1080,13 @@ class AMCallHandler(object):
         Note that the expiration time cannot be past your slice expiration
         time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
+
+        --sliver-urn / -u option: each specifies a sliver URN to renew. If specified, 
+        only the listed slivers will be renewed.
+        --best-effort: If supplied, slivers that can be renewed, will be; some slivers 
+        may not be renewed, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be renewed, the whole call fails
+        and sliver expiration times do not change.
         """
 
         if self.opts.api_version < 3:
@@ -1142,12 +1157,12 @@ class AMCallHandler(object):
         urnsarg, slivers = self._build_urns(urn)
 
         op = 'Renew'
-        options = self._build_options(op, None)
-
+        options = None
         args = [urnsarg, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
+            options = self._build_options(op, None)
             args.append(options)
 
         self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
@@ -1155,7 +1170,7 @@ class AMCallHandler(object):
         successCnt = 0
         (clientList, message) = self._getclients()
         retItem = dict()
-        msg = "Renew %s at " % (urn)
+        msg = "Renew slivers in %s at " % (urn)
         for client in clientList:
             try:
                 (res, message) = self._api_call(client, msg + client.url, op,
@@ -1176,6 +1191,9 @@ class AMCallHandler(object):
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
             else:
+                # FIXME: Look inside return. Did all slivers we asked about report status?
+                # For each that did, did any fail?
+                # And what do we do if so?
                 prStr = "Renewed slivers in slice %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if len(clientList) == 1:
@@ -1185,7 +1203,7 @@ class AMCallHandler(object):
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
-        self.logger.debug(pprint.pformat(retItem))
+        self.logger.debug("Return: \n%s", pprint.pformat(retItem))
         return retVal, retItem
 
     def describe(self, args):
@@ -1250,6 +1268,8 @@ class AMCallHandler(object):
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 fmt = "\nFailed to Describe %s at AM %s: %s\n"
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
                 retVal += fmt % (name, client.url, message)
                 continue
 
@@ -1352,6 +1372,8 @@ class AMCallHandler(object):
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 fmt = "\nFailed to get Status on %s at AM %s: %s\n"
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
                 retVal += fmt % (name, client.url, message)
                 continue
 
@@ -1375,7 +1397,7 @@ class AMCallHandler(object):
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
             retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug(pprint.pformat(retItem))
+        self.logger.debug("Status result: " + pprint.pformat(retItem))
         return retVal, retItem
 
     def delete(self, args):
@@ -1455,6 +1477,8 @@ class AMCallHandler(object):
                 self.logger.info(prStr)
                 successCnt += 1
             else:
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
                 prStr = "Failed to delete slivers in %s on %s at %s: %s" % (urn, client.urn, client.url, message)
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
@@ -1606,6 +1630,8 @@ class AMCallHandler(object):
                 retVal += ". " + prstr
         else:
             prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
             if message:
                 prStr += "  %s" % message
             self.logger.warn(prStr)
@@ -1651,7 +1677,7 @@ class AMCallHandler(object):
             if not (self.opts.devmode and len(args) < 2):
                 time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            msg = 'renewsliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            msg = 'RenewSliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -1839,6 +1865,8 @@ class AMCallHandler(object):
                 # FIXME: Put the message error in retVal?
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
 
         # FIXME: Return the status if there was only 1 client?
@@ -1923,8 +1951,9 @@ class AMCallHandler(object):
                 successList.append( client.url )
             else:
                 prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
-                if message != "":
-                    prStr += ". " + message
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                prStr += ". " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -1988,8 +2017,9 @@ class AMCallHandler(object):
                 successList.append( client.url )
             else:
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
-                if message != "":
-                    prStr += ". " + message
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                prStr += ". " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
