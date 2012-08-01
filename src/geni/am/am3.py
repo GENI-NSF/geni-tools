@@ -792,11 +792,17 @@ class ReferenceAggregateManager(object):
         # But since the slice cred may not (per ISO8601), convert
         # it to naiveUTC for comparison
         requested = self._naiveUTC(requested)
+        now = datetime.datetime.utcnow()
         if requested > expiration:
             # Fail the call, the requested expiration exceeds the slice expir.
             msg = (("Out of range: Expiration %s is out of range"
                    + " (past last credential expiration of %s).")
                    % (expiration_time, expiration))
+            return self.errorResult(19, msg)
+        elif requested < now:
+            msg = (("Out of range: Expiration %s is out of range"
+                   + " (prior to now %s).")
+                   % (expiration_time, now.isoformat()))
             return self.errorResult(19, msg)
         else:
             # Renew all the named slivers
@@ -1055,12 +1061,15 @@ class ReferenceAggregateManager(object):
         a max duration, and an optional requested duration. The shortest
         time amongst all of these is the resulting expiration.
         """
+        now = datetime.datetime.utcnow()
         expires = [self._naiveUTC(c.expiration) for c in creds]
         if max_duration:
-            expires.append(datetime.datetime.utcnow() + max_duration)
+            expires.append(now + max_duration)
         if requested:
-            dt = dateutil.parser.parse(str(requested))
-            expires.append(self._naiveUTC(dt))
+            requested = self._naiveUTC(dateutil.parser.parse(str(requested)))
+            # Ignore requested time in the past.
+            if requested > now:
+                expires.append(self._naiveUTC(requested))
         return min(expires)
 
 
