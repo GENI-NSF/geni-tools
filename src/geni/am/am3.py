@@ -645,8 +645,8 @@ class ReferenceAggregateManager(object):
             # ensure that the slivers are provisioned
             if (sliver.allocationState() not in astates
                 or sliver.operationalState() not in ostates):
-                msg = "Sliver %s is not in the right state for action %s."
-                msg = msg % (sliver.urn(), action)
+                msg = "%d: Sliver %s is not in the right state for action %s."
+                msg = msg % (AM_API.UNSUPPORTED, sliver.urn(), action)
                 errors[sliver.urn()] = msg
         best_effort = False
         if 'geni_best_effort' in options:
