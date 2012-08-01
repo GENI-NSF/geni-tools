@@ -412,6 +412,8 @@ class AMCallHandler(object):
                 # FIXME: changing the api_version is not a great idea if
                 # there are multiple clients. Push this into _checkValidClient
                 # and only do it if there is one client.
+
+                # FIXME: changing API versions means unwrap or wrap cred, maybe change the op name, ...
                 self.opts.api_version = ver
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
