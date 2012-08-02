@@ -470,7 +470,7 @@ Check that the value of 'code' is as follows:
 ]
         """
         AMAPI_call = "Delete"
-        self.assertTrue( type(retVal) is list )
+        self.assertList( retVal )
         for sliver in retVal:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
@@ -571,7 +571,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         ... 
 ]        """
         AMAPI_call = "PerformOperationalAction"
-        self.assertTrue( type(retVal) is list )
+        self.assertList( retVal )
         for sliver in retVal:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
