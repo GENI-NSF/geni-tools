@@ -327,8 +327,8 @@ output: [required on failure; optional on success] XML-RPC string with
             # required
             value = self.assertValue( AMAPI_call, agg, retVal )            
             # optional
-            self.assertKeyValueTypeIfExists( AMAPI_call, agg, code,
-                                             'am_type', str )
+#            self.assertKeyValueTypeIfExists( AMAPI_call, agg, code,
+#                                             'am_type', str )
             msg = ""
 #            msg = self.assertOutput( AMAPI_call, agg, retVal )
         else:
