@@ -221,6 +221,14 @@ class OmniUnittest(unittest.TestCase):
                                  
     def assertKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
+        self.assertKeyValue( method, aggName, dictionary, key)
+        self.assertTrue(type(dictionary[key])==valueType,
+                        "Return from '%s' %s " \
+                            "expected to have entry '%s' of type '%s' " \
+                            "but instead returned: %s" 
+                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+    def assertKeyValue( self, method, aggName, dictionary, key):
+        """Check whether dictionary returned by method at aggName has_key( key )"""
         if aggName is None:
             agg = ""
         else:
@@ -242,16 +250,21 @@ class OmniUnittest(unittest.TestCase):
                             "... edited for length ..." 
                         % (method, agg, key, str(dictionary)))
 
-        self.assertTrue(type(dictionary[key])==valueType,
-                        "Return from '%s' %s " \
-                            "expected to have entry '%s' of type '%s' " \
-                            "but instead returned: %s" 
-                        % (method, agg, key, str(valueType), str(dictionary[key])))
-
     def assertReturnKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         self.assertKeyValueType( method, aggName, dictionary, key, valueType=valueType)
         return dictionary[key]
     
+
+    def assertKeyValueTypeIfExists( self, method, aggName, dictionary, key, valueType ):
+        """Check that if dictionary has key that it is of type valueType.
+        """
+        self.assertDict( dictionary )
+        if dictionary.has_key(key):
+            self.assertTrue(type(dictionary[key])==valueType,
+                            "Return from '%s' at %s " \
+                                "expected to have entry '%s' of type '%s' " \
+                                "but instead returned: %s" 
+                            % (method, aggName, key, str(valueType), str(dictionary[key])))
 
     def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
         """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyA will be tested."""
@@ -293,6 +306,80 @@ class OmniUnittest(unittest.TestCase):
         else:
             return dictionary[keyB]            
 
+    def assertCodeValueOutput( self, AMAPI_call, agg, retVal ):
+        """Checks retVal fits form:
+{
+code:   {
+          geni_code: integer
+          am_type: [optional] string
+          am_code: [optional] int
+        }
+value:  [optional on error] integer
+output: [required on failure; optional on success] XML-RPC string with 
+        a human readable message explaining the result
+}
+"""
+        # FIX ME: Pull from a standard file
+        SUCCESS = 0
+
+        err_code = self.assertCode( AMAPI_call, agg, retVal )
+        if err_code == SUCCESS:
+            # required
+            value = self.assertValue( AMAPI_call, agg, retVal )            
+            # optional
+            self.assertKeyValueTypeIfExists( AMAPI_call, agg, code,
+                                             'am_type', str )
+            msg = ""
+#            msg = self.assertOutput( AMAPI_call, agg, retVal )
+        else:
+            # required
+            msg = self.assertOutput( AMAPI_call, agg, retVal )
+            # optional
+#            value = self.assertValue( AMAPI_call, agg, retVal )            
+        
+        return err_code, msg
+
+    def assertCode( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has key: 
+              'code'
+Check that the value of 'code' is as follows:
+{
+    geni_code: integer
+    am_type: [optional] string
+    am_code: [optional] int
+}
+        """
+        self.assertDict( retVal )
+        code = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                              'code', dict )
+        geni_code = self.assertReturnKeyValueType( AMAPI_call, agg, code, 
+                                              'geni_code', int )
+
+        # Check type of optional am_type and am_code
+        self.assertKeyValueTypeIfExists( AMAPI_call, agg, code,
+                                         'am_type', str )
+        self.assertKeyValueTypeIfExists( AMAPI_call, agg, code,
+                                         'am_code', int )
+        return geni_code
+
+    def assertValue( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has key: 
+              'value'
+        """
+        self.assertDict( retVal )
+        self.assertKeyValue( AMAPI_call, agg, retVal, 
+                                 'value' )
+
+    def assertOutput( self, AMAPI_call, agg, retVal ):
+        """Check that the dictionary retVal has key: 
+              'value'
+        """
+        self.assertDict( retVal )
+        output = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
+                                 'output', str )
+        return output
+        
+       
     def assertDescribeReturn( self, agg, retVal ):
         """Checks retVal fits form:
 {
@@ -378,7 +465,7 @@ class OmniUnittest(unittest.TestCase):
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
-        return len(slivers)
+        return len(retVal)
 
     def assertRenewReturn( self, agg, retVal ):
         """Returns:
@@ -520,34 +607,20 @@ geni_rspec: <geni.rspec, RSpec manifest>,
 
 
     def assertGeniErrorIfExists( self, AMAPI_call, agg, retVal ):
-        """Check that the dictionary retVal has keys: 
-              geni_error
+        """Check that if the dictionary retVal has key geni_error that
+        it is of type 'str'.
         """
         key='geni_error'
         valueType=str
-        self.assertDict( retVal )
-        if retVal.has_key(key):
-            self.assertTrue(type(retVal[key])==valueType,
-                            "Return from '%s' %s " \
-                                "expected to have entry '%s' of type '%s' " \
-                                "but instead returned: %s" 
-                            % (AMAPI_call, agg, key, str(valueType), str(retVal[key])))
+        self.assertKeyValueTypeIfExists(AMAPI_call, agg, retVal, key, valueType)
 
     def assertGeniResourceStatusIfExists( self, AMAPI_call, agg, retVal ):
-        """Check that the dictionary retVal has keys: 
-              geni_resource_status
+        """Check that if the dictionary retVal has key geni_resource_status that
+        it is of type 'str'.
         """
         key='geni_resource_status'
         valueType=str
-        self.assertDict( retVal )
-        if retVal.has_key(key):
-            self.assertTrue(type(retVal[key])==valueType,
-                            "Return from '%s' %s " \
-                                "expected to have entry '%s' of type '%s' " \
-                                "but instead returned: %s" 
-                            % (AMAPI_call, agg, key, str(valueType), str(retVal[key])))
-
-
+        self.assertKeyValueTypeIfExists(AMAPI_call, agg, retVal, key, valueType)
 
     def assertGeniOperationalStatus( self, AMAPI_call, agg, retVal ):
         """Check that the dictionary retVal has keys: 
@@ -610,14 +683,11 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          % (urn))
 
     def assertURNandType( self, urn, type ):
-        self.assertURN( urn)
-        urn_obj = urn_util.URN(urn=urn)
-        self.assertTrue( urn_obj.getType() == type,
+        self.assertTrue( self.validate_URN_and_type(urn, type),
                          "Return expected to " \
                          "be a URN of type '%s' but instead returned: \n" \
                          "%s\n"
                          % (type, urn))
-
 
     def validate_timestamp( self, timestamp ):
         """
@@ -635,6 +705,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
 
     def validate_URN( self, urn ):
         return urn_util.is_valid_urn( urn )
+    def validate_URN_and_type( self, urn, type ):
+        return urn_util.is_valid_urn_bytype( urn, type )
 
     @classmethod
     def unittest_parser( cls, parser = omni.getParser(), usage=None):
