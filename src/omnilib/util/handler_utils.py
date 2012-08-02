@@ -134,6 +134,8 @@ def _get_slice_cred(handler, urn):
     if cred:
         handler.logger.info("Got slice %s credential from file %s", urn, handler.opts.slicecredfile)
         return (cred, "")
+    elif handler.opts.slicecredfile:
+        handler.logger.warn("Since supplied slicecred file not readable, falling back to re-downloading slice credential")
 
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
