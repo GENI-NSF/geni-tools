@@ -1271,7 +1271,6 @@ class Test(ut.OmniUnittest):
             elif AMAPI_call is "PerformOperationalAction":
                 numSlivers = self.assertPerformOperationalActionReturn( agg, retVal )
             elif AMAPI_call is "Delete":
-                print indAgg
                 numSlivers = self.assertDeleteReturn( agg, retVal )
             else:
                 print "Shouldn't get here"
