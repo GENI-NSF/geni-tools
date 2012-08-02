@@ -56,6 +56,8 @@ REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
 SLEEP_TIME=20
+
+SUCCESS = 0
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -1261,25 +1263,27 @@ class Test(ut.OmniUnittest):
         text, allAggs = self.call(omniargs, self.options_copy)
         for agg, indAgg in allAggs.items():
             err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )
-            retVal = indAgg['value']
-            if AMAPI_call is "Renew":
-                numSlivers = self.assertRenewReturn( agg, retVal )
-            elif AMAPI_call is "Provision":
-                numSlivers = self.assertProvisionReturn( agg, retVal )
-            elif AMAPI_call is "Status":
-                numSlivers = self.assertStatusReturn( agg, retVal )
-            elif AMAPI_call is "PerformOperationalAction":
-                numSlivers = self.assertPerformOperationalActionReturn( agg, retVal )
-            elif AMAPI_call is "Delete":
-                numSlivers = self.assertDeleteReturn( agg, retVal )
-            else:
-                print "Shouldn't get here"
+            if err_code == SUCCESS:
+                # value only required if it is successful
+                retVal = indAgg['value']
+                if AMAPI_call is "Renew":
+                    numSlivers = self.assertRenewReturn( agg, retVal )
+                elif AMAPI_call is "Provision":
+                    numSlivers = self.assertProvisionReturn( agg, retVal )
+                elif AMAPI_call is "Status":
+                    numSlivers = self.assertStatusReturn( agg, retVal )
+                elif AMAPI_call is "PerformOperationalAction":
+                    numSlivers = self.assertPerformOperationalActionReturn( agg, retVal )
+                elif AMAPI_call is "Delete":
+                    numSlivers = self.assertDeleteReturn( agg, retVal )
+                else:
+                    print "Shouldn't get here"
 
-            self.assertTrue( numSlivers > 0,
-                             "Return from '%s' " \
-                                 "expected to list slivers " \
-                                 "but did not"
-                             % (AMAPI_call))
+                self.assertTrue( numSlivers > 0,
+                                 "Return from '%s' " \
+                                     "expected to list slivers " \
+                                     "but did not"
+                                 % (AMAPI_call))
 #        return numSlivers
 
 

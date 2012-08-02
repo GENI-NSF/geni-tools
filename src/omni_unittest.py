@@ -34,12 +34,15 @@ import unittest
 import omni
 import os.path
 import pwd
+import dateutil.parser
 
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "logging.conf"
 
 
 class NotDictAssertionError( AssertionError ):
+    pass
+class NotListAssertionError( AssertionError ):
     pass
 class NotNoneAssertionError( AssertionError ):
     pass
@@ -115,8 +118,16 @@ class OmniUnittest(unittest.TestCase):
             raise NotNoneAssertionError, msg
 
     def assertDict(self, item, msg=None):
+        if msg is None:
+            msg = "Type of '%s' is not 'dict'." % item
         if not type(item) == dict:
             raise NotDictAssertionError, msg
+
+    def assertList(self, item, msg=None):
+        if msg is None:
+            msg = "Type of '%s' is not 'list'." % item
+        if not type(item) == list:
+            raise NotListAssertionError, msg
 
     def assertIsXML(self, rspec, msg=None):
         if not rspec_util.is_wellformed_xml( rspec ):
@@ -481,7 +492,8 @@ Check that the value of 'code' is as follows:
 ]
         """
         AMAPI_call = "Renew"
-        self.assertTrue( type(retVal) is list )
+        
+        self.assertList( retVal )
         for sliver in retVal:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
