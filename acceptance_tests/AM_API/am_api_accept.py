@@ -56,6 +56,8 @@ REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
 SLEEP_TIME=20
+
+SUCCESS = 0
 ################################################################################
 #
 # Test AM API v1 calls for accurate and complete functionality.
@@ -842,9 +844,39 @@ class Test(ut.OmniUnittest):
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
             
-    def test_Allocate( self, slicename='foobar'):
+    def test_AllocateWorkflow( self, slicename='foobar'):
         # THIS IS TEMPORARY TEST
+        try:
+            # Start fresh; Delete existing slivers if they already exist
+            self.subtest_Delete( slicename )
+        except:
+            pass
+#        self.subtest_createslice( slicename )
+        try:
+            self.subtest_Allocate( slicename )
+            self.subtest_Provision( slicename )
+            self.subtest_Renew_many( slicename )
+            self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            self.subtest_Renew_many( slicename )
+        except:
+            raise
+        finally:
+            self.subtest_Delete( slicename )
+
+    def test_ProvisionWorkflow( self, slicename='foobar'):
         self.subtest_Allocate( slicename )
+#        self.subtest_Provision( slicename )
+#        self.subtest_Renew( slicename )
+#        self.subtest_Delete( slicename )
+    def test_PerformOperationalActionWorkflow( self, slicename='foobar'):
+        self.subtest_Allocate( slicename )
+#        self.subtest_Provision( slicename )
+#        self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+#        self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+#        self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
+#        self.subtest_Delete( slicename )
+
+
     def subtest_MinCreateSliverWorkflow(self, slicename=None):
         if slicename==None:
             slicename = self.create_slice_name()
@@ -1161,6 +1193,99 @@ class Test(ut.OmniUnittest):
         time.sleep(self.options_copy.sleep_time)
         self.subtest_RenewSliver( slicename, fivedays )
 
+    def subtest_Renew_many( self, slicename ):
+        now = datetime.datetime.utcnow()
+        fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
+        twodays = (now + datetime.timedelta(days=2)).isoformat()            
+        fivedays = (now + datetime.timedelta(days=5)).isoformat()           
+        sixdays = (now + datetime.timedelta(days=6)).isoformat()            
+        self.subtest_RenewSlice( slicename, sixdays )
+        time.sleep(self.options_copy.sleep_time)
+#        self.subtest_RenewSliver( slicename, fivemin )
+#        time.sleep(self.options_copy.sleep_time)
+        self.subtest_Renew( slicename, twodays )
+        time.sleep(self.options_copy.sleep_time)
+        self.subtest_Renew( slicename, fivedays )
+
+
+    def subtest_Renew(self, slice_name, newtime):
+        retVal = self.subtest_AMAPIv3CallNoRspec( slice_name, 
+                                        omni_method='renew', 
+                                        AMAPI_call="Renew",
+                                        newtime=newtime)
+        return retVal
+
+    def subtest_Provision(self, slice_name):
+        return self.subtest_AMAPIv3CallNoRspec( slice_name, 
+                                        omni_method='provision', 
+                                        AMAPI_call="Provision")
+    def subtest_Status(self, slice_name):
+        return self.subtest_AMAPIv3CallNoRspec( slice_name, 
+                                        omni_method='status', 
+                                        AMAPI_call="Status")
+
+    def subtest_PerformOperationalAction(self, slice_name, command):
+        return self.subtest_AMAPIv3CallNoRspec( slice_name, 
+                                        omni_method='performoperationalaction', 
+                                        AMAPI_call="PerformOperationalAction",
+                                                command=command)
+    def subtest_Delete(self, slice_name):
+        return self.subtest_AMAPIv3CallNoRspec( slice_name, 
+                                        omni_method='delete', 
+                                        AMAPI_call="Delete")
+
+    def subtest_AMAPIv3CallNoRspec( self, slicename, 
+                                    omni_method='provision', 
+                                    AMAPI_call="Provision",
+                                    sliverlist=None, newtime=None, 
+                                    command=None):
+        self.assertTrue(omni_method in ['renew', 'provision', 'status',
+                                        'performoperationalaction', 'delete'],
+                        "omni_method is %s and not one of " \
+                        "'renew', 'provision', 'status', " \
+                        "'performoperationalaction', or 'delete'." % omni_method)
+            
+        self.assertTrue( AMAPI_call in ['Renew', 'Provision', 'Status', 'PerformOperationalAction','Delete'],
+                        "AMAPI_call is %s and not one of " \
+                        "'Renew', 'Provision', 'Status', " \
+                        "'PerformOperationalAction', or 'Delete'." % AMAPI_call)
+
+        if AMAPI_call is "Renew":
+            omniargs = [omni_method, slicename, newtime] 
+        elif AMAPI_call is "PerformOperationalAction":
+            omniargs = [omni_method, slicename, command] 
+        else:
+            omniargs = [omni_method, slicename]
+
+        if sliverlist:
+            print "Not handling lists of slivers yet"
+#            omniargs = [omni_method, slicename]
+        text, allAggs = self.call(omniargs, self.options_copy)
+        for agg, indAgg in allAggs.items():
+            err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )
+            if err_code == SUCCESS:
+                # value only required if it is successful
+                retVal = indAgg['value']
+                if AMAPI_call is "Renew":
+                    numSlivers = self.assertRenewReturn( agg, retVal )
+                elif AMAPI_call is "Provision":
+                    numSlivers = self.assertProvisionReturn( agg, retVal )
+                elif AMAPI_call is "Status":
+                    numSlivers = self.assertStatusReturn( agg, retVal )
+                elif AMAPI_call is "PerformOperationalAction":
+                    numSlivers = self.assertPerformOperationalActionReturn( agg, retVal )
+                elif AMAPI_call is "Delete":
+                    numSlivers = self.assertDeleteReturn( agg, retVal )
+                else:
+                    print "Shouldn't get here"
+
+                self.assertTrue( numSlivers > 0,
+                                 "Return from '%s' " \
+                                     "expected to list slivers " \
+                                     "but did not"
+                                 % (AMAPI_call))
+#        return numSlivers
+
 
     def subtest_CreateSliver(self, slice_name):
         return self.subtest_CreateSliverPiece( slice_name, 
@@ -1197,116 +1322,52 @@ class Test(ut.OmniUnittest):
         
         # CreateSliver() or Allocate()
         omniargs = [omni_method, slice_name, str(self.options_copy.rspec_file)] 
-        text, retVal = self.call(omniargs, self.options_copy)
+        text, allAggs = self.call(omniargs, self.options_copy)
 
-        pprinter = pprint.PrettyPrinter(indent=4)
-        self.assertIsNotNone(retVal,
-                          "Return from '%s' " \
-                          "expected to be XML file " \
-                          "but instead nothing returned. AM returned:\n %s"
-                             % (AMAPI_call, text))
+        for agg, indAgg in allAggs.items():
+            self.assertIsNotNone(indAgg,
+                              "Return from '%s' " \
+                              "expected to be XML file " \
+                              "but instead nothing returned. AM returned:\n %s"
+                                 % (AMAPI_call, text))
+            # Check that each aggregate returned standard: 
+            #    code, value, and output
+            err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, 
+                                                        indAgg )
+            self.assertTrue( err_code == 0, 
+                          "Call should have returned success, but did not. " \
+                          "Error message is: %s" % str(msg) )
 
-        if AMAPI_call is "CreateSliver":
-            manifest = retVal
-        else:
-            manifest = self.assertReturnKeyValueType( 
-                    AMAPI_call, None, retVal, 
-                    'geni_rspec', str )
-
-        self.assertTrue(type(manifest) is str,
-                        "Return from '%s' " \
-                            "expected to be string " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (AMAPI_call, manifest[:100]))
-
-        # Test if file is XML and contains "<rspec" or "<resv_rspec"
-        self.assertTrue(rspec_util.is_rspec_string( manifest ),
-                        "Return from '%s' " \
-                            "expected to be XML " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (AMAPI_call, manifest[:100]))
-
-
-        self.assertTrue( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by '%s' on slice '%s' " \
-                  "expected to be non-empty " \
-                  "but was empty. Return was: " \
-                  "\n%s\n" \
-                  "... edited for length ..."
-                  % (AMAPI_call, slice_name, manifest[:100]))
-
-
-        if AMAPI_call is "Allocate":
-            slivers = self.assertReturnKeyValueType( 
-                    AMAPI_call, None, retVal, 
-                    'geni_slivers', list )
-            self.assertTrue( len(slivers) > 0,
-                             "Return from '%s' " \
-                                 "expected to list allocated slivers " \
-                                 "but did not instead returned: \n" \
-                                 "%s\n" \
-                                 "... edited for length ..." 
-                             % (AMAPI_call, manifest[:100]))
-
-            for sliver in slivers:
-                sliver_urn = self.assertReturnKeyValueType( 
-                    AMAPI_call, None, sliver, 
-                    'geni_sliver_urn', str )
-                expires = self.assertReturnKeyValueType( 
-                    AMAPI_call, None, sliver, 
-                    'geni_expires', str )
-                alloc_status = self.assertReturnKeyValueType( 
-                    AMAPI_call, None, sliver, 
-                    'geni_allocation_status', str )
-                self.assertTrue( self.validate_URN(sliver_urn),
+            if AMAPI_call is "CreateSliver":
+                manifest = indAgg
+                self.assertRspec( manifest )
+                retVal2 = manifest 
+            elif AMAPI_call is "Allocate":
+                retVal = indAgg['value']
+                # FIX aggregate reference
+                numSlivers, manifest = self.assertAllocateReturn( "FOOBAR", 
+                                                                  retVal )
+                self.assertTrue( numSlivers > 0,
                                  "Return from '%s' " \
-                                 "expected to have 'geni_sliver_urn' " \
-                                 "be a URN of type 'sliver' " \
-                                 "but instead returned: \n" \
-                                 "%s\n"
-                             % (AMAPI_call, sliver_urn))
+                                     "expected to list allocated slivers " \
+                                     "but did not instead returned: \n" \
+                                     "%s\n" \
+                                     "... edited for length ..." 
+                                 % (AMAPI_call, manifest[:100]))
 
-                self.assertTrue( self.validate_timestamp(expires),
-                                 "Return from '%s' " \
-                                 "expected to have 'geni_expires' " \
-                                 "in form of a timestamp " \
-                                 "but instead returned: \n" \
-                                 "%s\n" 
-                             % (AMAPI_call, expires))
+                retVal2 = manifest, numSlivers 
 
-                self.assertTrue( alloc_status in ['geni_unallocated', 'geni_allocated', 'geni_provisioned'],
-                                 "Return from '%s' " \
-                                 "expected to have 'geni_allocation_status' " \
-                                 "of one of 'geni_unallocated', " \
-                                 " 'geni_allocated', or 'geni_provisioned' " \
-                                 "but instead returned: \n" \
-                                 "%s\n" 
-                             % (AMAPI_call, alloc_status))
-
-            return manifest, slivers
-        return manifest
+            self.assertTrue( rspec_util.has_child( manifest ),
+                      "Manifest RSpec returned by '%s' on slice '%s' " \
+                      "expected to be non-empty " \
+                      "but was empty. Return was: " \
+                      "\n%s\n" \
+                      "... edited for length ..."
+                      % (AMAPI_call, slice_name, manifest[:100]))
 
 
-    def validate_timestamp( self, timestamp ):
-        """
-        Returns true if timestamp is parseable by dateutil.parser.parse
-        Otherwise returns false
-        """
-        retVal = False
-        try:
-            datetimeStruct = dateutil.parser.parse( timestamp )
-            if type(datetimeStruct) is datetime.datetime:
-                retVal = True
-        except:
-            retVal = False
-        return retVal
+#        return retVal2
 
-    def validate_URN( self, urn ):
-        return urn_util.is_valid_urn( urn )
 
     def subtest_SliverStatus(self, slice_name):
         # SliverStatus
@@ -1503,6 +1564,8 @@ class Test(ut.OmniUnittest):
         argv = Test.unittest_parser(parser=parser, usage=usage)
 
         return argv
+
+
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest " \
