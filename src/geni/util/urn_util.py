@@ -139,6 +139,8 @@ def is_valid_urn_string(instr):
 # Note that this is not sufficient but it is necessary
 def is_valid_urn(inurn):
     ''' Check that this string is a valid URN'''
+    # FIXME: This should pull out the type and do the type specific
+    # checks that are currently below
     return is_valid_urn_string(inurn) and inurn.startswith(publicid_urn_prefix)
 
 def is_valid_urn_bytype(inurn, urntype, logger=None):
