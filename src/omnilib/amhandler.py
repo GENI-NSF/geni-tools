@@ -1265,6 +1265,8 @@ class AMCallHandler(object):
         retItem = {}
         args = []
         creds = []
+        slivers = []
+        urnsarg = []
         # Query status at each client
         (clientList, message) = self._getclients()
         if len(clientList) > 0:
@@ -1281,8 +1283,11 @@ class AMCallHandler(object):
             retVal += prstr + "\n"
             self.logger.warn(prstr)
 
+        descripMsg = "slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
         op = 'Describe'
-        msg = "Describe %s at " % (urn)
+        msg = "Describe %s at " % (descripMsg)
         for client in clientList:
             args = [urnsarg, creds]
             try:
@@ -1290,7 +1295,7 @@ class AMCallHandler(object):
                 mymessage = ""
                 (options, mymessage) = self._selectRSpecVersion(name, client, mymessage, options)
                 args.append(options)
-                self.logger.debug("Doing describe with urn %s, %d creds, options %r", urn, len(creds), options)
+                self.logger.debug("Doing describe of %s, %d creds, options %r", descripMsg, len(creds), options)
                 (status, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
@@ -1304,19 +1309,23 @@ class AMCallHandler(object):
             # Decompress the RSpec before sticking it in retItem
             if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
                 rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
-                # FIXME: Stick this back in status?
                 if rspec and rspec != status['value']['geni_rspec']:
-                    self.logger.info("Decompressed RSpec")
+                    self.logger.debug("Decompressed RSpec")
+                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
                 status['value']['geni_rspec'] = rspec
+
+            # Return for tools is the full code/value/output triple
             retItem[client.url] = status
-            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+
+            # Get the dict describe result out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
             if not status:
-                fmt = "\nFailed to Describe slivers in %s at AM %s: %s\n"
+                fmt = "\nFailed to Describe %s at AM %s: %s\n"
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                retVal += fmt % (name, client.url, message)
-                continue
+                retVal += fmt % (descripMsg, client.url, message)
+                continue # go to next AM
 
             prettyResult = pprint.pformat(status)
             if not isinstance(status, dict):
@@ -1325,15 +1334,19 @@ class AMCallHandler(object):
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
                     prettyResult = str(status)
-            header="Describe Slice %s at AM URL %s" % (urn, client.url)
+            header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
             filename = None
+
             if self.opts.output:
                 filename = self._construct_output_filename(name, client.url, client.urn, "describe", ".json", len(clientList))
                 #self.logger.info("Writing result of describe for slice: %s at AM: %s to file %s", name, client.url, filename)
             self._printResults(header, prettyResult, filename)
             if filename:
-                retVal += "Saved description of %s at AM %s to file %s. \n" % (name, client.url, filename)
+                retVal += "Saved description of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
             successCnt+=1
+
+            # FIXME: We do nothing here to parse the describe result. Should we?
+            # FIXME
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -2424,6 +2437,9 @@ class AMCallHandler(object):
         # if content starts with <?xml ..... ?> then put the header after that bit
         if content is not None and content.find("<?xml") > -1:
             cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
+            # push past any trailing \n
+            if content[cstart:cstart+2] == "\\n":
+                cstart += 2
         # used by listresources
         if filename is None:
             if header is not None:
@@ -2433,7 +2449,11 @@ class AMCallHandler(object):
                     else:
                         print content[:cstart] + "\n"
                 if not self.opts.tostdout:
-                    self.logger.info(header)
+                    # indent header a bit if there was something first
+                    pre = ""
+                    if cstart > 0:
+                        pre = "  "
+                    self.logger.info(pre + header)
                 else:
                     # If cstart is 0 maybe still log the header so it
                     # isn't written to STDOUT and non-machine-parsable
@@ -2448,7 +2468,11 @@ class AMCallHandler(object):
                     print content[:cstart] + "\n"
             if content is not None:
                 if not self.opts.tostdout:
-                    self.logger.info(content[cstart:])
+                    # indent a bit if there was something first
+                    pre = ""
+                    if cstart > 0:
+                        pre += "  "
+                    self.logger.info(pre + content[cstart:])
                 else:
                     print content[cstart:] + "\n"
         else:
@@ -2465,14 +2489,17 @@ class AMCallHandler(object):
                     # only write header to file if have xml like
                     # above, else do log thing per above
                     if cstart > 0:
-                        file.write( header )
+                        file.write("  " + header )
                         file.write( "\n" )
                     else:
                         self.logger.info(header)
                 elif cstart > 0:
                     file.write(content[:cstart] + '\n')
                 if content is not None:
-                    file.write( content[cstart:] )
+                    pre = ""
+                    if cstart > 0:
+                        pre += "  "
+                    file.write( pre + content[cstart:] )
                     file.write( "\n" )
 
     def _filename_part_from_am_url(self, url):
