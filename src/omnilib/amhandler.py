@@ -905,6 +905,15 @@ class AMCallHandler(object):
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
                                                       "Allocate",
                                                       "and a request rspec filename")
+        # check command line args
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
         # Load up the user's request rspec
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
@@ -929,11 +938,31 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
+        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
+        # out of the RSpec
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
+
+        # Perform the allocations
+        (aggs, message) = _listaggregates(self)
+        aggregate_urls = aggs.values()
+        # Is this AM listed in the CH or our list of aggregates?
+        # If not we won't be able to check its status and delete it later
+        if not url in aggregate_urls:
+            self.logger.info("""Be sure to remember (write down) AM URL:
+             %s. 
+             You are reserving resources there, and your clearinghouse
+             and config file won't remind you to check that sliver later. 
+             Future describe/status/delete calls need to 
+             include the 
+                   '-a %s'
+             arguments again to act on this sliver.""" % (url, url))
+
         client = make_client(url, self.framework, self.opts)
         options = self._build_options('Allocate', None)
-        args = [urn, [slice_cred], rspec, options]
-        self.logger.debug("Doing Allocate with urn %s, 1 cred, rspec starting: \'%s\', and options %s", urn, rspec[:40], options)
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        args = [urn, creds, rspec, options]
+        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s\', and options %s", urn, len(creds), rspec[:40], options)
         # FIXME: Handle multiple clients
         (result, message) = _do_ssl(self.framework,
                                     None,
@@ -1821,7 +1850,7 @@ class AMCallHandler(object):
              You are reserving resources there, and your clearinghouse
              and config file won't remind you to check that sliver later. 
              Future listresources/sliverstatus/deletesliver calls need to 
-             include the arguments 
+             include the 
                    '-a %s'
              arguments again to act on this sliver.""" % (url, url))
 
@@ -1851,7 +1880,7 @@ class AMCallHandler(object):
             (result, message) = self._api_call(client, msg, op,
                                                 args)
         except BadClientException:
-            return "Cannot CreateSliver at %s; it uses APIv%d, but you requested v%d" % (ver, self.opts.api_version), None
+            return "Cannot CreateSliver at %s" % (client.url), None
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
