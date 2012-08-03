@@ -940,9 +940,18 @@ class AMCallHandler(object):
                                     ("Allocate %s at %s" % (urn, url)),
                                     client.Allocate,
                                     *args)
+
+        # Make the RSpec more pretty-printed
+        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+            rspec = result['value']['geni_rspec']
+            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                rspec = rspec_util.getPrettyRSpec(rspec)
+            result['value']['geni_rspec'] = rspec
+
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         if realresult:
             # Success
+            # FIXME: Honor -o!
             self.logger.info(pprint.pformat(result['value']))
             retVal = "Allocation was successful."
             # FIXME: say more
@@ -1021,6 +1030,13 @@ class AMCallHandler(object):
                                     ("Provision %s at %s" % (descripMsg, url)),
                                     client.Provision,
                                     *args)
+        # Make the RSpec more pretty-printed
+        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+            rspec = result['value']['geni_rspec']
+            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                rspec = rspec_util.getPrettyRSpec(rspec)
+            result['value']['geni_rspec'] = rspec
+
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         # FIXME: If you provided URNs, then we need to look to see if this is real success or not
         # And maybe any time, we need to look for a geni_error return in each sliver
@@ -1088,6 +1104,7 @@ class AMCallHandler(object):
 
         if realresult:
             # Success
+            # FIXME: Honor -o!
             self.logger.info(pprint.pformat(result['value']))
             retVal = "Provision %s was successful." % descripMsg
         else:
@@ -1149,6 +1166,23 @@ class AMCallHandler(object):
                                                       "POA",
                                                       "and an action to perform")
         action = args[1]
+        if action is None or action.strip() == "":
+            if self.opts.devmode:
+                action = ""
+                self.logger.warn("poa: No action specified....")
+            else:
+                self._raise_omni_error("PerformOperationalAction requires an arg of the name of the action to perform")
+
+        # check common action typos
+        # FIXME: Auto correct?
+        if not self.opts.devmode:
+            if action.lower() == "start":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_start'?" % action)
+            elif action.lower() == "stop":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_stop'?" % action)
+            elif action.lower() == "restart":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
         options = self._build_options('PerformOperationalAction', None)
@@ -1166,6 +1200,7 @@ class AMCallHandler(object):
                                     client.PerformOperationalAction,
                                     *args)
         (realresult, message) = self._retrieve_value(result, message, self.framework)
+        # FIXME: Honor -o!
         if realresult:
             # Success
             self.logger.info(pprint.pformat(result['value']))
@@ -1529,13 +1564,10 @@ class AMCallHandler(object):
 
             urnsarg, slivers = self._build_urns(urn)
             args = [urnsarg, creds]
-#--- API version specific
-            options = dict()
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                options = self._build_options('Status', None)
-                args.append(options)
-            self.logger.debug("Doing status with urn %s, %d creds, options %r", urn, len(creds), options)
+            # Add the options dict
+            options = self._build_options('Status', None)
+            args.append(options)
+            self.logger.debug("Doing status with urns %s, %d creds, options %r", urnsarg, len(creds), options)
         else:
             prstr = "No aggregates available to get slice status at: %s" % message
             retVal += prstr + "\n"
@@ -1567,6 +1599,8 @@ class AMCallHandler(object):
                 retVal += fmt % (descripMsg, client.url, message)
                 continue
 
+            # FIXME: Check each sliver for errors, check got status on all requested slivers, ?
+
             prettyResult = pprint.pformat(status)
             if not isinstance(status, dict):
                 # malformed status return
@@ -1581,7 +1615,7 @@ class AMCallHandler(object):
                 #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
             self._printResults(header, prettyResult, filename)
             if filename:
-                retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMs, client.url, filename)
+                retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
             successCnt+=1
 
         # FIXME: Return the status if there was only 1 client?
@@ -1636,12 +1670,9 @@ class AMCallHandler(object):
             descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
 
         args = [urnsarg, creds]
-        options = None
-#--- API version specific
-        if self.opts.api_version >= 2:
-            # Add the options dict
-            options = self._build_options('Delete', None)
-            args.append(options)
+        # Add the options dict
+        options = self._build_options('Delete', None)
+        args.append(options)
 
         self.logger.debug("Doing delete with urns %s, %d creds, options %r",
                           urnsarg, len(creds), options)
@@ -1690,11 +1721,14 @@ class AMCallHandler(object):
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
+
+        # FIXME: Check return struct for missing slivers or individual sliver errors
+
         if len(clientList) == 0:
             retVal = "No aggregates specified on which to delete slivers. %s" % message
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
-        self.logger.debug(pprint.pformat(retItem))
+        self.logger.debug("Delete result: " + pprint.pformat(retItem))
         return retVal, retItem
 
     def createsliver(self, args):
