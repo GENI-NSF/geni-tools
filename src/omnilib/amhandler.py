@@ -774,7 +774,7 @@ class AMCallHandler(object):
         -p gives filename prefix for each output file
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
-        -t <type version>: Specify a required A RSpec type and version to return.
+        -t <type version>: Specify a required RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
         --slicecredfile says to use the given slicecredfile if it exists.
@@ -954,11 +954,16 @@ class AMCallHandler(object):
         client = make_client(url, self.framework, self.opts)
         options = self._build_options('Provision', None)
         urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
         args = [urnsarg, [slice_cred], options]
         # FIXME: Handle multiple clients
         (result, message) = _do_ssl(self.framework,
                                     None,
-                                    ("Provision %s at %s" % (urn, url)),
+                                    ("Provision %s at %s" % (descripMsg, url)),
                                     client.Provision,
                                     *args)
         (realresult, message) = self._retrieve_value(result, message, self.framework)
@@ -1029,12 +1034,12 @@ class AMCallHandler(object):
         if realresult:
             # Success
             self.logger.info(pprint.pformat(result['value']))
-            retVal = "Provision was successful."
+            retVal = "Provision %s was successful." % descripMsg
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "Provision at %s failed: %s" % (client.url, message)
+            retVal = "Provision %s at %s failed: %s" % (descripMsg, client.url, message)
             # FIXME: Better message?
         retItem = {}
         retItem[ client.url ] = result
@@ -1067,23 +1072,28 @@ class AMCallHandler(object):
         client = make_client(url, self.framework, self.opts)
         options = self._build_options('PerformOperationalAction', None)
         urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
         args = [urnsarg, [slice_cred], action, options]
         # FIXME: Handle multiple clients
         (result, message) = _do_ssl(self.framework,
                                     None,
-                                    ("PerformOperationAction %s on slice %s at %s" % (action, urn, url)),
+                                    ("PerformOperationAction %s on %s at %s" % (action, descripMsg, url)),
                                     client.PerformOperationalAction,
                                     *args)
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         if realresult:
             # Success
             self.logger.info(pprint.pformat(result['value']))
-            retVal = "PerformOperationalAction was successful."
+            retVal = "PerformOperationalAction on %s was successful." % descripMsg
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "PerformOperationalAction %s on %s at %s failed: %s" % (action, urn, url, message)
+            retVal = "PerformOperationalAction %s on %s at %s failed: %s" % (action, descripMsg, url, message)
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
@@ -1245,11 +1255,35 @@ class AMCallHandler(object):
         return retVal, retItem
 
     def describe(self, args):
-        """A minimal implementation of Describe().
+        """Retrieve a manifest RSpec describing the resources contained by the named entities, 
+        e.g. a single slice or a set of the slivers in a slice. This listing and description 
+        should be sufficiently descriptive to allow experimenters to use the resources.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        Argument is a slice name, naming the slice whose contents will be described.
+        Lists contents and state on 1+ aggregates and prints the result to stdout or to a file.
+
+        --sliver-urn / -u option: each specifies a sliver URN to describe. If specified, 
+        only the listed slivers will be renewed. Otherwise, all slivers in the slice will be described.
+
+        -o writes output to file instead of stdout; single file per aggregate.
+        -p gives filename prefix for each output file
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and 
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -t <type version>: Specify a required manifest RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format.
+        --slicecredfile says to use the given slicecredfile if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
@@ -1422,8 +1456,12 @@ class AMCallHandler(object):
             retVal += prstr + "\n"
             self.logger.warn(prstr)
 
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
         op = 'Status'
-        msg = "Status of %s at " % (urn)
+        msg = "Status of %s at " % (descripMsg)
         for client in clientList:
             try:
                 (status, message) = self._api_call(client,
@@ -1441,7 +1479,7 @@ class AMCallHandler(object):
                 fmt = "\nFailed to get Status on %s at AM %s: %s\n"
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                retVal += fmt % (name, client.url, message)
+                retVal += fmt % (descripMsg, client.url, message)
                 continue
 
             prettyResult = pprint.pformat(status)
@@ -1451,14 +1489,14 @@ class AMCallHandler(object):
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
                     prettyResult = str(status)
-            header="Status for Slice %s at AM URL %s" % (urn, client.url)
+            header="Status for %s at AM URL %s" % (descripMsg, client.url)
             filename = None
             if self.opts.output:
                 filename = self._construct_output_filename(name, client.url, client.urn, "status", ".json", len(clientList))
                 #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
             self._printResults(header, prettyResult, filename)
             if filename:
-                retVal += "Saved status on %s at AM %s to file %s. \n" % (name, client.url, filename)
+                retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMs, client.url, filename)
             successCnt+=1
 
         # FIXME: Return the status if there was only 1 client?
@@ -1495,6 +1533,11 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
         args = [urnsarg, creds]
         options = None
 #--- API version specific
@@ -1503,8 +1546,8 @@ class AMCallHandler(object):
             options = self._build_options('Delete', None)
             args.append(options)
 
-        self.logger.debug("Doing delete with urn %s, %d creds, options %r",
-                          urn, len(creds), options)
+        self.logger.debug("Doing delete with urns %s, %d creds, options %r",
+                          urnsarg, len(creds), options)
 
         successCnt = 0
         (clientList, message) = self._getclients()
@@ -1522,7 +1565,7 @@ class AMCallHandler(object):
         ## sliverstatus at places where it fails to indicate places
         ## where you still have resources.
         op = 'Delete'
-        msg = "Delete of slivers in %s at " % (urn)
+        msg = "Delete of %s at " % (descripMsg)
         retItem = {}
         for client in clientList:
             try:
@@ -1536,7 +1579,7 @@ class AMCallHandler(object):
 
             (realres, message) = self._retrieve_value(result, message, self.framework)
             if realres:
-                prStr = "Deleted slivers in %s on %s at %s" % (urn,
+                prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
                 if len(clientList) == 1:
@@ -1546,7 +1589,7 @@ class AMCallHandler(object):
             else:
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr = "Failed to delete slivers in %s on %s at %s: %s" % (urn, client.urn, client.url, message)
+                prStr = "Failed to delete %s on %s at %s: %s" % (descripMsg, client.urn, client.url, message)
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
