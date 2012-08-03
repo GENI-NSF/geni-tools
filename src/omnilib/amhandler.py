@@ -943,7 +943,7 @@ class AMCallHandler(object):
 
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
 
-        # Perform the allocations
+        # Warn user about using -a
         (aggs, message) = _listaggregates(self)
         aggregate_urls = aggs.values()
         # Is this AM listed in the CH or our list of aggregates?
@@ -962,8 +962,10 @@ class AMCallHandler(object):
         options = self._build_options('Allocate', None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         args = [urn, creds, rspec, options]
+        descripMsg = "in slice %s" % urn
         self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s\', and options %s", urn, len(creds), rspec[:40], options)
         # FIXME: Handle multiple clients
+        self.logger.info("Allocate %s in %s:", descripMsg, client.url)
         (result, message) = _do_ssl(self.framework,
                                     None,
                                     ("Allocate %s at %s" % (urn, url)),
@@ -980,16 +982,25 @@ class AMCallHandler(object):
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         if realresult:
             # Success
-            # FIXME: Honor -o!
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "Allocation was successful."
-            # FIXME: say more
+            prettyResult = pprint.pformat(realresult)
+            header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
+                #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "Allocation at %s failed: %s" % (client.url, message)
+            retVal = "Allocation %s at %s failed: %s" % (descripMsg, client.url, message)
+            self.logger.warn(retVal)
             # FIXME: Better message?
+
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
@@ -1043,8 +1054,19 @@ class AMCallHandler(object):
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       "Provision")
+
+        # check command line args
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
+        client.urn = clienturn
         options = self._build_options('Provision', None)
         urnsarg, slivers = self._build_urns(urn)
 
@@ -1052,8 +1074,12 @@ class AMCallHandler(object):
         if len(slivers) > 0:
             descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
 
-        args = [urnsarg, [slice_cred], options]
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        args = [urnsarg, creds, options]
+        self.logger.debug("Doing Provision with urns %s, %d creds, options %s", urnsarg, len(creds), options)
+
         # FIXME: Handle multiple clients
+        clientList = [client]
         (result, message) = _do_ssl(self.framework,
                                     None,
                                     ("Provision %s at %s" % (descripMsg, url)),
@@ -1133,15 +1159,24 @@ class AMCallHandler(object):
 
         if realresult:
             # Success
-            # FIXME: Honor -o!
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "Provision %s was successful." % descripMsg
+            prettyResult = pprint.pformat(realresult)
+            header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
+                #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
             retVal = "Provision %s at %s failed: %s" % (descripMsg, client.url, message)
-            # FIXME: Better message?
+            self.logger.warn(retVal)
+
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
@@ -1212,33 +1247,56 @@ class AMCallHandler(object):
             elif action.lower() == "restart":
                 self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
 
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
+        client.urn = clienturn
+        clientList = [client]
         options = self._build_options('PerformOperationalAction', None)
         urnsarg, slivers = self._build_urns(urn)
 
-        descripMsg = "slivers in slice %s" % urn
+        descripMsg = "%s on slivers in slice %s" % (action, urn)
         if len(slivers) > 0:
-            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+            descripMsg = "%s on %d slivers in slice %s" % (action, len(slivers), urn)
 
-        args = [urnsarg, [slice_cred], action, options]
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        args = [urnsarg, creds, action, options]
+        self.logger.debug("Doing POA with urns %s, action %s, %d creds, and options %s", urnsarg, action, len(creds), options)
         # FIXME: Handle multiple clients
+#        self.logger.info("PerformOperationalAction %s at %s:", descripMsg, client.url)
         (result, message) = _do_ssl(self.framework,
                                     None,
-                                    ("PerformOperationAction %s on %s at %s" % (action, descripMsg, url)),
+                                    ("PerformOperationalAction %s at %s" % (descripMsg, url)),
                                     client.PerformOperationalAction,
                                     *args)
         (realresult, message) = self._retrieve_value(result, message, self.framework)
-        # FIXME: Honor -o!
-        if realresult:
-            # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "PerformOperationalAction on %s was successful." % descripMsg
-        else:
+        if not realresult:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "PerformOperationalAction %s on %s at %s failed: %s" % (action, descripMsg, url, message)
+            retVal = "PerformOperationalAction %s at %s failed: %s" % (descripMsg, url, message)
+            self.logger.warn(retVal)
+        else:
+            # Success
+            prettyResult = pprint.pformat(realresult)
+            header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
+            filename = None
+            if self.opts.output:
+                filename = self._construct_output_filename(slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
+                #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            retVal = "PerformOperationalAction %s was successful." % descripMsg
+            if filename:
+                retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
+            self.logger.debug("POA %s result: %s", descripMsg, prettyResult)
+
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
@@ -1384,7 +1442,7 @@ class AMCallHandler(object):
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
             else:
-                # FIXME: Look inside return. Did all slivers we asked about report status?
+                # FIXME: Look inside return. Did all slivers we asked about report results?
                 # For each that did, did any fail?
                 # And what do we do if so?
                 prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
