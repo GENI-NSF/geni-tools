@@ -124,6 +124,17 @@ publicid_xforms = [('%',  '%25'),
 # FIXME: See sfa/util/xrn/Xrn.URN_PREFIX which is ...:IDN
 publicid_urn_prefix = 'urn:publicid:'    
     
+def nameFromURN(instr):
+    '''Get the name from the given URN, or empty if not a valid URN'''
+    if not instr:
+        return ""
+    try:
+        urn = URN(urn=instr)
+        return urn.getName()
+    except Exception, e:
+#        print 'exception parsing urn: %s' % e
+        return ""
+
 # validate urn
 # Note that this is not sufficient but it is necessary
 def is_valid_urn_string(instr):
