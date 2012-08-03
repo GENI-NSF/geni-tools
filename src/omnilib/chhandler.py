@@ -417,6 +417,9 @@ class CHCallHandler(object):
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+        slice name arg may be omitted if you supply the --slicecredfile arg instead.
+
+        --slicecredfile: optional name of saved slice credential file to read from, and from which to get slice expiration
         """
 
         cred = None
