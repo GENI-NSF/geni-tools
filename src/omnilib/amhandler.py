@@ -869,11 +869,32 @@ class AMCallHandler(object):
 # --- End ListResources, start CreateSliver
 
     def allocate(self, args):
-        """A minimal implementation of Allocate().
+        """
+        GENI AM API Allocate <slice name> <rspec file name>
+        Allocate resources as described in a request RSpec argument to a slice with 
+        the named URN. On success, one or more slivers are allocated, containing 
+        resources satisfying the request, and assigned to the given slice.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        Clients must Renew or Provision slivers before the expiration time 
+        (given in the return struct), or the aggregate will automatically Delete them.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
@@ -936,11 +957,45 @@ class AMCallHandler(object):
         return retVal, retItem
 
     def provision(self, args):
-        """A minimal implementation of Provision().
+        """
+        GENI AM API Provision <slice name>
+        Request that the named geni_allocated slivers be made geni_provisioned, 
+        instantiating or otherwise realizing the resources, such that they have a 
+        valid geni_operational_status and may possibly be made geni_ready for 
+        experimenter use. This operation is synchronous, but may start a longer process, 
+        such as creating and imaging a virtual machine.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        --sliver-urn / -u option: each specifies a sliver URN to provision. If specified, 
+        only the listed slivers will be provisioned. Otherwise, all slivers in the slice will be provisioned.
+        --best-effort: If supplied, slivers that can be provisioned, will be; some slivers 
+        may not be provisioned, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be provisioned, the whole call fails
+        and sliver allocation states do not change.
+
+        Note that some aggregates may require provisioning all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        omni_config users section is used to get a set of SSH keys that
+        should be loaded onto the remote node to allow SSH login, if the
+        remote resource and aggregate support this.
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
@@ -1052,11 +1107,37 @@ class AMCallHandler(object):
         return self.poa( args )
 
     def poa(self, args):
-        """A minimal implementation of PerformOperationalAction().
+        """
+        GENI AM API PerformOperationalAction <slice name> <action name>
+        Perform the named operational action on the named slivers, possibly changing 
+        the geni_operational_status of the named slivers. E.G. 'start' a VM. For valid 
+        operations and expected states, consult the state diagram advertised in the 
+        aggregate's advertisement RSpec.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        --sliver-urn / -u option: each specifies a sliver URN on which to perform the given action. If specified, 
+        only the listed slivers will be acted on. Otherwise, all slivers in the slice will be acted on.
+        Note though that actions are state and resource type specifi, so the action may not apply everywhere.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        -a Contact only the aggregate at the given URL, or with the given
+         nickname that translates to a URL in your omni_config
+        --slicecredfile Read slice credential from given file, if it exists
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        --best-effort: If supplied, slivers that can be acted, will be; some slivers 
+        may not be acted on successfully, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be changed, the whole call fails
+        and sliver states do not change.
+
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
@@ -1398,9 +1479,10 @@ class AMCallHandler(object):
         return retVal, retItem
 
     def status(self, args):
-        """AM API Status  <slice name>
+        """AM API Status <slice name>
 
         Added in AM API v3.
+        See sliverstatus for the v1 and v2 equivalent.
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1408,6 +1490,9 @@ class AMCallHandler(object):
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
+
+        --sliver-urn / -u option: each specifies a sliver URN to get status on. If specified, 
+        only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
         Aggregates queried:
         - Single URL given in -a argument or URL listed under that given
@@ -1507,12 +1592,24 @@ class AMCallHandler(object):
 
     def delete(self, args):
         """AM API DeleteSliver <slicename>
+        Delete the named slivers, making them geni_unallocated. Resources are stopped 
+        if necessary, and both de-provisioned and de-allocated. No further AM API 
+        operations may be performed on slivers that have been deleted.
+        See deletesliver.
+
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
+
+        --sliver-urn / -u option: each specifies a sliver URN to delete. If specified, 
+        only the listed slivers will be deleted. Otherwise, all slivers in the slice will be deleted.
+        --best-effort: If supplied, slivers that can be deleted, will be; some slivers 
+        may not be deleted, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be deleted, the whole call fails
+        and slivers do not change.
 
         Aggregates queried:
         - Single URL given in -a argument or URL listed under that given
