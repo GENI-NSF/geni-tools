@@ -50,10 +50,12 @@ import omnilib.xmlrpc.client
 from geni.util import rspec_util, urn_util
 
 class BadClientException(Exception):
+    ''' Internal only exception thrown if AM speaks wrong AM API version'''
     def __init__(self, client):
         self.client = client
 
 class AMCallHandler(object):
+    '''Dispatch AM API calls to aggregates'''
     def __init__(self, framework, config, opts):
         self.framework = framework
         self.logger = config['logger']
@@ -493,6 +495,136 @@ class AMCallHandler(object):
 
     # ------- End of GetVersion stuff
 
+    def _selectRSpecVersion(self, slicename, client, mymessage, options):
+        '''Helper for Describe and ListResources to set the rspec_version option, based on a single AMs capabilities.
+        Return options, mymessage.'''
+        # Where it currently does continue, raise a BadClientException
+        # This should be called from inside a try/except
+
+        # If the user specified a specific rspec type and version,
+        # then we ONLY get rspecs from each AM that is capable
+        # of talking that type&version.
+        # Note an alternative would have been to let the AM just
+        # do whatever it likes to do if
+        # you ask it to give you something it doesnt understand.
+        if self.opts.rspectype:
+            rtype = self.opts.rspectype[0]
+            rver = self.opts.rspectype[1]
+            self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
+
+            # Note this call uses the GetVersion cache, if available
+            # If got a slicename, should we be using request rspecs to better match manifest support?
+            if not slicename:
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+            else:
+                (ad_rspec_version, message) = self._get_request_rspecs(client)
+            if ad_rspec_version is None:
+                if message:
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + message
+                self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                # Allow developers to call an AM that fails to advertise
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+
+            self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
+            # foreach item in the list that is the val
+            match = False
+            for availversion in ad_rspec_version:
+                if not (availversion.has_key('type') and availversion.has_key('version')):
+                    self.logger.warning("AM getversion rspec_version entry malformed: no type or no version")
+                    continue
+
+                # version is also a string
+                if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
+                    # success
+                    self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
+                    match = True
+                    rtype=availversion['type']
+                    rver=availversion['version']
+                    break
+            # if no success
+            if match == False:
+                # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
+
+                #   return error showing ad_rspec_versions
+                pp = pprint.PrettyPrinter(indent=4)
+                self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                if mymessage != "":
+                    mymessage += ". "
+
+                if not self.opts.devmode:
+                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                    # Skip this AM/client
+                    raise BadClientException(client)
+                else:
+                    mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
+
+#--- API version differences:
+            if self.opts.api_version == 1:
+                options['rspec_version'] = dict(type=rtype, version=rver)
+            else:
+                options['geni_rspec_version'] = dict(type=rtype, version=rver)
+
+#--- Dev mode should not force supplying this option maybe?
+        elif self.opts.api_version >= 2:
+            # User did not specify an rspec type but did request version 2.
+            # Make an attempt to do the right thing, otherwise bail and tell the user.
+            if not slicename:
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+            else:
+                (ad_rspec_version, message) = self._get_request_rspecs(client)
+            if ad_rspec_version is None:
+                if message:
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + message
+                self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                # Allow developers to call an AM that fails to advertise
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+
+            if len(ad_rspec_version) == 1:
+                # there is only one advertisement, so use it.
+                options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
+                                                     version=ad_rspec_version[0]['version'])
+            else:
+                # FIXME: Could we pick GENI v3 if there, else PG v2?
+
+                # Inform the user that they have to pick.
+                ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
+                self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
+                if mymessage != "":
+                    mymessage += ". "
+                mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+        return (options, mymessage)
+
+    def _maybeDecompressRSpec(self, options, rspec):
+        '''Helper to decompress an RSpec string if necessary'''
+        if rspec is None or rspec.strip() == "":
+            return rspec
+
+        if options.get('geni_compressed', False):
+            try:
+                rspec = zlib.decompress(rspec.decode('base64'))
+            except Exception, e:
+                self.logger.error("Failed to decompress RSpec: %s", e);
+        # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
+        elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
+            try:
+                rspec2 = zlib.decompress(rspec.decode('base64'))
+                if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
+                    rspec = rspec2
+            except Exception, e:
+                pass
+        return rspec
+
     def _listresources(self, args):
         """Queries resources on various aggregates.
         
@@ -516,9 +648,6 @@ class AMCallHandler(object):
         rspecs = {}
         options = {}
         
-        options['geni_compressed'] = self.opts.geni_compressed
-        options['geni_available'] = self.opts.geni_available
-
         # Pass in a dummy option for testing that is actually ok
         # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
         # of the form Name=Value
@@ -540,8 +669,11 @@ class AMCallHandler(object):
             else:
                 self.logger.warn("Got a slice name to v3+ ListResources, but continuing...")
 
+        options['geni_compressed'] = self.opts.geni_compressed
+
         # Get the credential for this query
         if slicename is None or slicename == "":
+            options['geni_available'] = self.opts.geni_available
             slicename = None
             cred = None
             if self.opts.api_version >= 3:
@@ -603,105 +735,11 @@ class AMCallHandler(object):
 
 #---
 # In Dev mode, just use the requested type/version - don't check what is supported
+            try:
+                (options, mymessage) = self._selectRSpecVersion(slicename, client, mymessage, options)
+            except BadClientException, bce:
+                continue
 
-            # If the user specified a specific rspec type and version,
-            # then we ONLY get rspecs from each AM that is capable
-            # of talking that type&version.
-            # Note an alternative would have been to let the AM just
-            # do whatever it likes to do if
-            # you ask it to give you something it doesnt understand.
-            if self.opts.rspectype:
-                rtype = self.opts.rspectype[0]
-                rver = self.opts.rspectype[1]
-                self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
-
-                # Note this call uses the GetVersion cache, if available
-                # If got a slicename, should we be using request rspecs to better match manifest support?
-                if not slicename:
-                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
-                else:
-                    (ad_rspec_version, message) = self._get_request_rspecs(client)
-                if ad_rspec_version is None:
-                    if message:
-                        if mymessage != "":
-                            mymessage += ". "
-                        mymessage = mymessage + message
-                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
-                    # Allow developers to call an AM that fails to advertise
-                    if not self.opts.devmode:
-                        continue
-
-                self.logger.debug("Got %d supported ad_rspec_versions", len(ad_rspec_version))
-                # foreach item in the list that is the val
-                match = False
-                for availversion in ad_rspec_version:
-                    if not (availversion.has_key('type') and availversion.has_key('version')):
-                        self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or no version")
-                        continue
-
-                    # version is also a string
-                    if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
-                        # success
-                        self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
-                        match = True
-                        rtype=availversion['type']
-                        rver=availversion['version']
-                        break
-                # if no success
-                if match == False:
-                    # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
-
-                    #   return error showing ad_rspec_versions
-                    pp = pprint.PrettyPrinter(indent=4)
-                    self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                    if mymessage != "":
-                        mymessage += ". "
-
-                    if not self.opts.devmode:
-                        mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
-                        continue
-                    else:
-                        mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
-
-#--- API version differences:
-                if self.opts.api_version == 1:
-                    options['rspec_version'] = dict(type=rtype, version=rver)
-                else:
-                    options['geni_rspec_version'] = dict(type=rtype, version=rver)
-
-#--- Dev mode should not force supplying this option maybe?
-            elif self.opts.api_version >= 2:
-                # User did not specify an rspec type but did request version 2.
-                # Make an attempt to do the right thing, otherwise bail and tell the user.
-                if not slicename:
-                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
-                else:
-                    (ad_rspec_version, message) = self._get_request_rspecs(client)
-                if ad_rspec_version is None:
-                    if message:
-                        if mymessage != "":
-                            mymessage += ". "
-                        mymessage = mymessage + message
-                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
-                    # Allow developers to call an AM that fails to advertise
-                    if not self.opts.devmode:
-                        continue
-
-                if len(ad_rspec_version) == 1:
-                    # there is only one advertisement, so use it.
-                    options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
-                                                         version=ad_rspec_version[0]['version'])
-                else:
-                    # FIXME: Could we pick GENI v3 if there, else PG v2?
-
-                    # Inform the user that they have to pick.
-                    ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
-                    self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
-                    if mymessage != "":
-                        mymessage += ". "
-                    mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
-                    if not self.opts.devmode:
-                        continue
             # Done constructing options to ListResources
 #-----
 
@@ -714,20 +752,10 @@ class AMCallHandler(object):
             # Per client result saving
             if not rspec is None:
                 successCnt += 1
-                if options.get('geni_compressed', False):
-                    try:
-                        rspec = zlib.decompress(rspec.decode('base64'))
-                    except Exception, e:
-                        self.logger.error("Failed to decompress RSpec: %s", e);
-                # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
-                elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
-                    try:
-                        rspec2 = zlib.decompress(rspec.decode('base64'))
-                        if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
-                            rspec = rspec2
-                    except Exception, e:
-                        pass
-                rspecs[(client.urn, client.url)] = rspec
+                rspec2 = self._maybeDecompressRSpec(options, rspec)
+                if rspec2 and rspec2 != rspec:
+                    self.logger.debug("Decompressed RSpec")
+                rspecs[(client.urn, client.url)] = rspec2
             else:
                 if mymessage != "":
                     mymessage += ". "
@@ -739,7 +767,8 @@ class AMCallHandler(object):
 
     def listresources(self, args):
         """Optional arg is a slice name limiting results. Call ListResources
-        on 1+ aggregates and prints the rspec to stdout or to file.
+        on 1+ aggregates and prints the rspec to stdout or to file. Note that slice name argument is only supported in AM API v1 or v2.
+        For listing contents of a slice in APIv3+, use describe().
         
         -o writes Ad RSpec to file instead of stdout; single file per aggregate.
         -p gives filename prefix for each output file
@@ -1219,8 +1248,18 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error("Describe is only available in AM API v3+. Use ListResources")
 
+        # get the slice name and URN or raise an error
         (name, urn, slice_cred,
          retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+
+        options = {}
+        options['geni_compressed'] = self.opts.geni_compressed
+        # Pass in a dummy option for testing that is actually ok
+        # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
+        # of the form Name=Value
+        # Then a standard helper function could be used here to split them apart
+        if self.opts.arbitrary_option:
+            options['arbitrary_option'] = self.opts.arbitrary_option
 
         successCnt = 0
         retItem = {}
@@ -1235,17 +1274,8 @@ class AMCallHandler(object):
 
             urnsarg, slivers = self._build_urns(urn)
 
-            args = [urnsarg, creds]
-            options = dict()
-#--- API version specific
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                options = self._build_options('Describe', None)
-                rspec_version = dict(type=self.opts.rspectype[0],
-                                     version=self.opts.rspectype[1])
-                options['geni_rspec_version'] = rspec_version
-                args.append(options)
-            self.logger.debug("Doing describe with urn %s, %d creds, options %r", urn, len(creds), options)
+            # Add the options dict
+            options = self._build_options('Describe', options)
         else:
             prstr = "No aggregates available to describe slice at: %s" % message
             retVal += prstr + "\n"
@@ -1254,20 +1284,35 @@ class AMCallHandler(object):
         op = 'Describe'
         msg = "Describe %s at " % (urn)
         for client in clientList:
+            args = [urnsarg, creds]
             try:
+                # Do per client check for rspec version to use and properly fill in geni_rspec_version
+                mymessage = ""
+                (options, mymessage) = self._selectRSpecVersion(name, client, mymessage, options)
+                args.append(options)
+                self.logger.debug("Doing describe with urn %s, %d creds, options %r", urn, len(creds), options)
                 (status, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
+                if mymessage != "":
+                    if message is None or message.strip() == "":
+                        message = ""
+                    message = mymessage + ". " + message
             except BadClientException:
                 continue
 
+            # Decompress the RSpec before sticking it in retItem
+            if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
+                rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
+                # FIXME: Stick this back in status?
+                if rspec and rspec != status['value']['geni_rspec']:
+                    self.logger.info("Decompressed RSpec")
+                status['value']['geni_rspec'] = rspec
             retItem[client.url] = status
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
             (status, message) = self._retrieve_value(status, message, self.framework)
             if not status:
-                # FIXME: Put the message error in retVal?
-                # FIXME: getVersion uses None as the value in this case. Be consistent
-                fmt = "\nFailed to Describe %s at AM %s: %s\n"
+                fmt = "\nFailed to Describe slivers in %s at AM %s: %s\n"
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 retVal += fmt % (name, client.url, message)
@@ -1275,7 +1320,7 @@ class AMCallHandler(object):
 
             prettyResult = pprint.pformat(status)
             if not isinstance(status, dict):
-                # malformed sliverstatus return
+                # malformed describe return
                 self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
@@ -1293,7 +1338,7 @@ class AMCallHandler(object):
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
             retVal += "Found description of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug(pprint.pformat(retItem))
+        self.logger.debug("Describe return: \n" + pprint.pformat(retItem))
         return retVal, retItem
 
     def status(self, args):
