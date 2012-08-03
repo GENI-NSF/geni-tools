@@ -344,7 +344,7 @@ class ReferenceAggregateManager(object):
         if rspec_version != '3':
             self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
             return self.errorResult(AM_API.BAD_VERSION,
-                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
+                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
         self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
@@ -669,15 +669,15 @@ class ReferenceAggregateManager(object):
                                                 privileges)
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
-            self.logger.error('No geni_rspec_version supplied to ListResources.')
+            self.logger.error('No geni_rspec_version supplied to Describe.')
             return self.errorResult(AM_API.BAD_ARGS,
                                     'Bad Arguments: option geni_rspec_version was not supplied.')
         if 'type' not in options['geni_rspec_version']:
-            self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
+            self.logger.error('Describe: geni_rspec_version does not contain a type field.')
             return self.errorResult(AM_API.BAD_ARGS,
                                     'Bad Arguments: option geni_rspec_version does not have a type field.')
         if 'version' not in options['geni_rspec_version']:
-            self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
+            self.logger.error('Describe: geni_rspec_version does not contain a version field.')
             return self.errorResult(AM_API.BAD_ARGS,
                                     'Bad Arguments: option geni_rspec_version does not have a version field.')
 
@@ -686,14 +686,14 @@ class ReferenceAggregateManager(object):
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
         if rspec_type != 'GENI':
-            self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
+            self.logger.error('Describe: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(AM_API.BAD_VERSION,
                                     'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
-            self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
+            self.logger.error('Describe: Unknown RSpec version %s requested', rspec_version)
             return self.errorResult(AM_API.BAD_VERSION,
-                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
-        self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
+                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
+        self.logger.info("Describe requested RSpec %s (%s)", rspec_type, rspec_version)
 
         manifest_body = ""
         for sliver in slivers:
