@@ -34,6 +34,7 @@ import json
 import pprint
 import re
 
+from geni.util.urn_util import nameFromURN
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
@@ -418,16 +419,37 @@ class CHCallHandler(object):
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
         """
 
+        cred = None
+        if self.opts.slicecredfile:
+            (cred, message) = _get_slice_cred(self, None)
+        urn = ""
+        name = ""
+        if cred is not None and cred != "":
+            urn = credutils.get_cred_target_urn(self.logger, cred)
+            if urn:
+                name = nameFromURN(urn)
+
         if len(args) == 0 or args[0] == None or args[0].strip() == "":
-            # could print help here but that's verbose
-            #parse_args(None)
-            self._raise_omni_error('print_slice_expiration requires arg of slice name')
+            if name != "":
+                self.logger.info("No slice name arg provided: retrieved slice name %s from cred", name)
+            else:
+                # could print help here but that's verbose
+                #parse_args(None)
+                self._raise_omni_error('print_slice_expiration requires arg of slice name')
+        else:
+            if name != "" and name != args[0]:
+                self.logger.warn("Supplied slice name (%s) doesn't match supplied slice credential (target %s). Using supplied slice name.", args[0], name)
+                name = ""
+                cred = None
+                urn = ""
+                self.opts.slicecredfile = None
 
-        name = args[0]
+        if cred is None or cred == "":
+            name = args[0]
 
-        # FIXME: catch errors getting slice URN to give prettier error msg?
-        urn = self.framework.slice_name_to_urn(name)
-        (cred, message) = _get_slice_cred(self, urn)
+            # FIXME: catch errors getting slice URN to give prettier error msg?
+            urn = self.framework.slice_name_to_urn(name)
+            (cred, message) = _get_slice_cred(self, urn)
 
         retVal = None
         if cred is None:
