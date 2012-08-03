@@ -665,7 +665,7 @@ class AMCallHandler(object):
 
         if self.opts.api_version >= 3 and slicename is not None and slicename != "":
             if not self.opts.devmode:
-                self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'")
+                self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'. Otherwise specify the -V2 argument to use AM API v2, if the AM supports it.")
             else:
                 self.logger.warn("Got a slice name to v3+ ListResources, but continuing...")
 
@@ -800,7 +800,7 @@ class AMCallHandler(object):
             slicename = args[0].strip()
             if self.opts.api_version >= 3 and slicename is not None and slicename != "":
                 if not self.opts.devmode:
-                    self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'")
+                    self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'. Otherwise specify the -V2 argument to use AM API v2, if the AM supports it.")
                 else:
                     self.logger.warn("Got a slice name to v3+ ListResources, but continuing...")
 #---
@@ -879,7 +879,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying Allocation with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Allocate is only available in AM API v3+. Use CreateSliver")
+                self._raise_omni_error("Allocate is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
                                                       "Allocate",
@@ -946,7 +946,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying Provision with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver")
+                self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       "Provision")
@@ -1057,7 +1057,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver")
+                self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
                                                       "POA",
@@ -1111,18 +1111,26 @@ class AMCallHandler(object):
         not allow you to _shorten_ your sliver expiration time.
 
         --sliver-urn / -u option: each specifies a sliver URN to renew. If specified, 
-        only the listed slivers will be renewed.
+        only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.
         --best-effort: If supplied, slivers that can be renewed, will be; some slivers 
         may not be renewed, in which case check the geni_error return for that sliver.
         If not supplied, then if any slivers cannot be renewed, the whole call fails
         and sliver expiration times do not change.
+
+        When renewing multiple slivers, note that slivers in the geni_allocated state are treated
+        differently than slivers in the geni_provisioned state, and typically are restricted
+        to shorter expiration times. Users are recommended to supply the geni_best_effort option, 
+        and to consider operating on only slivers in the same state.
+
+        Note that some aggregates may require renewing all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
         """
 
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Renew with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Renew is only available in AM API v3+. Use RenewSliver")
+                self._raise_omni_error("Renew is only available in AM API v3+. Use RenewSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -1136,7 +1144,7 @@ class AMCallHandler(object):
             if not (self.opts.devmode and len(args) < 2):
                 time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            msg = 'Renew couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            msg = "Renew couldn't parse new expiration time from %s: %r" % (args[1], exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -1185,21 +1193,22 @@ class AMCallHandler(object):
 
         urnsarg, slivers = self._build_urns(urn)
 
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
         op = 'Renew'
-        options = None
         args = [urnsarg, creds, time_string]
-#--- AM API version specific
-        if self.opts.api_version >= 2:
-            # Add the options dict
-            options = self._build_options(op, None)
-            args.append(options)
+        # Add the options dict
+        options = self._build_options(op, None)
+        args.append(options)
 
         self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
 
         successCnt = 0
         (clientList, message) = self._getclients()
         retItem = dict()
-        msg = "Renew slivers in %s at " % (urn)
+        msg = "Renew %s at " % (descripMsg)
         for client in clientList:
             try:
                 (res, message) = self._api_call(client, msg + client.url, op,
@@ -1211,7 +1220,7 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
-                prStr = "Failed to renew slivers in slice %s on %s (%s)" % (urn, client.urn, client.url)
+                prStr = "Failed to renew %s on %s (%s)" % (descripMsg, client.urn, client.url)
                 if message != "":
                     prStr += ": " + message
                 else:
@@ -1223,7 +1232,7 @@ class AMCallHandler(object):
                 # FIXME: Look inside return. Did all slivers we asked about report status?
                 # For each that did, did any fail?
                 # And what do we do if so?
-                prStr = "Renewed slivers in slice %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
+                prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
@@ -1246,7 +1255,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying Describe with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Describe is only available in AM API v3+. Use ListResources")
+                self._raise_omni_error("Describe is only available in AM API v3+. Use ListResources with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         # get the slice name and URN or raise an error
         (name, urn, slice_cred,
@@ -1382,7 +1391,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying Status with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Status is only available in AM API v3+. Use SliverStatus")
+                self._raise_omni_error("Status is only available in AM API v3+. Use SliverStatus with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -1477,7 +1486,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying Delete with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Delete is only available in AM API v3+. Use DeleteSliver")
+                self._raise_omni_error("Delete is only available in AM API v3+. Use DeleteSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -1581,7 +1590,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying CreateSliver with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("CreateSliver is only available in AM API v1 or v2. Use Allocate, then Provision, then PerformOperationalAction")
+                self._raise_omni_error("CreateSliver is only available in AM API v1 or v2. Use Allocate, then Provision, then PerformOperationalAction in AM API v3+, or use the -V2 option to use AM API v2 if the AM supports it.")
 
         # check command line args
         if not self.opts.aggregate:
@@ -1725,7 +1734,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying RenewSliver with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("RenewSliver is only available in AM API v1 or v2. Use Renew")
+                self._raise_omni_error("RenewSliver is only available in AM API v1 or v2. Use Renew, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "RenewSliver", "and new expiration time in UTC")
@@ -1736,7 +1745,7 @@ class AMCallHandler(object):
             if not (self.opts.devmode and len(args) < 2):
                 time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            msg = 'RenewSliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            msg = "RenewSliver couldn't parse new expiration time from %s: %r" % (args[1], exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -1858,7 +1867,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying SliverStatus with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("SliverStatus is only available in AM API v1 or v2. Use Status")
+                self._raise_omni_error("SliverStatus is only available in AM API v1 or v2. Use Status, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "SliverStatus")
@@ -1952,7 +1961,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying DeleteSliver with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("DeleteSliver is only available in AM API v1 or v2. Use Delete")
+                self._raise_omni_error("DeleteSliver is only available in AM API v1 or v2. Use Delete, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "DeleteSliver")
