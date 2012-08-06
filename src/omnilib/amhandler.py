@@ -50,10 +50,12 @@ import omnilib.xmlrpc.client
 from geni.util import rspec_util, urn_util
 
 class BadClientException(Exception):
+    ''' Internal only exception thrown if AM speaks wrong AM API version'''
     def __init__(self, client):
         self.client = client
 
 class AMCallHandler(object):
+    '''Dispatch AM API calls to aggregates'''
     def __init__(self, framework, config, opts):
         self.framework = framework
         self.logger = config['logger']
@@ -493,6 +495,137 @@ class AMCallHandler(object):
 
     # ------- End of GetVersion stuff
 
+    def _selectRSpecVersion(self, slicename, client, mymessage, options):
+        '''Helper for Describe and ListResources to set the rspec_version option, based on a single AMs capabilities.
+        Return options, mymessage.'''
+        # Where it currently does continue, raise a BadClientException
+        # This should be called from inside a try/except
+
+        # If the user specified a specific rspec type and version,
+        # then we ONLY get rspecs from each AM that is capable
+        # of talking that type&version.
+        # Note an alternative would have been to let the AM just
+        # do whatever it likes to do if
+        # you ask it to give you something it doesnt understand.
+        if self.opts.rspectype:
+            rtype = self.opts.rspectype[0]
+            rver = self.opts.rspectype[1]
+            self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
+
+            # Note this call uses the GetVersion cache, if available
+            # If got a slicename, should we be using request rspecs to better match manifest support?
+            if not slicename:
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+            else:
+                (ad_rspec_version, message) = self._get_request_rspecs(client)
+            if ad_rspec_version is None:
+                if message:
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + message
+                self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                # Allow developers to call an AM that fails to advertise
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+
+            self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
+            # foreach item in the list that is the val
+            match = False
+            for availversion in ad_rspec_version:
+                if not (availversion.has_key('type') and availversion.has_key('version')):
+                    self.logger.warning("AM getversion rspec_version entry malformed: no type or no version")
+                    continue
+
+                # version is also a string
+                if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
+                    # success
+                    self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
+                    match = True
+                    rtype=availversion['type']
+                    rver=availversion['version']
+                    break
+            # if no success
+            if match == False:
+                # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
+
+                #   return error showing ad_rspec_versions
+                pp = pprint.PrettyPrinter(indent=4)
+                self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                if mymessage != "":
+                    mymessage += ". "
+
+                if not self.opts.devmode:
+                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                    # Skip this AM/client
+                    raise BadClientException(client)
+                else:
+                    mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
+
+#--- API version differences:
+            if self.opts.api_version == 1:
+                options['rspec_version'] = dict(type=rtype, version=rver)
+            else:
+                options['geni_rspec_version'] = dict(type=rtype, version=rver)
+
+#--- Dev mode should not force supplying this option maybe?
+        elif self.opts.api_version >= 2:
+            # User did not specify an rspec type but did request version 2.
+            # Make an attempt to do the right thing, otherwise bail and tell the user.
+            if not slicename:
+                (ad_rspec_version, message) = self._get_advertised_rspecs(client)
+            else:
+                (ad_rspec_version, message) = self._get_request_rspecs(client)
+            if ad_rspec_version is None:
+                if message:
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage = mymessage + message
+                self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
+                # Allow developers to call an AM that fails to advertise
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+
+            if len(ad_rspec_version) == 1:
+                # there is only one advertisement, so use it.
+                options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
+                                                     version=ad_rspec_version[0]['version'])
+            else:
+                # FIXME: Could we pick GENI v3 if there, else PG v2?
+
+                # Inform the user that they have to pick.
+                ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
+                self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
+                if mymessage != "":
+                    mymessage += ". "
+                mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
+                if not self.opts.devmode:
+                    # Skip this AM/client
+                    raise BadClientException(client)
+        return (options, mymessage)
+    # End of _selectRSpecVersion
+
+    def _maybeDecompressRSpec(self, options, rspec):
+        '''Helper to decompress an RSpec string if necessary'''
+        if rspec is None or rspec.strip() == "":
+            return rspec
+
+        if options.get('geni_compressed', False):
+            try:
+                rspec = zlib.decompress(rspec.decode('base64'))
+            except Exception, e:
+                self.logger.error("Failed to decompress RSpec: %s", e);
+        # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
+        elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
+            try:
+                rspec2 = zlib.decompress(rspec.decode('base64'))
+                if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
+                    rspec = rspec2
+            except Exception, e:
+                pass
+        return rspec
+
     def _listresources(self, args):
         """Queries resources on various aggregates.
         
@@ -516,9 +649,6 @@ class AMCallHandler(object):
         rspecs = {}
         options = {}
         
-        options['geni_compressed'] = self.opts.geni_compressed
-        options['geni_available'] = self.opts.geni_available
-
         # Pass in a dummy option for testing that is actually ok
         # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
         # of the form Name=Value
@@ -536,12 +666,15 @@ class AMCallHandler(object):
 
         if self.opts.api_version >= 3 and slicename is not None and slicename != "":
             if not self.opts.devmode:
-                self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'")
+                self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'. Otherwise specify the -V2 argument to use AM API v2, if the AM supports it.")
             else:
                 self.logger.warn("Got a slice name to v3+ ListResources, but continuing...")
 
+        options['geni_compressed'] = self.opts.geni_compressed
+
         # Get the credential for this query
         if slicename is None or slicename == "":
+            options['geni_available'] = self.opts.geni_available
             slicename = None
             cred = None
             if self.opts.api_version >= 3:
@@ -603,105 +736,11 @@ class AMCallHandler(object):
 
 #---
 # In Dev mode, just use the requested type/version - don't check what is supported
+            try:
+                (options, mymessage) = self._selectRSpecVersion(slicename, client, mymessage, options)
+            except BadClientException, bce:
+                continue
 
-            # If the user specified a specific rspec type and version,
-            # then we ONLY get rspecs from each AM that is capable
-            # of talking that type&version.
-            # Note an alternative would have been to let the AM just
-            # do whatever it likes to do if
-            # you ask it to give you something it doesnt understand.
-            if self.opts.rspectype:
-                rtype = self.opts.rspectype[0]
-                rver = self.opts.rspectype[1]
-                self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
-
-                # Note this call uses the GetVersion cache, if available
-                # If got a slicename, should we be using request rspecs to better match manifest support?
-                if not slicename:
-                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
-                else:
-                    (ad_rspec_version, message) = self._get_request_rspecs(client)
-                if ad_rspec_version is None:
-                    if message:
-                        if mymessage != "":
-                            mymessage += ". "
-                        mymessage = mymessage + message
-                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
-                    # Allow developers to call an AM that fails to advertise
-                    if not self.opts.devmode:
-                        continue
-
-                self.logger.debug("Got %d supported ad_rspec_versions", len(ad_rspec_version))
-                # foreach item in the list that is the val
-                match = False
-                for availversion in ad_rspec_version:
-                    if not (availversion.has_key('type') and availversion.has_key('version')):
-                        self.logger.warning("AM getversion ad_rspec_version entry malformed: no type or no version")
-                        continue
-
-                    # version is also a string
-                    if str(availversion['type']).lower().strip() == rtype.lower().strip() and str(availversion['version']).lower().strip() == str(rver).lower().strip():
-                        # success
-                        self.logger.debug("Found a matching supported type/ver: %s/%s", availversion['type'], availversion['version'])
-                        match = True
-                        rtype=availversion['type']
-                        rver=availversion['version']
-                        break
-                # if no success
-                if match == False:
-                    # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
-
-                    #   return error showing ad_rspec_versions
-                    pp = pprint.PrettyPrinter(indent=4)
-                    self.logger.warning("AM cannot provide Ad Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                    if mymessage != "":
-                        mymessage += ". "
-
-                    if not self.opts.devmode:
-                        mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
-                        continue
-                    else:
-                        mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
-
-#--- API version differences:
-                if self.opts.api_version == 1:
-                    options['rspec_version'] = dict(type=rtype, version=rver)
-                else:
-                    options['geni_rspec_version'] = dict(type=rtype, version=rver)
-
-#--- Dev mode should not force supplying this option maybe?
-            elif self.opts.api_version >= 2:
-                # User did not specify an rspec type but did request version 2.
-                # Make an attempt to do the right thing, otherwise bail and tell the user.
-                if not slicename:
-                    (ad_rspec_version, message) = self._get_advertised_rspecs(client)
-                else:
-                    (ad_rspec_version, message) = self._get_request_rspecs(client)
-                if ad_rspec_version is None:
-                    if message:
-                        if mymessage != "":
-                            mymessage += ". "
-                        mymessage = mymessage + message
-                    self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
-                    # Allow developers to call an AM that fails to advertise
-                    if not self.opts.devmode:
-                        continue
-
-                if len(ad_rspec_version) == 1:
-                    # there is only one advertisement, so use it.
-                    options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
-                                                         version=ad_rspec_version[0]['version'])
-                else:
-                    # FIXME: Could we pick GENI v3 if there, else PG v2?
-
-                    # Inform the user that they have to pick.
-                    ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
-                    self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
-                    if mymessage != "":
-                        mymessage += ". "
-                    mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
-                    if not self.opts.devmode:
-                        continue
             # Done constructing options to ListResources
 #-----
 
@@ -714,20 +753,10 @@ class AMCallHandler(object):
             # Per client result saving
             if not rspec is None:
                 successCnt += 1
-                if options.get('geni_compressed', False):
-                    try:
-                        rspec = zlib.decompress(rspec.decode('base64'))
-                    except Exception, e:
-                        self.logger.error("Failed to decompress RSpec: %s", e);
-                # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
-                elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
-                    try:
-                        rspec2 = zlib.decompress(rspec.decode('base64'))
-                        if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
-                            rspec = rspec2
-                    except Exception, e:
-                        pass
-                rspecs[(client.urn, client.url)] = rspec
+                rspec2 = self._maybeDecompressRSpec(options, rspec)
+                if rspec2 and rspec2 != rspec:
+                    self.logger.debug("Decompressed RSpec")
+                rspecs[(client.urn, client.url)] = rspec2
             else:
                 if mymessage != "":
                     mymessage += ". "
@@ -736,16 +765,18 @@ class AMCallHandler(object):
         if len(clientList) > 0:
             self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
+    # End of _listresources
 
     def listresources(self, args):
         """Optional arg is a slice name limiting results. Call ListResources
-        on 1+ aggregates and prints the rspec to stdout or to file.
+        on 1+ aggregates and prints the rspec to stdout or to file. Note that slice name argument is only supported in AM API v1 or v2.
+        For listing contents of a slice in APIv3+, use describe().
         
         -o writes Ad RSpec to file instead of stdout; single file per aggregate.
         -p gives filename prefix for each output file
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
-        -t <type version>: Specify a required A RSpec type and version to return.
+        -t <type version>: Specify a required RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
         --slicecredfile says to use the given slicecredfile if it exists.
@@ -771,7 +802,7 @@ class AMCallHandler(object):
             slicename = args[0].strip()
             if self.opts.api_version >= 3 and slicename is not None and slicename != "":
                 if not self.opts.devmode:
-                    self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'")
+                    self._raise_omni_error("In AM API version 3, use 'describe' to list contents of a slice, not 'listresources'. Otherwise specify the -V2 argument to use AM API v2, if the AM supports it.")
                 else:
                     self.logger.warn("Got a slice name to v3+ ListResources, but continuing...")
 #---
@@ -836,25 +867,199 @@ class AMCallHandler(object):
         retItem = returnedRspecs
 
         return retVal, retItem
+    # End of listresources
 
-# --- End ListResources, start CreateSliver
+    def describe(self, args):
+        """Retrieve a manifest RSpec describing the resources contained by the named entities,
+        e.g. a single slice or a set of the slivers in a slice. This listing and description
+        should be sufficiently descriptive to allow experimenters to use the resources.
 
-    def allocate(self, args):
-        """A minimal implementation of Allocate().
+        Argument is a slice name, naming the slice whose contents will be described.
+        Lists contents and state on 1+ aggregates and prints the result to stdout or to a file.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        --sliver-urn / -u option: each specifies a sliver URN to describe. If specified,
+        only the listed slivers will be renewed. Otherwise, all slivers in the slice will be described.
+
+        -o writes output to file instead of stdout; single file per aggregate.
+        -p gives filename prefix for each output file
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -t <type version>: Specify a required manifest RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format.
+        --slicecredfile says to use the given slicecredfile if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
-                self.logger.warn("Trying Allocation with AM API v%d...", self.opts.api_version)
+                self.logger.warn("Trying Describe with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Allocate is only available in AM API v3+. Use CreateSliver")
+                self._raise_omni_error("Describe is only available in AM API v3+. Use ListResources with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
-        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
-                                                      "Allocate",
-                                                      "and a request rspec filename")
+        # get the slice name and URN or raise an error
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+
+        options = {}
+        options['geni_compressed'] = self.opts.geni_compressed
+        # Pass in a dummy option for testing that is actually ok
+        # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
+        # of the form Name=Value
+        # Then a standard helper function could be used here to split them apart
+        if self.opts.arbitrary_option:
+            options['arbitrary_option'] = self.opts.arbitrary_option
+
+        successCnt = 0
+        retItem = {}
+        args = []
+        creds = []
+        slivers = []
+        urnsarg = []
+        # Query status at each client
+        (clientList, message) = self._getclients()
+        if len(clientList) > 0:
+            self.logger.info('Describe Slice %s:' % urn)
+
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+            urnsarg, slivers = self._build_urns(urn)
+
+            # Add the options dict
+            options = self._build_options('Describe', options)
+        else:
+            prstr = "No aggregates available to describe slice at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
+        descripMsg = "slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+        op = 'Describe'
+        msg = "Describe %s at " % (descripMsg)
+        for client in clientList:
+            args = [urnsarg, creds]
+            try:
+                # Do per client check for rspec version to use and properly fill in geni_rspec_version
+                mymessage = ""
+                (options, mymessage) = self._selectRSpecVersion(name, client, mymessage, options)
+                args.append(options)
+                self.logger.debug("Doing describe of %s, %d creds, options %r", descripMsg, len(creds), options)
+                (status, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+                if mymessage != "":
+                    if message is None or message.strip() == "":
+                        message = ""
+                    message = mymessage + ". " + message
+            except BadClientException:
+                continue
+
+            # Decompress the RSpec before sticking it in retItem
+            if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
+                rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
+                if rspec and rspec != status['value']['geni_rspec']:
+                    self.logger.debug("Decompressed RSpec")
+                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                status['value']['geni_rspec'] = rspec
+
+            # Return for tools is the full code/value/output triple
+            retItem[client.url] = status
+
+            # Get the dict describe result out of the result (accounting for API version diffs, ABAC)
+            (status, message) = self._retrieve_value(status, message, self.framework)
+            if not status:
+                fmt = "\nFailed to Describe %s at AM %s: %s\n"
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal += fmt % (descripMsg, client.url, message)
+                continue # go to next AM
+
+            prettyResult = pprint.pformat(status)
+            if not isinstance(status, dict):
+                # malformed describe return
+                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+            header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "describe", ".json", len(clientList))
+                #self.logger.info("Writing result of describe for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved description of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            successCnt+=1
+
+            # FIXME: We do nothing here to parse the describe result. Should we?
+            # FIXME
+
+        # FIXME: Return the status if there was only 1 client?
+        if len(clientList) > 0:
+            retVal += "Found description of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        self.logger.debug("Describe return: \n" + pprint.pformat(retItem))
+        return retVal, retItem
+    # End of describe
+
+    def createsliver(self, args):
+        """AM API CreateSliver call
+        CreateSliver <slicename> <rspec file>
+        Return on success the manifest RSpec(s)
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        -a Contact only the aggregate at the given URL, or with the given
+         nickname that translates to a URL in your omni_config
+        --slicecredfile Read slice credential from given file, if it exists
+        -o Save result (manifest rspec) in per-Aggregate files
+        -p (used with -o) Prefix for resulting manifest RSpec files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        omni_config users section is used to get a set of SSH keys that
+        should be loaded onto the remote node to allow SSH login, if the
+        remote resource and aggregate support this.
+
+        Note you likely want to check SliverStatus to ensure your resource
+        comes up.
+        And check the sliver expiration time: you may want to call RenewSliver.
+        """
+
+        if self.opts.api_version >= 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying CreateSliver with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("CreateSliver is only available in AM API v1 or v2. Use Allocate, then Provision, then PerformOperationalAction in AM API v3+, or use the -V2 option to use AM API v2 if the AM supports it.")
+
+        # check command line args
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
+
         # Load up the user's request rspec
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
@@ -879,59 +1084,311 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
+        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
+        # out of the RSpec
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
+
+        # Perform the allocations
+        (aggs, message) = _listaggregates(self)
+        if aggs == {} and message != "":
+            retVal += "No aggregates to reserve on: %s" % message
+
+        aggregate_urls = aggs.values()
+        # Is this AM listed in the CH or our list of aggregates?
+        # If not we won't be able to check its status and delete it later
+        if not url in aggregate_urls:
+            self.logger.info("""Be sure to remember (write down) AM URL:
+             %s. 
+             You are reserving resources there, and your clearinghouse
+             and config file won't remind you to check that sliver later. 
+             Future listresources/sliverstatus/deletesliver calls need to 
+             include the 
+                   '-a %s'
+             arguments again to act on this sliver.""" % (url, url))
+
+        # Okay, send a message to the AM this resource came from
+        result = None
+        client = make_client(url, self.framework, self.opts)
+        self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = self._get_users_arg()
+
+        options = None
+        args = [urn, creds, rspec, slice_users]
+#--- API version diff:
+        if self.opts.api_version >= 2:
+            options = dict()
+            # Add the options dict
+            args.append(options)
+#---
+
+        op = "CreateSliver"
+        msg = "Create Sliver %s at %s" % (urn, url)
+        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
+        try:
+            (result, message) = self._api_call(client, msg, op,
+                                                args)
+        except BadClientException:
+            return "Cannot CreateSliver at %s" % (client.url), None
+
+        # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
+        (result, message) = self._retrieve_value(result, message, self.framework)
+        if result:
+            self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
+
+            (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
+            if filename:
+                self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
+                retVal += '\n   Saved createsliver results to %s. ' % (filename)
+
+            # FIXME: When Tony revises the rspec, fix this test
+            if result and '<RSpec' in result and 'type="SFA"' in result:
+                # Figure out the login name
+                # We could of course do this for the user.
+                prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
+                self.logger.info(prstr)
+                retVal += ". " + prstr
+        else:
+            prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
+            if message:
+                prStr += "  %s" % message
+            self.logger.warn(prStr)
+            retVal = prStr
+
+        return retVal, result
+    # End of createsliver
+
+    def allocate(self, args):
+        """
+        GENI AM API Allocate <slice name> <rspec file name>
+        Allocate resources as described in a request RSpec argument to a slice with 
+        the named URN. On success, one or more slivers are allocated, containing 
+        resources satisfying the request, and assigned to the given slice.
+
+        Clients must Renew or Provision slivers before the expiration time 
+        (given in the return struct), or the aggregate will automatically Delete them.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Allocation with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Allocate is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "Allocate",
+                                                      "and a request rspec filename")
+        # check command line args
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
+        # Load up the user's request rspec
+        rspecfile = None
+        if not (self.opts.devmode and len(args) < 2):
+            rspecfile = args[1]
+        if rspecfile is None or not os.path.isfile(rspecfile):
+#--- Dev mode should allow missing RSpec
+            msg = 'File of resources to request missing: %s' % rspecfile
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # read the rspec into a string, and add it to the rspecs dict
+        try:
+            rspec = file(rspecfile).read()
+        except Exception, exc:
+#--- Should dev mode allow this?
+            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            if self.opts.devmode:
+                rspec = ""
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
+        # out of the RSpec
+
+        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+
+        # Warn user about using -a
+        (aggs, message) = _listaggregates(self)
+        aggregate_urls = aggs.values()
+        # Is this AM listed in the CH or our list of aggregates?
+        # If not we won't be able to check its status and delete it later
+        if not url in aggregate_urls:
+            self.logger.info("""Be sure to remember (write down) AM URL:
+             %s. 
+             You are reserving resources there, and your clearinghouse
+             and config file won't remind you to check that sliver later. 
+             Future describe/status/delete calls need to 
+             include the 
+                   '-a %s'
+             arguments again to act on this sliver.""" % (url, url))
+
         client = make_client(url, self.framework, self.opts)
         options = self._build_options('Allocate', None)
-        args = [urn, [slice_cred], rspec, options]
-        self.logger.debug("Doing Allocate with urn %s, 1 cred, rspec starting: \'%s\', and options %s", urn, rspec[:40], options)
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        args = [urn, creds, rspec, options]
+        descripMsg = "in slice %s" % urn
+        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s\', and options %s", urn, len(creds), rspec[:40], options)
         # FIXME: Handle multiple clients
+        self.logger.info("Allocate %s in %s:", descripMsg, client.url)
         (result, message) = _do_ssl(self.framework,
                                     None,
                                     ("Allocate %s at %s" % (urn, url)),
                                     client.Allocate,
                                     *args)
+
+        # Make the RSpec more pretty-printed
+        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+            rspec = result['value']['geni_rspec']
+            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                rspec = rspec_util.getPrettyRSpec(rspec)
+            result['value']['geni_rspec'] = rspec
+
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         if realresult:
             # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "Allocation was successful."
-            # FIXME: say more
+            prettyResult = pprint.pformat(realresult)
+            header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
+                #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "Allocation at %s failed: %s" % (client.url, message)
+            retVal = "Allocation %s at %s failed: %s" % (descripMsg, client.url, message)
+            self.logger.warn(retVal)
             # FIXME: Better message?
+
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
+    # end of allocate
 
     def provision(self, args):
-        """A minimal implementation of Provision().
+        """
+        GENI AM API Provision <slice name>
+        Request that the named geni_allocated slivers be made geni_provisioned, 
+        instantiating or otherwise realizing the resources, such that they have a 
+        valid geni_operational_status and may possibly be made geni_ready for 
+        experimenter use. This operation is synchronous, but may start a longer process, 
+        such as creating and imaging a virtual machine.
 
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        --sliver-urn / -u option: each specifies a sliver URN to provision. If specified, 
+        only the listed slivers will be provisioned. Otherwise, all slivers in the slice will be provisioned.
+        --best-effort: If supplied, slivers that can be provisioned, will be; some slivers 
+        may not be provisioned, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be provisioned, the whole call fails
+        and sliver allocation states do not change.
+
+        Note that some aggregates may require provisioning all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        omni_config users section is used to get a set of SSH keys that
+        should be loaded onto the remote node to allow SSH login, if the
+        remote resource and aggregate support this.
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Provision with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver")
+                self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       "Provision")
+
+        # check command line args
+        if not self.opts.aggregate:
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            # FIXME: parse the AM to reserve at from a comment in the RSpec
+            # Calling exit here is a bit of a hammer.
+            # Maybe there's a gentler way.
+            self._raise_omni_error(msg)
+
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
         client = make_client(url, self.framework, self.opts)
+        client.urn = clienturn
         options = self._build_options('Provision', None)
         urnsarg, slivers = self._build_urns(urn)
-        args = [urnsarg, [slice_cred], options]
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        args = [urnsarg, creds, options]
+        self.logger.debug("Doing Provision with urns %s, %d creds, options %s", urnsarg, len(creds), options)
+
         # FIXME: Handle multiple clients
+        clientList = [client]
         (result, message) = _do_ssl(self.framework,
                                     None,
-                                    ("Provision %s at %s" % (urn, url)),
+                                    ("Provision %s at %s" % (descripMsg, url)),
                                     client.Provision,
                                     *args)
+        # Make the RSpec more pretty-printed
+        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+            rspec = result['value']['geni_rspec']
+            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                rspec = rspec_util.getPrettyRSpec(rspec)
+            result['value']['geni_rspec'] = rspec
+
         (realresult, message) = self._retrieve_value(result, message, self.framework)
         # FIXME: If you provided URNs, then we need to look to see if this is real success or not
         # And maybe any time, we need to look for a geni_error return in each sliver
@@ -999,17 +1456,28 @@ class AMCallHandler(object):
 
         if realresult:
             # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "Provision was successful."
+            prettyResult = pprint.pformat(realresult)
+            header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
+            filename = None
+
+            if self.opts.output:
+                filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
+                #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
         else:
             # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            retVal = "Provision at %s failed: %s" % (client.url, message)
-            # FIXME: Better message?
+            retVal = "Provision %s at %s failed: %s" % (descripMsg, client.url, message)
+            self.logger.warn(retVal)
+
         retItem = {}
         retItem[ client.url ] = result
         return retVal, retItem
+    # end of provision
 
     def performoperationalaction(self, args):
         """ Alias of "poa" which is an implementation of v3
@@ -1018,482 +1486,16 @@ class AMCallHandler(object):
         return self.poa( args )
 
     def poa(self, args):
-        """A minimal implementation of PerformOperationalAction().
-
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
         """
-        if self.opts.api_version < 3:
-            if self.opts.devmode:
-                self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
-            else:
-                self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver")
+        GENI AM API PerformOperationalAction <slice name> <action name>
+        Perform the named operational action on the named slivers, possibly changing 
+        the geni_operational_status of the named slivers. E.G. 'start' a VM. For valid 
+        operations and expected states, consult the state diagram advertised in the 
+        aggregate's advertisement RSpec.
 
-        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
-                                                      "POA",
-                                                      "and an action to perform")
-        action = args[1]
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-        client = make_client(url, self.framework, self.opts)
-        options = self._build_options('PerformOperationalAction', None)
-        urnsarg, slivers = self._build_urns(urn)
-        args = [urnsarg, [slice_cred], action, options]
-        # FIXME: Handle multiple clients
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("PerformOperationAction %s on slice %s at %s" % (action, urn, url)),
-                                    client.PerformOperationalAction,
-                                    *args)
-        (realresult, message) = self._retrieve_value(result, message, self.framework)
-        if realresult:
-            # Success
-            self.logger.info(pprint.pformat(result['value']))
-            retVal = "PerformOperationalAction was successful."
-        else:
-            # Failure
-            if message is None or message.strip() == "":
-                message = "(no reason given)"
-            retVal = "PerformOperationalAction %s on %s at %s failed: %s" % (action, urn, url, message)
-        retItem = {}
-        retItem[ client.url ] = result
-        return retVal, retItem
-
-    def renew(self, args):
-        """AM API Renew <slicename> <new expiration time in UTC
-        or with a timezone>
-        Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name>
-        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
-
-        Slice credential is usually retrieved from the Slice Authority. But
-        with the --slicecredfile option it is read from that file, if it exists.
-
-        Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
-        nickname in omni_config, if provided, ELSE
-        - List of URLs given in omni_config aggregates option, if provided, ELSE
-        - List of URNs and URLs provided by the selected clearinghouse
-
-        Note that per the AM API expiration times will be timezone aware.
-        Unqualified times are assumed to be in UTC.
-        Note that the expiration time cannot be past your slice expiration
-        time (see renewslice). Some aggregates will
-        not allow you to _shorten_ your sliver expiration time.
-
-        --sliver-urn / -u option: each specifies a sliver URN to renew. If specified, 
-        only the listed slivers will be renewed.
-        --best-effort: If supplied, slivers that can be renewed, will be; some slivers 
-        may not be renewed, in which case check the geni_error return for that sliver.
-        If not supplied, then if any slivers cannot be renewed, the whole call fails
-        and sliver expiration times do not change.
-        """
-
-        if self.opts.api_version < 3:
-            if self.opts.devmode:
-                self.logger.warn("Trying Renew with AM API v%d...", self.opts.api_version)
-            else:
-                self._raise_omni_error("Renew is only available in AM API v3+. Use RenewSliver")
-
-        # prints slice expiration. Warns or raises an Omni error on problems
-        (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 2,
-                                                      "Renew",
-                                                      "and new expiration time in UTC")
-
-#--- Should dev mode allow passing time as is?
-        time = datetime.datetime.max
-        try:
-            if not (self.opts.devmode and len(args) < 2):
-                time = dateutil.parser.parse(args[1])
-        except Exception, exc:
-            msg = 'Renew couldnt parse new expiration time from %s: %r' % (args[1], exc)
-            if self.opts.devmode:
-                self.logger.warn(msg)
-            else:
-                self._raise_omni_error(msg)
-
-        # Convert to naive UTC time if necessary for ease of comparison
-        try:
-            time = naiveUTC(time)
-        except:
-            if self.opts.devmode:
-                pass
-            else:
-                raise
-
-        # Compare requested time with slice expiration time
-        if time > slice_exp:
-#--- Dev mode allow this
-            msg = 'Cannot renew slivers in slice %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
-            if self.opts.devmode:
-                self.logger.warn(msg + ", but continuing...")
-            else:
-                self._raise_omni_error(msg)
-        elif time <= datetime.datetime.utcnow():
-#--- Dev mode allow earlier time
-            if not self.opts.devmode:
-                self.logger.info('Slivers in slice %s will be set to expire now' % name)
-                time = datetime.datetime.utcnow()
-        else:
-            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
-
-        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
-        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
-
-        self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
-
-        # Note that the time arg includes UTC offset as needed
-        time_string = time_with_tz.isoformat()
-        if self.opts.no_tz:
-            # The timezone causes an error in older sfa
-            # implementations as deployed in mesoscale GENI. Strip
-            # off the timezone if the user specfies --no-tz
-            self.logger.info('Removing timezone at user request (--no-tz)')
-            time_string = time_with_tz.replace(tzinfo=None).isoformat()
-
-        creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-        urnsarg, slivers = self._build_urns(urn)
-
-        op = 'Renew'
-        options = None
-        args = [urnsarg, creds, time_string]
-#--- AM API version specific
-        if self.opts.api_version >= 2:
-            # Add the options dict
-            options = self._build_options(op, None)
-            args.append(options)
-
-        self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
-
-        successCnt = 0
-        (clientList, message) = self._getclients()
-        retItem = dict()
-        msg = "Renew slivers in %s at " % (urn)
-        for client in clientList:
-            try:
-                (res, message) = self._api_call(client, msg + client.url, op,
-                                                args)
-            except BadClientException:
-                continue
-            retItem[client.url] = res
-            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
-            (res, message) = self._retrieve_value(res, message, self.framework)
-
-            if not res:
-                prStr = "Failed to renew slivers in slice %s on %s (%s)" % (urn, client.urn, client.url)
-                if message != "":
-                    prStr += ": " + message
-                else:
-                    prStr += " (no reason given)"
-                if len(clientList) == 1:
-                    retVal += prStr + "\n"
-                self.logger.warn(prStr)
-            else:
-                # FIXME: Look inside return. Did all slivers we asked about report status?
-                # For each that did, did any fail?
-                # And what do we do if so?
-                prStr = "Renewed slivers in slice %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
-                self.logger.info(prStr)
-                if len(clientList) == 1:
-                    retVal += prStr + "\n"
-                successCnt += 1
-        if len(clientList) == 0:
-            retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
-        elif len(clientList) > 1:
-            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
-        self.logger.debug("Return: \n%s", pprint.pformat(retItem))
-        return retVal, retItem
-
-    def describe(self, args):
-        """A minimal implementation of Describe().
-
-        This minimal version allows for testing a v3 aggregate, but
-        does not provide sufficient error checking or experimenter
-        support to be the final implementation.
-        """
-        if self.opts.api_version < 3:
-            if self.opts.devmode:
-                self.logger.warn("Trying Describe with AM API v%d...", self.opts.api_version)
-            else:
-                self._raise_omni_error("Describe is only available in AM API v3+. Use ListResources")
-
-        (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
-
-        successCnt = 0
-        retItem = {}
-        args = []
-        creds = []
-        # Query status at each client
-        (clientList, message) = self._getclients()
-        if len(clientList) > 0:
-            self.logger.info('Describe Slice %s:' % urn)
-
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-            urnsarg, slivers = self._build_urns(urn)
-
-            args = [urnsarg, creds]
-            options = dict()
-#--- API version specific
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                options = self._build_options('Describe', None)
-                rspec_version = dict(type=self.opts.rspectype[0],
-                                     version=self.opts.rspectype[1])
-                options['geni_rspec_version'] = rspec_version
-                args.append(options)
-            self.logger.debug("Doing describe with urn %s, %d creds, options %r", urn, len(creds), options)
-        else:
-            prstr = "No aggregates available to describe slice at: %s" % message
-            retVal += prstr + "\n"
-            self.logger.warn(prstr)
-
-        op = 'Describe'
-        msg = "Describe %s at " % (urn)
-        for client in clientList:
-            try:
-                (status, message) = self._api_call(client,
-                                                   msg + str(client.url),
-                                                   op, args)
-            except BadClientException:
-                continue
-
-            retItem[client.url] = status
-            # Get the dict status out of the result (accounting for API version diffs, ABAC)
-            (status, message) = self._retrieve_value(status, message, self.framework)
-            if not status:
-                # FIXME: Put the message error in retVal?
-                # FIXME: getVersion uses None as the value in this case. Be consistent
-                fmt = "\nFailed to Describe %s at AM %s: %s\n"
-                if message is None or message.strip() == "":
-                    message = "(no reason given)"
-                retVal += fmt % (name, client.url, message)
-                continue
-
-            prettyResult = pprint.pformat(status)
-            if not isinstance(status, dict):
-                # malformed sliverstatus return
-                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
-                # FIXME: Add something to retVal that the result was malformed?
-                if isinstance(status, str):
-                    prettyResult = str(status)
-            header="Describe Slice %s at AM URL %s" % (urn, client.url)
-            filename = None
-            if self.opts.output:
-                filename = self._construct_output_filename(name, client.url, client.urn, "describe", ".json", len(clientList))
-                #self.logger.info("Writing result of describe for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
-            if filename:
-                retVal += "Saved description of %s at AM %s to file %s. \n" % (name, client.url, filename)
-            successCnt+=1
-
-        # FIXME: Return the status if there was only 1 client?
-        if len(clientList) > 0:
-            retVal += "Found description of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug(pprint.pformat(retItem))
-        return retVal, retItem
-
-    def status(self, args):
-        """AM API Status  <slice name>
-
-        Added in AM API v3.
-
-        Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name>
-        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
-
-        Slice credential is usually retrieved from the Slice Authority. But
-        with the --slicecredfile option it is read from that file, if it exists.
-
-        Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
-        nickname in omni_config, if provided, ELSE
-        - List of URLs given in omni_config aggregates option, if provided, ELSE
-        - List of URNs and URLs provided by the selected clearinghouse
-
-        -o Save result in per-Aggregate files
-        -p (used with -o) Prefix for resulting files
-        If not saving results to a file, they are logged.
-        If --tostdout option, then instead of logging, print to STDOUT.
-        """
-
-        if self.opts.api_version < 3:
-            if self.opts.devmode:
-                self.logger.warn("Trying Status with AM API v%d...", self.opts.api_version)
-            else:
-                self._raise_omni_error("Status is only available in AM API v3+. Use SliverStatus")
-
-        # prints slice expiration. Warns or raises an Omni error on problems
-        (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Status")
-
-        successCnt = 0
-        retItem = {}
-        args = []
-        creds = []
-        # Query status at each client
-        (clientList, message) = self._getclients()
-        if len(clientList) > 0:
-            self.logger.info('Status of Slice %s:' % urn)
-
-            creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-            urnsarg, slivers = self._build_urns(urn)
-            args = [urnsarg, creds]
-#--- API version specific
-            options = dict()
-            if self.opts.api_version >= 2:
-                # Add the options dict
-                options = self._build_options('Status', None)
-                args.append(options)
-            self.logger.debug("Doing status with urn %s, %d creds, options %r", urn, len(creds), options)
-        else:
-            prstr = "No aggregates available to get slice status at: %s" % message
-            retVal += prstr + "\n"
-            self.logger.warn(prstr)
-
-        op = 'Status'
-        msg = "Status of %s at " % (urn)
-        for client in clientList:
-            try:
-                (status, message) = self._api_call(client,
-                                                   msg + str(client.url),
-                                                   op, args)
-            except BadClientException:
-                continue
-
-            retItem[client.url] = status
-            # Get the dict status out of the result (accounting for API version diffs, ABAC)
-            (status, message) = self._retrieve_value(status, message, self.framework)
-            if not status:
-                # FIXME: Put the message error in retVal?
-                # FIXME: getVersion uses None as the value in this case. Be consistent
-                fmt = "\nFailed to get Status on %s at AM %s: %s\n"
-                if message is None or message.strip() == "":
-                    message = "(no reason given)"
-                retVal += fmt % (name, client.url, message)
-                continue
-
-            prettyResult = pprint.pformat(status)
-            if not isinstance(status, dict):
-                # malformed status return
-                self.logger.warn('Malformed status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
-                # FIXME: Add something to retVal that the result was malformed?
-                if isinstance(status, str):
-                    prettyResult = str(status)
-            header="Status for Slice %s at AM URL %s" % (urn, client.url)
-            filename = None
-            if self.opts.output:
-                filename = self._construct_output_filename(name, client.url, client.urn, "status", ".json", len(clientList))
-                #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
-            if filename:
-                retVal += "Saved status on %s at AM %s to file %s. \n" % (name, client.url, filename)
-            successCnt+=1
-
-        # FIXME: Return the status if there was only 1 client?
-        if len(clientList) > 0:
-            retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug("Status result: " + pprint.pformat(retItem))
-        return retVal, retItem
-
-    def delete(self, args):
-        """AM API DeleteSliver <slicename>
-        Slice name could be a full URN, but is usually just the slice name portion.
-        Note that PLC Web UI lists slices as <site name>_<slice name>
-        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
-
-        Slice credential is usually retrieved from the Slice Authority. But
-        with the --slicecredfile option it is read from that file, if it exists.
-
-        Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
-        nickname in omni_config, if provided, ELSE
-        - List of URLs given in omni_config aggregates option, if provided, ELSE
-        - List of URNs and URLs provided by the selected clearinghouse
-        """
-        if self.opts.api_version < 3:
-            if self.opts.devmode:
-                self.logger.warn("Trying Delete with AM API v%d...", self.opts.api_version)
-            else:
-                self._raise_omni_error("Delete is only available in AM API v3+. Use DeleteSliver")
-
-        # prints slice expiration. Warns or raises an Omni error on problems
-        (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
-
-        creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-        urnsarg, slivers = self._build_urns(urn)
-        args = [urnsarg, creds]
-        options = None
-#--- API version specific
-        if self.opts.api_version >= 2:
-            # Add the options dict
-            options = self._build_options('Delete', None)
-            args.append(options)
-
-        self.logger.debug("Doing delete with urn %s, %d creds, options %r",
-                          urn, len(creds), options)
-
-        successCnt = 0
-        (clientList, message) = self._getclients()
-
-        # Connect to each available GENI AM
-        ## The AM API does not cleanly state how to deal with
-        ## aggregates which do not have a sliver in this slice.  We
-        ## know at least one aggregate (PG) returns an Exception in
-        ## this case.
-        ## FIX ME: May need to look at handling of this more in the future.
-        ## Also, if the user supplied the aggregate list, a failure is
-        ## more interesting.  We can figure out what the error strings
-        ## are at the various aggregates if they don't know about the
-        ## slice and make those more quiet.  Finally, we can try
-        ## sliverstatus at places where it fails to indicate places
-        ## where you still have resources.
-        op = 'Delete'
-        msg = "Delete of slivers in %s at " % (urn)
-        retItem = {}
-        for client in clientList:
-            try:
-                (result, message) = self._api_call(client,
-                                                   msg + str(client.url),
-                                                   op, args)
-            except BadClientException:
-                continue
-
-            retItem[client.url] = result
-
-            (realres, message) = self._retrieve_value(result, message, self.framework)
-            if realres:
-                prStr = "Deleted slivers in %s on %s at %s" % (urn,
-                                                           client.urn,
-                                                           client.url)
-                if len(clientList) == 1:
-                    retVal = prStr
-                self.logger.info(prStr)
-                successCnt += 1
-            else:
-                if message is None or message.strip() == "":
-                    message = "(no reason given)"
-                prStr = "Failed to delete slivers in %s on %s at %s: %s" % (urn, client.urn, client.url, message)
-                self.logger.warn(prStr)
-                if len(clientList) == 1:
-                    retVal = prStr
-        if len(clientList) == 0:
-            retVal = "No aggregates specified on which to delete slivers. %s" % message
-        elif len(clientList) > 1:
-            retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
-        self.logger.debug(pprint.pformat(retItem))
-        return retVal, retItem
-
-    def createsliver(self, args):
-        """AM API CreateSliver call
-        CreateSliver <slicename> <rspec file>
-        Return on success the manifest RSpec(s)
+        --sliver-urn / -u option: each specifies a sliver URN on which to perform the given action. If specified, 
+        only the listed slivers will be acted on. Otherwise, all slivers in the slice will be acted on.
+        Note though that actions are state and resource type specifi, so the action may not apply everywhere.
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1502,30 +1504,47 @@ class AMCallHandler(object):
         -a Contact only the aggregate at the given URL, or with the given
          nickname that translates to a URL in your omni_config
         --slicecredfile Read slice credential from given file, if it exists
-        -o Save result (manifest rspec) in per-Aggregate files
-        -p (used with -o) Prefix for resulting manifest RSpec files
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
 
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
-        omni_config users section is used to get a set of SSH keys that
-        should be loaded onto the remote node to allow SSH login, if the
-        remote resource and aggregate support this.
+        --best-effort: If supplied, slivers that can be acted, will be; some slivers 
+        may not be acted on successfully, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be changed, the whole call fails
+        and sliver states do not change.
 
-        Note you likely want to check SliverStatus to ensure your resource
-        comes up.
-        And check the sliver expiration time: you may want to call RenewSliver.
         """
-
-        if self.opts.api_version >= 3:
+        if self.opts.api_version < 3:
             if self.opts.devmode:
-                self.logger.warn("Trying CreateSliver with AM API v%d...", self.opts.api_version)
+                self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("CreateSliver is only available in AM API v1 or v2. Use Allocate, then Provision, then PerformOperationalAction")
+                self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
-        # check command line args
+        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "POA",
+                                                      "and an action to perform")
+        action = args[1]
+        if action is None or action.strip() == "":
+            if self.opts.devmode:
+                action = ""
+                self.logger.warn("poa: No action specified....")
+            else:
+                self._raise_omni_error("PerformOperationalAction requires an arg of the name of the action to perform")
+
+        # check common action typos
+        # FIXME: Auto correct?
+        if not self.opts.devmode:
+            if action.lower() == "start":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_start'?" % action)
+            elif action.lower() == "stop":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_stop'?" % action)
+            elif action.lower() == "restart":
+                self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
+
         if not self.opts.aggregate:
             # the user must supply an aggregate.
             msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
@@ -1534,111 +1553,52 @@ class AMCallHandler(object):
             # Maybe there's a gentler way.
             self._raise_omni_error(msg)
 
-        # prints slice expiration. Warns or raises an Omni error on problems
-        (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
-
-        # Load up the user's request rspec
-        rspecfile = None
-        if not (self.opts.devmode and len(args) < 2):
-            rspecfile = args[1]
-        if rspecfile is None or not os.path.isfile(rspecfile):
-#--- Dev mode should allow missing RSpec
-            msg = 'File of resources to request missing: %s' % rspecfile
-            if self.opts.devmode:
-                self.logger.warn(msg)
-            else:
-                self._raise_omni_error(msg)
-
-        # read the rspec into a string, and add it to the rspecs dict
-        try:
-            rspec = file(rspecfile).read()
-        except Exception, exc:
-#--- Should dev mode allow this?
-            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
-            if self.opts.devmode:
-                rspec = ""
-                self.logger.warn(msg)
-            else:
-                self._raise_omni_error(msg)
-
-        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
-        # out of the RSpec
-
         url, clienturn = _derefAggNick(self, self.opts.aggregate)
-
-        # Perform the allocations
-        (aggs, message) = _listaggregates(self)
-        if aggs == {} and message != "":
-            retVal += "No aggregates to reserve on: %s" % message
-
-        aggregate_urls = aggs.values()
-        # Is this AM listed in the CH or our list of aggregates?
-        # If not we won't be able to check its status and delete it later
-        if not url in aggregate_urls:
-            self.logger.info("""Be sure to remember (write down) AM URL:
-             %s. 
-             You are reserving resources there, and your clearinghouse
-             and config file won't remind you to check that sliver later. 
-             Future listresources/sliverstatus/deletesliver calls need to 
-             include the arguments 
-                   '-a %s'
-             arguments again to act on this sliver.""" % (url, url))
-
-        # Okay, send a message to the AM this resource came from
-        result = None
         client = make_client(url, self.framework, self.opts)
-        self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
+        client.urn = clienturn
+        clientList = [client]
+        options = self._build_options('PerformOperationalAction', None)
+        urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "%s on slivers in slice %s" % (action, urn)
+        if len(slivers) > 0:
+            descripMsg = "%s on %d slivers in slice %s" % (action, len(slivers), urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
-
-        # Copy the user config and read the keys from the files into the structure
-        slice_users = self._get_users_arg()
-
-        options = None
-        args = [urn, creds, rspec, slice_users]
-#--- API version diff:
-        if self.opts.api_version >= 2:
-            options = dict()
-            # Add the options dict
-            args.append(options)
-#---
-
-        op = "CreateSliver"
-        msg = "Create Sliver %s at %s" % (urn, url)
-        self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
-        try:
-            (result, message) = self._api_call(client, msg, op,
-                                                args)
-        except BadClientException:
-            return "Cannot CreateSliver at %s; it uses APIv%d, but you requested v%d" % (ver, self.opts.api_version), None
-
-        # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
-        (result, message) = self._retrieve_value(result, message, self.framework)
-        if result:
-            self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
-
-            (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
-            if filename:
-                self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
-                retVal += '\n   Saved createsliver results to %s. ' % (filename)
-
-            # FIXME: When Tony revises the rspec, fix this test
-            if result and '<RSpec' in result and 'type="SFA"' in result:
-                # Figure out the login name
-                # We could of course do this for the user.
-                prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
-                self.logger.info(prstr)
-                retVal += ". " + prstr
-        else:
-            prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
+        args = [urnsarg, creds, action, options]
+        self.logger.debug("Doing POA with urns %s, action %s, %d creds, and options %s", urnsarg, action, len(creds), options)
+        # FIXME: Handle multiple clients
+#        self.logger.info("PerformOperationalAction %s at %s:", descripMsg, client.url)
+        (result, message) = _do_ssl(self.framework,
+                                    None,
+                                    ("PerformOperationalAction %s at %s" % (descripMsg, url)),
+                                    client.PerformOperationalAction,
+                                    *args)
+        (realresult, message) = self._retrieve_value(result, message, self.framework)
+        if not realresult:
+            # Failure
             if message is None or message.strip() == "":
                 message = "(no reason given)"
-            if message:
-                prStr += "  %s" % message
-            self.logger.warn(prStr)
-            retVal = prStr
+            retVal = "PerformOperationalAction %s at %s failed: %s" % (descripMsg, url, message)
+            self.logger.warn(retVal)
+        else:
+            # Success
+            prettyResult = pprint.pformat(realresult)
+            header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
+            filename = None
+            if self.opts.output:
+                filename = self._construct_output_filename(slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
+                #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            retVal = "PerformOperationalAction %s was successful." % descripMsg
+            if filename:
+                retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
+            self.logger.debug("POA %s result: %s", descripMsg, prettyResult)
 
-        return retVal, result
+        retItem = {}
+        retItem[ client.url ] = result
+        return retVal, retItem
+    # end of poa
 
     def renewsliver(self, args):
         """AM API RenewSliver <slicename> <new expiration time in UTC
@@ -1667,7 +1627,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying RenewSliver with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("RenewSliver is only available in AM API v1 or v2. Use Renew")
+                self._raise_omni_error("RenewSliver is only available in AM API v1 or v2. Use Renew, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "RenewSliver", "and new expiration time in UTC")
@@ -1678,7 +1638,7 @@ class AMCallHandler(object):
             if not (self.opts.devmode and len(args) < 2):
                 time = dateutil.parser.parse(args[1])
         except Exception, exc:
-            msg = 'RenewSliver couldnt parse new expiration time from %s: %r' % (args[1], exc)
+            msg = "RenewSliver couldn't parse new expiration time from %s: %r" % (args[1], exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -1774,6 +1734,164 @@ class AMCallHandler(object):
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
         return retVal, (successList, failList)
+    # End of renewsliver
+
+    def renew(self, args):
+        """AM API Renew <slicename> <new expiration time in UTC
+        or with a timezone>
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice). Some aggregates will
+        not allow you to _shorten_ your sliver expiration time.
+
+        --sliver-urn / -u option: each specifies a sliver URN to renew. If specified, 
+        only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.
+        --best-effort: If supplied, slivers that can be renewed, will be; some slivers 
+        may not be renewed, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be renewed, the whole call fails
+        and sliver expiration times do not change.
+
+        When renewing multiple slivers, note that slivers in the geni_allocated state are treated
+        differently than slivers in the geni_provisioned state, and typically are restricted
+        to shorter expiration times. Users are recommended to supply the geni_best_effort option, 
+        and to consider operating on only slivers in the same state.
+
+        Note that some aggregates may require renewing all slivers in the same state at the same 
+        time, per the geni_single_allocation GetVersion return.
+        """
+
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Renew with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Renew is only available in AM API v3+. Use RenewSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 2,
+                                                      "Renew",
+                                                      "and new expiration time in UTC")
+
+#--- Should dev mode allow passing time as is?
+        time = datetime.datetime.max
+        try:
+            if not (self.opts.devmode and len(args) < 2):
+                time = dateutil.parser.parse(args[1])
+        except Exception, exc:
+            msg = "Renew couldn't parse new expiration time from %s: %r" % (args[1], exc)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # Convert to naive UTC time if necessary for ease of comparison
+        try:
+            time = naiveUTC(time)
+        except:
+            if self.opts.devmode:
+                pass
+            else:
+                raise
+
+        # Compare requested time with slice expiration time
+        if time > slice_exp:
+#--- Dev mode allow this
+            msg = 'Cannot renew slivers in slice %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+            if self.opts.devmode:
+                self.logger.warn(msg + ", but continuing...")
+            else:
+                self._raise_omni_error(msg)
+        elif time <= datetime.datetime.utcnow():
+#--- Dev mode allow earlier time
+            if not self.opts.devmode:
+                self.logger.info('Slivers in slice %s will be set to expire now' % name)
+                time = datetime.datetime.utcnow()
+        else:
+            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
+
+        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+
+        self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
+
+        # Note that the time arg includes UTC offset as needed
+        time_string = time_with_tz.isoformat()
+        if self.opts.no_tz:
+            # The timezone causes an error in older sfa
+            # implementations as deployed in mesoscale GENI. Strip
+            # off the timezone if the user specfies --no-tz
+            self.logger.info('Removing timezone at user request (--no-tz)')
+            time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
+        op = 'Renew'
+        args = [urnsarg, creds, time_string]
+        # Add the options dict
+        options = self._build_options(op, None)
+        args.append(options)
+
+        self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
+
+        successCnt = 0
+        (clientList, message) = self._getclients()
+        retItem = dict()
+        msg = "Renew %s at " % (descripMsg)
+        for client in clientList:
+            try:
+                (res, message) = self._api_call(client, msg + client.url, op,
+                                                args)
+            except BadClientException:
+                continue
+            retItem[client.url] = res
+            # Get the boolean result out of the result (accounting for API version diffs, ABAC)
+            (res, message) = self._retrieve_value(res, message, self.framework)
+
+            if not res:
+                prStr = "Failed to renew %s on %s (%s)" % (descripMsg, client.urn, client.url)
+                if message != "":
+                    prStr += ": " + message
+                else:
+                    prStr += " (no reason given)"
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
+                self.logger.warn(prStr)
+            else:
+                # FIXME: Look inside return. Did all slivers we asked about report results?
+                # For each that did, did any fail?
+                # And what do we do if so?
+                prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
+                self.logger.info(prStr)
+                if len(clientList) == 1:
+                    retVal += prStr + "\n"
+                successCnt += 1
+        if len(clientList) == 0:
+            retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
+        elif len(clientList) > 1:
+            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
+        self.logger.debug("Return: \n%s", pprint.pformat(retItem))
+        return retVal, retItem
+    # End of renew
 
     def sliverstatus(self, args):
         """AM API SliverStatus  <slice name>
@@ -1800,7 +1918,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying SliverStatus with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("SliverStatus is only available in AM API v1 or v2. Use Status")
+                self._raise_omni_error("SliverStatus is only available in AM API v1 or v2. Use Status, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "SliverStatus")
@@ -1854,9 +1972,8 @@ class AMCallHandler(object):
                 filename = None
                 if self.opts.output:
                     filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
-                        
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
-                    
+
                 self._printResults(header, prettyResult, filename)
                 if filename:
                     retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
@@ -1874,7 +1991,120 @@ class AMCallHandler(object):
         if len(clientList) > 0:
             retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
         return retVal, retItem
-                
+    # End of sliverstatus
+
+    def status(self, args):
+        """AM API Status <slice name>
+
+        Added in AM API v3.
+        See sliverstatus for the v1 and v2 equivalent.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        --sliver-urn / -u option: each specifies a sliver URN to get status on. If specified, 
+        only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+        """
+
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Status with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Status is only available in AM API v3+. Use SliverStatus with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Status")
+
+        successCnt = 0
+        retItem = {}
+        args = []
+        creds = []
+        # Query status at each client
+        (clientList, message) = self._getclients()
+        if len(clientList) > 0:
+            self.logger.info('Status of Slice %s:' % urn)
+
+            creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+            urnsarg, slivers = self._build_urns(urn)
+            args = [urnsarg, creds]
+            # Add the options dict
+            options = self._build_options('Status', None)
+            args.append(options)
+            self.logger.debug("Doing status with urns %s, %d creds, options %r", urnsarg, len(creds), options)
+        else:
+            prstr = "No aggregates available to get slice status at: %s" % message
+            retVal += prstr + "\n"
+            self.logger.warn(prstr)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
+        op = 'Status'
+        msg = "Status of %s at " % (descripMsg)
+        for client in clientList:
+            try:
+                (status, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
+                continue
+
+            retItem[client.url] = status
+            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+            (status, message) = self._retrieve_value(status, message, self.framework)
+            if not status:
+                # FIXME: Put the message error in retVal?
+                # FIXME: getVersion uses None as the value in this case. Be consistent
+                fmt = "\nFailed to get Status on %s at AM %s: %s\n"
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal += fmt % (descripMsg, client.url, message)
+                continue
+
+            # FIXME: Check each sliver for errors, check got status on all requested slivers, ?
+
+            prettyResult = pprint.pformat(status)
+            if not isinstance(status, dict):
+                # malformed status return
+                self.logger.warn('Malformed status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+            header="Status for %s at AM URL %s" % (descripMsg, client.url)
+            filename = None
+            if self.opts.output:
+                filename = self._construct_output_filename(name, client.url, client.urn, "status", ".json", len(clientList))
+                #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
+            self._printResults(header, prettyResult, filename)
+            if filename:
+                retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+            successCnt+=1
+
+        # FIXME: Return the status if there was only 1 client?
+        if len(clientList) > 0:
+            retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
+        self.logger.debug("Status result: " + pprint.pformat(retItem))
+        return retVal, retItem
+    # End of status
+
     def deletesliver(self, args):
         """AM API DeleteSliver <slicename>
         Slice name could be a full URN, but is usually just the slice name portion.
@@ -1894,7 +2124,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 self.logger.warn("Trying DeleteSliver with AM API v%d...", self.opts.api_version)
             else:
-                self._raise_omni_error("DeleteSliver is only available in AM API v1 or v2. Use Delete")
+                self._raise_omni_error("DeleteSliver is only available in AM API v1 or v2. Use Delete, or specify the -V2 option to use AM API v2, if the AM supports it.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "DeleteSliver")
@@ -1964,6 +2194,115 @@ class AMCallHandler(object):
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
         return retVal, (successList, failList)
+    # End of deletesliver
+
+    def delete(self, args):
+        """AM API DeleteSliver <slicename>
+        Delete the named slivers, making them geni_unallocated. Resources are stopped
+        if necessary, and both de-provisioned and de-allocated. No further AM API
+        operations may be performed on slivers that have been deleted.
+        See deletesliver.
+
+        Slice name could be a full URN, but is usually just the slice name portion.
+        Note that PLC Web UI lists slices as <site name>_<slice name>
+        (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+        Slice credential is usually retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        --sliver-urn / -u option: each specifies a sliver URN to delete. If specified,
+        only the listed slivers will be deleted. Otherwise, all slivers in the slice will be deleted.
+        --best-effort: If supplied, slivers that can be deleted, will be; some slivers
+        may not be deleted, in which case check the geni_error return for that sliver.
+        If not supplied, then if any slivers cannot be deleted, the whole call fails
+        and slivers do not change.
+
+        Aggregates queried:
+        - Single URL given in -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+        """
+        if self.opts.api_version < 3:
+            if self.opts.devmode:
+                self.logger.warn("Trying Delete with AM API v%d...", self.opts.api_version)
+            else:
+                self._raise_omni_error("Delete is only available in AM API v3+. Use DeleteSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, urn, slice_cred,
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+
+        urnsarg, slivers = self._build_urns(urn)
+
+        descripMsg = "slivers in slice %s" % urn
+        if len(slivers) > 0:
+            descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
+
+        args = [urnsarg, creds]
+        # Add the options dict
+        options = self._build_options('Delete', None)
+        args.append(options)
+
+        self.logger.debug("Doing delete with urns %s, %d creds, options %r",
+                          urnsarg, len(creds), options)
+
+        successCnt = 0
+        (clientList, message) = self._getclients()
+
+        # Connect to each available GENI AM
+        ## The AM API does not cleanly state how to deal with
+        ## aggregates which do not have a sliver in this slice.  We
+        ## know at least one aggregate (PG) returns an Exception in
+        ## this case.
+        ## FIX ME: May need to look at handling of this more in the future.
+        ## Also, if the user supplied the aggregate list, a failure is
+        ## more interesting.  We can figure out what the error strings
+        ## are at the various aggregates if they don't know about the
+        ## slice and make those more quiet.  Finally, we can try
+        ## sliverstatus at places where it fails to indicate places
+        ## where you still have resources.
+        op = 'Delete'
+        msg = "Delete of %s at " % (descripMsg)
+        retItem = {}
+        for client in clientList:
+            try:
+                (result, message) = self._api_call(client,
+                                                   msg + str(client.url),
+                                                   op, args)
+            except BadClientException:
+                continue
+
+            retItem[client.url] = result
+
+            (realres, message) = self._retrieve_value(result, message, self.framework)
+            if realres:
+                prStr = "Deleted %s on %s at %s" % (descripMsg,
+                                                           client.urn,
+                                                           client.url)
+                if len(clientList) == 1:
+                    retVal = prStr
+                self.logger.info(prStr)
+                successCnt += 1
+            else:
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                prStr = "Failed to delete %s on %s at %s: %s" % (descripMsg, client.urn, client.url, message)
+                self.logger.warn(prStr)
+                if len(clientList) == 1:
+                    retVal = prStr
+
+        # FIXME: Check return struct for missing slivers or individual sliver errors
+
+        if len(clientList) == 0:
+            retVal = "No aggregates specified on which to delete slivers. %s" % message
+        elif len(clientList) > 1:
+            retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
+        self.logger.debug("Delete result: " + pprint.pformat(retItem))
+        return retVal, retItem
+    # End of delete
 
     def shutdown(self, args):
         """AM API Shutdown <slicename>
@@ -2094,6 +2433,7 @@ class AMCallHandler(object):
                     return (cver, None)
         self.logger.warn("... skipping this client")
         return (cver, None)
+    # End of _checkValidClient
 
     def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
         '''Write the given RSpec using _printResults.
@@ -2158,6 +2498,7 @@ class AMCallHandler(object):
         # This prints or logs results, depending on whether filename is None
         self._printResults( header, content, filename)
         return retVal, filename
+    # End of _writeRSpec
 
     def _get_users_arg(self):
         '''Get the users argument for SSH public keys to install.'''
@@ -2208,6 +2549,7 @@ class AMCallHandler(object):
 #        if len(slice_users) < 1:
 #            self.logger.warn("No user keys found to be uploaded")
         return slice_users
+    # End of _get_users_arg
 
     def _get_server_name(self, clienturl, clienturn):
         '''Get a short server name from the AM URL and URN'''
@@ -2298,6 +2640,7 @@ class AMCallHandler(object):
                     message = _append_geni_error_output(result, message)
                     value = None
         return (value, message)
+    # End of _retrieve_value
 
     def _args_to_slicecred(self, args, num_args, methodname, otherargstring=""):
         '''Confirm got the specified number of arguments. First arg is taken as slice name.
@@ -2365,6 +2708,7 @@ class AMCallHandler(object):
             self.logger.info('Using ORCA slice id %r', self.opts.orca_slice_id)
             urn = self.opts.orca_slice_id
         return name, urn, slice_cred, retVal, slice_exp
+    # End of _args_to_slicecred
 
     def _raise_omni_error( self, msg, err=OmniError ):
         self.logger.error( msg )
@@ -2379,6 +2723,9 @@ class AMCallHandler(object):
         # if content starts with <?xml ..... ?> then put the header after that bit
         if content is not None and content.find("<?xml") > -1:
             cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
+            # push past any trailing \n
+            if content[cstart:cstart+2] == "\\n":
+                cstart += 2
         # used by listresources
         if filename is None:
             if header is not None:
@@ -2388,7 +2735,11 @@ class AMCallHandler(object):
                     else:
                         print content[:cstart] + "\n"
                 if not self.opts.tostdout:
-                    self.logger.info(header)
+                    # indent header a bit if there was something first
+                    pre = ""
+                    if cstart > 0:
+                        pre = "  "
+                    self.logger.info(pre + header)
                 else:
                     # If cstart is 0 maybe still log the header so it
                     # isn't written to STDOUT and non-machine-parsable
@@ -2403,7 +2754,11 @@ class AMCallHandler(object):
                     print content[:cstart] + "\n"
             if content is not None:
                 if not self.opts.tostdout:
-                    self.logger.info(content[cstart:])
+                    # indent a bit if there was something first
+                    pre = ""
+                    if cstart > 0:
+                        pre += "  "
+                    self.logger.info(pre + content[cstart:])
                 else:
                     print content[cstart:] + "\n"
         else:
@@ -2420,15 +2775,19 @@ class AMCallHandler(object):
                     # only write header to file if have xml like
                     # above, else do log thing per above
                     if cstart > 0:
-                        file.write( header )
+                        file.write("  " + header )
                         file.write( "\n" )
                     else:
                         self.logger.info(header)
                 elif cstart > 0:
                     file.write(content[:cstart] + '\n')
                 if content is not None:
-                    file.write( content[cstart:] )
+                    pre = ""
+                    if cstart > 0:
+                        pre += "  "
+                    file.write( pre + content[cstart:] )
                     file.write( "\n" )
+    # End of _printResults
 
     def _filename_part_from_am_url(self, url):
         """Strip uninteresting parts from an AM URL 

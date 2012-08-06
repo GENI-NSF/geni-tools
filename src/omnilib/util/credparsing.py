@@ -51,6 +51,48 @@ def is_valid_v3(logger, credString):
 
     return True
 
+def get_cred_target_urn(logger, cred):
+    '''Parse the given credential to get is target URN'''
+    credString = get_cred_xml(cred)
+    urn = ""
+
+    if credString is None:
+        return urn
+
+    # If credString is not a string then complain and return
+    if type(credString) != type('abc'):
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
+        logger.error("Cannot parse target URN: Credential is not a string: %s", str(credString))
+        return credexp
+
+    try:
+        doc = md.parseString(credString)
+        signed_cred = doc.getElementsByTagName("signed-credential")
+
+        # Is this a signed-cred or just a cred?
+        if len(signed_cred) > 0:
+            cred = signed_cred[0].getElementsByTagName("credential")[0]
+        else:
+            cred = doc.getElementsByTagName("credential")[0]
+
+        targetnode = cred.getElementsByTagName("target_urn")[0]
+        if len(targetnode.childNodes) > 0:
+            urn = str(targetnode.childNodes[0].nodeValue)
+    except Exception, exc:
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
+        logger.error("Failed to parse credential for target URN: %s", exc)
+        logger.info("Unparsable credential: %s", credString)
+        logger.debug(traceback.format_exc())
+
+    return urn
 
 def get_cred_exp(logger, cred):
     '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''

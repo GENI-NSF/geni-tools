@@ -112,7 +112,7 @@ def _load_cred(handler, filename):
         isStruct = True
     except Exception, e:
         handler.logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string.", filename)
-        handler.logger.debug(e)
+        #handler.logger.debug(e)
 
     if not handler.opts.devmode:
         if handler.opts.api_version >= 3 and credutils.is_cred_xml(cred) and not isStruct:
@@ -131,9 +131,21 @@ def _get_slice_cred(handler, urn):
     """
 
     cred = _load_cred(handler, handler.opts.slicecredfile)
-    if cred:
-        handler.logger.info("Got slice %s credential from file %s", urn, handler.opts.slicecredfile)
+    if cred is not None:
+        # We support reading cred from file without supplying a URN
+        if not urn or urn.strip() == "":
+            handler.logger.info("Got slice credential from file %s", handler.opts.slicecredfile)
+        else:
+            handler.logger.info("Got slice %s credential from file %s", urn, handler.opts.slicecredfile)
         return (cred, "")
+    elif handler.opts.slicecredfile and urn:
+            handler.logger.warn("Since supplied slicecred file not readable, falling back to re-downloading slice credential")
+
+    # We support reading cred from file without supplying a URN
+    if not urn or urn.strip() == "":
+        msg = "No slice URN supplied and no credential read from a file"
+        handler.logger.warn(msg)
+        return (None, msg)
 
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
@@ -158,8 +170,6 @@ def _print_slice_expiration(handler, urn, sliceCred=None):
 # This could be used to print user credential expiration info too...
 
     if sliceCred is None:
-        if urn is None or urn == '':
-            return ""
         (sliceCred, _) = _get_slice_cred(handler, urn)
     if sliceCred is None:
         # failed to get a slice string. Can't check

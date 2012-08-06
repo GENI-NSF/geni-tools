@@ -42,7 +42,6 @@ import geni
 from geni.util.urn_util import publicid_to_urn
 import geni.util.urn_util as urn
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
-from resource import Resource
 from aggregate import Aggregate
 from fakevm import FakeVM
 
@@ -104,10 +103,16 @@ def isGeniCred(cred):
 
 class AM_API(object):
     BAD_ARGS = 1
+    FORBIDDEN = 3
+    BAD_VERSION = 4
+    TOO_BIG = 6
     REFUSED = 7
     UNAVAILABLE = 11
     SEARCH_FAILED = 12
     UNSUPPORTED = 13
+    ALREADY_EXISTS = 17
+    # --- Non-standard errors below here. ---
+    OUT_OF_RANGE = 19
 
 
 class ApiErrorException(Exception):
@@ -276,12 +281,10 @@ class ReferenceAggregateManager(object):
                         geni_request_rspec_versions=reqver,
                         geni_ad_rspec_versions=adver,
                         geni_credential_types=credential_types)
-        return dict(geni_api=versions['geni_api'],
-                    code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=versions,
-                    output="")
+        result = self.successResult(versions)
+        # Add the top-level 'geni_api' per the AM API spec.
+        result['geni_api'] = versions['geni_api']
+        return result
 
     # The list of credentials are options - some single cred
     # must give the caller required permissions.
@@ -319,13 +322,16 @@ class ReferenceAggregateManager(object):
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
             self.logger.error('No geni_rspec_version supplied to ListResources.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version was not supplied.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version was not supplied.')
         if 'type' not in options['geni_rspec_version']:
             self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a type field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a type field.')
         if 'version' not in options['geni_rspec_version']:
             self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a version field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a version field.')
 
         # Look to see what RSpec version the client requested
         # Error-check that the input value is supported.
@@ -333,10 +339,12 @@ class ReferenceAggregateManager(object):
         rspec_version = options['geni_rspec_version']['version']
         if rspec_type != 'GENI':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
-            return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
             self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
-            return self.errorResult(4, 'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
         self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
 
         if 'geni_slice_urn' in options:
@@ -344,7 +352,7 @@ class ReferenceAggregateManager(object):
             msg = 'Bad Arguments:'
             msg += 'option geni_slice_urn is no longer a supported option.'
             msg += ' Use "Describe" instead.'
-            return self.errorResult(1, msg)
+            return self.errorResult(AM_API.BAD_ARGS, msg)
 
 #        if 'geni_slice_urn' in options:
 #            slice_urn = options['geni_slice_urn']
@@ -362,7 +370,6 @@ class ReferenceAggregateManager(object):
                 continue
             resource_xml = resource_xml + self.advert_resource(r)
         result = self.advert_header() + resource_xml + self.advert_footer()
-        self.logger.debug("Result is now \"%s\"", result)
         # Optionally compress the result
         if 'geni_compressed' in options and options['geni_compressed']:
             try:
@@ -370,12 +377,7 @@ class ReferenceAggregateManager(object):
             except Exception, exc:
                 self.logger.error("Error compressing and encoding resource list: %s", traceback.format_exc())
                 raise Exception("Server error compressing resource list", exc)
-
-        return dict(code=dict(geni_code=0,
-                              am_type=self._am_type,
-                              am_code=0),
-                    value=result,
-                    output="")
+        return self.successResult(result)
 
     # The list of credentials are options - some single cred
     # must give the caller required permissions.
@@ -408,14 +410,16 @@ class ReferenceAggregateManager(object):
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
             self.logger.error('Slice %s already exists.', slice_urn)
-            return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
+            return self.errorResult(AM_API.ALREADY_EXISTS,
+                                    'Slice %s already exists' % (slice_urn))
 
         rspec_dom = None
         try:
             rspec_dom = minidom.parseString(rspec)
         except Exception, exc:
             self.logger.error("Cannot create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
-            return self.errorResult(1, 'Bad Args: RSpec is unparseable')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Args: RSpec is unparseable')
 
         # Look at the version of the input request RSpec
         # Make sure it is supported
@@ -432,7 +436,10 @@ class ReferenceAggregateManager(object):
             unbound.append(elem)
         if len(unbound) > len(available):
             # There aren't enough resources
-            return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
+            self.logger.error('Too big: requesting %d resources but I only have %d',
+                              len(unbound), len(available))
+            return self.errorResult(AM_API.TOO_BIG,
+                                    'Too Big: insufficient resources to fulfill request')
 
         resources = list()
         for elem in unbound:
@@ -662,26 +669,31 @@ class ReferenceAggregateManager(object):
                                                 privileges)
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
-            self.logger.error('No geni_rspec_version supplied to ListResources.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version was not supplied.')
+            self.logger.error('No geni_rspec_version supplied to Describe.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version was not supplied.')
         if 'type' not in options['geni_rspec_version']:
-            self.logger.error('ListResources: geni_rspec_version does not contain a type field.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a type field.')
+            self.logger.error('Describe: geni_rspec_version does not contain a type field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a type field.')
         if 'version' not in options['geni_rspec_version']:
-            self.logger.error('ListResources: geni_rspec_version does not contain a version field.')
-            return self.errorResult(1, 'Bad Arguments: option geni_rspec_version does not have a version field.')
+            self.logger.error('Describe: geni_rspec_version does not contain a version field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a version field.')
 
         # Look to see what RSpec version the client requested
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
         rspec_version = options['geni_rspec_version']['version']
         if rspec_type != 'GENI':
-            self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
-            return self.errorResult(4, 'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+            self.logger.error('Describe: Unknown RSpec type %s requested', rspec_type)
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
         if rspec_version != '3':
-            self.logger.error('ListResources: Unknown RSpec version %s requested', rspec_version)
-            return self.errorResult(4, 'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_type))
-        self.logger.info("ListResources requested RSpec %s (%s)", rspec_type, rspec_version)
+            self.logger.error('Describe: Unknown RSpec version %s requested', rspec_version)
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
+        self.logger.info("Describe requested RSpec %s (%s)", rspec_type, rspec_version)
 
         manifest_body = ""
         for sliver in slivers:
@@ -730,12 +742,14 @@ class ReferenceAggregateManager(object):
             msg = (("Out of range: Expiration %s is out of range"
                    + " (past last credential expiration of %s).")
                    % (expiration_time, expiration))
-            return self.errorResult(19, msg)
+            self.logger.error(msg)
+            return self.errorResult(AM_API.OUT_OF_RANGE, msg)
         elif requested < now:
             msg = (("Out of range: Expiration %s is out of range"
                    + " (prior to now %s).")
                    % (expiration_time, now.isoformat()))
-            return self.errorResult(19, msg)
+            self.logger.error(msg)
+            return self.errorResult(AM_API.OUT_OF_RANGE, msg)
         else:
             # Renew all the named slivers
             for sliver in slivers:
@@ -758,10 +772,12 @@ class ReferenceAggregateManager(object):
                                                         privileges)
         the_urn = urn.URN(urn=slice_urn)
         if the_urn.getType() != 'slice':
-            return self.errorResult(1, "Bad Args: Not a slice URN", 0)
+            self.logger.error('URN %s is not a slice URN.', slice_urn)
+            return self.errorResult(AM_API.BAD_ARGS, "Bad Args: Not a slice URN")
         the_slice, _ = self.decode_urns([slice_urn])
         if the_slice.isShutdown():
-            return self.errorResult(3, "Already shut down.", 0)
+            self.logger.error('Slice %s is already shut down.', slice_urn)
+            return self.errorResult(AM_API.FORBIDDEN, "Already shut down.")
         the_slice.shutdown()
         return self.successResult(True)
 
@@ -774,10 +790,13 @@ class ReferenceAggregateManager(object):
                     output="")
 
     def _no_such_slice(self, slice_urn):
-        return self.errorResult(12, 'Search Failed: no slice "%s" found' % (slice_urn))
+        return self.errorResult(AM_API.SEARCH_FAILED,
+                                ('Search Failed: no slice "%s" found'
+                                 % (slice_urn)))
 
     def errorResult(self, code, output, am_code=None):
-        code_dict = dict(geni_code=code, am_type="gcf2")
+        code_dict = dict(geni_code=code,
+                         am_type=self._am_type)
         if am_code is not None:
             code_dict['am_code'] = am_code
         return dict(code=code_dict,
@@ -1044,10 +1063,8 @@ class AggregateManager(object):
 
     def ListResources(self, credentials, options):
         '''Return an RSpec of resources managed at this AM.
-        If a geni_slice_urn
-        is given in the options, then only return resources assigned
-        to that slice. If geni_available is specified in the options,
-        then only report available resources. And if geni_compressed
+        If geni_available is specified in the options,
+        then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
         try:
             return self._delegate.ListResources(credentials, options)
@@ -1058,7 +1075,11 @@ class AggregateManager(object):
             return self._exception_result(e)
 
     def Allocate(self, slice_urn, credentials, rspec, options):
-        """
+        """Allocate resources to a slice. This is a low-effort call
+        and the resources will have short expiration times. If the
+        experimenter really wants the resources they must call
+        'Provision'. This is step 1 in the process of acquiring
+        usable resources from an aggregate.
         """
         try:
             return self._delegate.Allocate(slice_urn, credentials, rspec,
@@ -1070,6 +1091,10 @@ class AggregateManager(object):
             return self._exception_result(e)
 
     def Provision(self, urns, credentials, options):
+        """Make a reservation 'real' by instantiating the resources
+        reserved in a previous allocate invocation. This is step 2 in
+        the process of acquiring usable resources from an aggregate.
+        """
         try:
             return self._delegate.Provision(urns, credentials, options)
         except ApiErrorException as e:
@@ -1079,7 +1104,8 @@ class AggregateManager(object):
             return self._exception_result(e)
 
     def Delete(self, urns, credentials, options):
-        """Delete the given sliver. Return true on success."""
+        """Delete the given resources.
+        """
         try:
             return self._delegate.Delete(urns, credentials,
                                            options)
@@ -1091,6 +1117,9 @@ class AggregateManager(object):
 
     def PerformOperationalAction(self, urns, credentials, action, options):
         """Perform the given action on the objects named by the given URNs.
+        Once resources have been provisioned, they must be started (booted).
+        This is the third and final step in the process of acquiring usable
+        resources from an aggregate.
         """
         try:
             return self._delegate.PerformOperationalAction(urns, credentials,
@@ -1102,7 +1131,7 @@ class AggregateManager(object):
             return self._exception_result(e)
 
     def Status(self, urns, credentials, options):
-        """Report the status of the specified URNs.
+        """Report the status of the specified resources.
         """
         try:
             return self._delegate.Status(urns, credentials, options)
@@ -1113,8 +1142,9 @@ class AggregateManager(object):
             return self._exception_result(e)
 
     def Describe(self, urns, credentials, options):
-        """Describe the specified URNs.
-        Return a manifest RSpec of the resources named by 'urns'.
+        """Describe the specified resources.
+        Return a manifest RSpec of the resources as well
+        as their current status.
         """
         try:
             return self._delegate.Describe(urns, credentials, options)
@@ -1147,49 +1177,6 @@ class AggregateManager(object):
             traceback.print_exc()
             return self._exception_result(e)
         return self._delegate.Shutdown(slice_urn, credentials, options)
-
-    #------------------------------------------------------------
-    # Backward compatibility
-    #
-    # The medthods below exist to invoke v3 functions from a
-    # v2 omni. Delete them once omni supports the new methods
-    # in AM API v3
-    #------------------------------------------------------------
-
-    def DeleteSliver(self, slice_urn, credentials, options):
-        """Delete the given sliver. Return true on success."""
-        self.logger.warning("Mapping DeleteSliver to Delete")
-        try:
-            return self._delegate.Delete([slice_urn], credentials,
-                                           options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
-
-    def RenewSliver(self, slice_urn, credentials, expiration_time, options):
-        """Extend the life of the given slice until the given
-        expiration time."""
-        try:
-            return self._delegate.Renew([slice_urn], credentials,
-                                        expiration_time, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
-
-    def SliverStatus(self, slice_urn, credentials, options):
-        """Report the status of the specified URNs.
-        """
-        try:
-            return self._delegate.Status([slice_urn], credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
 
 
 class AggregateManagerServer(object):
