@@ -22,7 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-""" Acceptance tests for AM API v1."""
+""" Acceptance tests for AM API v1, v2, and v3."""
 
 import datetime
 import dateutil.parser
@@ -30,7 +30,7 @@ from geni.util import rspec_util
 from geni.util import urn_util
 import unittest
 import omni_unittest as ut
-from omni_unittest import NotDictAssertionError, NotNoneAssertionError
+from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError, RefusedError
 import omni
@@ -538,11 +538,14 @@ class Test(ut.OmniUnittest):
         
         AMAPI_call = "ListResources"
         if slicename and (self.options_copy.api_version >= 3):
+            # AM API v3 Describe(slicename)
             AMAPI_call = "Describe"            
             omniargs = omniargs + ["describe", str(slicename)]
         if slicename and (self.options_copy.api_version < 3):
+            # AM API v1 and v2 ListResources(slicename)
             omniargs = omniargs + ["listresources", str(slicename)]
         else:
+            # AM API v1-v3 ListResources()
             omniargs = omniargs + ["listresources"]
 
         if usercred and slicecred:
@@ -597,62 +600,47 @@ class Test(ut.OmniUnittest):
                         "This indicates there were no aggregates checked. " \
                         "Look for misconfiguration." % (AMAPI_call) )
 
-        # Checks each aggregate
-        for ((agg_name, agg_url), rspec) in ret_dict.items():
-            ## In python 2.7: assertIsNotNone
-            self.assertTrue(rspec,
-                          "Return from '%s' at aggregate '%s' " \
-                          "expected to be XML file " \
-                          "but instead nothing returned." 
-                           % (AMAPI_call, agg_name))
-            # TODO: more elegant truncation
-            self.assertTrue(type(rspec) is str,
-                          "Return from '%s' at aggregate '%s' " \
-                          "expected to be string " \
-                          "but instead returned: \n" \
-                          "%s\n" \
-                          "... edited for length ..." 
-                          % (AMAPI_call, agg_name, rspec[:100]))
+        if AMAPI_call == "Describe":            
+            # AM API v3 Describe( slicename )
+            for agg, indAgg in ret_dict.items():
+                err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )    
+                self.assertSuccess( err_code )
+                if err_code == SUCCESS:
+                    # value only required if it is successful
+                    retVal = indAgg['value']
+                    numslivers, rspec = self.assertDescribeReturn( agg, retVal )
 
-            # Test if file is XML and contains "<rspec" or "<resv_rspec"
-            # TODO is_rspec_string() might not be exactly the right thing here
-            self.assertTrue(rspec_util.is_rspec_string( rspec ),
-                          "Return from '%s' at aggregate '%s' " \
-                          "expected to be XML " \
-                          "but instead returned: \n" \
-                          "%s\n" \
-                          "... edited for length ..." 
-                           % (AMAPI_call, agg_name, rspec[:100]))
 
-            if slicename:
-                self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
-            else:
-                self.assertRspecType( rspec, 'advertisement', typeOnly=typeOnly)
+                    self.assertRspec( AMAPI_call, rspec, 
+                                      rspec_namespace, rspec_schema, 
+                                      self.options_copy.rspeclint)
 
-            # Test if XML file passes rspeclint
-            if self.options_copy.rspeclint:
-                self.assertTrue(rspec_util.validate_rspec( rspec, 
-                                                     namespace=rspec_namespace, 
-                                                     schema=rspec_schema ),
-                            "Return from '%s' at aggregate '%s' " \
-                            "expected to pass rspeclint " \
-                            "but did not. Return was: " \
-                            "\n%s\n" \
-                            "... edited for length ..."
-                            % (AMAPI_call, agg_name, rspec[:100]))
-            if self.options_copy.geni_available:
-                self.assertTrue(rspec_util.rspec_available_only( rspec, 
-                                                     namespace=rspec_namespace, 
-                                                     schema=rspec_schema, 
-                                                     version=self.RSpecVersion() ),
-                            "Return from '%s' at aggregate '%s' " \
-                            "expected to only include available nodes " \
-                            "but did not. Return was: " \
-                            "\n%s\n" \
-                            "... edited for length ..."
-                            % (AMAPI_call, agg_name, rspec[:100]))
-                
+                    self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
+        else:
+            # AM API v1-v3 ListResources() and 
+            # AM API v1-v2 ListResources( slicename )
+            # but not AM API v3 Describe() <-- which is covered above
+            for ((agg_name, agg_url), rspec) in ret_dict.items():
+                self.assertRspec( AMAPI_call, rspec, 
+                                  rspec_namespace, rspec_schema, 
+                                  self.options_copy.rspeclint)
 
+                if slicename:
+                    self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
+                else:
+                    self.assertRspecType( rspec, 'advertisement', typeOnly=typeOnly)
+
+                if self.options_copy.geni_available:
+                    self.assertTrue(rspec_util.rspec_available_only( rspec, 
+                                                         namespace=rspec_namespace, 
+                                                         schema=rspec_schema, 
+                                                         version=self.RSpecVersion() ),
+                                "Return from '%s' at aggregate '%s' " \
+                                "expected to only include available nodes " \
+                                "but did not. Return was: " \
+                                "\n%s\n" \
+                                "... edited for length ..."
+                                % (AMAPI_call, agg, rspec[:100]))
         return rspec
 
     def test_CreateSliver(self):
@@ -667,7 +655,9 @@ class Test(ut.OmniUnittest):
             rspec_util.rspeclint_exists()
             rspec_namespace = self.manifest_namespace
             rspec_schema = self.manifest_schema
-
+        else:
+            rspec_namespace = None
+            rspec_schema = None
 
         if slicename==None:
             slicename = self.create_slice_name()
@@ -679,141 +669,67 @@ class Test(ut.OmniUnittest):
 
         # cleanup up any previous failed runs
         try:
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_Delete( slicename )
             time.sleep(self.options_copy.sleep_time)
         except:
             pass
 
-        manifest = self.subtest_CreateSliver( slicename )
+        numslivers, manifest = self.subtest_generic_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
 
         try:
-
+            self.assertRspec( "CreateSliver", manifest, 
+                              rspec_namespace, rspec_schema,
+                              self.options_copy.rspeclint )
             self.assertRspecType( request, 'request')
             self.assertRspecType( manifest, 'manifest')
-
-            # manifest should be valid XML 
-            self.assertIsXML(  manifest,
-                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                             "expected to be wellformed XML file " \
-                             "but was not. Return was: " \
-                             "\n%s\n" \
-                             "... edited for length ..."
-                         % (slicename, manifest[:100]))                         
-
-
-            # Test if manifest passes rspeclint
-            if self.options_copy.rspeclint:
-                self.assertTrue(rspec_util.validate_rspec( manifest, 
-                                                    namespace=rspec_namespace, 
-                                                    schema=rspec_schema ),
-                            "Manifest RSpec returned from 'CreateSliver' " \
-                            "expected to pass rspeclint " \
-                            "but did not. Return was: " \
-                            "\n%s\n" \
-                            "... edited for length ..."
-                            % (manifest[:100]))
-
-            # Make sure the Manifest returned the nodes identified in the Request
-            if rspec_util.has_child_node( manifest, self.RSpecVersion()):
-                if self.options_copy.bound:
-                    self.assertCompIDsEqual( request, manifest, self.RSpecVersion(),
-                             "Request RSpec and Manifest RSpec " \
-                             "returned by 'ListResources' on slice '%s' " \
-                             "expected to have same component_ids " \
-                             "but did not." % slicename)
-                self.assertClientIDsEqual( request, manifest, self.RSpecVersion(),
-                             "Request RSpec and Manifest RSpec " \
-                             "returned by 'ListResources' on slice '%s' " \
-                             "expected to have same client_ids " \
-                             "but did not." % slicename)
-                             
-            else:
-                # the top level node should have a child
-                self.assertResourcesExist( manifest,
-                    "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                              "expected to NOT be empty " \
-                              "but was. Return was: " \
-                              "\n%s\n" 
-                          % (slicename, manifest))
-
-            
-            time.sleep(self.options_copy.sleep_time)
-
-            self.subtest_SliverStatus( slicename )        
-            manifest2 = self.subtest_ListResources( slicename=slicename )
-
-            self.assertRspecType( manifest2, 'manifest')
-
-            # manifest should be valid XML 
-            self.assertIsXML( manifest2,
-                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                             "expected to be wellformed XML file " \
-                             "but was not. Return was: " \
-                             "\n%s\n" \
-                             "... edited for length ..."
-                         % (slicename, manifest2[:100]))
-
-            # Test if manifest passes rspeclint
-            if self.options_copy.rspeclint:
-                self.assertTrue(rspec_util.validate_rspec( manifest2, 
-                                                    namespace=rspec_namespace, 
-                                                    schema=rspec_schema ),
-                            "Manifest RSpec returned from 'ListResources' " \
-                            "on a slice " \
-                            "expected to pass rspeclint " \
-                            "but did not. Return was: " \
-                            "\n%s\n" \
-                            "... edited for length ..."
-                            % (manifest2[:100]))
-
-
             # Make sure the Manifest returned the nodes identified in
             # the Request
-            if rspec_util.has_child_node( manifest2, self.RSpecVersion()):
-                if self.options_copy.bound:
-                    self.assertCompIDsEqual( request, manifest2, 
-                                 self.RSpecVersion(),
-                                 "Request RSpec and Manifest RSpec " \
-                                 "returned by 'ListResources' on slice '%s' " \
-                                 "expected to have same component_ids " \
-                                 "but did not." % slicename )
-                self.assertClientIDsEqual( request, manifest2, 
-                                 self.RSpecVersion(),
-                                 "Request RSpec and Manifest RSpec " \
-                                 "returned by 'ListResources' on slice '%s' " \
-                                 "expected to have same client_ids " \
-                                 "but did not." % slicename )
-            else:
-                # the top level node should have a child
-                self.assertResourcesExist( manifest2,
-                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                   "expected to NOT be empty " \
-                   "but was. Return was: " \
-                   "\n%s\n" 
-                          % (slicename, manifest2))
+            self.assertManifestMatchesRequest( request, manifest, 
+                                               self.RSpecVersion(),
+                                               self.options_copy.bound )
 
+            time.sleep(self.options_copy.sleep_time)
+            self.subtest_generic_SliverStatus( slicename )        
+
+            manifest2 = self.subtest_ListResources( slicename=slicename )
+            self.assertRspecType( manifest2, 'manifest')
+            self.assertRspec( "ListResources", manifest2, 
+                              rspec_namespace, rspec_schema,
+                              self.options_copy.rspeclint )
+            # Make sure the Manifest returned the nodes identified in
+            # the Request
+            self.assertManifestMatchesRequest( request, manifest2, 
+                                               self.RSpecVersion(),
+                                               self.options_copy.bound )
 
             # Attempting to CreateSliver again should fail or return a
             # manifest
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
-                if self.options_copy.api_version == 2:
+                if self.options_copy.api_version == 3:
+                    self.assertRaises(NotSuccessError, 
+                                      self.subtest_generic_CreateSliver, 
+                                      slicename )
+                elif self.options_copy.api_version == 2:
                     # Be more specific when we can
                     self.assertRaises(RefusedError, 
-                                      self.subtest_CreateSliver, slicename )
+                                      self.subtest_generic_CreateSliver, 
+                                      slicename )
                 else:
                     # This is a little generous, as this error is
                     # raised for many reasons
                     self.assertRaises(NotNoneAssertionError, 
-                                      self.subtest_CreateSliver, slicename )
+                                      self.subtest_generic_CreateSliver, 
+                                      slicename )
             else:
                 # if --more-strict
                 # CreateSliver should return an RSpec containing no
                 # resources
-                manifest = self.subtest_CreateSliver( slicename )
+                numslivers, manifest = self.subtest_generic_CreateSliver( 
+                    slicename )
                 self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
                   "expected to be wellformed XML file " \
@@ -831,12 +747,12 @@ class Test(ut.OmniUnittest):
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-            self.subtest_RenewSliver_many( slicename )
+            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
             time.sleep(self.options_copy.sleep_time)
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_DeleteSliver( slicename )
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -888,16 +804,16 @@ class Test(ut.OmniUnittest):
 
         # cleanup up any previous failed runs
         try:
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_DeleteSliver( slicename )
         except:
             pass
 
-        manifest = self.subtest_CreateSliver( slicename )
+        manifest = self.subtest_generic_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)             
         try:
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_DeleteSliver( slicename )
         except:
             pass
 
@@ -918,12 +834,12 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-        self.assertRaises((NotDictAssertionError, NoSliceCredError), 
-                          self.subtest_SliverStatus, slicename )
+        self.assertRaises((NotSuccessError, NotDictAssertionError, NoSliceCredError), 
+                          self.subtest_generic_SliverStatus, slicename )
         
         if not self.options_copy.strict:
             # if --less-strict, then accept a returned error
-            self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename )
+            self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, slicename )
         else:
             # if --more-strict
             # ListResources should return an RSpec containing no resources
@@ -946,10 +862,10 @@ class Test(ut.OmniUnittest):
         # Also repeated calls to DeleteSliver should now fail
         try:
             self.assertRaises((AssertionError, NoSliceCredError), 
-                              self.subtest_DeleteSliver, slicename )
+                              self.subtest_generic_DeleteSliver, slicename )
         # Or succeed by returning True
         except AssertionError:
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_DeleteSliver( slicename )
 
 
     def test_CreateSliverWorkflow_multiSlice(self): 
@@ -1263,19 +1179,26 @@ class Test(ut.OmniUnittest):
         text, allAggs = self.call(omniargs, self.options_copy)
         for agg, indAgg in allAggs.items():
             err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )
+            retVal2 = None
+            self.assertSuccess( err_code )
             if err_code == SUCCESS:
                 # value only required if it is successful
                 retVal = indAgg['value']
                 if AMAPI_call is "Renew":
-                    numSlivers = self.assertRenewReturn( agg, retVal )
+                    retVal2 = self.assertRenewReturn( agg, retVal )
+                    numSlivers = retVal2
                 elif AMAPI_call is "Provision":
-                    numSlivers = self.assertProvisionReturn( agg, retVal )
+                    retVal2 = self.assertProvisionReturn( agg, retVal )
+                    numSlivers, manifest = retVal2
                 elif AMAPI_call is "Status":
-                    numSlivers = self.assertStatusReturn( agg, retVal )
+                    retVal2 = self.assertStatusReturn( agg, retVal )
+                    numSlivers = retVal2
                 elif AMAPI_call is "PerformOperationalAction":
-                    numSlivers = self.assertPerformOperationalActionReturn( agg, retVal )
+                    retVal2 = self.assertPerformOperationalActionReturn( agg, retVal )
+                    numSlivers = retVal2
                 elif AMAPI_call is "Delete":
-                    numSlivers = self.assertDeleteReturn( agg, retVal )
+                    retVal2 = self.assertDeleteReturn( agg, retVal )
+                    numSlivers = retVal2
                 else:
                     print "Shouldn't get here"
 
@@ -1284,7 +1207,7 @@ class Test(ut.OmniUnittest):
                                      "expected to list slivers " \
                                      "but did not"
                                  % (AMAPI_call))
-#        return numSlivers
+        return retVal2
 
 
     def subtest_CreateSliver(self, slice_name):
@@ -1334,9 +1257,7 @@ class Test(ut.OmniUnittest):
             #    code, value, and output
             err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, 
                                                         indAgg )
-            self.assertTrue( err_code == 0, 
-                          "Call should have returned success, but did not. " \
-                          "Error message is: %s" % str(msg) )
+            self.assertSuccess( err_code )
 
             if AMAPI_call is "CreateSliver":
                 manifest = indAgg
@@ -1366,7 +1287,7 @@ class Test(ut.OmniUnittest):
                       % (AMAPI_call, slice_name, manifest[:100]))
 
 
-#        return retVal2
+        return retVal2
 
 
     def subtest_SliverStatus(self, slice_name):
@@ -1492,6 +1413,37 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotNoneAssertionError,
                               self.subtest_MinCreateSliverWorkflow, slice_name)
         self.success = True
+
+
+    # Provide simple mapping for all v1, v2, and v3 calls
+    def subtest_generic_DeleteSliver( self, slicename ):
+        if self.options_copy.api_version <= 2:
+            self.subtest_DeleteSliver( slicename )
+        elif self.options_copy.api_version == 3:
+            self.subtest_Delete( slicename )
+    def subtest_generic_CreateSliver( self, slicename ):
+        """For v1 and v2, call CreateSliver().  For v3, call
+        Allocate(), Provision(), and then
+        PerformOperationalAction('geni_start').
+        """
+        if self.options_copy.api_version <= 2:
+            numslivers, manifest = self.subtest_CreateSliver( slicename )
+        elif self.options_copy.api_version == 3:
+            self.subtest_Allocate( slicename )
+            numslivers, manifest = self.subtest_Provision( slicename )
+            self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+        return numslivers, manifest
+    def subtest_generic_SliverStatus( self, slicename ):
+        if self.options_copy.api_version <= 2:
+            self.subtest_SliverStatus( slicename )
+        elif self.options_copy.api_version == 3:
+            self.subtest_Status( slicename )
+
+    def subtest_generic_RenewSliver_many( self, slicename ):
+        if self.options_copy.api_version <= 2:
+            self.subtest_RenewSliver_many( slicename )
+        elif self.options_copy.api_version == 3:
+            self.subtest_Renew_many( slicename )
 
     @classmethod
     def accept_parser( cls, parser=omni.getParser(), usage=None):

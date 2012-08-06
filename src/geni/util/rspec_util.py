@@ -284,7 +284,8 @@ def rspec_available_only( rspec, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_S
 #def is_valid_rspec(): 
 # Call is_rspec_string()
 # Call validate_rspec()
-def is_rspec_string( rspec, logger=None ):
+def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None, 
+                     logger=None ):
     '''Could this string be part of an XML-based rspec?
     Returns: True/False'''
 
@@ -305,7 +306,14 @@ def is_rspec_string( rspec, logger=None ):
         ('<resv_rspec' in rspec)): 
         return True
 
-    # (3) TBD: Validate rspec against schema
+    # (3) Validate rspec against schema
+    if rspec_namespace and rspec_schema:
+        if validate_rspec(rspec, 
+                          namespace=rspec_namespace, 
+                          schema=rspec_schema ):
+            return True
+        else:
+            return False
     return False
 
 

@@ -28,6 +28,7 @@ import copy as docopy
 import datetime
 from geni.util import rspec_util 
 from geni.util import urn_util
+from geni.util import error_util
 import inspect
 import sys
 import unittest
@@ -36,13 +37,63 @@ import os.path
 import pwd
 import dateutil.parser
 
+
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "logging.conf"
+
+class BadArgsErrCode( AssertionError ):
+    pass
+class ErrorErrCode( AssertionError ):
+    pass
+class ForbiddenErrCode( AssertionError ):
+    pass
+class BadVersionErrCode( AssertionError ):
+    pass
+class ServerErrorErrCode( AssertionError ):
+    pass
+class TooBigErrCode( AssertionError ):
+    pass
+class RefusedErrCode( AssertionError ):
+    pass
+class TimedOutErrCode( AssertionError ):
+    pass
+class DBErrorErrCode( AssertionError ):
+    pass
+class RPCErrCode( AssertionError ):
+    pass
+class UnavailableErrCode( AssertionError ):
+    pass
+class SearchFailedErrCode( AssertionError ):
+    pass
+class UnsupportedErrCode( AssertionError ):
+    pass
+class BusyErrCode( AssertionError ):
+    pass
+class ExpiredErrCode( AssertionError ):
+    pass
+class InProgressErrCode( AssertionError ):
+    pass
+class AlreadyExistsErrCode( AssertionError ):
+    pass
+class MissingArgsErrCode( AssertionError ):
+    pass
+class OutOfRangeErrCode( AssertionError ):
+    pass
+class CredentialInvalidErrCode( AssertionError ):
+    pass
+class CredentialExpiredErrCode( AssertionError ):
+    pass
+class CredentialMismatchErrCode( AssertionError ):
+    pass
+class CredentialSignerUntrustedErrCode( AssertionError ):
+    pass
 
 
 class NotDictAssertionError( AssertionError ):
     pass
 class NotListAssertionError( AssertionError ):
+    pass
+class NotStringAssertionError( AssertionError ):
     pass
 class NotNoneAssertionError( AssertionError ):
     pass
@@ -55,6 +106,8 @@ class NotEqualComponentIDsError( AssertionError ):
 class NotEqualClientIDsError( AssertionError ):
     pass
 class WrongRspecType( AssertionError ):
+    pass
+class NotSuccessError( AssertionError ):
     pass
 
 class OmniUnittest(unittest.TestCase):
@@ -113,21 +166,29 @@ class OmniUnittest(unittest.TestCase):
         """Make the Omni call"""
         ret_val = omni.call( cmd, options=options, verbose=True )
         return ret_val
-    def assertIsNotNone(self, item, msg):
+    def assertIsNotNone(self, item, msg=None):
+        if msg is None:
+            msg = "Item is None."
         if item is None:
             raise NotNoneAssertionError, msg
 
     def assertDict(self, item, msg=None):
         if msg is None:
-            msg = "Type of '%s' is not 'dict'." % item
+            msg = "Type of '%s' is '%s' not 'dict' as expected." % (item, type(item))
         if not type(item) == dict:
             raise NotDictAssertionError, msg
 
     def assertList(self, item, msg=None):
         if msg is None:
-            msg = "Type of '%s' is not 'list'." % item
+            msg = "Type of '%s' is '%s' not 'list' as expected." % (item, type(item))
         if not type(item) == list:
             raise NotListAssertionError, msg
+
+    def assertStr(self, item, msg=None):
+        if msg is None:
+            msg = "Type of '%s' is '%s' not 'str' as expected." % (item, type(item))
+        if not type(item) == str:
+            raise NotStringAssertionError, msg
 
     def assertIsXML(self, rspec, msg=None):
         if not rspec_util.is_wellformed_xml( rspec ):
@@ -137,6 +198,16 @@ class OmniUnittest(unittest.TestCase):
                     "\n%s\n" \
                     "... edited for length ..." % (rspec[:100])
             raise NotXMLAssertionError, msg
+
+    def assertSuccess(self, item, msg=None):
+        if error_util.err_codes.has_key( item ):
+            label = error_util.err_codes[ item ]['label']
+            description = error_util.err_codes[ item ]['description']
+        if msg is None:
+            msg = "geni_code not 0 (SUCCESS)  as expected."
+        msg = msg+"\nInstead reported geni_code %s (%s): '%s'" % (item, label, description)
+        if not (int(item) == 0):
+            raise NotSuccessError, msg
 
     def assertResourcesExist(self, rspec, msg=None):                
         if not rspec_util.has_child( rspec ):
@@ -172,24 +243,63 @@ class OmniUnittest(unittest.TestCase):
                     "but did not."
             raise NotEqualClientIDsError, msg
 
-    def assertRspec( self, AMAPI_call, rspec ):
-        self.assertTrue(type(rspec) is str,
+    def assertManifestMatchesRequest( self, request, manifest, rspec_version, bound ):
+        if rspec_util.has_child_node( manifest, rspec_version):
+            if bound:
+                self.assertCompIDsEqual( request, manifest, 
+                             rspec_version,
+                             "Request RSpec and Manifest RSpec " \
+                             "expected to have same component_ids " \
+                             "but did not." )
+            self.assertClientIDsEqual( request, manifest, 
+                             rspec_version,
+                             "Request RSpec and Manifest RSpec " \
+                             "expected to have same client_ids " \
+                             "but did not.")
+        else:
+            # the top level node should have a child
+            self.assertResourcesExist( manifest,
+               "Manifest RSpec " \
+               "expected to NOT be empty " \
+               "but was. Return was: " \
+               "\n%s\n" 
+                      % (manifest2))
+
+
+    def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
+
+        self.assertIsNotNone( rspec, "Rspec is None" )
+        self.assertStr( rspec )
+        
+        # do all comparisons as lowercase
+        rspec = rspec.lower()
+
+        # (1) Check if rspec is a well-formed XML document
+        self.assertIsXML( rspec )
+
+        # (2) Check if rspec is a valid XML document
+        #   (a) a snippet of XML starting with <rspec>, or
+        #   (b) a snippet of XML starting with <resv_rspec>
+        self.assertTrue (('<rspec' in rspec) or
+                         ('<resv_rspec' in rspec),
                         "Return from '%s' " \
-                            "expected to be string " \
+                            "expected to contain '<rspec' or '<resv_rspec' " \
                             "but instead returned: \n" \
                             "%s\n" \
                             "... edited for length ..." 
                         % (AMAPI_call, rspec[:100]))
 
-        # Test if file is XML and contains "<rspec" or "<resv_rspec"
-        self.assertTrue(rspec_util.is_rspec_string( rspec ),
-                        "Return from '%s' " \
-                            "expected to be XML " \
-                            "but instead returned: \n" \
-                            "%s\n" \
-                            "... edited for length ..." 
-                        % (AMAPI_call, rspec[:100]))
-
+        # (3) Validate rspec against schema
+        if rspec_namespace and rspec_schema and runRspeclint:
+            self.assertTrue(rspec_util.validate_rspec( rspec, 
+                                              namespace=rspec_namespace, 
+                                              schema=rspec_schema ),
+                            "Return " \
+                            "expected to pass rspeclint " \
+                            "but did not. Return was: " \
+                            "\n%s\n" \
+                            "... edited for length ..."
+                            % (rspec[:100]))
 
 
     def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
@@ -202,7 +312,7 @@ class OmniUnittest(unittest.TestCase):
         if not rspec_util.is_rspec_of_type( rspec, type=type, version=version, typeOnly=typeOnly ):
             if msg is None:
                 msg =  "RSpec expected to have type '%s' " \
-                    "but schema was not correct." % (type)
+                    "but schema was not correct. " % (type)
             raise WrongRspecType, msg        
     # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
     #     try:
@@ -420,7 +530,7 @@ Check that the value of 'code' is as follows:
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
-        return len(slivers)
+        return len(slivers), manifest
 
 
     def assertStatusReturn( self, agg, retVal ):
@@ -530,7 +640,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
-        return len(slivers)
+        return len(slivers), manifest
 
     def assertAllocateReturn( self, agg, retVal ):
         """Returns:
