@@ -37,7 +37,7 @@ import pprint
 import string
 import zlib
 
-from omnilib.util import OmniError, NoSliceCredError, RefusedError, naiveUTC
+from omnilib.util import OmniError, NoSliceCredError, RefusedError, naiveUTC, AMAPIError
 from omnilib.util.dossl import _do_ssl
 from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
@@ -2630,12 +2630,12 @@ class AMCallHandler(object):
             #FIXME Should that be if 'code' or elif 'code'?
             # FIXME: See _check_valid_return_struct
             if 'code' in result and isinstance(result['code'], dict) and 'geni_code' in result['code']:
-                # AM API v2
+                # AM API v2+
                 if result['code']['geni_code'] == 0:
                     value = result['value']
                 # FIXME: More complete error code handling!
-                elif result['code']['geni_code'] == 7: # REFUSED
-                    self._raise_omni_error( result['output'], RefusedError)
+                elif result['code']['geni_code'] != 0 and self.opts.api_version == 2:
+                    self._raise_omni_error(result, AMAPIError)
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None

@@ -20,6 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 
-from omnierror import OmniError, NoSliceCredError, RefusedError
+from omnierror import OmniError, NoSliceCredError, RefusedError, AMAPIError
 from dates import naiveUTC
 import handler_utils
