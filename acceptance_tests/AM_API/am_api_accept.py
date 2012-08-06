@@ -32,7 +32,7 @@ import unittest
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
-from omnilib.util import OmniError, NoSliceCredError, RefusedError
+from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import omni
 import os
 import pprint
@@ -715,7 +715,7 @@ class Test(ut.OmniUnittest):
                                       slicename )
                 elif self.options_copy.api_version == 2:
                     # Be more specific when we can
-                    self.assertRaises(RefusedError, 
+                    self.assertRaises(AMAPIError, 
                                       self.subtest_generic_CreateSliver, 
                                       slicename )
                 else:
@@ -834,12 +834,12 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-        self.assertRaises((NotSuccessError, NotDictAssertionError, NoSliceCredError), 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError), 
                           self.subtest_generic_SliverStatus, slicename )
         
         if not self.options_copy.strict:
             # if --less-strict, then accept a returned error
-            self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, slicename )
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, slicename )
         else:
             # if --more-strict
             # ListResources should return an RSpec containing no resources
@@ -861,7 +861,7 @@ class Test(ut.OmniUnittest):
         
         # Also repeated calls to DeleteSliver should now fail
         try:
-            self.assertRaises((AssertionError, NoSliceCredError), 
+            self.assertRaises((AMAPIError, AssertionError, NoSliceCredError), 
                               self.subtest_generic_DeleteSliver, slicename )
         # Or succeed by returning True
         except AssertionError:
@@ -1211,9 +1211,25 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_CreateSliver(self, slice_name):
-        return self.subtest_CreateSliverPiece( slice_name, 
-                                        omni_method='createsliver', 
-                                        AMAPI_call="CreateSliver")
+        self.assertTrue( self.checkRequestRSpecVersion() )
+	
+        # Check for the existance of the Request RSpec file
+        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+                         "Request RSpec file, '%s' for 'CreateSliver' call " \
+                             "expected to exist " \
+                             "but does not." 
+                         % self.options_copy.rspec_file )
+       
+        # CreateSliver
+        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
+        text, manifest = self.call(omniargs, self.options_copy)
+
+        pprinter = pprint.PrettyPrinter(indent=4)
+        self.assertRspec( "CreateSliver", manifest, 
+                          self.manifest_namespace,
+                          self.manifest_schema,
+                          self.options_copy.rspeclint)
+        return 1, manifest
 
     def subtest_Allocate(self, slice_name):
         return self.subtest_CreateSliverPiece( slice_name, 
