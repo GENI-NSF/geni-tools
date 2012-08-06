@@ -38,3 +38,9 @@ class NoSliceCredError(OmniError):
 class RefusedError(OmniError):
     """Errors due to an AM refusal. geni_code=7."""
     pass
+
+class AMAPIError(OmniError):
+    '''Raise an Exception if the AM returned an AM API v2+ non-0 error code'''
+    def __init__(self, struct):
+        self.returnstruct = struct
+
