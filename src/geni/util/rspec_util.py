@@ -327,6 +327,9 @@ def getPrettyRSpec(rspec):
         prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
     except:
         pass
+    # set rspec to be UTF-8
+    if isinstance(prettyrspec, unicode):
+        prettyrspec = prettyrspec.encode('utf-8')
     return prettyrspec
 
 if __name__ == "__main__":

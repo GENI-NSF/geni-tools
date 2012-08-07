@@ -273,11 +273,11 @@ class OmniUnittest(unittest.TestCase):
                "\n%s\n" 
                       % (manifest2))
 
-
     def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
 
         self.assertIsNotNone( rspec, "RSpec returned from '%s' is unexpectedly 'None'" % AMAPI_call )
-        self.assertUnicode( rspec, "RSpec returned from '%s' is unexpectedly not unicode" % AMAPI_call )
+        self.assertStr( rspec, "RSpec returned from '%s' is unexpectedly not unicode" % AMAPI_call )
+
         
         # do all comparisons as lowercase
         rspec = rspec.lower()
@@ -711,7 +711,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
     def assertGeniRspec( self, AMAPI_call, agg, retVal, type='manifest' ):
         self.assertDict( retVal )
         manifest = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
-                                 'geni_rspec', unicode )        
+                                 'geni_rspec', str )        
 
         self.assertRspec( AMAPI_call, manifest )
 # ADD IN
