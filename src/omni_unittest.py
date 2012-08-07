@@ -87,8 +87,6 @@ class CredentialMismatchErrCode( AssertionError ):
     pass
 class CredentialSignerUntrustedErrCode( AssertionError ):
     pass
-
-
 class NotDictAssertionError( AssertionError ):
     pass
 class NotListAssertionError( AssertionError ):
@@ -351,11 +349,15 @@ class OmniUnittest(unittest.TestCase):
     def assertKeyValueType( self, method, aggName, dictionary, key, valueType=str):
         """Check whether dictionary returned by method at aggName has_key( key ) of type valueType"""
         self.assertKeyValue( method, aggName, dictionary, key)
+        if aggName:
+            agg = "%s " % aggName
+        else:
+            agg = ""
         self.assertTrue(type(dictionary[key])==valueType,
-                        "Return from '%s' %s " \
+                        "Return from '%s' %s" \
                             "expected to have entry '%s' of type '%s' " \
                             "but instead returned: %s" 
-                        % (method, aggName, key, str(valueType), str(dictionary[key])))
+                        % (method, agg, key, str(valueType), str(dictionary[key])))
     def assertKeyValue( self, method, aggName, dictionary, key):
         """Check whether dictionary returned by method at aggName has_key( key )"""
         if aggName is None:
@@ -795,7 +797,62 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                              "%s\n" 
                          % (AMAPI_call, alloc_status))
 
+    def assertUserCred( self, retVal ):
+        """Checks retVal fits form:
+{
+    geni_type: <string, case insensitive>, 
+    geni_version: <string, case insensitive>,
+    geni_value: <string>,
+    <others>
+   }
+        """
+        CH_call = "GetUserCred"
+        self.assertDict( retVal )
+        geni_type = self.assertGeniType( CH_call, retVal)        
+        version = self.assertGeniVersion( CH_call, retVal)        
+        value = self.assertGeniValue( CH_call, retVal)        
+        return geni_type, version, value
+    def assertGeniType( self, CH_call, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_type
+        """
+        self.assertDict( retVal )
+        return self.assertReturnKeyValueType( CH_call, None, retVal, 
+                                                 'geni_type', str ) 
 
+    def assertGeniVersion( self, CH_call, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_version
+        """
+        self.assertDict( retVal )
+
+        return self.assertReturnKeyValueType( CH_call, None, retVal, 
+                                                 'geni_version', str ) 
+
+    def assertGeniValue( self, CH_call, retVal ):
+        """Check that the dictionary retVal has keys: 
+              geni_value
+        """
+        self.assertDict( retVal )
+
+        usercred = self.assertReturnKeyValueType( CH_call, None, retVal, 
+                                                 'geni_value', str ) 
+
+        self.assertStr( usercred,
+                        "Return from 'getusercred' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                        % (usercred))
+
+        # Test if file is XML 
+        self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
+                        "Return from 'getusercred' " \
+                        "expected to be XML " \
+                        "but instead returned: \n" \
+                        "%s\n" \
+                        "... edited for length ..." 
+                        % (usercred[:100]))
+        return usercred
 
     def assertTimestamp( self, timestamp ):
         self.assertTrue( self.validate_timestamp(timestamp),

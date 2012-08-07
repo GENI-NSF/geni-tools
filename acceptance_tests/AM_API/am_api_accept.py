@@ -390,15 +390,19 @@ class Test(ut.OmniUnittest):
 
         # (1) Get the usercredential
         omniargs = ["getusercred"]
-        (text, usercred) = self.call(omniargs, self.options_copy)
-        self.assertTrue( type(usercred) is str,
+        (text, usercredstruct) = self.call(omniargs, self.options_copy)
+
+        if self.options_copy.api_version >= 3:
+            geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
+        else:
+            usercred = usercredstruct
+            self.assertStr( usercred,
                         "Return from 'getusercred' " \
                             "expected to be string " \
                             "but instead returned: %r" 
                         % (usercred))
-
-        # Test if file is XML and contains "<rspec" or "<resv_rspec"
-        self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
                         "Return from 'getusercred' " \
                         "expected to be XML " \
                         "but instead returned: \n" \
@@ -1382,7 +1386,7 @@ class Test(ut.OmniUnittest):
             f.write( "" )
             f.seek(0)        
             self.options_copy.rspec_file = f.name
-            self.assertRaises(NotNoneAssertionError,
+            self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name )
         self.success = True
     def test_CreateSliver_badrspec_malformed(self):
@@ -1410,7 +1414,7 @@ class Test(ut.OmniUnittest):
             f.write( bad_rspec )
             f.seek(0)        
             self.options_copy.rspec_file = f.name
-            self.assertRaises(NotNoneAssertionError,
+            self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name )
         self.success = True
 
@@ -1426,7 +1430,7 @@ class Test(ut.OmniUnittest):
                              "but does not." 
                          % self.options_copy.rspec_file )
 
-        self.assertRaises(NotNoneAssertionError,
+        self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name)
         self.success = True
 
