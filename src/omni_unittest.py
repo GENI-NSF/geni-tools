@@ -95,6 +95,8 @@ class NotListAssertionError( AssertionError ):
     pass
 class NotStringAssertionError( AssertionError ):
     pass
+class NotUnicodeAssertionError( AssertionError ):
+    pass
 class NotNoneAssertionError( AssertionError ):
     pass
 class NoResourcesAssertionError( AssertionError ):
@@ -190,6 +192,12 @@ class OmniUnittest(unittest.TestCase):
         if not type(item) == str:
             raise NotStringAssertionError, msg
 
+    def assertUnicode(self, item, msg=None):
+        if msg is None:
+            msg = "Type of '%s' is '%s' not 'str' as expected." % (item, type(item))
+        if not type(item) == unicode:
+            raise NotUnicodeAssertionError, msg
+
     def assertIsXML(self, rspec, msg=None):
         if not rspec_util.is_wellformed_xml( rspec ):
             if msg is None:
@@ -268,8 +276,8 @@ class OmniUnittest(unittest.TestCase):
 
     def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
 
-        self.assertIsNotNone( rspec, "Rspec is None" )
-        self.assertStr( rspec )
+        self.assertIsNotNone( rspec, "RSpec returned from '%s' is unexpectedly 'None'" % AMAPI_call )
+        self.assertUnicode( rspec, "RSpec returned from '%s' is unexpectedly not unicode" % AMAPI_call )
         
         # do all comparisons as lowercase
         rspec = rspec.lower()
@@ -703,7 +711,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
     def assertGeniRspec( self, AMAPI_call, agg, retVal, type='manifest' ):
         self.assertDict( retVal )
         manifest = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
-                                 'geni_rspec', str )        
+                                 'geni_rspec', unicode )        
 
         self.assertRspec( AMAPI_call, manifest )
 # ADD IN
