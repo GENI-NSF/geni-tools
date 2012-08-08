@@ -1532,7 +1532,7 @@ class AMCallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        -a Contact Each aggregate at the given URL(s), or with the given
+        -a Contact each aggregate at the given URL(s), or with the given
          nickname that translates to a URL in your omni_config
         --slicecredfile Read slice credential from given file, if it exists
         -o Save result in per-Aggregate files
@@ -1555,8 +1555,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
+        op = "PerformOperationalAction"
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
-                                                      "POA",
+                                                      op,
                                                       "and an action to perform")
         action = args[1]
         if action is None or action.strip() == "":
@@ -1576,25 +1577,7 @@ class AMCallHandler(object):
             elif action.lower() == "restart":
                 self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
 
-#if len(clientlist) == 0:
-#  warn
-#elif len(clientlist) > 1 and len(slivers) > 0:
-#  # FIXME: Could filter slivers by AM URN?
-#  info if best_effort, warn if not
-
-        if not self.opts.aggregate:
-            # the user must supply an aggregate.
-            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
-            # FIXME: parse the AM to reserve at from a comment in the RSpec
-            # Calling exit here is a bit of a hammer.
-            # Maybe there's a gentler way.
-            self._raise_omni_error(msg)
-
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-        client = make_client(url, self.framework, self.opts)
-        client.urn = clienturn
-        clientList = [client]
-        options = self._build_options('PerformOperationalAction', None)
+        options = self._build_options(op, None)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "%s on slivers in slice %s" % (action, urn)
@@ -1604,36 +1587,73 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         args = [urnsarg, creds, action, options]
         self.logger.debug("Doing POA with urns %s, action %s, %d creds, and options %s", urnsarg, action, len(creds), options)
-        # FIXME: Handle multiple clients
-#        self.logger.info("PerformOperationalAction %s at %s:", descripMsg, client.url)
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("PerformOperationalAction %s at %s" % (descripMsg, url)),
-                                    client.PerformOperationalAction,
-                                    *args)
-        (realresult, message) = self._retrieve_value(result, message, self.framework)
-        if not realresult:
-            # Failure
-            if message is None or message.strip() == "":
-                message = "(no reason given)"
-            retVal = "PerformOperationalAction %s at %s failed: %s" % (descripMsg, url, message)
-            self.logger.warn(retVal)
-        else:
-            # Success
-            prettyResult = pprint.pformat(realresult)
-            header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
-            filename = None
-            if self.opts.output:
-                filename = self._construct_output_filename(slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
-                #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
-            self._printResults(header, prettyResult, filename)
-            retVal = "PerformOperationalAction %s was successful." % descripMsg
-            if filename:
-                retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
-            self.logger.debug("POA %s result: %s", descripMsg, prettyResult)
 
-        retItem = {}
-        retItem[ client.url ] = result
+        successCnt = 0
+        retItem = dict()
+        (clientList, message) = self._getclients()
+        if len(clientList) == 0:
+            msg = "No aggregate specified to submit %s request to. Use the -a argument." % op
+            if self.opts.devmode:
+                #  warn
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+        elif len(clientList) > 1 and len(slivers) > 0:
+            # All slivers will go to all AMs. If not best effort, AM may fail the request if its
+            # not a local sliver.
+            #  # FIXME: Could partition slivers by AM URN?
+            msg = "Will do %s %s at all %d AMs - some aggregates may fail the request if given slivers not from that aggregate." % (op, descripMsg, len(clientList))
+            if self.opts.geni_best_effort:
+                self.logger.info(msg)
+            else:
+                self.logger.warn(msg + " Consider running with --best-effort in future.")
+
+        for client in clientList:
+            self.logger.info("%s %s at %s", op, descripMsg, client.url)
+            try:
+                (result, message) = self._api_call(client,
+                                                  ("PerformOperationalAction %s at %s" % (descripMsg, client.url)),
+                                                  op,
+                                                  args)
+            except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                continue
+
+            retItem[ client.url ] = result
+            (realresult, message) = self._retrieve_value(result, message, self.framework)
+
+            if not realresult:
+                # Failure
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                msg = "PerformOperationalAction %s at %s failed: %s \n" % (descripMsg, client.url, message)
+                retVal += msg
+                self.logger.warn(msg)
+            else:
+                # Success
+                prettyResult = pprint.pformat(realresult)
+                header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
+                filename = None
+                if self.opts.output:
+                    filename = self._construct_output_filename(slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
+                    #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                retVal += "PerformOperationalAction %s was successful." % descripMsg
+                if filename:
+                    retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
+                else:
+                    retVal += ' \n'
+                successCnt += 1
+
+        self.logger.debug("POA %s result: %s", descripMsg, pprint.pformat(retItem))
+
+        if len(clientList) == 0:
+            retVal += "No aggregates at which to PerformOperationalAction %s. %s\n" % (descripMsg, message)
+        elif len(clientList) > 1:
+            retVal += "Performed Operational Action %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, len(clientList))
+        elif successCnt == 0:
+            retVal += "PerformOperationalAction %s failed at %s" % (descripMsg, clientList[0].url)
+
         return retVal, retItem
     # end of poa
 
