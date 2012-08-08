@@ -1245,15 +1245,19 @@ class AMCallHandler(object):
         self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:40], options)
 
         successCnt = 0
+        retItem = dict()
         (clientList, message) = self._getclients()
         if len(clientList) == 0:
-            #  warn
-            self.logger.warn("No aggregate specified to submit allocate request to. Use the -a argument.")
+            msg = "No aggregate specified to submit allocate request to. Use the -a argument."
+            if self.opts.devmode:
+                #  warn
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
         elif len(clientList) > 1:
             #  info - mention unbound bits will be repeated
             self.logger.info("Multiple aggregates will get the same request RSpec; unbound requests will be attempted at multiple aggregates.")
 
-        retItem = dict()
         for client in clientList:
             self.logger.info("Allocate %s at %s:", descripMsg, client.url)
             try:
@@ -1355,29 +1359,11 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
+        op = "Provision"
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
-                                                      "Provision")
+                                                      op)
 
-#if len(clientlist) == 0:
-#  warn
-#elif len(clientlist) > 1 and len(slivers) > 0:
-#  # FIXME: Could filter slivers by AM URN?
-#  info if best_effort, warn if not
-
-
-        # check command line args
-        if not self.opts.aggregate:
-            # the user must supply an aggregate.
-            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
-            # FIXME: parse the AM to reserve at from a comment in the RSpec
-            # Calling exit here is a bit of a hammer.
-            # Maybe there's a gentler way.
-            self._raise_omni_error(msg)
-
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-        client = make_client(url, self.framework, self.opts)
-        client.urn = clienturn
-        options = self._build_options('Provision', None)
+        options = self._build_options(op, None)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "slivers in slice %s" % urn
@@ -1388,35 +1374,85 @@ class AMCallHandler(object):
         args = [urnsarg, creds, options]
         self.logger.debug("Doing Provision with urns %s, %d creds, options %s", urnsarg, len(creds), options)
 
-        # FIXME: Handle multiple clients
-        clientList = [client]
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("Provision %s at %s" % (descripMsg, url)),
-                                    client.Provision,
-                                    *args)
-        # Make the RSpec more pretty-printed
-        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
-            rspec = result['value']['geni_rspec']
-            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
-                rspec = rspec_util.getPrettyRSpec(rspec)
-            result['value']['geni_rspec'] = rspec
+        successCnt = 0
+        retItem = dict()
+        (clientList, message) = self._getclients()
+        if len(clientList) == 0:
+            msg = "No aggregate specified to submit provision request to. Use the -a argument."
+            if self.opts.devmode:
+                #  warn
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+        elif len(clientList) > 1 and len(slivers) > 0:
+            # All slivers will go to all AMs. If not best effort, AM may fail the request if its
+            # not a local sliver.
+            #  # FIXME: Could partition slivers by AM URN?
+            msg = "Will do %s %s at all %d AMs - some aggregates may fail the request if given slivers not from that aggregate." % (op, descripMsg, len(clientList))
+            if self.opts.geni_best_effort:
+                self.logger.info(msg)
+            else:
+                self.logger.warn(msg + " Consider running with --best-effort in future.")
 
-        (realresult, message) = self._retrieve_value(result, message, self.framework)
-        # FIXME: If you provided URNs, then we need to look to see if this is real success or not
-        # And maybe any time, we need to look for a geni_error return in each sliver
-        if isinstance(realresult, dict):
-            if realresult.has_key('geni_slivers'):
-                if len(slivers) > 0:
-                    for sliver in slivers:
-                        # for each sliver we requested, make sure we got an answer
-                        found = False
+        for client in clientList:
+            self.logger.info("%s %s at %s", op, descripMsg, client.url)
+            try:
+                (result, message) = self._api_call(client,
+                                                  ("Provision %s at %s" % (descripMsg, client.url)),
+                                                  op,
+                                                  args)
+            except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                continue
+
+            # Make the RSpec more pretty-printed
+            if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+                rspec = result['value']['geni_rspec']
+                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                    result['value']['geni_rspec'] = rspec
+
+            retItem[ client.url ] = result
+            (realresult, message) = self._retrieve_value(result, message, self.framework)
+            # FIXME: If you provided URNs, then we need to look to see if this is real success or not
+            # And maybe any time, we need to look for a geni_error return in each sliver
+            if isinstance(realresult, dict):
+                if realresult.has_key('geni_slivers'):
+                    if len(slivers) > 0:
+                        for sliver in slivers:
+                            # for each sliver we requested, make sure we got an answer
+                            found = False
+                            for retsliver in realresult['geni_slivers']:
+                                if retsliver.has_key("geni_sliver_urn") and retsliver["geni_sliver_urn"] == sliver:
+                                    found = True
+                                    allocStatus = None
+                                    expiry = 0
+                                    error = "(none)"
+                                    if retsliver.has_key("geni_allocation_status"):
+                                        allocStatus = retsliver["geni_allocation_status"]
+                                    elif self.opts.devmode:
+                                        self.logger.warn("Provision result for sliver %s missing geni_allocation_status. Full return: %s", sliver, retsliver)
+                                    if retsliver.has_key("geni_expires"):
+                                        expiry = retsliver["geni_expires"]
+                                    elif self.opts.devmode:
+                                        self.logger.warn("Provision result for sliver %s missing geni_expires. Full return: %s", sliver, retsliver)
+                                    if retsliver.has_key("geni_error"):
+                                        error = retsliver["geni_error"]
+                                    self.logger.debug("Provision result of sliver %s: Allocation Status: %s, Expires: %s, Error: %s", sliver, allocStatus, expiry, error)
+                                    # FIXME: Now what? Capture which slivers had errors? See if all did?
+                                elif not retsliver.has_key("geni_sliver_urn") and self.opts.devmode:
+                                    self.logger.warn("Provision result malformed - no geni_sliver_urn in a sliver: %s", retsliver)
+                        if not found:
+                            self.logger.warn("Requested provision of sliver %s, got no answer?!", sliver)
+                    else:
+                        # We asked about the whole slice.
+                        # duplicate above, without the found check:
                         for retsliver in realresult['geni_slivers']:
-                            if retsliver.has_key("geni_sliver_urn") and retsliver["geni_sliver_urn"] == sliver:
-                                found = True
+                            if retsliver.has_key("geni_sliver_urn"):
                                 allocStatus = None
                                 expiry = 0
                                 error = "(none)"
+                                sliver = retsliver["geni_sliver_urn"]
                                 if retsliver.has_key("geni_allocation_status"):
                                     allocStatus = retsliver["geni_allocation_status"]
                                 elif self.opts.devmode:
@@ -1429,66 +1465,48 @@ class AMCallHandler(object):
                                     error = retsliver["geni_error"]
                                 self.logger.debug("Provision result of sliver %s: Allocation Status: %s, Expires: %s, Error: %s", sliver, allocStatus, expiry, error)
                                 # FIXME: Now what? Capture which slivers had errors? See if all did?
-                            elif not retsliver.has_key("geni_sliver_urn") and self.opts.devmode:
+                            elif self.opts.devmode:
                                 self.logger.warn("Provision result malformed - no geni_sliver_urn in a sliver: %s", retsliver)
-                    if not found:
-                        self.logger.warn("Requested provision of sliver %s, got no answer?!", sliver)
+                    # for each sliver return, check for a geni_error
                 else:
-                    # We asked about the whole slice.
-                    # duplicate above, without the found check:
-                    for retsliver in realresult['geni_slivers']:
-                        if retsliver.has_key("geni_sliver_urn"):
-                            allocStatus = None
-                            expiry = 0
-                            error = "(none)"
-                            sliver = retsliver["geni_sliver_urn"]
-                            if retsliver.has_key("geni_allocation_status"):
-                                allocStatus = retsliver["geni_allocation_status"]
-                            elif self.opts.devmode:
-                                self.logger.warn("Provision result for sliver %s missing geni_allocation_status. Full return: %s", sliver, retsliver)
-                            if retsliver.has_key("geni_expires"):
-                                expiry = retsliver["geni_expires"]
-                            elif self.opts.devmode:
-                                self.logger.warn("Provision result for sliver %s missing geni_expires. Full return: %s", sliver, retsliver)
-                            if retsliver.has_key("geni_error"):
-                                error = retsliver["geni_error"]
-                            self.logger.debug("Provision result of sliver %s: Allocation Status: %s, Expires: %s, Error: %s", sliver, allocStatus, expiry, error)
-                            # FIXME: Now what? Capture which slivers had errors? See if all did?
-                        elif self.opts.devmode:
-                            self.logger.warn("Provision result malformed - no geni_sliver_urn in a sliver: %s", retsliver)
-                # for each sliver return, check for a geni_error
+                    if self.opts.devmode:
+                        self.logger.warn("Provision result missing geni_slivers key: %s", realresult)
+                    # Now what?
             else:
                 if self.opts.devmode:
-                    self.logger.warn("Provision result missing geni_slivers key: %s", realresult)
+                    self.logger.warn("Provision result not a dict: %s", realresult)
                 # Now what?
-        else:
-            if self.opts.devmode:
-                self.logger.warn("Provision result not a dict: %s", realresult)
-            # Now what?
 
+            if realresult:
+                # Success
+                prettyResult = pprint.pformat(realresult)
+                header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
+                filename = None
 
-        if realresult:
-            # Success
-            prettyResult = pprint.pformat(realresult)
-            header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
-            filename = None
+                if self.opts.output:
+                    filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
+                    #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+                else:
+                    retVal += "Provisioned %s at %s. \n" % (descripMsg, client.url)
+                self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
+                successCnt += 1
+            else:
+                # Failure
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal = "Provision of %s at %s failed: %s" % (descripMsg, client.url, message)
+                self.logger.warn(retVal)
 
-            if self.opts.output:
-                filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
-                #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
-            if filename:
-                retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
-            self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
-        else:
-            # Failure
-            if message is None or message.strip() == "":
-                message = "(no reason given)"
-            retVal = "Provision %s at %s failed: %s" % (descripMsg, client.url, message)
-            self.logger.warn(retVal)
-
-        retItem = {}
-        retItem[ client.url ] = result
+        if len(clientList) == 0:
+            retVal += "No aggregates at which to provision %s. %s\n" % (descripMsg, message)
+        elif len(clientList) > 1:
+            retVal += "Provisioned %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, len(clientList))
+        elif successCnt == 0:
+            retVal += "Provision %s failed at %s" % (descripMsg, clientList[0].url)
+        self.logger.debug("Provision Return: \n%s", pprint.pformat(retItem))
         return retVal, retItem
     # end of provision
 
