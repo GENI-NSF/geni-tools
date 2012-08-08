@@ -202,9 +202,10 @@ class AMCallHandler(object):
         if self.GetVersionCache is None:
             # Read the file as serialized JSON
             self._load_getversion_cache()
-        if error and self.GetVersionCache.has_key(client.url):
+        if error:
             # On error, leave existing data alone - just record the last error
-            self.GetVersionCache[client.url]['lasterror'] = error
+            if self.GetVersionCache.has_key(client.url):
+                self.GetVersionCache[client.url]['lasterror'] = error
             self.logger.debug("Added GetVersion error output to cache")
         else:
             self.GetVersionCache[client.url] = res
@@ -1201,15 +1202,6 @@ class AMCallHandler(object):
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
                                                       "Allocate",
                                                       "and a request rspec filename")
-        # check command line args
-        if not self.opts.aggregate:
-            # the user must supply an aggregate.
-            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
-            # FIXME: parse the AM to reserve at from a comment in the RSpec
-            # Calling exit here is a bit of a hammer.
-            # Maybe there's a gentler way.
-            self._raise_omni_error(msg)
-
         # Load up the user's request rspec
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
@@ -1234,71 +1226,74 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
-        # out of the RSpec
-
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
-
-        # Warn user about using -a
-        (aggs, message) = _listaggregates(self)
-        aggregate_urls = aggs.values()
-        # Is this AM listed in the CH or our list of aggregates?
-        # If not we won't be able to check its status and delete it later
-        if not url in aggregate_urls:
-            self.logger.info("""Be sure to remember (write down) AM URL:
-             %s. 
-             You are reserving resources there, and your clearinghouse
-             and config file won't remind you to check that sliver later. 
-             Future describe/status/delete calls need to 
-             include the 
-                   '-a %s'
-             arguments again to act on this sliver.""" % (url, url))
-
-        client = make_client(url, self.framework, self.opts)
         options = self._build_options('Allocate', None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         args = [urn, creds, rspec, options]
-        descripMsg = "in slice %s" % urn
-        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s\', and options %s", urn, len(creds), rspec[:40], options)
-        # FIXME: Handle multiple clients
-        self.logger.info("Allocate %s in %s:", descripMsg, client.url)
-        (result, message) = _do_ssl(self.framework,
-                                    None,
-                                    ("Allocate %s at %s" % (urn, url)),
-                                    client.Allocate,
-                                    *args)
+        descripMsg = "slivers in slice %s" % urn
+        op = 'Allocate'
+        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:40], options)
 
-        # Make the RSpec more pretty-printed
-        if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
-            rspec = result['value']['geni_rspec']
-            if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
-                rspec = rspec_util.getPrettyRSpec(rspec)
-            result['value']['geni_rspec'] = rspec
+        successCnt = 0
+        (clientList, message) = self._getclients()
+        if len(clientList) == 0:
+            #  warn
+            self.logger.warn("No aggregate specified to submit allocate request to. Use the -a argument.")
+        elif len(clientList) > 1:
+            #  info - mention unbound bits will be repeated
+            self.logger.info("Multiple aggregates will get the same request RSpec; unbound requests will be attempted at multiple aggregates.")
 
-        (realresult, message) = self._retrieve_value(result, message, self.framework)
-        if realresult:
-            # Success
-            prettyResult = pprint.pformat(realresult)
-            header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
-            filename = None
+        retItem = dict()
+        for client in clientList:
+            self.logger.info("Allocate %s at %s:", descripMsg, client.url)
+            try:
+                (result, message) = self._api_call(client,
+                                    ("Allocate %s at %s" % (descripMsg, client.url)),
+                                    op,
+                                    args)
+            except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                continue
 
-            if self.opts.output:
-                filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
-                #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
-            if filename:
-                retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
-            self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
-        else:
-            # Failure
-            if message is None or message.strip() == "":
-                message = "(no reason given)"
-            retVal = "Allocation %s at %s failed: %s" % (descripMsg, client.url, message)
-            self.logger.warn(retVal)
-            # FIXME: Better message?
+            # Make the RSpec more pretty-printed
+            if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
+                rspec = result['value']['geni_rspec']
+                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                    result['value']['geni_rspec'] = rspec
 
-        retItem = {}
-        retItem[ client.url ] = result
+            retItem[ client.url ] = result
+            (realresult, message) = self._retrieve_value(result, message, self.framework)
+            if realresult:
+                # Success
+                prettyResult = pprint.pformat(realresult)
+                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
+                filename = None
+
+                if self.opts.output:
+                    filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
+                    #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+                else:
+                    retVal += "Allocated %s at %s. \n" % (descripMsg, client.url)
+                self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
+                successCnt += 1
+            else:
+                # Failure
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                retVal += "Allocation of %s at %s failed: %s.\n" % (descripMsg, client.url, message)
+                self.logger.warn(retVal)
+                # FIXME: Better message?
+
+        if len(clientList) == 0:
+            retVal += "No aggregates at which to allocate %s. %s\n" % (descripMsg, message)
+        elif len(clientList) > 1:
+            retVal += "Allocated %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, len(clientList))
+        elif successCnt == 0:
+            retVal += "Allocate %s failed at %s" % (descripMsg, clientList[0].url)
+        self.logger.debug("Allocate Return: \n%s", pprint.pformat(retItem))
         return retVal, retItem
     # end of allocate
 
@@ -1351,6 +1346,13 @@ class AMCallHandler(object):
 
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       "Provision")
+
+#if len(clientlist) == 0:
+#  warn
+#elif len(clientlist) > 1 and len(slivers) > 0:
+#  # FIXME: Could filter slivers by AM URN?
+#  info if best_effort, warn if not
+
 
         # check command line args
         if not self.opts.aggregate:
@@ -1544,6 +1546,12 @@ class AMCallHandler(object):
                 self.logger.warn("Action: '%s'. Did you mean 'geni_stop'?" % action)
             elif action.lower() == "restart":
                 self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
+
+#if len(clientlist) == 0:
+#  warn
+#elif len(clientlist) > 1 and len(slivers) > 0:
+#  # FIXME: Could filter slivers by AM URN?
+#  info if best_effort, warn if not
 
         if not self.opts.aggregate:
             # the user must supply an aggregate.
@@ -1889,7 +1897,7 @@ class AMCallHandler(object):
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
-        self.logger.debug("Return: \n%s", pprint.pformat(retItem))
+        self.logger.debug("Renew Return: \n%s", pprint.pformat(retItem))
         return retVal, retItem
     # End of renew
 
@@ -2998,7 +3006,7 @@ def _check_valid_return_struct(client, resultObj, message, call):
 def _append_geni_error_output(retStruct, message):
     '''Add to given error message the code and output if code != 0'''
     # If return is a dict
-    if isinstance(retStruct, dict) and retStruct.has_key('code'):
+    if isinstance(retStruct, dict) and retStruct.has_key('code') and retStruct['code'].has_key('geni_code'):
         if retStruct['code']['geni_code'] != 0:
             message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
             if retStruct['code'].has_key('am_code'):
