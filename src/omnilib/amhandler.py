@@ -196,8 +196,16 @@ class AMCallHandler(object):
         else:
             res['timestamp'] = datetime.datetime.utcnow()
         res['version'] = thisVersion
-        res['urn'] = client.urn
-        res['url'] = client.url
+        if client is not None and client.urn is not None and str(client.urn).strip() != "":
+            res['urn'] = client.urn
+        elif client is not None and client.url is not None:
+            res['urn'] = client.url
+        else:
+            res['urn'] = "unspecified_AM_URN"
+        if client is not None and client.url is not None:
+            res['url'] = client.url
+        else:
+            res['url'] = "unspecified_AM_URL"
         res['error'] = error
         if self.GetVersionCache is None:
             # Read the file as serialized JSON
@@ -433,7 +441,7 @@ class AMCallHandler(object):
         """AM API GetVersion
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -791,7 +799,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -896,7 +904,7 @@ class AMCallHandler(object):
         --slicecredfile says to use the given slicecredfile if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -1050,13 +1058,15 @@ class AMCallHandler(object):
                 self._raise_omni_error("CreateSliver is only available in AM API v1 or v2. Use Allocate, then Provision, then PerformOperationalAction in AM API v3+, or use the -V2 option to use AM API v2 if the AM supports it.")
 
         # check command line args
-        if not self.opts.aggregate:
+        if not self.opts.aggregate or len(self.opts.aggregate) == 0:
             # the user must supply an aggregate.
             msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
             # FIXME: parse the AM to reserve at from a comment in the RSpec
             # Calling exit here is a bit of a hammer.
             # Maybe there's a gentler way.
             self._raise_omni_error(msg)
+        elif len(self.opts.aggregate) > 1:
+            self.logger.warn("Multiple -a arguments received - only the first will be used.")
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "CreateSliver", "and a request rspec filename")
@@ -1088,7 +1098,7 @@ class AMCallHandler(object):
         # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
         # out of the RSpec
 
-        url, clienturn = _derefAggNick(self, self.opts.aggregate)
+        url, clienturn = _derefAggNick(self, self.opts.aggregate[0])
 
         # Perform the allocations
         (aggs, message) = _listaggregates(self)
@@ -1111,6 +1121,7 @@ class AMCallHandler(object):
         # Okay, send a message to the AM this resource came from
         result = None
         client = make_client(url, self.framework, self.opts)
+        client.urn = clienturn
         self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
@@ -1183,7 +1194,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -1314,7 +1325,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -1503,7 +1514,7 @@ class AMCallHandler(object):
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        -a Contact only the aggregate at the given URL, or with the given
+        -a Contact Each aggregate at the given URL(s), or with the given
          nickname that translates to a URL in your omni_config
         --slicecredfile Read slice credential from given file, if it exists
         -o Save result in per-Aggregate files
@@ -1619,7 +1630,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -1755,7 +1766,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -1911,7 +1922,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -2018,7 +2029,7 @@ class AMCallHandler(object):
         only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -2123,7 +2134,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -2226,7 +2237,7 @@ class AMCallHandler(object):
         and slivers do not change.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -2322,7 +2333,7 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
-        - Single URL given in -a argument or URL listed under that given
+        - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
@@ -2415,6 +2426,7 @@ class AMCallHandler(object):
                 # FIXME: Could do a makeclient with the corrected URL and return that client?
                 if not self.opts.devmode:
                     newclient = make_client(svers[configver], self.framework, self.opts)
+                    newclient.urn = client.urn # Wrong urn?
                     (ver, c) = self._checkValidClient(newclient)
                     if ver == configver and c.url == newclient.url and c is not None:
                         return (ver, c)
@@ -2958,6 +2970,7 @@ def make_client(url, framework, opts):
     else:
         tmp_client = omnilib.xmlrpc.client.make_client(url, None, None)
     tmp_client.url = str(url)
+    tmp_client.urn = ""
     return tmp_client
         
 

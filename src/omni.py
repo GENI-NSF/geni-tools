@@ -532,7 +532,7 @@ def getParser():
                       help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="Control framework to use for creation/deletion of slices")
-    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL",
+    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
     parser.add_option("--debug", action="store_true", default=False,
                        help="Enable debugging output")
