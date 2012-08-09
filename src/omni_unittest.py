@@ -594,7 +594,7 @@ Check that the value of 'code' is as follows:
         for sliver in retVal:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
-            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_unallocated')        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
         return len(retVal)
 
@@ -647,7 +647,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         for sliver in slivers:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
-            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_provisioned')        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
         return len(slivers), manifest
@@ -674,7 +674,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         for sliver in slivers:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
-            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)     
+            self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_allocated')     
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)           
         return len(slivers), manifest
 
@@ -781,7 +781,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                                  'geni_expires', str ) # RFC3339 dateTime
 #ADD IN        self.assertTimestamp( expires )
 
-    def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal ):
+    def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal, value=None ):
         """Check that the dictionary retVal has keys: 
               geni_allocation_status
         """
@@ -796,6 +796,14 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                              "but instead returned: \n" \
                              "%s\n" 
                          % (AMAPI_call, alloc_status))
+        if value is not None:
+            self.assertTrue( alloc_status == value, 
+                         "Return from '%s' " \
+                         "expected to have 'geni_allocation_status' " \
+                         "of '%s', " \
+                         "but instead returned: \n" \
+                         "%s\n" 
+                         % (AMAPI_call, value, alloc_status))
 
     def assertUserCred( self, retVal ):
         """Checks retVal fits form:
