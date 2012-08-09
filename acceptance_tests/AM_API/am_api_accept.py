@@ -172,8 +172,7 @@ class Test(ut.OmniUnittest):
 
         pprinter = pprint.PrettyPrinter(indent=4)
         # If this isn't a dictionary, something has gone wrong in Omni.  
-        ## In python 2.7: assertIs
-        self.assertTrue(type(ret_dict) is dict,
+        self.assertDict(ret_dict,
                         "Return from 'GetVersion' " \
                         "expected to contain dictionary" \
                         "but instead returned:\n %s"
@@ -182,39 +181,13 @@ class Test(ut.OmniUnittest):
         self.assertTrue(ret_dict,
                         "Return from 'GetVersion' " \
                         "expected to contain dictionary keyed by aggregates " \
-                        "but instead returned empty dictionary. " \
+                       "but instead returned empty dictionary. " \
                         "This indicates there were no aggregates checked. " \
                         "Look for misconfiguration.")
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
-            ## In python 2.7: assertIsNotNone
-            self.assertTrue(ver_dict is not None,
-                          "Return from 'GetVersion' at aggregate '%s' " \
-                          "expected to be XML-RPC struct " \
-                          "but instead returned None." 
-                           % (agg))
-            self.assertTrue(type(ver_dict) is dict,
-                          "Return from 'GetVersion' at aggregate '%s' " \
-                          "expected to be XML-RPC struct " \
-                          "but instead returned:\n %s" 
-                          % (agg, pprinter.pformat(ver_dict)))
-            self.assertTrue(ver_dict,
-                          "Return from 'GetVersion' at aggregate '%s' " \
-                          "expected to be non-empty XML-RPC struct " \
-                          "but instead returned empty XML-RPC struct." 
-                           % (agg))
-            ## In python 2.7: assertIn
-            self.assertTrue('geni_api' in ver_dict,
-                          "Return from 'GetVersion' at aggregate '%s' " \
-                          "expected to include 'geni_api' " \
-                          "but did not. Returned:\n %s:"  
-                           % (agg, pprinter.pformat(ver_dict)))
-            value = ver_dict['geni_api']
-            self.assertTrue(type(value) is int,
-                          "Return from 'GetVersion' at aggregate '%s' " \
-                          "expected to have 'geni_api' be an integer " \
-                          "but instead 'geni_api' was of type %r." 
-                           % (agg, type(value)))
+            value = self.assertReturnKeyValueType( 'GetVersion', agg, ver_dict, 
+                                                   'geni_api', int )
 
             self.assertEqual(value, self.options_copy.api_version,
                           "Return from 'GetVersion' at aggregate '%s' " \
@@ -228,8 +201,12 @@ class Test(ut.OmniUnittest):
                 return
 
             if self.options_copy.api_version >= 2:
+                err_code, msg = self.assertCodeValueOutput( 'GetVersion', 
+                                                            agg, ver_dict )    
+                self.assertSuccess( err_code )
+                value = ver_dict['value']
                 api_vers = self.assertReturnKeyValueType( 
-                    'GetVersion', agg, ver_dict, 
+                    'GetVersion', agg, value, 
                     'geni_api_versions', 
                     dict )
                 
@@ -239,7 +216,7 @@ class Test(ut.OmniUnittest):
 
             if self.options_copy.api_version >= 2:
                 request_rspec_versions = self.assertReturnKeyValueType( 
-                    'GetVersion', agg, ver_dict, 
+                    'GetVersion', agg, value, 
                     'geni_request_rspec_versions', 
                     list )
             else:
@@ -287,7 +264,7 @@ class Test(ut.OmniUnittest):
 
             if self.options_copy.api_version >= 2:
                 ad_rspec_versions = self.assertReturnKeyValueType( 
-                    'GetVersion', agg, ver_dict, 
+                    'GetVersion', agg, value, 
                     'geni_ad_rspec_versions', 
                     list )
             else:
@@ -329,7 +306,7 @@ class Test(ut.OmniUnittest):
 
             if self.options_copy.api_version == 3:
                 cred_types = self.assertReturnKeyValueType( 
-                    'GetVersion', agg, ver_dict, 
+                    'GetVersion', agg, value, 
                     'geni_credential_types', 
                     list )
                 for creds in cred_types:
