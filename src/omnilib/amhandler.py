@@ -304,6 +304,8 @@ class AMCallHandler(object):
     # This is the real place that ends up calling GetVersion
     # FIXME: As above: this loses the code/output slots and any other top-level slots.
     #  Maybe only for experimenters?
+
+
     def _get_getversion_value(self, client):
         '''Do GetVersion (possibly from cache), check error returns to produce a message,
         pull out the value slot (dropping any code/output).'''
@@ -457,13 +459,13 @@ class AMCallHandler(object):
         successCnt = 0
         for client in clients:
             # Pulls from cache or caches latest, error checks return
-            #FIXME: This makes the getversion output be only the value
-            # But for developers, I want the whole thing I think
-            (thisVersion, message) = self._get_getversion_value(client)
+            # getversion output should be the whole triple
+            (thisVersion, message) = self._do_and_check_getversion(client)
+            thisVersionValue, message = self._retrieve_value(thisVersion, message, self.framework)
 
             # Method specific result handling
             version[ client.url ] = thisVersion
-
+            
             # Per client result outputs:
             if version[client.url] is None:
                 # FIXME: SliverStatus sets these to False. Should this for consistency?
@@ -471,7 +473,7 @@ class AMCallHandler(object):
                 retVal += "Cannot GetVersion at %s: %s\n" % (client.url, message)
             else:
                 successCnt += 1
-                retVal += self._do_getversion_output(thisVersion, client, message)
+                retVal += self._do_getversion_output(thisVersionValue, client, message)
         # End of loop over clients
 
         ### Method specific all-results handling, printing
