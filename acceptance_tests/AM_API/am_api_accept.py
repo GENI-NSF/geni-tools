@@ -633,7 +633,7 @@ class Test(ut.OmniUnittest):
                                 "but did not. Return was: " \
                                 "\n%s\n" \
                                 "... edited for length ..."
-                                % (AMAPI_call, agg, rspec[:100]))
+                                % (AMAPI_call, agg_url, rspec[:100]))
         return rspec
 
     def test_CreateSliver(self):
