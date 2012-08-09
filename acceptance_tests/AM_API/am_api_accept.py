@@ -85,7 +85,7 @@ class Test(ut.OmniUnittest):
 
     def setUp( self ):
         ut.OmniUnittest.setUp(self)
-
+        self.options_copy.devmode = True   
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
             self.manifest_namespace = PG_2_NAMESPACE
@@ -740,7 +740,7 @@ class Test(ut.OmniUnittest):
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-            self.subtest_generic_RenewSliver_many( slicename )
+#            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
