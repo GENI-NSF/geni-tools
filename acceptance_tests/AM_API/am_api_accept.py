@@ -309,11 +309,25 @@ class Test(ut.OmniUnittest):
                     'GetVersion', agg, value, 
                     'geni_credential_types', 
                     list )
+                hasSfa = False
                 for creds in cred_types:
-                    self.assertKeyValueType( 'GetVersion', agg, creds, 
-                                             'geni_type', str)
-                    self.assertKeyValueType( 'GetVersion', agg, creds, 
-                                             'geni_version', str )
+                    geni_type = self.assertReturnKeyValueType( 
+                        'GetVersion', agg, creds, 
+                        'geni_type', str)
+                    geni_version = self.assertReturnKeyValueType( 
+                        'GetVersion', agg, creds, 
+                        'geni_version', str )
+                    if geni_type == 'geni_sfa' and (geni_version == '2' or geni_version == '3'):
+                        hasSfa = True
+                        continue
+                self.assertTrue( hasSfa,
+                        "Return from 'GetVersion' at %s " \
+                        "expected to have at least one entry " \
+                        "'geni_credential_types' of " \
+                        "'geni_type'='sfa' and 'geni_version'= 3 (or 2) " \
+                        "but did not." 
+                        % (agg) )
+
         self.success = True
 
     def test_ListResources(self):
@@ -590,12 +604,9 @@ class Test(ut.OmniUnittest):
                     # value only required if it is successful
                     retVal = indAgg['value']
                     numslivers, rspec = self.assertDescribeReturn( agg, retVal )
-
-
                     self.assertRspec( AMAPI_call, rspec, 
                                       rspec_namespace, rspec_schema, 
                                       self.options_copy.rspeclint)
-
                     self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
         else:
             # AM API v1-v3 ListResources() and 
@@ -728,7 +739,7 @@ class Test(ut.OmniUnittest):
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-            self.subtest_generic_RenewSliver_many( slicename )
+#            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
@@ -752,6 +763,7 @@ class Test(ut.OmniUnittest):
         try:
             self.subtest_Allocate( slicename )
             self.subtest_Provision( slicename )
+            
             self.subtest_Renew_many( slicename )
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
             self.subtest_Renew_many( slicename )
