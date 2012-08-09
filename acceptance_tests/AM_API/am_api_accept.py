@@ -132,14 +132,15 @@ class Test(ut.OmniUnittest):
 
             self.assertTrue( thisVersion, 
                              "AM %s didn't respond to GetVersion" % (agg) )
-            value = thisVersion               
+
             if self.options_copy.api_version >= 2: 
-#                value = thisVersion['value']
+                value = thisVersion['value']
                 rspec_version = self.assertReturnKeyValueType( 
                     'GetVersion', agg, value, 
                     'geni_'+rspec_type, 
                     list )
             else:
+                value = thisVersion               
                 rspec_version = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, value, 
                     rspec_type, 
@@ -739,7 +740,7 @@ class Test(ut.OmniUnittest):
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-#            self.subtest_generic_RenewSliver_many( slicename )
+            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
@@ -1441,6 +1442,13 @@ class Test(ut.OmniUnittest):
             self.subtest_Allocate( slicename )
             numslivers, manifest = self.subtest_Provision( slicename )
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            self.assertRaises(NotSuccessError,
+                              self.subtest_PerformOperationalAction, 
+                              slicename, '' )
+            self.assertRaises(NotSuccessError, 
+                              self.subtest_PerformOperationalAction, 
+                              slicename, 'random_action' )
+
         return numslivers, manifest
     def subtest_generic_SliverStatus( self, slicename ):
         if self.options_copy.api_version <= 2:
