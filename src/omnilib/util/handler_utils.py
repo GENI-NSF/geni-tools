@@ -54,24 +54,27 @@ def _derefAggNick(handler, aggregateNickname):
 
 def _listaggregates(handler):
     """List the aggregates that can be used for the current operation.
-    If an aggregate was specified on the command line, use only that one.
+    If 1+ aggregates were specified on the command line, use only those.
     Else if aggregates are specified in the config file, use that set.
     Else ask the framework for the list of aggregates.
     Returns the aggregates as a dict of urn => url pairs.
-    If one URL was given on the commandline, AM URN is a constant
+    If URLs were given on the commandline, AM URN is 'unspecified_AM_URN', with '+'s tacked on for 2nd+ such.
     If multiple URLs were given in the omni config, URN is really the URL
     """
     # used by _getclients (above), createsliver, listaggregates
     if handler.opts.aggregate:
-        # Try treating that as a nickname
-        # otherwise it is the url directly
-        # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
-        url, urn = _derefAggNick(handler, handler.opts.aggregate)
-        _ = urn # appease eclipse
         ret = {}
-        url = url.strip()
-        if url != '':
-            ret[urn] = url
+        for agg in handler.opts.aggregate:
+            # Try treating that as a nickname
+            # otherwise it is the url directly
+            # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
+            url, urn = _derefAggNick(handler, agg)
+            _ = urn # appease eclipse
+            url = url.strip()
+            if url != '':
+                while urn in ret:
+                    urn += "+"
+                ret[urn] = url
         return (ret, "")
     elif not handler.omni_config.get('aggregates', '').strip() == '':
         aggs = {}
