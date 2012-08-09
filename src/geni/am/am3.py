@@ -68,8 +68,8 @@ SHUTDOWNSLIVERPRIV = 'shutdown'
 # See gen-certs.CERT_AUTHORITY
 RESOURCE_NAMESPACE = 'geni//gpo//gcf'
 
-# MAX LEASE is 8 hours (arbitrarily)
-REFAM_MAXLEASE_MINUTES = 8 * 60
+# MAX LEASE is 7 days (arbitrarily)
+REFAM_MAXLEASE_MINUTES = 7 * 24 * 60
 
 # Expiration on Allocated resources is 10 minutes.
 ALLOCATE_EXPIRATION_SECONDS = 10 * 60
