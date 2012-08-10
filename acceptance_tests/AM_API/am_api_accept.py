@@ -85,7 +85,6 @@ class Test(ut.OmniUnittest):
 
     def setUp( self ):
         ut.OmniUnittest.setUp(self)
-        self.options_copy.devmode = True   
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
             self.manifest_namespace = PG_2_NAMESPACE
@@ -189,7 +188,6 @@ class Test(ut.OmniUnittest):
         for (agg, ver_dict) in ret_dict.items():
             value = self.assertReturnKeyValueType( 'GetVersion', agg, ver_dict, 
                                                    'geni_api', int )
-
             self.assertEqual(value, self.options_copy.api_version,
                           "Return from 'GetVersion' at aggregate '%s' " \
                           "expected to have 'geni_api=%d' " \
@@ -436,7 +434,7 @@ class Test(ut.OmniUnittest):
         # (2) Call listresources on the next slice
         # We expect this to fail
         # self.subtest_ListResources(slice) 
-        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
+        self.assertRaises(NotDictAssertionError, self.subtest_generic_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
 
 
     def file_to_string( self, filename ):
@@ -513,7 +511,13 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
-    def subtest_ListResources(self, slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False):
+    def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
+        return self.subtest_query_rspec( AMAPI_call="Describe", slicename=slicename, slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, slicecredfile=slicecredfile, typeOnly=typeOnly )
+
+    def subtest_ListResources( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
+        return self.subtest_query_rspec( AMAPI_call="ListResources", slicename=slicename, slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, slicecredfile=slicecredfile, typeOnly=typeOnly )
+
+    def subtest_query_rspec(self, AMAPI_call="ListResources", slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
 
@@ -532,17 +536,23 @@ class Test(ut.OmniUnittest):
         
         omniargs = [] 
         
-        AMAPI_call = "ListResources"
-        if slicename and (self.options_copy.api_version >= 3):
-            # AM API v3 Describe(slicename)
-            AMAPI_call = "Describe"            
-            omniargs = omniargs + ["describe", str(slicename)]
-        if slicename and (self.options_copy.api_version < 3):
-            # AM API v1 and v2 ListResources(slicename)
-            omniargs = omniargs + ["listresources", str(slicename)]
+        # AMAPI_call = "ListResources"
+        # if slicename and (self.options_copy.api_version >= 3):
+        #     # AM API v3 Describe(slicename)
+        #     AMAPI_call = "Describe"            
+        #     omniargs = omniargs + ["describe", str(slicename)]
+        # if slicename and (self.options_copy.api_version < 3):
+        #     # AM API v1 and v2 ListResources(slicename)
+        #     omniargs = omniargs + ["listresources", str(slicename)]
+        # else:
+        #     # AM API v1-v3 ListResources()
+        #     omniargs = omniargs + ["listresources"]
+
+        if slicename:
+            omniargs = omniargs + [AMAPI_call, str(slicename)]
         else:
-            # AM API v1-v3 ListResources()
-            omniargs = omniargs + ["listresources"]
+            omniargs = omniargs + [AMAPI_call]
+
 
         if usercred and slicecred:
             with tempfile.NamedTemporaryFile() as f:
@@ -599,7 +609,8 @@ class Test(ut.OmniUnittest):
         if AMAPI_call == "Describe":            
             # AM API v3 Describe( slicename )
             for agg, indAgg in ret_dict.items():
-                err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )    
+                err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, 
+                                                            indAgg )    
                 self.assertSuccess( err_code )
                 if err_code == SUCCESS:
                     # value only required if it is successful
@@ -614,6 +625,11 @@ class Test(ut.OmniUnittest):
             # AM API v1-v2 ListResources( slicename )
             # but not AM API v3 Describe() <-- which is covered above
             for ((agg_name, agg_url), rspec) in ret_dict.items():
+                if self.options_copy.api_version >= 2:
+                    err_code, msg = self.assertCodeValueOutput( AMAPI_call, 
+                                                                agg_url, rspec )
+                    self.assertSuccess( err_code )
+                    rspec = rspec['value']
                 self.assertRspec( AMAPI_call, rspec, 
                                   rspec_namespace, rspec_schema, 
                                   self.options_copy.rspeclint)
@@ -687,7 +703,22 @@ class Test(ut.OmniUnittest):
             time.sleep(self.options_copy.sleep_time)
             self.subtest_generic_SliverStatus( slicename )        
 
-            manifest2 = self.subtest_ListResources( slicename=slicename )
+            # in v1/v2 call ListResources(slicename)
+            # in v3 call Describe(slicename)
+            manifest2 = self.subtest_generic_ListResources( slicename=slicename )
+            # in v3 ListResources(slicename) should FAIL
+## Should this succeed by giving an advertisement? Or FAIL as shown?
+            if self.options_copy.api_version >= 3:
+                self.options_copy.devmode = True   
+                # Seems like we should be checking for something more here?
+                self.assertRaises(NotSuccessError, 
+                                  self.subtest_ListResources,
+                                  slicename=slicename )
+                self.assertRaises(NotSuccessError, 
+                                  self.subtest_Describe,
+                                  slicename=None )
+
+                self.options_copy.devmode = False   
             self.assertRspecType( manifest2, 'manifest')
             self.assertRspec( "ListResources", manifest2, 
                               rspec_namespace, rspec_schema,
@@ -833,11 +864,11 @@ class Test(ut.OmniUnittest):
         
         if not self.options_copy.strict:
             # if --less-strict, then accept a returned error
-            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, slicename )
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, slicename )
         else:
             # if --more-strict
             # ListResources should return an RSpec containing no resources
-            manifest = self.subtest_ListResources( slicename )
+            manifest = self.subtest_generic_ListResources( slicename )
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
                   "Manifest RSpec returned by 'ListResources' on slice '%s' " \
                              "expected to be wellformed XML file " \
@@ -988,7 +1019,7 @@ class Test(ut.OmniUnittest):
 
             for i in xrange(num_slices):
                 manifest2.append("")
-                manifest2[i] = "".join(self.subtest_ListResources( slicename=slicenames[i] ))
+                manifest2[i] = "".join(self.subtest_generic_ListResources( slicename=slicenames[i] ))
             for i in xrange(num_slices):
                 self.assertRspecType( "".join(manifest2[i]), 'manifest')
 
@@ -1426,10 +1457,16 @@ class Test(ut.OmniUnittest):
 
 
     # Provide simple mapping for all v1, v2, and v3 calls
+    def subtest_generic_ListResources( self, slicename ):
+        if self.options_copy.api_version <= 2:
+            return self.subtest_ListResources( slicename )
+        elif self.options_copy.api_version >= 3:
+            return self.subtest_Describe( slicename )
+
     def subtest_generic_DeleteSliver( self, slicename ):
         if self.options_copy.api_version <= 2:
             self.subtest_DeleteSliver( slicename )
-        elif self.options_copy.api_version == 3:
+        elif self.options_copy.api_version >= 3:
             self.subtest_Delete( slicename )
     def subtest_generic_CreateSliver( self, slicename ):
         """For v1 and v2, call CreateSliver().  For v3, call
@@ -1442,9 +1479,11 @@ class Test(ut.OmniUnittest):
             self.subtest_Allocate( slicename )
             numslivers, manifest = self.subtest_Provision( slicename )
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            self.options_copy.devmode = True   
             self.assertRaises(NotSuccessError,
                               self.subtest_PerformOperationalAction, 
                               slicename, '' )
+            self.options_copy.devmode = False  
             self.assertRaises(NotSuccessError, 
                               self.subtest_PerformOperationalAction, 
                               slicename, 'random_action' )

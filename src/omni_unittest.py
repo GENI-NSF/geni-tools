@@ -206,12 +206,14 @@ class OmniUnittest(unittest.TestCase):
             raise NotXMLAssertionError, msg
 
     def assertSuccess(self, item, msg=None):
+        if msg is None:
+            msg = "geni_code not 0 (SUCCESS)  as expected."
         if error_util.err_codes.has_key( item ):
             label = error_util.err_codes[ item ]['label']
             description = error_util.err_codes[ item ]['description']
-        if msg is None:
-            msg = "geni_code not 0 (SUCCESS)  as expected."
-        msg = msg+"\nInstead reported geni_code %s (%s): '%s'" % (item, label, description)
+            msg = msg+"\nInstead reported geni_code %s (%s): '%s'" % (item, label, description)
+        else:
+            msg = msg+"\nInstead reported geni_code %s" % (item)
         if not (int(item) == 0):
             raise NotSuccessError, msg
 
@@ -274,7 +276,7 @@ class OmniUnittest(unittest.TestCase):
     def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
 
         self.assertIsNotNone( rspec, "RSpec returned from '%s' is unexpectedly 'None'" % AMAPI_call )
-        self.assertStr( rspec, "RSpec returned from '%s' is unexpectedly not unicode" % AMAPI_call )
+        self.assertStr( rspec, "RSpec returned from '%s' is unexpectedly not a string" % AMAPI_call )
 
         
         # do all comparisons as lowercase
