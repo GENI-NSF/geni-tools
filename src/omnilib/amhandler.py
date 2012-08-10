@@ -1007,11 +1007,11 @@ class AMCallHandler(object):
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
                 self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
-                self.logger.debug("%s", missingSlvers)
+                self.logger.debug("%s", missingSlivers)
 
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
-                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
             filename = None
@@ -1296,7 +1296,7 @@ class AMCallHandler(object):
             (realresult, message) = self._retrieve_value(result, message, self.framework)
             badSlivers = self._getSliverAllocStates(realresult, 'geni_allocated')
             for sliver in badSlivers.keys():
-                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_allocated', badSlivers[sliver])
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s?!", sliver, 'geni_allocated', badSlivers[sliver])
                 # FIXME: Is the alloc reported here as a failure if some slivers in wrong state?
 
             if realresult:
@@ -1438,7 +1438,7 @@ class AMCallHandler(object):
 
             badSlivers = self._getSliverAllocStates(realresult, 'geni_provisioned')
             for sliver in badSlivers.keys():
-                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_provisioned', badSlivers[sliver])
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s?!", sliver, 'geni_provisioned', badSlivers[sliver])
                 # FIXME: Is the alloc reported here as a failure if some slivers in wrong state?
 
             if realresult:
@@ -1449,12 +1449,12 @@ class AMCallHandler(object):
 
                 missingSlivers = self._findMissingSlivers(realresult, slivers)
                 if len(missingSlivers) > 0:
-                    self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
-                    self.logger.debug("Slivers requested missing in result: %s", missingSlvers)
+                    self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                    self.logger.debug("Slivers requested missing in result: %s", missingSlivers)
 
                 sliverFails = self._didSliversFail(realresult)
                 for sliver in sliverFails.keys():
-                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                    self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
                 if self.opts.output:
                     filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
@@ -1467,7 +1467,7 @@ class AMCallHandler(object):
                 if len(missingSlivers) > 0:
                     retVal += " - but with %d slivers from request missing in result?! \n" % len(missingSlivers)
                 if len(sliverFails.keys()) > 0:
-                    retVal += " = but with %d sliver failures. \n" % len(sliverFails.keys())
+                    retVal += " = but with %d slivers reporting errors. \n" % len(sliverFails.keys())
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                     successCnt += 1
@@ -1611,12 +1611,12 @@ class AMCallHandler(object):
                 # Success
                 missingSlivers = self._findMissingSlivers(realresult, slivers)
                 if len(missingSlivers) > 0:
-                    self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
-                    self.logger.debug("%s", missingSlvers)
+                    self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                    self.logger.debug("%s", missingSlivers)
 
                 sliverFails = self._didSliversFail(realresult)
                 for sliver in sliverFails.keys():
-                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                    self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
                 prettyResult = pprint.pformat(realresult)
                 header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
@@ -1629,7 +1629,7 @@ class AMCallHandler(object):
                 if len(missingSlivers) > 0:
                     retVal += " - with %d missing slivers?!" % len(missingSlivers)
                 if len(sliverFails.keys()) > 0:
-                    retVal += " - with %d sliver failures!" % len(sliverFails.keys())
+                    retVal += " - with %d slivers reporting errors!" % len(sliverFails.keys())
                 if filename:
                     retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
                 else:
@@ -1933,16 +1933,16 @@ class AMCallHandler(object):
                 # And what do we do if so?
                 missingSlivers = self._findMissingSlivers(res, slivers)
                 if len(missingSlivers) > 0:
-                    msg = " - but %d slivers from request missing in result" % len(missingSlivers)
+                    msg = " - but %d slivers from request missing in result?!" % len(missingSlivers)
                     self.logger.warn(msg)
-                    self.logger.debug("%s", missingSlvers)
+                    self.logger.debug("%s", missingSlivers)
                     prStr += msg
 
                 sliverFails = self._didSliversFail(res)
                 for sliver in sliverFails.keys():
-                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                    self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
                 if len(sliverFails.keys()) > 0:
-                    prStr += " - with %d sliver failures!" % len(sliverFails.key())
+                    prStr += " - with %d slivers reporting errors!" % len(sliverFails.key())
 
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
@@ -2154,12 +2154,12 @@ class AMCallHandler(object):
 
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
-                self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
-                self.logger.debug("%s", missingSlvers)
+                self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                self.logger.debug("%s", missingSlivers)
 
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
-                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             header="Status for %s at AM URL %s" % (descripMsg, client.url)
             filename = None
@@ -2359,17 +2359,17 @@ class AMCallHandler(object):
             someSliversFailed = False
             badSlivers = self._getSliverAllocStates(realres, 'geni_unallocated')
             for sliver in badSlivers.keys():
-                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_unallocated', badSlivers[sliver])
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s?!", sliver, 'geni_unallocated', badSlivers[sliver])
                 # FIXME: This really might be a case where sliver in wrong state means the call failed?!
                 someSliversFailed = True
 
             missingSlivers = self._findMissingSlivers(realres, slivers)
             if len(missingSlivers) > 0:
-                self.logger.debug("Slivers from request missing in result: %s", missingSlvers)
+                self.logger.debug("Slivers from request missing in result: %s", missingSlivers)
 
-            sliverFails = self._didSliversFail(realResult)
+            sliverFails = self._didSliversFail(realres)
             for sliver in sliverFails.keys():
-                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             if realres:
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
@@ -3032,7 +3032,7 @@ class AMCallHandler(object):
         # Used by Describe, Renew, Provision, Status, PerformOperationalAction, Delete
 #        sliverFails = self._didSliversFail(realresult)
 #        for sliver in sliverFails.keys():
-#            self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+#            self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 #            # FIXME: Add to retVal?
 #        # Then add fact that sliverFails is not empty to test on whether the call succeded overall or not
 
@@ -3060,6 +3060,7 @@ class AMCallHandler(object):
             if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
                 self.logger.debug("entry in result had no 'geni_sliver'urn'")
                 continue
+#            sliver['geni_error'] = 'testing' # TESTING CODE
             if sliver.has_key('geni_error') and sliver['geni_error'] is not None and str(sliver['geni_error']).strip() != "":
                 self.logger.debug("Sliver %s had error %s", sliver['geni_sliver_urn'], sliver['geni_error'])
                 result[sliver['geni_sliver_urn']] = sliver['geni_error']
@@ -3070,8 +3071,8 @@ class AMCallHandler(object):
         # Used by Describe, Renew, Provision, Status, PerformOperationalAction, Delete
 #        missingSlivers = self._findMissingSlivers(realresult, slivers)
 #        if len(missingSlivers) > 0:
-#            self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
-#            self.logger.debug("%s", missingSlvers)
+#            self.logger.warn("%d slivers from request missing in result!?", len(missingSlivers))
+#            self.logger.debug("%s", missingSlivers)
 #        # Then add missingSlivers being non-empty to test for overall success
         result = list()
         if not requestedSlivers or len(requestedSlivers) == 0:
