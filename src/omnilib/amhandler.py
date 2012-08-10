@@ -1003,6 +1003,16 @@ class AMCallHandler(object):
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
                     prettyResult = str(status)
+
+            missingSlivers = self._findMissingSlivers(status, slivers)
+            if len(missingSlivers) > 0:
+                self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                self.logger.debug("%s", missingSlvers)
+
+            sliverFails = self._didSliversFail(status)
+            for sliver in sliverFails.keys():
+                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+
             header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
             filename = None
 
@@ -1012,7 +1022,11 @@ class AMCallHandler(object):
             self._printResults(header, prettyResult, filename)
             if filename:
                 retVal += "Saved description of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
-            successCnt+=1
+            # Only count it as success if no slivers were missing
+            if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
+                successCnt+=1
+            else:
+                retVal += " - with %d slivers missing and %d slivers with errors. \n" % (len(missingSlivers), len(sliverFails.keys()))
 
             # FIXME: We do nothing here to parse the describe result. Should we?
             # FIXME
@@ -1280,8 +1294,13 @@ class AMCallHandler(object):
 
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
+            badSlivers = self._getSliverAllocStates(realresult, 'geni_allocated')
+            for sliver in badSlivers.keys():
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_allocated', badSlivers[sliver])
+                # FIXME: Is the alloc reported here as a failure if some slivers in wrong state?
+
             if realresult:
-                # Success
+                # Success (maybe partial?)
                 prettyResult = pprint.pformat(realresult)
                 header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
@@ -1416,74 +1435,26 @@ class AMCallHandler(object):
 
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
-            # FIXME: If you provided URNs, then we need to look to see if this is real success or not
-            # And maybe any time, we need to look for a geni_error return in each sliver
-            if isinstance(realresult, dict):
-                if realresult.has_key('geni_slivers'):
-                    if len(slivers) > 0:
-                        for sliver in slivers:
-                            # for each sliver we requested, make sure we got an answer
-                            found = False
-                            for retsliver in realresult['geni_slivers']:
-                                if retsliver.has_key("geni_sliver_urn") and retsliver["geni_sliver_urn"] == sliver:
-                                    found = True
-                                    allocStatus = None
-                                    expiry = 0
-                                    error = "(none)"
-                                    if retsliver.has_key("geni_allocation_status"):
-                                        allocStatus = retsliver["geni_allocation_status"]
-                                    elif self.opts.devmode:
-                                        self.logger.warn("Provision result for sliver %s missing geni_allocation_status. Full return: %s", sliver, retsliver)
-                                    if retsliver.has_key("geni_expires"):
-                                        expiry = retsliver["geni_expires"]
-                                    elif self.opts.devmode:
-                                        self.logger.warn("Provision result for sliver %s missing geni_expires. Full return: %s", sliver, retsliver)
-                                    if retsliver.has_key("geni_error"):
-                                        error = retsliver["geni_error"]
-                                    self.logger.debug("Provision result of sliver %s: Allocation Status: %s, Expires: %s, Error: %s", sliver, allocStatus, expiry, error)
-                                    # FIXME: Now what? Capture which slivers had errors? See if all did?
-                                elif not retsliver.has_key("geni_sliver_urn") and self.opts.devmode:
-                                    self.logger.warn("Provision result malformed - no geni_sliver_urn in a sliver: %s", retsliver)
-                        if not found:
-                            self.logger.warn("Requested provision of sliver %s, got no answer?!", sliver)
-                    else:
-                        # We asked about the whole slice.
-                        # duplicate above, without the found check:
-                        for retsliver in realresult['geni_slivers']:
-                            if retsliver.has_key("geni_sliver_urn"):
-                                allocStatus = None
-                                expiry = 0
-                                error = "(none)"
-                                sliver = retsliver["geni_sliver_urn"]
-                                if retsliver.has_key("geni_allocation_status"):
-                                    allocStatus = retsliver["geni_allocation_status"]
-                                elif self.opts.devmode:
-                                    self.logger.warn("Provision result for sliver %s missing geni_allocation_status. Full return: %s", sliver, retsliver)
-                                if retsliver.has_key("geni_expires"):
-                                    expiry = retsliver["geni_expires"]
-                                elif self.opts.devmode:
-                                    self.logger.warn("Provision result for sliver %s missing geni_expires. Full return: %s", sliver, retsliver)
-                                if retsliver.has_key("geni_error"):
-                                    error = retsliver["geni_error"]
-                                self.logger.debug("Provision result of sliver %s: Allocation Status: %s, Expires: %s, Error: %s", sliver, allocStatus, expiry, error)
-                                # FIXME: Now what? Capture which slivers had errors? See if all did?
-                            elif self.opts.devmode:
-                                self.logger.warn("Provision result malformed - no geni_sliver_urn in a sliver: %s", retsliver)
-                    # for each sliver return, check for a geni_error
-                else:
-                    if self.opts.devmode:
-                        self.logger.warn("Provision result missing geni_slivers key: %s", realresult)
-                    # Now what?
-            else:
-                if self.opts.devmode:
-                    self.logger.warn("Provision result not a dict: %s", realresult)
-                # Now what?
+
+            badSlivers = self._getSliverAllocStates(realresult, 'geni_provisioned')
+            for sliver in badSlivers.keys():
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_provisioned', badSlivers[sliver])
+                # FIXME: Is the alloc reported here as a failure if some slivers in wrong state?
 
             if realresult:
                 # Success
                 prettyResult = pprint.pformat(realresult)
                 header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
+
+                missingSlivers = self._findMissingSlivers(realresult, slivers)
+                if len(missingSlivers) > 0:
+                    self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
+                    self.logger.debug("Slivers requested missing in result: %s", missingSlvers)
+
+                sliverFails = self._didSliversFail(realresult)
+                for sliver in sliverFails.keys():
+                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
 
                 if self.opts.output:
                     filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
@@ -1493,8 +1464,13 @@ class AMCallHandler(object):
                     retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 else:
                     retVal += "Provisioned %s at %s. \n" % (descripMsg, client.url)
+                if len(missingSlivers) > 0:
+                    retVal += " - but with %d slivers from request missing in result?! \n" % len(missingSlivers)
+                if len(sliverFails.keys()) > 0:
+                    retVal += " = but with %d sliver failures. \n" % len(sliverFails.keys())
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
-                successCnt += 1
+                if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
+                    successCnt += 1
             else:
                 # Failure
                 if message is None or message.strip() == "":
@@ -1633,6 +1609,15 @@ class AMCallHandler(object):
                 self.logger.warn(msg)
             else:
                 # Success
+                missingSlivers = self._findMissingSlivers(realresult, slivers)
+                if len(missingSlivers) > 0:
+                    self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
+                    self.logger.debug("%s", missingSlvers)
+
+                sliverFails = self._didSliversFail(realresult)
+                for sliver in sliverFails.keys():
+                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+
                 prettyResult = pprint.pformat(realresult)
                 header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
@@ -1641,11 +1626,16 @@ class AMCallHandler(object):
                     #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 retVal += "PerformOperationalAction %s was successful." % descripMsg
+                if len(missingSlivers) > 0:
+                    retVal += " - with %d missing slivers?!" % len(missingSlivers)
+                if len(sliverFails.keys()) > 0:
+                    retVal += " - with %d sliver failures!" % len(sliverFails.keys())
                 if filename:
                     retVal += " Saved results at AM %s to file %s. \n" % (client.url, filename)
                 else:
                     retVal += ' \n'
-                successCnt += 1
+                if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
+                    successCnt += 1
 
         self.logger.debug("POA %s result: %s", descripMsg, pprint.pformat(retItem))
 
@@ -1936,14 +1926,28 @@ class AMCallHandler(object):
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
             else:
+                prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
+                self.logger.info(prStr)
                 # FIXME: Look inside return. Did all slivers we asked about report results?
                 # For each that did, did any fail?
                 # And what do we do if so?
-                prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
-                self.logger.info(prStr)
+                missingSlivers = self._findMissingSlivers(res, slivers)
+                if len(missingSlivers) > 0:
+                    msg = " - but %d slivers from request missing in result" % len(missingSlivers)
+                    self.logger.warn(msg)
+                    self.logger.debug("%s", missingSlvers)
+                    prStr += msg
+
+                sliverFails = self._didSliversFail(res)
+                for sliver in sliverFails.keys():
+                    self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+                if len(sliverFails.keys()) > 0:
+                    prStr += " - with %d sliver failures!" % len(sliverFails.key())
+
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
-                successCnt += 1
+                if len(sliverFails.keys()) == 0 and len(missingSlivers) == 0:
+                    successCnt += 1
         if len(clientList) == 0:
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
@@ -2147,6 +2151,16 @@ class AMCallHandler(object):
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
                     prettyResult = str(status)
+
+            missingSlivers = self._findMissingSlivers(status, slivers)
+            if len(missingSlivers) > 0:
+                self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
+                self.logger.debug("%s", missingSlvers)
+
+            sliverFails = self._didSliversFail(status)
+            for sliver in sliverFails.keys():
+                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+
             header="Status for %s at AM URL %s" % (descripMsg, client.url)
             filename = None
             if self.opts.output:
@@ -2155,7 +2169,12 @@ class AMCallHandler(object):
             self._printResults(header, prettyResult, filename)
             if filename:
                 retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
-            successCnt+=1
+            if len(missingSlivers) > 0:
+                retVal += " - %d slivers missing from result!? \n" % len(missingSlivers)
+            if len(sliverFails.keys()) > 0:
+                retVal += " - %d slivers failed?! \n" % len(sliverFails.keys())
+            if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
+                successCnt+=1
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -2337,14 +2356,36 @@ class AMCallHandler(object):
             retItem[client.url] = result
 
             (realres, message) = self._retrieve_value(result, message, self.framework)
+            someSliversFailed = False
+            badSlivers = self._getSliverAllocStates(realres, 'geni_unallocated')
+            for sliver in badSlivers.keys():
+                self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_unallocated', badSlivers[sliver])
+                # FIXME: This really might be a case where sliver in wrong state means the call failed?!
+                someSliversFailed = True
+
+            missingSlivers = self._findMissingSlivers(realres, slivers)
+            if len(missingSlivers) > 0:
+                self.logger.debug("Slivers from request missing in result: %s", missingSlvers)
+
+            sliverFails = self._didSliversFail(realResult)
+            for sliver in sliverFails.keys():
+                self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+
             if realres:
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
+                if someSliversFailed:
+                    prStr += " - but %d slivers are not fully de-allocated; check the return!" % len(badSlivers.keys())
+                if len(missingSlivers) > 0:
+                    prStr += " - but %d slivers from request missing in result!?" % len(missingSlivers)
+                if len(sliverFails.keys()) > 0:
+                    prStr += " = but %d slivers failed!" % len(sliverFails.keys())
                 if len(clientList) == 1:
                     retVal = prStr
                 self.logger.info(prStr)
-                successCnt += 1
+                if len(sliverFails.keys()) == 0:
+                    successCnt += 1
             else:
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
@@ -2985,6 +3026,229 @@ class AMCallHandler(object):
                 options["geni_best_effort"] = self.opts.geni_best_effort
 
         return options
+
+    def _didSliversFail(self, resultValue):
+        '''Take a result value, and return a dict of slivers that had a geni_error: URN->geni_error'''
+        # Used by Describe, Renew, Provision, Status, PerformOperationalAction, Delete
+#        sliverFails = self._didSliversFail(realresult)
+#        for sliver in sliverFails.keys():
+#            self.logger.warn("Sliver %s failed: %s", sliver, sliverFails[sliver])
+#            # FIXME: Add to retVal?
+#        # Then add fact that sliverFails is not empty to test on whether the call succeded overall or not
+
+        result = dict()
+        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
+        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
+        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
+        if not resultValue:
+            self.logger.debug("Result value empty")
+            return result
+        if isinstance(resultValue, dict):
+            if resultValue.has_key('geni_slivers'):
+                resultValue = resultValue['geni_slivers']
+            else:
+                self.logger.debug("Result value had no 'geni_slivers' key")
+                return result
+        if not isinstance(resultValue, list) or len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+            return result
+
+        for sliver in resultValue:
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                continue
+            if sliver.has_key('geni_error') and sliver['geni_error'] is not None and str(sliver['geni_error']).strip() != "":
+                self.logger.debug("Sliver %s had error %s", sliver['geni_sliver_urn'], sliver['geni_error'])
+                result[sliver['geni_sliver_urn']] = sliver['geni_error']
+        return result
+
+    def _findMissingSlivers(self, resultValue, requestedSlivers):
+        '''Return list of sliver URNs in requested list but with no entry in resultValue'''
+        # Used by Describe, Renew, Provision, Status, PerformOperationalAction, Delete
+#        missingSlivers = self._findMissingSlivers(realresult, slivers)
+#        if len(missingSlivers) > 0:
+#            self.logger.warn("%d slivers from request missing in result", len(missingSlivers))
+#            self.logger.debug("%s", missingSlvers)
+#        # Then add missingSlivers being non-empty to test for overall success
+        result = list()
+        if not requestedSlivers or len(requestedSlivers) == 0:
+            return result
+
+        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
+        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
+        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
+        if not resultValue:
+            self.logger.debug("Result value empty")
+            return result
+        if isinstance(resultValue, dict):
+            if resultValue.has_key('geni_slivers'):
+                resultValue = resultValue['geni_slivers']
+            else:
+                self.logger.debug("Result value had no 'geni_slivers' key")
+                return result
+        if not isinstance(resultValue, list) or len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+            return result
+
+        retSlivers = list()
+        # get URNs from resultValue
+        for sliver in resultValue:
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                continue
+            retSlivers.append(sliver['geni_sliver_urn'])
+
+        for request in requestedSlivers:
+            if not request or request.strip() == "":
+                continue
+            # if request not in resultValue, then add it to the return
+            if request not in retSlivers:
+                result.append(request)
+        return result
+
+    def _getSliverExpirations(self, resultValue, requestedExpiration=None):
+        '''Get any slivers with a listed expiration different than the supplied date.
+        If supplied is None, then gets all sliver expirationtimes.
+        Return is a dict(sliverURN)->expiration'''
+
+        # Called by Renew, Allocate(requested=None), Provision(requested=None)
+        # sliverExps = self._getSliverExpirations(realResult, requestedExpiration/None)
+        # None case
+        # soonest = datetime.datetime.max
+        # expTimes = list()
+        # for sliver in sliverExps.keys():
+        #    self.logger.info("Sliver %s expires on %s", sliver, sliverExps[sliver])
+        # FIXME: in return val? Gather by expiration time, and if print just the soonest and # of times?
+        #    expTime = sliverExps[sliver]
+        #    if expTime not in expTimes:
+        #       expTimes.append(expTime)
+        #    if expTime < soonest:
+        #       soonest = ExpTime
+        # if len(expTimes) == 1:
+        #    self.logger.info("All slivers expire at %s", soonest)
+        #  else:
+        #    self.logger.info("Slivers expire at %d different times. Next expiration: %s", len(expTimes), soonest)
+
+        # Renew/specific time case
+        # if slivers is None or len(slivers) == 0:
+        #   # every sliver return is surprising; we don't have the list of all slivers
+        #   # so loop over returned slivers and warn/log about each time we see
+        # else:
+        #   # we know what the list of slivers is. Loop over that list - if it is not in the returned list,
+        #   # then it has the expected expiration. Build list of such silver URNs
+        #   # if is in returned list, log/warn. Build list of soonest and # different times
+        # expTimes = list()
+        # expTimes.append(requested)
+        # for sliver in sliverExps.keys():
+        #    expTime = sliverExps[sliver]
+        #    if expTime !
+        #    self.logger.info("Sliver %s expires on %s", sliver, sliverExps[sliver])
+        # FIXME: in return val? Gather by expiration time, and if print just the soonest and # of times?
+        #    if expTime not in expTimes:
+        #       expTimes.append(expTime)
+        #    if expTime < soonest:
+        #       soonest = ExpTime
+        # if len(expTimes) == 1:
+        #    self.logger.info("All slivers expire at %s", soonest)
+        #  else:
+        #    self.logger.info("Slivers expire at %d different times. Next expiration: %s", len(expTimes), soonest)
+
+        # FIXME: All the above is a mess. We could instead return a hash by expiration time of sliver URNs for all slivers in the return?
+        # Or return 2 different things: 1 a hash by sliver urn of expiration time, and 2 a hash by expiration time?
+
+
+        # what do I need? if exp is none then soonest and count of times. <Maybe the urns that expire soonest.
+        # if have expected maybe by time the list of URNs that aren't expected?
+        # so maybe whole method should return hash by expiration time of sliver URNs?
+        # OR an ordered list of lists - ordered by time, increasing
+
+
+        if requestedExpiration is None:
+            requestedExpiration = datetime.datetime.max
+
+        result = dict()
+
+        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
+        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
+        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
+        if not resultValue:
+            self.logger.debug("Result value empty")
+            return result
+        if isinstance(resultValue, dict):
+            if resultValue.has_key('geni_slivers'):
+                resultValue = resultValue['geni_slivers']
+            else:
+                self.logger.debug("Result value had no 'geni_slivers' key")
+                return result
+        if not isinstance(resultValue, list) or len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+            return result
+
+        for sliver in resultValue:
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                continue
+            if not sliver.has_key('geni_expires'):
+                self.logger.debug("Sliver %s missing 'geni_expires'", sliver['geni_sliver_urn'])
+                result[sliver['geni_sliver_urn']] = datetime.datetime.max
+            if sliver['geni_expires'] != requestedExpiration:
+                result[sliver['geni_sliver_urn']] = sliver['geni_expires']
+        return result
+
+    def _getSliverAllocStates(self, resultValue, expectedState=None):
+        '''Get the Allocation state of slivers if the state is not the expected one, or all
+        states if expected is omitted.
+        Return is a dict of sliverURN->actual allocation state.'''
+
+        # Called by Allocate, Provision, Delete:
+        # badSlivers = self._getSliverAllocStates(realresult, 'geni_allocated'/'geni_provisioned')
+        # for sliver in badSlivers.keys():
+        #   self.logger.warn("Sliver %s in wrong state! Expected %s, got %s", sliver, 'geni_allocated'/'geni_provisioned', badSlivers[sliver])
+        # FIXME: Put that in return value?
+
+        result = dict()
+        if not resultValue:
+            return result
+
+        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
+        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
+        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
+        if not resultValue:
+            self.logger.debug("Result value empty")
+            return result
+        if isinstance(resultValue, dict):
+            if resultValue.has_key('geni_slivers'):
+                resultValue = resultValue['geni_slivers']
+            else:
+                self.logger.debug("Result value had no 'geni_slivers' key")
+                return result
+        if not isinstance(resultValue, list) or len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+            return result
+
+        for sliver in resultValue:
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+                continue
+            if not sliver.has_key('geni_allocation_status'):
+                self.logger.debug("Sliver %s missing 'geni_allocation_status'", sliver['geni_sliver_urn'])
+                result[sliver['geni_sliver_urn']] = ""
+            if sliver['geni_allocation_status'] != expectedState:
+                result[sliver['geni_sliver_urn']] = sliver['geni_allocation_status']
+
+        return result
 
 # End of AMHandler
 
