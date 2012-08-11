@@ -542,7 +542,7 @@ Check that the value of 'code' is as follows:
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
-        return len(slivers), manifest
+        return slivers, manifest
 
 
     def assertStatusReturn( self, agg, retVal ):
@@ -652,7 +652,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_provisioned')        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
-        return len(slivers), manifest
+        return slivers, manifest
 
     def assertAllocateReturn( self, agg, retVal ):
         """Returns:

@@ -353,6 +353,22 @@ class Test(ut.OmniUnittest):
         self.subtest_ListResources()
         self.success = True
 
+    def subtest_Describe_geni_compressed(self, slicename):
+        """test_Describe_geni_compressed: Passes if 'Describe' returns an advertisement RSpec.
+        """
+        # omni sets 'geni_compressed' = True, override
+        self.options_copy.geni_compressed = False
+        self.subtest_Describe( slicename=slicename )
+        self.success = True
+    def subtest_Describe_geni_available(self, slicename):
+        """test_Describe_geni_available: Passes if 'Describe' returns an advertisement RSpec.
+        """
+        # omni sets 'geni_available' = False, override
+        self.options_copy.geni_available = True
+        self.subtest_Describe( slicename=slicename )
+        self.success = True
+
+
     def test_ListResources_badCredential_malformedXML(self):
         """test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
         self.subtest_ListResources_badCredential(self.removeFirstChar)
@@ -511,13 +527,13 @@ class Test(ut.OmniUnittest):
         self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
-    def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
-        return self.subtest_query_rspec( AMAPI_call="Describe", slicename=slicename, slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, slicecredfile=slicecredfile, typeOnly=typeOnly )
+    def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
+        return self.subtest_query_rspec( AMAPI_call="Describe", slicename=slicename, slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, slicecredfile=slicecredfile, typeOnly=typeOnly, sliverurns=sliverurns )
 
     def subtest_ListResources( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
         return self.subtest_query_rspec( AMAPI_call="ListResources", slicename=slicename, slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, slicecredfile=slicecredfile, typeOnly=typeOnly )
 
-    def subtest_query_rspec(self, AMAPI_call="ListResources", slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, ):
+    def subtest_query_rspec(self, AMAPI_call="ListResources", slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
 
@@ -553,7 +569,8 @@ class Test(ut.OmniUnittest):
         else:
             omniargs = omniargs + [AMAPI_call]
 
-
+        for urn in sliverurns:
+            omniargs = omniargs + ['-u', urn]
         if usercred and slicecred:
             with tempfile.NamedTemporaryFile() as f:
                 # make a temporary file containing the user credential
@@ -612,14 +629,28 @@ class Test(ut.OmniUnittest):
                 err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, 
                                                             indAgg )    
                 self.assertSuccess( err_code )
-                if err_code == SUCCESS:
-                    # value only required if it is successful
-                    retVal = indAgg['value']
-                    numslivers, rspec = self.assertDescribeReturn( agg, retVal )
-                    self.assertRspec( AMAPI_call, rspec, 
-                                      rspec_namespace, rspec_schema, 
-                                      self.options_copy.rspeclint)
-                    self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
+                # value only required if it is successful
+                retVal = indAgg['value']
+                slivers, rspec = self.assertDescribeReturn( agg, retVal )
+                numslivers = len(slivers)
+                self.assertRspec( AMAPI_call, rspec, 
+                                  rspec_namespace, rspec_schema, 
+                                  self.options_copy.rspeclint)
+                self.assertRspecType( rspec, 'manifest', typeOnly=typeOnly)
+                if sliverurns:
+                    reported_urns = []
+                    for sliver in slivers:
+                        reported_urns.append( sliver['geni_sliver_urn'] )
+                    self.assertTrue( set(reported_urns)==set(sliverurns),
+                             "Return from '%s' at aggregate '%s' " \
+                             "expected to only include requested sliver urns " \
+                             "but did not. \nRequested slivers were: " \
+                             "\n%s\n" \
+                             "Returned slivers were: " \
+                             "\n%s" 
+                             % (AMAPI_call, agg, str(sliverurns), str(reported_urns)))
+
+
         else:
             # AM API v1-v3 ListResources() and 
             # AM API v1-v2 ListResources( slicename )
@@ -683,7 +714,7 @@ class Test(ut.OmniUnittest):
         except:
             pass
 
-        numslivers, manifest = self.subtest_generic_CreateSliver( slicename )
+        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
@@ -717,8 +748,17 @@ class Test(ut.OmniUnittest):
                 self.assertRaises(NotSuccessError, 
                                   self.subtest_Describe,
                                   slicename=None )
-
                 self.options_copy.devmode = False   
+
+                self.subtest_Describe_geni_compressed( slicename )
+                self.subtest_Describe_geni_available( slicename )
+                
+                print slivers
+                for sliver in slivers:
+                    sliver_urn = sliver['geni_sliver_urn']
+                    self.subtest_Describe(slicename=slicename, sliverurns=[sliver_urn] )
+                    print sliver_urn
+
             self.assertRspecType( manifest2, 'manifest')
             self.assertRspec( "ListResources", manifest2, 
                               rspec_namespace, rspec_schema,
@@ -752,7 +792,7 @@ class Test(ut.OmniUnittest):
                 # if --more-strict
                 # CreateSliver should return an RSpec containing no
                 # resources
-                numslivers, manifest = self.subtest_generic_CreateSliver( 
+                numslivers, manifest, slivers2 = self.subtest_generic_CreateSliver( 
                     slicename )
                 self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
                   "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
@@ -1214,7 +1254,8 @@ class Test(ut.OmniUnittest):
                     numSlivers = retVal2
                 elif AMAPI_call is "Provision":
                     retVal2 = self.assertProvisionReturn( agg, retVal )
-                    numSlivers, manifest = retVal2
+                    slivers, manifest = retVal2
+                    numSlivers = len(slivers)
                 elif AMAPI_call is "Status":
                     retVal2 = self.assertStatusReturn( agg, retVal )
                     numSlivers = retVal2
@@ -1475,9 +1516,11 @@ class Test(ut.OmniUnittest):
         """
         if self.options_copy.api_version <= 2:
             numslivers, manifest = self.subtest_CreateSliver( slicename )
+            slivers = None
         elif self.options_copy.api_version == 3:
             self.subtest_Allocate( slicename )
-            numslivers, manifest = self.subtest_Provision( slicename )
+            slivers, manifest = self.subtest_Provision( slicename )
+            numslivers = len(slivers)
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
             self.options_copy.devmode = True   
             self.assertRaises(NotSuccessError,
@@ -1488,7 +1531,7 @@ class Test(ut.OmniUnittest):
                               self.subtest_PerformOperationalAction, 
                               slicename, 'random_action' )
 
-        return numslivers, manifest
+        return numslivers, manifest, slivers
     def subtest_generic_SliverStatus( self, slicename ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )
