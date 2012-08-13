@@ -1313,6 +1313,17 @@ class AMCallHandler(object):
                     retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 else:
                     retVal += "Allocated %s at %s. \n" % (descripMsg, client.url)
+
+                (orderedDates, sliverExps) = self._getSliverExpirations(realresult)
+                # None case
+                if len(orderedDates) == 1:
+                    self.logger.info("All slivers expire on %r", orderedDates[0].isoformat())
+                elif len(orderedDates) == 2:
+                    self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                else:
+                    self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+
                 self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
                 successCnt += 1
             else:
@@ -1468,6 +1479,17 @@ class AMCallHandler(object):
                     retVal += " - but with %d slivers from request missing in result?! \n" % len(missingSlivers)
                 if len(sliverFails.keys()) > 0:
                     retVal += " = but with %d slivers reporting errors. \n" % len(sliverFails.keys())
+
+                (orderedDates, sliverExps) = self._getSliverExpirations(realresult)
+                # None case
+                if len(orderedDates) == 1:
+                    self.logger.info("All slivers expire on %r", orderedDates[0].isoformat())
+                elif len(orderedDates) == 2:
+                    self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                else:
+                    self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                     successCnt += 1
@@ -1681,56 +1703,13 @@ class AMCallHandler(object):
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "RenewSliver", "and new expiration time in UTC")
 
-#--- Should dev mode allow passing time as is?
-        time = datetime.datetime.max
-        try:
-            if not (self.opts.devmode and len(args) < 2):
-                time = dateutil.parser.parse(args[1])
-        except Exception, exc:
-            msg = "RenewSliver couldn't parse new expiration time from %s: %r" % (args[1], exc)
-            if self.opts.devmode:
-                self.logger.warn(msg)
-            else:
-                self._raise_omni_error(msg)
-
-        # Convert to naive UTC time if necessary for ease of comparison
-        try:
-            time = naiveUTC(time)
-        except:
-            if self.opts.devmode:
-                pass
-            else:
-                raise
-
-        # Compare requested time with slice expiration time
-        if time > slice_exp:
-#--- Dev mode allow this
-            msg = 'Cannot renew sliver %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
-            if self.opts.devmode:
-                self.logger.warn(msg + ", but continuing...")
-            else:
-                self._raise_omni_error(msg)
-        elif time <= datetime.datetime.utcnow():
-#--- Dev mode allow earlier time
-            if not self.opts.devmode:
-                self.logger.info('Sliver %s will be set to expire now' % name)
-                time = datetime.datetime.utcnow()
+        if len(args) >= 2:
+            ds = args[1]
         else:
-            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
-
-        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
-        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+            ds = None
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
 
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
-
-        # Note that the time arg includes UTC offset as needed
-        time_string = time_with_tz.isoformat()
-        if self.opts.no_tz:
-            # The timezone causes an error in older sfa
-            # implementations as deployed in mesoscale GENI. Strip
-            # off the timezone if the user specfies --no-tz
-            self.logger.info('Removing timezone at user request (--no-tz)')
-            time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
@@ -1835,56 +1814,14 @@ class AMCallHandler(object):
                                                       "Renew",
                                                       "and new expiration time in UTC")
 
-#--- Should dev mode allow passing time as is?
         time = datetime.datetime.max
-        try:
-            if not (self.opts.devmode and len(args) < 2):
-                time = dateutil.parser.parse(args[1])
-        except Exception, exc:
-            msg = "Renew couldn't parse new expiration time from %s: %r" % (args[1], exc)
-            if self.opts.devmode:
-                self.logger.warn(msg)
-            else:
-                self._raise_omni_error(msg)
-
-        # Convert to naive UTC time if necessary for ease of comparison
-        try:
-            time = naiveUTC(time)
-        except:
-            if self.opts.devmode:
-                pass
-            else:
-                raise
-
-        # Compare requested time with slice expiration time
-        if time > slice_exp:
-#--- Dev mode allow this
-            msg = 'Cannot renew slivers in slice %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
-            if self.opts.devmode:
-                self.logger.warn(msg + ", but continuing...")
-            else:
-                self._raise_omni_error(msg)
-        elif time <= datetime.datetime.utcnow():
-#--- Dev mode allow earlier time
-            if not self.opts.devmode:
-                self.logger.info('Slivers in slice %s will be set to expire now' % name)
-                time = datetime.datetime.utcnow()
+        if len(args) >= 2:
+            ds = args[1]
         else:
-            self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
-
-        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
-        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+            ds = None
+        (time, time_with_tz, time_string) = self._datetimeFromString(ds, slice_exp, name)
 
         self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
-
-        # Note that the time arg includes UTC offset as needed
-        time_string = time_with_tz.isoformat()
-        if self.opts.no_tz:
-            # The timezone causes an error in older sfa
-            # implementations as deployed in mesoscale GENI. Strip
-            # off the timezone if the user specfies --no-tz
-            self.logger.info('Removing timezone at user request (--no-tz)')
-            time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
@@ -1943,6 +1880,30 @@ class AMCallHandler(object):
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
                 if len(sliverFails.keys()) > 0:
                     prStr += " - with %d slivers reporting errors!" % len(sliverFails.key())
+
+                (orderedDates, sliverExps) = self._getSliverExpirations(res, time)
+                if len(orderedDates) == 1 and orderedDates[0] == time:
+                    self.logger.info("All slivers expire as requested on %r", time_with_tz.isoformat())
+                elif len(orderedDates) == 1:
+                    self.logger.warn("Slivers expire on %r, not as requested %r", orderedDates[0].isoformat(), time_with_tz.isoformat())
+                    self.logger.warn("timedelta: %r", time - orderedDates[0])
+                else:
+                    firstTime = None
+                    firstCount = 0
+                    if sliverExps.has_key(time):
+                        expectedCount = sliverExps[time]
+                    else:
+                        expectedCount = 0
+                    for time in orderedDates:
+                        if time == requestedExpiration:
+                            continue
+                        elif time - requestedExpiration < timedelta.resolution:
+                            self.logger.warn("timedelta was 0 but times werent ==")
+                            continue
+                        firstTime = time
+                        firstCount = len(sliverExps[time])
+                        break
+                    self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
@@ -2996,18 +2957,7 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
-                    time = dateutil.parser.parse(self.opts.geni_end_time)
-                    # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
-                    time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
-                    # Note that the time arg includes UTC offset as needed
-                    time_string = time_with_tz.isoformat()
-                    if self.opts.no_tz:
-                        # The timezone causes an error in older sfa
-                        # implementations as deployed in mesoscale GENI. Strip
-                        # off the timezone if the user specfies --no-tz
-                        self.logger.info('Removing timezone at user request (--no-tz)')
-                        time_string = time_with_tz.replace(tzinfo=None).isoformat()
-
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time)
                     options["geni_end_time"] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
@@ -3027,6 +2977,24 @@ class AMCallHandler(object):
 
         return options
 
+    def _getSliverResultList(self, resultValue):
+        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
+        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
+        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
+        if not resultValue:
+            self.logger.debug("Result value empty")
+            return list()
+        if isinstance(resultValue, dict):
+            if resultValue.has_key('geni_slivers'):
+                resultValue = resultValue['geni_slivers']
+            else:
+                self.logger.debug("Result value had no 'geni_slivers' key")
+                return list()
+        if not isinstance(resultValue, list) or len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+            return list()
+        return resultValue
+
     def _didSliversFail(self, resultValue):
         '''Take a result value, and return a dict of slivers that had a geni_error: URN->geni_error'''
         # Used by Describe, Renew, Provision, Status, PerformOperationalAction, Delete
@@ -3037,19 +3005,8 @@ class AMCallHandler(object):
 #        # Then add fact that sliverFails is not empty to test on whether the call succeded overall or not
 
         result = dict()
-        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
-        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
-        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
-        if not resultValue:
-            self.logger.debug("Result value empty")
-            return result
-        if isinstance(resultValue, dict):
-            if resultValue.has_key('geni_slivers'):
-                resultValue = resultValue['geni_slivers']
-            else:
-                self.logger.debug("Result value had no 'geni_slivers' key")
-                return result
-        if not isinstance(resultValue, list) or len(resultValue) == 0:
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
             self.logger.debug("Result value not a list or empty")
             return result
 
@@ -3078,19 +3035,8 @@ class AMCallHandler(object):
         if not requestedSlivers or len(requestedSlivers) == 0:
             return result
 
-        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
-        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
-        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
-        if not resultValue:
-            self.logger.debug("Result value empty")
-            return result
-        if isinstance(resultValue, dict):
-            if resultValue.has_key('geni_slivers'):
-                resultValue = resultValue['geni_slivers']
-            else:
-                self.logger.debug("Result value had no 'geni_slivers' key")
-                return result
-        if not isinstance(resultValue, list) or len(resultValue) == 0:
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
             self.logger.debug("Result value not a list or empty")
             return result
 
@@ -3119,75 +3065,44 @@ class AMCallHandler(object):
         Return is a dict(sliverURN)->expiration'''
 
         # Called by Renew, Allocate(requested=None), Provision(requested=None)
-        # sliverExps = self._getSliverExpirations(realResult, requestedExpiration/None)
+        # (orderedDates, sliverExps) = self._getSliverExpirations(realresult, requestedExpiration/None)
         # None case
-        # soonest = datetime.datetime.max
-        # expTimes = list()
-        # for sliver in sliverExps.keys():
-        #    self.logger.info("Sliver %s expires on %s", sliver, sliverExps[sliver])
-        # FIXME: in return val? Gather by expiration time, and if print just the soonest and # of times?
-        #    expTime = sliverExps[sliver]
-        #    if expTime not in expTimes:
-        #       expTimes.append(expTime)
-        #    if expTime < soonest:
-        #       soonest = ExpTime
-        # if len(expTimes) == 1:
-        #    self.logger.info("All slivers expire at %s", soonest)
-        #  else:
-        #    self.logger.info("Slivers expire at %d different times. Next expiration: %s", len(expTimes), soonest)
+        # if len(orderedDates) == 1:
+        #    self.logger.info("All slivers expire on %s", orderedDates[0])
+        # elif len(orderedDates) == 2:
+        #    self.logger.info("%d slivers expire on %s, the rest (%d) on %s", len(sliverExps[orderedDates[0]]), orderedDates[0], len(sliverExps[orderedDates[0]]), orderedDates[1])
+        # else:
+        #    self.logger.info("%d slivers expire on %s, %d on %s, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0], len(sliverExps[orderedDates[0]]), orderedDates[1])
+        # retVal += " Next sliver expiration: %s" % orderedDates[0]
 
         # Renew/specific time case
-        # if slivers is None or len(slivers) == 0:
-        #   # every sliver return is surprising; we don't have the list of all slivers
-        #   # so loop over returned slivers and warn/log about each time we see
-        # else:
-        #   # we know what the list of slivers is. Loop over that list - if it is not in the returned list,
-        #   # then it has the expected expiration. Build list of such silver URNs
-        #   # if is in returned list, log/warn. Build list of soonest and # different times
-        # expTimes = list()
-        # expTimes.append(requested)
-        # for sliver in sliverExps.keys():
-        #    expTime = sliverExps[sliver]
-        #    if expTime !
-        #    self.logger.info("Sliver %s expires on %s", sliver, sliverExps[sliver])
-        # FIXME: in return val? Gather by expiration time, and if print just the soonest and # of times?
-        #    if expTime not in expTimes:
-        #       expTimes.append(expTime)
-        #    if expTime < soonest:
-        #       soonest = ExpTime
-        # if len(expTimes) == 1:
-        #    self.logger.info("All slivers expire at %s", soonest)
-        #  else:
-        #    self.logger.info("Slivers expire at %d different times. Next expiration: %s", len(expTimes), soonest)
-
-        # FIXME: All the above is a mess. We could instead return a hash by expiration time of sliver URNs for all slivers in the return?
-        # Or return 2 different things: 1 a hash by sliver urn of expiration time, and 2 a hash by expiration time?
-
-
-        # what do I need? if exp is none then soonest and count of times. <Maybe the urns that expire soonest.
-        # if have expected maybe by time the list of URNs that aren't expected?
-        # so maybe whole method should return hash by expiration time of sliver URNs?
-        # OR an ordered list of lists - ordered by time, increasing
-
+        # (orderedDates, sliverExps) = self._getSliverExpirations(realresult, requestedExpiration/None)
+#        if len(orderedDates) == 1 and orderedDates[0] == requestedExpiration:
+#            self.logger.info("All slivers expire as requested on %s", requestedExpiration)
+#        elif len(orderedDates) == 1:
+#            self.logger.warn("Slivers expire on %s, not as requested %s", orderedDates[0], requestedExpiration)
+#        else:
+#            firstTime = None
+#            firstCount = 0
+#            if sliverExps.has_key(requestedExpiration):
+#                expectedCount = sliverExps[requestedExpiration]
+#            else:
+#                expectedCount = 0
+#            for time in orderedDates:
+#                if time == requestedExpiration:
+#                    continue
+#                firstTime = time
+#                firstCount = len(sliverExps[time])
+#                break
+#            self.logger.warn("Slivers do not all expire as requested: %d as requested (%s), but %d expire on %s, and others at %d other times", expectedCount, requestedExpiration, firstCount, firstTime, len(orderedDates) - 2)
 
         if requestedExpiration is None:
             requestedExpiration = datetime.datetime.max
 
         result = dict()
 
-        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
-        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
-        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
-        if not resultValue:
-            self.logger.debug("Result value empty")
-            return result
-        if isinstance(resultValue, dict):
-            if resultValue.has_key('geni_slivers'):
-                resultValue = resultValue['geni_slivers']
-            else:
-                self.logger.debug("Result value had no 'geni_slivers' key")
-                return result
-        if not isinstance(resultValue, list) or len(resultValue) == 0:
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
             self.logger.debug("Result value not a list or empty")
             return result
 
@@ -3200,10 +3115,19 @@ class AMCallHandler(object):
                 continue
             if not sliver.has_key('geni_expires'):
                 self.logger.debug("Sliver %s missing 'geni_expires'", sliver['geni_sliver_urn'])
-                result[sliver['geni_sliver_urn']] = datetime.datetime.max
-            if sliver['geni_expires'] != requestedExpiration:
-                result[sliver['geni_sliver_urn']] = sliver['geni_expires']
-        return result
+                continue
+            sliver_expires = sliver['geni_expires']
+            if isinstance(sliver_expires, str):
+                (sliver_expires, sliver_expires_with_tz, timestring) = self._datetimeFromString(sliver_expires)
+            if requestedExpiration != datetime.datetime.max and sliver_expires != requestedExpiration:
+                self.logger.warn("Sliver %s doesn't expire when requested! Expires at %r, not at %r", sliver['geni_sliver_urn'], sliver['geni_expires'], requestedExpiration.isoformat())
+            if sliver_expires not in result.keys():
+                thisTime = list()
+                result[sliver_expires] = thisTime
+            result[sliver_expires].append(sliver['geni_sliver_urn'])
+        orderedDates = result.keys()
+        orderedDates.sort()
+        return (orderedDates, result)
 
     def _getSliverAllocStates(self, resultValue, expectedState=None):
         '''Get the Allocation state of slivers if the state is not the expected one, or all
@@ -3220,19 +3144,8 @@ class AMCallHandler(object):
         if not resultValue:
             return result
 
-        # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
-        # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
-        # Note allocate does not return the geni_error key - otherwise it is like status/provision)
-        if not resultValue:
-            self.logger.debug("Result value empty")
-            return result
-        if isinstance(resultValue, dict):
-            if resultValue.has_key('geni_slivers'):
-                resultValue = resultValue['geni_slivers']
-            else:
-                self.logger.debug("Result value had no 'geni_slivers' key")
-                return result
-        if not isinstance(resultValue, list) or len(resultValue) == 0:
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
             self.logger.debug("Result value not a list or empty")
             return result
 
@@ -3250,6 +3163,64 @@ class AMCallHandler(object):
                 result[sliver['geni_sliver_urn']] = sliver['geni_allocation_status']
 
         return result
+
+    def _datetimeFromString(self, dateString, slice_exp = None, name=None):
+        '''Get time, time_with_tz, time_string from the given string. Log/etc appropriately
+        if given a slice expiration to limit by.
+        Generally, use time_with_tz for comparisons and time_string to print or send in API Call.'''
+        time = datetime.datetime.max
+        try:
+            if dateString is not None or self.opts.devmode:
+                time = dateutil.parser.parse(dateString)
+        except Exception, exc:
+            msg = "Renew couldn't parse time from %s: %r" % (dateString, exc)
+            if self.opts.devmode:
+                self.logger.warn(msg)
+            else:
+                self._raise_omni_error(msg)
+
+        # Convert to naive UTC time if necessary for ease of comparison
+        try:
+            time = naiveUTC(time)
+        except Exception, exc:
+            if self.opts.devmode:
+                pass
+            else:
+                self.logger.warn("Failed to convert %s to naive UTC: %r", dateString, exc)
+                raise
+
+        if slice_exp:
+            # Compare requested time with slice expiration time
+            if not name:
+                name = "<unspecified>"
+            if time > slice_exp:
+#--- Dev mode allow this
+                msg = 'Cannot renew sliver(s) in %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+                if self.opts.devmode:
+                    self.logger.warn(msg + ", but continuing...")
+                else:
+                    self._raise_omni_error(msg)
+            elif time <= datetime.datetime.utcnow():
+#--- Dev mode allow earlier time
+                if not self.opts.devmode:
+                    self.logger.info('Sliver(s) in %s will be set to expire now' % name)
+                    time = datetime.datetime.utcnow()
+            else:
+                self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
+
+        # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
+        time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
+        # Note that the time arg includes UTC offset as needed
+        time_string = time_with_tz.isoformat()
+
+        if self.opts.no_tz:
+            # The timezone causes an error in older sfa
+            # implementations as deployed in mesoscale GENI. Strip
+            # off the timezone if the user specfies --no-tz
+            self.logger.info('Removing timezone at user request (--no-tz)')
+            time_string = time_with_tz.replace(tzinfo=None).isoformat()
+
+        return time, time_with_tz, time_string
 
 # End of AMHandler
 
