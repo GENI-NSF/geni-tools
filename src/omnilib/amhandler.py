@@ -2949,7 +2949,8 @@ class AMCallHandler(object):
     def _build_urns(self, slice_urn):
         '''Build up the URNs argument, using given slice URN and the option sliver-urn.
         Only gather sliver URNs if they are valid.
-        If no valid sliver URNs supplied, list is just the slice URN.
+        If no sliver URNs supplied, list is the slice URN.
+        If sliver URNs were supplied but all invalid, raise an error.
         Return the urns list for the arg, plus a separate list of the valid slivers.'''
         urns = list()
         slivers = list()
@@ -2968,7 +2969,14 @@ class AMCallHandler(object):
 #                    self.logger.debug("Adding sliver URN %s", sliver)
                     urns.append(sliver)
                     slivers.append(sliver)
-        if len(urns) == 0:
+            if len(urns) == 0:
+                # Error - got no slivers to operate on
+                msg = "No valid sliver URNs found, from %d supplied." % len(self.opts.slivers)
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
+        elif len(urns) == 0:
             urns.append(slice_urn)
         return urns, slivers
 
