@@ -30,13 +30,13 @@
 
     Be sure to create an omni config file (typically ~/.gcf/omni_config)
     and supply valid paths to your per control framework user certs and keys.
-    See gcf/omni_config.sample for an example, and src/omni-configure.py 
+    See gcf/omni_config.sample for an example, and src/omni-configure.py
     for a script to configure omni for you.
 
     Typical usage:
-    omni.py sfa listresources 
+    omni.py sfa listresources
     
-    The currently supported control frameworks (clearinghouse implementations) 
+    The currently supported control frameworks (clearinghouse implementations)
     are SFA (i.e. PlanetLab), PG and GCF.
 
     Extending Omni to support additional frameworks with their own

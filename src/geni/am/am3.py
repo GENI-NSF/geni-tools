@@ -1044,6 +1044,7 @@ class AggregateManager(object):
                     output=output)
 
     def _api_error(self, exception):
+        self.logger.warning(exception)
         return dict(code=dict(geni_code=exception.code,
                               am_type='gcf'),
                     value="",
