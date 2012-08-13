@@ -1886,7 +1886,7 @@ class AMCallHandler(object):
                     self.logger.info("All slivers expire as requested on %r", time_with_tz.isoformat())
                 elif len(orderedDates) == 1:
                     self.logger.warn("Slivers expire on %r, not as requested %r", orderedDates[0].isoformat(), time_with_tz.isoformat())
-                    self.logger.warn("timedelta: %r", time - orderedDates[0])
+#                    self.logger.warn("timedelta: %r", time - orderedDates[0])
                 else:
                     firstTime = None
                     firstCount = 0
@@ -1895,10 +1895,7 @@ class AMCallHandler(object):
                     else:
                         expectedCount = 0
                     for time in orderedDates:
-                        if time == requestedExpiration:
-                            continue
-                        elif time - requestedExpiration < timedelta.resolution:
-                            self.logger.warn("timedelta was 0 but times werent ==")
+                        if time == requestedExpiration or time - requestedExpiration < timedelta.resolution:
                             continue
                         firstTime = time
                         firstCount = len(sliverExps[time])
