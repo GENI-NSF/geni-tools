@@ -85,8 +85,8 @@ class CHCallHandler(object):
     def listaggregates(self, args):
         """Print the known aggregates' URN and URL
         Gets aggregates from:
-        - command line (one, no URN available), OR
-        - command line nickname (one, URN may be supplied), OR
+        - command line (one per -a arg, no URN available), OR
+        - command line nickname (one per -a arg, URN may be supplied), OR
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
         This is the aggregates that registered with the framework.

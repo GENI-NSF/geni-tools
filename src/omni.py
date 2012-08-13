@@ -25,18 +25,19 @@
 
 """ The OMNI client
     This client is a GENI API client that is capable of connecting
-    to the supported control frameworks for slice creation and deletion.
-    It is also able to parse and create standard RSPECs of all supported 
-    control frameworks.
+    to multiple slice authorities (clearinghouses) for slice creation and deletion.
     See README-omni.txt
 
     Be sure to create an omni config file (typically ~/.gcf/omni_config)
     and supply valid paths to your per control framework user certs and keys.
+    See gcf/omni_config.sample for an example, and src/omni-configure.py 
+    for a script to configure omni for you.
 
     Typical usage:
-    omni.py -f sfa listresources 
+    omni.py sfa listresources 
     
-    The currently supported control frameworks are SFA, PG and GCF.
+    The currently supported control frameworks (clearinghouse implementations) 
+    are SFA (i.e. PlanetLab), PG and GCF.
 
     Extending Omni to support additional frameworks with their own
     clearinghouse APIs requires adding a new Framework extension class.
@@ -78,7 +79,7 @@ OMNI_VERSION="2.0"
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
     'shutdown' which return a two item tuple as their second
-    arguement.  The first item is a list of urns/urls for which it
+    argument.  The first item is a list of urns/urls for which it
     successfully performed the operation.  The second item is a
     list of the urns/urls for which it did not successfully
     perform the operation.  Failure could be due to an actual
@@ -498,7 +499,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
-    version +="\nCopyright (c) 2011 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2012 Raytheon BBN Technologies"
     return version
 
 def getParser():
@@ -509,11 +510,19 @@ def getParser():
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
  \t\t\t getversion \n\
- \t\t\t listresources [optional: slicename] \n\
- \t\t\t createsliver <slicename> <rspec file> \n\
- \t\t\t sliverstatus <slicename> \n\
- \t\t\t renewsliver <slicename> <new expiration time in UTC> \n\
- \t\t\t deletesliver <slicename> \n\
+ \t\t\t listresources [In AM API V1 and V2 optional: slicename] \n\
+ \t\t\t describe slicename [AM API V3 only] \n\
+ \t\t\t createsliver <slicename> <rspec file> [AM API V1&2 only] \n\
+ \t\t\t allocate <slicename> <rspec file> [AM API V3 only] \n\
+ \t\t\t provision <slicename> [AM API V3 only] \n\
+ \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
+ \t\t\t poa <slicename> <action> [AM API V3 only] \n\
+ \t\t\t sliverstatus <slicename> [AMAPI V1&2 only]\n\
+ \t\t\t status <slicename> [AMAPI V3 only]\n\
+ \t\t\t renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only] \n\
+ \t\t\t renew <slicename> <new expiration time in UTC> [AM API V3 only] \n\
+ \t\t\t deletesliver <slicename> [AM API V1&2 only] \n\
+ \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
  \t\tClearinghouse / Slice Authority functions: \n\
  \t\t\t listaggregates \n\
@@ -522,6 +531,7 @@ def getParser():
  \t\t\t renewslice <slicename> <new expiration time in UTC> \n\
  \t\t\t deleteslice <slicename> \n\
  \t\t\t listmyslices <username> \n\
+ \t\t\t listmykeys \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
 \n\t See README-omni.txt for details.\n\
@@ -541,11 +551,11 @@ def getParser():
     parser.add_option("--orca-slice-id",
                       help="Use the given Orca slice id")
     parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of getversion, listresources, createsliver, sliverstatus, getslicecred to a file (Omni picks the name)")
+                      help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
     parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
-                      help="Name of file to write output for only aggregate from getversion, listresources, createsliver, sliverstatus, getslicecred to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o.")
+                      help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="Filename prefix when saving results (used with -o)")
+                      help="Filename prefix when saving results (used with -o, --usercredfile, --slicecredfile, but not --outputfile)")
     parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
                       help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
