@@ -181,7 +181,7 @@ class AMCallHandler(object):
         except Exception, e:
             self.logger.error("Failed to read GetVersion cache: %s", e)
 
-    # FIXME: This saves every time we add to the cache. Is that riht?
+    # FIXME: This saves every time we add to the cache. Is that right?
     def _cache_getversion(self, client, thisVersion, error=None):
         '''Add to Cache the GetVersion output for this client.
         If this was an error, don't over-write any existing good result, but record the error message
@@ -314,7 +314,6 @@ class AMCallHandler(object):
     # FIXME: As above: this loses the code/output slots and any other top-level slots.
     #  Maybe only for experimenters?
 
-
     def _get_getversion_value(self, client):
         '''Do GetVersion (possibly from cache), check error returns to produce a message,
         pull out the value slot (dropping any code/output).'''
@@ -431,7 +430,6 @@ class AMCallHandler(object):
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
 
-
     # FIXME: Must still factor dev vs exp
     # For experimenters: If exactly 1 AM, then show only the value slot, formatted nicely, printed to STDOUT.
     # If it fails, show only why
@@ -441,6 +439,7 @@ class AMCallHandler(object):
     # For developers, maybe leave it like this? Print whole struct not just the value?
     def getversion(self, args):
         """AM API GetVersion
+        Get basic information about the aggregate and how to talk to it.
 
         Aggregates queried:
         - Each URL given in an -a argument or URL listed under that given
@@ -452,6 +451,16 @@ class AMCallHandler(object):
         -p (used with -o) Prefix for resulting version information files
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
+
+        This method skips the local cache.
+        --ForceUseGetVersionCache will force it to look at the cache if possible
+        --GetVersionCacheAge <#> specifies the # of days old a cache entry can be, before Omni re-queries the AM, default is 7
+        --GetVersionCacheName <path> is the path to the GetVersion cache, default is ~/.gcf/get_version_cache.json
+
+        --devmode causes Omni to continue on bad input, if possible
+        -V# specifies the AM API version to attempt to speak
+        -l to specifyc a logging config file
+        --logoutput <filename> to specify a logging output filename
 
         """
 
@@ -1902,6 +1911,15 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
+                prettyResult = pprint.pformat(res)
+                header="Renewed %s at AM URL %s" % (descripMsg, client.url)
+                filename = None
+                if self.opts.output:
+                    filename = self._construct_output_filename(name, client.url, client.urn, "renewal", ".json", len(clientList))
+                #self.logger.info("Writing result of renew for slice: %s at AM: %s to file %s", name, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved renewal on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 if len(clientList) == 1:
                     retVal += prStr + "\n"
                 if len(sliverFails.keys()) == 0 and len(missingSlivers) == 0:
@@ -2334,14 +2352,25 @@ class AMCallHandler(object):
                                                            client.urn,
                                                            client.url)
                 if someSliversFailed:
-                    prStr += " - but %d slivers are not fully de-allocated; check the return!" % len(badSlivers.keys())
+                    prStr += " - but %d slivers are not fully de-allocated; check the return! " % len(badSlivers.keys())
                 if len(missingSlivers) > 0:
-                    prStr += " - but %d slivers from request missing in result!?" % len(missingSlivers)
+                    prStr += " - but %d slivers from request missing in result!? " % len(missingSlivers)
                 if len(sliverFails.keys()) > 0:
-                    prStr += " = but %d slivers failed!" % len(sliverFails.keys())
+                    prStr += " = but %d slivers failed! " % len(sliverFails.keys())
                 if len(clientList) == 1:
-                    retVal = prStr
+                    retVal = prStr + "\n"
                 self.logger.info(prStr)
+
+                prettyResult = pprint.pformat(realres)
+                header="Deletion of %s at AM URL %s" % (descripMsg, client.url)
+                filename = None
+                if self.opts.output:
+                    filename = self._construct_output_filename(name, client.url, client.urn, "delete", ".json", len(clientList))
+                #self.logger.info("Writing result of delete for slice: %s at AM: %s to file %s", name, client.url, filename)
+                self._printResults(header, prettyResult, filename)
+                if filename:
+                    retVal += "Saved deletion of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
+
                 if len(sliverFails.keys()) == 0:
                     successCnt += 1
             else:
