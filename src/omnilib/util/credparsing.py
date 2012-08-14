@@ -140,6 +140,13 @@ def get_cred_target_urn(logger, cred):
         targetnode = cred.getElementsByTagName("target_urn")[0]
         if len(targetnode.childNodes) > 0:
             urn = str(targetnode.childNodes[0].nodeValue)
+        else:
+            if logger is None:
+                level = logging.INFO
+                logging.basicConfig(level=level)
+                logger = logging.getLogger("omni.credparsing")
+                logger.setLevel(level)
+            logger.warn("Found no targetnode to get target_urn?")
     except Exception, exc:
         if logger is None:
             level = logging.INFO
@@ -208,10 +215,8 @@ def is_cred_xml(cred):
         return False
     cred = cred.strip()
     if not cred.startswith("<?xml"):
-        logger.warn("No ?xml to start cred: %s", cred)
         return False
     if not "signed-credential" in cred:
-        logger.warn("No signed-credential in cred: %s", cred)
         return False
 
     try:
