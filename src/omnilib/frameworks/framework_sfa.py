@@ -549,6 +549,12 @@ class Framework(Framework_Base):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
+        if isinstance(cred, dict):
+            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
+            return cred
+        elif not isinstance(cred, str):
+            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
+            cred = str(cred)
         ret = dict(geni_type="geni_sfa", geni_version="3", geni_value=cred)
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"
