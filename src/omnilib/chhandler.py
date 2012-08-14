@@ -300,12 +300,16 @@ class CHCallHandler(object):
         """Retrieve your user credential. Useful for debugging.
 
         If you specify the -o option, the credential is saved to a file.
-        The filename is <username>-<framework nickname from config file>-usercred.[xml or json, depending on AM API version].
+        If you specify --usercredfile:
+           First, it tries to read the user cred from that file.
+           Second, it saves the user cred to a file by that name (but with the appropriate extension)
+        Otherwise, the filename is <username>-<framework nickname from config file>-usercred.[xml or json, depending on AM API version].
         If you specify the --prefix option then that string starts the filename.
 
         If instead of the -o option, you supply the --tostdout option, then the usercred is printed to STDOUT.
+        Otherwise the usercred is logged.
 
-        Otherwise, it is returned for use by calling scripts.
+        The usercred is returned for use by calling scripts.
 
         e.g.:
           Get user credential, save to a file:
