@@ -20,12 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-import sys
+import json
 import logging
 import os
+import sys
+
 import M2Crypto.SSL
+
 from omnilib.util.paths import getAbsPath
 from omnilib.util import OmniError
+import omnilib.util.credparsing as credutils
+import omnilib.util.json_encoding as json_encoding
 import omnilib.xmlrpc.client
 
 class Framework_Base():
@@ -73,8 +78,25 @@ class Framework_Base():
             else:
                 logger = logging.getLogger("omni.framework")
             logger.info("Getting user credential from file %s", opts.usercredfile)
+#            cred = _load_cred(logger, opts.usercredfile)
             with open(opts.usercredfile, 'r') as f:
                 cred = f.read()
+            try:
+                cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+            except Exception, e:
+                logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
+            cred = credutils.get_cred_xml(cred)
+            if cred is None or cred == "":
+                logger.info("Did NOT get user cred from %s", opts.usercredfile)
+            else:
+                target = credutils.get_cred_target_urn(logger, cred)
+                logger.info("Read user %s credential from file %s", target, opts.usercredfile)
+        elif opts.usercredfile:
+            if hasattr(self, 'logger'):
+                logger = self.logger
+            else:
+                logger = logging.getLogger("omni.framework")
+            logger.info("NOT getting user credential from file %s - file doesn't exist or is empty", opts.usercredfile)
         return cred
         
     def get_user_cred(self):
