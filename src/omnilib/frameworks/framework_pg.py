@@ -162,6 +162,7 @@ class Framework(Framework_Base):
         if name is None or name.strip() == '':
             raise Exception('Empty slice name')
 
+        # Could use is_valid_urn_bytype here, or just let the SA/AM do the check
         if is_valid_urn(name):
             urn = URN(None, None, None, name)
             if not urn.getType() == "slice":

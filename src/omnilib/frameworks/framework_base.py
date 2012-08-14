@@ -67,6 +67,7 @@ class Framework_Base():
 
         Must call this method in framework's __init__ in order for
         --usercredfile to be handled properly.
+        Returns the usercred - in XML string format.
         """
         
         # read the usercred from supplied file
