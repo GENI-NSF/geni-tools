@@ -573,7 +573,7 @@ def getParser():
     parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="Filename prefix when saving results (used with -o, --usercredfile, --slicecredfile, but not --outputfile)")
+                      help="Filename prefix when saving results (used with -o, not --usercredfile, --slicecredfile, or --outputfile)")
     parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
                       help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
     parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
