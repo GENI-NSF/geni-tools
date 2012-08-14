@@ -93,6 +93,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
+            self.logger.debug("Getting user credential from PG SA %s", self.config['sa'])
             pg_response = dict()
             (pg_response, message) = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
             _ = message #Appease eclipse

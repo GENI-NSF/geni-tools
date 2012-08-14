@@ -49,6 +49,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
+            self.logger.debug("Getting user credential from GCF CH %s", self.config['ch'])
             (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
 
         return self.user_cred, message
