@@ -402,18 +402,18 @@ class Test(ut.OmniUnittest):
             geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
         else:
             usercred = usercredstruct
-            self.assertStr( usercred,
+        self.assertStr( usercred,
                         "Return from 'getusercred' " \
                             "expected to be string " \
                             "but instead returned: %r" 
                         % (usercred))
-            # Test if file is XML 
-            self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
+        # Test if file is XML 
+        self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
                         "Return from 'getusercred' " \
-                        "expected to be XML " \
-                        "but instead returned: \n" \
-                        "%s\n" \
-                        "... edited for length ..." 
+                            "expected to be XML " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
                         % (usercred[:100]))
 
         # (2) Create a broken usercred
@@ -429,17 +429,23 @@ class Test(ut.OmniUnittest):
         num_slices = len(slicelist)
         for i in xrange(num_slices):
             slice = slicelist[i]
-            # (1) Get the usercredential
+            # (1) Get the slicecredential
             omniargs = ["getslicecred", slice]
-            (text, slicecred) = self.call(omniargs, self.options_copy)
-            self.assertTrue( type(slicecred) is str,
-                             "Return from 'getslicecred' " \
-                                 "expected to be string " \
-                                 "but instead returned: %r" 
-                             % (slicecred))
+            (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
-        # Test if file is XML and contains "<rspec" or "<resv_rspec"
-        self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
+            if self.options_copy.api_version >= 3:
+                tmpRetVal = self.assertSliceCred(slicecredstruct)
+                self.assertIsNotNone( tmpRetVal )
+                geni_type, geni_version, slicecred = tmpRetVal
+            else:
+                slicecred = slicecredstruct
+            self.assertStr( slicecred,
+                            "Return from 'getslicered' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                        % (slicecred))
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
                         "Return from 'getslicecred' " \
                         "expected to be XML " \
                         "but instead returned: \n" \
@@ -450,7 +456,7 @@ class Test(ut.OmniUnittest):
         # (2) Call listresources on the next slice
         # We expect this to fail
         # self.subtest_ListResources(slice) 
-        self.assertRaises(NotDictAssertionError, self.subtest_generic_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
 
 
     def file_to_string( self, filename ):
@@ -753,11 +759,29 @@ class Test(ut.OmniUnittest):
                 self.subtest_Describe_geni_compressed( slicename )
                 self.subtest_Describe_geni_available( slicename )
                 
-                print slivers
                 for sliver in slivers:
                     sliver_urn = sliver['geni_sliver_urn']
                     self.subtest_Describe(slicename=slicename, sliverurns=[sliver_urn] )
-                    print sliver_urn
+
+                self.options_copy.devmode = True   
+                # Call Describe() on a urn of type 'node' not 'sliver'
+                for sliver in slivers:
+                    sliver_urn = sliver['geni_sliver_urn']
+                    sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
+
+                    self.assertRaises(NotSuccessError, 
+                                      self.subtest_Describe,
+                                      slicename=slicename, 
+                                      sliverurns=[sliver_urn2] )
+                    continue
+
+                # Call Describe() on a urn of type 'sliver' which isn't valid
+                sliver_urn3 = re.sub('\+sliver\+.*', '+sliver+INVALID', sliver_urn)
+                self.assertRaises(NotSuccessError, 
+                                  self.subtest_Describe,
+                                  slicename=slicename, 
+                                  sliverurns=[sliver_urn3] )
+                self.options_copy.devmode = False
 
             self.assertRspecType( manifest2, 'manifest')
             self.assertRspec( "ListResources", manifest2, 
@@ -942,7 +966,9 @@ class Test(ut.OmniUnittest):
             rspec_schema = self.manifest_schema
 
         request = []
+        numslivers = []
         manifest = []
+        slivers = []
         manifest2 = []
         slicenames = []
 
@@ -972,7 +998,7 @@ class Test(ut.OmniUnittest):
         # time, try to delete them now
         for i in xrange(num_slices):
             try:
-                self.subtest_DeleteSliver( slicenames[i] )
+                self.subtest_generic_DeleteSliver( slicenames[i] )
                 time.sleep(self.options_copy.sleep_time)
             except:
                 pass
@@ -988,10 +1014,17 @@ class Test(ut.OmniUnittest):
                 with open(self.options_copy.rspec_file_list[i]) as f:
                     request.append("")
                     request[i] = "".join(f.readlines())
+                numslivers.append(-1)
                 manifest.append("")
+                slivers.append("")
                 self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
                 time.sleep(self.options_copy.sleep_time)
-                manifest[i] = "".join(self.subtest_CreateSliver( slicenames[i] ))
+                createReturn= self.subtest_generic_CreateSliver( slicenames[i] )
+                numslivers[i], tmpManifest, slivers[i] = createReturn
+                manifest[i] = "".join(tmpManifest)
+
+
+
 
 
             for i in xrange(num_slices):
@@ -1049,7 +1082,7 @@ class Test(ut.OmniUnittest):
             
             for i in xrange(num_slices):
                 time.sleep(self.options_copy.sleep_time)
-                self.subtest_SliverStatus( slicenames[i] )        
+                self.subtest_generic_SliverStatus( slicenames[i] )        
 
             # Make sure you can't list resources on other slices
             # using the wrong slice cred
@@ -1117,14 +1150,14 @@ class Test(ut.OmniUnittest):
             # RenewSliver for 5 mins, 2 days, and 5 days
             for i in xrange(num_slices):
                 time.sleep(self.options_copy.sleep_time)
-                self.subtest_RenewSliver_many( slicenames[i] )
+                self.subtest_generic_RenewSliver_many( slicenames[i] )
         except:
             raise
         finally:
             time.sleep(self.options_copy.sleep_time)
             for i in xrange(num_slices):
                 try:
-                    self.subtest_DeleteSliver( slicenames[i] )
+                    self.subtest_generic_DeleteSliver( slicenames[i] )
                 except:
                     pass
 
@@ -1498,11 +1531,11 @@ class Test(ut.OmniUnittest):
 
 
     # Provide simple mapping for all v1, v2, and v3 calls
-    def subtest_generic_ListResources( self, slicename ):
+    def subtest_generic_ListResources( self, slicename, *args, **kwargs ):
         if self.options_copy.api_version <= 2:
-            return self.subtest_ListResources( slicename )
+            return self.subtest_ListResources( slicename, *args, **kwargs )
         elif self.options_copy.api_version >= 3:
-            return self.subtest_Describe( slicename )
+            return self.subtest_Describe( slicename, *args, **kwargs )
 
     def subtest_generic_DeleteSliver( self, slicename ):
         if self.options_copy.api_version <= 2:

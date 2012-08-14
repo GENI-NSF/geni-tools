@@ -808,6 +808,13 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          % (AMAPI_call, value, alloc_status))
 
     def assertUserCred( self, retVal ):
+        CH_call = "GetUserCred"
+        return self.assertCred( CH_call, retVal )
+    def assertSliceCred( self, retVal ):
+        CH_call = "GetSliceCred"
+        return self.assertCred( CH_call, retVal )
+
+    def assertCred( self, CH_call, retVal ):
         """Checks retVal fits form:
 {
     geni_type: <string, case insensitive>, 
@@ -816,7 +823,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
     <others>
    }
         """
-        CH_call = "GetUserCred"
+        self.assertIsNotNone( retVal )
         self.assertDict( retVal )
         geni_type = self.assertGeniType( CH_call, retVal)        
         version = self.assertGeniVersion( CH_call, retVal)        
