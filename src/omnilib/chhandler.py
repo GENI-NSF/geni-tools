@@ -34,7 +34,7 @@ import json
 import pprint
 import re
 
-from geni.util.urn_util import nameFromURN
+from geni.util.urn_util import nameFromURN, is_valid_urn_bytype
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
@@ -89,7 +89,7 @@ class CHCallHandler(object):
         - command line nickname (one per -a arg, URN may be supplied), OR
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
-        This is the aggregates that registered with the framework.
+           This is the aggregates that registered with the framework.
         """
         retStr = ""
         retVal = {}
@@ -138,6 +138,12 @@ class CHCallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
+        if not is_valid_urn_bytype(urn, 'slice', self.logger):
+            msg = "Invalid slice URN: ensure your slice name uses only letters, numbers, and hyphens (no hyphen in first character), and is <= 19 characters long"
+            if self.opts.devmode:
+                self.logger.warn(msg + " - but continuing...")
+            else:
+                self._raise_omni_error(msg)
         
         (slice_cred, message) = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
@@ -188,6 +194,7 @@ class CHCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
 
         # convert the desired expiration to a python datetime
+        # FIXME: See amhandler._datetimeFromString: converts to naive UTC, adds UTC TZ
         try:
             in_expiration = dateutil.parser.parse(expire_str)
         except:
@@ -401,7 +408,7 @@ class CHCallHandler(object):
 #VERBOSE ONLY        self.logger.info(cred)
 #        print cred
 
-        retVal = cred
+        retVal = credutils.get_cred_xml(cred)
         retItem = cred
         filename = self._maybe_save_slicecred(name, cred)
         if filename is not None:
@@ -522,4 +529,5 @@ class CHCallHandler(object):
 #            file.write(cred)
         with open(filename, 'w') as file:
             file.write(credout + "\n")
+
         return filename
