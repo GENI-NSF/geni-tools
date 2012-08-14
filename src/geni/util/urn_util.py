@@ -166,7 +166,7 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             logger.warn("URN %s not of right type: %s", inurn, urntype)
         return False
     name = urnObj.getName()
-    if urntype is 'slice':
+    if urntype == 'slice':
         # Slice names are <=19 characters, only alphanumeric plus hyphen (no hyphen in first character): '^[a-zA-Z0-9][-a-zA-Z0-9]{0,18}$'
         if len(name) > 19:
             if logger:
@@ -176,13 +176,13 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             if logger:
                 logger.warn("Slice names may only be alphanumeric plus hyphen (no leading hyphen): %s", name)
             return False
-    elif urntype is 'sliver':
+    elif urntype == 'sliver':
         # May use only alphanumeric characters plus hyphen
         if not re.match("^[-a-zA-Z0-9]+$", name):
             if logger:
                 logger.warn("Sliver names may only be alphanumeric plus hyphen: %s", name)
             return False
-    elif urntype is  'user':
+    elif urntype == 'user':
         # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]{1,8}$').
         # Usernames are limited to 8 characters.
         if len(name) > 8:
