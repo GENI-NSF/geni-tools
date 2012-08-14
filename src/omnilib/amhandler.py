@@ -985,13 +985,18 @@ class AMCallHandler(object):
                 continue
 
             # Decompress the RSpec before sticking it in retItem
+            rspec = None
             if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
                 rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
                 if rspec and rspec != status['value']['geni_rspec']:
                     self.logger.debug("Decompressed RSpec")
                 if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
+                else:
+                    self.logger.warn("Didn't get a valid RSpec!")
                 status['value']['geni_rspec'] = rspec
+            else:
+                self.logger.warn("Return struct missing geni_rspec element!")
 
             # Return for tools is the full code/value/output triple
             retItem[client.url] = status
@@ -1005,14 +1010,6 @@ class AMCallHandler(object):
                 retVal += fmt % (descripMsg, client.url, message)
                 continue # go to next AM
 
-            prettyResult = pprint.pformat(status)
-            if not isinstance(status, dict):
-                # malformed describe return
-                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
-                # FIXME: Add something to retVal that the result was malformed?
-                if isinstance(status, str):
-                    prettyResult = str(status)
-
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
                 self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
@@ -1022,7 +1019,20 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
+            (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, name, client.urn, client.url, message, slivers)
+            self.logger.debug(rVal)
+            if status and isinstance(status, dict) and status.has_key('geni_rspec') and rspec and rspeccontent:
+                status['geni_rspec'] = rspeccontent
+
+            prettyResult = pprint.pformat(status)
+            if not isinstance(status, dict):
+                # malformed describe return
+                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+
+            #header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
             filename = None
 
             if self.opts.output:
@@ -1295,11 +1305,16 @@ class AMCallHandler(object):
                 continue
 
             # Make the RSpec more pretty-printed
+            rspec = None
             if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
                 rspec = result['value']['geni_rspec']
                 if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
+                else:
+                    self.logger.warn("No valid RSpec returned!")
+            else:
+                self.logger.warn("Return struct missing geni_rspec element!")
 
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
@@ -1310,13 +1325,18 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success (maybe partial?)
+                (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, slicename, client.urn, client.url, message)
+                self.logger.debug(rVal)
+                if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
+                    realresult['geni_rspec'] = rspeccontent
                 prettyResult = pprint.pformat(realresult)
-                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
+
+#                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
 
                 if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
-                    #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
+                    filename = self._construct_output_filename(slicename, client.url, client.urn, "allocate", ".json", len(clientList))
+                    #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", slicename, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
                     retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
@@ -2523,18 +2543,14 @@ class AMCallHandler(object):
         return (cver, None)
     # End of _checkValidClient
 
-    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
-        '''Write the given RSpec using _printResults.
-        If given a slicename, label the output as a manifest.
-        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
-        Use _construct_output_filename to build the output filename.
-        '''
-        # return just filename? retVal?
-        # Does this do logging? Or return what it would log? I think it logs, but....
-
+    def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
+        '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
         # Create HEADER
         if slicename:
-            header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+            if slivers and len(slivers) > 0:
+                header = "Reserved resources for:\n\tSlice: %s\n\tSlivers: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, slivers, urn, url)
+            else:
+                header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
         else:
             header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
         header = "<!-- "+header+" -->"
@@ -2572,6 +2588,18 @@ class AMCallHandler(object):
 
                 retVal = "No RSpec returned %sfrom %s%s" % (forslice, server, serversaid)
                 self.logger.warn(retVal)
+        return header, content, retVal
+
+    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
+        '''Write the given RSpec using _printResults.
+        If given a slicename, label the output as a manifest.
+        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
+        Use _construct_output_filename to build the output filename.
+        '''
+        # return just filename? retVal?
+        # Does this do logging? Or return what it would log? I think it logs, but....
+
+        (header, content, retVal) = self._getRSpecOutput(rspec, slicename, urn, url, message)
 
         filename=None
         # Create FILENAME
