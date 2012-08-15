@@ -62,7 +62,10 @@
        [string dictionary] = omni.py renew SLICENAME # AM API V3+ only
        [string (successList of AM URLs, failList)] = omni.py deletesliver SLICENAME # AM API V1&2 only
        [string dictionary] = omni.py delete SLICENAME # AM API V3+ only
+       In AM API v1&2:
        [string (successList, failList)] = omni.py shutdown SLICENAME
+       In AM API v3:
+       [string dictionary] = omni.py shutdown SLICENAME
 
       Clearinghouse functions:
        [string dictionary urn->url] = omni.py listaggregates

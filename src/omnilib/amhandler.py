@@ -2493,6 +2493,7 @@ class AMCallHandler(object):
         successCnt = 0
         successList = []
         failList = []
+        retItem = dict()
         (clientList, message) = self._getclients()
         msg = "Shutdown %s on " % (urn)
         op = "Shutdown"
@@ -2501,6 +2502,7 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client, msg + client.url, op, args)
             except BadClientException:
                 continue
+            retItem[client.url] = res
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -2524,7 +2526,10 @@ class AMCallHandler(object):
             retVal = "No aggregates specified on which to shutdown slice %s. %s" % (urn, message)
         elif len(clientList) > 1:
             retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
-        return retVal, (successList, failList)
+        if self.opts.api_version < 3:
+            return retVal, (successList, failList)
+        else:
+            return retVal, retItem
 
     # End of AM API operations
     #######
