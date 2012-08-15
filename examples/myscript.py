@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -23,8 +23,12 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import os
+import re
 import sys
+
 import omni
+from omnilib.util.omnierror import OmniError
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -42,7 +46,7 @@ def main(argv=None):
   parser = omni.getParser()
   # update usage for help message
   omni_usage = parser.get_usage()
-  parser.set_usage(omni_usage+"\nmyscript.py supports additional commands.\n\n\tCommands and their arguments are:\n\t\t\tdoNonNativeList [optional: slicename]")
+  parser.set_usage(omni_usage+"\nmyscript.py supports additional commands.\n\n\tCommands and their arguments are:\n\t\t\t[add stuff here]")
 
   ##############################################################################
   # Add additional optparse.OptionParser style options for your
@@ -62,32 +66,90 @@ def main(argv=None):
 
 
   ##############################################################################
-  # figure out that doNonNativeList means to do listresources with the
-  # --omnispec argument and parse out slicename arg
+  # Try to read 2nd argument as an RSpec filename. Pull the AM URL and
+  # and maybe slice name from that file.
+  # Then construct omni args appropriately: command, slicename, action or rspecfile or datetime
   ##############################################################################
   omniargs = []
-  if args and len(args)>0:
-    if args[0] == "doNonNativeList":
-      print "Doing omnispec listing"
-      omniargs.append("--omnispec")
-      omniargs.append("listresources")
-      if len(args)>1:
-        print "Got slice name %s" % args[1]
-        slicename=args[1]
-        omniargs.append(slicename)
-    else:
-      omniargs = args
+  if args and len(args)>1:
+    sliceurn = None
+    # Try to read args[1] as an RSpec filename to read
+    rspecfile = args[1]
+    rspec = None
+    if rspecfile and os.path.exists(rspecfile) and os.path.getsize(rspecfile) > 0:
+      print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
+      with open(rspecfile, 'r') as f:
+        rspec = f.read()
+
+    # Now parse the comments, whch look like this:
+#<!-- Resources at AM:
+#	URN: unspecified_AM_URN
+#	URL: https://localhost:8001
+# -->
+# Reserved resources for:\n\tSlice: %s
+# at AM:\n\tURN: %s\n\tURL: %s
+
+      if not ("Resources at AM" in rspec or "Reserved resources for" in rspec):
+        sys.exit("Could not find slice name or AM URL in RSpec")
+      amurn = None
+      amurl = None
+      # Pull out the AM URN and URL
+      match = re.search(r"at AM:\n\tURN: (\S+)\n\tURL: (\S+)\n", rspec)
+      if match:
+        amurn = match.group(1)
+        amurl = match.group(2)
+        print "  Found AM %s (%s)" % (amurn, amurl)
+        omniargs.append("-a")
+        omniargs.append(amurl)
+
+      # Pull out the slice name or URN if any
+      if "Reserved resources for" in rspec:
+        match = re.search(r"Reserved resources for:\n\tSlice: (\S+)\n\t", rspec)
+        if match:
+          sliceurn = match.group(1)
+          print "  Found slice %s" % sliceurn
+
+    command = args[0]
+    rest = []
+    if len(args) > 2:
+      rest = args[2:]
+
+    # If the command requires a slice and we didn't get a readable rspec from the rspecfile,
+    # Then treat that as the slice
+    if not sliceurn and rspecfile and not rspec:
+      sliceurn = rspecfile
+
+    # construct the args in order
+    omniargs.append(command)
+    if sliceurn:
+      omniargs.append(sliceurn)
+    if rspecfile and command.lower() in ('createsliver', 'allocate'):
+      omniargs.append(rspecfile)
+    for arg in rest:
+      omniargs.append(arg)
+  elif len(args) == 1:
+    omniargs = args
   else:
-    print "Got no command. Run '%s -h' for more information."%sys.argv[0]
+    print "Got no command or rspecfile. Run '%s -h' for more information."%sys.argv[0]
     return
 
   ##############################################################################
   # And now call omni, and omni sees your parsed options and arguments
   ##############################################################################
-  text, retItem = omni.call(omniargs, options)
+  print "Call Omni with args %s:\n" % omniargs
+  try:
+    text, retItem = omni.call(omniargs, options)
+  except OmniError, oe:
+    sys.exit("\nOmni call failed: %s" % oe)
+
+  print "\nGot Result from Omni:\n"
 
   # Process the dictionary returned in some way
-  print retItem
+  if isinstance(retItem, dict):
+    import json
+    print json.dumps(retItem, ensure_ascii=True, indent=2)
+  else:
+    print pprint.pformat(retItem)
 
   # Give the text back to the user
   print text
