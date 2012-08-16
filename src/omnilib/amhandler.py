@@ -62,7 +62,7 @@ class AMCallHandler(object):
         self.logger = config['logger']
         self.omni_config = config['omni']
         self.config = config
-        self.opts = opts
+        self.opts = opts # command line options as parsed
         self.GetVersionCache = None # The cache of GetVersion info in memory
         if self.opts.abac:
             aconf = self.config['selected_framework']
@@ -76,6 +76,7 @@ class AMCallHandler(object):
                 self.abac_log = None
 
     def _handle(self, args):
+        ''' Actually dispatch calls - only those that don't start with an underscore'''
         if len(args) == 0:
             self._raise_omni_error('Insufficient number of arguments - Missing command to run')
         
@@ -101,6 +102,7 @@ class AMCallHandler(object):
         If we got the result from the cache, set the message to say so.
         '''
         cachedVersion = self._get_cached_getversion(client)
+        # FIXME: What if cached entry had an error? Should I retry then?
         if self.opts.noGetVersionCache or cachedVersion is None or (self.opts.GetVersionCacheOldestDate and cachedVersion['timestamp'] < self.opts.GetVersionCacheOldestDate):
             self.logger.debug("Actually calling GetVersion")
             (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
@@ -113,14 +115,16 @@ class AMCallHandler(object):
         else:
             self.logger.debug("Pulling GetVersion from cache")
             thisVersion = cachedVersion['version']
-            message = "From Cached result from %s" % cachedVersion['timestamp']
+            message = "From cached result from %s" % cachedVersion['timestamp']
         return (thisVersion, message)
 
     def _do_getversion_output(self, thisVersion, client, message):
-        '''Write GetVersion output to file or log depending on options.
-        Return a retVal string to print that we saved it to a file, if that's what we did.
+        '''Write GetVersion output to a file or log depending on options.
+        Return a string to print that we saved it to a file, if that's what we did.
         '''
         # FIXME only print 'peers' on verbose? (Or is peers gone now?)
+        # FIXME: Elsewhere we use json.dumps - should we do so here too?
+        #     This is more concise and looks OK - leave it for now
         pp = pprint.PrettyPrinter(indent=4)
         prettyVersion = pp.pformat(thisVersion)
         header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
@@ -128,15 +132,11 @@ class AMCallHandler(object):
             header += " (" + message + ")"
         filename = None
         if self.opts.output:
-            # Create HEADER
-            # But JSON cant have any
-                    #header = None
             # Create filename
             filename = self._construct_output_filename(None, client.url, client.urn, "getversion", ".json", 1)
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
-        # This logs or prints, depending on whether filename
-        # is None
+        # This logs or prints, depending on whether filename is None
         self._printResults( header, prettyVersion, filename)
 
         # FIXME: include filename in summary: always? only if 1 aggregate?
@@ -187,7 +187,7 @@ class AMCallHandler(object):
         '''Add to Cache the GetVersion output for this client.
         If this was an error, don't over-write any existing good result, but record the error message
 
-        This methods both loads and saves the cache from file
+        This methods both loads and saves the cache from file.
         '''
         # url, urn, timestamp, apiversion, rspecversions (type version, type version, ..), credtypes (type version, ..), single_alloc, allocate, last error and message
         res = {}
@@ -415,6 +415,8 @@ class AMCallHandler(object):
         return (res, message)
 
     def _api_call(self, client, msg, op, args):
+        '''Make the AM API Call, after first checking that the client we are talking
+        to is of the right API version.'''
         (ver, newc) = self._checkValidClient(client)
         if newc is None:
             raise BadClientException(client)
@@ -427,6 +429,7 @@ class AMCallHandler(object):
                 # and only do it if there is one client.
 
                 # FIXME: changing API versions means unwrap or wrap cred, maybe change the op name, ...
+                # This may work for getversion, but likely not for other methods!
                 self.opts.api_version = ver
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
@@ -448,8 +451,10 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        Output directing options:
         -o Save result (JSON format) in per-Aggregate files
-        -p (used with -o) Prefix for resulting version information files
+        -p (used with -o) Prefix for resulting version information filenames
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
 
@@ -460,9 +465,11 @@ class AMCallHandler(object):
 
         --devmode causes Omni to continue on bad input, if possible
         -V# specifies the AM API version to attempt to speak
-        -l to specifyc a logging config file
+        -l to specify a logging config file
         --logoutput <filename> to specify a logging output filename
 
+        Sample usage:
+        omni.py -a http://myaggregate/url -V2 getversion
         """
 
         ### Method specific arg handling
@@ -518,23 +525,26 @@ class AMCallHandler(object):
 
     def _selectRSpecVersion(self, slicename, client, mymessage, options):
         '''Helper for Describe and ListResources to set the rspec_version option, based on a single AMs capabilities.
-        Return options, mymessage.'''
-        # Where it currently does continue, raise a BadClientException
-        # This should be called from inside a try/except
+        Uses -t argument: If user specified an RSpec type and version, then only
+        use AMs that support that type/version.
+        Return dict with API version appropriate key specifying RSpec type/version
+        to request, plus a message describing results.
+        Raise a BadClientException if the AM cannot support the given RSpect type
+        or didn't advertise what it supports.'''
 
         # If the user specified a specific rspec type and version,
         # then we ONLY get rspecs from each AM that is capable
         # of talking that type&version.
         # Note an alternative would have been to let the AM just
         # do whatever it likes to do if
-        # you ask it to give you something it doesnt understand.
+        # you ask it to give you something it doesn't understand.
         if self.opts.rspectype:
             rtype = self.opts.rspectype[0]
             rver = self.opts.rspectype[1]
             self.logger.debug("Will request RSpecs only of type %s and version %s", rtype, rver)
 
             # Note this call uses the GetVersion cache, if available
-            # If got a slicename, should we be using request rspecs to better match manifest support?
+            # If got a slicename, use request rspecs to better match manifest support
             if not slicename:
                 (ad_rspec_version, message) = self._get_advertised_rspecs(client)
             else:
@@ -648,13 +658,15 @@ class AMCallHandler(object):
         return rspec
 
     def _listresources(self, args):
-        """Queries resources on various aggregates.
+        """Support method for doing AM API ListResources. Queries resources on various aggregates.
         
         Takes an optional slicename.
-        Uses optional aggregate option or omni_config aggregate param.
-        (See _listaggregates)
 
-        Doesn't care how many aggregates that you query.
+        Aggregates queried:
+        - Each URL given in an -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
 
         If you specify a required Ad RSpec type and version (both strings. Use the -t option)
         then it skips any AM that doesn't advertise (in GetVersion)
@@ -664,6 +676,14 @@ class AMCallHandler(object):
            rspecs[(urn, url)] = decompressed rspec
            AND a string describing the result.
         On error the dictionary is None and the message explains.
+
+        Decompress the returned RSpec if necessary
+
+        --arbitrary-option: supply arbitrary thing for testing
+        -V# API Version #
+        --devmode: Continue on error if possible
+        --no-compress: Request the returned RSpec not be compressed (default is to compress)
+        --available: Return Ad of only available resources
         """
 
         # rspecs[(urn, url)] = decompressed rspec
@@ -703,7 +723,7 @@ class AMCallHandler(object):
             else:
                 (cred, message) = self.framework.get_user_cred()
             if cred is None:
-#--- Dev mode allow doing the call anyhow?
+                # Dev mode allow doing the call anyhow
                 self.logger.error('Cannot list resources: Could not get user credential')
                 if not self.opts.devmode:
                     return (None, "Could not get user credential: %s" % message)
@@ -713,7 +733,7 @@ class AMCallHandler(object):
         else:
             (slicename, urn, cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "listresources")
             if cred is None or cred == "":
-#--- Dev mode allow doing the call anyhow?
+                # Dev mode allow doing the call anyhow
                 if not self.opts.devmode:
                     return (None, prstr)
 
@@ -731,14 +751,16 @@ class AMCallHandler(object):
         if len(clientList) == 0:
             if message != "":
                 mymessage = "No aggregates available to query: %s" % message
-        # FIXME: What if got a message and still got some aggs?
         else:
+            # FIXME: What if got a message and still got some aggs?
+            if message != "":
+                self.logger.debug("Got %d clients but also got a message: %s", len(clientList), message)
             creds = _maybe_add_abac_creds(self.framework, cred)
 
         # Connect to each available GENI AM to list their resources
         for client in clientList:
-            if cred is None:
-                self.logger.debug("Have null credential in call to ListResources!")
+            if creds is None or len(creds) == 0:
+                self.logger.debug("Have null or empty credential list in call to ListResources!")
             rspec = None
 
             (ver, newc) = self._checkValidClient(client)
@@ -789,32 +811,68 @@ class AMCallHandler(object):
     # End of _listresources
 
     def listresources(self, args):
-        """Optional arg is a slice name limiting results. Call ListResources
-        on 1+ aggregates and prints the rspec to stdout or to file. Note that slice name argument is only supported in AM API v1 or v2.
+        """GENI AM API ListResources
+        Call ListResources on 1+ aggregates and prints the rspec to stdout or to file.
+        Optional arg for API v1&2 is a slice name, making the request for a manifest RSpec.
+        Note that slice name argument is only supported in AM API v1 or v2.
         For listing contents of a slice in APIv3+, use describe().
         
-        -o writes Ad RSpec to file instead of stdout; single file per aggregate.
-        -p gives filename prefix for each output file
-        If not saving results to a file, they are logged.
-        If --tostdout option, then instead of logging, print to STDOUT.
-        -t <type version>: Specify a required RSpec type and version to return.
-        It skips any AM that doesn't advertise (in GetVersion)
-        that it supports that format.
-        --slicecredfile says to use the given slicecredfile if it exists.
-
-        File names will indicate the slice name, file format, and 
-        which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.xml
-
-        If a slice name is supplied, then resources for that slice only 
-        will be displayed.  In this case, the slice credential is usually retrieved from the Slice Authority. But
-        with the --slicecredfile option it is read from that file, if it exists.
-
         Aggregates queried:
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+
+        -t <type version>: Specify a required RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format.
+        Note that this option is required at AM API v2+ aggregates that support more than
+        1 RSpec format.
+
+        Returns a dictionary of rspecs with the following format:
+           rspecs[(urn, url)] = decompressed rspec
+
+        Output directing options:
+        -o Save result RSpec (XML format) in per-Aggregate files
+        -p (used with -o) Prefix for resulting rspec filenames
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and 
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.xml
+
+        --slicecredfile says to use the given slicecredfile if it exists.
+
+        If a slice name is supplied, then resources for that slice only 
+        will be displayed.  In this case, the slice credential is usually
+        retrieved from the Slice Authority. But
+        with the --slicecredfile option it is read from that file, if it exists.
+
+        --arbitrary-option: supply arbitrary thing for testing
+        -V# API Version #
+        --devmode: Continue on error if possible
+        --no-compress: Request the returned RSpec not be compressed (default is to compress)
+        --available: Return Ad of only available resources
+
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Call AM API v2 ListResources at 1 Aggregate for 1 slice, getting the manifest RSpec
+        in GENI v3 RSpec format
+        omni.py -a http://myaggregate/url -V2 -t GENI 3 listresources myslice
+
+        Call AM API v3 ListResources at 1 Aggregate, getting the Ad RSpec
+        in GENI v3 RSpec format
+        omni.py -a http://myaggregate/url -V3 -t GENI 3 listresources
+
+        Do AM API v3 ListResources from 1 aggregate, in GENI v3 RSpec format
+        saving the results in a specific file,
+        with the aggregate name (constructed from the URL) inserted into the filename:
+        omni.py -a http://myaggregate/url -V3 -t GENI 3 -o --outputfile AdRSpecAt%a.xml listresources
         """
 #--- API version specific
         # An optional slice name might be specified.
@@ -891,18 +949,33 @@ class AMCallHandler(object):
     # End of listresources
 
     def describe(self, args):
-        """Retrieve a manifest RSpec describing the resources contained by the named entities,
+        """GENI AM API v3 Describe()
+        Retrieve a manifest RSpec describing the resources contained by the named entities,
         e.g. a single slice or a set of the slivers in a slice. This listing and description
         should be sufficiently descriptive to allow experimenters to use the resources.
+        For listing contents of a slice in APIv1 or 2, or to get the Ad
+        of available resources at an AM, use ListResources().
 
         Argument is a slice name, naming the slice whose contents will be described.
         Lists contents and state on 1+ aggregates and prints the result to stdout or to a file.
 
         --sliver-urn / -u option: each specifies a sliver URN to describe. If specified,
-        only the listed slivers will be renewed. Otherwise, all slivers in the slice will be described.
+        only the listed slivers will be described. Otherwise, all slivers in the slice will be described.
 
+        Return is (1) A string describing the result to print, and (2) a dictionary by AM URL of the full
+        code/value/output return struct from the AM.
+
+        Aggregates queried:
+        - Each URL given in an -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
+
+        Output directing options:
         -o writes output to file instead of stdout; single file per aggregate.
         -p gives filename prefix for each output file
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
 
@@ -913,14 +986,32 @@ class AMCallHandler(object):
         -t <type version>: Specify a required manifest RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
         that it supports that format.
+        Note that this option is required at AM API v2+ aggregates that support more than
+        1 RSpec format.
+
         --slicecredfile says to use the given slicecredfile if it exists.
 
-        Aggregates queried:
-        - Each URL given in an -a argument or URL listed under that given
-        nickname in omni_config, if provided, ELSE
-        - List of URLs given in omni_config aggregates option, if provided, ELSE
-        - List of URNs and URLs provided by the selected clearinghouse
-        """
+        --arbitrary-option: supply arbitrary thing for testing
+        -V# API Version #
+        --devmode: Continue on error if possible
+        --no-compress: Request the returned RSpec not be compressed (default is to compress)
+
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Describe at 1 Aggregate, getting the Manifest RSpec
+        in GENI v3 RSpec format
+        omni.py -a http://myaggregate/url -V3 -t GENI 3 describe myslice
+
+        Describe from 2 aggregates, in GENI v3 RSpec format
+        saving the results in a specific file,
+        with the aggregate name (constructed from the URL) inserted into the filename:
+        omni.py -a http://myaggregate/url -a http://another/aggregate -V3 -t GENI 3 -o --outputfile AdRSpecAt%a.xml describe myslice
+
+        Describe 2 slivers from a particular aggregate
+        omni.py -a http://myaggregate/url -V3 -t GENI 3 describe myslice -u urn:publicid:IDN:myam+sliver+sliver1 -u urn:publicid:IDN:myam+sliver+sliver2
+      """
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Describe with AM API v%d...", self.opts.api_version)
@@ -933,6 +1024,7 @@ class AMCallHandler(object):
 
         options = {}
         options['geni_compressed'] = self.opts.geni_compressed
+
         # Pass in a dummy option for testing that is actually ok
         # FIXME: Omni should have a standard way for supplying additional options. Something like extra args
         # of the form Name=Value
@@ -985,6 +1077,7 @@ class AMCallHandler(object):
             except BadClientException:
                 continue
 
+# FIXME: Factor this next chunk into helper method?
             # Decompress the RSpec before sticking it in retItem
             rspec = None
             if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
@@ -1050,9 +1143,6 @@ class AMCallHandler(object):
                 successCnt+=1
             else:
                 retVal += " - with %d slivers missing and %d slivers with errors. \n" % (len(missingSlivers), len(sliverFails.keys()))
-
-            # FIXME: We do nothing here to parse the describe result. Should we?
-            # FIXME
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -2738,7 +2828,7 @@ class AMCallHandler(object):
 
     def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
         '''Construct a name for omni command outputs; return that name.
-        If outputfile specified, use that.
+        If --outputfile specified, use that.
         Else, overall form is [prefix-][slicename-]methodname-server.filetype
         filetype should be .xml or .json'''
 
@@ -2979,6 +3069,8 @@ class AMCallHandler(object):
             server = server[:(server.index("/xmlrpc/am"))]
         elif server.endswith("/xmlrpc"):
             server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/xmlrpc/am/2.0"):
+            server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
         elif server.endswith("/openflow/gapi/"):
             server = server[:(server.index("/openflow/gapi/"))]
         elif server.endswith(":3626/foam/gapi/1"):
