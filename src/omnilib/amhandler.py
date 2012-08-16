@@ -1362,6 +1362,10 @@ class AMCallHandler(object):
         --end-time: Request that new slivers expire at the given time.
         The aggregates may allocate the resources, but not be able to grant the requested
         expiration time.
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice).
 
         Output directing options:
         -o Save result in per-Aggregate files
@@ -1575,6 +1579,10 @@ class AMCallHandler(object):
         --end-time: Request that new slivers expire at the given time.
         The aggregates may provision the resources, but not be able to grant the requested
         expiration time.
+        Note that per the AM API expiration times will be timezone aware.
+        Unqualified times are assumed to be in UTC.
+        Note that the expiration time cannot be past your slice expiration
+        time (see renewslice).
 
         --sliver-urn / -u option: each specifies a sliver URN to provision. If specified, 
         only the listed slivers will be provisioned. Otherwise, all slivers in the slice will be provisioned.
@@ -1914,6 +1922,7 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
+                # Save result
                 if isinstance(realresult, dict):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
                 else:
@@ -1935,6 +1944,7 @@ class AMCallHandler(object):
                     retVal += ' \n'
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                     successCnt += 1
+        # Done loop over clients
 
         self.logger.debug("POA %s result: %s", descripMsg, json.dumps(retItem, indent=2))
 
@@ -1951,6 +1961,7 @@ class AMCallHandler(object):
     def renewsliver(self, args):
         """AM API RenewSliver <slicename> <new expiration time in UTC
         or with a timezone>
+        For use in AM API v1&2. Use renew() in AM API v3+.
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
@@ -1969,6 +1980,11 @@ class AMCallHandler(object):
         Note that the expiration time cannot be past your slice expiration
         time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
         """
 
         if self.opts.api_version >= 3:
@@ -1976,6 +1992,8 @@ class AMCallHandler(object):
                 self.logger.warn("Trying RenewSliver with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("RenewSliver is only available in AM API v1 or v2. Use Renew, or specify the -V2 option to use AM API v2, if the AM supports it.")
+
+        # Gather arguments, options
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "RenewSliver", "and new expiration time in UTC")
@@ -2000,6 +2018,7 @@ class AMCallHandler(object):
 
         self.logger.debug("Doing renewsliver with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
 
+        # Run renew at each client
         successCnt = 0
         successList = []
         failList = []
@@ -2044,6 +2063,7 @@ class AMCallHandler(object):
     def renew(self, args):
         """AM API Renew <slicename> <new expiration time in UTC
         or with a timezone>
+        For use with AM API v3+. Use RenewSliver() in AM API v1&2.
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
@@ -2077,6 +2097,27 @@ class AMCallHandler(object):
 
         Note that some aggregates may require renewing all slivers in the same state at the same 
         time, per the geni_single_allocation GetVersion return.
+
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        FIXMEFIXME
+        omni.py -V3 -a http://myaggregate/url renew myslice 20120909
         """
 
         if self.opts.api_version < 3:
@@ -2084,6 +2125,8 @@ class AMCallHandler(object):
                 self.logger.warn("Trying Renew with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("Renew is only available in AM API v3+. Use RenewSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # Gather options,args
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -2116,6 +2159,7 @@ class AMCallHandler(object):
 
         self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
 
+        # Call renew at each client
         successCnt = 0
         (clientList, message) = self._getclients()
         retItem = dict()
@@ -2142,9 +2186,9 @@ class AMCallHandler(object):
             else:
                 prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
-                # FIXME: Look inside return. Did all slivers we asked about report results?
+
+                # Look inside return. Did all slivers we asked about report results?
                 # For each that did, did any fail?
-                # And what do we do if so?
                 missingSlivers = self._findMissingSlivers(res, slivers)
                 if len(missingSlivers) > 0:
                     msg = " - but %d slivers from request missing in result?!" % len(missingSlivers)
@@ -2179,6 +2223,7 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
+                # Save results
                 if isinstance(res, dict):
                     prettyResult = json.dumps(res, ensure_ascii=True, indent=2)
                 else:
@@ -2195,6 +2240,8 @@ class AMCallHandler(object):
                     retVal += prStr + "\n"
                 if len(sliverFails.keys()) == 0 and len(missingSlivers) == 0:
                     successCnt += 1
+        # End of loop over clients
+
         if len(clientList) == 0:
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
