@@ -2116,8 +2116,14 @@ class AMCallHandler(object):
         --logoutput <filename> to specify a logging output filename
 
         Sample usage:
-        FIXMEFIXME
+        Renew slivers in slice myslice to the given time; fail the call if all slivers cannot be renewed to this time
         omni.py -V3 -a http://myaggregate/url renew myslice 20120909
+
+        Renew slivers in slice myslice to the given time; any slivers that cannot be renewed to this time, stay as they were, while others are renewed
+        omni.py -V3 -a http://myaggregate/url --best-effort renew myslice 20120909
+
+        Renew the given sliver in myslice at this AM to the given time and write the result struct to the given file
+        omni.py -V3 -a http://myaggregate/url -o --outputfile %s-renew-%a.json -u urn:publicid:IDN+myam+sliver+1 renew myslice 20120909
         """
 
         if self.opts.api_version < 3:
@@ -2171,6 +2177,7 @@ class AMCallHandler(object):
             except BadClientException:
                 continue
             retItem[client.url] = res
+
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -2252,6 +2259,7 @@ class AMCallHandler(object):
 
     def sliverstatus(self, args):
         """AM API SliverStatus  <slice name>
+        For use in AM API v1&2; use status() in API v3+.
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
