@@ -206,12 +206,14 @@ class OmniUnittest(unittest.TestCase):
             raise NotXMLAssertionError, msg
 
     def assertSuccess(self, item, msg=None):
+        if msg is None:
+            msg = "geni_code not 0 (SUCCESS)  as expected."
         if error_util.err_codes.has_key( item ):
             label = error_util.err_codes[ item ]['label']
             description = error_util.err_codes[ item ]['description']
-        if msg is None:
-            msg = "geni_code not 0 (SUCCESS)  as expected."
-        msg = msg+"\nInstead reported geni_code %s (%s): '%s'" % (item, label, description)
+            msg = msg+"\nInstead reported geni_code %s (%s): '%s'" % (item, label, description)
+        else:
+            msg = msg+"\nInstead reported geni_code %s" % (item)
         if not (int(item) == 0):
             raise NotSuccessError, msg
 
@@ -274,7 +276,7 @@ class OmniUnittest(unittest.TestCase):
     def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
 
         self.assertIsNotNone( rspec, "RSpec returned from '%s' is unexpectedly 'None'" % AMAPI_call )
-        self.assertStr( rspec, "RSpec returned from '%s' is unexpectedly not unicode" % AMAPI_call )
+        self.assertStr( rspec, "RSpec returned from '%s' is unexpectedly not a string" % AMAPI_call )
 
         
         # do all comparisons as lowercase
@@ -540,7 +542,7 @@ Check that the value of 'code' is as follows:
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
-        return len(slivers), manifest
+        return slivers, manifest
 
 
     def assertStatusReturn( self, agg, retVal ):
@@ -650,7 +652,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_provisioned')        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
-        return len(slivers), manifest
+        return slivers, manifest
 
     def assertAllocateReturn( self, agg, retVal ):
         """Returns:
@@ -806,6 +808,13 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          % (AMAPI_call, value, alloc_status))
 
     def assertUserCred( self, retVal ):
+        CH_call = "GetUserCred"
+        return self.assertCred( CH_call, retVal )
+    def assertSliceCred( self, retVal ):
+        CH_call = "GetSliceCred"
+        return self.assertCred( CH_call, retVal )
+
+    def assertCred( self, CH_call, retVal ):
         """Checks retVal fits form:
 {
     geni_type: <string, case insensitive>, 
@@ -814,7 +823,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
     <others>
    }
         """
-        CH_call = "GetUserCred"
+        self.assertIsNotNone( retVal )
         self.assertDict( retVal )
         geni_type = self.assertGeniType( CH_call, retVal)        
         version = self.assertGeniVersion( CH_call, retVal)        
