@@ -483,7 +483,7 @@ def API_call( framework, config, args, opts, verbose=False ):
         cmd = None
         if len(args) > 0:
             cmd = args[0]
-        s = "Completed " + cmd + ":\n" + nondef + "Args: "+" ".join(args)+"\n\n  Result Summary: " + retVal
+        s = "Completed " + cmd + ":\n" + nondef + "Args: "+" ".join(args)+"\n\n  Result Summary: " + str(retVal)
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 

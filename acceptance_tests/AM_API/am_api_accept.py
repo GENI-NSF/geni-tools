@@ -661,7 +661,7 @@ class Test(ut.OmniUnittest):
             # AM API v1-v3 ListResources() and 
             # AM API v1-v2 ListResources( slicename )
             # but not AM API v3 Describe() <-- which is covered above
-            for ((agg_name, agg_url), rspec) in ret_dict.items():
+            for (agg_url, rspec) in ret_dict.items():
                 if self.options_copy.api_version >= 2:
                     err_code, msg = self.assertCodeValueOutput( AMAPI_call, 
                                                                 agg_url, rspec )
