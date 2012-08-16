@@ -1334,11 +1334,12 @@ class AMCallHandler(object):
     def allocate(self, args):
         """
         GENI AM API Allocate <slice name> <rspec file name>
+        For use with AM API v3+ only. Otherwise, use CreateSliver.
         Allocate resources as described in a request RSpec argument to a slice with 
         the named URN. On success, one or more slivers are allocated, containing 
         resources satisfying the request, and assigned to the given slice.
 
-        Clients must Renew or Provision slivers before the expiration time 
+        Clients must Renew or Provision slivers before the expiration time
         (given in the return struct), or the aggregate will automatically Delete them.
 
         Slice name could be a full URN, but is usually just the slice name portion.
@@ -1353,12 +1354,41 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+        Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
+        Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each 
+        aggregate should attempt to satisfy all unbound requests. Note also that allocate() calls
+        are always all-or-nothing: if the aggregate cannot give everything requested, it gives nothing.
 
+        --end-time: Request that new slivers expire at the given time.
+        The aggregates may allocate the resources, but not be able to grant the requested
+        expiration time.
+
+        Output directing options:
         -o Save result in per-Aggregate files
         -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Basic allocation of resources at 1 AM into myslice
+        omni.py -V3 -a http://myaggregate/url allocate myslice my-request-rspec.xml
+
+        Allocate resources into 2 AMs, requesting a specific sliver end time, save results into specificly named files that include an AM name calculated from the AM URL,
+        using the slice credential saved in the given file
+        omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml allocate myslice my-request-rspec.xml
         """
+
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Allocation with AM API v%d...", self.opts.api_version)
@@ -1373,7 +1403,7 @@ class AMCallHandler(object):
         if not (self.opts.devmode and len(args) < 2):
             rspecfile = args[1]
         if rspecfile is None or not os.path.isfile(rspecfile):
-#--- Dev mode should allow missing RSpec
+            # Dev mode should allow missing RSpec
             msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
                 self.logger.warn(msg)
@@ -1384,7 +1414,6 @@ class AMCallHandler(object):
         try:
             rspec = file(rspecfile).read()
         except Exception, exc:
-#--- Should dev mode allow this?
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
@@ -1407,6 +1436,7 @@ class AMCallHandler(object):
                 else:
                     self._raise_omni_error(msg)
 
+        # Build args
         options = self._build_options('Allocate', None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         args = [urn, creds, rspec, options]
@@ -1428,6 +1458,7 @@ class AMCallHandler(object):
             #  info - mention unbound bits will be repeated
             self.logger.info("Multiple aggregates will get the same request RSpec; unbound requests will be attempted at multiple aggregates.")
 
+        # Do the command for each client
         for client in clientList:
             self.logger.info("Allocate %s at %s:", descripMsg, client.url)
             try:
@@ -1451,6 +1482,7 @@ class AMCallHandler(object):
             else:
                 self.logger.debug("Return struct missing geni_rspec element!")
 
+            # Pull out the result and check it
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
             badSlivers = self._getSliverAllocStates(realresult, 'geni_allocated')
@@ -1469,6 +1501,7 @@ class AMCallHandler(object):
                 else:
                     prettyResult = pprint.pformat(realresult)
 
+                # Save out the result
 #                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
 
@@ -1481,6 +1514,7 @@ class AMCallHandler(object):
                 else:
                     retVal += "Allocated %s at %s. \n" % (descripMsg, client.url)
 
+                # Check the new sliver expirations
                 (orderedDates, sliverExps) = self._getSliverExpirations(realresult)
                 # None case
                 if len(orderedDates) == 1:
@@ -1500,6 +1534,7 @@ class AMCallHandler(object):
                 retVal += "Allocation of %s at %s failed: %s.\n" % (descripMsg, client.url, message)
                 self.logger.warn(retVal)
                 # FIXME: Better message?
+        # Done with allocate call loop over clients
 
         if len(clientList) == 0:
             retVal += "No aggregates at which to allocate %s. %s\n" % (descripMsg, message)
@@ -1514,11 +1549,15 @@ class AMCallHandler(object):
     def provision(self, args):
         """
         GENI AM API Provision <slice name>
+        For use with AM API v3+ only. Otherwise, use CreateSliver.
         Request that the named geni_allocated slivers be made geni_provisioned, 
         instantiating or otherwise realizing the resources, such that they have a 
         valid geni_operational_status and may possibly be made geni_ready for 
         experimenter use. This operation is synchronous, but may start a longer process, 
         such as creating and imaging a virtual machine.
+
+        Clients must Renew or use slivers before the expiration time
+        (given in the return struct), or the aggregate will automatically Delete them.
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1533,6 +1572,10 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        --end-time: Request that new slivers expire at the given time.
+        The aggregates may allocate the resources, but not be able to grant the requested
+        expiration time.
+
         --sliver-urn / -u option: each specifies a sliver URN to provision. If specified, 
         only the listed slivers will be provisioned. Otherwise, all slivers in the slice will be provisioned.
         --best-effort: If supplied, slivers that can be provisioned, will be; some slivers 
@@ -1543,21 +1586,46 @@ class AMCallHandler(object):
         Note that some aggregates may require provisioning all slivers in the same state at the same 
         time, per the geni_single_allocation GetVersion return.
 
+        Output directing options:
         -o Save result in per-Aggregate files
         -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
 
         omni_config users section is used to get a set of SSH keys that
         should be loaded onto the remote node to allow SSH login, if the
         remote resource and aggregate support this.
+
+        Sample usage:
+        Basic provision of allocated resources at 1 AM into myslice
+        omni.py -V3 -a http://myaggregate/url provision myslice
+
+        Provision resources in 2 AMs, requesting a specific sliver end time, save results into specificly named files that include an AM name calculated from the AM URL,
+        and slice name, using the slice credential saved in the given file. Provision in best effort mode: provision as much as possible
+        omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile %s-provision-%a.json --slicecredfile mysaved-myslice-slicecred.xml --best-effort provision myslice
+
+        Provision allocated resources in specific slivers
+        omni.py -V3 -a http://myaggregate/url -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 provision myslice
         """
+
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Provision with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("Provision is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
+        # Build up args, options
         op = "Provision"
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       op)
@@ -1573,6 +1641,7 @@ class AMCallHandler(object):
         args = [urnsarg, creds, options]
         self.logger.debug("Doing Provision with urns %s, %d creds, options %s", urnsarg, len(creds), options)
 
+        # Get Clients
         successCnt = 0
         retItem = dict()
         (clientList, message) = self._getclients()
@@ -1593,6 +1662,7 @@ class AMCallHandler(object):
             else:
                 self.logger.warn(msg + " Consider running with --best-effort in future.")
 
+        # Loop over clients doing operation
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
@@ -1611,6 +1681,7 @@ class AMCallHandler(object):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
 
+            # Pull out the result
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
 
@@ -1621,13 +1692,6 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success
-                if isinstance(realresult, dict):
-                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
-                else:
-                    prettyResult = pprint.pformat(realresult)
-                header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
-                filename = None
-
                 missingSlivers = self._findMissingSlivers(realresult, slivers)
                 if len(missingSlivers) > 0:
                     self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
@@ -1636,6 +1700,15 @@ class AMCallHandler(object):
                 sliverFails = self._didSliversFail(realresult)
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+                # Print out the result
+                if isinstance(realresult, dict):
+                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(realresult)
+
+                header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
+                filename = None
 
                 if self.opts.output:
                     filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
@@ -1650,6 +1723,7 @@ class AMCallHandler(object):
                 if len(sliverFails.keys()) > 0:
                     retVal += " = but with %d slivers reporting errors. \n" % len(sliverFails.keys())
 
+                # Check sliver expiration
                 (orderedDates, sliverExps) = self._getSliverExpirations(realresult)
                 # None case
                 if len(orderedDates) == 1:
@@ -1669,6 +1743,7 @@ class AMCallHandler(object):
                     message = "(no reason given)"
                 retVal = "Provision of %s at %s failed: %s" % (descripMsg, client.url, message)
                 self.logger.warn(retVal)
+        # Done loop over clients
 
         if len(clientList) == 0:
             retVal += "No aggregates at which to provision %s. %s\n" % (descripMsg, message)
@@ -1681,8 +1756,7 @@ class AMCallHandler(object):
     # end of provision
 
     def performoperationalaction(self, args):
-        """ Alias of "poa" which is an implementation of v3
-        PerformOperationalAction.
+        """ Alias of "poa" which is an implementation of v3 PerformOperationalAction.
         """
         return self.poa( args )
 
