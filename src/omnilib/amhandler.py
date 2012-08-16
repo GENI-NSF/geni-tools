@@ -1575,7 +1575,7 @@ class AMCallHandler(object):
         - List of URNs and URLs provided by the selected clearinghouse
 
         --end-time: Request that new slivers expire at the given time.
-        The aggregates may allocate the resources, but not be able to grant the requested
+        The aggregates may provision the resources, but not be able to grant the requested
         expiration time.
 
         --sliver-urn / -u option: each specifies a sliver URN to provision. If specified, 
@@ -1765,27 +1765,31 @@ class AMCallHandler(object):
     def poa(self, args):
         """
         GENI AM API PerformOperationalAction <slice name> <action name>
-        Perform the named operational action on the named slivers, possibly changing 
+        For use with AM API v3+ only. Otherwise, use CreateSliver.
+
+        Perform the named operational action on the named slivers or slice, possibly changing
         the geni_operational_status of the named slivers. E.G. 'start' a VM. For valid 
         operations and expected states, consult the state diagram advertised in the 
         aggregate's advertisement RSpec.
 
+        Clients must Renew or use slivers before the expiration time
+        (given in the return struct), or the aggregate will automatically Delete them.
+
         --sliver-urn / -u option: each specifies a sliver URN on which to perform the given action. If specified, 
         only the listed slivers will be acted on. Otherwise, all slivers in the slice will be acted on.
-        Note though that actions are state and resource type specifi, so the action may not apply everywhere.
+        Note though that actions are state and resource type specific, so the action may not apply everywhere.
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-        -a Contact each aggregate at the given URL(s), or with the given
-         nickname that translates to a URL in your omni_config
-        --slicecredfile Read slice credential from given file, if it exists
-        -o Save result in per-Aggregate files
-        -p (used with -o) Prefix for resulting files
-        If not saving results to a file, they are logged.
-        If --tostdout option, then instead of logging, print to STDOUT.
+        Aggregates queried:
+        - Each URL given in an -a argument or URL listed under that given
+        nickname in omni_config, if provided, ELSE
+        - List of URLs given in omni_config aggregates option, if provided, ELSE
+        - List of URNs and URLs provided by the selected clearinghouse
 
+        --slicecredfile Read slice credential from given file, if it exists
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
@@ -1794,6 +1798,29 @@ class AMCallHandler(object):
         If not supplied, then if any slivers cannot be changed, the whole call fails
         and sliver states do not change.
 
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Do geni_start on slivers in myslice
+        omni.py -V3 -a http://myaggregate poa myslice geni_start
+
+        Do geni_start on 2 slivers in myslice, but continue if 1 fails, and save results to the named file
+        omni.py -V3 -a http://myaggregate poa --best-effort -o --outputfile %s-start-%a.json -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 myslice geni_start
         """
         if self.opts.api_version < 3:
             if self.opts.devmode:
@@ -1801,6 +1828,7 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
 
+        # Build up args, options
         op = "PerformOperationalAction"
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2,
                                                       op,
@@ -1834,6 +1862,7 @@ class AMCallHandler(object):
         args = [urnsarg, creds, action, options]
         self.logger.debug("Doing POA with urns %s, action %s, %d creds, and options %s", urnsarg, action, len(creds), options)
 
+        # Get clients
         successCnt = 0
         retItem = dict()
         (clientList, message) = self._getclients()
@@ -1854,6 +1883,7 @@ class AMCallHandler(object):
             else:
                 self.logger.warn(msg + " Consider running with --best-effort in future.")
 
+        # Do poa action on each client
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
