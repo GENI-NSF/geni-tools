@@ -453,9 +453,20 @@ of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
 of-wisconsin=,https://foam.wail.wisc.edu:3626/foam/gapi/1
 of-rutgers=,https://nox.orbit-lab.org:3626/foam/gapi/1
 of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
-of-gatech=,https://nox.orbit-lab.org:3626/foam/gapi/1
+of-gatech=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
 of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
 of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
+
+#Exogeni AMs include OpenFlow ExoGENI AMs
+eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1 
+
+#InstaGENI AMs, include OpenFlow InstaGENI AMs
+ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am
+ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
 
 """ % omni_config_dict
