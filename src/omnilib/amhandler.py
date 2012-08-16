@@ -804,13 +804,13 @@ class AMCallHandler(object):
                     if mymessage != "":
                         mymessage += ". "
                     mymessage += "No resources from AM %s: %s" % (client.url, message)
+                    if resp.has_key('value'):
+                        resp['value']=rspec
             else:
                 self.logger.warn("Return struct missing proper rspec in value element!")
 
-            resp2 = resp
-            resp2['value']=rspec
             # Return for tools is the full code/value/output triple
-            rspecs[(client.urn, client.url)] = resp2
+            rspecs[(client.urn, client.url)] = resp
 
         if len(clientList) > 0:
             self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
