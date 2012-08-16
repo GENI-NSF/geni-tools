@@ -34,7 +34,7 @@ import json
 import pprint
 import re
 
-from geni.util.urn_util import nameFromURN
+from geni.util.urn_util import nameFromURN, is_valid_urn_bytype
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
@@ -89,7 +89,7 @@ class CHCallHandler(object):
         - command line nickname (one per -a arg, URN may be supplied), OR
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
-        This is the aggregates that registered with the framework.
+           This is the aggregates that registered with the framework.
         """
         retStr = ""
         retVal = {}
@@ -138,6 +138,12 @@ class CHCallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
+        if not is_valid_urn_bytype(urn, 'slice', self.logger):
+            msg = "Invalid slice URN: ensure your slice name uses only letters, numbers, and hyphens (no hyphen in first character), and is <= 19 characters long"
+            if self.opts.devmode:
+                self.logger.warn(msg + " - but continuing...")
+            else:
+                self._raise_omni_error(msg)
         
         (slice_cred, message) = _do_ssl(self.framework, None, "Create Slice %s" % urn, self.framework.create_slice, urn)
         if slice_cred:
@@ -188,6 +194,7 @@ class CHCallHandler(object):
         urn = self.framework.slice_name_to_urn(name)
 
         # convert the desired expiration to a python datetime
+        # FIXME: See amhandler._datetimeFromString: converts to naive UTC, adds UTC TZ
         try:
             in_expiration = dateutil.parser.parse(expire_str)
         except:
@@ -293,12 +300,16 @@ class CHCallHandler(object):
         """Retrieve your user credential. Useful for debugging.
 
         If you specify the -o option, the credential is saved to a file.
-        The filename is <username>-<framework nickname from config file>-usercred.[xml or json, depending on AM API version].
+        If you specify --usercredfile:
+           First, it tries to read the user cred from that file.
+           Second, it saves the user cred to a file by that name (but with the appropriate extension)
+        Otherwise, the filename is <username>-<framework nickname from config file>-usercred.[xml or json, depending on AM API version].
         If you specify the --prefix option then that string starts the filename.
 
         If instead of the -o option, you supply the --tostdout option, then the usercred is printed to STDOUT.
+        Otherwise the usercred is logged.
 
-        Otherwise, it is returned for use by calling scripts.
+        The usercred is returned for use by calling scripts.
 
         e.g.:
           Get user credential, save to a file:
@@ -312,38 +323,43 @@ class CHCallHandler(object):
         else:
             (cred, message) = self.framework.get_user_cred()
         credxml = credutils.get_cred_xml(cred)
-        if cred is None:
+        if cred is None or credxml is None or credxml == "":
             self._raise_omni_error("Got no user credential from framework: %s" % message)
+#        target = credutils.get_cred_target_urn(self.logger, cred)
+        # pull the username out of the cred
+        # <owner_urn>urn:publicid:IDN+geni:gpo:gcf+user+alice</owner_urn>
+        user = ""
+        usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
+        if usermatch:
+            user = usermatch.group(1)
         if self.opts.output:
-            fname = self.opts.framework + "-usercred"
-            # pull the username out of the cred
-            # <owner_urn>urn:publicid:IDN+geni:gpo:gcf+user+alice</owner_urn>
-            usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
-            if usermatch:
-                fname = usermatch.group(1) + "-" + fname
-            if self.opts.prefix and self.opts.prefix.strip() != "":
-                fname = self.opts.prefix.strip() + "-" + fname
+            if self.opts.usercredfile and self.opts.usercredfile.strip() != "":
+                fname = self.opts.usercredfile
+            else:
+                fname = self.opts.framework + "-usercred"
+                if user != "":
+                    fname = user + "-" + fname
+                if self.opts.prefix and self.opts.prefix.strip() != "":
+                    fname = self.opts.prefix.strip() + "-" + fname
             filename = self._save_cred(fname, cred)
-            self.logger.info("Wrote your user credential to %s" % filename)
+            self.logger.info("Wrote %s user credential to %s" % (user, filename))
             self.logger.debug("User credential:\n%r", cred)
-            return "Saved user credential to %s" % filename, cred
+            return "Saved user %s credential to %s" % (user, filename), cred
         elif self.opts.tostdout:
-            # <owner_urn>urn:publicid:IDN+geni:gpo:gcf+user+alice</owner_urn>
-            usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
-            username = None
-            if usermatch:
-                username = usermatch.group(1)
-            if username:
-                self.logger.info("Writing user %s usercred to STDOUT per options", username)
+            if user != "":
+                self.logger.info("Writing user %s usercred to STDOUT per options", user)
             else:
                 self.logger.info("Writing usercred to STDOUT per options")
             # pprint does bad on XML, but OK on JSON
             print cred
-            if username:
-                return "Printed user %s credential to stdout" % username, cred
+            if user:
+                return "Printed user %s credential to stdout" % user, cred
             else:
                 return "Printed user credential to stdout", cred
-        return "Retrieved user credential", cred
+        else:
+            self.logger.info("User %s user credential:\n%s", user, cred)
+
+        return "Retrieved %s user credential" % user, cred
 
     def getslicecred(self, args):
         """Get the AM API compliant slice credential (signed XML document).
@@ -401,7 +417,7 @@ class CHCallHandler(object):
 #VERBOSE ONLY        self.logger.info(cred)
 #        print cred
 
-        retVal = cred
+        retVal = credutils.get_cred_xml(cred)
         retItem = cred
         filename = self._maybe_save_slicecred(name, cred)
         if filename is not None:
@@ -522,4 +538,5 @@ class CHCallHandler(object):
 #            file.write(cred)
         with open(filename, 'w') as file:
             file.write(credout + "\n")
+
         return filename

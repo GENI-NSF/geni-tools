@@ -93,6 +93,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
+            self.logger.debug("Getting user credential from PG SA %s", self.config['sa'])
             pg_response = dict()
             (pg_response, message) = _do_ssl(self, None, ("Get PG user credential from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetCredential)
             _ = message #Appease eclipse
@@ -161,6 +162,7 @@ class Framework(Framework_Base):
         if name is None or name.strip() == '':
             raise Exception('Empty slice name')
 
+        # Could use is_valid_urn_bytype here, or just let the SA/AM do the check
         if is_valid_urn(name):
             urn = URN(None, None, None, name)
             if not urn.getType() == "slice":
@@ -511,6 +513,12 @@ class Framework(Framework_Base):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
+        if isinstance(cred, dict):
+            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
+            return cred
+        elif not isinstance(cred, str):
+            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
+            cred = str(cred)
         ret = dict(geni_type="geni_sfa", geni_version="3", geni_value=cred)
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"

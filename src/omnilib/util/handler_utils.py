@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Misc utilities for use by chhandler and amhandler'''
 
 import datetime
 import json
@@ -69,8 +70,8 @@ def _listaggregates(handler):
             # otherwise it is the url directly
             # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
             url, urn = _derefAggNick(handler, agg)
-            _ = urn # appease eclipse
             url = url.strip()
+            urn = urn.strip()
             if url != '':
                 while urn in ret:
                     urn += "+"
@@ -95,7 +96,7 @@ def _load_cred(handler, filename):
     '''
     Load a credential from the given filename. Return None on error.
     Based on AM API version, returned cred will be a struct or raw XML.
-    In dev Mode, file contents are returned as is.
+    In dev mode, file contents are returned as is.
     '''
     if not filename:
         handler.logger.debug("No filename provided for credential")
@@ -124,10 +125,13 @@ def _load_cred(handler, filename):
         elif handler.opts.api_version < 3 and not credutils.is_cred_xml(cred) and isStruct:
             handler.logger.debug("Using APIv2 or 1 and got a struct cred. Unwrapping it.")
             cred = credutils.get_cred_xml(cred)
+        else:
+            handler.logger.debug("Using APIv%d and got cred seemingly in right form, return it", handler.opts.api_version)
     return cred
 
 def _get_slice_cred(handler, urn):
-    """Try a couple times to get the given slice credential.
+    """Get a cred for the slice with the given urn.
+    Try a couple times to get the given slice credential.
     Retry on wrong pass phrase.
     Return the slice credential, and a string message of any error.
     Returned credential will be a struct in AM API v3+.
@@ -135,14 +139,22 @@ def _get_slice_cred(handler, urn):
 
     cred = _load_cred(handler, handler.opts.slicecredfile)
     if cred is not None:
+        msg = "Read slice cred from %s" % handler.opts.slicecredfile
         # We support reading cred from file without supplying a URN
         if not urn or urn.strip() == "":
             handler.logger.info("Got slice credential from file %s", handler.opts.slicecredfile)
         else:
-            handler.logger.info("Got slice %s credential from file %s", urn, handler.opts.slicecredfile)
-        return (cred, "")
+            target_urn = credutils.get_cred_target_urn(handler.logger, cred)
+            if target_urn != urn:
+                msg += " - BUT it is for slice %s, not expected %s!" % (target_urn, urn)
+                handler.logger.warn(msg)
+                cred = None
+            else:
+                msg += " for slice %s" % urn
+                handler.logger.info(msg)
+        return (cred, msg)
     elif handler.opts.slicecredfile and urn:
-            handler.logger.warn("Since supplied slicecred file not readable, falling back to re-downloading slice credential")
+            handler.logger.warn("Since supplied slicecred file not readable, falling back to re-downloading slice credential for slice %s", urn)
 
     # We support reading cred from file without supplying a URN
     if not urn or urn.strip() == "":
@@ -198,7 +210,7 @@ def _print_slice_expiration(handler, urn, sliceCred=None):
     return retVal
 
 def validate_url(url):
-    """Basic sanity checks on URLS before trying to use them.
+    """Basic sanity checks on URLs before trying to use them.
     Return None on success, error string if there is a problem.
     If return starts with WARN: then just log a warning - not fatal."""
 

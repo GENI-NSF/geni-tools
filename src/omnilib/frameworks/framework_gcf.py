@@ -49,6 +49,7 @@ class Framework(Framework_Base):
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
+            self.logger.debug("Getting user credential from GCF CH %s", self.config['ch'])
             (self.user_cred, message) = _do_ssl(self, None, ("Create user credential on GCF CH %s" % self.config['ch']), self.ch.CreateUserCredential, self.cert_string)
 
         return self.user_cred, message
@@ -151,6 +152,12 @@ class Framework(Framework_Base):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
+        if isinstance(cred, dict):
+            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
+            return cred
+        elif not isinstance(cred, str):
+            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
+            cred = str(cred)
         ret = dict(geni_type="geni_sfa", geni_version="2", geni_value=cred)
         if credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "3"

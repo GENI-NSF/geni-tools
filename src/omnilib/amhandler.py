@@ -34,6 +34,7 @@ import dateutil.parser
 import json
 import os
 import pprint
+import re
 import string
 import zlib
 
@@ -985,13 +986,18 @@ class AMCallHandler(object):
                 continue
 
             # Decompress the RSpec before sticking it in retItem
+            rspec = None
             if status and isinstance(status, dict) and status.has_key('value') and isinstance(status['value'], dict) and status['value'].has_key('geni_rspec'):
                 rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
                 if rspec and rspec != status['value']['geni_rspec']:
                     self.logger.debug("Decompressed RSpec")
                 if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
+                else:
+                    self.logger.warn("Didn't get a valid RSpec!")
                 status['value']['geni_rspec'] = rspec
+            else:
+                self.logger.warn("Return struct missing geni_rspec element!")
 
             # Return for tools is the full code/value/output triple
             retItem[client.url] = status
@@ -1005,14 +1011,6 @@ class AMCallHandler(object):
                 retVal += fmt % (descripMsg, client.url, message)
                 continue # go to next AM
 
-            prettyResult = pprint.pformat(status)
-            if not isinstance(status, dict):
-                # malformed describe return
-                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
-                # FIXME: Add something to retVal that the result was malformed?
-                if isinstance(status, str):
-                    prettyResult = str(status)
-
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
                 self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
@@ -1022,7 +1020,23 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
+            (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, name, client.urn, client.url, message, slivers)
+            self.logger.debug(rVal)
+            if status and isinstance(status, dict) and status.has_key('geni_rspec') and rspec and rspeccontent:
+                status['geni_rspec'] = rspeccontent
+
+            if not isinstance(status, dict):
+                # malformed describe return
+                self.logger.warn('Malformed describe result from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
+                # FIXME: Add something to retVal that the result was malformed?
+                if isinstance(status, str):
+                    prettyResult = str(status)
+                else:
+                    prettyResult = pprint.pformat(status)
+            else:
+                prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+
+            #header="<!-- Describe %s at AM URL %s -->" % (descripMsg, client.url)
             filename = None
 
             if self.opts.output:
@@ -1043,7 +1057,7 @@ class AMCallHandler(object):
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
             retVal += "Found description of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug("Describe return: \n" + pprint.pformat(retItem))
+        self.logger.debug("Describe return: \n" + json.dumps(retItem, indent=2))
         return retVal, retItem
     # End of describe
 
@@ -1262,6 +1276,21 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
+        # Test if the rspec is really json containing an RSpec, and pull out the right thing
+        if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
+            try:
+                rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
+                if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
+                    rspec = rspecStruct['geni_rspec']
+            except Exception, e:
+                import traceback
+                msg = "Failed to read RSpec from JSON file %s: %s" % (rspecfile, e)
+                self.logger.debug(traceback.format_exc())
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
+
         options = self._build_options('Allocate', None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         args = [urn, creds, rspec, options]
@@ -1295,11 +1324,16 @@ class AMCallHandler(object):
                 continue
 
             # Make the RSpec more pretty-printed
+            rspec = None
             if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
                 rspec = result['value']['geni_rspec']
                 if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
+                else:
+                    self.logger.debug("No valid RSpec returned!")
+            else:
+                self.logger.debug("Return struct missing geni_rspec element!")
 
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
@@ -1310,13 +1344,21 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success (maybe partial?)
-                prettyResult = pprint.pformat(realresult)
-                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
+                (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, slicename, client.urn, client.url, message)
+                self.logger.debug(rVal)
+                if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
+                    realresult['geni_rspec'] = rspeccontent
+                if isinstance(realresult, dict):
+                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(realresult)
+
+#                header="<!-- Allocate %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
 
                 if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "allocate", ".json", len(clientList))
-                    #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", name, client.url, filename)
+                    filename = self._construct_output_filename(slicename, client.url, client.urn, "allocate", ".json", len(clientList))
+                    #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", slicename, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
                     retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
@@ -1349,7 +1391,7 @@ class AMCallHandler(object):
             retVal += "Allocated %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, len(clientList))
         elif successCnt == 0:
             retVal += "Allocate %s failed at %s" % (descripMsg, clientList[0].url)
-        self.logger.debug("Allocate Return: \n%s", pprint.pformat(retItem))
+        self.logger.debug("Allocate Return: \n%s", json.dumps(retItem, indent=2))
         return retVal, retItem
     # end of allocate
 
@@ -1463,7 +1505,10 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success
-                prettyResult = pprint.pformat(realresult)
+                if isinstance(realresult, dict):
+                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(realresult)
                 header="<!-- Provision %s at AM URL %s -->" % (descripMsg, client.url)
                 filename = None
 
@@ -1515,7 +1560,7 @@ class AMCallHandler(object):
             retVal += "Provisioned %s at %d out of %d aggregates.\n" % (descripMsg, successCnt, len(clientList))
         elif successCnt == 0:
             retVal += "Provision %s failed at %s" % (descripMsg, clientList[0].url)
-        self.logger.debug("Provision Return: \n%s", pprint.pformat(retItem))
+        self.logger.debug("Provision Return: \n%s", json.dumps(retItem, indent=2))
         return retVal, retItem
     # end of provision
 
@@ -1649,7 +1694,10 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-                prettyResult = pprint.pformat(realresult)
+                if isinstance(realresult, dict):
+                    prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(realresult)
                 header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
@@ -1668,7 +1716,7 @@ class AMCallHandler(object):
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                     successCnt += 1
 
-        self.logger.debug("POA %s result: %s", descripMsg, pprint.pformat(retItem))
+        self.logger.debug("POA %s result: %s", descripMsg, json.dumps(retItem, indent=2))
 
         if len(clientList) == 0:
             retVal += "No aggregates at which to PerformOperationalAction %s. %s\n" % (descripMsg, message)
@@ -1911,7 +1959,10 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
-                prettyResult = pprint.pformat(res)
+                if isinstance(res, dict):
+                    prettyResult = json.dumps(res, ensure_ascii=True, indent=2)
+                else:
+                    prettyResult = pprint.pformat(res)
                 header="Renewed %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
@@ -1928,7 +1979,7 @@ class AMCallHandler(object):
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif len(clientList) > 1:
             retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, len(clientList), urn, time_with_tz)
-        self.logger.debug("Renew Return: \n%s", pprint.pformat(retItem))
+        self.logger.debug("Renew Return: \n%s", json.dumps(retItem, indent=2))
         return retVal, retItem
     # End of renew
 
@@ -2000,13 +2051,17 @@ class AMCallHandler(object):
             (status, message) = self._retrieve_value(status, message, self.framework)
 
             if status:
-                prettyResult = pprint.pformat(status)
                 if not isinstance(status, dict):
                     # malformed sliverstatus return
                     self.logger.warn('Malformed sliver status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
                     # FIXME: Add something to retVal that the result was malformed?
                     if isinstance(status, str):
                         prettyResult = str(status)
+                    else:
+                        prettyResult = pprint.pformat(status)
+                else:
+                    prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:
@@ -2120,13 +2175,16 @@ class AMCallHandler(object):
 
             # FIXME: Check each sliver for errors, check got status on all requested slivers, ?
 
-            prettyResult = pprint.pformat(status)
             if not isinstance(status, dict):
                 # malformed status return
                 self.logger.warn('Malformed status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
                 # FIXME: Add something to retVal that the result was malformed?
                 if isinstance(status, str):
                     prettyResult = str(status)
+                else:
+                    prettyResult = pprint.pformat(status)
+            else:
+                prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
 
             missingSlivers = self._findMissingSlivers(status, slivers)
             if len(missingSlivers) > 0:
@@ -2155,7 +2213,7 @@ class AMCallHandler(object):
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
             retVal += "Returned status of slivers on %d of %d possible aggregates." % (successCnt, len(clientList))
-        self.logger.debug("Status result: " + pprint.pformat(retItem))
+        self.logger.debug("Status result: " + json.dumps(retItem, indent=2))
         return retVal, retItem
     # End of status
 
@@ -2361,7 +2419,18 @@ class AMCallHandler(object):
                     retVal = prStr + "\n"
                 self.logger.info(prStr)
 
-                prettyResult = pprint.pformat(realres)
+
+                if not isinstance(realres, dict):
+                    # malformed describe return
+                    self.logger.warn('Malformed delete result from AM %s. Expected struct, got type %s.' % (client.url, realres.__class__.__name__))
+                    # FIXME: Add something to retVal that the result was malformed?
+                    if isinstance(realres, str):
+                        prettyResult = str(realres)
+                    else:
+                        prettyResult = pprint.pformat(realres)
+                else:
+                    prettyResult = json.dumps(realres, ensure_ascii=True, indent=2)
+
                 header="Deletion of %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
@@ -2387,7 +2456,7 @@ class AMCallHandler(object):
             retVal = "No aggregates specified on which to delete slivers. %s" % message
         elif len(clientList) > 1:
             retVal = "Deleted slivers on %d out of a possible %d aggregates" % (successCnt, len(clientList))
-        self.logger.debug("Delete result: " + pprint.pformat(retItem))
+        self.logger.debug("Delete result: " + json.dumps(retItem, indent=2))
         return retVal, retItem
     # End of delete
 
@@ -2424,6 +2493,7 @@ class AMCallHandler(object):
         successCnt = 0
         successList = []
         failList = []
+        retItem = dict()
         (clientList, message) = self._getclients()
         msg = "Shutdown %s on " % (urn)
         op = "Shutdown"
@@ -2432,6 +2502,7 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client, msg + client.url, op, args)
             except BadClientException:
                 continue
+            retItem[client.url] = res
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -2455,7 +2526,10 @@ class AMCallHandler(object):
             retVal = "No aggregates specified on which to shutdown slice %s. %s" % (urn, message)
         elif len(clientList) > 1:
             retVal = "Shutdown slivers of slice %s on %d of %d possible aggregates" % (urn, successCnt, len(clientList))
-        return retVal, (successList, failList)
+        if self.opts.api_version < 3:
+            return retVal, (successList, failList)
+        else:
+            return retVal, retItem
 
     # End of AM API operations
     #######
@@ -2523,18 +2597,14 @@ class AMCallHandler(object):
         return (cver, None)
     # End of _checkValidClient
 
-    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
-        '''Write the given RSpec using _printResults.
-        If given a slicename, label the output as a manifest.
-        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
-        Use _construct_output_filename to build the output filename.
-        '''
-        # return just filename? retVal?
-        # Does this do logging? Or return what it would log? I think it logs, but....
-
+    def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
+        '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
         # Create HEADER
         if slicename:
-            header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+            if slivers and len(slivers) > 0:
+                header = "Reserved resources for:\n\tSlice: %s\n\tSlivers: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, slivers, urn, url)
+            else:
+                header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
         else:
             header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
         header = "<!-- "+header+" -->"
@@ -2572,6 +2642,18 @@ class AMCallHandler(object):
 
                 retVal = "No RSpec returned %sfrom %s%s" % (forslice, server, serversaid)
                 self.logger.warn(retVal)
+        return header, content, retVal
+
+    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
+        '''Write the given RSpec using _printResults.
+        If given a slicename, label the output as a manifest.
+        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
+        Use _construct_output_filename to build the output filename.
+        '''
+        # return just filename? retVal?
+        # Does this do logging? Or return what it would log? I think it logs, but....
+
+        (header, content, retVal) = self._getRSpecOutput(rspec, slicename, urn, url, message)
 
         filename=None
         # Create FILENAME
@@ -3207,7 +3289,7 @@ class AMCallHandler(object):
             if dateString is not None or self.opts.devmode:
                 time = dateutil.parser.parse(dateString)
         except Exception, exc:
-            msg = "Renew couldn't parse time from %s: %r" % (dateString, exc)
+            msg = "Renew couldn't parse time from %s: %s" % (dateString, exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:

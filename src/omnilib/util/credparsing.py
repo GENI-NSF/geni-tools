@@ -32,8 +32,66 @@ import logging
 import traceback
 import xml.dom.minidom as md
 
+# FIXME: Doesn't distinguish v2 vs v3 yet
 def is_valid_v3(logger, credString):
-    '''Is the given credential a valid sfa style v3 credential?'''
+    '''Is the given credential a valid geni_sfa style v3 credential?'''
+    if not logger:
+        logger = logging.getLogger("omnilib.credparsing")
+
+    if not credString:
+        logger.warn("None credString - not geni_sfa v3")
+        return False
+    if not isinstance(credString, str):
+        logger.warn("Not string credString %s", credString)
+        return False
+    if credString.strip() == "":
+        logger.warn("Empty string cred")
+        return False
+
+    if credString.startswith("-----BEGIN CERTIFICATE"):
+        logger.warn("Cred seems to be a certificate: %s", credString)
+        return False
+
+    if not credString.startswith("<?xml"):
+        logger.warn("No ?xml to start cred: %s", credString)
+        return False
+    if not "signed-credential" in credString:
+        logger.warn("No signed-credential in cred: %s", credString)
+        return False
+    if not "owner_gid" in credString:
+        logger.warn("No owner_gid in cred: %s", credString)
+        return False
+    if not "target_gid" in credString:
+        logger.warn("No target_gid in cred: %s", credString)
+        return False
+    if not "Signature" in credString:
+        logger.warn("No Signature in cred: %s", credString)
+        return False
+
+    try:
+        doc = md.parseString(credString)
+        signed_cred = doc.getElementsByTagName("signed-credential")
+
+        # Is this a signed-cred or just a cred?
+        if len(signed_cred) > 0:
+            cred = signed_cred[0].getElementsByTagName("credential")[0]
+        else:
+            logger.warn("No signed-credential element found")
+            return False
+
+        targetnode = cred.getElementsByTagName("target_urn")[0]
+        if len(targetnode.childNodes) > 0:
+            urn = str(targetnode.childNodes[0].nodeValue)
+        else:
+            logger.warn("No target_urn found")
+            return False
+    except Exception, exc:
+        logger.warn("Exception parsing cred to get target_urn: %s", exc)
+        return False
+
+# Want to rule out ABAC
+# Want to rule out geni_sfa v2 if possible
+
 # 1) Call:
 #    sfa.trust.credential.cred.verify(trusted_certs=None, schema=FIXME, trusted_certs_required=False)
     # Will have to check in the xsd I think
@@ -52,7 +110,7 @@ def is_valid_v3(logger, credString):
     return True
 
 def get_cred_target_urn(logger, cred):
-    '''Parse the given credential to get is target URN'''
+    '''Parse the given credential to get its target URN'''
     credString = get_cred_xml(cred)
     urn = ""
 
@@ -82,6 +140,13 @@ def get_cred_target_urn(logger, cred):
         targetnode = cred.getElementsByTagName("target_urn")[0]
         if len(targetnode.childNodes) > 0:
             urn = str(targetnode.childNodes[0].nodeValue)
+        else:
+            if logger is None:
+                level = logging.INFO
+                logging.basicConfig(level=level)
+                logger = logging.getLogger("omni.credparsing")
+                logger.setLevel(level)
+            logger.warn("Found no targetnode to get target_urn?")
     except Exception, exc:
         if logger is None:
             level = logging.INFO
@@ -146,6 +211,32 @@ def is_cred_xml(cred):
         return False
     if not isinstance(cred, str):
         return False
+    if cred.strip() == "":
+        return False
+    cred = cred.strip()
+    if not cred.startswith("<?xml"):
+        return False
+    if not "signed-credential" in cred:
+        return False
+
+    try:
+        doc = md.parseString(cred)
+        signed_cred = doc.getElementsByTagName("signed-credential")
+
+        # Is this a signed-cred or just a cred?
+        if len(signed_cred) > 0:
+            credEle = signed_cred[0].getElementsByTagName("credential")[0]
+        else:
+            return False
+
+        targetnode = credEle.getElementsByTagName("target_urn")[0]
+        if len(targetnode.childNodes) > 0:
+            urn = str(targetnode.childNodes[0].nodeValue)
+        else:
+            return False
+    except Exception, exc:
+        return False
+
     # Anything else? Starts with <?
     return True
 
