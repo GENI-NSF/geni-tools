@@ -768,20 +768,25 @@ class AMCallHandler(object):
             self.logger.debug("Doing listresources with %d creds, options %r", len(creds), options)
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
-            # Get the RSpec out of the result (accounting for API version diffs, ABAC)
-            (rspec, message) = self._retrieve_value(resp, message, self.framework)
-
-            # Per client result saving
-            if not rspec is None:
-                successCnt += 1
-                rspec2 = self._maybeDecompressRSpec(options, rspec)
-                if rspec2 and rspec2 != rspec:
+            # Decompress the RSpec before sticking it in retItem
+            rspec = None
+            if resp and isinstance(resp, dict) and resp.has_key('value') and isinstance(resp['value'], str):
+                rspec = self._maybeDecompressRSpec(options, resp['value'])
+                if rspec and rspec != resp['value']:
                     self.logger.debug("Decompressed RSpec")
-                rspecs[(client.urn, client.url)] = rspec2
+                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                    successCnt += 1
+                    rspec = rspec_util.getPrettyRSpec(rspec)
+                else:
+                    self.logger.warn("Didn't get a valid RSpec!")
+                    if mymessage != "":
+                        mymessage += ". "
+                    mymessage += "No resources from AM %s: %s" % (client.url, message)
             else:
-                if mymessage != "":
-                    mymessage += ". "
-                mymessage += "No resources from AM %s: %s" % (client.url, message)
+                self.logger.warn("Return struct missing proper rspec in value element!")
+
+            # Return for tools is the full code/value/output triple
+            rspecs[(client.urn, client.url)] = resp
 
         if len(clientList) > 0:
             self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
@@ -850,17 +855,21 @@ class AMCallHandler(object):
             else:
                 prtStr += " (no reason given)"
             self.logger.info( prtStr )
-            return prtStr, None
+            return prtStr, {}
 
         # Loop over RSpecs and print them
         returnedRspecs = {}
         fileCtr = 0
         savedFileDesc = ""
-        for ((urn,url), rspec) in rspecs.items():                        
-            returnedRspecs[(urn,url)] = rspec
+        for ((urn,url), rspecStruct) in rspecs.items():
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
+            rspecOnly, message = self._retrieve_value( rspecStruct, message, self.framework)
+            if self.opts.api_version < 3:
+                returnedRspecs[(urn,url)] = rspecOnly
+            else:
+                returnedRspecs[url] = rspecStruct
 
-            retVal, filename = self._writeRSpec(rspec, slicename, urn, url, None, len(rspecs))
+            retVal, filename = self._writeRSpec(rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
                 savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
         # End of loop over rspecs
