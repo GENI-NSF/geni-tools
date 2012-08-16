@@ -807,8 +807,10 @@ class AMCallHandler(object):
             else:
                 self.logger.warn("Return struct missing proper rspec in value element!")
 
+            resp2 = resp
+            resp2['value']=rspec
             # Return for tools is the full code/value/output triple
-            rspecs[(client.urn, client.url)] = resp
+            rspecs[(client.urn, client.url)] = resp2
 
         if len(clientList) > 0:
             self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
@@ -922,7 +924,7 @@ class AMCallHandler(object):
         for ((urn,url), rspecStruct) in rspecs.items():
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
             rspecOnly, message = self._retrieve_value( rspecStruct, message, self.framework)
-            if self.opts.api_version < 3:
+            if self.opts.api_version < 2:
                 returnedRspecs[(urn,url)] = rspecOnly
             else:
                 returnedRspecs[url] = rspecStruct
@@ -2726,7 +2728,7 @@ class AMCallHandler(object):
                 if slicename:
                     retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
                 else:
-                    retVal = "Invalid RSpec returned from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
+                    retVal = "Invalid RSpec returned from %s that starts: %s..." % (server, str(rspec)[:min(40, len(rspec))])
                 if message:
                     self.logger.warn("Server said: %s", message)
                     retVal += "; Server said: %s" % message
