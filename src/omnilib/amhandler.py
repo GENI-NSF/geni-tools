@@ -673,7 +673,7 @@ class AMCallHandler(object):
         that it supports that format.
 
         Returns a dictionary of rspecs with the following format:
-           rspecs[(urn, url)] = decompressed rspec
+           rspecs[(urn, url)] = return struct, containing a decompressed rspec
            AND a string describing the result.
         On error the dictionary is None and the message explains.
 
@@ -830,7 +830,10 @@ class AMCallHandler(object):
         1 RSpec format.
 
         Returns a dictionary of rspecs with the following format:
+         API V1&2:
            rspecs[(urn, url)] = decompressed rspec
+         API V3+:
+           rspecs[url] = return struct containing a decompressed rspec
 
         Output directing options:
         -o Save result RSpec (XML format) in per-Aggregate files
@@ -1154,7 +1157,8 @@ class AMCallHandler(object):
     def createsliver(self, args):
         """AM API CreateSliver call
         CreateSliver <slicename> <rspec file>
-        Return on success the manifest RSpec(s)
+        Return on success the manifest RSpec
+        For use in AM API v1+2 only. For AM API v3+, use allocate(), provision, and performoperationalaction().
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1162,12 +1166,25 @@ class AMCallHandler(object):
 
         -a Contact only the aggregate at the given URL, or with the given
          nickname that translates to a URL in your omni_config
-        --slicecredfile Read slice credential from given file, if it exists
-        -o Save result (manifest rspec) in per-Aggregate files
-        -p (used with -o) Prefix for resulting manifest RSpec files
+
+        Output directing options:
+        -o writes output to file instead of stdout; single file per aggregate.
+        -p gives filename prefix for each output file
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
 
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-rspec-localhost-8001.json
+
+        --devmode: Continue on error if possible
+
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        --slicecredfile Read slice credential from given file, if it exists
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
