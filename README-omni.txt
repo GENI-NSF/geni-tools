@@ -480,33 +480,33 @@ Copyright (c) 2012 Raytheon BBN Technologies
 
 omni.py [options] <command and arguments> 
 
- 	 Commands and their arguments are: 
- 		AM API functions: 
- 			 getversion 
- 			 listresources [In AM API V1 and V2 optional: slicename] 
- 			 describe slicename [AM API V3 only] 
- 			 createsliver <slicename> <rspec file> [AM API V1&2 only] 
- 			 allocate <slicename> <rspec file> [AM API V3 only] 
- 			 provision <slicename> [AM API V3 only] 
- 			 performoperationalaction <slicename> <action> [AM API V3 only] 
- 			 poa <slicename> <action> [AM API V3 only] 
+ 	 Commands and their arguments are:
+ 		AM API functions:
+ 			 getversion
+ 			 listresources [In AM API V1 and V2 optional: slicename]
+ 			 describe slicename [AM API V3 only]
+ 			 createsliver <slicename> <rspec file> [AM API V1&2 only]
+ 			 allocate <slicename> <rspec file> [AM API V3 only]
+ 			 provision <slicename> [AM API V3 only]
+ 			 performoperationalaction <slicename> <action> [AM API V3 only]
+ 			 poa <slicename> <action> [AM API V3 only]
  			 sliverstatus <slicename> [AMAPI V1&2 only]
  			 status <slicename> [AMAPI V3 only]
- 			 renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only] 
- 			 renew <slicename> <new expiration time in UTC> [AM API V3 only] 
- 			 deletesliver <slicename> [AM API V1&2 only] 
- 			 delete <slicename> [AM API V3 only] 
- 			 shutdown <slicename> 
- 		Clearinghouse / Slice Authority functions: 
- 			 listaggregates 
- 			 createslice <slicename> 
- 			 getslicecred <slicename> 
- 			 renewslice <slicename> <new expiration time in UTC> 
- 			 deleteslice <slicename> 
- 			 listmyslices <username> 
- 			 listmykeys 
- 			 getusercred 
- 			 print_slice_expiration <slicename> 
+ 			 renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only]
+ 			 renew <slicename> <new expiration time in UTC> [AM API V3 only]
+ 			 deletesliver <slicename> [AM API V1&2 only]
+ 			 delete <slicename> [AM API V3 only]
+ 			 shutdown <slicename>
+ 		Clearinghouse / Slice Authority functions:
+ 			 listaggregates
+ 			 createslice <slicename>
+ 			 getslicecred <slicename>
+ 			 renewslice <slicename> <new expiration time in UTC>
+ 			 deleteslice <slicename>
+ 			 listmyslices <username>
+ 			 listmykeys
+ 			 getusercred
+ 			 print_slice_expiration <slicename>
 
 	 See README-omni.txt for details.
 	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
@@ -609,11 +609,16 @@ Print the known aggregates' URN and URL.
            List just the aggregate from the commandline, looking up
            the nickname in omni_config
  
- Gets the aggregates list from the commandline, or from the
- omni_config 'aggregates' option, or from the Clearinghouse.
+ Gets aggregates from:
+ - command line (one per -a arg, no URN available), OR
+ - command line nickname (one per -a arg, URN may be supplied), OR
+ - omni_config 'aggregates' entry (1+, no URNs available), OR
+ - Specified control framework (via remote query). This is the
+ aggregates that registered with the framework.
 
 ==== createslice ====
-Creates the slice in your chosen control framework.
+Creates the slice in your chosen control framework (cf) - that is, at
+your selected slice authority.
 
  * format:  omni.py createslice <slice-name>
  * examples: 
@@ -634,12 +639,47 @@ Creates the slice in your chosen control framework.
 
  Note also that typical slice lifetimes are short. See RenewSlice.
 
+==== getslicecred ====
+Get the AM API compliant slice credential (signed XML document)
+for the given slice name.
+
+ * format: omni.py getslicecred <slicename>
+
+ * examples:
+  * Get slice mytest credential from slice authority, save to a file:
+      omni.py -o getslicecred mytest
+
+  * Get slice mytest credential from slice authority,
+    save to a file with filename prefix mystuff:
+      omni.py -o -p mystuff getslicecred mytest
+
+  * Get slice mytest credential from slice authority,
+    save to a file with name mycred.xml:
+      omni.py -o --slicecredfile mycred.xml getslicecred mytest
+
+  * Get slice mytest credential from saved file
+    delegated-mytest-slicecred.xml (perhaps this is a delegated credential?):
+      omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
+
+If you specify the -o option, the credential is saved to a file.
+The filename is <slicename>-cred.xml
+But if you specify the --slicecredfile option then that is the filename used.
+
+Additionally, if you specify the --slicecredfile option and that
+references a file that is not empty, then we do not query the Slice
+Authority for this credential, but instead read it from this file.
+
+Arg: slice name
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
 ==== renewslice ====
 Renews the slice at your chosen control framework. If your slice
 expires, you will be unable to reserve resources or delete
 reservations at aggregates.
 
- * format:  omni.py renewslice <slice-name> <date-time>
+ * format:  omni.py renewslice <slice-name> <new expiration date-time>
  * example: omni.py renewslice myslice 20100928T15:00:00Z
 
 Slice name could be a full URN, but is usually just the slice name portion.
@@ -655,7 +695,8 @@ without timezones). The slice authority may interpret the time as a
 local time in its own timezone.
 
 ==== deleteslice ====
-Deletes the slice in your chosen control framework.
+Deletes the slice (at your chosen control framework); does not delete
+any existing slivers or free any reserved resources.
 
  * format:  omni.py deleteslice <slice-name> 
  * example: omni.py deleteslice myslice
@@ -677,40 +718,12 @@ Not supported by all frameworks.
  * format: omni.py listmyslices <username>
  * example: omni.py listmyslices jdoe
 
-==== getslicecred ====
-Get the AM API compliant slice credential (signed XML document)
-for the given slice name
+==== listmykeys ====
+Provides a list of SSH public keys registered at the configured
+control framework for the current user.
+Not supported by all frameworks.
 
- * format: omni.py getslicecred <slicename>
-
- * examples:
-  * Get slice mytest credential from slice authority, save to a file:
-      omni.py -o getslicecred mytest
-
-  * Get slice mytest credential from slice authority,
-    save to a file with prefix mystuff:
-      omni.py -o -p mystuff getslicecred mytest
-
-  * Get slice mytest credential from slice authority,
-    save to a file with name mycred.xml:
-      omni.py -o --slicecredfile mycred.xml getslicecred mytest
-
-  * Get slice mytest credential from saved file 
-    delegated-mytest-slicecred.xml (perhaps this is a delegated credential?): 
-      omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
-
-If you specify the -o option, the credential is saved to a file.
-The filename is <slicename>-cred.xml
-But if you specify the --slicecredfile option then that is the filename used.
-
-Additionally, if you specify the --slicecredfile option and that
-references a file that is not empty, then we do not query the Slice
-Authority for this credential, but instead read it from this file.
-
-Arg: slice name
-Slice name could be a full URN, but is usually just the slice name portion.
-Note that PLC Web UI lists slices as <site name>_<slice name>
-(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+ * example: omni.py listmykeys
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -725,8 +738,20 @@ the configured slice authority.
   * Get the user credential from the slice authority and save it to a file:
       omni.py -o getusercred
 
+This is primarily useful for debugging.
+
 If you specify the -o option, the credential is saved to a file.
-The filename is <framework>-usercred.xml.
+  If you specify --usercredfile:
+    First, it tries to read the user credential from that file.
+    Second, it saves the user credential to a file by that name (but
+  with the appropriate extension).
+  Otherwise, the filename is <username>-<framework nickname from
+  config file>-usercred.[xml or json, depending on AM API version].
+  If you specify the --prefix option then that string starts the filename.
+
+If instead of the -o option, you supply the --tostdout option, then
+the usercred is printed to STDOUT.
+Otherwise the usercred is logged.
 
 ==== print_slice_expiration ====
 Print the expiration time of the given slice, and a warning if it is
@@ -835,6 +860,8 @@ the number of Aggregates represented (omnispecs), or
 which aggregate is represented (native format).
 e.g.: myprefix-myslice-rspec-localhost-8001.xml
 
+==== describe ====
+
 ==== createsliver ====
 The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
 
@@ -905,6 +932,14 @@ remote resource and aggregate support this.
 Note you likely want to check SliverStatus to ensure your resource comes up.
 And check the sliver expiration time: you may want to call RenewSliver.
 
+==== allocate ====
+
+==== provision ====
+
+==== performoperationalaction ====
+
+==== poa ====
+
 ==== renewsliver ====
 Calls the AM API RenewSliver function
 
@@ -948,6 +983,8 @@ that says {{{Fault 111: "Internal API error: can't compare
 offset-naive and offset-aware date times"}}} you should add the
 "--no-tz" flag to the omni renewsliver command line.
 
+==== renew ====
+
 ==== sliverstatus ====
 GENI AM API SliverStatus function
 
@@ -983,6 +1020,8 @@ Options:
  - --api-version specifies the version of the AM API to speak.
     AM API version 1 is the default.
 
+==== status ====
+
 ==== deletesliver ====
 Calls the GENI AM API DeleteSliver function. 
 This command will free any resources associated with your slice at
@@ -1007,6 +1046,8 @@ Aggregates queried:
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+==== delete ====
 
 ==== shutdown ====
 Calls the GENI AM API Shutdown function

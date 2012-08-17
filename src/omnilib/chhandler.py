@@ -83,7 +83,7 @@ class CHCallHandler(object):
         return getattr(self,call)(args[1:])
 
     def listaggregates(self, args):
-        """Print the known aggregates' URN and URL
+        """Print the known aggregates' URN and URL.
         Gets aggregates from:
         - command line (one per -a arg, no URN available), OR
         - command line nickname (one per -a arg, URN may be supplied), OR
@@ -176,8 +176,10 @@ class CHCallHandler(object):
         """Renew the slice at the clearinghouse so that the slivers can be
         renewed.
         Args: slicename, and expirationdate
+
           Note that Slice Authorities may interpret dates differently if you do not
           specify a timezone. SFA drops any timezone information though.
+
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
@@ -315,7 +317,7 @@ class CHCallHandler(object):
           Get user credential, save to a file:
             omni.py -o getusercred
 
-          Get user credential, save to a file with prefix mystuff:
+          Get user credential, save to a file with filename prefix mystuff:
             omni.py -o -p mystuff getusercred
 """
         if self.opts.api_version >= 3:
