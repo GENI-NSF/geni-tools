@@ -813,6 +813,9 @@ class AMCallHandler(object):
                     resp = rspec
             else:
                 self.logger.warn("Return struct missing proper rspec in value element!")
+                if mymessage != "":
+                    mymessage += ". "
+                mymessage += "No resources from AM %s: %s" % (client.url, message)
 
             # Return for tools is the full code/value/output triple
             rspecs[(client.urn, client.url)] = resp
@@ -921,7 +924,7 @@ class AMCallHandler(object):
 
         # Loop over RSpecs and print them
         returnedRspecs = {}
-        fileCtr = 0
+        rspecCtr = 0
         savedFileDesc = ""
         for ((urn,url), rspecStruct) in rspecs.items():
             self.logger.debug("Getting RSpec items for AM urn %s (%s)", urn, url)
@@ -930,31 +933,35 @@ class AMCallHandler(object):
                 returnedRspecs[(urn,url)] = rspecOnly
             else:
                 returnedRspecs[url] = rspecStruct
+            if rspecOnly and rspecOnly != "":
+                rspecCtr += 1
 
             retVal, filename = self._writeRSpec(rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
                 savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
         # End of loop over rspecs
+        self.logger.debug("rspecCtr %d", rspecCtr)
 
         # Create RETURNS
         # FIXME: If numAggs is 1 then retVal should just be the rspec?
 #--- AM API specific:
         if slicename:
-            retVal = "Retrieved resources for slice %s from %d aggregate(s)."%(slicename, numAggs)
+            retVal = "Queried resources for slice %s from %d of %d aggregate(s)."%(slicename, rspecCtr, numAggs)
 #---
         else:
-            retVal = "Retrieved resources from %d aggregate(s)."%(numAggs)
+            retVal = "Queried resources from %d of %d aggregate(s)." % (rspecCtr, numAggs)
 
         if numAggs > 0:
             retVal +="\n"
             if len(returnedRspecs.keys()) > 0:
-                retVal += "Wrote rspecs from %d aggregate(s)" % numAggs
                 if self.opts.output:
+                    retVal += "Wrote rspecs from %d aggregate(s)" % numAggs
                     retVal +=" to %d file(s)"% len(rspecs)
                     retVal += "\n" + savedFileDesc
             else:
-                retVal +="No Rspecs succesfully parsed from %d aggregate(s)" % numAggs
-            retVal +="."
+                retVal +="No Rspecs succesfully parsed from %d aggregate(s)." % numAggs
+            if message:
+                retVal += message
 
         retItem = returnedRspecs
 
