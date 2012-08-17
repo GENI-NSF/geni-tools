@@ -253,7 +253,6 @@ def initialize(argv, options=None ):
 
 
 ####
-# FIXMEFIXME: Change this to not do doNonNativeList - omnispecs are gone
 def call(argv, options=None, verbose=False):
     """Method to use when calling omni as a library
 
