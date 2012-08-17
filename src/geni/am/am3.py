@@ -336,8 +336,10 @@ class ReferenceAggregateManager(object):
         # Look to see what RSpec version the client requested
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
+        if isinstance(rspec_type, str):
+            rspec_type = rspec_type.lower().strip()
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'GENI':
+        if rspec_type != 'geni':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(AM_API.BAD_VERSION,
                                     'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
@@ -684,8 +686,10 @@ class ReferenceAggregateManager(object):
         # Look to see what RSpec version the client requested
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
+        if isinstance(rspec_type, str):
+            rspec_type = rspec_type.lower().strip()
         rspec_version = options['geni_rspec_version']['version']
-        if rspec_type != 'GENI':
+        if rspec_type != 'geni':
             self.logger.error('Describe: Unknown RSpec type %s requested', rspec_type)
             return self.errorResult(AM_API.BAD_VERSION,
                                     'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))

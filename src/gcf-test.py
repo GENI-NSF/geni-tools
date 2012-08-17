@@ -372,7 +372,7 @@ def test_list_resources(server, credentials, compressed=False, available=True,
     if apiver == 1:
         options = dict(geni_compressed=compressed, geni_available=available)
     else:
-        options = dict(geni_compressed=compressed, geni_available=available, geni_rspec_version=(dict(type="GENI", version="3")))
+        options = dict(geni_compressed=compressed, geni_available=available, geni_rspec_version=(dict(type="geni", version="3")))
     if slice_urn:
         options['geni_slice_urn'] = slice_urn
     if apiver > 2 and slice_urn:
