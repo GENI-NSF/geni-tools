@@ -31,6 +31,6 @@ $ sudo easy_install m2crypto
 
 4- Make sure scripts use python26:
 
-Edit src/gen-certs.py, src/gcf-ch.py and src/gcf-am.py line 1:
+Edit src/gen-certs.py, src/gcf-ch.py, src/gcf-am.py, src/omni.py and others line 1:
 
 #!/usr/bin/env python26

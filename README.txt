@@ -6,9 +6,11 @@ GENI Reference Control Framework
 Description
 ===========
 
-This software implements a sample GENI Aggregate Manager. It also
+The GCF package implements a sample GENI Aggregate Manager. It also
 includes a sample GENI Clearinghouse and command line test client. This
-software is intended to demonstrate the GENI Aggregate Manager API.
+software is intended to demonstrate the GENI Aggregate Manager
+API. The Omni command line tool is also included with the GCF package:
+see README-omni.txt.
 
 
 Installation & Getting Started
@@ -51,9 +53,9 @@ Full details on options for each step are described below.
 0. Edit gcf_config (typically in the current directory; find a
    template in gcf_config.sample) to configure your clearinghouse and
    aggregate manager.  The default values should be fine for most
-   settings, but you should change the base_name (URN) to be specific
+   settings, but you may change the base_name (URN) to be specific
    to you.  The keys and certificates will be generated in
-   src/gen-certs.py in Step 1 to the destinations you enter in
+   src/gen-certs.py in Step 1 to the paths you enter in
    gcf_config.
  
 1. Generate keys and certificates for your users, clearinghouse, and 
@@ -76,7 +78,7 @@ Full details on options for each step are described below.
    Override the default locations by specifying the -f argument.
 
    A directory for trusted_roots is used or created, and your CH
-   certificate is copied there. This is used in Federation (see
+   certificate is copied there. This directory is used in Federation (see
    below).
 
 2. Start the clearinghouse server:
@@ -114,11 +116,13 @@ Full details on options for each step are described below.
    sure to listen on the desired interface and address the Aggregate
    Manager / Clearinghouse consistently.
 
-   See gcf_config clearinghouse section for relevant constants.  Note
+   Supply the --debug argument for more detailed logging.
+
+   See the gcf_config clearinghouse section for relevant constants.  Note
    that slice URNs are globally unique, and constrained to be proper
    children of their Clearinghouse (Slice Authority).  Another
    constant you may want to change is the lifetime of Slice
-   credentials. By default they last 3600 seconds. That is likely too
+   credentials. By default they last 7200 seconds. That is likely too
    short to actually use any allocated resources.
  
 3. Start the aggregate manager server:
@@ -136,12 +140,13 @@ Full details on options for each step are described below.
    directory. Override that by specifying the -f argument. See the
    aggregate_manager section.  Note in particular that you name your
    aggregate manager, and could generate multiple aggregate manager
-   certificates be editing gcf_config and re-running gen-certs.
+   certificates by editing gcf_config and re-running gen-certs.
 
-   NOTE: The -r ch-cert.pem is a file name with the CH cert, or better
-   still, a directory with all trusted root certs.  These certs will
-   be used to verify slices and resource requests from the control
-   frameworks that you have federated with.
+   NOTE: The -r ch-cert.pem option specifies the name of the file with
+   the CH cert, or better still, a directory with all trusted root
+   certs.
+   These certs will be used to verify slices and resource requests
+   from the control frameworks that you have federated with.
 
    Optional arguments include -H to specify a full hostname, -p to
    listen on a port other than 8001, and --debug for debugging output.
@@ -149,6 +154,11 @@ Full details on options for each step are described below.
    same as listening on a real hostname / IP address. Be sure to
    listen on the desired interface and address the Aggregate Manager /
    Clearinghouse consistently.
+
+   You can also optionally specify the API version that this aggregate should
+   implement, using the -V option. The default is API version 2, and
+   valid values include 1, 2 and 3.
+   Supply the --debug argument for more detailed logging.
 
 4. Run the GCF installation testing client:
 
@@ -171,18 +181,22 @@ Full details on options for each step are described below.
 
    Optional arguments --debug and --debug-rpc enable more debug
    output.
+   Optional argument -V allows specifying the AM API version to run
+   against the specified aggregate: the default is 2, and valid values
+   are 1 and 2.
 
    Note that you can use user credentials from any federated control
    framework, as long as the appropriate CH certificates were supplied
    to the -r arguments to gcf-ch and gcf-am above.
 
 5. See README-omni.txt for instructions on running the OMNI GENI
-   Client. Omni is a sample command line interface for doing arbitrary
+   Client. Omni is a command line tool for doing arbitrary
    commands against multiple Aggregate Managers.
 
 6. Federating: Interacting with multiple Control Frameworks.
  
-   With federation, a user from one control framework can use their
+   With federation, a user from one control framework (or
+   clearinghouse and slice authority) can use their
    certificate and slice credentials to allocate resources from
    aggregates affiliated with other control frameworks.  In a
    federated network, each clearinghouse lists to its users all of the
@@ -208,16 +222,8 @@ Full details on options for each step are described below.
    above. This is not particularly necessary for the Clearinghouse
    (gcf-ch), but is necessary for the Aggregate Manager (gcf-am).
 
-   To add a any root certificate to an OpenFlow (Expedient) aggregate manager, 
-   copy the file to
-     /etc/expedient/gcf-x509.crt as [something].crt
-   In /etc/expedient/apache/ca-certs, do:
-     sudo make
-   This should run the local Makefile, creating a symlink [something].0
-   to the .crt file in the gcf-x509.crt directory.
-
-   Then restart Apache:
-     sudo service apache2 restart
+   There is a similar for ProtoGENI (InstaGENI), FOAM, and Orca
+   (ExoGENI) aggregates.
 
 6.2 Listing Aggregates -- Do this on all peered clearinghouses
 
@@ -246,14 +252,17 @@ Full details on options for each step are described below.
 
      openssl x509 -in [cert of AM] -text | grep "urn:publicid:IDN"
 
+   There is a similar for ProtoGENI (InstaGENI), FOAM, and Orca
+   (ExoGENI) aggregates.
+
 
 Further Reading
 ===============
 
 The GENI API pages on the GENI wiki have full details on GENI identifiers,
-credentials and certificates.
+credentials and certificates, and the GENI AM API.
 
 See http://groups.geni.net/geni/wiki/GeniApi
 
-Known issues and further documentation are on the GCF Wiki:
+Known issues, Omni tutorials and further documentation are on the GCF Wiki:
 http://trac.gpolab.bbn.com/gcf

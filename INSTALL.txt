@@ -1,8 +1,10 @@
-This file documents how to install and run the gcf package.
+This file documents how to install and run the gcf package, including
+the Omni command-line tool.
 
-See README.txt for details on the usage of the gcf package.
+See README.txt for details on the usage of the gcf package, and
+README-omni.txt for details on Omni.
 
-Omni users may start here to ensure software dependencies are met.
+Omni users follow these install instructions to ensure software dependencies are met.
 
 
 1) Software Dependencies
@@ -158,7 +160,7 @@ Testing Shutdown... passed
 
 4) Next Steps
 =============
-If you ran in to issues or your output looks different
+If you ran in to issues or your output looks different:
 - Confirm you followed the install instructions including dependencies
 - See http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot for more detailed help
 
