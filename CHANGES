@@ -1,8 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.0:
- Added support for AM API v3. V2 is the default.
  * omni
+   - Added support for AM API v3. V2 is the default.
    - Removed support for omnispecs
    - GENI v3 RSpecs are now the default
    - Added --devmode, to try to continue on errors or bad inputs (for
@@ -13,6 +13,7 @@ gcf 2.0:
    - Cache GetVersion results for selecting RSpec versions
 
  * gcf
+   - Added support for AM API v3. V2 is the default.
 
  * AM API acceptance tests
 
