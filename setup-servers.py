@@ -30,7 +30,7 @@ setup(name='gcf-servers',
       scripts=['src/gcf-ch.py','src/gcf-am.py','src/gcf-test.py','src/gen-certs.py'],
       author='gpo',
       author_email='gcf-dev@geni.net',
-      url='http://www.geni.net',
+      url='http://trac.gpolab.bbn.com/gcf',
       requires=['gcf_lib',],
       provides=['gcf_servers'],
       )

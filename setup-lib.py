@@ -29,6 +29,6 @@ setup(name='gcf-lib',
       py_modules=['geni.__init__', 'geni.SecureXMLRPCServer'],
       author='gpo',
       author_email='gcf-dev@geni.net',
-      url='http://www.geni.net',
+      url='http://trac.gpolab.bbn.com/gcf',
       provides=['gcf_lib',]
       )

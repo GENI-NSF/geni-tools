@@ -19,15 +19,9 @@ servers-clean:
 
 lib-clean:
 	python setup-lib.py clean
-	
+
 omni-clean:
 	python setup-omni.py clean
-
-
-
-	
-
-
 
 source: servers-source lib-source omni-source
 
@@ -39,7 +33,6 @@ lib-source: clean
 
 omni-source: clean
 	python setup-omni.py sdist -t MANIFEST.in.omni
-
 
 
 # To make rpm files on Fedora, first install python-dev and rpm-build
@@ -54,7 +47,7 @@ lib-rpm: clean
 	cp MANIFEST.in.lib MANIFEST.in ;\
 	python setup-lib.py bdist_rpm --requires="python >= 2.6 m2crypto xmlsec1-openssl-devel libxslt-python python-ZSI python-lxml python-setuptools python-dateutil" ;\
 	rm MANIFEST.in
-	
+
 omni-rpm: clean
 	cp MANIFEST.in.omni MANIFEST.in ;\
 	python setup-omni.py bdist_rpm --requires="python >= 2.6 python-dateutil";\
@@ -62,7 +55,7 @@ omni-rpm: clean
 
 
 # To make deb files on an ubuntu install, first install python-dev, alien, and dh-make  
-	
+
 deb: lib-deb servers-deb omni-deb
 
 lib-deb: lib-rpm
@@ -77,7 +70,7 @@ lib-deb: lib-rpm
 	dpkg-buildpackage -rfakeroot;\
 	cd ..;\
 	cp *.deb ../dist/ ;\
-	
+
 servers-deb: servers-rpm
 	VER=`perl -n -e 'print $$1 if /version="(.*)",/ ' setup-servers.py` ; \
 	cp dist/gcf-servers-$$VER-1.noarch.rpm build/ ;\
@@ -90,7 +83,7 @@ servers-deb: servers-rpm
 	dpkg-buildpackage -rfakeroot;\
 	cd ..;\
 	cp *.deb ../dist/ ;\
-	
+
 omni-deb: omni-rpm
 	VER=`perl -n -e 'print $$1 if /version="(.*)",/ ' setup-omni.py` ; \
 	cp dist/omni-$$VER-1.noarch.rpm build/ ;\

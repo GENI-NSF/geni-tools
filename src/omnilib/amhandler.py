@@ -526,7 +526,7 @@ class AMCallHandler(object):
     def _selectRSpecVersion(self, slicename, client, mymessage, options):
         '''Helper for Describe and ListResources to set the rspec_version option, based on a single AMs capabilities.
         Uses -t argument: If user specified an RSpec type and version, then only
-        use AMs that support that type/version.
+        use AMs that support that type/version (default is GENI 3).
         Return dict with API version appropriate key specifying RSpec type/version
         to request, plus a message describing results.
         Raise a BadClientException if the AM cannot support the given RSpect type
@@ -669,8 +669,8 @@ class AMCallHandler(object):
         - List of URNs and URLs provided by the selected clearinghouse
 
         If you specify a required Ad RSpec type and version (both strings. Use the -t option)
-        then it skips any AM that doesn't advertise (in GetVersion)
-        that it supports that format.
+        then it skips any AM that doesn't advertise (in GetVersion) that it supports that format.
+        Note that -t GENI 3 is the default.
 
         Returns a dictionary of rspecs with the following format:
            rspecs[(urn, url)] = return struct, containing a decompressed rspec
@@ -828,11 +828,8 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
-        -t <type version>: Specify a required RSpec type and version to return.
-        It skips any AM that doesn't advertise (in GetVersion)
-        that it supports that format.
-        Note that this option is required at AM API v2+ aggregates that support more than
-        1 RSpec format.
+        -t <type version>: Default "GENI 3". Specify a required RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion) that it supports that format.
 
         Returns a dictionary of rspecs with the following format:
          API V1&2:
@@ -870,17 +867,14 @@ class AMCallHandler(object):
 
         Sample usage:
         Call AM API v2 ListResources at 1 Aggregate for 1 slice, getting the manifest RSpec
-        in GENI v3 RSpec format
-        omni.py -a http://myaggregate/url -V2 -t GENI 3 listresources myslice
+        omni.py -a http://myaggregate/url -V2 listresources myslice
 
         Call AM API v3 ListResources at 1 Aggregate, getting the Ad RSpec
-        in GENI v3 RSpec format
-        omni.py -a http://myaggregate/url -V3 -t GENI 3 listresources
+        omni.py -a http://myaggregate/url -V3 listresources
 
-        Do AM API v3 ListResources from 1 aggregate, in GENI v3 RSpec format
-        saving the results in a specific file,
+        Do AM API v3 ListResources from 1 aggregate saving the results in a specific file,
         with the aggregate name (constructed from the URL) inserted into the filename:
-        omni.py -a http://myaggregate/url -V3 -t GENI 3 -o --outputfile AdRSpecAt%a.xml listresources
+        omni.py -a http://myaggregate/url -V3 -o --outputfile AdRSpecAt%a.xml listresources
         """
 #--- API version specific
         # An optional slice name might be specified.
@@ -997,9 +991,7 @@ class AMCallHandler(object):
 
         -t <type version>: Specify a required manifest RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
-        that it supports that format.
-        Note that this option is required at AM API v2+ aggregates that support more than
-        1 RSpec format.
+        that it supports that format. Default is "GENI 3".
 
         --slicecredfile says to use the given slicecredfile if it exists.
 
@@ -1014,15 +1006,14 @@ class AMCallHandler(object):
         Sample usage:
         Describe at 1 Aggregate, getting the Manifest RSpec
         in GENI v3 RSpec format
-        omni.py -a http://myaggregate/url -V3 -t GENI 3 describe myslice
+        omni.py -a http://myaggregate/url -V3 describe myslice
 
-        Describe from 2 aggregates, in GENI v3 RSpec format
-        saving the results in a specific file,
+        Describe from 2 aggregates, saving the results in a specific file,
         with the aggregate name (constructed from the URL) inserted into the filename:
-        omni.py -a http://myaggregate/url -a http://another/aggregate -V3 -t GENI 3 -o --outputfile AdRSpecAt%a.xml describe myslice
+        omni.py -a http://myaggregate/url -a http://another/aggregate -V3 -o --outputfile AdRSpecAt%a.xml describe myslice
 
         Describe 2 slivers from a particular aggregate
-        omni.py -a http://myaggregate/url -V3 -t GENI 3 describe myslice -u urn:publicid:IDN:myam+sliver+sliver1 -u urn:publicid:IDN:myam+sliver+sliver2
+        omni.py -a http://myaggregate/url -V3 describe myslice -u urn:publicid:IDN:myam+sliver+sliver1 -u urn:publicid:IDN:myam+sliver+sliver2
       """
         if self.opts.api_version < 3:
             if self.opts.devmode:
