@@ -791,9 +791,13 @@ class AMCallHandler(object):
             (resp, message) = _do_ssl(self.framework, None, ("List Resources at %s" % (client.url)), client.ListResources, creds, options)
 
             # Decompress the RSpec before sticking it in retItem
-            if resp and isinstance(resp, dict) and resp.has_key('value') and isinstance(resp['value'], str):
-                rspec = self._maybeDecompressRSpec(options, resp['value'])
-                if rspec and rspec != resp['value']:
+            if resp and (self.opts.api_version == 1 or (self.opts.api_version > 1 and isinstance(resp, dict) and resp.has_key('value') and isinstance(resp['value'], str))):
+                if self.opts.api_version > 1:
+                    origRSpec = resp['value']
+                else:
+                    origRSpec = resp
+                rspec = self._maybeDecompressRSpec(options, origRSpec)
+                if rspec and rspec != origRSpec:
                     self.logger.debug("Decompressed RSpec")
                 if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
                     successCnt += 1
@@ -803,7 +807,10 @@ class AMCallHandler(object):
                     if mymessage != "":
                         mymessage += ". "
                     mymessage += "No resources from AM %s: %s" % (client.url, message)
-                resp['value']=rspec
+                if self.opts.api_version > 1:
+                    resp['value']=rspec
+                else:
+                    resp = rspec
             else:
                 self.logger.warn("Return struct missing proper rspec in value element!")
 
