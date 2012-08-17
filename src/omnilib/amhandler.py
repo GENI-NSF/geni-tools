@@ -1186,7 +1186,7 @@ class AMCallHandler(object):
 
         File names will indicate the slice name, file format, and
         which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.json
+        e.g.: myprefix-myslice-manifest-localhost-8001.xml
 
         --devmode: Continue on error if possible
 
@@ -1377,7 +1377,7 @@ class AMCallHandler(object):
 
         File names will indicate the slice name, file format, and
         which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.json
+        e.g.: myprefix-myslice-allocate-localhost-8001.json
 
         -V# API Version #
         --devmode: Continue on error if possible
@@ -1604,7 +1604,7 @@ class AMCallHandler(object):
 
         File names will indicate the slice name, file format, and
         which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.json
+        e.g.: myprefix-myslice-provision-localhost-8001.json
 
         -V# API Version #
         --devmode: Continue on error if possible
@@ -1799,7 +1799,7 @@ class AMCallHandler(object):
         Slice credential is usually retrieved from the Slice Authority. But
         with the --slicecredfile option it is read from that file, if it exists.
 
-        --best-effort: If supplied, slivers that can be acted, will be; some slivers 
+        --best-effort: If supplied, slivers that can be acted on, will be; some slivers 
         may not be acted on successfully, in which case check the geni_error return for that sliver.
         If not supplied, then if any slivers cannot be changed, the whole call fails
         and sliver states do not change.
@@ -1814,7 +1814,7 @@ class AMCallHandler(object):
 
         File names will indicate the slice name, file format, and
         which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.json
+        e.g.: myprefix-myslice-poa-geni_start-localhost-8001.json
 
         -V# API Version #
         --devmode: Continue on error if possible
@@ -2108,7 +2108,7 @@ class AMCallHandler(object):
 
         File names will indicate the slice name, file format, and
         which aggregate is represented.
-        e.g.: myprefix-myslice-rspec-localhost-8001.json
+        e.g.: myprefix-myslice-renew-localhost-8001.json
 
         -V# API Version #
         --devmode: Continue on error if possible
@@ -2273,10 +2273,22 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        Output directing options:
         -o Save result in per-Aggregate files
         -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-status-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
         """
 
         if self.opts.api_version >= 3:
@@ -2284,6 +2296,8 @@ class AMCallHandler(object):
                 self.logger.warn("Trying SliverStatus with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("SliverStatus is only available in AM API v1 or v2. Use Status, or specify the -V2 option to use AM API v2, if the AM supports it.")
+
+        # Build up args, options
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "SliverStatus")
@@ -2301,7 +2315,7 @@ class AMCallHandler(object):
 
             args = [urn, creds]
             options = None
-#--- API version specific
+            # API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
                 options = dict()
@@ -2314,6 +2328,8 @@ class AMCallHandler(object):
 
         op = 'SliverStatus'
         msg = "%s of %s at " % (op, urn)
+
+        # Call SliverStatus on each client
         for client in clientList:
             try:
                 (status, message) = self._api_call(client,
@@ -2337,6 +2353,7 @@ class AMCallHandler(object):
                 else:
                     prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
 
+                # Save/print out result
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:
@@ -2355,6 +2372,7 @@ class AMCallHandler(object):
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
+        # End of loop over clients
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -2365,8 +2383,7 @@ class AMCallHandler(object):
     def status(self, args):
         """AM API Status <slice name>
 
-        Added in AM API v3.
-        See sliverstatus for the v1 and v2 equivalent.
+        For use in AM API v3+. See sliverstatus for the v1 and v2 equivalent.
 
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -2384,10 +2401,29 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        Output directing options:
         -o Save result in per-Aggregate files
         -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-poa-geni_start-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Get status on the slice at given aggregate
+        omni.py -V3 -a http://aggregate/url status myslice
+
+        Get status on specific slivers and save the result to a file
+        omni.py -V3 -a http://aggregate/url -o --outputfile %s-status-%a.json -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 status myslice
         """
 
         if self.opts.api_version < 3:
@@ -2395,6 +2431,8 @@ class AMCallHandler(object):
                 self.logger.warn("Trying Status with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("Status is only available in AM API v3+. Use SliverStatus with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # Build up args, options
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -2404,7 +2442,7 @@ class AMCallHandler(object):
         retItem = {}
         args = []
         creds = []
-        # Query status at each client
+        # Get clients
         (clientList, message) = self._getclients()
         if len(clientList) > 0:
             self.logger.info('Status of Slice %s:' % urn)
@@ -2426,6 +2464,7 @@ class AMCallHandler(object):
         if len(slivers) > 0:
             descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
 
+        # Do Status at all clients
         op = 'Status'
         msg = "Status of %s at " % (descripMsg)
         for client in clientList:
@@ -2448,8 +2487,16 @@ class AMCallHandler(object):
                 retVal += fmt % (descripMsg, client.url, message)
                 continue
 
-            # FIXME: Check each sliver for errors, check got status on all requested slivers, ?
+            missingSlivers = self._findMissingSlivers(status, slivers)
+            if len(missingSlivers) > 0:
+                self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
+                self.logger.debug("%s", missingSlivers)
 
+            sliverFails = self._didSliversFail(status)
+            for sliver in sliverFails.keys():
+                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+            # Print or save out result
             if not isinstance(status, dict):
                 # malformed status return
                 self.logger.warn('Malformed status from AM %s. Expected struct, got type %s.' % (client.url, status.__class__.__name__))
@@ -2460,15 +2507,6 @@ class AMCallHandler(object):
                     prettyResult = pprint.pformat(status)
             else:
                 prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
-
-            missingSlivers = self._findMissingSlivers(status, slivers)
-            if len(missingSlivers) > 0:
-                self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
-                self.logger.debug("%s", missingSlivers)
-
-            sliverFails = self._didSliversFail(status)
-            for sliver in sliverFails.keys():
-                self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             header="Status for %s at AM URL %s" % (descripMsg, client.url)
             filename = None
@@ -2484,6 +2522,7 @@ class AMCallHandler(object):
                 retVal += " - %d slivers failed?! \n" % len(sliverFails.keys())
             if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                 successCnt+=1
+        # End of loop over clients
 
         # FIXME: Return the status if there was only 1 client?
         if len(clientList) > 0:
@@ -2494,6 +2533,7 @@ class AMCallHandler(object):
 
     def deletesliver(self, args):
         """AM API DeleteSliver <slicename>
+        For use in AM API v1&2; Use Delete() for v3+
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
@@ -2506,6 +2546,11 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
         """
         if self.opts.api_version >= 3:
             if self.opts.devmode:
@@ -2584,7 +2629,8 @@ class AMCallHandler(object):
     # End of deletesliver
 
     def delete(self, args):
-        """AM API DeleteSliver <slicename>
+        """AM API Delete <slicename>
+        For use in AM API v3+. Use DeleteSliver for API v1&2.
         Delete the named slivers, making them geni_unallocated. Resources are stopped
         if necessary, and both de-provisioned and de-allocated. No further AM API
         operations may be performed on slivers that have been deleted.
@@ -2609,12 +2655,42 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        and %s for any slicename
+        If not saving results to a file, they are logged.
+        If --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name, file format, and
+        which aggregate is represented.
+        e.g.: myprefix-myslice-delete-localhost-8001.json
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
+
+        Sample usage:
+        Delete all slivers in the slice at specific aggregates
+        omni.py -V3 -a http://aggregate/url -a http://another/url delete myslice
+
+        Delete slivers in slice myslice; any slivers that cannot be deleted, stay as they were, while others are deleted
+        omni.py -V3 -a http://myaggregate/url --best-effort delete myslice
+
+        Delete the given sliver in myslice at this AM and write the result struct to the given file
+        omni.py -V3 -a http://myaggregate/url -o --outputfile %s-delete-%a.json -u urn:publicid:IDN+myam+sliver+1 delete myslice
         """
+
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Delete with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("Delete is only available in AM API v3+. Use DeleteSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
+
+        # Gather options, args
 
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred,
@@ -2649,7 +2725,7 @@ class AMCallHandler(object):
         ## more interesting.  We can figure out what the error strings
         ## are at the various aggregates if they don't know about the
         ## slice and make those more quiet.  Finally, we can try
-        ## sliverstatus at places where it fails to indicate places
+        ## to call status at places where it fails to indicate places
         ## where you still have resources.
         op = 'Delete'
         msg = "Delete of %s at " % (descripMsg)
@@ -2694,6 +2770,7 @@ class AMCallHandler(object):
                     retVal = prStr + "\n"
                 self.logger.info(prStr)
 
+                # Construct print / save out result
 
                 if not isinstance(realres, dict):
                     # malformed describe return
@@ -2724,8 +2801,7 @@ class AMCallHandler(object):
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
-
-        # FIXME: Check return struct for missing slivers or individual sliver errors
+        # loop over all clients
 
         if len(clientList) == 0:
             retVal = "No aggregates specified on which to delete slivers. %s" % message
@@ -2749,7 +2825,13 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+
+        -V# API Version #
+        --devmode: Continue on error if possible
+        -l to specify a logging config file
+        --logoutput <filename> to specify a logging output filename
         """
+
         # prints slice expiration. Warns or raises an Omni error on problems
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "Shutdown")
 
@@ -2805,6 +2887,7 @@ class AMCallHandler(object):
             return retVal, (successList, failList)
         else:
             return retVal, retItem
+    # End of shutdown
 
     # End of AM API operations
     #######
@@ -2820,9 +2903,6 @@ class AMCallHandler(object):
         # Use the GetVersion cache
         # Make sure the client we are talking to speaks the expected AM API (or claims to)
         # What else would this do? See if it is reachable? We'll do that elsewhere
-        # What should this return?
-        # Is this where we could auto-switch client URLs to match the desired AM API version?
-        # Return API version, client to use. May be new. If None, bail - error
 
         cver, message = self._get_this_api_version(client)
         configver = self.opts.api_version
@@ -2836,11 +2916,13 @@ class AMCallHandler(object):
             else:
                 return (configver, client)
 
+        # This client doesn't speak the desired API version - see if there's an alternate
+
         svers, message = self._get_api_versions(client)
         if svers:
             if svers.has_key(configver):
                 self.logger.warn("Requested API version %d, but client %s uses version %d. Same client talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[configver])
-                # FIXME: Could do a makeclient with the corrected URL and return that client?
+                # do a makeclient with the corrected URL and return that client?
                 if not self.opts.devmode:
                     newclient = make_client(svers[configver], self.framework, self.opts)
                     newclient.urn = client.urn # Wrong urn?
@@ -2923,6 +3005,7 @@ class AMCallHandler(object):
         '''Write the given RSpec using _printResults.
         If given a slicename, label the output as a manifest.
         Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
+        Do much of this using _getRSpecOutput
         Use _construct_output_filename to build the output filename.
         '''
         # return just filename? retVal?
@@ -2946,7 +3029,7 @@ class AMCallHandler(object):
     # End of _writeRSpec
 
     def _get_users_arg(self):
-        '''Get the users argument for SSH public keys to install.'''
+        '''Get the users argument for SSH public keys to install from omni_config 'users' section.'''
         # Copy the user config and read the keys from the files into the structure
         slice_users = copy(self.config['users'])
         if len(slice_users) == 0:
@@ -2997,7 +3080,7 @@ class AMCallHandler(object):
     # End of _get_users_arg
 
     def _get_server_name(self, clienturl, clienturn):
-        '''Get a short server name from the AM URL and URN'''
+        '''Construct a short server name from the AM URL and URN'''
         if clienturn and clienturn is not "unspecified_AM_URN" and (not clienturn.startswith("http")):
             # construct hrn
             # strip off any leading urn:publicid:IDN
@@ -3012,7 +3095,7 @@ class AMCallHandler(object):
         return server
 
     def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
-        '''Construct a name for omni command outputs; return that name.
+        '''Construct a file name for omni command outputs; return that name.
         If --outputfile specified, use that.
         Else, overall form is [prefix-][slicename-]methodname-server.filetype
         filetype should be .xml or .json'''
@@ -3047,12 +3130,14 @@ class AMCallHandler(object):
 
     def _retrieve_value(self, result, message, framework):
         '''Extract ABAC proof and creds from the result if any.
-        Then pull the actual value out, checking for errors
+        Then pull the actual value out, checking for errors.
+        Returned message includes a string representation of any error code/output.
         '''
         # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
             return (result, message)
+
         value = result
         # If ABAC return is a dict with proof and the regular return
         if isinstance(result, dict):
@@ -3071,8 +3156,8 @@ class AMCallHandler(object):
                 # For Renew, Delete, Shutdown
                 elif 'success' in result:
                     value = result['success']
-#--- AM API version specific
-            #FIXME Should that be if 'code' or elif 'code'?
+
+            # FIXME Should that be if 'code' or elif 'code'?
             # FIXME: See _check_valid_return_struct
             if 'code' in result and isinstance(result['code'], dict) and 'geni_code' in result['code']:
                 # AM API v2+
@@ -3104,7 +3189,7 @@ class AMCallHandler(object):
         if num_args < 1:
             return ("", "", "", "", datetime.datetime.max)
 
-#--- Dev mode allow this
+        # If we had no args or not enough
         if len(args) == 0 or len(args) < num_args or (len(args) >=1 and (args[0] == None or args[0].strip() == "")):
             msg = '%s requires arg of slice name %s' % (methodname, otherargstring)
             if self.opts.devmode:
@@ -3118,9 +3203,10 @@ class AMCallHandler(object):
 
         # FIXME: catch errors getting slice URN to give prettier error msg?
         urn = self.framework.slice_name_to_urn(name)
+
+        # Get a slice cred, handle it being None
         (slice_cred, message) = _get_slice_cred(self, urn)
         if slice_cred is None:
-#--- Dev mode allow this
             msg = 'Cannot do %s for %s: Could not get slice credential: %s' % (methodname, urn, message)
             if self.opts.devmode:
                 slice_cred = ""
@@ -3131,6 +3217,7 @@ class AMCallHandler(object):
         # FIXME: Check that the returned slice_cred is actually for the given URN?
         # Or maybe do that in _get_slice_cred?
 
+        # Check for an expired slice
         slice_exp = None
         expd = True
         if not self.opts.devmode or slice_cred != "":
@@ -3138,7 +3225,6 @@ class AMCallHandler(object):
         if slice_exp is None:
             slice_exp = datetime.datetime.min
         if expd:
-#--- Dev mode allow this
             msg = 'Cannot do %s for slice %s: Slice has expired at %s' % (methodname, urn, slice_exp.isoformat())
             if self.opts.devmode:
                 self.logger.warn(msg + ", but continuing...")
@@ -3306,7 +3392,7 @@ class AMCallHandler(object):
         return (clients, message)
 
     def _build_urns(self, slice_urn):
-        '''Build up the URNs argument, using given slice URN and the option sliver-urn.
+        '''Build up the URNs argument, using given slice URN and the option sliver-urn, if present.
         Only gather sliver URNs if they are valid.
         If no sliver URNs supplied, list is the slice URN.
         If sliver URNs were supplied but all invalid, raise an error.
@@ -3340,7 +3426,7 @@ class AMCallHandler(object):
         return urns, slivers
 
     def _build_options(self, op, options):
-        '''Add geni_best_effort and geni_end_time to options if supplied'''
+        '''Add geni_best_effort and geni_end_time to options if supplied, applicable'''
         if not options or options is None:
             options = {}
 
@@ -3371,6 +3457,7 @@ class AMCallHandler(object):
         return options
 
     def _getSliverResultList(self, resultValue):
+        '''Pull the list of sliver-specific results from the input'''
         # resultValue could be a list of dicts with keys geni_sliver_urn and geni_error (Delete, poa, Renew)
         # OR dict containing the key geni_slivers, which is then the above list (Status, Provision, Describe
         # Note allocate does not return the geni_error key - otherwise it is like status/provision)
@@ -3524,7 +3611,7 @@ class AMCallHandler(object):
 
     def _getSliverAllocStates(self, resultValue, expectedState=None):
         '''Get the Allocation state of slivers if the state is not the expected one, or all
-        states if expected is omitted.
+        states if the expected arg is omitted.
         Return is a dict of sliverURN->actual allocation state.'''
 
         # Called by Allocate, Provision, Delete:
@@ -3587,14 +3674,12 @@ class AMCallHandler(object):
             if not name:
                 name = "<unspecified>"
             if time > slice_exp:
-#--- Dev mode allow this
                 msg = 'Cannot renew sliver(s) in %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
                 if self.opts.devmode:
                     self.logger.warn(msg + ", but continuing...")
                 else:
                     self._raise_omni_error(msg)
             elif time <= datetime.datetime.utcnow():
-#--- Dev mode allow earlier time
                 if not self.opts.devmode:
                     self.logger.info('Sliver(s) in %s will be set to expire now' % name)
                     time = datetime.datetime.utcnow()
@@ -3614,6 +3699,7 @@ class AMCallHandler(object):
             time_string = time_with_tz.replace(tzinfo=None).isoformat()
 
         return time, time_with_tz, time_string
+    # end of datetimeFromString
 
 # End of AMHandler
 
