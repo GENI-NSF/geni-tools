@@ -354,6 +354,8 @@ class ReferenceAggregateManager(object):
 
             # Can also error-check that the input value is supported.
             rspec_type = options['rspec_version']['type']
+            if isinstance(rspec_type, str):
+                rspec_type = rspec_type.lower().strip()
             rspec_version = options['rspec_version']['version']
             if rspec_type != 'GCF':
                 self.logger.warn("Returning GCF rspec even though request said %s", rspec_type)
