@@ -324,7 +324,12 @@ class CHCallHandler(object):
             (cred, message) = self.framework.get_user_cred()
         credxml = credutils.get_cred_xml(cred)
         if cred is None or credxml is None or credxml == "":
-            self._raise_omni_error("Got no user credential from framework: %s" % message)
+            msg = "Got no valid user credential from framework: %s" % message
+            if self.opts.devmode:
+                self.logger.warn(msg + " ... but continuing")
+                credxml = cred
+            else:
+                self._raise_omni_error(msg)
 #        target = credutils.get_cred_target_urn(self.logger, cred)
         # pull the username out of the cred
         # <owner_urn>urn:publicid:IDN+geni:gpo:gcf+user+alice</owner_urn>

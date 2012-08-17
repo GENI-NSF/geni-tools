@@ -86,11 +86,20 @@ class Framework_Base():
                 cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
             except Exception, e:
                 logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
-            cred = credutils.get_cred_xml(cred)
-            if cred is None or cred == "":
-                logger.info("Did NOT get user cred from %s", opts.usercredfile)
+            cred2 = credutils.get_cred_xml(cred)
+            if cred2 is None or cred2 == "":
+                logger.info("Did NOT get valid user cred from %s", opts.usercredfile)
+                if opts.devmode:
+                    logger.info(" ... but using it anyhow")
+                else:
+                    cred = None
             else:
-                target = credutils.get_cred_target_urn(logger, cred)
+                target = ""
+                try:
+                    target = credutils.get_cred_target_urn(logger, cred)
+                except:
+                    if not opts.devmode:
+                        logger.warn("Failed to parse target URN from user cred?")
                 logger.info("Read user %s credential from file %s", target, opts.usercredfile)
         elif opts.usercredfile:
             if hasattr(self, 'logger'):
