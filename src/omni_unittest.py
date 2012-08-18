@@ -283,7 +283,7 @@ class OmniUnittest(unittest.TestCase):
         rspec = rspec.lower()
 
         # (1) Check if rspec is a well-formed XML document
-        self.assertIsXML( rspec )
+        self.assertIsXML( rspec, "RSpec returned from '%s' is unexpectedly not well-formed XML. Return was: %s" % (AMAPI_call, str(rspec))  )
 
         # (2) Check if rspec is a valid XML document
         #   (a) a snippet of XML starting with <rspec>, or
@@ -302,12 +302,12 @@ class OmniUnittest(unittest.TestCase):
             self.assertTrue(rspec_util.validate_rspec( rspec, 
                                               namespace=rspec_namespace, 
                                               schema=rspec_schema ),
-                            "Return " \
+                            "Return from '%s' " \
                             "expected to pass rspeclint " \
                             "but did not. Return was: " \
                             "\n%s\n" \
                             "... edited for length ..."
-                            % (rspec[:100]))
+                            % (AMAPI_call, rspec[:100]))
 
 
     def assertRspecType(self, rspec, type='request', version=None, typeOnly=False, msg=None):
@@ -455,6 +455,8 @@ output: [required on failure; optional on success] XML-RPC string with
         # FIX ME: Pull from a standard file
         SUCCESS = 0
 
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected. \nInstead returned: %s" %(AMAPI_call, type(retVal), str(dict), str(retVal)))
+
         err_code = self.assertCode( AMAPI_call, agg, retVal )
         if err_code == SUCCESS:
             # required
@@ -482,7 +484,7 @@ Check that the value of 'code' is as follows:
     am_code: [optional] int
 }
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         code = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                               'code', dict )
         geni_code = self.assertReturnKeyValueType( AMAPI_call, agg, code, 
@@ -499,7 +501,7 @@ Check that the value of 'code' is as follows:
         """Check that the dictionary retVal has key: 
               'value'
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         self.assertKeyValue( AMAPI_call, agg, retVal, 
                                  'value' )
 
@@ -507,7 +509,7 @@ Check that the value of 'code' is as follows:
         """Check that the dictionary retVal has key: 
               'value'
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         output = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'output', str )
         return output
@@ -531,7 +533,7 @@ Check that the value of 'code' is as follows:
 }
         """
         AMAPI_call = "Describe"
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         manifest = self.assertGeniRspec( AMAPI_call, agg, 
                                          retVal, type='manifest')        
         self.assertGeniUrn(AMAPI_call, agg, retVal)        
@@ -566,7 +568,7 @@ Check that the value of 'code' is as follows:
 }
         """
         AMAPI_call = "Status"
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         self.assertGeniUrn(AMAPI_call, agg, retVal)        
         slivers = self.assertGeniSlivers(AMAPI_call, agg, retVal)        
         for sliver in slivers:
@@ -642,7 +644,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
   ]
         """
         AMAPI_call = "Provision"
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         manifest = self.assertGeniRspec( AMAPI_call, agg, 
                                          retVal, type='manifest')        
         slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)  
@@ -669,7 +671,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
 }
         """
         AMAPI_call = "Allocate"
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         manifest = self.assertGeniRspec( AMAPI_call, agg, 
                                          retVal, type='manifest')        
         slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)        
@@ -713,7 +715,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         self.assertURNandType( slice_urn, 'slice' )
 
     def assertGeniRspec( self, AMAPI_call, agg, retVal, type='manifest' ):
-        self.assertDict( retVal )
+        self.assertDict( retVal)
         manifest = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_rspec', str )        
 
@@ -735,7 +737,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_error
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         self.assertKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_error', str )        
 
@@ -760,7 +762,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_operational_status
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         self.assertKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_operational_status', str )
 
@@ -768,7 +770,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_sliver_urn
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         sliver_urn = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_sliver_urn', str )
         self.assertURNandType( sliver_urn, 'sliver' )
@@ -778,7 +780,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_expires
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         expires = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_expires', str ) # RFC3339 dateTime
 #ADD IN        self.assertTimestamp( expires )
@@ -787,7 +789,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_allocation_status
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         alloc_status = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_allocation_status', str )
         self.assertTrue( alloc_status in ['geni_unallocated', 'geni_allocated', 'geni_provisioned'],
@@ -824,7 +826,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
    }
         """
         self.assertIsNotNone( retVal )
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(CH_call, type(retVal), str(dict)))
         geni_type = self.assertGeniType( CH_call, retVal)        
         version = self.assertGeniVersion( CH_call, retVal)        
         value = self.assertGeniValue( CH_call, retVal)        
@@ -833,7 +835,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_type
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(CH_call, type(retVal), str(dict)))
         return self.assertReturnKeyValueType( CH_call, None, retVal, 
                                                  'geni_type', str ) 
 
@@ -841,7 +843,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_version
         """
-        self.assertDict( retVal )
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(CH_call, type(retVal), str(dict)))
 
         return self.assertReturnKeyValueType( CH_call, None, retVal, 
                                                  'geni_version', str ) 
@@ -850,8 +852,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         """Check that the dictionary retVal has keys: 
               geni_value
         """
-        self.assertDict( retVal )
-
+        self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(CH_call, type(retVal), str(dict)))
         usercred = self.assertReturnKeyValueType( CH_call, None, retVal, 
                                                  'geni_value', str ) 
 
