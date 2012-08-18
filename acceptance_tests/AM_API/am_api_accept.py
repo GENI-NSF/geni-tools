@@ -533,9 +533,8 @@ class Test(ut.OmniUnittest):
         """
         # Call listresources with this credential
         # We expect this to fail
-        # self.subtest_ListResources(usercred=invalid_usercred) 
         # with slicename left to the default
-        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
     def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
