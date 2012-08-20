@@ -454,11 +454,11 @@ class AMCallHandler(object):
         Output directing options:
         -o Save result (JSON format) in per-Aggregate files
         -p (used with -o) Prefix for resulting version information filenames
-        --outputfile If supplied, use this output file name: substitute the AM for any %a,
+        --outputfile If supplied, use this output file name: substitute the AM for any %a
         If not saving results to a file, they are logged.
         If --tostdout option, then instead of logging, print to STDOUT.
 
-        This method skips the local cache.
+        Omni caches getversion results for use elsewhere. This method skips the local cache.
         --ForceUseGetVersionCache will force it to look at the cache if possible
         --GetVersionCacheAge <#> specifies the # of days old a cache entry can be, before Omni re-queries the AM, default is 7
         --GetVersionCacheName <path> is the path to the GetVersion cache, default is ~/.gcf/get_version_cache.json
@@ -827,9 +827,9 @@ class AMCallHandler(object):
 
     def listresources(self, args):
         """GENI AM API ListResources
-        Call ListResources on 1+ aggregates and prints the rspec to stdout or to file.
-        Optional arg for API v1&2 is a slice name, making the request for a manifest RSpec.
-        Note that slice name argument is only supported in AM API v1 or v2.
+        Call ListResources on 1+ aggregates and prints the rspec to stdout or to a file.
+        Optional argument for API v1&2 is a slice name, making the request for a manifest RSpec.
+        Note that the slice name argument is only supported in AM API v1 or v2.
         For listing contents of a slice in APIv3+, use describe().
         
         Aggregates queried:
