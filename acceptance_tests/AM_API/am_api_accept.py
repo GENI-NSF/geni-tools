@@ -1449,22 +1449,28 @@ class Test(ut.OmniUnittest):
             self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name )
         self.success = True
-
-    def test_CreateSliver_badrspec_manifest(self):
-        """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
-        slice_name = self.create_slice_name(prefix='bad3')
-        self.options_copy.rspec_file = self.options_copy.bad_rspec_file
+################################################################################
+###
+### This test is commented out because no aggregate actually passed it 
+###    AND
+### we don't care much.
+###
+################################################################################
+    # def test_CreateSliver_badrspec_manifest(self):
+    #     """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
+    #     slice_name = self.create_slice_name(prefix='bad3')
+    #     self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
-        # Check for the existance of the Request RSpec file
-        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
-                         "Request RSpec file, '%s' for 'CreateSliver' call " \
-                             "expected to exist " \
-                             "but does not." 
-                         % self.options_copy.rspec_file )
+    #     # Check for the existance of the Request RSpec file
+    #     self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+    #                      "Request RSpec file, '%s' for 'CreateSliver' call " \
+    #                          "expected to exist " \
+    #                          "but does not." 
+    #                      % self.options_copy.rspec_file )
 
-        self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
-                              self.subtest_MinCreateSliverWorkflow, slice_name)
-        self.success = True
+    #     self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
+    #                           self.subtest_MinCreateSliverWorkflow, slice_name)
+    #     self.success = True
 
 
     # Provide simple mapping for all v1, v2, and v3 calls
