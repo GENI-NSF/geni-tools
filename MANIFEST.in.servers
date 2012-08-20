@@ -1,2 +1,0 @@
-include README.txt LICENSE.txt src/gcf-ch.py src/gcf-am.py src/gcf-test.py src/gen-certs.py gcf_config.sample
-exclude src/geni/__init__.py
