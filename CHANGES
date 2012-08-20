@@ -11,6 +11,7 @@ gcf 2.0:
    - Added --outputfile argument allowing experimenters to specify
  output filenames
    - Cache GetVersion results for selecting RSpec versions
+   - Support multiple -a arguments to specify more than 1 target aggregate
 
  * gcf
    - Added support for AM API v3. V2 is the default.
