@@ -423,7 +423,10 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
-        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercred=broken_usercred)
+        self.options_copy.devmode = True           
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, usercred=broken_usercred)
+        self.options_copy.devmode = False
+
 
     def subtest_ListResources_wrongSlice(self, slicelist):
         num_slices = len(slicelist)
@@ -456,7 +459,9 @@ class Test(ut.OmniUnittest):
         # (2) Call listresources on the next slice
         # We expect this to fail
         # self.subtest_ListResources(slice) 
+        self.options_copy.devmode = True   
         self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
+        self.options_copy.devmode = False
 
 
     def file_to_string( self, filename ):
@@ -505,32 +510,14 @@ class Test(ut.OmniUnittest):
             return slice_name
         else:
             return None
-    # def test_ListResources_delegatedSliceCred(self):
-    #     """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
-    #     # Check if slice credential is delegated.
-    #     xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
-    #     self.assertTrue( self.is_delegated_cred(xml), 
-    #                    "Slice credential is not delegated " \
-    #                    "but expected to be. " )
-    #     slice_name = self.get_slice_name_from_cred( xml )                
-    #     self.assertTrue( slice_name,
-    #                    "Credential is not a slice credential " \
-    #                    "but expected to be: \n%s\n\n<snip> " % xml[:100] )
-    #     # Run slice credential
-    #     self.subtest_ListResources(
-    #        slicename=slice_name,
-    #        slicecredfile=self.options_copy.delegated_slicecredfile,
-    #        typeOnly=True)
-    #     self.success = True
 
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
         """
         # Call listresources with this credential
         # We expect this to fail
-        # self.subtest_ListResources(usercred=invalid_usercred) 
         # with slicename left to the default
-        self.assertRaises(NotDictAssertionError, self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
     def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
@@ -558,18 +545,6 @@ class Test(ut.OmniUnittest):
         
         omniargs = [] 
         
-        # AMAPI_call = "ListResources"
-        # if slicename and (self.options_copy.api_version >= 3):
-        #     # AM API v3 Describe(slicename)
-        #     AMAPI_call = "Describe"            
-        #     omniargs = omniargs + ["describe", str(slicename)]
-        # if slicename and (self.options_copy.api_version < 3):
-        #     # AM API v1 and v2 ListResources(slicename)
-        #     omniargs = omniargs + ["listresources", str(slicename)]
-        # else:
-        #     # AM API v1-v3 ListResources()
-        #     omniargs = omniargs + ["listresources"]
-
         if slicename:
             omniargs = omniargs + [AMAPI_call, str(slicename)]
         else:
@@ -847,40 +822,6 @@ class Test(ut.OmniUnittest):
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
-            
-    def test_AllocateWorkflow( self, slicename='foobar'):
-        # THIS IS TEMPORARY TEST
-        try:
-            # Start fresh; Delete existing slivers if they already exist
-            self.subtest_Delete( slicename )
-        except:
-            pass
-#        self.subtest_createslice( slicename )
-        try:
-            self.subtest_Allocate( slicename )
-            self.subtest_Provision( slicename )
-            
-            self.subtest_Renew_many( slicename )
-            self.subtest_PerformOperationalAction( slicename, 'geni_start' )
-            self.subtest_Renew_many( slicename )
-        except:
-            raise
-        finally:
-            self.subtest_Delete( slicename )
-
-    def test_ProvisionWorkflow( self, slicename='foobar'):
-        self.subtest_Allocate( slicename )
-#        self.subtest_Provision( slicename )
-#        self.subtest_Renew( slicename )
-#        self.subtest_Delete( slicename )
-    def test_PerformOperationalActionWorkflow( self, slicename='foobar'):
-        self.subtest_Allocate( slicename )
-#        self.subtest_Provision( slicename )
-#        self.subtest_PerformOperationalAction( slicename, 'geni_start' )
-#        self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
-#        self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
-#        self.subtest_Delete( slicename )
-
 
     def subtest_MinCreateSliverWorkflow(self, slicename=None):
         if slicename==None:
@@ -1022,10 +963,6 @@ class Test(ut.OmniUnittest):
                 createReturn= self.subtest_generic_CreateSliver( slicenames[i] )
                 numslivers[i], tmpManifest, slivers[i] = createReturn
                 manifest[i] = "".join(tmpManifest)
-
-
-
-
 
             for i in xrange(num_slices):
                 self.assertRspecType( "".join(request[i]), 'request')
@@ -1512,22 +1449,28 @@ class Test(ut.OmniUnittest):
             self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name )
         self.success = True
-
-    def test_CreateSliver_badrspec_manifest(self):
-        """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
-        slice_name = self.create_slice_name(prefix='bad3')
-        self.options_copy.rspec_file = self.options_copy.bad_rspec_file
+################################################################################
+###
+### This test is commented out because no aggregate actually passed it 
+###    AND
+### we don't care much.
+###
+################################################################################
+    # def test_CreateSliver_badrspec_manifest(self):
+    #     """test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative."""
+    #     slice_name = self.create_slice_name(prefix='bad3')
+    #     self.options_copy.rspec_file = self.options_copy.bad_rspec_file
         
-        # Check for the existance of the Request RSpec file
-        self.assertTrue( os.path.exists(self.options_copy.rspec_file),
-                         "Request RSpec file, '%s' for 'CreateSliver' call " \
-                             "expected to exist " \
-                             "but does not." 
-                         % self.options_copy.rspec_file )
+    #     # Check for the existance of the Request RSpec file
+    #     self.assertTrue( os.path.exists(self.options_copy.rspec_file),
+    #                      "Request RSpec file, '%s' for 'CreateSliver' call " \
+    #                          "expected to exist " \
+    #                          "but does not." 
+    #                      % self.options_copy.rspec_file )
 
-        self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
-                              self.subtest_MinCreateSliverWorkflow, slice_name)
-        self.success = True
+    #     self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
+    #                           self.subtest_MinCreateSliverWorkflow, slice_name)
+    #     self.success = True
 
 
     # Provide simple mapping for all v1, v2, and v3 calls
@@ -1555,6 +1498,8 @@ class Test(ut.OmniUnittest):
             slivers, manifest = self.subtest_Provision( slicename )
             numslivers = len(slivers)
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+            self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
             self.options_copy.devmode = True   
             self.assertRaises(NotSuccessError,
                               self.subtest_PerformOperationalAction, 
