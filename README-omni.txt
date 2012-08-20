@@ -597,22 +597,22 @@ Omni supports the following commands.
 ==== listaggregates ====
 Print the known aggregates' URN and URL.
 
- * format: omni.py [-a AM_URL_or_nickname] listaggregates
- * examples:
-  * omni.py listaggregates
+ * Format: `omni.py [-a AM_URL_or_nickname] listaggregates`
+ * Examples:
+  * `omni.py listaggregates`
            List all aggregates from the omni_config 'aggregates'
 	   option if supplied, else all aggregates listed by the
 	   Clearinghouse
-  * omni.py -a http://localhost:8001 listaggregates
+  * `omni.py -a http://localhost:8001 listaggregates`
            List just the aggregate from the commandline
-  * omni.py -a myLocalAM listaggregates
+  * `omni.py -a myLocalAM listaggregates`
            List just the aggregate from the commandline, looking up
            the nickname in omni_config
  
  Gets aggregates from:
  - command line (one per -a arg, no URN available), OR
  - command line nickname (one per -a arg, URN may be supplied), OR
- - omni_config 'aggregates' entry (1+, no URNs available), OR
+ - omni_config `aggregates` entry (1+, no URNs available), OR
  - Specified control framework (via remote query). This is the
  aggregates that registered with the framework.
 
@@ -620,15 +620,15 @@ Print the known aggregates' URN and URL.
 Creates the slice in your chosen control framework (cf) - that is, at
 your selected slice authority.
 
- * format:  omni.py createslice <slice-name>
- * examples: 
-  * omni.py createslice myslice
+ * Format:  `omni.py createslice <slice-name>`
+ * Examples: 
+  * `omni.py createslice myslice`
   * Or to create the slice and save off the slice credential:
-     	   omni.py -o createslice myslice
+     	   `omni.py -o createslice myslice`
   *  Or to create the slice and save off the slice credential to a
            specific file:
-           omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml 
-                   createslice myslice
+           `omni.py -o --slicecredfile mySpecificfile-myslice-credfile.xml 
+                   createslice myslice`
 
  Slice name could be a full URN, but is usually just the slice name portion.
  Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -643,29 +643,29 @@ your selected slice authority.
 Get the AM API compliant slice credential (signed XML document)
 for the given slice name.
 
- * format: omni.py getslicecred <slicename>
+ * Format: `omni.py getslicecred <slicename>`
 
- * examples:
+ * Examples:
   * Get slice mytest credential from slice authority, save to a file:
-      omni.py -o getslicecred mytest
+      `omni.py -o getslicecred mytest`
 
   * Get slice mytest credential from slice authority,
     save to a file with filename prefix mystuff:
-      omni.py -o -p mystuff getslicecred mytest
+      `omni.py -o -p mystuff getslicecred mytest`
 
   * Get slice mytest credential from slice authority,
     save to a file with name mycred.xml:
-      omni.py -o --slicecredfile mycred.xml getslicecred mytest
+      `omni.py -o --slicecredfile mycred.xml getslicecred mytest`
 
   * Get slice mytest credential from saved file
     delegated-mytest-slicecred.xml (perhaps this is a delegated credential?):
-      omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest
+      `omni.py --slicecredfile delegated-mytest-slicecred.xml getslicecred mytest`
 
 If you specify the -o option, the credential is saved to a file.
-The filename is <slicename>-cred.xml
-But if you specify the --slicecredfile option then that is the filename used.
+The filename is `<slicename>-cred.xml`
+But if you specify the `--slicecredfile` option then that is the filename used.
 
-Additionally, if you specify the --slicecredfile option and that
+Additionally, if you specify the `--slicecredfile` option and that
 references a file that is not empty, then we do not query the Slice
 Authority for this credential, but instead read it from this file.
 
@@ -679,8 +679,8 @@ Renews the slice at your chosen control framework. If your slice
 expires, you will be unable to reserve resources or delete
 reservations at aggregates.
 
- * format:  omni.py renewslice <slice-name> <new expiration date-time>
- * example: omni.py renewslice myslice 20100928T15:00:00Z
+ * Format:  `omni.py renewslice <slice-name> <new expiration date-time>`
+ * Example: `omni.py renewslice myslice 20100928T15:00:00Z`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -698,8 +698,8 @@ local time in its own timezone.
 Deletes the slice (at your chosen control framework); does not delete
 any existing slivers or free any reserved resources.
 
- * format:  omni.py deleteslice <slice-name> 
- * example: omni.py deleteslice myslice
+ * Format:  `omni.py deleteslice <slice-name>`
+ * Example: `omni.py deleteslice myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -715,41 +715,41 @@ let slices expire.
 List slices registered under the given username.
 Not supported by all frameworks.
 
- * format: omni.py listmyslices <username>
- * example: omni.py listmyslices jdoe
+ * Format: `omni.py listmyslices <username>`
+ * Example: `omni.py listmyslices jdoe`
 
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the current user.
 Not supported by all frameworks.
 
- * example: omni.py listmykeys
+ * Example: `omni.py listmykeys`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
 the configured slice authority.
 
- * format: omni.py getusercred
+ * Format: `omni.py getusercred`
 
- * examples:
+ * Examples:
   * Print the user credential obtained from the slice authority:
-      omni.py getusercred
+      `omni.py getusercred`
 
   * Get the user credential from the slice authority and save it to a file:
-      omni.py -o getusercred
+      `omni.py -o getusercred`
 
 This is primarily useful for debugging.
 
-If you specify the -o option, the credential is saved to a file.
-  If you specify --usercredfile:
+If you specify the `-o` option, the credential is saved to a file.
+  If you specify `--usercredfile`:
     First, it tries to read the user credential from that file.
     Second, it saves the user credential to a file by that name (but
   with the appropriate extension).
-  Otherwise, the filename is <username>-<framework nickname from
-  config file>-usercred.[xml or json, depending on AM API version].
-  If you specify the --prefix option then that string starts the filename.
+  Otherwise, the filename is `<username>-<framework nickname from
+  config file>-usercred.[xml or json, depending on AM API version]`.
+  If you specify the `--prefix` option then that string starts the filename.
 
-If instead of the -o option, you supply the --tostdout option, then
+If instead of the `-o` option, you supply the `--tostdout` option, then
 the usercred is printed to STDOUT.
 Otherwise the usercred is logged.
 
@@ -758,28 +758,28 @@ Print the expiration time of the given slice, and a warning if it is
 soon.
 e.g. warn if the slice expires within 3 hours.
 
- * format omni.py print_slice_expiration <slice name>
- * example: omni.py print_slice_expiration my_slice
+ * Format `omni.py print_slice_expiration <slice name>`
+ * Example: `omni.py print_slice_expiration my_slice`
 
 Arg: slice name
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-With the --slicecredfile option the slice's credential is read from
+With the `--slicecredfile` option the slice's credential is read from
 that file, if it exists. Otherwise the Slice Authority is queried.
 
 ==== getversion ====
 Call the AM API GetVersion function at each aggregate.
 Get basic information about the aggregate and how to talk to it.
 
- * format:  omni.py [-a AM_URL_or_nickname] getversion
- * examples:
-  * omni.py getversion
+ * Format:  `omni.py [-a AM_URL_or_nickname] getversion`
+ * Examples:
+  * `omni.py getversion`
   * GetVersion for only this aggregate: 
-        omni.py -a http://localhost:12348 getversion
+        `omni.py -a http://localhost:12348 getversion`
   * Save GetVersion information to per-aggregate files: 
-        omni.py -o getversion
+        `omni.py -o getversion`
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
@@ -811,30 +811,30 @@ Optional argument for API v1&2 is a slice name, making the request for a manifes
 Note that the slice name argument is only supported in AM API v1 or v2.
 For listing contents of a slice in APIv3+, use describe().
 
- * format:  omni.py [-a AM_URL_or_nickname] [-o [-p fileprefix] or
+ * Format:  `omni.py [-a AM_URL_or_nickname] [-o [-p fileprefix] or
                     --outfile filename] \
                     [-t <RSPEC_TYPE> <RSPEC_VERSION>] \
                     [--api-version <version #, 2 is default, or 1 or 3>] \
-                    listresources [slice-name (APIv1 or 2 only)]
- * examples:
-  * omni.py listresources -t geni 3
+                    listresources [slice-name (APIv1 or 2 only)]`
+ * Sample usage:
+  * `omni.py listresources -t geni 3`
             List resources at all AMs on your CH using GENI v3 format ad RSpecs
-  * omni.py listresources myslice -t geni 3
+  * `omni.py listresources myslice -t geni 3`
             List resources in myslice from all AMs on your CH (API v1
  or 2 only)
-  * omni.py -a http://localhost:12348 listresources myslice -t geni 3
+  * `omni.py -a http://localhost:12348 listresources myslice -t geni 3`
             List resources in myslice at the localhost AM
-  * omni.py -a myLocalAM listresources -t geni 3
+  * `omni.py -a myLocalAM listresources -t geni 3`
             List resources at the AM with my nickname myLocalAM in omni_config
-  * omni.py listresources -a http://localhost:12348 -t GENI 3 myslice
+  * `omni.py listresources -a http://localhost:12348 -t GENI 3 myslice`
             List resources in myslice at the localhost AM, requesting that
             the AM send a GENI v3 format RSpec.
-  * omni.py -a http://localhost:12348 -o -p myprefix listresources myslice \
-            -t geni 3
+  * `omni.py -a http://localhost:12348 -o -p myprefix listresources myslice \
+            -t geni 3`
             List resources at a specific AM and save it to a file
             with prefix 'myprefix'.
-  * omni.py -a http://localhost:12348 listresources myslice -t geni 3 \
-            --api-version 2 -o --outputfile ManRSpec%sAt%a.xml
+  * `omni.py -a http://localhost:12348 listresources myslice -t geni 3 \
+            --api-version 2 -o --outputfile ManRSpec%sAt%a.xml`
             List resources in myslice at the localhost AM, using AM API
             version 2 and requesting GENI v3 format manifest RSpecs,
 	    saving results to a file with the slice and aggregate name inserted.
@@ -864,17 +864,17 @@ Output options:
  - `--outputfile <filename>` If supplied, use this output file name: substitute the
  AM for any %a, the slice name for any %s
  - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-rspec-localhost-8001.xml`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-rspec-localhost-8001.xml
-
+Other options:
  - `-t <type version>` Requires the AM send RSpecs in the given type and version. If the
     AM does not speak that type and version, nothing is returned. Use
     GetVersion to see available types at that AM.
     Type and version are case-insensitive strings.
-    This argument default to 'GENI 3' if not supplied.
+    This argument defaults to 'GENI 3' if not supplied.
 
  - `--slicecredfile <filename>` says to use the given slicecredfile if it exists.
 
@@ -893,20 +893,23 @@ GENI AM API v3 Describe()
 Retrieve a manifest RSpec describing the resources contained by the named entities,
 e.g. a single slice or a set of the slivers in a slice. This listing and description
 should be sufficiently descriptive to allow experimenters to use the resources.
-For listing contents of a slice in APIv1 or 2, or to get the Ad
+For listing contents of a slice in APIv1 or 2, or to get the Advertisement
 of available resources at an AM, use ListResources().
 
  * Sample usage:
   * Describe at 1 Aggregate, getting the Manifest RSpec in GENI v3 RSpec format
-    omni.py -a http://myaggregate/url -V3 describe myslice
+    `omni.py -a http://myaggregate/url -V3 describe myslice`
 
   * Describe from 2 aggregates, saving the results in a specific
     file, with the aggregate name (constructed from the URL) inserted
     into the filename:
-    omni.py -a http://myaggregate/url -a http://another/aggregate -V3 -o --outputfile AdRSpecAt%a.xml describe myslice
+    `omni.py -a http://myaggregate/url -a http://another/aggregate -V3 \
+        -o --outputfile AdRSpecAt%a.xml describe myslice`
 
   * Describe 2 slivers from a particular aggregate
-    omni.py -a http://myaggregate/url -V3 describe myslice -u urn:publicid:IDN:myam+sliver+sliver1 -u urn:publicid:IDN:myam+sliver+sliver2
+    `omni.py -a http://myaggregate/url -V3 describe myslice \
+    	    -u urn:publicid:IDN:myam+sliver+sliver1 \
+    	    -u urn:publicid:IDN:myam+sliver+sliver2`
 
 Argument is a slice name, naming the slice whose contents will be described.
 Lists contents and state on 1+ aggregates and prints the result to stdout or to a file.
@@ -916,7 +919,7 @@ Lists contents and state on 1+ aggregates and prints the result to stdout or to 
    described. Otherwise, all slivers in the slice will be described.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -924,15 +927,15 @@ Aggregates queried:
 Output directing options:
  - `-o` writes output to file instead of stdout; single file per aggregate.
  - `-p <prefix>` gives filename prefix for each output file
- - `--outputfile` If supplied, use this output file name: substitute
+ - `--outputfile <filename>` If supplied, use this output file name: substitute
  the AM for any %a, and %s for any slicename
  - If not saving results to a file, they are logged.
  - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-rspec-localhost-8001.json`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-rspec-localhost-8001.json
-
+Other options:
  - `-t <type version>`: Specify a required manifest RSpec type and
         version to return. It skips any AM that doesn't advertise (in
         GetVersion) that it supports that format. Default is "GENI 3".
@@ -948,20 +951,20 @@ e.g.: myprefix-myslice-rspec-localhost-8001.json
 The GENI AM API CreateSliver call: reserve resources at GENI aggregates.
 For use in AM API v1+2 only. For AM API v3+, use allocate(), provision(), and performoperationalaction().
 
- * format:  omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec file>
- * examples:
-  * omni.py createsliver myslice resources.rspec
-  * omni.py -a http://localhost:12348 createsliver myslice resources.rspec
-  * omni.py -a http://localhost:12348 --api-version 2 createsliver \
-            myslice resources.rspec
+ * Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec file>`
+ * Examples:
+  * `omni.py createsliver myslice resources.rspec`
+  * `omni.py -a http://localhost:12348 createsliver myslice resources.rspec`
+  * `omni.py -a http://localhost:12348 --api-version 2 createsliver \
+            myslice resources.rspec`
         Specify using GENI AM API v2 to reserve a sliver in myslice from \
         an AM running at localhost, using the request rspec in resources.rspec.
   * Use a saved (delegated?) slice credential: 
-        omni.py --slicecredfile myslice-credfile.xml \
-            -a http://localhost:12348 createsliver myslice resources.rspec
+        `omni.py --slicecredfile myslice-credfile.xml \
+            -a http://localhost:12348 createsliver myslice resources.rspec`
   * Save manifest RSpec to a file with a particular prefix: 
-        omni.py -a http://localhost:12348 -o -p myPrefix \
-             createsliver myslice resources.rspec 
+        `omni.py -a http://localhost:12348 -o -p myPrefix \
+             createsliver myslice resources.rspec`
 
  * argument: the RSpec file should have been created by using
             availability information from a previous call to
@@ -976,14 +979,14 @@ To validate the syntax of a generated request RSpec, run:
                       yourRequestRspec.xml
 }}}
 
-This createsliver command will allocate the requested resources at
+This `createsliver` command will allocate the requested resources at
 the indicated aggregate.
 
 Typically users save the resulting manifest RSpec, to learn details
-about what resources were actually granted to them. Use the -o
+about what resources were actually granted to them. Use the `-o`
 option to have that manifest saved to a file. Manifest files are
 named something like:
-   myPrefix-mySlice-manifest-rspec-AggregateServername.xml
+   `myPrefix-mySlice-manifest-rspec-AggregateServername.xml`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1006,25 +1009,39 @@ Options:
  - `--logoutput <filename>` to specify a logging output filename
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 omni_config users section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
 remote resource and aggregate support this.
 
-Note you likely want to check SliverStatus to ensure your resource comes up.
-And check the sliver expiration time: you may want to call RenewSliver.
+Note you likely want to check `SliverStatus` to ensure your resource comes up.
+And check the sliver expiration time: you may want to call `RenewSliver`.
 
 ==== allocate ====
 GENI AM API Allocate <slice name> <rspec file name>
 
-For use with AM API v3+ only. Otherwise, use CreateSliver.
+For use with AM API v3+ only. Otherwise, use `CreateSliver`.
 
 Allocate resources as described in a request RSpec argument to a slice with
 the named URN. On success, one or more slivers are allocated, containing
 resources satisfying the request, and assigned to the given slice.
 
-Clients must Renew or Provision slivers before the expiration time
+Sample usage:
+ * Basic allocation of resources at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url allocate myslice my-request-rspec.xml`
+
+ * Allocate resources into 2 AMs, requesting a specific sliver
+   end time, save results into specificly named files that
+   include an AM name calculated from the AM URL,
+   using the slice credential saved in the given file
+   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate
+   	       --end-time 20120909 -o 
+	       --outputfile myslice-manifest-%a.json \
+	       --slicecredfile mysaved-myslice-slicecred.xml \
+	       allocate myslice my-request-rspec.xml`
+
+Clients must `Renew` or `Provision` slivers before the expiration time
 (given in the return struct), or the aggregate will automatically Delete them.
 
 Slice name could be a full URN, but is usually just the slice name portion.
@@ -1032,57 +1049,42 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
 Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
 Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each
-aggregate should attempt to satisfy all unbound requests. Note also that allocate() calls
+aggregate should attempt to satisfy all unbound requests. Note also that `allocate()` calls
 are always all-or-nothing: if the aggregate cannot give everything requested, it gives nothing.
 
- - --end-time: Request that new slivers expire at the given time.
+Output directing options:
+ - `-o` Save result in per-Aggregate files
+ - `-p <prefix>` (used with `-o`) Prefix for resulting files
+ - `--outputfile <filename>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s` for any slicename
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-allocate-localhost-8001.json`
+
+Other options:
+ - `--end-time <time>`: Request that new slivers expire at the given time.
    The aggregates may allocate the resources, but not be able to grant the requested
    expiration time.
    Note that per the AM API expiration times will be timezone aware.
    Unqualified times are assumed to be in UTC.
    Note that the expiration time cannot be past your slice expiration
-   time (see renewslice).
-
-Output directing options:
- - -o Save result in per-Aggregate files
- - -p (used with -o) Prefix for resulting files
- - --outputfile If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
- - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
-
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-allocate-localhost-8001.json
-
- - -V# API Version #
- - --devmode: Continue on error if possible
- - -l to specify a logging config file
- - --logoutput <filename> to specify a logging output filename
-
-Sample usage:
- * Basic allocation of resources at 1 AM into myslice
-   omni.py -V3 -a http://myaggregate/url allocate myslice my-request-rspec.xml
-
- * Allocate resources into 2 AMs, requesting a specific sliver
-   end time, save results into specificly named files that
-   include an AM name calculated from the AM URL,
-   using the slice credential saved in the given file
-   omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate
-   	       --end-time 20120909 -o 
-	       --outputfile myslice-manifest-%a.json \
-	       --slicecredfile mysaved-myslice-slicecred.xml \
-	       allocate myslice my-request-rspec.xml
+   time (see `renewslice`).
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l <filename>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
 
 ==== provision ====
 GENI AM API Provision <slice name>
@@ -1095,6 +1097,26 @@ valid geni_operational_status and may possibly be made geni_ready for
 experimenter use. This operation is synchronous, but may start a longer process,
 such as creating and imaging a virtual machine.
 
+Sample usage:
+ * Basic provision of allocated resources at 1 AM into myslice
+   `omni.py -V3 -a http://myaggregate/url provision myslice`
+
+ * Provision resources in 2 AMs, requesting a specific sliver end
+   time, save results into specificly named files that include an AM
+   name calculated from the AM URL, and slice name, using the slice
+   credential saved in the given file. Provision in best effort mode:
+   provision as much as possible
+        `omni.py -V3 -a http://myaggregate/url -a \
+	   http://myother/aggregate --end-time 20120909 -o \
+   	   --outputfile %s-provision-%a.json \
+	   --slicecredfile mysaved-myslice-slicecred.xml \
+	   --best-effort provision myslice`
+
+ * Provision allocated resources in specific slivers
+        `omni.py -V3 -a http://myaggregate/url \
+	        -u urn:publicid:IDN+myam+sliver+1 \
+        	-u urn:publicid:IDN+myam+sliver+2 provision myslice`
+
 Clients must Renew or use slivers before the expiration time
 (given in the return struct), or the aggregate will automatically Delete them.
 
@@ -1103,7 +1125,7 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
@@ -1111,17 +1133,9 @@ Aggregates queried:
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
- - --end-time: Request that new slivers expire at the given time.
-   The aggregates may provision the resources, but not be able to grant the requested
-   expiration time.
-   Note that per the AM API expiration times will be timezone aware.
-   Unqualified times are assumed to be in UTC.
-   Note that the expiration time cannot be past your slice expiration
-   time (see renewslice).
-
- - --sliver-urn / -u option: each specifies a sliver URN to provision. If specified,
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN to provision. If specified,
    only the listed slivers will be provisioned. Otherwise, all slivers in the slice will be provisioned.
- - --best-effort: If supplied, slivers that can be provisioned, will be; some slivers
+ - `--best-effort`: If supplied, slivers that can be provisioned, will be; some slivers
    may not be provisioned, in which case check the geni_error return for that sliver.
    If not supplied, then if any slivers cannot be provisioned, the whole call fails
    and sliver allocation states do not change.
@@ -1129,46 +1143,33 @@ Aggregates queried:
 Note that some aggregates may require provisioning all slivers in the same state at the same
 time, per the geni_single_allocation GetVersion return.
 
-Output directing options:
- - -o Save result in per-Aggregate files
- - -p (used with -o) Prefix for resulting files
- - --outputfile If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
- - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
-
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-provision-localhost-8001.json
-
- - -V# API Version #
- - --devmode: Continue on error if possible
- - -l to specify a logging config file
- - --logoutput <filename> to specify a logging output filename
-
 omni_config users section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
 remote resource and aggregate support this.
 
-Sample usage:
- * Basic provision of allocated resources at 1 AM into myslice
-   omni.py -V3 -a http://myaggregate/url provision myslice
+Output directing options:
+ - `-o` Save result in per-Aggregate files
+ - `-p <prefix>` (used with `-o`) Prefix for resulting files
+ - `--outputfile <filename>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s` for any slicename
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-provision-localhost-8001.json`
 
- * Provision resources in 2 AMs, requesting a specific sliver end
-   time, save results into specificly named files that include an AM
-   name calculated from the AM URL, and slice name, using the slice
-   credential saved in the given file. Provision in best effort mode:
-   provision as much as possible
-        omni.py -V3 -a http://myaggregate/url -a \
-	   http://myother/aggregate --end-time 20120909 -o \
-   	   --outputfile %s-provision-%a.json \
-	   --slicecredfile mysaved-myslice-slicecred.xml \
-	   --best-effort provision myslice
-
- * Provision allocated resources in specific slivers
-        omni.py -V3 -a http://myaggregate/url \
-	        -u urn:publicid:IDN+myam+sliver+1 \
-        	-u urn:publicid:IDN+myam+sliver+2 provision myslice
+Other options:
+ - `--end-time <time>`: Request that new slivers expire at the given time.
+   The aggregates may provision the resources, but not be able to grant the requested
+   expiration time.
+   Note that per the AM API expiration times will be timezone aware.
+   Unqualified times are assumed to be in UTC.
+   Note that the expiration time cannot be past your slice expiration
+   time (see `renewslice`).
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l <filename>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
 
 ==== performoperationalaction ====
 Alias of "poa" which is an implementation of v3 PerformOperationalAction.
@@ -1182,10 +1183,20 @@ the geni_operational_status of the named slivers. E.G. 'start' a VM. For valid
 operations and expected states, consult the state diagram advertised in the
 aggregate's advertisement RSpec.
 
+Sample usage:
+ * Do geni_start on slivers in myslice
+   `omni.py -V3 -a http://myaggregate poa myslice geni_start`
+
+ * Do geni_start on 2 slivers in myslice, but continue if 1 fails, and save results to the named file
+   `omni.py -V3 -a http://myaggregate poa --best-effort -o \
+   	   --outputfile %s-start-%a.json \
+	   -u urn:publicid:IDN+myam+sliver+1 \
+	   -u urn:publicid:IDN+myam+sliver+2 myslice geni_start`
+
 Clients must Renew or use slivers before the expiration time
 (given in the return struct), or the aggregate will automatically Delete them.
 
- - --sliver-urn / -u option: each specifies a sliver URN on which to perform the given action. If specified,
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN on which to perform the given action. If specified,
    only the listed slivers will be acted on. Otherwise, all slivers in
    the slice will be acted on.
    Note though that actions are state and resource type specific, so the action may not apply everywhere.
@@ -1201,53 +1212,43 @@ Aggregates queried:
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
- - --slicecredfile Read slice credential from given file, if it exists
+ - `--slicecredfile <path>` Read slice credential from given file, if it exists
    Slice credential is usually retrieved from the Slice Authority. But
    with the --slicecredfile option it is read from that file, if it exists.
 
- - --best-effort: If supplied, slivers that can be acted on, will be; some slivers
+ - `--best-effort`: If supplied, slivers that can be acted on, will be; some slivers
    may not be acted on successfully, in which case check the geni_error return for that sliver.
    If not supplied, then if any slivers cannot be changed, the whole call fails
    and sliver states do not change.
 
 Output directing options:
- -o Save result in per-Aggregate files
- -p (used with -o) Prefix for resulting files
- - --outputfile If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
+ - `-o` Save result in per-Aggregate files
+ - `-p <prefix>` (used with `-o`) Prefix for resulting files
+ - `--outputfile <path>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s` for any slicename
  - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-poa-geni_start-localhost-8001.json`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-poa-geni_start-localhost-8001.json
-
- - -V# API Version #
- - --devmode: Continue on error if possible
- - -l to specify a logging config file
- - --logoutput <filename> to specify a logging output filename
-
-Sample usage:
- * Do geni_start on slivers in myslice
-   omni.py -V3 -a http://myaggregate poa myslice geni_start
-
- * Do geni_start on 2 slivers in myslice, but continue if 1 fails, and save results to the named file
-   omni.py -V3 -a http://myaggregate poa --best-effort -o \
-   	   --outputfile %s-start-%a.json \
-	   -u urn:publicid:IDN+myam+sliver+1 \
-	   -u urn:publicid:IDN+myam+sliver+2 myslice geni_start
+Other options:
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
 
 ==== renewsliver ====
 Calls the AM API RenewSliver function
 
- * format:  omni.py renewsliver [-a AM_URL_or_nickname] <slice-name> "<time>"
- * examples:
-  * omni.py renewsliver myslice "12/12/10 4:15pm"
-  * omni.py renewsliver myslice "12/12/10 16:15"
-  * omni.py -a http://localhost:12348 renewsliver myslice "12/12/10 16:15"
-  * omni.py -a http://localhost:12348 --api-version 2 \
-            renewsliver myslice "12/12/10 16:15"
-  * omni.py -a myLocalAM renewsliver myslice "12/12/10 16:15"
+ * Format:  `omni.py renewsliver [-a AM_URL_or_nickname] <slice-name> "<time>"`
+ * Examples:
+  * `omni.py renewsliver myslice "12/12/10 4:15pm"`
+  * `omni.py renewsliver myslice "12/12/10 16:15"`
+  * `omni.py -a http://localhost:12348 renewsliver myslice "12/12/10 16:15"`
+  * `omni.py -a http://localhost:12348 --api-version 2 \
+            renewsliver myslice "12/12/10 16:15"`
+  * `omni.py -a myLocalAM renewsliver myslice "12/12/10 16:15"`
 
 This command will renew your resources at each aggregate up to the
 specified time.  This time must be less than or equal to the time
@@ -1299,14 +1300,14 @@ Sample usage:
    write the result struct to the given file
    `omni.py -V3 -a http://myaggregate/url -o --outputfile \
             %s-renew-%a.json -u urn:publicid:IDN+myam+sliver+1 renew \
-            myslice 20120909
+            myslice 20120909`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
@@ -1327,26 +1328,26 @@ not allow you to _shorten_ your sliver expiration time.
    If not supplied, then if any slivers cannot be renewed, the whole call fails
    and sliver expiration times do not change.
 
-When renewing multiple slivers, note that slivers in the geni_allocated state are treated
-differently than slivers in the geni_provisioned state, and typically are restricted
-to shorter expiration times. Users are recommended to supply the geni_best_effort option,
+When renewing multiple slivers, note that slivers in the `geni_allocated` state are treated
+differently than slivers in the `geni_provisioned` state, and typically are restricted
+to shorter expiration times. Users are recommended to supply the `geni_best_effort` option,
 and to consider operating on only slivers in the same state.
 
 Note that some aggregates may require renewing all slivers in the same state at the same
-time, per the geni_single_allocation GetVersion return.
+time, per the `geni_single_allocation` GetVersion return.
 
 Output directing options:
  - `-o` Save result in per-Aggregate files
  - `-p <prefix>` (used with -o) Prefix for resulting files
- - `--outputfile` If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
+ - `--outputfile <path>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s` for any slicename
  - If not saving results to a file, they are logged.
  - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-renew-localhost-8001.json`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-renew-localhost-8001.json
-
+Other options:
  - -V# API Version #
  - `--devmode`: Continue on error if possible
  - `-l <path>` to specify a logging config file
@@ -1355,12 +1356,12 @@ e.g.: myprefix-myslice-renew-localhost-8001.json
 ==== sliverstatus ====
 GENI AM API SliverStatus function
 
- * format: omni.py [-a AM_URL_or_nickname] sliverstatus <slice-name>
- * examples:
-  * omni.py sliverstatus myslice
-  * omni.py -a http://localhost:12348 sliverstatus myslice
-  * omni.py -a http://localhost:12348 --api-version 2 sliverstatus myslice
-  * omni.py -a myLocalAM sliverstatus myslice
+ * Format: omni.py [-a AM_URL_or_nickname] sliverstatus <slice-name>`
+ * Examples:
+  * `omni.py sliverstatus myslice`
+  * `omni.py -a http://localhost:12348 sliverstatus myslice`
+  * `omni.py -a http://localhost:12348 --api-version 2 sliverstatus myslice`
+  * `omni.py -a myLocalAM sliverstatus myslice`
 
 This command will get information from each aggregate about the
 status of the specified slice. This can include expiration time,
@@ -1371,7 +1372,7 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
@@ -1380,11 +1381,11 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 Options:
- - -o Save result in per-aggregate files
- - -p Prefix for resulting files (used with -o)
+ - `-o` Save result in per-aggregate files
+ - `-p <prefix>` Prefix for resulting files (used with -o)
  - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
- - --api-version specifies the version of the AM API to speak.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - `--api-version #` specifies the version of the AM API to speak.
     AM API version 2 is the default.
 
 ==== status ====
@@ -1392,14 +1393,23 @@ AM API Status <slice name>
 
 For use in AM API v3+. See sliverstatus for the v1 and v2 equivalent.
 
+Sample usage:
+ - Get status on the slice at given aggregate
+   `omni.py -V3 -a http://aggregate/url status myslice`
+
+ - Get status on specific slivers and save the result to a file
+   `omni.py -V3 -a http://aggregate/url -o --outputfile \
+   	   %s-status-%a.json -u urn:publicid:IDN+myam+sliver+1 \
+   	   -u urn:publicid:IDN+myam+sliver+2 status myslice`
+
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
- - --sliver-urn / -u option: each specifies a sliver URN to get status on. If specified,
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN to get status on. If specified,
    only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
 Aggregates queried:
@@ -1409,52 +1419,43 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 Output directing options:
- - -o Save result in per-Aggregate files
- - -p (used with -o) Prefix for resulting files
- - --outputfile If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
+ - `-o` Save result in per-Aggregate files
+ - `-p <prefi>` (used with `-o`) Prefix for resulting files
+ - `--outputfile <path>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s` for any slicename
  - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, action, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-status-localhost-8001.json`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-poa-geni_start-localhost-8001.json
-
- - -V# API Version #
- - --devmode: Continue on error if possible
- - -l to specify a logging config file
- - --logoutput <filename> to specify a logging output filename
-
-Sample usage:
- - Get status on the slice at given aggregate
-   omni.py -V3 -a http://aggregate/url status myslice
-
- - Get status on specific slivers and save the result to a file
-   omni.py -V3 -a http://aggregate/url -o --outputfile \
-   	   %s-status-%a.json -u urn:publicid:IDN+myam+sliver+1 \
-   	   -u urn:publicid:IDN+myam+sliver+2 status myslice
+Other options:
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
 
 ==== deletesliver ====
 Calls the GENI AM API DeleteSliver function. 
 This command will free any resources associated with your slice at
 the given aggregates.
 
- * format:  omni.py [-a AM_URL_or_nickname] deletesliver <slice-name>
- * examples:
-  * omni.py deletesliver myslice
-  * omni.py -a http://localhost:12348 deletesliver myslice
-  * omni.py -a http://localhost:12348 --api-version 2 deletesliver myslice
-  * omni.py -a myLocalAM deletesliver myslice
+ * Format: `omni.py [-a AM_URL_or_nickname] deletesliver <slice-name>`
+ * Examples:
+  * `omni.py deletesliver myslice`
+  * `omni.py -a http://localhost:12348 deletesliver myslice`
+  * `omni.py -a http://localhost:12348 --api-version 2 deletesliver myslice`
+  * `omni.py -a myLocalAM deletesliver myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1469,16 +1470,28 @@ if necessary, and both de-provisioned and de-allocated. No further AM API
 operations may be performed on slivers that have been deleted.
 See deletesliver.
 
+Sample usage:
+ - Delete all slivers in the slice at specific aggregates
+   `omni.py -V3 -a http://aggregate/url -a http://another/url delete myslice`
+
+ - Delete slivers in slice myslice; any slivers that cannot be deleted, stay as they were, while others are deleted
+   `omni.py -V3 -a http://myaggregate/url --best-effort delete myslice`
+
+ - Delete the given sliver in myslice at this AM and write the result struct to the given file
+   `omni.py -V3 -a http://myaggregate/url -o --outputfile \
+           %s-delete-%a.json -u urn:publicid:IDN+myam+sliver+1 \
+	   delete myslice`
+
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
- - --sliver-urn / -u option: each specifies a sliver URN to delete. If specified,
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN to delete. If specified,
    only the listed slivers will be deleted. Otherwise, all slivers in the slice will be deleted.
- - --best-effort: If supplied, slivers that can be deleted, will be; some slivers
+ - `--best-effort`: If supplied, slivers that can be deleted, will be; some slivers
    may not be deleted, in which case check the geni_error return for that sliver.
    If not supplied, then if any slivers cannot be deleted, the whole call fails
    and slivers do not change.
@@ -1490,33 +1503,21 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 Output directing options:
- - -o Save result in per-Aggregate files
- - -p (used with -o) Prefix for resulting files
- - --outputfile If supplied, use this output file name: substitute the AM for any %a,
-   and %s for any slicename
+ - `-o` Save result in per-Aggregate files
+ - `-p <prefix>` (used with `-o`) Prefix for resulting files
+ - `--outputfile <path>` If supplied, use this output file name: substitute the AM for any `%a`,
+   and `%s for any slicename
  - If not saving results to a file, they are logged.
- - If --tostdout option, then instead of logging, print to STDOUT.
+ - If `--tostdout` option, then instead of logging, print to STDOUT.
+ - When using `-o` and not `--outputfile`, file names will indicate the
+   slice name, file format, and which aggregate is represented.
+   e.g.: `myprefix-myslice-delete-localhost-8001.json`
 
-File names will indicate the slice name, file format, and
-which aggregate is represented.
-e.g.: myprefix-myslice-delete-localhost-8001.json
-
- - -V# API Version #
- - --devmode: Continue on error if possible
- - -l to specify a logging config file
- - --logoutput <filename> to specify a logging output filename
-
-Sample usage:
- - Delete all slivers in the slice at specific aggregates
-   omni.py -V3 -a http://aggregate/url -a http://another/url delete myslice
-
- - Delete slivers in slice myslice; any slivers that cannot be deleted, stay as they were, while others are deleted
-   omni.py -V3 -a http://myaggregate/url --best-effort delete myslice
-
- - Delete the given sliver in myslice at this AM and write the result struct to the given file
-   omni.py -V3 -a http://myaggregate/url -o --outputfile \
-           %s-delete-%a.json -u urn:publicid:IDN+myam+sliver+1 \
-	   delete myslice
+Other options:
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l <path>` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename
 
 ==== shutdown ====
 Calls the GENI AM API Shutdown function
@@ -1525,22 +1526,22 @@ their state.  This command should NOT be needed by most users - it
 is intended for emergency stop and supporting later forensics /
 debugging. 
 
- * format:  omni.py [-a AM_URL_or_nickname] shutdown <slice-name>
- * examples:
-  * omni.py shutdown myslice
-  * omni.py -a http://localhost:12348 shutdown myslice
-  * omni.py -a http://localhost:12348 --api-version 2 shutdown myslice
-  * omni.py -a myLocalAM shutdown myslice
+ * Format: `omni.py [-a AM_URL_or_nickname] shutdown <slice-name>`
+ * Examples:
+  * `omni.py shutdown myslice`
+  * `omni.py -a http://localhost:12348 shutdown myslice`
+  * `omni.py -a http://localhost:12348 --api-version 2 shutdown myslice`
+  * `omni.py -a myLocalAM shutdown myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from that file, if it exists.
+with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
- - Single URL given in -a argument or URL listed under that given
+ - Single URL given in `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
