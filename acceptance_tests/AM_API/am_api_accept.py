@@ -510,23 +510,6 @@ class Test(ut.OmniUnittest):
             return slice_name
         else:
             return None
-    # def test_ListResources_delegatedSliceCred(self):
-    #     """test_ListResources_delegatedSliceCred: Passes if 'ListResources' succeeds with a delegated slice credential. Override the default slice credential using --delegated-slicecredfile"""
-    #     # Check if slice credential is delegated.
-    #     xml = self.file_to_string( self.options_copy.delegated_slicecredfile )
-    #     self.assertTrue( self.is_delegated_cred(xml), 
-    #                    "Slice credential is not delegated " \
-    #                    "but expected to be. " )
-    #     slice_name = self.get_slice_name_from_cred( xml )                
-    #     self.assertTrue( slice_name,
-    #                    "Credential is not a slice credential " \
-    #                    "but expected to be: \n%s\n\n<snip> " % xml[:100] )
-    #     # Run slice credential
-    #     self.subtest_ListResources(
-    #        slicename=slice_name,
-    #        slicecredfile=self.options_copy.delegated_slicecredfile,
-    #        typeOnly=True)
-    #     self.success = True
 
     def test_ListResources_untrustedCredential(self):
         """test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse.
@@ -839,40 +822,6 @@ class Test(ut.OmniUnittest):
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
-            
-#     def test_AllocateWorkflow( self, slicename='foobar'):
-#         # THIS IS TEMPORARY TEST
-#         try:
-#             # Start fresh; Delete existing slivers if they already exist
-#             self.subtest_Delete( slicename )
-#         except:
-#             pass
-# #        self.subtest_createslice( slicename )
-#         try:
-#             self.subtest_Allocate( slicename )
-#             self.subtest_Provision( slicename )
-            
-#             self.subtest_Renew_many( slicename )
-#             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
-#             self.subtest_Renew_many( slicename )
-#         except:
-#             raise
-#         finally:
-#             self.subtest_Delete( slicename )
-
-#     def test_ProvisionWorkflow( self, slicename='foobar'):
-#         self.subtest_Allocate( slicename )
-# #        self.subtest_Provision( slicename )
-# #        self.subtest_Renew( slicename )
-# #        self.subtest_Delete( slicename )
-#     def test_PerformOperationalActionWorkflow( self, slicename='foobar'):
-#         self.subtest_Allocate( slicename )
-# #        self.subtest_Provision( slicename )
-# #        self.subtest_PerformOperationalAction( slicename, 'geni_start' )
-# #        self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
-# #        self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
-# #        self.subtest_Delete( slicename )
-
 
     def subtest_MinCreateSliverWorkflow(self, slicename=None):
         if slicename==None:
@@ -1014,10 +963,6 @@ class Test(ut.OmniUnittest):
                 createReturn= self.subtest_generic_CreateSliver( slicenames[i] )
                 numslivers[i], tmpManifest, slivers[i] = createReturn
                 manifest[i] = "".join(tmpManifest)
-
-
-
-
 
             for i in xrange(num_slices):
                 self.assertRspecType( "".join(request[i]), 'request')
@@ -1547,6 +1492,8 @@ class Test(ut.OmniUnittest):
             slivers, manifest = self.subtest_Provision( slicename )
             numslivers = len(slivers)
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+            self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
             self.options_copy.devmode = True   
             self.assertRaises(NotSuccessError,
                               self.subtest_PerformOperationalAction, 
