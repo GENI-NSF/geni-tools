@@ -769,45 +769,6 @@ class Test(ut.OmniUnittest):
                                                self.RSpecVersion(),
                                                self.options_copy.bound )
 
-            # Attempting to CreateSliver again should fail or return a
-            # manifest
-            if not self.options_copy.strict:
-                # if --less-strict, then accept a returned error
-                if self.options_copy.api_version == 3:
-                    self.assertRaises(NotSuccessError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-                elif self.options_copy.api_version == 2:
-                    # Be more specific when we can
-                    self.assertRaises(AMAPIError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-                else:
-                    # This is a little generous, as this error is
-                    # raised for many reasons
-                    self.assertRaises(NotNoneAssertionError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-            else:
-                # if --more-strict
-                # CreateSliver should return an RSpec containing no
-                # resources
-                numslivers, manifest, slivers2 = self.subtest_generic_CreateSliver( 
-                    slicename )
-                self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                  "expected to be wellformed XML file " \
-                  "but was not. Return was: " \
-                  "\n%s\n" \
-                  "... edited for length ..."
-                  % (slicename, manifest[:100]))                         
-                self.assertTrue( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                  "expected to be non-empty " \
-                  "but was empty. Return was: " \
-                  "\n%s\n" \
-                  "... edited for length ..."
-                  % (slicename, manifest[:100]))
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
