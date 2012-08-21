@@ -772,7 +772,7 @@ class Test(ut.OmniUnittest):
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-#            self.subtest_generic_RenewSliver_many( slicename )
+            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
