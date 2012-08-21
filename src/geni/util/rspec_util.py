@@ -130,11 +130,9 @@ def get_comp_ids_from_rspec( xml, version="GENI 3" ):
     # generate a list of node component_ids
     comp_id_list = []
     for node in nodes:
-        # node must contain a sliver_type
-        if len(node.findall(prefix+'sliver_type')) > 0:
-            node_comp_id = node.get('component_id')
-            if node_comp_id is not None:
-                comp_id_list = comp_id_list + [node_comp_id]
+        node_comp_id = node.get('component_id')
+        if node_comp_id is not None:
+            comp_id_list = comp_id_list + [node_comp_id]
     return set(comp_id_list)
 
 
@@ -151,11 +149,9 @@ def get_client_ids_from_rspec( xml, version="GENI 3" ):
     # generate a list of node client_ids
     client_id_list = []
     for node in nodes:
-        # node must contain a sliver_type
-        if len(node.findall(prefix+'sliver_type')) > 0:
-            node_client_id = node.get('client_id')
-            if node_client_id is not None:
-                client_id_list = client_id_list + [node_client_id]
+        node_client_id = node.get('client_id')
+        if node_client_id is not None:
+            client_id_list = client_id_list + [node_client_id]
     return set(client_id_list)
 
 def has_child_node( xml, version="GENI 3" ):

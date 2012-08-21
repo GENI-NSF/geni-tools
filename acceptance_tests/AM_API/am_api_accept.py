@@ -734,35 +734,27 @@ class Test(ut.OmniUnittest):
 
                 self.subtest_Describe_geni_compressed( slicename )
                 
-                # FIXME: Describe each sliver individually? No.
-                # Do 1 Describe for a list of slivers.
-                # Then must check that return has the requested slivers.
-                # and could also do a besteffort test: Add a nonsensical sliver to a legitimate 1, call with
-                # besteffort, and expect it to return both, with a geni_error for the nonsensical one
-                # And without besteffort, expect it to fail (I think?)
-                for sliver in slivers:
+                self.options_copy.devmode = True   
+                # Call describe on an individual sliver
+                # Then Call Describe() on a urn of type 'node' not 'sliver' - should fail
+                if len(slivers)>0:
+                    sliver = slivers[0]
                     sliver_urn = sliver['geni_sliver_urn']
                     self.subtest_Describe(slicename=slicename, sliverurns=[sliver_urn] )
 
-                self.options_copy.devmode = True   
-                # Call Describe() on a urn of type 'node' not 'sliver'
-                # FIXME: As above, do this once, not once per sliver
-                for sliver in slivers:
-                    sliver_urn = sliver['geni_sliver_urn']
                     sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
 
                     self.assertRaises(NotSuccessError, 
                                       self.subtest_Describe,
                                       slicename=slicename, 
                                       sliverurns=[sliver_urn2] )
-                    continue
 
-                # Call Describe() on a urn of type 'sliver' which isn't valid
-                sliver_urn3 = re.sub('\+sliver\+.*', '+sliver+INVALID', sliver_urn)
-                self.assertRaises(NotSuccessError, 
-                                  self.subtest_Describe,
-                                  slicename=slicename, 
-                                  sliverurns=[sliver_urn3] )
+                    # Call Describe() on a urn of type 'sliver' which isn't valid
+                    sliver_urn3 = re.sub('\+sliver\+.*', '+sliver+INVALID', sliver_urn)
+                    self.assertRaises(NotSuccessError, 
+                                      self.subtest_Describe,
+                                      slicename=slicename, 
+                                      sliverurns=[sliver_urn3] )
                 self.options_copy.devmode = False
 
             self.assertRspecType( manifest2, 'manifest')
@@ -775,51 +767,10 @@ class Test(ut.OmniUnittest):
                                                self.RSpecVersion(),
                                                self.options_copy.bound )
 
-            # Attempting to CreateSliver again should fail or return a
-            # manifest
-            if not self.options_copy.strict:
-                # if --less-strict, then accept a returned error
-                # FIXME: I think this is wrong. You can call allocate >1 times, depending on value of geni_allocate
-                # from GetVersion
-                if self.options_copy.api_version >= 3:
-                    self.assertRaises(NotSuccessError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-                elif self.options_copy.api_version == 2:
-                    # Be more specific when we can
-                    self.assertRaises(AMAPIError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-                else:
-                    # This is a little generous, as this error is
-                    # raised for many reasons
-                    self.assertRaises(NotNoneAssertionError, 
-                                      self.subtest_generic_CreateSliver, 
-                                      slicename )
-            else:
-                # if --more-strict
-                # CreateSliver should return an RSpec containing no
-                # resources
-                numslivers, manifest, slivers2 = self.subtest_generic_CreateSliver( 
-                    slicename )
-                self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                  "expected to be wellformed XML file " \
-                  "but was not. Return was: " \
-                  "\n%s\n" \
-                  "... edited for length ..."
-                  % (slicename, manifest[:100]))                         
-                self.assertTrue( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'CreateSliver' on slice '%s' " \
-                  "expected to be non-empty " \
-                  "but was empty. Return was: " \
-                  "\n%s\n" \
-                  "... edited for length ..."
-                  % (slicename, manifest[:100]))
 
             time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
-#            self.subtest_generic_RenewSliver_many( slicename )
+            self.subtest_generic_RenewSliver_many( slicename )
         except:
             raise
         finally:
