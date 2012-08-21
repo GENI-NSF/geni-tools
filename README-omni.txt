@@ -35,6 +35,7 @@ New in v2.0:
    - Added --outputfile argument allowing experimenters to specify
  output filenames
    - Cache GetVersion results for selecting RSpec versions
+   - Support multiple -a arguments to specify more than 1 target aggregate
 
 New in v1.6.2:
  * Added omni-configure.py script to autogenerate the omni_config (#127)

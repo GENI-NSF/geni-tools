@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2011-2 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,22 +26,24 @@
 
 import datetime
 import dateutil.parser
-from geni.util import rspec_util 
-from geni.util import urn_util
-import unittest
-import omni_unittest as ut
-from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
-from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
-from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
-import omni
 import os
 import pprint
 import re
 import sys
 import time
 import tempfile
+import unittest
 import xml.etree.ElementTree as etree 
+
+from geni.util import rspec_util 
 from geni.util.rspec_schema import *
+from geni.util import urn_util
+
+import omni
+import omni_unittest as ut
+from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
+from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
+from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
@@ -55,12 +57,12 @@ REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
-SLEEP_TIME=20
+SLEEP_TIME=20 # Pause between AM API calls in seconds
 
 SUCCESS = 0
 ################################################################################
 #
-# Test AM API v1 calls for accurate and complete functionality.
+# Test AM API calls for accurate and complete functionality.
 #
 # This script relies on the unittest module.
 #
@@ -76,15 +78,12 @@ SUCCESS = 0
 #
 ################################################################################
 
-# This is the acceptance test for AM API version 1
-API_VERSION = 1
-
-
 class Test(ut.OmniUnittest):
-    """Acceptance tests for GENI AM API v1."""
+    """Acceptance tests for GENI AM API."""
 
     def setUp( self ):
         ut.OmniUnittest.setUp(self)
+        # Set up RSpec type/version
         if self.options_copy.protogeniv2:
             self.options_copy.rspectype = (PGV2_RSPEC_NAME, PGV2_RSPEC_NUM)  
             self.manifest_namespace = PG_2_NAMESPACE
@@ -102,15 +101,18 @@ class Test(ut.OmniUnittest):
             self.ad_namespace = GENI_3_NAMESPACE
             self.ad_schema = GENI_3_AD_SCHEMA
         self.success = False
+
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)
         if self.options_copy.monitoring:
             # MONITORING test_TestName 1
             print "\nMONITORING %s %d" % (self.id().split('.',2)[-1],int(not self.success))
+
     def checkAdRSpecVersion(self):
         return self.checkRSpecVersion(type='ad')
     def checkRequestRSpecVersion(self):
         return self.checkRSpecVersion(type='request')
+
     def checkRSpecVersion(self, type='ad'):
         """type is either 'ad' or 'request' """
         if type not in ('ad', 'request'):
@@ -139,7 +141,7 @@ class Test(ut.OmniUnittest):
                     'geni_'+rspec_type, 
                     list )
             else:
-                value = thisVersion               
+                value = thisVersion
                 rspec_version = self.assertReturnPairKeyValue( 
                     'GetVersion', agg, value, 
                     rspec_type, 
@@ -163,12 +165,11 @@ class Test(ut.OmniUnittest):
             return match
 
     def test_GetVersion(self):
-        """test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A.
+        """test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A or APIv2 or APIv3, as appropriate.
         """
         # Do AM API call
         omniargs = ["getversion"]
         (text, ret_dict) = self.call(omniargs, self.options_copy)
-
 
         pprinter = pprint.PrettyPrinter(indent=4)
         # If this isn't a dictionary, something has gone wrong in Omni.  
@@ -184,6 +185,7 @@ class Test(ut.OmniUnittest):
                        "but instead returned empty dictionary. " \
                         "This indicates there were no aggregates checked. " \
                         "Look for misconfiguration.")
+
         # Checks each aggregate
         for (agg, ver_dict) in ret_dict.items():
             value = self.assertReturnKeyValueType( 'GetVersion', agg, ver_dict, 
@@ -234,7 +236,8 @@ class Test(ut.OmniUnittest):
             for vers in request_rspec_versions:
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
-                if self.options_copy.api_version == 3:
+                # V3 changed these to be required but possibly empty
+                if self.options_copy.api_version >= 3:
                     self.assertKeyValueType( 'GetVersion', agg, vers, 'schema', str )
                     self.assertKeyValueType( 'GetVersion', agg, vers, 'namespace', str )
                     self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', list )
@@ -249,7 +252,7 @@ class Test(ut.OmniUnittest):
                     pass
 
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'extensions', type([]) )
-
+            # End loop over advertised request rspec versions
 
             self.assertTrue( request,
                         "Return from 'GetVersion' at %s " \
@@ -258,7 +261,6 @@ class Test(ut.OmniUnittest):
                         "type='%s' and value='%s' " \
                         "but did not." 
                         % (agg, exp_type, exp_num) )
-
 
 
             if self.options_copy.api_version >= 2:
@@ -276,7 +278,8 @@ class Test(ut.OmniUnittest):
             for vers in ad_rspec_versions:
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'type', str)
                 self.assertKeyValueType( 'GetVersion', agg, vers, 'version', str, )
-                if self.options_copy.api_version == 3:
+                # V3 changed these to be required but possibly empty
+                if self.options_copy.api_version >= 3:
                     self.assertKeyValueType( 'GetVersion', agg, vers, 
                                              'schema', str )
                     self.assertKeyValueType( 'GetVersion', agg, vers, 
@@ -294,6 +297,8 @@ class Test(ut.OmniUnittest):
                     pass
                 self.assertKeyValueType( 'GetVersion', agg, vers, 
                                          'extensions', list )
+            # End of loop over advertised ad rspec versions
+
             self.assertTrue( ad,
                         "Return from 'GetVersion' at %s " \
                         "expected to have entry " \
@@ -302,8 +307,8 @@ class Test(ut.OmniUnittest):
                         "but did not." 
                         % (agg, exp_type, exp_num) )
 
-
-            if self.options_copy.api_version == 3:
+            # Check v3+ AM advertises geni_sfa credential support
+            if self.options_copy.api_version >= 3:
                 cred_types = self.assertReturnKeyValueType( 
                     'GetVersion', agg, value, 
                     'geni_credential_types', 
@@ -402,13 +407,13 @@ class Test(ut.OmniUnittest):
             geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
         else:
             usercred = usercredstruct
-        self.assertStr( usercred,
+            self.assertStr( usercred,
                         "Return from 'getusercred' " \
                             "expected to be string " \
                             "but instead returned: %r" 
                         % (usercred))
-        # Test if file is XML 
-        self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( usercred ),
                         "Return from 'getusercred' " \
                             "expected to be XML " \
                             "but instead returned: \n" \
@@ -529,13 +534,14 @@ class Test(ut.OmniUnittest):
     def subtest_query_rspec(self, AMAPI_call="ListResources", slicename=None, slicecred=None, usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
+        else:
+            self.assertTrue(self.checkRequestRSpecVersion())
 
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
             rspec_util.rspeclint_exists()
 
-        self.options_copy.omnispec = False # omni will complain if both true
         if slicename:
             rspec_namespace = self.manifest_namespace
             rspec_schema = self.manifest_schema
@@ -552,30 +558,35 @@ class Test(ut.OmniUnittest):
 
         for urn in sliverurns:
             omniargs = omniargs + ['-u', urn]
+        
         if usercred and slicecred:
             with tempfile.NamedTemporaryFile() as f:
                 # make a temporary file containing the user credential
                 f.write( usercred )
                 f.seek(0)
+                # Keeping f open...
                 with tempfile.NamedTemporaryFile() as f2:
                     # make a temporary file containing the slice credential
                     f2.write( slicecred )
                     f2.seek(0)
+                    # keeping both files open...
                     omniargs = omniargs + ["--usercredfile", f.name] + ["--slicecredfile", f2.name] 
                     # run command here while temporary file is open
                     (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif slicecred and not(usercred):
             with tempfile.NamedTemporaryFile() as f2:
-                    # make a temporary file containing the slice credential
-                    f2.write( slicecred )
-                    f2.seek(0)
-                    omniargs = omniargs + ["--slicecredfile", f2.name] 
-                    (text, ret_dict) = self.call(omniargs, self.options_copy)
+                # make a temporary file containing the slice credential
+                f2.write( slicecred )
+                f2.seek(0)
+                # Keeping f2 open...
+                omniargs = omniargs + ["--slicecredfile", f2.name] 
+                (text, ret_dict) = self.call(omniargs, self.options_copy)
         elif usercred and not(slicecred):
             with tempfile.NamedTemporaryFile() as f:
                 # make a temporary file containing the user credential
                 f.write( usercred )
                 f.seek(0)
+                # Keeping f open...
                 omniargs = omniargs + ["--usercredfile", f.name] 
                 # run command here while temporary file is open
                 (text, ret_dict) = self.call(omniargs, self.options_copy)
@@ -587,8 +598,6 @@ class Test(ut.OmniUnittest):
             (text, ret_dict) = self.call(omniargs, self.options_copy)
         else:
             (text, ret_dict) = self.call(omniargs, self.options_copy)
-
-        pprinter = pprint.PrettyPrinter(indent=4)
 
         self.assertDict(ret_dict,
                        "Call to '%s' failed or not possible " \
@@ -605,7 +614,7 @@ class Test(ut.OmniUnittest):
                         "Look for misconfiguration." % (AMAPI_call) )
 
         if AMAPI_call == "Describe":            
-            # AM API v3 Describe( slicename )
+            # AM API v3+ Describe( slicename )
             for agg, indAgg in ret_dict.items():
                 err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, 
                                                             indAgg )    
@@ -630,7 +639,7 @@ class Test(ut.OmniUnittest):
                              "Returned slivers were: " \
                              "\n%s" 
                              % (AMAPI_call, agg, str(sliverurns), str(reported_urns)))
-
+                # else it should be true that all slivers in the slice are reported
 
         else:
             # AM API v1-v3 ListResources() and 
@@ -1077,7 +1086,6 @@ class Test(ut.OmniUnittest):
         omniargs = ["renewsliver", slicename, newtime] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
         succNum, possNum = omni.countSuccess( succList, failList )
-        pprinter = pprint.PrettyPrinter(indent=4)
         self.assertTrue( int(succNum) == 1,
                          "'RenewSliver' until %s " \
                          "expected to succeed " \
@@ -1086,7 +1094,6 @@ class Test(ut.OmniUnittest):
     def subtest_RenewSlice( self, slicename, newtime ):
         omniargs = ["renewslice", slicename, newtime] 
         text, date = self.call(omniargs, self.options_copy)
-        pprinter = pprint.PrettyPrinter(indent=4)
         self.assertIsNotNone( date, 
                          "'RenewSlice' until %s " \
                          "expected to succeed " \
@@ -1222,7 +1229,6 @@ class Test(ut.OmniUnittest):
         omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
         text, manifest = self.call(omniargs, self.options_copy)
 
-        pprinter = pprint.PrettyPrinter(indent=4)
         self.assertRspec( "CreateSliver", manifest, 
                           self.manifest_namespace,
                           self.manifest_schema,
@@ -1309,8 +1315,6 @@ class Test(ut.OmniUnittest):
         omniargs = ["sliverstatus", slice_name] 
         
         text, agg = self.call(omniargs, self.options_copy)
-
-        pprinter = pprint.PrettyPrinter(indent=4)
 
         self.assertIsNotNone(agg,
                           "Return from 'SliverStatus'" \
@@ -1455,7 +1459,7 @@ class Test(ut.OmniUnittest):
         if self.options_copy.api_version <= 2:
             numslivers, manifest = self.subtest_CreateSliver( slicename )
             slivers = None
-        elif self.options_copy.api_version == 3:
+        elif self.options_copy.api_version >= 3:
             self.subtest_Allocate( slicename )
             slivers, manifest = self.subtest_Provision( slicename )
             numslivers = len(slivers)
@@ -1475,13 +1479,13 @@ class Test(ut.OmniUnittest):
     def subtest_generic_SliverStatus( self, slicename ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )
-        elif self.options_copy.api_version == 3:
+        elif self.options_copy.api_version >= 3:
             self.subtest_Status( slicename )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
         if self.options_copy.api_version <= 2:
             self.subtest_RenewSliver_many( slicename )
-        elif self.options_copy.api_version == 3:
+        elif self.options_copy.api_version >= 3:
             self.subtest_Renew_many( slicename )
 
     @classmethod
