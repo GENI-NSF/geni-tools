@@ -365,23 +365,17 @@ class Test(ut.OmniUnittest):
         self.options_copy.geni_compressed = False
         self.subtest_Describe( slicename=slicename )
         self.success = True
-    def subtest_Describe_geni_available(self, slicename):
-        """test_Describe_geni_available: Passes if 'Describe' returns an advertisement RSpec.
-        """
-        # omni sets 'geni_available' = False, override
-        self.options_copy.geni_available = True
-        self.subtest_Describe( slicename=slicename )
-        self.success = True
-
 
     def test_ListResources_badCredential_malformedXML(self):
         """test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). """
         self.subtest_ListResources_badCredential(self.removeFirstChar)
         self.success = True
+
     def test_ListResources_badCredential_alteredObject(self):
         """test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). """
         self.subtest_ListResources_badCredential(self.alterSignedObject)
         self.success = True
+
     def removeFirstChar( self, usercred ):
         return usercred[1:]
 
@@ -432,7 +426,6 @@ class Test(ut.OmniUnittest):
         self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, usercred=broken_usercred)
         self.options_copy.devmode = False
 
-
     def subtest_ListResources_wrongSlice(self, slicelist):
         num_slices = len(slicelist)
         for i in xrange(num_slices):
@@ -447,13 +440,13 @@ class Test(ut.OmniUnittest):
                 geni_type, geni_version, slicecred = tmpRetVal
             else:
                 slicecred = slicecredstruct
-            self.assertStr( slicecred,
+                self.assertStr( slicecred,
                             "Return from 'getslicered' " \
                             "expected to be string " \
                             "but instead returned: %r" 
                         % (slicecred))
-            # Test if file is XML 
-            self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
+                # Test if file is XML 
+                self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
                         "Return from 'getslicecred' " \
                         "expected to be XML " \
                         "but instead returned: \n" \
@@ -467,7 +460,6 @@ class Test(ut.OmniUnittest):
         self.options_copy.devmode = True   
         self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
-
 
     def file_to_string( self, filename ):
         with open(filename) as f:
@@ -741,14 +733,20 @@ class Test(ut.OmniUnittest):
                 self.options_copy.devmode = False   
 
                 self.subtest_Describe_geni_compressed( slicename )
-                self.subtest_Describe_geni_available( slicename )
                 
+                # FIXME: Describe each sliver individually? No.
+                # Do 1 Describe for a list of slivers.
+                # Then must check that return has the requested slivers.
+                # and could also do a besteffort test: Add a nonsensical sliver to a legitimate 1, call with
+                # besteffort, and expect it to return both, with a geni_error for the nonsensical one
+                # And without besteffort, expect it to fail (I think?)
                 for sliver in slivers:
                     sliver_urn = sliver['geni_sliver_urn']
                     self.subtest_Describe(slicename=slicename, sliverurns=[sliver_urn] )
 
                 self.options_copy.devmode = True   
                 # Call Describe() on a urn of type 'node' not 'sliver'
+                # FIXME: As above, do this once, not once per sliver
                 for sliver in slivers:
                     sliver_urn = sliver['geni_sliver_urn']
                     sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
@@ -781,6 +779,8 @@ class Test(ut.OmniUnittest):
             # manifest
             if not self.options_copy.strict:
                 # if --less-strict, then accept a returned error
+                # FIXME: I think this is wrong. You can call allocate >1 times, depending on value of geni_allocate
+                # from GetVersion
                 if self.options_copy.api_version >= 3:
                     self.assertRaises(NotSuccessError, 
                                       self.subtest_generic_CreateSliver, 
@@ -1453,6 +1453,7 @@ class Test(ut.OmniUnittest):
             self.assertRaises((AMAPIError, NotSuccessError, NotNoneAssertionError),
                               self.subtest_MinCreateSliverWorkflow, slice_name )
         self.success = True
+
 ################################################################################
 ###
 ### This test is commented out because no aggregate actually passed it 
@@ -1489,6 +1490,7 @@ class Test(ut.OmniUnittest):
             self.subtest_DeleteSliver( slicename )
         elif self.options_copy.api_version >= 3:
             self.subtest_Delete( slicename )
+
     def subtest_generic_CreateSliver( self, slicename ):
         """For v1 and v2, call CreateSliver().  For v3, call
         Allocate(), Provision(), and then
@@ -1501,8 +1503,11 @@ class Test(ut.OmniUnittest):
             self.subtest_Allocate( slicename )
             slivers, manifest = self.subtest_Provision( slicename )
             numslivers = len(slivers)
+            # FIXME: Check operational state is ready for geni_start
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+            # FIXME: Check operational state is ready for restart
             self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+            # FIXME: Check operational state is ready for stop
             self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
             self.options_copy.devmode = True   
             self.assertRaises(NotSuccessError,
