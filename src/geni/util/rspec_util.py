@@ -117,7 +117,6 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         else:
             return False
 
-
 def get_comp_ids_from_rspec( xml, version="GENI 3" ):
     try:
         root = etree.fromstring(xml)
@@ -256,9 +255,9 @@ def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
         # if rspeclint returns 0 then it was successful
         if output == 0:
             return True
-        else: 
+        else:
+            # FIXME: Log rspeclint output?
             return False
-
 
 def rspec_available_only( rspec, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA, version="GENI 3" ):
     """ Return True if all nodes in rspec say:
