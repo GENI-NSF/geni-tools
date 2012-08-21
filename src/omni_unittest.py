@@ -256,6 +256,10 @@ class OmniUnittest(unittest.TestCase):
 
     def assertManifestMatchesRequest( self, request, manifest, rspec_version, bound ):
         if rspec_util.has_child_node( manifest, rspec_version):
+            # FIXME: could just check all req comp IDs are in the set of man comp IDs
+            # even better: for each node or link in req:
+            # assert man has a node with same client ID, and if req has a comp ID, same comp ID
+            # This would allow man to have more things than requested, so could also assert the # is equal.
             if bound:
                 self.assertCompIDsEqual( request, manifest, 
                              rspec_version,
