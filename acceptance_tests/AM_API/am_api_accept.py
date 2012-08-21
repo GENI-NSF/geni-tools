@@ -740,7 +740,8 @@ class Test(ut.OmniUnittest):
 
                 self.options_copy.devmode = True   
                 # Call Describe() on a urn of type 'node' not 'sliver'
-                for sliver in slivers:
+                if len(slivers)>0:
+                    sliver = slivers[0]
                     sliver_urn = sliver['geni_sliver_urn']
                     sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
 
@@ -748,7 +749,7 @@ class Test(ut.OmniUnittest):
                                       self.subtest_Describe,
                                       slicename=slicename, 
                                       sliverurns=[sliver_urn2] )
-                    continue
+
 
                 # Call Describe() on a urn of type 'sliver' which isn't valid
                 sliver_urn3 = re.sub('\+sliver\+.*', '+sliver+INVALID', sliver_urn)
