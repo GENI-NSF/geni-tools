@@ -1480,12 +1480,19 @@ class Test(ut.OmniUnittest):
             slivers, manifest = self.subtest_Provision( slicename )
             numslivers = len(slivers)
             # FIXME: Check operational state is ready for geni_start
+            # At least could wrap some of these in a try/catch
+            # that looks for geni_code UNSUPPORTED? or INPROGRESS (already starting)?
+            # At least look for the sliver(s) to NOT have operational state 'geni_pending_allocation'. AFter that, 
+            # actions are valid.
+            # Probably also check the sliver does not have operational state 'geni_ready' - in which case
+            # no 'start' is needed.
             # FIXME: Is geni_start even a valid operation
             self.subtest_PerformOperationalAction( slicename, 'geni_start' )
             # FIXME: Check operational state is ready for restart
             # FIXME: Is geni_restart even a valid operation
             self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
             # FIXME: Check operational state is ready for stop
+            # At least check the state is not geni_notready - ie it has already been stopped
             # FIXME: Is geni_stop even a valid operation
             self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
             self.options_copy.devmode = True   
