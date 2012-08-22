@@ -428,13 +428,16 @@ keys = %(pkey)s
 # Nickname=URN, URL
 # URN is optional
 [aggregate_nicknames]
+#ProtoGENI AMs
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
 pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
-plc=,https://www.planet-lab.org:12346
 pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am
 pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+
+#PlanetLab Central AM
+plc=,https://www.planet-lab.org:12346
 
 # Private myplc installations
 plc-gpo=,http://myplc.gpolab.bbn.com:12346/
