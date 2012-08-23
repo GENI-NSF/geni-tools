@@ -757,10 +757,47 @@ class Test(ut.OmniUnittest):
                 if len(slivers)>0:
                     sliver = slivers[0]
                     sliver_urn = sliver['geni_sliver_urn']
-                    self.subtest_Describe(slicename=slicename, sliverurns=[sliver_urn] )
+                    allsliverurns = []
+                    for sliveritem in slivers:
+                        allsliverurns.append(sliveritem['geni_sliver_urn'])
+
+                    # Make sure can call Status on an individual sliver
+                    self.subtest_Status(slicename, sliverlist = [sliver_urn])
+
+                    # If not geni_single_allocation, then Renew, Describe, Provision, POA on an 
+                    # individual sliver should work. Else, should need all slivers
+                    geni_single_allocation = False
+
+                    # 1: Get GetVersion Result
+                    omniargs = ["getversion"]
+                    (text, ret_dict) = self.call(omniargs, self.options_copy)
+                    self.assertTrue(len(ret_dict.keys()) > 0,
+                                    "GetVersion returned nothing")
+                    aggName = ret_dict.keys()[0]
+                    self.assertTrue((isinstance(ret_dict[aggName], dict) and 
+                                     ret_dict[aggName].has_key('value') and 
+                                     isinstance(ret_dict[aggName]['value'], dict)),
+                                    "GetVersion return malformed")
+                        
+                    # 2: Pull geni_single_allocation value
+                    if ret_dict[aggName]['value'].has_key('geni_single_allocation'):
+                        geni_single_allocation = self.assertReturnKeyValueType("GetVersion", aggName, ret_dict[aggName], "geni_single_allocation", bool)
+
+                    if geni_single_allocation:
+                        print "AM does geni_single_allocation: testing Renew/Describe with all sliver URNs at once"
+                        sliverurns = allsliverurns
+                    else:
+                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
+                        sliverurns = [sliver_urn]
+                    now = datetime.datetime.utcnow()
+                    fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
+                    self.subtest_Renew(slicename, newtime=fivemin, sliverlist=sliverurns)
+
+                    # FIXME: Try Provision or POA on an individual sliver?
 
                     sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
-
+                    self.subtest_Describe(slicename=slicename, sliverurns=sliverurns )
+                    badurnslist = sliverurns.append(sliver_urn2)
                     self.assertRaises(NotSuccessError, 
                                       self.subtest_Describe,
                                       slicename=slicename, 
@@ -768,6 +805,7 @@ class Test(ut.OmniUnittest):
 
                     # Call Describe() on a urn of type 'sliver' which isn't valid
                     sliver_urn3 = re.sub('\+sliver\+.*', '+sliver+INVALID', sliver_urn)
+                    badurnslist = sliverurns.append(sliver_urn3)
                     self.assertRaises(NotSuccessError, 
                                       self.subtest_Describe,
                                       slicename=slicename, 
@@ -1138,30 +1176,30 @@ class Test(ut.OmniUnittest):
         time.sleep(self.options_copy.sleep_time)
         self.subtest_Renew( slicename, fivedays )
 
-    def subtest_Renew(self, slice_name, newtime):
+    def subtest_Renew(self, slice_name, newtime, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='renew', 
-                                        AMAPI_call="Renew",
+                                        AMAPI_call="Renew", sliverlist=sliverlist,
                                         newtime=newtime)
 
-    def subtest_Provision(self, slice_name):
+    def subtest_Provision(self, slice_name, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='provision', 
-                                        AMAPI_call="Provision")
-    def subtest_Status(self, slice_name):
+                                        AMAPI_call="Provision", sliverlist=sliverlist)
+    def subtest_Status(self, slice_name, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='status', 
-                                        AMAPI_call="Status")
+                                        AMAPI_call="Status", sliverlist=sliverlist)
 
-    def subtest_PerformOperationalAction(self, slice_name, command):
+    def subtest_PerformOperationalAction(self, slice_name, command, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='performoperationalaction', 
-                                        AMAPI_call="PerformOperationalAction",
+                                        AMAPI_call="PerformOperationalAction", sliverlist=sliverlist,
                                                 command=command)
-    def subtest_Delete(self, slice_name):
+    def subtest_Delete(self, slice_name, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='delete', 
-                                        AMAPI_call="Delete")
+                                        AMAPI_call="Delete", sliverlist=sliverlist)
 
     def subtest_AMAPIv3CallNoRspec( self, slicename, 
                                     omni_method='provision', 
@@ -1187,12 +1225,10 @@ class Test(ut.OmniUnittest):
             omniargs = [omni_method, slicename]
 
         if sliverlist:
-            print "Not handling lists of slivers yet"
-#            for sliver in sliverlist:
-#                # FIXME: Error check
-#                omniargs.append('-u')
-#                omniargs.appen(sliver)
-#            omniargs = [omni_method, slicename]
+            for sliver in sliverlist:
+                self.assertURNandType(sliver, 'sliver')
+                omniargs.append('-u')
+                omniargs.append(sliver)
 
         text, allAggs = self.call(omniargs, self.options_copy)
         for agg, indAgg in allAggs.items():
@@ -1226,6 +1262,12 @@ class Test(ut.OmniUnittest):
                                      "expected to list slivers " \
                                      "but did not"
                                  % (AMAPI_call))
+                if sliverlist:
+                    self.assertTrue( numSlivers == len(sliverlist),
+                                 "Return from '%s' " \
+                                     "expected to list all %d requested slivers " \
+                                     "but listed %d"
+                                 % (AMAPI_call, len(sliverlist), numSlivers))
         return retVal2
 
 
@@ -1465,11 +1507,11 @@ class Test(ut.OmniUnittest):
         elif self.options_copy.api_version >= 3:
             return self.subtest_Describe( slicename, *args, **kwargs )
 
-    def subtest_generic_DeleteSliver( self, slicename ):
+    def subtest_generic_DeleteSliver( self, slicename, sliverlist = None ):
         if self.options_copy.api_version <= 2:
             self.subtest_DeleteSliver( slicename )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Delete( slicename )
+            self.subtest_Delete( slicename, sliverlist )
 
     def subtest_generic_CreateSliver( self, slicename, doProvision=True, doPOA=True ):
         """For v1 and v2, call CreateSliver().  For v3, call
@@ -1515,11 +1557,11 @@ class Test(ut.OmniUnittest):
 #                print 'not doing Provision or POA'
 
         return numslivers, manifest, slivers
-    def subtest_generic_SliverStatus( self, slicename ):
+    def subtest_generic_SliverStatus( self, slicename, sliverlist = None ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Status( slicename )
+            self.subtest_Status( slicename, sliverlist )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
         if self.options_copy.api_version <= 2:
