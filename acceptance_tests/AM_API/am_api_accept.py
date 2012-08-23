@@ -26,6 +26,7 @@
 
 import datetime
 import dateutil.parser
+import json
 import os
 import pprint
 import re
@@ -44,6 +45,7 @@ import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
+import omnilib.util.json_encoding as json_encoding
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
@@ -379,6 +381,42 @@ class Test(ut.OmniUnittest):
         a User Credential that has been altered (so the signature doesn't match). """
         self.subtest_ListResources_badCredential(self.alterSignedObject)
         self.success = True
+
+    # FIXME: Would love to test supplying a list of credentials, 1 good and 1 bad,
+    # but Omni doesn't support it yet
+
+    def test_ListResources_badCredential_badtype(self):
+        """test_ListResources_badCredential_badtype: Run ListResources in API v3+ with 
+        a User Credential that says it is of a nonexistent type only: should fail """
+        if self.options_copy.api_version < 3:
+            self.success = True
+            return
+
+        # (1) Get the usercredential
+        omniargs = ["getusercred"]
+        (text, usercredstruct) = self.call(omniargs, self.options_copy)
+
+        geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
+        brokencredstruct = dict()
+        brokencredstruct['geni_type'] = geni_type + "BROKEN"
+        brokencredstruct['geni_version'] = geni_version
+        brokencredstruct['geni_value'] = usercred
+        self.options_copy.devmode = True
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                          usercred=json.dumps(brokencredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
+        self.options_copy.devmode = False
+
+    def subtest_ListResources_slice_with_usercred(self, slicename):
+        """test_ListResources_slice_with_usercred: Run ListResources with 
+        a User Credential pretending to be the slice cred: should fail """
+        # (1) Get the usercredential
+        omniargs = ["getusercred"]
+        (text, usercredstruct) = self.call(omniargs, self.options_copy)
+        self.options_copy.devmode = True
+        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                          slicename=slicename,
+                          slicecred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
+        self.options_copy.devmode = False
 
     def removeFirstChar( self, usercred ):
         return usercred[1:]
@@ -738,6 +776,10 @@ class Test(ut.OmniUnittest):
             manifest2 = self.subtest_generic_ListResources( slicename=slicename )
             # in v3 ListResources(slicename) should FAIL
 ## Should this succeed by giving an advertisement? Or FAIL as shown?
+
+            # Test passing a usercred as though it is a slice cred -- should fail
+            self.subtest_ListResources_slice_with_usercred(slicename)
+
             if self.options_copy.api_version >= 3:
                 self.options_copy.devmode = True   
                 # Seems like we should be checking for something more here?
@@ -778,16 +820,16 @@ class Test(ut.OmniUnittest):
                                      ret_dict[aggName].has_key('value') and 
                                      isinstance(ret_dict[aggName]['value'], dict)),
                                     "GetVersion return malformed")
-                        
+
                     # 2: Pull geni_single_allocation value
                     if ret_dict[aggName]['value'].has_key('geni_single_allocation'):
                         geni_single_allocation = self.assertReturnKeyValueType("GetVersion", aggName, ret_dict[aggName], "geni_single_allocation", bool)
 
                     if geni_single_allocation:
-                        print "AM does geni_single_allocation: testing Renew/Describe with all sliver URNs at once"
+#                        print "AM does geni_single_allocation: testing Renew/Describe with all sliver URNs at once"
                         sliverurns = allsliverurns
                     else:
-                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
+#                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
                         sliverurns = [sliver_urn]
                     now = datetime.datetime.utcnow()
                     fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
