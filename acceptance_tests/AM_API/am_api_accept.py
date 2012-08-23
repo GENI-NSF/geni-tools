@@ -687,7 +687,7 @@ class Test(ut.OmniUnittest):
         self.subtest_CreateSliverWorkflow()
         self.success = True
 
-    def subtest_CreateSliverWorkflow(self, slicename=None):
+    def subtest_CreateSliverWorkflow(self, slicename=None, doProvision=True, doPOA=True):
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
@@ -713,7 +713,7 @@ class Test(ut.OmniUnittest):
         except:
             pass
 
-        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename )
+        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename, doProvision, doPOA )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
@@ -815,6 +815,8 @@ class Test(ut.OmniUnittest):
         except:
             pass
 
+#        # 2 False args mean in v3+ don't do Provision or poa
+#        manifest = self.subtest_generic_CreateSliver( slicename, False, False )
         manifest = self.subtest_generic_CreateSliver( slicename )
 #        with open(self.options_copy.rspec_file) as f:
 #            req = f.readlines()
@@ -938,7 +940,9 @@ class Test(ut.OmniUnittest):
                 slivers.append("")
                 self.options_copy.rspec_file = self.options_copy.rspec_file_list[i]
                 time.sleep(self.options_copy.sleep_time)
-                createReturn= self.subtest_generic_CreateSliver( slicenames[i] )
+#                # False args mean in v3+, don't do Provision or POA
+#                createReturn = self.subtest_generic_CreateSliver( slicenames[i], False, False )
+                createReturn = self.subtest_generic_CreateSliver( slicenames[i] )
                 numslivers[i], tmpManifest, slivers[i] = createReturn
                 manifest[i] = "".join(tmpManifest)
 
@@ -1295,8 +1299,8 @@ class Test(ut.OmniUnittest):
                 retVal2 = manifest 
             elif AMAPI_call is "Allocate":
                 retVal = indAgg['value']
-                numSlivers, manifest = self.assertAllocateReturn( agg, 
-                                                                  retVal )
+                numSlivers, manifest, slivers = self.assertAllocateReturn( agg, 
+                                                                           retVal )
                 self.assertTrue( numSlivers > 0,
                                  "Return from '%s' " \
                                      "expected to list allocated slivers " \
@@ -1305,7 +1309,7 @@ class Test(ut.OmniUnittest):
                                      "... edited for length ..." 
                                  % (AMAPI_call, manifest[:100]))
 
-                retVal2 = manifest, numSlivers 
+                retVal2 = manifest, numSlivers, slivers
 
             self.assertTrue( rspec_util.has_child( manifest ),
                       "Manifest RSpec returned by '%s' on slice '%s' " \
@@ -1467,7 +1471,7 @@ class Test(ut.OmniUnittest):
         elif self.options_copy.api_version >= 3:
             self.subtest_Delete( slicename )
 
-    def subtest_generic_CreateSliver( self, slicename ):
+    def subtest_generic_CreateSliver( self, slicename, doProvision=True, doPOA=True ):
         """For v1 and v2, call CreateSliver().  For v3, call
         Allocate(), Provision(), and then
         PerformOperationalAction('geni_start').
@@ -1476,33 +1480,39 @@ class Test(ut.OmniUnittest):
             numslivers, manifest = self.subtest_CreateSliver( slicename )
             slivers = None
         elif self.options_copy.api_version >= 3:
-            self.subtest_Allocate( slicename )
-            slivers, manifest = self.subtest_Provision( slicename )
-            numslivers = len(slivers)
-            # FIXME: Check operational state is ready for geni_start
-            # At least could wrap some of these in a try/catch
-            # that looks for geni_code UNSUPPORTED? or INPROGRESS (already starting)?
-            # At least look for the sliver(s) to NOT have operational state 'geni_pending_allocation'. AFter that, 
-            # actions are valid.
-            # Probably also check the sliver does not have operational state 'geni_ready' - in which case
-            # no 'start' is needed.
-            # FIXME: Is geni_start even a valid operation
-            self.subtest_PerformOperationalAction( slicename, 'geni_start' )
-            # FIXME: Check operational state is ready for restart
-            # FIXME: Is geni_restart even a valid operation
-            self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
-            # FIXME: Check operational state is ready for stop
-            # At least check the state is not geni_notready - ie it has already been stopped
-            # FIXME: Is geni_stop even a valid operation
-            self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
-            self.options_copy.devmode = True   
-            self.assertRaises(NotSuccessError,
-                              self.subtest_PerformOperationalAction, 
-                              slicename, '' )
-            self.options_copy.devmode = False  
-            self.assertRaises(NotSuccessError, 
-                              self.subtest_PerformOperationalAction, 
-                              slicename, 'random_action' )
+            manifest, numslivers, slivers = self.subtest_Allocate( slicename )
+            if doProvision:
+                slivers, manifest = self.subtest_Provision( slicename )
+                numslivers = len(slivers)
+                if doPOA:
+                    # FIXME: Check operational state is ready for geni_start
+                    # At least could wrap some of these in a try/catch
+                    # that looks for geni_code UNSUPPORTED? or INPROGRESS (already starting)?
+                    # At least look for the sliver(s) to NOT have operational state 'geni_pending_allocation'. AFter that, 
+                    # actions are valid.
+                    # Probably also check the sliver does not have operational state 'geni_ready' - in which case
+                    # no 'start' is needed.
+                    # FIXME: Is geni_start even a valid operation
+                    self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+                    # FIXME: Check operational state is ready for restart
+                    # FIXME: Is geni_restart even a valid operation
+                    self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+                    # FIXME: Check operational state is ready for stop
+                    # At least check the state is not geni_notready - ie it has already been stopped
+                    # FIXME: Is geni_stop even a valid operation
+                    self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
+                    self.options_copy.devmode = True   
+                    self.assertRaises(NotSuccessError,
+                                      self.subtest_PerformOperationalAction, 
+                                      slicename, '' )
+                    self.options_copy.devmode = False  
+                    self.assertRaises(NotSuccessError, 
+                                      self.subtest_PerformOperationalAction, 
+                                      slicename, 'random_action' )
+#                else:
+#                    print 'not doing POA'
+#            else:
+#                print 'not doing Provision or POA'
 
         return numslivers, manifest, slivers
     def subtest_generic_SliverStatus( self, slicename ):

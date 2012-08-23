@@ -580,7 +580,7 @@ Check that the value of 'code' is as follows:
             self.assertGeniExpires(AMAPI_call, agg, sliver)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_allocated')     
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)           
-        return len(slivers), manifest
+        return len(slivers), manifest, slivers
 
     def assertRenewReturn( self, agg, retVal ):
         """Returns:
