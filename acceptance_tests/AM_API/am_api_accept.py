@@ -1279,8 +1279,10 @@ class Test(ut.OmniUnittest):
             self.assertSuccess( err_code )
             if err_code == SUCCESS:
                 # value only required if it is successful
+                slivers = None
                 retVal = indAgg['value']
                 if AMAPI_call is "Renew":
+                    # FIXME: should check that renew gave sliver expiration times of what was requested
                     retVal2 = self.assertRenewReturn( agg, retVal )
                     numSlivers = retVal2
                 elif AMAPI_call is "Provision":
@@ -1305,11 +1307,25 @@ class Test(ut.OmniUnittest):
                                      "but did not"
                                  % (AMAPI_call))
                 if sliverlist:
-                    self.assertTrue( numSlivers == len(sliverlist),
+                    # Check that return slivers is same set as sliverlist!
+                    if slivers:
+                        retSliverURNs = []
+                        for sliver in slivers:
+                            retSliverURNs.append(sliver['geni_sliver_urn'])
+                        self.assertTrue( set(retSliverURNs)==set(sliverlist),
                                  "Return from '%s' " \
                                      "expected to list all %d requested slivers " \
                                      "but listed %d"
                                  % (AMAPI_call, len(sliverlist), numSlivers))
+                    else:
+                        self.assertTrue( numSlivers == len(sliverlist),
+                                 "Return from '%s' " \
+                                     "expected to list all %d requested slivers " \
+                                     "but listed %d"
+                                 % (AMAPI_call, len(sliverlist), numSlivers))
+
+                # FIXME: If not best_effort, then all slivers should have empty or no geni_error from Renew, Provision, POA, Delete
+
         return retVal2
 
 
