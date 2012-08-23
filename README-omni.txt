@@ -810,14 +810,13 @@ For use in AM API v1+2 only.
 For AM API v3+, use this sequence of three commands: `allocate`, `provision`, and `performoperationalaction`.
 
  * Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec file>`
-
  * Examples:
   * Reserve the resources defined in an RSpec file:
     	`omni.py createsliver myslice resources.rspec`
   * Reserve the resources defined in an RSpec file at a particular aggregate (specifying aggregate with a nickname):
     	`omni.py -a pg-gpo createsliver myslice resources.rspec`
-  * Specify using GENI AM API v2 to reserve a sliver in `myslice` from a particular AM (specifying aggregate with a nickname), using the request rspec in `resources.rspec`:
-    	`omni.py -a pg-gpo2 --api-version 2 createsliver \
+  * Specify using GENI AM API v1 to reserve a sliver in `myslice` from a particular AM (specifying aggregate with a nickname), using the request rspec in `resources.rspec`:
+    	`omni.py -a pg-gpo2 --api-version 1 createsliver \
             myslice resources.rspec`
   * Use a saved (possibly delegated) slice credential: 
         `omni.py --slicecredfile myslice-credfile.xml \
@@ -894,7 +893,7 @@ Sample usage:
    `omni.py -V 3 -a http://myaggregate/url allocate myslice my-request-rspec.xml`
 
  * Allocate resources on two AMs, requesting a specific sliver end time, saving results into specifically named files (that include an AM name calculated from the AM URL),and using the slice credential saved in the given file:
-   `omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate
+   `omni.py -V 3 -a http://myaggregate/url -a http://myother/aggregate
    	       --end-time 20120909 \
 	       -o --outputfile myslice-manifest-%a.json \
 	       --slicecredfile mysaved-myslice-slicecred.xml \
@@ -1111,13 +1110,15 @@ Options for development and testing:
 Calls the AM API v1 or v2 RenewSliver function.  For AM API v3, see `renew` instead.
 
  * Format:  `omni.py [-a AM_URL_or_nickname] renewsliver <slice-name> "<time>"`
-
  * Examples:
-  * `omni.py renewsliver myslice "12/12/10 4:15pm"`
-  * `omni.py renewsliver myslice "12/12/10 16:15"`
-  * `omni.py -a http://localhost:12348 --api-version 2 \
+  * Renew all slivers in slice, myslice, at all aggregates 
+   * `omni.py renewsliver myslice "12/12/10 4:15pm"`
+   * `omni.py renewsliver myslice "12/12/10 16:15"
+  * Use AM API v1 to renew slivers in slice, myslice, at one aggregate
+   * `omni.py -a http://localhost:12348 --api-version 1 \
             renewsliver myslice "12/12/10 16:15"`
-  * `omni.py -a myLocalAM renewsliver myslice "12/12/10 16:15"`
+  * Renew slivers in slice, myslice, at one aggregate (specified by a nickname)
+   * `omni.py -a myLocalAM renewsliver myslice "12/12/10 16:15"`
 
 This command will renew your resources at each aggregate up to the
 specified time.  This time must be less than or equal to the time
@@ -1229,10 +1230,14 @@ GENI AM API SliverStatus function
 
  * Format: omni.py [-a AM_URL_or_nickname] sliverstatus <slice-name>`
  * Examples:
-  * `omni.py sliverstatus myslice`
-  * `omni.py -a http://localhost:12348 sliverstatus myslice`
-  * `omni.py -a http://localhost:12348 --api-version 1 sliverstatus myslice`
-  * `omni.py -a myLocalAM sliverstatus myslice`
+  * Run `sliverstatus` on all slivers in slice, myslice, at all aggregates 
+   * `omni.py sliverstatus myslice`
+  * Run `sliverstatus` on slivers in slice, myslice, at one aggregate
+   * `omni.py -a http://localhost:12348 sliverstatus myslice`
+  * Use AM API v1 to run `sliverstatus` on slivers in slice, myslice, at one aggregate
+   * `omni.py -a http://localhost:12348 --api-version 1 sliverstatus myslice`
+  * Run `sliverstatus` on slivers in slice, myslice, at one aggregate (specified by a nickname)
+   * `omni.py -a myLocalAM sliverstatus myslice`
 
 This command will get information from each aggregate about the
 status of the specified slice. This can include expiration time,
@@ -1408,14 +1413,14 @@ supporting later forensics / debugging.
 
  * Format: `omni.py [-a AM_URL_or_nickname] shutdown <slice-name>`
  * Examples:
- * Shutdown all slivers in slice, myslice, at all aggregates 
-  * `omni.py shutdown myslice`
- * Shutdown slivers in slice, myslice, at one aggregate
-  * `omni.py -a http://localhost:12348 shutdown myslice`
- * Use AM API v1 to shutdown slivers in slice, myslice, at one aggregate
-  * `omni.py -a http://localhost:12348 --api-version 1 shutdown myslice`
- * Shutdown slivers in slice, myslice, at one aggregate (specified by a nickname)
-  * `omni.py -a myLocalAM shutdown myslice`
+  * Shutdown all slivers in slice, myslice, at all aggregates 
+   * `omni.py shutdown myslice`
+  * Shutdown slivers in slice, myslice, at one aggregate
+   * `omni.py -a http://localhost:12348 shutdown myslice`
+  * Use AM API v1 to shutdown slivers in slice, myslice, at one aggregate
+   * `omni.py -a http://localhost:12348 --api-version 1 shutdown myslice`
+  * Shutdown slivers in slice, myslice, at one aggregate (specified by a nickname)
+   * `omni.py -a myLocalAM shutdown myslice`
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
