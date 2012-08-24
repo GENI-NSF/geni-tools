@@ -1531,12 +1531,13 @@ class AMCallHandler(object):
                 elif len(orderedDates) == 2:
                     self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 elif len(orderedDates) == 0:
-                    msg = " 0 Slivers reported results!"
+                    msg = " 0 Slivers reported allocated!"
                     self.logger.warn(msg)
                     retVal += msg
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
-                retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+                if len(orderedDates) > 0:
+                    retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
                 successCnt += 1
