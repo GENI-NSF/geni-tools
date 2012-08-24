@@ -1530,6 +1530,10 @@ class AMCallHandler(object):
                     self.logger.info("All slivers expire on %r", orderedDates[0].isoformat())
                 elif len(orderedDates) == 2:
                     self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                elif len(orderedDates) == 0:
+                    msg = " 0 Slivers reported results!"
+                    self.logger.warn(msg)
+                    retVal += msg
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
@@ -1743,6 +1747,10 @@ class AMCallHandler(object):
                     self.logger.info("All slivers expire on %r", orderedDates[0].isoformat())
                 elif len(orderedDates) == 2:
                     self.logger.info("%d slivers expire on %r, the rest (%d) on %r", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
+                elif len(orderedDates) == 0:
+                    msg = " 0 Slivers reported results!"
+                    self.logger.warn(msg)
+                    retVal += msg
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
@@ -2220,6 +2228,10 @@ class AMCallHandler(object):
                 elif len(orderedDates) == 1:
                     self.logger.warn("Slivers expire on %r, not as requested %r", orderedDates[0].isoformat(), time_with_tz.isoformat())
 #                    self.logger.warn("timedelta: %r", time - orderedDates[0])
+                elif len(orderedDates) == 0:
+                    msg = " 0 Slivers reported results!"
+                    self.logger.warn(msg)
+                    retVal += msg
                 else:
                     firstTime = None
                     firstCount = 0
@@ -3589,7 +3601,7 @@ class AMCallHandler(object):
         resultValue = self._getSliverResultList(resultValue)
         if len(resultValue) == 0:
             self.logger.debug("Result value not a list or empty")
-            return result
+            return [], result
 
         for sliver in resultValue:
             if not isinstance(sliver, dict):
