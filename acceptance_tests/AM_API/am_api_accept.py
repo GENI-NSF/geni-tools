@@ -46,6 +46,7 @@ from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAsserti
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
 from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import omnilib.util.json_encoding as json_encoding
+import omnilib.util.credparsing as credparsing
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
@@ -413,7 +414,7 @@ class Test(ut.OmniUnittest):
         omniargs = ["getusercred"]
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_ListResources, 
                           slicename=slicename,
                           slicecred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
         self.options_copy.devmode = False
@@ -866,6 +867,10 @@ class Test(ut.OmniUnittest):
 
 
             time.sleep(self.options_copy.sleep_time)
+            # RenewSliver past slice expiration - should fail
+            self.subtest_RenewPastSliceExpiration( slicename )
+
+            time.sleep(self.options_copy.sleep_time)
             # RenewSliver for 5 mins, 2 days, and 5 days
             self.subtest_generic_RenewSliver_many( slicename )
         except:
@@ -1172,14 +1177,74 @@ class Test(ut.OmniUnittest):
                     pass
         self.success = True
 
-    def subtest_RenewSliver( self, slicename, newtime ):
+    def subtest_RenewPastSliceExpiration(self, slicename):
+        # (1) Get the slicecredential
+        omniargs = ["getslicecred", slicename]
+        (text, slicecredstruct) = self.call(omniargs, self.options_copy)
+
+        if self.options_copy.api_version >= 3:
+            tmpRetVal = self.assertSliceCred(slicecredstruct)
+            self.assertIsNotNone( tmpRetVal )
+            geni_type, geni_version, slicecred = tmpRetVal
+        else:
+            slicecred = slicecredstruct
+            self.assertStr( slicecred,
+                            "Return from 'getslicered' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                            % (slicecred))
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( slicecred ),
+                            "Return from 'getslicecred' " \
+                                "expected to be XML " \
+                                "but instead returned: \n" \
+                                "%s\n" \
+                                "... edited for length ..." 
+                            % (slicecred[:100]))
+
+        # Get slice expiration from slicecred
+        slice_exp = credparsing.get_cred_exp(None, slicecred)
+        # Try to renew to 2 days late
+        twodayslate = (slice_exp + datetime.timedelta(days=2)).isoformat()
+#        print "Will try to renew slice %s that expires at %s until %s" % (slicename, slice_exp, twodayslate)
+        self.options_copy.devmode = True   
+        if self.options_copy.api_version < 3:
+            omniargs = ["renewsliver", slicename, twodayslate]
+            try:
+                text, (succList, failList) = self.call(omniargs, self.options_copy)
+                succNum, possNum = omni.countSuccess( succList, failList )
+            except AMAPIError, err:
+                text = str(err)
+                succNum = 0
+#            if text:
+#                print "Got result: %s" % text
+            # Assume single AM
+            self.assertTrue( int(succNum) == 0,
+                         "'RenewSliver' until %s " \
+                         "expected to fail, " \
+                         "but did not." % (str(twodayslate)))
+
+        else:
+            # FIXME: Need a call to Renew that expects failure
+#            self.subtest_Renew( slicename, twodayslate)
+            omniargs = ["renew", slicename, twodayslate] 
+            text, allAggs = self.call(omniargs, self.options_copy)
+            for agg, indAgg in allAggs.items():
+                err_code, msg = self.assertCodeValueOutput( "Renew", agg, indAgg )
+#                print "... got result code %d" % err_code
+                # err_code should be BADARGS (1) or REFUSED (7) or UNSUPPORTED (13) or FORBIDDEN (3) or EXPIRED (15)
+                self.assertTrue((err_code != 0), 
+                                "Renew to past slice expiration (to %s) expected to fail, but succeeded at %s" % (twodayslate, agg))
+        self.options_copy.devmode = False
+
+    def subtest_RenewSliver( self, slicename, newtime):
         omniargs = ["renewsliver", slicename, newtime] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
         succNum, possNum = omni.countSuccess( succList, failList )
         # Assume single AM
         self.assertTrue( int(succNum) == 1,
                          "'RenewSliver' until %s " \
-                         "expected to succeed " \
+                         "expected to succeed, " \
                          "but did not." % (str(newtime)))
 
     def subtest_RenewSlice( self, slicename, newtime ):
