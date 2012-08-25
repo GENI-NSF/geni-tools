@@ -1348,7 +1348,8 @@ class Test(ut.OmniUnittest):
                 retVal = indAgg['value']
                 if AMAPI_call is "Renew":
                     # FIXME: should check that renew gave sliver expiration times of what was requested
-                    retVal2 = self.assertRenewReturn( agg, retVal )
+                    # if not --best-effort, also checks that the new sliver expiration matches the requested time
+                    retVal2 = self.assertRenewReturn( agg, retVal, requestedExpiration=newtime )
                     numSlivers = retVal2
                 elif AMAPI_call is "Provision":
                     retVal2 = self.assertProvisionReturn( agg, retVal )
@@ -1537,7 +1538,9 @@ class Test(ut.OmniUnittest):
     def subtest_createslice(self, slice_name ):
         """Create a slice. Not an AM API call."""
         omniargs = ["createslice", slice_name]
+
         text, urn = self.call(omniargs, self.options_copy)
+
         _ = text # Appease eclipse
         self.assertTrue( urn, 
                          "Slice creation expected to work " \
