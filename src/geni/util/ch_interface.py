@@ -30,6 +30,7 @@
 import json
 import os
 import tempfile
+import traceback
 import urllib2
 import M2Crypto
 
@@ -111,13 +112,13 @@ def _decode_dict(data):
     rv = {}
     for key, value in data.iteritems():
         if isinstance(key, unicode):
-           key = key.encode('utf-8')
+            key = key.encode('utf-8')
         if isinstance(value, unicode):
-           value = value.encode('utf-8')
+            value = value.encode('utf-8')
         elif isinstance(value, list):
-           value = _decode_list(value)
+            value = _decode_list(value)
         elif isinstance(value, dict):
-           value = _decode_dict(value)
+            value = _decode_dict(value)
         rv[key] = value
     return rv
 
@@ -125,6 +126,8 @@ def decodeCHResponse(msg, logger):
     """Decode the response from the Clearinghouse. It might be encrypted,
     and it might be signed, and it's certainly JSON. Figure out what's what
     and return the decoded JSON.
+
+    See http://svn.osafoundation.org/m2crypto/trunk/doc/howto.smime.html
     """
     #--------------------------------------------------
     # FIXME: Add support for encryption.
