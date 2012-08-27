@@ -811,7 +811,7 @@ class AMCallHandler(object):
                     mymessage = ""
                 else:
                     mymessage += ".\n"
-                mymessage += str(bce)
+                mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
                 self.logger.warn(message + "... continuing with next AM")
                 continue
 
@@ -1123,7 +1123,7 @@ class AMCallHandler(object):
                         message = ""
                     message = mymessage + ". " + message
             except BadClientException as bce:
-                retVal += "Describe skipping AM %s: %s" % (client.url, str(bce))
+                retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
                 continue
 
 # FIXME: Factor this next chunk into helper method?
@@ -1337,7 +1337,7 @@ class AMCallHandler(object):
             (result, message) = self._api_call(client, msg, op,
                                                 args)
         except BadClientException as bce:
-            return "Cannot CreateSliver at %s: %s" % (client.url, str(bce)), None
+            return "Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d" % (client.url, self.opts.api_version), None
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -1508,7 +1508,7 @@ class AMCallHandler(object):
                                     op,
                                     args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1721,7 +1721,7 @@ class AMCallHandler(object):
                                                   op,
                                                   args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1944,7 +1944,7 @@ class AMCallHandler(object):
                                                   op,
                                                   args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             retItem[ client.url ] = result
@@ -2077,7 +2077,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2222,7 +2222,7 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client, msg + client.url, op,
                                                 args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
             retItem[client.url] = res
 
@@ -2388,7 +2388,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
@@ -2526,7 +2526,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             retItem[client.url] = status
@@ -2652,7 +2652,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2791,7 +2791,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             retItem[client.url] = result
@@ -2914,7 +2914,7 @@ class AMCallHandler(object):
             try:
                 (res, message) = self._api_call(client, msg + client.url, op, args)
             except BadClientException:
-                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 continue
 
             retItem[client.url] = res
