@@ -52,6 +52,7 @@ If you supply trusted root certificates, validates the full PKI chain.
 
 import datetime
 import dateutil
+import json
 import logging
 import optparse
 import os
@@ -63,6 +64,8 @@ import sfa.trust.credential as cred
 import sfa.trust.rights as privs
 from sfa.trust.gid import GID
 from sfa.trust.certificate import Keypair, Certificate
+import omnilib.util.credparsing as credutils
+import omnilib.util.json_encoding as json_encoding
 
 def configure_logging(opts):
     """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
@@ -81,7 +84,15 @@ def load_slice_cred(slicefilename):
         cred = None
         with open(slicefilename, 'r') as f:
             cred = f.read()
-            return cred
+
+        try:
+            cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+        except Exception, e:
+            logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string.", slicefilename)
+            logger.debug(e)
+            #handler.logger.debug(e)
+
+        return cred
     return None
 
 def naiveUTC(dt):
@@ -177,6 +188,11 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
                 if roots is None:
                     roots = []
                 roots.append(os.path.expanduser(root))
+
+    writeStruct = False
+    if isinstance(slicecredstr, dict):
+        writeStruct = True
+        slicecredstr = credutils.get_cred_xml(slicecredstr)
 
     if (not (type(slicecredstr) is str and slicecredstr.startswith("<"))):
         sys.exit("Not a slice cred in file %s" % opts.slicecred)
@@ -289,7 +305,14 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     filename = os.path.basename(opts.slicecred)
 
     newname = os.path.join(path, delegee_hrn.translate(table) + "-delegated-" + filename)
-    dcred.save_to_file(newname)
+    if not writeStruct:
+        dcred.save_to_file(newname)
+    else:
+        dcredstr = dcred.save_to_string()
+        dcredStruct = dict(geni_type="geni_sfa", geni_version="3", geni_value=dcredstr)
+        credout = json.dumps(dcredStruct, cls=json_encoding.DateTimeAwareJSONEncoder)
+        with open(newname, 'w') as file:
+            file.write(credout + "\n")
 
     logger.info("\n\nSaved delegated slice cred to:\n\t %s" % newname)
     logger.info("To use this with omni, be sure to supply '--slicecred %s'" % (newname))
