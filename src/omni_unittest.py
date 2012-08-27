@@ -36,7 +36,7 @@ import omni
 import os.path
 import pwd
 import dateutil.parser
-
+from omnilib.util import OmniError, naiveUTC, AMAPIError
 
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "logging.conf"
@@ -164,7 +164,12 @@ class OmniUnittest(unittest.TestCase):
 
     def call( self, cmd, options ):
         """Make the Omni call"""
+#        try:
         ret_val = omni.call( cmd, options=options, verbose=True )
+#        except OmniError, e:
+#            print e
+#        except AMAPIError, e:
+#            print e
         return ret_val
 
     def assertIsNotNone(self, item, msg=None):
@@ -582,7 +587,7 @@ Check that the value of 'code' is as follows:
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)           
         return len(slivers), manifest, slivers
 
-    def assertRenewReturn( self, agg, retVal ):
+    def assertRenewReturn( self, agg, retVal, requestedExpiration=None ):
         """Returns:
         [
   {
@@ -600,7 +605,7 @@ Check that the value of 'code' is as follows:
         self.assertList( retVal )
         for sliver in retVal:
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, requestedExpiration=requestedExpiration)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
@@ -780,7 +785,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         self.assertURNandType( sliver_urn, 'sliver' )
 
 
-    def assertGeniExpires( self, AMAPI_call, agg, retVal ):
+    def assertGeniExpires( self, AMAPI_call, agg, retVal, requestedExpiration=None ):
         """Check that the dictionary retVal has keys: 
               geni_expires
         """
@@ -788,6 +793,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         expires = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_expires', str ) # RFC3339 dateTime
         self.assertTimestamp( expires )
+        if (requestedExpiration is not None) and (self.options_copy.geni_best_effort is False):
+            self.assertTimestampsEqual( requestedExpiration, expires )
 
     def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal, value=None ):
         """Check that the dictionary retVal has keys: 
@@ -885,6 +892,30 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          "but instead returned: \n" \
                          "%s\n" 
                          % (timestamp))
+
+    def assertTimestampsEqual( self, timestamp1, timestamp2 ):
+        self.assertTrue( self.validate_timestamp(timestamp1),
+                         "assertTimestampsEqual expected to compare " \
+                         "two timestamps but instead timestamp is: \n" \
+                         "%s\n" 
+                         % (timestamp1))
+        self.assertTrue( self.validate_timestamp(timestamp2),
+                         "assertTimestampsEqual expected to compare " \
+                         "two timestamps but instead timestamp is: \n" \
+                         "%s\n" 
+                         % (timestamp2))
+        interim1 = dateutil.parser.parse( timestamp1 )
+        datetimeStruct1 = naiveUTC( interim1 )
+
+        interim2 = dateutil.parser.parse( timestamp2 )
+        datetimeStruct2 = naiveUTC( interim2 ) 
+
+        self.assertEqual( datetimeStruct1, datetimeStruct2,
+                         "assertTimestampsEqual expected to compare two equal " \
+                         "timestamps but instead timestamps are: \n" \
+                         "%s\n" \
+                         "%s\n" 
+                         % (str(timestamp1), str(timestamp2)))
 
     def assertURN( self, urn ):
         self.assertTrue( self.validate_URN(urn),
