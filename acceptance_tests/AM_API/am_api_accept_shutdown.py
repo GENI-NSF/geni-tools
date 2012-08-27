@@ -75,13 +75,34 @@ class ShutdownTest(accept.Test):
         accept.Test.setUp( self )
     def subtest_Shutdown(self, slicename=None):
         omniargs = ["shutdown", slicename, str(self.options_copy.rspec_file)] 
-        text, (succList, failList) = self.call(omniargs, self.options_copy)
-        self.assertTrue( (len(succList) >=1) and (len(failList)==0),
-                        "Return from 'Shutdown' " \
-                        "expected to succeed " \
-                        "but did not for: %s" % ", ".join(failList) )
+        text, retVal = self.call(omniargs, self.options_copy)
+        if self.options_copy.api_version <= 2:
+            succList, failList = retVal
+            self.assertTrue( (len(succList) >=1) and (len(failList)==0),
+                             "Return from 'Shutdown' " \
+                                 "expected to succeed " \
+                                 "but did not for: %s" % ", ".join(failList) )
+        else:
+            for agg, item in retVal.items():
+                self.assertTrue( item['value'],
+                             "Return from 'Shutdown' " \
+                                 "expected to succeed " \
+                                 "but did not for: %s" % agg)
+
 
     def test_CreateSliverWorkflow_with_Shutdown(self, slicename=None):
+        if self.options_copy.rspeclint:
+            rspec_util.rspeclint_exists()
+            rspec_namespace = self.manifest_namespace
+            rspec_schema = self.manifest_schema
+        else:
+            rspec_namespace = None
+            rspec_schema = None
+
+        with open(self.options_copy.rspec_file) as f:
+            req = f.readlines()
+            request = "".join(req)
+
         if slicename==None:
             slicename = self.create_slice_name(prefix='down')
 
@@ -90,15 +111,19 @@ class ShutdownTest(accept.Test):
             self.subtest_createslice( slicename )
             time.sleep(self.options_copy.sleep_time)
 
-        manifest = self.subtest_CreateSliver( slicename )
-        self.assertResourcesExist( manifest, 
-                       "Manifest RSpec returned by CreateSliver " \
-                       "expected to contain resources but does not.")
+
+        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename )
+
+        self.assertRspec( "CreateSliver", manifest, 
+                          rspec_namespace, rspec_schema,
+                          self.options_copy.rspeclint )
+        self.assertRspecType( request, 'request')
+        self.assertRspecType( manifest, 'manifest')
         try:
             self.subtest_Shutdown( slicename )
         except:
             # If Shutdown fails, then DeleteSliver to clean up for next run
-            self.subtest_DeleteSliver( slicename )
+            self.subtest_generic_DeleteSliver( slicename )
 
         if not self.options_copy.reuse_slice_name:
             self.subtest_deleteslice( slicename )
