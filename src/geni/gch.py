@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2011-2 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,24 +26,25 @@ via xmlrpc instead of smime (its native interface)
 Run from gcf-gch.py
 Will produce signed user credentials from a GID, return a
 list of aggregates read from a config file, and create a new Slice Credential.
-
 """
 
-import datetime
-import traceback
-import logging
-import uuid
-import socket
-import os
-
 import dateutil.parser
+import datetime
+import logging
+import os
+import socket
+import traceback
+import uuid
+
 from ch import SampleClearinghouseServer
 from SecureXMLRPCServer import SecureXMLRPCServer
 import geni.util.cred_util as cred_util
 from geni.util.ch_interface import *
 
+# FIXME: GENI CH APIs have evolved since this was last run
+
 # Clearinghouse interface that communicates with the 
-# new clearinghouse controllers (SA, PA, MA, CS, AUTHZ, LOG, etc.)
+# new clearinghouse services (SA, PA, MA, CS, AUTHZ, LOG, etc.)
 class GENIClearinghouse(object):
 
     def __init__(self):
@@ -73,7 +74,6 @@ class GENIClearinghouse(object):
             
         if not os.path.exists(os.path.expanduser(ca_certs)):
             raise Exception("Missing CA cert(s): %s" % ca_certs)
-
 
         # This is the arg to _make_server
         ca_certs_onefname = cred_util.CredentialVerifier.getCAsFileFromDir(ca_certs)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -25,9 +25,14 @@
 """
 Framework to run a 'new' GENI Clearinghouse. See geni/gch.py for the 
 GENI Clearinghouse interface that this runs.
+This serves an XMLRPC interface to the GENI Clearinghouse services, 
+which otherwise speak S/MIME.
 
 Run with "-h" flag to see usage and command line options.
 """
+
+# FIXME: Treat this only as example code. The CH APIs that this uses
+# have likely changed since this was last used.
 
 import sys
 
@@ -40,6 +45,7 @@ elif sys.version_info >= (3,):
 import logging
 import optparse
 import os
+
 import geni
 from geni.gch import GENIClearinghouse
 from geni.config import read_config
@@ -72,10 +78,19 @@ class CommandHandler(object):
         ch = GENIClearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
+
+        certfile = getAbsPath(opts.certfile)
+        keyfile = getAbsPath(opts.keyfile)
+        if not os.path.exists(certfile):
+            sys.exit("Clearinghouse certfile %s doesn't exist" % certfile)
+    
+        if not os.path.exists(keyfile):
+            sys.exit("Clearinghouse keyfile %s doesn't exist" % keyfile)
+
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, 
-                     getAbsPath(opts.keyfile), 
-                     getAbsPath(opts.certfile), 
+                     keyfile, 
+                     certfile, 
                      getAbsPath(opts.rootcadir), 
                      config)
 

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -21,19 +21,18 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-# Library of tools for communicating with GENI clearinghouse
-# services via XML signed encrypted messages
+# Library of tools for communicating with the GENI clearinghouse
+# services via XML signed encrypted messages.
 # Receiving back a tuple with [code, value, output]
 # if code = 0, value is the result
 # if code is not 0, the output is additional info on the error
 
 import json
-import urllib2
-import tempfile
 import os
+import tempfile
+import urllib2
 
 # TODO: 
-# - Should this be in util?
 # - Change get_inside_cert_and_key to use GID.py to get URN and UUID from cert
 # --- caller needs to pass in _server.pem_cert
 #        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
@@ -53,6 +52,8 @@ import os
 # Then getting a UUID or URN is something like this:
 #        user_uuid = str(uuid.UUID(int=user_gid.get_uuid()))
 #        user_urn = user_gid.get_urn()
+
+# FIXME: The CH APIs have, I believe, evolved since this was written. Must update!
 
 # Helper function to get the insert cert/key for a given connection
 # Based on the SSL cert on the given connection
@@ -90,7 +91,6 @@ def get_inside_cert_and_key(peercert, ma_url, logger):
         
     return result;
             
-
 
 # Force the unicode strings python creates to be ascii
 def _decode_list(data):

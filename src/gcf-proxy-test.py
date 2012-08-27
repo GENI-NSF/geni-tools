@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2010-2 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -24,7 +24,8 @@
 #----------------------------------------------------------------------
 """
 Simple test client for testing the GENI proxy AM that talks to the GENI Clearinghouse
-(gch) and then to an aggregate manager (eg gcf-am)
+(gch) and then to an aggregate manager (eg gcf-am).
+Uses the proxy_aggregate_manager section of the gcf_config file.
 
 Run with "-h" flag to see usage and command line options.
 """
@@ -42,12 +43,12 @@ import datetime
 import logging
 import optparse
 import os
-import random
+import time
 import uuid
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
-import time
+
 from geni.config import read_config
 from omnilib.xmlrpc.client import make_client
 import sfa.trust.credential as cred
@@ -65,21 +66,6 @@ def getAbsPath(path):
         return path
     else:
         return os.path.abspath(path)
-
-def exercise_ch(host, port, keyfile, certfile):
-    url = 'https://%s' % (host)
-    if port:
-        url = '%s:%s' % (url, port)
-    server = make_client(url, keyfile, certfile)
-    print server
-    try:
-        print server.GetVersion()
-    except xmlrpclib.Error, v:
-        print 'ERROR', v
-    try:
-        print server.CreateSlice()
-    except xmlrpclib.Error, v:
-        print 'ERROR', v
 
 def verify_rspec(rspec):
     # It should be parseable XML
