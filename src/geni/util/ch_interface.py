@@ -121,7 +121,7 @@ def _decode_dict(data):
         rv[key] = value
     return rv
 
-def decodeCHResponse(msg):
+def decodeCHResponse(msg, logger):
     """Decode the response from the Clearinghouse. It might be encrypted,
     and it might be signed, and it's certainly JSON. Figure out what's what
     and return the decoded JSON.
@@ -130,14 +130,21 @@ def decodeCHResponse(msg):
     # FIXME: Add support for encryption.
     # FIXME: Add signature verfication (see FIXME below)
     #--------------------------------------------------
+    #logger.debug("Entering decodeCHResponse with msg=%s", msg);
+    # Remove whitespace -- it seems to negatively impact SMIME decoding.
+    msg = msg.strip()
     # Load the message into an OpenSSL IO buffer
     p7_bio = M2Crypto.BIO.MemoryBuffer(msg)
     # Try to load the msg as a PKCS7 (SMIME) message.
     json_data = None
     try:
-        p7, json_data = M2Crypto.SMIME.smime_load_pkcs7_bio(p7_bio)
+        p7, data = M2Crypto.SMIME.smime_load_pkcs7_bio(p7_bio)
+        #logger.debug("decodeCHResponse: SMIME loaded");
         # FIXME: Should verify here
-    except M2Crypto.SMIME.SMIME_Error:
+        json_data = data.read()
+    except M2Crypto.SMIME.SMIME_Error, err:
+        logger.error("SMIME_Error: %s", err)
+        #logger.debug("decodeCHResponse: Handling SMIME exception");
         json_data = msg
     result = json.loads(json_data, encoding='ascii', object_hook=_decode_dict)
     return result
@@ -191,7 +198,7 @@ def invokeCH(url, operation, logger, argsdict, mycert=None, mykey=None):
     resdict = None
     if putres:
         logger.debug("invokeCH Got result of %s" % putres)
-        resdict = decodeCHResponse(putres)
+        resdict = decodeCHResponse(putres, logger)
     
     # FIXME: Check for code, value, output keys?
     return resdict
