@@ -421,16 +421,18 @@ class AMCallHandler(object):
         if newc is None:
             raise BadClientException(client)
         elif newc.url != client.url:
-            client = newc
             if ver != self.opts.api_version:
-                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                # FIXME: changing the api_version is not a great idea if
-                # there are multiple clients. Push this into _checkValidClient
-                # and only do it if there is one client.
-
-                # FIXME: changing API versions means unwrap or wrap cred, maybe change the op name, ...
-                # This may work for getversion, but likely not for other methods!
-                self.opts.api_version = ver
+                self.logger.warn("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
+                raise BadClientException(client)
+#                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+#                # FIXME: changing the api_version is not a great idea if
+#                # there are multiple clients. Push this into _checkValidClient
+#                # and only do it if there is one client.
+#
+#                # FIXME: changing API versions means unwrap or wrap cred, maybe change the op name, ...
+#                # This may work for getversion, but likely not for other methods!
+#                self.opts.api_version = ver
+            client = newc
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
 
@@ -767,13 +769,31 @@ class AMCallHandler(object):
             if newc is None:
                 continue
             elif newc.url != client.url:
-                client = newc
                 if ver != self.opts.api_version:
-                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
-                    # FIXME: changing the api_version is not a great idea if
-                    # there are multiple clients. Push this into _checkValidClient
-                    # and only do it if there is one client.
-                    self.opts.api_version = ver
+                    self.logger.warn("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
+                    if not mymessage:
+                        mymessage = ""
+                    else:
+                        mymessage += ".\n"
+                        mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                    continue
+#                    raise BadClientException(client)
+#                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
+#                    # FIXME: changing the api_version is not a great idea if
+#                    # there are multiple clients. Push this into _checkValidClient
+#                    # and only do it if there is one client.
+#1                    self.opts.api_version = ver
+                else:
+                    self.logger.debug("Using new client url %s but same API version %", newc.url, ver)
+                client = newc
+            elif ver != self.opts.api_version:
+                self.logger.warn("AM %s speaks API version %d, not %d. Rerun with option '-V%d'.", client.url, ver, self.opts.api_version, ver)
+                if not mymessage:
+                    mymessage = ""
+                else:
+                    mymessage += ".\n"
+                    mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                continue
 
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
 
@@ -782,6 +802,12 @@ class AMCallHandler(object):
             try:
                 (options, mymessage) = self._selectRSpecVersion(slicename, client, mymessage, options)
             except BadClientException, bce:
+                if not mymessage:
+                    mymessage = ""
+                else:
+                    mymessage += ".\n"
+                mymessage += str(bce)
+                self.logger.warn(message + "... continuing with next AM")
                 continue
 
             # Done constructing options to ListResources
@@ -1091,7 +1117,8 @@ class AMCallHandler(object):
                     if message is None or message.strip() == "":
                         message = ""
                     message = mymessage + ". " + message
-            except BadClientException:
+            except BadClientException as bce:
+                retVal += "Describe skipping AM %s: %s" % (client.url, str(bce))
                 continue
 
 # FIXME: Factor this next chunk into helper method?
@@ -1304,8 +1331,8 @@ class AMCallHandler(object):
         try:
             (result, message) = self._api_call(client, msg, op,
                                                 args)
-        except BadClientException:
-            return "Cannot CreateSliver at %s" % (client.url), None
+        except BadClientException as bce:
+            return "Cannot CreateSliver at %s: %s" % (client.url, str(bce)), None
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -2045,6 +2072,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2189,6 +2217,7 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client, msg + client.url, op,
                                                 args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
             retItem[client.url] = res
 
@@ -2354,6 +2383,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
@@ -2491,6 +2521,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
 
             retItem[client.url] = status
@@ -2616,6 +2647,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2754,6 +2786,7 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
 
             retItem[client.url] = result
@@ -2876,7 +2909,9 @@ class AMCallHandler(object):
             try:
                 (res, message) = self._api_call(client, msg + client.url, op, args)
             except BadClientException:
+                retVal += "Skipped client %s (unreachable? Wrong API version?).\n" % client.url
                 continue
+
             retItem[client.url] = res
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
@@ -2953,21 +2988,21 @@ class AMCallHandler(object):
                 self.logger.warn("Requested API version %d, but client %s uses version %d. This client does not talk that version. It advertises: %s", configver, client.url, cver, pprint.pformat(svers))
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
-                    self.logger.warn("Changing to use API version %d", cver)
+#                    self.logger.warn("Changing to use API version %d", cver)
                     return (cver, client)
                 else:
                     # FIXME: Pick out the max API version supported at this client, and use that?
                     self.logger.warn("... skipping this client")
                     return (cver, None)
         else:
-                self.logger.warn("Requested API version %d, but client %s uses version %d. This client does not advertise other versions.", configver, client.url, cver)
-                # FIXME: If we're continuing, change api_version to be correct, or we will get errors
-                if not self.opts.devmode:
-                    self.logger.warn("Changing to use API version %d", cver)
-                    return (cver, client)
-                else:
-                    self.logger.warn("... skipping this client")
-                    return (cver, None)
+            self.logger.warn("Requested API version %d, but client %s uses version %d. This client does not advertise other versions.", configver, client.url, cver)
+            # FIXME: If we're continuing, change api_version to be correct, or we will get errors
+            if not self.opts.devmode:
+#                self.logger.warn("Changing to use API version %d", cver)
+                return (cver, client)
+            else:
+                self.logger.warn("... skipping this client")
+                return (cver, None)
         self.logger.warn("... skipping this client")
         return (cver, None)
     # End of _checkValidClient
