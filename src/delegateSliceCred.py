@@ -176,6 +176,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     # Handle user supplied a set of trusted roots to use to validate the creds/certs
     roots = None
+    root_objects = []
     if opts.trustedroot:
         temp = opts.trustedroot
         for root in temp:
@@ -188,6 +189,14 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
                 if roots is None:
                     roots = []
                 roots.append(os.path.expanduser(root))
+
+        for f in roots:
+            try:
+                # Failures here include unreadable files
+                # or non PEM files
+                root_objects.append(GID(filename=f))
+            except Exception, exc:
+                logger.error("Failed to load trusted cert from %s: %r", f, exc)
 
     writeStruct = False
     if isinstance(slicecredstr, dict):
@@ -234,10 +243,17 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
 
     try:
+        owner_cert.verify_chain(trusted_certs=root_objects)
+    except Exception, exc:
+        logger.warn("Owner cert did not validate: %s", exc)
+        raise
+
+    try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
         if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
+        logger.warn("Supplied slice cred didn't verify")
         raise
 #        sys.exit("Failed to validate credential: %s" % exc)
 
@@ -252,6 +268,12 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         sys.exit("Can't delegate slice: not owner (mismatched GIDs but same URN - try downloading your cert again)")
 
     object_gid = slicecred.get_gid_object()
+
+    try:
+        delegee_cert.verify_chain(trusted_certs=root_objects)
+    except Exception, exc:
+        logger.warn("Delegee cert did not validate: %s", exc)
+        raise
 
     # OK, inputs are verified
     logger.info("Delegating %s's rights to %s to %s until %s UTC", owner_cert.get_urn(), object_gid.get_urn(), delegee_cert.get_urn(), newExpiration)
@@ -283,6 +305,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
+        logger.warn("Delegated slice cred does not verify")
         raise
 #        sys.exit("Failed to validate credential: %s" % exc)
 
