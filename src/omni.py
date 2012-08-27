@@ -135,9 +135,9 @@ def load_config(opts, logger):
             if os.path.exists( configfile ):
                 configfiles.insert(0, configfile)
             else:
-                logger.error("Config file '%s'or '%s' does not exist"
+                logger.error("Config file '%s' or '%s' does not exist"
                      % (opts.configfile, configfile))
-                raise (OmniError, "Config file '%s'or '%s' does not exist"
+                raise (OmniError, "Config file '%s' or '%s' does not exist"
                      % (opts.configfile, configfile))
 
     # Find the first valid config file
