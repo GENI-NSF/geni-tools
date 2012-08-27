@@ -432,7 +432,12 @@ class AMCallHandler(object):
 #                # FIXME: changing API versions means unwrap or wrap cred, maybe change the op name, ...
 #                # This may work for getversion, but likely not for other methods!
 #                self.opts.api_version = ver
+            else:
+                pass
             client = newc
+        elif ver != self.opts.api_version:
+            self.logger.warn("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
+            raise BadClientException(client)
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
 
