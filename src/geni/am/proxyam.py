@@ -20,30 +20,20 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''An aggregate that is actually a thin proxy to the real aggregate.
+Uses the GENI Clearinghouse services.
+Speaks only AM API v2.'''
 
-import base64
-import datetime
-import dateutil.parser
 import logging
 import os
-import traceback;
-import uuid
-import xml.dom.minidom as minidom
-import zlib
 
 import geni
-from geni.util.urn_util import publicid_to_urn
 from geni.am.am2 import AggregateManager
 from geni.am.am2 import AggregateManagerServer
 from geni.am.am2 import ReferenceAggregateManager
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from geni.util.ch_interface import *
 from omnilib.xmlrpc.client import make_client
-from resource import Resource
-from aggregate import Aggregate
-import tempfile
-from fakevm import FakeVM
-
 
 SR_URL = "https://" + socket.gethostname() + "/sr/sr_controller.php"
 
@@ -89,7 +79,7 @@ class ProxyAggregateManager(ReferenceAggregateManager):
         os.unlink(client.key_fname);
         os.unlink(client.cert_fname);
 
-    // *** GetVersion should return something to indicate there is a proxy
+    # *** GetVersion should return something to indicate there is a proxy
     def GetVersion(self, options):
         client = self.make_proxy_client();
         client_ret = None;

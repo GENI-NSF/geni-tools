@@ -23,11 +23,16 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 """
-Framework to run a GENI Aggregate Manager. See geni/am for the 
-Reference Aggregate Manager that this runs.
+Framework to run a GENI Aggregate Manager that is actually a thin proxy
+to the 'real' GENI AM, using the GENI Clearinghouse to get the experimenter's
+"inside" cert and key.
+Configured with a new proxy aggregate_manager section of the gcf_config.
+Uses only AM API v2
 
 Run with "-h" flag to see usage and command line options.
 """
+
+# NOTE: Treat this file as sample code. It is incomplete.
 
 import sys
 
@@ -40,12 +45,12 @@ elif sys.version_info >= (3,):
 import logging
 import optparse
 import os
+
 import geni
 import geni.am
 import geni.am.am2
 import geni.am.proxyam
 from geni.config import read_config
-
 
 def parse_args(argv):
     parser = optparse.OptionParser()

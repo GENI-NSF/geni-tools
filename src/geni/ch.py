@@ -136,10 +136,6 @@ class Clearinghouse(object):
             
             self.logger.info("Registering AM %s at %s", urn, url)
             self.aggs.append((urn, url))
-            
-        
-        
-        
         
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, authority=None,
@@ -175,7 +171,6 @@ class Clearinghouse(object):
         # Load up the aggregates
         self.load_aggregates()
         
-
         # This is the arg to _make_server
         ca_certs_onefname = cred_util.CredentialVerifier.getCAsFileFromDir(ca_certs)
 
