@@ -31,6 +31,7 @@ import json
 import os
 import tempfile
 import urllib2
+import M2Crypto
 
 # TODO: 
 # - Change get_inside_cert_and_key to use GID.py to get URN and UUID from cert
@@ -120,6 +121,27 @@ def _decode_dict(data):
         rv[key] = value
     return rv
 
+def decodeCHResponse(msg):
+    """Decode the response from the Clearinghouse. It might be encrypted,
+    and it might be signed, and it's certainly JSON. Figure out what's what
+    and return the decoded JSON.
+    """
+    #--------------------------------------------------
+    # FIXME: Add support for encryption.
+    # FIXME: Add signature verfication (see FIXME below)
+    #--------------------------------------------------
+    # Load the message into an OpenSSL IO buffer
+    p7_bio = M2Crypto.BIO.MemoryBuffer(msg)
+    # Try to load the msg as a PKCS7 (SMIME) message.
+    json_data = None
+    try:
+        p7, json_data = M2Crypto.SMIME.smime_load_pkcs7_bio(p7_bio)
+        # FIXME: Should verify here
+    except M2Crypto.SMIME.SMIME_Error:
+        json_data = msg
+    result = json.loads(json_data, encoding='ascii', object_hook=_decode_dict)
+    return result
+
 def invokeCH(url, operation, logger, argsdict, mycert=None, mykey=None):
     # Invoke the real CH
     # for now, this should json encode the args and operation, do an http put
@@ -169,7 +191,7 @@ def invokeCH(url, operation, logger, argsdict, mycert=None, mykey=None):
     resdict = None
     if putres:
         logger.debug("invokeCH Got result of %s" % putres)
-        resdict = json.loads(putres, encoding='ascii', object_hook=_decode_dict)
+        resdict = decodeCHResponse(putres)
     
     # FIXME: Check for code, value, output keys?
     return resdict
