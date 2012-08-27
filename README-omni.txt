@@ -752,16 +752,16 @@ of available resources at an AM, use `listresources`.
 
  * Sample usage:
   * Run `describe` on a slice against one aggregate.  Requesting the returned Manifest RSpec be in the default GENI v3 RSpec format.
-    `omni.py -a http://myaggregate/url -V3 describe myslice`
+    `omni.py -a http://myaggregate/url -V 3 describe myslice`
 
   * Run `describe` on a slice against two aggregates. Save the results in a
     file, with the slice name and aggregate name (constructed from the URL) included in the filename.
     into the filename:
-    `omni.py -a http://myaggregate/url -a http://another/aggregate -V3 \
+    `omni.py -a http://myaggregate/url -a http://another/aggregate -V 3 \
         -o --outputfile RSpecOn%sAt%a.xml describe myslice`
 
   * Run `describe` on two slivers against a particular aggregate.
-    `omni.py -a http://myaggregate/url -V3 describe myslice \
+    `omni.py -a http://myaggregate/url -V 3 describe myslice \
     	    --sliver-urn urn:publicid:IDN:myam+sliver+sliver1 \
     	    --sliver-urn urn:publicid:IDN:myam+sliver+sliver2`
 
@@ -1160,7 +1160,7 @@ For use with AM API v3+. For AM API v1 & v2, see `renewsliver`.
 Sample usage:
  * Renew slivers in slice myslice to the given time; fail the call if
  all slivers cannot be renewed to this time
-   `omni.py -V3 -a http://myaggregate/url renew myslice 20120909`
+   `omni.py -V 3 -a http://myaggregate/url renew myslice 20120909`
 
  * Renew slivers in slice myslice to the given time; any slivers that
    cannot be renewed to this time, stay as they were, while others are
@@ -1270,10 +1270,10 @@ See `sliverstatus` for the AM API v1 and v2 equivalent.
 
 Sample usage:
  - Get status on the slice at given aggregate
-   `omni.py -V3 -a http://aggregate/url status myslice`
+   `omni.py -V 3 -a http://aggregate/url status myslice`
 
  - Get status on specific slivers and save the result to a file
-   `omni.py -V3 -a http://aggregate/url \
+   `omni.py -V 3 -a http://aggregate/url \
    	    -o --outputfile %s-status-%a.json \
 	    -u urn:publicid:IDN+myam+sliver+1 \
    	    -u urn:publicid:IDN+myam+sliver+2 \
