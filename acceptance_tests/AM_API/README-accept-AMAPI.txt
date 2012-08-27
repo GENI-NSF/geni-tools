@@ -10,12 +10,15 @@ N.B. This page is formatted for a Trac Wiki.
 
 == Description ==
 
-Acceptance tests verify compliance to the
+Acceptance tests verify compliance to 
+[http://groups.geni.net/geni/wiki/GAPI_AM_API_V2 GENI AM API v2].
+
+Alternatively the tests can be run against:
 [http://groups.geni.net/geni/wiki/GAPI_AM_API_V1 GENI Aggregate Manager (AM) API v1 specification]
 plus
 [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA change set A of the AM API v2 specification]
-(alternatively the tests can be run against
-[http://groups.geni.net/geni/wiki/GAPI_AM_API_V2 GENI AM API v2]).
+or
+[http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3]).
 
 Acceptance tests are intended to be run with credentials from the GPO ProtoGENI,
 but they work with any credentials that are trusted at the AM under test.
@@ -30,7 +33,6 @@ Test verifies:
         * checks that you can't use a slice credential from one slice to do
           !ListResources <slicename> on another slice
      - Sliver creation workflow fails when:
-        * request RSpec is really a manifest RSpec
         * request RSpec is malformed (ie a tag is not closed)
         * request RSpec is an empty file
      - Sliver creation workflow fails or returns a manifest when:
@@ -44,7 +46,7 @@ Test verifies:
           contains a 'type' and 'version'
         * 'geni_request_rspec_versions' (or 'request_rspec_versions')
           which in turn contains a 'type' and 'version'
-	* or alternatively contains expected return from AM API v2
+	* or alternatively contains expected return from AM API v2 or AM API v3
      - !ListResources returns an advertisement RSpec (that is
        optionally validated with rspeclint)
      - !ListResources works properly with a delegated credential
@@ -56,6 +58,12 @@ Test verifies:
      - Shutdown: WARNING, running this test (which is in a separate
        file) likely requires administrator assistance to recover from)
      - Optional AM API v2 support
+     - Optional AM API v3 support
+        * Testing with AM API v3, runs the same tests as v1/v2, but replaces the v1/v2 AM API command with the equivalent v3 command:
+	  - Describe() for ListResources(slicename)
+	  - Status() for SliverStatus()
+	  - Allocate(), Provision(), and PerformOperationalAction() instead of CreateSliver()
+	  - Delete() instead of DeleteSliver()
 
 = Installation & Getting Started =
 
@@ -131,7 +139,7 @@ help@geni.net
 
   (c) Configure omni_config.
 
-     (i) Omni configuration is described in README-omni.txt
+     (i) Omni configuration is described in README-omni.txt. 
 
      (ii) Verify the ProtoGENI .pem files are found in the location
      specified in the omni_config
@@ -193,6 +201,7 @@ help@geni.net
           $GCF/acceptance_tests/AM_API/request2.xml
           $GCF/acceptance_tests/AM_API/request3.xml
  }}}
+	If you need to run with unbound RSpecs, use the `--un-bound` option.
 
   (c) Write a manifest RSpec for AM under test.
     (i) Remove sample rspec if you executed (2).
@@ -242,6 +251,10 @@ run the acceptance tests.
     the appropriate test:
 
     $ am_api_accept.py -a am-undertest Test.test_GetVersion
+    
+    Optional: To run with AM API v3:
+    
+    $ am_api_accept.py -a am-undertest -V 3 --NoGetVersionCache
 
   (b) Correct errors and run step (4a) again, as needed.
 
@@ -263,14 +276,15 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
 
 == Variations ==
 
+ * To run the tests with AM API v1 plus Change Set A use -V 1.  To run
+   with AM API v3 use -V 3.  But be sure to update the 'am-undertest'
+   definition to the url of the new AM in omni_config.
+
  * Use --vv to have the underlying unittest be more verbose (including
    printing names of tests and descriptions of tests).
 
  * To validate your RSpecs with rspeclint add the --rspeclint option:
         $ am_api_accept.py -a am-undertest --rspeclint
-
- * To run the tests with AM API v2 use -V 2.  But be sure to update
-   the 'am-undertest' definition to the url of the new AM in omni_config.
 
  * To run with ProtoGENI v2 RSpecs instead of GENI v3 use:
    --ProtoGENIv2, --rspec-file, and --bad-rspec-file.
@@ -331,7 +345,7 @@ Then:
 where <username> is your Unix account username.
 
  * If a test fails, rerun the individual test by itself and look at
-   the contents of the acceptance.log file for an indication of the
+   the contents of the `acceptance.log` file for an indication of the
    source of the problem using syntax like the following:
 
         $ am_api_accept.py -a am-undertest Test.test_GetVersion
@@ -340,92 +354,21 @@ where <username> is your Unix account username.
 
 A successful run looks something like this:
 {{{
-$ am_api_accept.py  -a am-undertest
-....
+$ ./am_api_accept.py --NoGetVersionCache --sleep-time 0 -a https://localhost:8001 -V 2 --rspec-file ../../src/geni/am/amapi2-request.xml
+.............
 ----------------------------------------------------------------------
-Ran 14 tests in 444.270s
+Ran 13 tests in 18.542s
 
 OK
 }}}
 
-A partially unsuccessful run looks like this (run against ProtoGENI):
-(NOTE that this may improve as PG modifies some minor issues with the RSpec format.)
-{{{
-$ ./am_api_accept.py -a pg-utah2 -V 2 --vv --rspeclint                                                          
-test_CreateSliver: Passes if the sliver creation workflow succeeds.  Use --rspec-file to replace the default request RSpec. ... ok                  
-test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow fails when the sliver has never existed. ... ok                    
-test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices and ensure can not do ListResources on slices with the wrong credential. ... ok                                                           
-test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails when the request RSpec is an empty file. ... ok                  
-test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails when the request RSpec is not well-formed XML. ... ok            
-test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative. ... FAIL                 
-test_GetVersion: Passes if a 'GetVersion' returns an XMLRPC struct containing 'geni_api' and other parameters defined in Change Set A. ... ok       
-test_ListResources: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                                              
-test_ListResources_badCredential_alteredObject: Run ListResources with a User Credential that has been altered (so the signature doesn't match). ... ok                                                                       
-test_ListResources_badCredential_malformedXML: Run ListResources with a User Credential that is missing it's first character (so that it is invalid XML). ... ok                                                              
-test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                               
-test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec. ... FAIL                                              
-test_ListResources_untrustedCredential: Passes if 'ListResources' FAILS to return an advertisement RSpec when using a credential from an untrusted Clearinghouse. ... ok                                                      
-
-======================================================================
-FAIL: test_CreateSliver_badrspec_manifest: Passes if the sliver creation workflow fails when the request RSpec is a manifest RSpec.  --bad-rspec-file allows you to replace the RSpec with an alternative.                    
-----------------------------------------------------------------------    
-Traceback (most recent call last):                                        
-  File "./am_api_accept.py", line 1258, in test_CreateSliver_badrspec_manifest                                                                      
-    self.subtest_MinCreateSliverWorkflow, slice_name)                     
-AssertionError: NotNoneAssertionError not raised                          
-
-======================================================================
-FAIL: test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.                                                                 
-----------------------------------------------------------------------    
-Traceback (most recent call last):                                        
-  File "./am_api_accept.py", line 328, in test_ListResources              
-    self.subtest_ListResources()
-  File "./am_api_accept.py", line 619, in subtest_ListResources
-    % (agg_name, rspec[:100]))
-AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
-<?xml version="1.0" encoding="UTF-8"?>
-<rspec xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-... edited for length ...
-
-======================================================================
-FAIL: test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec.
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "./am_api_accept.py", line 342, in test_ListResources_geni_available
-    self.subtest_ListResources()
-  File "./am_api_accept.py", line 619, in subtest_ListResources
-    % (agg_name, rspec[:100]))
-AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
-<?xml version="1.0" encoding="UTF-8"?>
-<rspec xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-... edited for length ...
-
-======================================================================
-FAIL: test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "./am_api_accept.py", line 335, in test_ListResources_geni_compressed
-    self.subtest_ListResources()
-  File "./am_api_accept.py", line 619, in subtest_ListResources
-    % (agg_name, rspec[:100]))
-AssertionError: Return from 'ListResources' at aggregate 'unspecified_AM_URN' expected to pass rspeclint but did not. Return was:
-<?xml version="1.0" encoding="UTF-8"?>
-<rspec xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-... edited for length ...
-
-----------------------------------------------------------------------
-Ran 13 tests in 1451.951s
-
-FAILED (failures=4)
-}}}
 
 Acceptance Tests output of help message:
 {{{
-
-$ ./am_api_accept.py -h      
-Usage:                                                           
-      ./am_api_accept.py -a am-undertest                         
-      Also try --vv                                              
+ ./am_api_accept.py -h                   
+Usage:                                                                        
+      ./am_api_accept.py -a am-undertest                                      
+      Also try --vv                                                           
 
      Run an individual test using the following form...
      ./am_api_accept.py -a am-undertest Test.test_GetVersion
@@ -438,46 +381,74 @@ Options:
   -f FRAMEWORK, --framework=FRAMEWORK                         
                         Control framework to use for creation/deletion of
                         slices                                           
-  -n, --native          Use native RSpecs (default)                      
-  --omnispec            Use Omnispecs (deprecated)                       
+  -V API_VERSION, --api-version=API_VERSION                              
+                        Specify version of AM API to use (default 2)     
   -a AGGREGATE_URL, --aggregate=AGGREGATE_URL                            
                         Communicate with a specific aggregate            
   --debug               Enable debugging output                          
-  --no-ssl              do not use ssl                                   
-  --orca-slice-id=ORCA_SLICE_ID                                          
-                        Use the given Orca slice id                      
-  -o, --output          Write output of getversion, listresources,       
-                        createsliver, sliverstatus, getslicecred to a file
-                        (Omni picks the name)                             
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                                          
-                        Filename prefix when saving results (used with -o)              
-  --usercredfile=USER_CRED_FILENAME                                                     
-                        Name of user credential file to read from if it                 
-                        exists, or save to when running like '--usercredfile            
-                        myUserCred.xml -o getusercred'                                  
-  --slicecredfile=SLICE_CRED_FILENAME                                                   
-                        Name of slice credential file to read from if it                
-                        exists, or save to when running like '--slicecredfile           
-                        mySliceCred.xml -o getslicecred mySliceName'                    
-  -v, --verbose         Turn on verbose command summary for omni commandline            
-                        tool                                                            
-  -q, --quiet           Turn off verbose command summary for omni commandline           
-                        tool                                                            
-  --tostdout            Print results like rspecs to STDOUT instead of to log           
-                        stream                                                          
-  --abac                Use ABAC authorization                                          
-  -l LOGCONFIG, --logconfig=LOGCONFIG                                                   
-                        Python logging config file                                      
-  --logoutput=LOGOUTPUT                                                                 
-                        Python logging output file [use %(logfilename)s in              
-                        logging config file]                                            
-  --no-tz               Do not send timezone on RenewSliver                             
-  -V API_VERSION, --api-version=API_VERSION                                             
-                        Specify version of AM API to use (1, 2, etc.)                   
-  --no-compress         Do not compress returned values
-  --available           Only return available resources
+  -o, --output          Write output of many functions (getversion,      
+                        listresources, allocate, status, getslicecred,...) ,
+                        to a file (Omni picks the name)                     
+  --outputfile=OUTPUT_FILENAME                                              
+                        Name of file to write output to (instead of Omni    
+                        picked name). '%a' will be replaced by servername,  
+                        '%s' by slicename if any. Implies -o. Note that for 
+                        multiple aggregates, without a '%a' in the name, only
+                        the last aggregate output will remain in the file.   
+                        Will ignore -p.                                      
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                               
+                        Filename prefix when saving results (used with -o, not
+                        --usercredfile, --slicecredfile, or --outputfile)     
+  --usercredfile=USER_CRED_FILENAME                                           
+                        Name of user credential file to read from if it       
+                        exists, or save to when running like '--usercredfile  
+                        myUserCred.xml -o getusercred'                        
+  --slicecredfile=SLICE_CRED_FILENAME                                         
+                        Name of slice credential file to read from if it      
+                        exists, or save to when running like '--slicecredfile 
+                        mySliceCred.xml -o getslicecred mySliceName'          
+  --tostdout            Print results like rspecs to STDOUT instead of to log 
+                        stream                                                
+  --no-compress         Do not compress returned values                       
+  --available           Only return available resources                       
+  --best-effort         Should AMs attempt to complete the operation on only  
+                        some slivers, if others fail                          
+  -u SLIVERS, --sliver-urn=SLIVERS                                            
+                        Sliver URN (not name) on which to act. Supply this    
+                        option multiple times for multiple slivers, or not at 
+                        all to apply to the entire slice                      
+  --end-time=GENI_END_TIME                                                    
+                        Requested end time for any newly allocated or         
+                        provisioned slivers - may be ignored by the AM        
+  -v, --verbose         Turn on verbose command summary for omni commandline  
+                        tool                                                  
+  -q, --quiet           Turn off verbose command summary for omni commandline 
+                        tool                                                  
+  -l LOGCONFIG, --logconfig=LOGCONFIG                                         
+                        Python logging config file                            
+  --logoutput=LOGOUTPUT                                                       
+                        Python logging output file [use %(logfilename)s in    
+                        logging config file]                                  
+  --NoGetVersionCache   Disable using cached GetVersion results (forces       
+                        refresh of cache)
+  --ForceUseGetVersionCache
+                        Require using the GetVersion cache if possible
+                        (default false)
+  --GetVersionCacheAge=GETVERSIONCACHEAGE
+                        Age in days of GetVersion cache info before refreshing
+                        (default is 7)
+  --GetVersionCacheName=GETVERSIONCACHENAME
+                        File where GetVersion info will be cached, default is
+                        ~/.gcf/get_version_cache.json
+  --devmode             Run in developer mode: more verbose, less error
+                        checking of inputs
   --arbitrary-option    Add an arbitrary option to ListResources (for testing
                         purposes)
+  --no-tz               Do not send timezone on RenewSliver
+  --no-ssl              do not use ssl
+  --orca-slice-id=ORCA_SLICE_ID
+                        Use the given Orca slice id
+  --abac                Use ABAC authorization
   --reuse-slice=REUSE_SLICE_NAME
                         Use slice name provided instead of creating/deleting a
                         new slice
@@ -541,6 +512,7 @@ Usage:
  1. AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V1
  2. AM API v2 change set A documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA
  3. AM API v2 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V2
+ 3. AM API v3 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V3
  4. gcf and Omni documentation: http://trac.gpolab.bbn.com/gcf/wiki
  5. rspeclint code: http://www.protogeni.net/resources/rspeclint
  6. rspeclint documentation: http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
