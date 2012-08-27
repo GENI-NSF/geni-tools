@@ -232,20 +232,20 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     In AM API v2 (default) do:
      `omni.py createsliver -a pg-utah2 MySlice request.rspec`
     In AM API v3 this requires 3 steps:
-     `omni.py -V 3 allocate -a pg-utah3 MySlice request.rspec` 
+     `omni.py -V 3 allocate -a myV3AM MySlice request.rspec` 
      	      Reserve the resources. Optionally you may delete the
     	      reservation if you didn't get what you wanted, or hold
     	      your reservation and try another reservation elsewhere
     	      to match. Be sure to `renew` your reservation if you
     	      want to hold it a while before you `provision` it.
 
-     `omni.py -V 3 provision -a pg-utah3 MySlice` 
+     `omni.py -V 3 provision -a myV3AM MySlice` 
      	      Start Instantiating the resources.
 
      At this point, you likely want to call `status` (see below), to
      check when your slivers have been fully provisioned.
 
-     `omni.py -V 3 performoperationalaction -a pg-utah3 MySlice geni_start`
+     `omni.py -V 3 performoperationalaction -a myV3AM MySlice geni_start`
      	      Boot or otherwise make available the resources. The
     	      specific actions available will be aggregate and sliver
     	      type specific. Consult the Advertisement RSpec from this
@@ -283,7 +283,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     effect. In many cases, the operational state will change from
     `geni_notready` to `geni_ready`.
 
-    Run: `omni.py -V 3 status -a pg-utah3 MySlice`
+    Run: `omni.py -V 3 status -a myV3AM MySlice`
 
  8. Renew your slice and slivers: Both slices and slivers have
     distinct expiration times.  After a while you may want to Renew
@@ -295,7 +295,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
       AM API v2:
          `omni.py renewsliver -a pg-utah2 MySlice 20120531`
       AM API V3:
-         `omni.py -V 3 renew -a pg-utah3 MySlice 20120531`
+         `omni.py -V 3 renew -a myV3AM MySlice 20120531`
     
  9. Do your experiment! Compute resources typically use SSH to let you
  log in to the machines. The SSH keys configured in your omni_config
@@ -309,7 +309,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
       AM API v2:
          `omni.py deletesliver -a pg-utah2 MySlice`
       AM API v3:
-         `omni.py -V 3 delete -a pg-utah3 MySlice`
+         `omni.py -V 3 delete -a myV3AM MySlice`
 
  11. Optional: `listmyslices` and `print_slice_expiration`. Occasionally you
     may run `listmyslices` to remind yourself of your outstanding
