@@ -28,6 +28,7 @@ import sys
 import omni
 import os.path
 from optparse import OptionParser
+import omnilib.util.omnierror as omnierror
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -40,17 +41,19 @@ from optparse import OptionParser
 
 def findUsersAndKeys( config ):
     """Look in omni_config for user and key information to pass to ssh"""
-    keyList = []
+    keyList = {}
     for user in config['users']:
         # convert strings containing public keys (foo.pub) into
         # private keys (foo)
+        username = user['urn'].split('+')[-1]
+        keyList[username] = []
         privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
             if not os.path.exists(os.path.expanduser(key)):
                 print "Key file [%s] does NOT exist." % key
             else:
-                keyList.append(key)
+                keyList[username].append(key)
     return keyList
 
 def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
@@ -110,21 +113,23 @@ def loginToPlanetlab( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
         # Check if node is in ready state
         output += "Login using:\n"
 
-        if len(keyList) == 0:
+        if sum(len(val) for val in keyList.itervalues())== 0:
             output = "There are no keys. You can not login to your nodes.\n"
-        for key in keyList:
-            output += "\t"
-            if inXterm is True:
-                output += "xterm -e "
-            output += "ssh -i %s %s@%s" % ( key, sliverStat['pl_login'], resourceDict['pl_hostname'])
-            if inXterm is True:
-                output += " &"
-            output += "\n"
+        for user in keyList:
+            for key in keyList[user]: 
+              output += "\t"
+              if inXterm is True:
+                  output += "xterm -e "
+              output += "ssh -i %s %s@%s" % ( key, sliverStat['pl_login'], resourceDict['pl_hostname'])
+              if inXterm is True:
+                  output += " &"
+              output += "\n"
     return output
 
 def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     """Print command to ssh into a ProtoGENI host."""
     output = ""
+    hosts = {}
     for resourceDict in sliverStat['geni_resources']: 
         # If the user only wants the nodes that are in ready state, skip over all 
         # nodes that are not ready
@@ -133,25 +138,42 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
         for children1 in resourceDict['pg_manifest']['children']:
             for children2 in children1['children']:
                 child = children2['attributes']
-                if (not child.has_key('username')) or (not child.has_key('hostname')):
+                if (not child.has_key('hostname')):
                     continue
-                output += "\n%s's geni_status is: %s\n" % (child['hostname'],resourceDict['geni_status'])
-                output += "Login using:\n"
+                hosts[child['hostname']] = {}
+                hosts[child['hostname']]['port'] = child['port']
+                hosts[child['hostname']]['status'] = resourceDict['geni_status']
 
-                if len(keyList) == 0:
-                    output = "There are no keys. You can not login to your nodes.\n"
+    pgKeyList = {}
+    for userDict in sliverStat['users']:
+       pgKeyList[userDict['login']] = [] 
+       for k in userDict['keys']:
+          #XXX nriga Keep track of keys, in the future we can verify what key goes with
+          # which private key
+          pgKeyList[userDict['login']].append(k['key'])
 
-                for key in keyList:
-                    output += "\t"
-                    if inXterm is True:
-                        output += "xterm -e "
-                    output += "ssh -i %s %s@%s" % ( key, child['username'], child['hostname'])
-                    if str(child['port']) != '22' : 
-                      output += " -p %s" % child['port']
-                    if inXterm is True:
-                        output += " &"
-                    output += "\n"
+    for h in hosts:
+      if readyOnly and hosts[h]['status'].strip() != "ready":
+        continue
+      output += "\n%s's geni_status is: %s. " % (h,hosts[h]['status'])
+      output += "Login using:\n"
+      for user in pgKeyList :
+        if keyList.has_key(user):
+          if len(keyList[user]) != len(pgKeyList[user]):
+              print "WARNING: Number of keys for User %s in omni_config and in the hosts do not match! Some of the ssh commands might not work!" % user
+          for k in keyList[user]:  
+              output += "\t"
+              if inXterm is True:
+                output += "xterm -e "
+              output += "ssh -i %s " % k
+              if str(hosts[h]['port']) != '22' : 
+                output += " -p %s " % hosts[h]['port']
+              output += "%s@%s" % (user, h)
+              if inXterm is True:
+                output += " &"
+              output += "\n"
     return output
+
 def main(argv=None):
     parser = omni.getParser()
     # Parse Options
@@ -175,7 +197,11 @@ def main(argv=None):
     
     # Run equivalent of 'omni.py sliverstatus username'
     argv = ['sliverstatus', slicename]
-    text, sliverStatus = omni.call( argv, options )
+    try:
+      text, sliverStatus = omni.call( argv, options )
+    except omnierror.AMAPIERROR:
+      print "ERROR: There was an error executing sliverstatus, review the logs."
+      sys.exit(-1)
 
     framework, config, args, opts = omni.initialize( argv, options )
     keyList = findUsersAndKeys( config )
