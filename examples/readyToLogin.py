@@ -152,10 +152,9 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
           # which private key
           pgKeyList[userDict['login']].append(k['key'])
 
-    print pgKeyList
-    print keyList
-
     for h in hosts:
+      if readyOnly and hosts[h]['status'].strip() != "ready":
+        continue
       output += "\n%s's geni_status is: %s. " % (h,hosts[h]['status'])
       output += "Login using:\n"
       for user in pgKeyList :
