@@ -4,7 +4,7 @@ GCF v1.6.2 and later comes with a configuration script (omni-configure.py)
 that will automatically configure Omni for users with a standard setup.
 Users with more complicated setups should manually configure Omni. 
 
-You SOULD manually configure Omni if :
+You SHOULD manually configure Omni if :
   * you want to use your account with PlanetLab to reserve GENI resources and 
     you don't already have a copy of your certificate file
   * you want to use multiple GENI accounts (e.g. your account 
