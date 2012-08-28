@@ -439,6 +439,8 @@ class AMCallHandler(object):
             self.logger.warn("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
             raise BadClientException(client)
 
+        self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
+
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
 
     # FIXME: Must still factor dev vs exp
@@ -2423,7 +2425,14 @@ class AMCallHandler(object):
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
                 if message is None or message.strip() == "":
-                    message = "(no reason given)"
+                    if status is None:
+                        message = "(no reason given, missing result)"
+                    elif status == False:
+                        message = "(no reason given, False result)"
+                    elif status == 0:
+                        message = "(no reason given, 0 result)"
+                    else:
+                        message = "(no reason given, empty result)"
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
         # End of loop over clients
 
@@ -3194,6 +3203,17 @@ class AMCallHandler(object):
         # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
+            self.logger.debug("Raw result from dossl call was %s?!", result)
+            if not message or message.strip() == "":
+                message = "(no reason given)"
+            if result is None:
+                message += " (missing result)"
+            elif result == False:
+                message += " (False result)"
+            elif result == 0:
+                message += " (0 result)"
+            else:
+                message += " (empty result)"
             return (result, message)
 
         value = result
@@ -3221,12 +3241,24 @@ class AMCallHandler(object):
                 # AM API v2+
                 if result['code']['geni_code'] == 0:
                     value = result['value']
+                    if value is None:
+                        self.logger.warn("Result claimed success but value is empty!")
+                        if result['code'].has_key('am_code'):
+                            if not message or message.strip() == "":
+                                message = "(no reason given)"
+                            amtype = ""
+                            if result['code'].has_key('am_type'):
+                                amtype = result['code']['am_type']
+                            message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])                            
                 # FIXME: More complete error code handling!
                 elif result['code']['geni_code'] != 0 and self.opts.api_version == 2:
                     self._raise_omni_error(result, AMAPIError)
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None
+        else:
+            # Not a dict response. Value is result in itself
+            pass
         return (value, message)
     # End of _retrieve_value
 
