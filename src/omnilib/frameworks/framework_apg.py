@@ -45,8 +45,6 @@ class Framework(pg_framework):
             self.abac_log = None
             self.logger.error("No abac directory or abac_log specified.  Reverting to ProtoGENI behavior")
 
-
-
     def get_user_cred(self):
         (pg_response, message) = _do_ssl(self, None, ("Get ABAC credentials from SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetABACCredentials)
         _ = message #Appease eclipse
