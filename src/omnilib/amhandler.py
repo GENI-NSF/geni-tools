@@ -797,7 +797,10 @@ class AMCallHandler(object):
                     self.logger.debug("Using new client url %s but same API version %", newc.url, ver)
                 client = newc
             elif ver != self.opts.api_version:
-                self.logger.warn("AM %s speaks API version %d, not %d. Rerun with option '-V%d'.", client.url, ver, self.opts.api_version, ver)
+                self.logger.error("AM %s speaks API version %d, not %d. Rerun with option '-V%d'.", client.url, ver, self.opts.api_version, ver)
+                if len(clientList) == 1:
+                    self._raise_omni_error("Can't do ListResources: AM %s speaks only AM API v%d, not %d. Try calling Omni with the -V%d option." % (client.url, ver, self.opts.api_version, ver))
+
                 if not mymessage:
                     mymessage = ""
                 else:
