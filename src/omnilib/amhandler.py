@@ -3796,6 +3796,9 @@ class AMCallHandler(object):
                     self._raise_omni_error(msg)
             elif time <= datetime.datetime.utcnow():
                 if not self.opts.devmode:
+                    # Syseng ticket 3011: User typo means their sliver expires.
+                    # Instead either (a) raise an error, or (b) substitute something a
+                    # few minutes in the future
                     self.logger.info('Sliver(s) in %s will be set to expire now' % name)
                     time = datetime.datetime.utcnow()
             else:
