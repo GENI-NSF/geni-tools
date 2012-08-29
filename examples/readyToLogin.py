@@ -70,9 +70,13 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
         return 
 
     for aggName, aggStat in sliverStat.items():
+        if aggStat == False:
+          # If AggStat is False there was something wrong with the call
+          # continue to the next
+          print "%s did not respond!" % aggName
+          continue
         # PlanetLab sliverstatus
-        try:
-            aggStat['pl_expires']
+        if aggStat.has_key('pl_expires'):
             print ""
             print "="*80
             # In PlanetLAB after you delete a silver you get an empty sliver, i.e. a sliver
@@ -88,13 +92,9 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
                 print "Aggregate [%s] has No PlanetLab sliver." % aggName
             print "="*80
             print ""
-        except:
-            pass
 
         # ProtoGENI sliverstatus
-        try:
-            aggStat['pg_expires']
-            print aggStat.keys()
+        if aggStat.has_key('pg_expires'):
             print ""
             print "="*80
             print "Aggregate [%s] has a ProtoGENI sliver.\n" % aggName
@@ -103,8 +103,6 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
                 print login
             print "="*80
             print ""
-        except:
-            pass
 
         # ORCA sliverstatus
         try:
@@ -192,9 +190,12 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
                 child = children2['attributes']
                 if (not child.has_key('hostname')):
                     continue
-                hosts[child['hostname']] = {}
-                hosts[child['hostname']]['port'] = child['port']
-                hosts[child['hostname']]['status'] = resourceDict['geni_status']
+                # Make a unique name for the host+port pair
+                entryname = str(child['hostname']) + ":" + str(child['port'])
+                hosts[entryname] = {}
+                hosts[entryname]['hostname'] = child['hostname']
+                hosts[entryname]['port'] = child['port']
+                hosts[entryname]['status'] = resourceDict['geni_status']
 
     pgKeyList = {}
     for userDict in sliverStat['users']:
@@ -207,7 +208,7 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     for h in hosts:
       if readyOnly and hosts[h]['status'].strip() != "ready":
         continue
-      output += "\n%s's geni_status is: %s. " % (h,hosts[h]['status'])
+      output += "\n%s's geni_status is: %s. " % (hosts[h]['hostname'],hosts[h]['status'])
       output += "Login using:\n"
       for user in pgKeyList :
         if keyList.has_key(user):
@@ -220,7 +221,7 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
               output += "ssh -i %s " % k
               if str(hosts[h]['port']) != '22' : 
                 output += " -p %s " % hosts[h]['port']
-              output += "%s@%s" % (user, h)
+              output += "%s@%s" % (user, hosts[h]['hostname'])
               if inXterm is True:
                 output += " &"
               output += "\n"
