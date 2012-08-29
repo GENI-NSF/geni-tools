@@ -44,10 +44,10 @@ Detailed changes:
   AM API v2+ aggregates require that you specify the RSpec format you
  want, when using ListResources. Omni now specifies the RSpec format
  GENI 3 by default: you can always request a different format, if the
- AM supports it.
+ AM supports it. (ticket #90, #141)
 
  - Omni no longer supports the deprecated 'omnispecs' RSpec
-   format. Use GENI v3 format RSpecs.
+   format. Use GENI v3 format RSpecs. (ticket #97)
  - Added AM API v3 support
   - Each API method is a separate Omni command
   - `performoperationalaction` has a synonym: `poa`
@@ -71,7 +71,7 @@ Detailed changes:
    if needed.
  - Omni tries to correct the API version you specify: If you ask for V2
    but are talking to a V3 AM, it tries to reconnect to a V2 URL if the
-   AM advertises it.
+   AM advertises it. (ticket #91, #141, #164)
  - Added a new option `--outputfile`: With `-o`, this means save command results to
    the given file name. Without this, Omni builds its own filename (as
    before). Include `%a` in specified filename and Omni interpolates an AM
@@ -79,16 +79,16 @@ Detailed changes:
  - `getslicecred` and `getusercred` are more consistent in how the result
    is printed, logged, or saved. These methods now honor `-o`, `-p`, and `--stdout` options.
    `getusercred` honors the `--usercredfile` option.
- - `getversion` output is saved to a `.json` file
+ - `getversion` output is saved to a `.json` file (ticket #150)
  - Allow specifying multiple aggregates on the command line (multiple
    `-a` options). All methods except CreateSliver support this.
  - Added new option `--devmode` (default `False`). When true, only warn on bad
-   inputs, but try to pass the bad inputs along anyhow.
+   inputs, but try to pass the bad inputs along anyhow. (ticket #78)
  - Added a new GetVersion Cache: the results of GetVersion are
    cached locally as serialed JSON. ListResources an other calls that
    require information from GetVersion may use this cache instead.
    GetVersion does not use the cache by default. Cache entries
-   have a max age, after which we always re-query the AM.
+   have a max age, after which we always re-query the AM. (ticket #81)
  - libstitch example: Allow caller to specify the per-AM fake manifest RSpec to
    use when in fake mode, by using a comment in the request RSpec.
  - omni-configure: Added new `-e` option to specify the experimenter's private
@@ -97,7 +97,7 @@ Detailed changes:
  - Omni code has been refactored for maintainability and
    extensability. Calls to clearinghouses are in chhandler.py, and to AM
    API functions are in amhandler.py. In the process, input checking and
-   output formatting has been further standardized.
+   output formatting has been further standardized. (ticket #163)
  - AM API v3+ Omni methods all return the full code/value/output struct for use
    by scripts
  - Omni checks v3 return structs, looking for missing slivers, slivers
@@ -113,7 +113,7 @@ Detailed changes:
  - When reading a credential from a file, make sure it matches the
    expected slice.
  - Log clearly when a supplied credential filename was not used,
-   and instead omni contacted the clearinghouse (FIXME: Ref ticket)
+   and instead omni contacted the clearinghouse (ticket #165)
  - Use json.dumps to produce pretty dict output; this allows
    re-parsing that output in Omni, e.g. in Allocate to get the request
    RSpec
@@ -123,8 +123,11 @@ Detailed changes:
  - Remove obsolete setup-*.py files. Follow INSTALL.txt to install
    GCF an Omni.
  - Added a utility function that checks for valid URNs by type,
-   including checking AM API v3 rules restricting characters in URNs.
+   including checking AM API v3 rules restricting characters in
+   URNs. (ticket #113)
  - Updated to latest SFA (from around July 20th, 2012)
+ - Clean up createsliver output (ticket #139)
+ - Listresources notes if supplied slice credential is expired (ticket #162)
 
 New in v1.6.2:
  * Added omni-configure.py script to autogenerate the omni_config (#127)
