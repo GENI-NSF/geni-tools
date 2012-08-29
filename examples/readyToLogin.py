@@ -29,6 +29,7 @@ import omni
 import os.path
 from optparse import OptionParser
 import omnilib.util.omnierror as omnierror
+import xml.etree.ElementTree as etree
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -38,6 +39,11 @@ import omnilib.util.omnierror as omnierror
 #     export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src
 #
 ################################################################################
+
+#Global variables
+options = None
+slicename = None
+config = None
 
 def findUsersAndKeys( config ):
     """Look in omni_config for user and key information to pass to ssh"""
@@ -88,6 +94,7 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
         # ProtoGENI sliverstatus
         try:
             aggStat['pg_expires']
+            print aggStat.keys()
             print ""
             print "="*80
             print "Aggregate [%s] has a ProtoGENI sliver.\n" % aggName
@@ -98,6 +105,51 @@ def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
             print ""
         except:
             pass
+
+        # ORCA sliverstatus
+        try:
+            aggStat['geni_resources'][0]['orca_expires']
+            print ""
+            print "="*80
+            if len(aggStat['geni_resources']) > 0 :
+                print "Aggregate [%s] has an ORCA sliver." % aggName
+                login = loginToOrca( inXterm, keyList=keyList, readyOnly=readyOnly )
+
+                if login is not None:
+                    print login
+            else :
+                print "Aggregate [%s] has No ORCA sliver." % aggName
+            print "="*80
+            print ""
+        except:
+            pass
+
+
+def getInfoFromListResources( ) :
+    # Run the equivalent of 'omni.py listresources <slicename>'
+    argv = ['listresources', slicename]
+    try:
+      text, listresources = omni.call( argv, options )
+    except omnierror.AMAPIError:
+      print "ERROR: There was an error executing listresources, review the logs."
+      sys.exit(-1)
+
+    # Parse rspec
+    for amInfo in listresources.values():
+      print amInfo['value']
+      dom = etree.fromstring(listresources)
+      #print dom
+      print "AFTER"
+
+
+def loginToOrca( inXterm=True, keyList=[], readyOnly=False):
+    """Print command to ssh into Orca hosts."""
+    # Orca has the login info in a service tag in listresources. 
+    # This will be the case for all AMs in AM V3, so try and make
+    # this modular so that we can reuse it. 
+
+    loginInfo = getInfoFromListResources()
+    pass
 
 def loginToPlanetlab( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     """Print command to ssh into a PlanetLab host."""
@@ -175,6 +227,8 @@ def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
     return output
 
 def main(argv=None):
+    global slicename, options, config
+
     parser = omni.getParser()
     # Parse Options
     usage = "\n\tTypically: \treadyToLogin.py slicename"
@@ -197,9 +251,11 @@ def main(argv=None):
     
     # Run equivalent of 'omni.py sliverstatus username'
     argv = ['sliverstatus', slicename]
+    print slicename 
+    print options
     try:
       text, sliverStatus = omni.call( argv, options )
-    except omnierror.AMAPIERROR:
+    except omnierror.AMAPIError:
       print "ERROR: There was an error executing sliverstatus, review the logs."
       sys.exit(-1)
 
