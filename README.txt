@@ -157,7 +157,8 @@ Full details on options for each step are described below.
 
    You can also optionally specify the API version that this aggregate should
    implement, using the -V option. The default is API version 2, and
-   valid values include 1, 2 and 3.
+   valid values include 1, 2 and 3. If using gcf-test, be sure to
+   supply a matching -V option to that script.
    Supply the --debug argument for more detailed logging.
 
 4. Run the GCF installation testing client:
@@ -183,7 +184,7 @@ Full details on options for each step are described below.
    output.
    Optional argument -V allows specifying the AM API version to run
    against the specified aggregate: the default is 2, and valid values
-   are 1 and 2.
+   are 1, 2 or 3. Be sure it matches the -V value you supplied to gcf-am.
 
    Note that you can use user credentials from any federated control
    framework, as long as the appropriate CH certificates were supplied

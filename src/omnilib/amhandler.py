@@ -422,7 +422,7 @@ class AMCallHandler(object):
             raise BadClientException(client)
         elif newc.url != client.url:
             if ver != self.opts.api_version:
-                self.logger.warn("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
+                self.logger.error("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
                 raise BadClientException(client)
 #                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
 #                # FIXME: changing the api_version is not a great idea if
@@ -436,8 +436,10 @@ class AMCallHandler(object):
                 pass
             client = newc
         elif ver != self.opts.api_version:
-            self.logger.warn("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
+            self.logger.error("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
             raise BadClientException(client)
+
+        self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
 
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
 
@@ -775,7 +777,10 @@ class AMCallHandler(object):
                 continue
             elif newc.url != client.url:
                 if ver != self.opts.api_version:
-                    self.logger.warn("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
+                    self.logger.error("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
+                    if len(clientList) == 1:
+                        self._raise_omni_error("Can't do ListResources: AM %s speaks only AM API v%d, not %d. Try calling Omni with the -V%d option." % (client.url, ver, self.opts.api_version, ver))
+
                     if not mymessage:
                         mymessage = ""
                     else:
@@ -1124,6 +1129,8 @@ class AMCallHandler(object):
                     message = mymessage + ". " + message
             except BadClientException as bce:
                 retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
 # FIXME: Factor this next chunk into helper method?
@@ -1337,7 +1344,7 @@ class AMCallHandler(object):
             (result, message) = self._api_call(client, msg, op,
                                                 args)
         except BadClientException as bce:
-            return "Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d" % (client.url, self.opts.api_version), None
+            self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d" % (client.url, self.opts.api_version))
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -1508,7 +1515,9 @@ class AMCallHandler(object):
                                     op,
                                     args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1721,7 +1730,9 @@ class AMCallHandler(object):
                                                   op,
                                                   args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1944,7 +1955,9 @@ class AMCallHandler(object):
                                                   op,
                                                   args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             retItem[ client.url ] = result
@@ -2077,7 +2090,9 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2222,7 +2237,9 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client, msg + client.url, op,
                                                 args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
             retItem[client.url] = res
 
@@ -2388,7 +2405,9 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
@@ -2423,7 +2442,14 @@ class AMCallHandler(object):
                 # FIXME: getVersion uses None as the value in this case. Be consistent
                 retItem[ client.url ] = False
                 if message is None or message.strip() == "":
-                    message = "(no reason given)"
+                    if status is None:
+                        message = "(no reason given, missing result)"
+                    elif status == False:
+                        message = "(no reason given, False result)"
+                    elif status == 0:
+                        message = "(no reason given, 0 result)"
+                    else:
+                        message = "(no reason given, empty result)"
                 retVal += "\nFailed to get SliverStatus on %s at AM %s: %s\n" % (name, client.url, message)
         # End of loop over clients
 
@@ -2526,7 +2552,9 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             retItem[client.url] = status
@@ -2652,7 +2680,9 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2791,7 +2821,9 @@ class AMCallHandler(object):
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             retItem[client.url] = result
@@ -2914,7 +2946,9 @@ class AMCallHandler(object):
             try:
                 (res, message) = self._api_call(client, msg + client.url, op, args)
             except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling GetVersion to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error(retVal)
                 continue
 
             retItem[client.url] = res
@@ -3194,6 +3228,17 @@ class AMCallHandler(object):
         # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
+            self.logger.debug("Raw result from dossl call was %s?!", result)
+            if not message or message.strip() == "":
+                message = "(no reason given)"
+            if result is None:
+                message += " (missing result)"
+            elif result == False:
+                message += " (False result)"
+            elif result == 0:
+                message += " (0 result)"
+            else:
+                message += " (empty result)"
             return (result, message)
 
         value = result
@@ -3221,12 +3266,24 @@ class AMCallHandler(object):
                 # AM API v2+
                 if result['code']['geni_code'] == 0:
                     value = result['value']
+                    if value is None:
+                        self.logger.warn("Result claimed success but value is empty!")
+                        if result['code'].has_key('am_code'):
+                            if not message or message.strip() == "":
+                                message = "(no reason given)"
+                            amtype = ""
+                            if result['code'].has_key('am_type'):
+                                amtype = result['code']['am_type']
+                            message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])                            
                 # FIXME: More complete error code handling!
                 elif result['code']['geni_code'] != 0 and self.opts.api_version == 2:
                     self._raise_omni_error(result, AMAPIError)
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None
+        else:
+            # Not a dict response. Value is result in itself
+            pass
         return (value, message)
     # End of _retrieve_value
 

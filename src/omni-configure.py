@@ -429,12 +429,12 @@ keys = %(pkey)s
 # URN is optional
 [aggregate_nicknames]
 #ProtoGENI AMs
-pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
-pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
-pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
-pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am
-pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am
+pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am
+pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 
 #PlanetLab Central AM
 plc=,https://www.planet-lab.org:12346
@@ -468,7 +468,8 @@ eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1 
 
 #InstaGENI AMs, include OpenFlow InstaGENI AMs
-ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am
+ig-utah1=,http://utah.geniracks.net/protogeni/xmlrpc/am
+ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
 
