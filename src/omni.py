@@ -685,6 +685,9 @@ def getParser():
     parser.add_option("--arbitrary-option", dest='arbitrary_option',
                       default=False, action="store_true",
                       help="Add an arbitrary option to ListResources (for testing purposes)")
+    parser.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
+                      default=False, action="store_true",
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
     parser.add_option("--no-tz", default=False, action="store_true",
                       help="Do not send timezone on RenewSliver")
     parser.add_option("--no-ssl", dest="ssl", action="store_false",

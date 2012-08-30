@@ -247,8 +247,8 @@ class CredentialVerifier(object):
             fault_code = 'Insufficient privileges'
             fault_string = 'No credential was found with appropriate privileges. Tried %s. Last failure: %s' % (tried_creds, failure)
             self.logger.error(fault_string)
+            # FIXME: GCF ticket #120
             raise xmlrpclib.Fault(fault_code, fault_string)
-
 
 def create_credential(caller_gid, object_gid, expiration, typename, issuer_keyfile, issuer_certfile, trusted_roots, delegatable=False):
     '''Create and Return a Credential object issued by given key/cert for the given caller

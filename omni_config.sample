@@ -64,14 +64,14 @@ pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 plc=,https://www.planet-lab.org:12346
 
 # Private myplc installations
-plc-gpo=,http://myplc.gpolab.bbn.com:12346/
-plc-clemson=,http://myplc.clemson.edu:12346/
-plc-stanford=,https://myplc.stanford.edu:12346/
-plc-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
-plc-washington=,https://of.cs.washington.edu:12346/
-plc-rutgers=,https://plc.orbit-lab.org:12346/
-plc-indiana=,https://myplc.grnoc.iu.edu:12346/
-plc-gatech=,https://myplc.cip.gatech.edu:12346/
+pl-gpo=,http://myplc.gpolab.bbn.com:12346/
+pl-clemson=,http://myplc.clemson.edu:12346/
+pl-stanford=,https://myplc.stanford.edu:12346/
+pl-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
+pl-washington=,https://of.cs.washington.edu:12346/
+pl-rutgers=,https://plc.orbit-lab.org:12346/
+pl-indiana=,https://myplc.grnoc.iu.edu:12346/
+pl-gatech=,https://myplc.cip.gatech.edu:12346/
 
 # OpenFlow AMs
 of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1

@@ -525,7 +525,7 @@ class Credential(object):
                     # Below throws InUse exception if we forgot to clone the attribute first
                     oldAttr = signed_cred.setAttributeNode(attr.cloneNode(True))
                     if oldAttr and oldAttr.value != attr.value:
-                        msg = "Delegating cred from owner %s to %s over %s replaced attribute %s value '%s' with '%s'" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
+                        msg = "Delegating cred from owner %s to %s over %s:\n - Replaced attribute %s value '%s' with '%s'" % (self.parent.gidCaller.get_urn(), self.gidCaller.get_urn(), self.gidObject.get_urn(), oldAttr.name, oldAttr.value, attr.value)
                         logger.warn(msg)
                         #raise CredentialNotVerifiable("Can't encode new valid delegated credential: %s" % msg)
 
