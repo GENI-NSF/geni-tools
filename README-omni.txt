@@ -442,7 +442,7 @@ omni.py [options] <command and arguments>
  			 allocate <slicename> <rspec file> [AM API V3 only]
  			 provision <slicename> [AM API V3 only]
  			 performoperationalaction <slicename> <action> [AM API V3 only]
- 			 poa <slicename> <action> [AM API V3 only]
+ 			 poa <slicename> <action> [AM API V3 only; alias for performoperationalaction]
  			 sliverstatus <slicename> [AMAPI V1&2 only]
  			 status <slicename> [AMAPI V3 only]
  			 renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only]
