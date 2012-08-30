@@ -251,6 +251,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
     print ""
     print "="*80
     print "LOGIN INFO for AM: %s" % amUrl
+    print "="*80
     for item in amInfo["info"] :
       output = ""
       if options.readyonly :
@@ -280,6 +281,48 @@ def printLoginInfo( loginInfoDict, keyList ) :
             output += " &"
         output += "\n"
       print output
+
+
+def printSSHConfigInfo( loginInfoDict, keyList ) :
+  '''Prints the SSH config Information from all AMs, all Users and all hosts '''
+
+  sshConfList={}
+  for amUrl, amInfo in loginInfoDict.items() :
+    for item in amInfo["info"] :
+      output = ""
+      if options.readyonly :
+        try:
+          if item['geni_status'] != "ready" :
+            continue
+        except KeyError:
+          print "There is no status information for node %s. Print login info."
+      # If there are status info print it, if not just skip it
+
+      keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
+
+      output = """ 
+Host %(client_id)s
+  Port %(port)s
+  HostName %(hostname)s
+  User %(username)s """ % item
+
+      for key in keys: 
+        output +="""
+  IdentityFile %s """ % key
+
+      try:
+        sshConfList[item["username"]].append(output)
+      except KeyError:
+        sshConfList[item["username"]] = []
+        sshConfList[item["username"]].append(output)
+  
+  for user, conf in sshConfList.items():
+    print "="*80
+    print "SSH CONFIGURATION INFO for User %s" % user
+    print "="*80
+    for c in conf:
+      print c
+      print "\n"
 
 
 def main(argv=None):
@@ -333,6 +376,7 @@ def main(argv=None):
           loginInfoDict[amUrl] = {'amType':amType,
                                   'info':amLoginInfo
                                  }
+    printSSHConfigInfo(loginInfoDict, keyList)
     printLoginInfo(loginInfoDict, keyList)
         
 if __name__ == "__main__":
