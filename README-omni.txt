@@ -97,13 +97,14 @@ Detailed changes:
  - Omni code has been refactored for maintainability and
    extensability. Calls to clearinghouses are in chhandler.py, and to AM
    API functions are in amhandler.py. In the process, input checking and
-   output formatting has been further standardized. (ticket #163)
+   output formatting has been further standardized. (tickets #163, #168)
  - AM API v3+ Omni methods all return the full code/value/output struct for use
    by scripts
  - Omni checks v3 return structs, looking for missing slivers, slivers
    reporting errors, and checking sliver expirations.
   - Be more consistent and complete in handling error messages an returns
- - In Omni when using AM API v2, on an error return code, raise an AMAPIError that
+ - Added a new option --raise-error-on-v2-amapi-error: When true, and
+   using AM API v2, on an error return code, raise an AMAPIError that
    includes the full return struct: this allows scripts to reason about
    the return code. This replaces a special case check for code 7 (Refused)
  - `getversion` returns the full struct (code/value/output) to scripts
@@ -119,9 +120,9 @@ Detailed changes:
    RSpec
  - Replace old `doNonNative` scripting example (`myscript.py`) with a
    script that reads the AM URL and slice name from a comment in the
-   supplied RSpec file. REf ticket!!! FIXME
+   supplied RSpec file.
  - Remove obsolete setup-*.py files. Follow INSTALL.txt to install
-   GCF an Omni.
+   GCF an Omni. (ticket #169)
  - Added a utility function that checks for valid URNs by type,
    including checking AM API v3 rules restricting characters in
    URNs. (ticket #113)
