@@ -29,7 +29,7 @@ import sys
 import omni
 import os.path
 from optparse import OptionParser
-import omnilib.util.omnierror as omnierror
+import omnilib.util.omnierror as oe
 import xml.etree.ElementTree as etree
 import re
 
@@ -103,7 +103,7 @@ def getInfoFromListResources( amUrl ) :
     argv = ['listresources', slicename]
     try:
       text, listresources = omni.call( argv, options )
-    except omnierror.AMAPIError:
+    except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing listresources, review the logs."
       sys.exit(-1)
     print listresources
@@ -171,7 +171,7 @@ def getInfoFromSliverStatus( amUrl, amType ) :
     argv = ['sliverstatus', slicename]
     try:
       text, sliverStatus = omni.call( argv, tmpoptions )
-    except omnierror.AMAPIError:
+    except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing sliverstatus, review the logs."
       sys.exit(-1)
 
@@ -344,7 +344,7 @@ def main(argv=None):
     argv = ['getversion']
     try:
       text, getVersion = omni.call( argv, options )
-    except omnierror.AMAPIError:
+    except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing getVersion, review the logs."
 
     loginInfoDict = {}
