@@ -3902,10 +3902,14 @@ def _append_geni_error_output(retStruct, message):
     if isinstance(retStruct, dict) and retStruct.has_key('code') and retStruct['code'].has_key('geni_code'):
         if retStruct['code']['geni_code'] != 0:
             message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
+            amType = ""
+            if retStruct['code'].has_key('am_type'):
+                amType = retStruct['code']['am_type']
             if retStruct['code'].has_key('am_code'):
-                message2 += "; AM code: " + str(retStruct['code']['am_code'])
+                message2 += ". %s AM code: %s" % (amType, str(retStruct['code']['am_code']))
             if retStruct.has_key('output'):
                 message2 += ": %s" % retStruct['output']
+            message2 += "."
             if message is not None and message.strip() != "":
                 message += ". (%s)" % message2
             else:

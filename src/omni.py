@@ -55,7 +55,7 @@
        [string dictionary] = omni.py allocate SLICENAME RSPEC_FILENAME # AM API V3+ only
        [string dictionary] = omni.py provision SLICENAME # AM API V3+ only
        [string dictionary] = omni.py performoperationalaction SLICENAME ACTION # AM API V3+ only
-       [string dictionary] = omni.py poa SLICENAME ACTION # AM API V3+ only
+       [string dictionary] = omni.py poa SLICENAME ACTION # AM API V3+ only; alias for performoperationalaction
        [string dictionary] = omni .py sliverstatus SLICENAME # AM API V1&2 only
        [string dictionary] = omni .py status SLICENAME # AM API V3+ only
        [string (successList of AM URLs, failList)] = omni.py renewsliver SLICENAME # AM API V1&2 only
@@ -599,10 +599,9 @@ def getParser():
  \t\t\t createsliver <slicename> <rspec file> [AM API V1&2 only] \n\
  \t\t\t allocate <slicename> <rspec file> [AM API V3 only] \n\
  \t\t\t provision <slicename> [AM API V3 only] \n\
- \t\t\t performoperationalaction <slicename> <action> \n\
- \t\t\t\t [an alias for poa; AM API V3 only] \n\
+ \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
  \t\t\t poa <slicename> <action> \n\
- \t\t\t\t [see also 'performoperationalaction'; AM API V3 only] \n\
+ \t\t\t\t [alias for 'performoperationalaction'; AM API V3 only] \n\
  \t\t\t sliverstatus <slicename> [AMAPI V1&2 only]\n\
  \t\t\t status <slicename> [AMAPI V3 only]\n\
  \t\t\t renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only] \n\
