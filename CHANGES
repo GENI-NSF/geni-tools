@@ -15,7 +15,7 @@ gcf 2.0:
  * omni
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
  Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
- (e.g. FOAM), you must supply an option: `-V1`. 
+ (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
   AM API v2+ aggregates require that you specify the RSpec format you
  want, when using ListResources. Omni now specifies the RSpec format
  GENI 3 by default: you can always request a different format, if the
@@ -23,7 +23,7 @@ gcf 2.0:
 
   - Omni no longer supports the deprecated 'omnispecs' RSpec
     format. Use GENI v3 format RSpecs. (ticket #97)
-  - Added AM API v3 support
+  - Added AM API v3 support (ticket #174)
    - Each API method is a separate Omni command
    - `performoperationalaction` has a synonym: `poa`
    - Omni does not parse Ad RSpecs to reason about valid operational
@@ -31,32 +31,37 @@ gcf 2.0:
    - CreateSliver and other AM API v1&2 methods work only for AMs
      speaking those versions of the AM API.
    - Added new options `--best-effort`, `--sliver-urn` (`-u`) and `--end-time` to
-     support passing geni_best_effort, individual sliver URNs to act on,
-     and geni_end_time respectively
+     support passing `geni_best_effort`, individual sliver URNs to act on,
+     and `geni_end_time` respectively
    - Support credential structs: Framework classes are responsible for
      tagging credentials with the appropriate type and version. Internally,
      Omni deals with credentials as opaque blobs, except for a few helper
      routines. Credential saving and loading method write to `.xml` or `.json`
      files appropriately, and infer and correct loaded credentials as
      needed.
-  - v3 method returns, which are all structs, are saved to `.json`
-    files. This means manifest RSpecs (as returned by Describe, Allocate,
-    Provision) are one entry in a larger `.json` file. Note that Allocate
-    can take a `.json` file as input, and it will extract the request RSpec
-    if needed.
+   - v3 method returns, which are all structs, are saved to `.json`
+     files. This means manifest RSpecs (as returned by Describe, Allocate,
+     Provision) are one entry in a larger `.json` file. Note that Allocate
+     can take a `.json` file as input, and it will extract the request RSpec
+     if needed.
+   - AM API v3+ Omni methods all return the full code/value/output struct for use
+     by scripts (ticket #183)
+   - Omni checks v3 return structs, looking for missing slivers, slivers
+     reporting errors, and checking sliver expirations.
   - Omni tries to correct the API version you specify: If you ask for V2
     but are talking to a V3 AM, it tries to reconnect to a V2 URL if the
     AM advertises it. (ticket #91, #141, #164)
   - Added a new option `--outputfile`: With `-o`, this means save command results to
     the given file name. Without this, Omni builds its own filename (as
     before). Include `%a` in specified filename and Omni interpolates an AM
-    name. `%s` means insert the slice name.
+    name. `%s` means insert the slice name. (ticket #175)
   - `getslicecred` and `getusercred` are more consistent in how the result
     is printed, logged, or saved. These methods now honor `-o`, `-p`, and `--stdout` options.
-    `getusercred` honors the `--usercredfile` option.
+    `getusercred` honors the `--usercredfile` option. (ticket #176)
   - `getversion` output is saved to a `.json` file (ticket #150)
   - Allow specifying multiple aggregates on the command line (multiple
-    `-a` options). All methods except CreateSliver support this.
+    `-a` options). All methods except `CreateSliver` support
+    this. (ticket #177)
   - Added new option `--devmode` (default `False`). When true, only warn on bad
     inputs, but try to pass the bad inputs along anyhow. (ticket #78)
   - Added a new GetVersion Cache: the results of GetVersion are
@@ -65,24 +70,25 @@ gcf 2.0:
     GetVersion does not use the cache by default. Cache entries
     have a max age, after which we always re-query the AM. (ticket #81)
   - libstitch example: Allow caller to specify the per-AM fake manifest RSpec to
-    use when in fake mode, by using a comment in the request RSpec.
+    use when in fake mode, by using a comment in the request
+    RSpec. (ticket #178)
   - omni-configure: Added new `-e` option to specify the experimenter's private
     SSH key. The public SSH key will be named `private_key.pub`
-  - readyToLogin: handle multiple users, multiple keys (GCF ticket #117)
+    (ticket #143, #144, #145)
+  - readyToLogin: handle multiple users, multiple keys, the different
+    ways different AMs return results, etc (ticket #117, #161, #171)
   - Omni code has been refactored for maintainability and
     extensability. Calls to clearinghouses are in chhandler.py, and to AM
     API functions are in amhandler.py. In the process, input checking and
     output formatting has been further standardized. (tickets #163, #168)
-  - AM API v3+ Omni methods all return the full code/value/output struct for use
-    by scripts
-  - Omni checks v3 return structs, looking for missing slivers, slivers
-    reporting errors, and checking sliver expirations.
-   - Be more consistent and complete in handling error messages an returns
+  - Log and return any AM API error return code and message (ticket #149).
   - Added a new option --raise-error-on-v2-amapi-error: When true, and
     using AM API v2, on an error return code, raise an AMAPIError that 
     includes the full return struct: this allows scripts to reason about
-    the return code. This replaces a special case check for code 7 (Refused)
-  - `getversion` returns the full struct (code/value/output) to scripts
+    the return code. This replaces a special case check for code 7
+    (Refused) (ticket #183)
+  - `getversion` returns the full struct (code/value/output) to
+    scripts (ticket #183)
   - A couple utility methods can take no slice name, just a slice
     credential filename, and read the slice name/urn from the
     credential. See print_slice_expiration
@@ -95,7 +101,7 @@ gcf 2.0:
     RSpec
   - Replace old `doNonNative` scripting example (`myscript.py`) with a
     script that reads the AM URL and slice name from a comment in the
-    supplied RSpec file.
+    supplied RSpec file. (tickets #97, #184)
   - Remove obsolete setup-*.py files. Follow INSTALL.txt to install
     GCF an Omni. (ticket #169)
   - Added a utility function that checks for valid URNs by type,
@@ -108,25 +114,25 @@ gcf 2.0:
  * gcf
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
     Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
-    (e.g. FOAM), you must supply an option: `-V1`. 
-    AM API v2+ aggregates require that you specify the RSpec format you
-    want, when using ListResources. Omni now specifies the RSpec format GENI 3
-    by default: you can always request a different format, if the AM
-    supports it.
+    (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
   - Add AM API v3 support, including tracking resource states and
     multiple slivers. Resource actions are geni_start, geni_stop,
     geni_restart. (ticket #156)
   - gcf-test: Add support for API v2 and v3, making v2 the default
-    (matching other scripts)
+    (matching other scripts) (ticket #179)
   - Updated to latest SFA (from around July 20th, 2012)
   - Added a GCF AM that proxies connections to other AMs, using a certificate
     retrieved from the new GENI Clearinghouse, plus a test script.
     Added gcf-gch: An XMLRPC interface to the new GENI Clearinghouse
   - Test for non existent certificate and key files, to provide nice
-    error feedback
+    error feedback (ticket #180)
+  - `getversion` in v2 must return `geni_api_version` (ticket #151)
 
  * AM API acceptance tests
-  - Added AM API v3 support. Not all bad-input style tests are implemented yet.
+  - Added AM API v3 support. Not all bad-input style tests are
+ implemented yet. (ticket #181)
+  - Fuller testing of the `geni_available` flag (ticket #153)
+  - Check for `geni_api_version` in `getversion` (ticket #152)
 
 gcf 1.6.2:
  * omni
