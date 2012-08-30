@@ -420,75 +420,77 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 Omni supports the following command-line options.
 
 {{{
-$ ./omni.py -h                                
-Usage:
-GENI Omni Command Line Aggregate Manager Tool Version 2.0
-Copyright (c) 2012 Raytheon BBN Technologies
+$ ~/gcf/src/omni.py -h                              
+Usage:                                                                         
+GENI Omni Command Line Aggregate Manager Tool Version 2.0                      
+Copyright (c) 2012 Raytheon BBN Technologies                                   
 
 omni.py [options] <command and arguments> 
 
- 	 Commands and their arguments are:
- 		AM API functions:
- 			 getversion
- 			 listresources [In AM API V1 and V2 optional: slicename]
- 			 describe slicename [AM API V3 only]
- 			 createsliver <slicename> <rspec file> [AM API V1&2 only]
- 			 allocate <slicename> <rspec file> [AM API V3 only]
- 			 provision <slicename> [AM API V3 only]
- 			 performoperationalaction <slicename> <action> [AM API V3 only]
- 			 poa <slicename> <action> [AM API V3 only]
- 			 sliverstatus <slicename> [AMAPI V1&2 only]
- 			 status <slicename> [AMAPI V3 only]
- 			 renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only]
- 			 renew <slicename> <new expiration time in UTC> [AM API V3 only]
- 			 deletesliver <slicename> [AM API V1&2 only]
- 			 delete <slicename> [AM API V3 only]
- 			 shutdown <slicename>
- 		Clearinghouse / Slice Authority functions:
- 			 listaggregates
- 			 createslice <slicename>
- 			 getslicecred <slicename>
- 			 renewslice <slicename> <new expiration time in UTC>
- 			 deleteslice <slicename>
- 			 listmyslices <username>
- 			 listmykeys
- 			 getusercred
- 			 print_slice_expiration <slicename>
+         Commands and their arguments are: 
+                AM API functions:          
+                         getversion        
+                         listresources [In AM API V1 and V2 optional: slicename] 
+                         describe slicename [AM API V3 only]                     
+                         createsliver <slicename> <rspec file> [AM API V1&2 only] 
+                         allocate <slicename> <rspec file> [AM API V3 only]       
+                         provision <slicename> [AM API V3 only]                   
+                         performoperationalaction <slicename> <action>            
+                                 [see also 'poa'; AM API V3 only]                 
+                         poa <slicename> <action>                                 
+                                 [poa is an alias for 'performoperationalaction'; AM API V3 only]                                                                                           
+                         sliverstatus <slicename> [AMAPI V1&2 only]                           
+                         status <slicename> [AMAPI V3 only]                                   
+                         renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only]                                                                                            
+                         renew <slicename> <new expiration time in UTC> [AM API V3 only]      
+                         deletesliver <slicename> [AM API V1&2 only]                          
+                         delete <slicename> [AM API V3 only]                                  
+                         shutdown <slicename>                                                 
+                Clearinghouse / Slice Authority functions:                                    
+                         listaggregates                                                       
+                         createslice <slicename>                                              
+                         getslicecred <slicename>                                             
+                         renewslice <slicename> <new expiration time in UTC>                  
+                         deleteslice <slicename>                                              
+                         listmyslices <username>                                              
+                         listmykeys                                                           
+                         getusercred                                                          
+                         print_slice_expiration <slicename>                                   
 
-	 See README-omni.txt for details.
-	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
+         See README-omni.txt for details.
+         And see the Omni website at http://trac.gpolab.bbn.com/gcf
 
 Options:
   --version             show program's version number and exit
-  -h, --help            show this help message and exit
-  -c FILE, --configfile=FILE
-                        Config file name
-  -f FRAMEWORK, --framework=FRAMEWORK
+  -h, --help            show this help message and exit       
+  -c FILE, --configfile=FILE                                  
+                        Config file name                      
+  -f FRAMEWORK, --framework=FRAMEWORK                         
                         Control framework to use for creation/deletion of
-                        slices
-  -V API_VERSION, --api-version=API_VERSION
-                        Specify version of AM API to use (default 2)
-  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
-                        Communicate with a specific aggregate
+                        slices                                           
+  -V API_VERSION, --api-version=API_VERSION                              
+                        Specify version of AM API to use (default 2)     
+  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL                            
+                        Communicate with a specific aggregate            
   -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-                        Ad RSpec type and version to return, default 'GENI 3'
-  --debug               Enable debugging output
-  -o, --output          Write output of many functions (getversion,
-                        listresources, allocate, status, getslicecred,...) ,
-                        to a file (Omni picks the name)
-  --outputfile=OUTPUT_FILENAME
-                        Name of file to write output to (instead of Omni
-                        picked name). '%a' will be replaced by servername,
-                        '%s' by slicename if any. Implies -o. Note that for
-                        multiple aggregates, without a '%a' in the name, only
-                        the last aggregate output will remain in the file.
-                        Will ignore -p.
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
-                        Filename prefix when saving results (used with -o, not
-                        --usercredfile, --slicecredfile, or --outputfile)
-  --usercredfile=USER_CRED_FILENAME
-                        Name of user credential file to read from if it
-                        exists, or save to when running like '--usercredfile
+                        Ad RSpec type and version to return, default 'GENI 3'  
+  --debug               Enable debugging output                                
+  -o, --output          Write output of many functions (getversion,            
+                        listresources, allocate, status, getslicecred,...) ,   
+                        to a file (Omni picks the name)                        
+  --outputfile=OUTPUT_FILENAME                                                 
+                        Name of file to write output to (instead of Omni       
+                        picked name). '%a' will be replaced by servername,     
+                        '%s' by slicename if any. Implies -o. Note that for    
+                        multiple aggregates, without a '%a' in the name, only  
+                        the last aggregate output will remain in the file.     
+                        Will ignore -p.                                        
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                                 
+                        Filename prefix when saving results (used with -o, not 
+                        --usercredfile, --slicecredfile, or --outputfile)      
+  --usercredfile=USER_CRED_FILENAME                                            
+                        Name of user credential file to read from if it        
+                        exists, or save to when running like '--usercredfile   
                         myUserCred.xml -o getusercred'
   --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
@@ -531,6 +533,10 @@ Options:
                         checking of inputs
   --arbitrary-option    Add an arbitrary option to ListResources (for testing
                         purposes)
+  --raise-error-on-v2-amapi-error
+                        In AM API v2, if an AM returns a non-0 (failure)
+                        result code, raise an AMAPIError. Default False. For
+                        use by scripts.
   --no-tz               Do not send timezone on RenewSliver
   --no-ssl              do not use ssl
   --orca-slice-id=ORCA_SLICE_ID
