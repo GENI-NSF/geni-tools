@@ -23,6 +23,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import copy
 import string
 import sys
 import omni
@@ -30,6 +31,7 @@ import os.path
 from optparse import OptionParser
 import omnilib.util.omnierror as omnierror
 import xml.etree.ElementTree as etree
+import re
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -44,9 +46,40 @@ import xml.etree.ElementTree as etree
 options = None
 slicename = None
 config = None
+NSPrefix = None
 
-def findUsersAndKeys( config ):
-    """Look in omni_config for user and key information to pass to ssh"""
+def setNSPrefix(prefix):
+  ''' Helper function for parsing rspecs. It sets the global variabl NSPrefix to
+  the currently parsed rspec namespace. 
+  '''
+  global NSPrefix
+  NSPrefix = prefix
+
+def tag(tag):
+  ''' Helper function for parsing rspecs. It gets a tag and uses the global
+  NSPrefix to return the full name
+  '''
+  return "%s%s" %(NSPrefix,tag)
+
+def getInfoFromManifest(manifestStr):
+  ''' Function that takes as input a manifest rspec in a string and parses the
+  services tag to extract login information. 
+  This function returns a list of dictionaries, each dictionary contains 
+  login information
+  '''
+  dom = etree.fromstring(manifestStr) 
+  setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
+  loginInfo = []
+  for node_el in dom.findall(tag("node")):
+    for serv_el in node_el.findall(tag("services")):
+      loginInfo.append(serv_el.find(tag("login")).attrib)
+  
+  return loginInfo
+
+def findUsersAndKeys( ):
+    """Look in omni_config for user and key information of the public keys that
+    are installed in the nodes. It uses the global variable config and returns
+    keyList which is a dictionary of keyLists per user"""
     keyList = {}
     for user in config['users']:
         # convert strings containing public keys (foo.pub) into
@@ -62,68 +95,10 @@ def findUsersAndKeys( config ):
                 keyList[username].append(key)
     return keyList
 
-def sshIntoNodes( sliverStat, inXterm=True, keyList="" , readyOnly=False):
-    """Wrapper to determine type of node (PL, PG) and ssh into it."""
+def getInfoFromListResources( amUrl ) :
+    tmpoptions = copy.deepcopy(options)
+    tmpoptions.aggregate = [amUrl]
 
-    if type(sliverStat) != type({}):
-        print "sliverStat is not a dictionary"
-        return 
-
-    for aggName, aggStat in sliverStat.items():
-        if aggStat == False:
-          # If AggStat is False there was something wrong with the call
-          # continue to the next
-          print "%s did not respond!" % aggName
-          continue
-        # PlanetLab sliverstatus
-        if aggStat.has_key('pl_expires'):
-            print ""
-            print "="*80
-            # In PlanetLAB after you delete a silver you get an empty sliver, i.e. a sliver
-            # with no resources, so check whether there are any resources listed in siverstatus
-            # to determin whether this is actually a sliver or not
-            if len(aggStat['geni_resources']) > 0 :
-                print "Aggregate [%s] has a PlanetLab sliver." % aggName
-                login = loginToPlanetlab( aggStat, inXterm, keyList=keyList, readyOnly=readyOnly )
-
-                if login is not None:
-                    print login
-            else :
-                print "Aggregate [%s] has No PlanetLab sliver." % aggName
-            print "="*80
-            print ""
-
-        # ProtoGENI sliverstatus
-        if aggStat.has_key('pg_expires'):
-            print ""
-            print "="*80
-            print "Aggregate [%s] has a ProtoGENI sliver.\n" % aggName
-            login = loginToProtoGENI( aggStat, inXterm, keyList=keyList, readyOnly=readyOnly )
-            if login is not None:
-                print login
-            print "="*80
-            print ""
-
-        # ORCA sliverstatus
-        try:
-            aggStat['geni_resources'][0]['orca_expires']
-            print ""
-            print "="*80
-            if len(aggStat['geni_resources']) > 0 :
-                print "Aggregate [%s] has an ORCA sliver." % aggName
-                login = loginToOrca( inXterm, keyList=keyList, readyOnly=readyOnly )
-
-                if login is not None:
-                    print login
-            else :
-                print "Aggregate [%s] has No ORCA sliver." % aggName
-            print "="*80
-            print ""
-        except:
-            pass
-
-
-def getInfoFromListResources( ) :
     # Run the equivalent of 'omni.py listresources <slicename>'
     argv = ['listresources', slicename]
     try:
@@ -131,141 +106,234 @@ def getInfoFromListResources( ) :
     except omnierror.AMAPIError:
       print "ERROR: There was an error executing listresources, review the logs."
       sys.exit(-1)
+    print listresources
 
     # Parse rspec
-    for amInfo in listresources.values():
-      print amInfo['value']
-      dom = etree.fromstring(listresources)
-      #print dom
-      print "AFTER"
+    try:
+      manifest = listresources[amUrl]["value"]
+    except :
+      print "Error getting the manifest from %s" % amUrl
+      return []
 
+    return getInfoFromManifest(manifest)
 
-def loginToOrca( inXterm=True, keyList=[], readyOnly=False):
-    """Print command to ssh into Orca hosts."""
-    # Orca has the login info in a service tag in listresources. 
-    # This will be the case for all AMs in AM V3, so try and make
-    # this modular so that we can reuse it. 
+def getInfoFromSliverStatusPG( sliverStat ):
 
-    loginInfo = getInfoFromListResources()
-    pass
-
-def loginToPlanetlab( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
-    """Print command to ssh into a PlanetLab host."""
-    output = ""
-    for resourceDict in sliverStat['geni_resources']: 
-        # If the user only wants the nodes that are in ready state, skip over all 
-        # nodes that are not ready
-        if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
-            return None
-        if (readyOnly is True and resourceDict['geni_status'].strip() != "ready") :
-          continue
-        output += "\n%s's geni_status is: %s (pl_boot_state:%s) \n" % (resourceDict['pl_hostname'], resourceDict['geni_status'],resourceDict['pl_boot_state'])
-        # Check if node is in ready state
-        output += "Login using:\n"
-
-        if sum(len(val) for val in keyList.itervalues())== 0:
-            output = "There are no keys. You can not login to your nodes.\n"
-        for user in keyList:
-            for key in keyList[user]: 
-              output += "\t"
-              if inXterm is True:
-                  output += "xterm -e "
-              output += "ssh -i %s %s@%s" % ( key, sliverStat['pl_login'], resourceDict['pl_hostname'])
-              if inXterm is True:
-                  output += " &"
-              output += "\n"
-    return output
-
-def loginToProtoGENI( sliverStat, inXterm=True, keyList=[], readyOnly=False ):
-    """Print command to ssh into a ProtoGENI host."""
-    output = ""
-    hosts = {}
-    for resourceDict in sliverStat['geni_resources']: 
-        # If the user only wants the nodes that are in ready state, skip over all 
-        # nodes that are not ready
-        if (readyOnly is True and resourceDict['geni_status'].strip() != "ready") :
-          continue
-        for children1 in resourceDict['pg_manifest']['children']:
-            for children2 in children1['children']:
-                child = children2['attributes']
-                if (not child.has_key('hostname')):
-                    continue
-                # Make a unique name for the host+port pair
-                entryname = str(child['hostname']) + ":" + str(child['port'])
-                hosts[entryname] = {}
-                hosts[entryname]['hostname'] = child['hostname']
-                hosts[entryname]['port'] = child['port']
-                hosts[entryname]['status'] = resourceDict['geni_status']
-
+    loginInfo = []
     pgKeyList = {}
-    for userDict in sliverStat['users']:
-       pgKeyList[userDict['login']] = [] 
-       for k in userDict['keys']:
+    for userDict in sliverStat['users'] :
+      pgKeyList[userDict['login']] = [] 
+      for k in userDict['keys']:
           #XXX nriga Keep track of keys, in the future we can verify what key goes with
           # which private key
           pgKeyList[userDict['login']].append(k['key'])
 
-    for h in hosts:
-      if readyOnly and hosts[h]['status'].strip() != "ready":
-        continue
-      output += "\n%s's geni_status is: %s. " % (hosts[h]['hostname'],hosts[h]['status'])
-      output += "Login using:\n"
-      for user in pgKeyList :
-        if keyList.has_key(user):
-          if len(keyList[user]) != len(pgKeyList[user]):
-              print "WARNING: Number of keys for User %s in omni_config and in the hosts do not match! Some of the ssh commands might not work!" % user
-          for k in keyList[user]:  
-              output += "\t"
-              if inXterm is True:
-                output += "xterm -e "
-              output += "ssh -i %s " % k
-              if str(hosts[h]['port']) != '22' : 
-                output += " -p %s " % hosts[h]['port']
-              output += "%s@%s" % (user, hosts[h]['hostname'])
-              if inXterm is True:
-                output += " &"
-              output += "\n"
-    return output
+    for resourceDict in sliverStat['geni_resources']: 
+      for children1 in resourceDict['pg_manifest']['children']:
+        for children2 in children1['children']:
+          child = children2['attributes']
+          if (not child.has_key('hostname')):
+            continue
+          for user, keys in pgKeyList.items():
+            loginInfo.append({'authentication':'ssh-keys', 
+                              'hostname':child['hostname'],
+                              'client_id': resourceDict['pg_manifest']['attributes']['client_id'],
+                              'port':child['port'],
+                              'username':user,
+                              'keys' : keys,
+                              'geni_status':resourceDict['geni_status'],
+                              'am_status':resourceDict['pg_status']
+                             })
+    return loginInfo
+     
 
-def main(argv=None):
-    global slicename, options, config
+def getInfoFromSliverStatusPL( sliverStat ):
 
-    parser = omni.getParser()
-    # Parse Options
-    usage = "\n\tTypically: \treadyToLogin.py slicename"
-    parser.set_usage(usage)
+    loginInfo = []
+    for resourceDict in sliverStat['geni_resources']: 
+      if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
+          continue
+      loginInfo.append({'authentication':'ssh-keys', 
+                          'hostname':resourceDict['pl_hostname'],
+                          'client_id':resourceDict['pl_hostname'],
+                          'port':'22',
+                          'username':sliverStat['pl_login'],
+                          'geni_status':resourceDict['geni_status'],
+                          'am_status':resourceDict['pl_boot_state']
+                       })
+    return loginInfo
 
-    parser.add_option("-x", "--xterm", dest="xterm",
-                      action="store_false", 
-                      default=True,
-                      help="do NOT add xterm")
-    parser.add_option( "--readyonly", dest="readyonly",
-                      action="store_true", 
-                      default=False,
-                      help="Only print nodes in ready state")
-    (options, args) = parser.parse_args()
-    
-    if len(args) > 0:
-        slicename = args[0]
-    else:
-        sys.exit("Must pass in slicename as argument of script.\nRun '%s -h' for more information."%sys.argv[0])
-    
+def getInfoFromSliverStatus( amUrl, amType ) :
+    tmpoptions = copy.deepcopy(options)
+    tmpoptions.aggregate = [amUrl]
+        
     # Run equivalent of 'omni.py sliverstatus username'
     argv = ['sliverstatus', slicename]
-    print slicename 
-    print options
     try:
-      text, sliverStatus = omni.call( argv, options )
+      text, sliverStatus = omni.call( argv, tmpoptions )
     except omnierror.AMAPIError:
       print "ERROR: There was an error executing sliverstatus, review the logs."
       sys.exit(-1)
 
-    framework, config, args, opts = omni.initialize( argv, options )
-    keyList = findUsersAndKeys( config )
+    if amType == 'sfa' : 
+      loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
+    if amType == 'protogeni' : 
+      loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
+      
+    return loginInfo
 
-    # Do Real Work
-    # Determine how to SSH into nodes
-    sshIntoNodes( sliverStatus, inXterm=options.xterm, keyList=keyList ,readyOnly=options.readyonly)
+def getAMTypeFromGetVersionOut(amUrl, amOutput) :
+  if amOutput.has_key("code") and amOutput["code"].has_key("am_type"):
+    return amOutput["code"]["am_type"].strip()
+  # Older version of SFA do not have the code field, do a hack and check if
+  # testbed is there
+  if amOutput.has_key("testbed"):
+    return "sfa"
+  # FOAM does not have a code field, use foam_version
+  if amOutput.has_key("foam_version"):
+    return "foam"
+  # FOAM does not have a code field, use foam_version
+  if amOutput.has_key("foam_version"):
+    return "foam"
+  # XXX Fixme : test whether orca has the am_type, if not use orca_version
+  return None
+  
+def parseArguments( argv=None ) :
+  global slicename, options, config
+
+  parser = omni.getParser()
+  # Parse Options
+  usage = "\n\tTypically: \treadyToLogin.py slicename"
+  parser.set_usage(usage)
+
+  parser.add_option("-x", "--xterm", dest="xterm",
+                    action="store_false", 
+                    default=True,
+                    help="do NOT add xterm")
+  parser.add_option( "--readyonly", dest="readyonly",
+                    action="store_true", 
+                    default=False,
+                    help="Only print nodes in ready state")
+  (options, args) = parser.parse_args()
+  
+  if len(args) > 0:
+      slicename = args[0]
+  else:
+      sys.exit("Must pass in slicename as argument of script.\nRun '%s -h' for more information."%sys.argv[0])
+
+
+def addNodeStatus(amUrl, amType, amLoginInfo):
+  ''' This function is intended to get the node status from SliverStatus, in
+  case the login information comes from the manifest rspec that does not contain
+  status information
+  '''
+  print "NOT IMPLEMENTED YET"
+
+def getKeysForUser( amType, username, keyList ):
+  '''Returns a list of keys for the provided user based on the
+     list from omni_config file that is saved at keyList
+  '''
+  userKeyList = []
+  for user,keys in keyList.items() :
+    #ProtoGENI actually creates accounts per user so check the username
+    # before adding the key. ORCA and PL just add all the keys to one
+    # user
+    if amType == "protogeni" and user != username :
+      continue
+    for k in keys:
+      userKeyList.append(k)
+
+  return userKeyList
+    
+def printLoginInfo( loginInfoDict, keyList ) :
+  '''Prints the Login Information from all AMs, all Users and all hosts '''
+  for amUrl, amInfo in loginInfoDict.items() :
+    print ""
+    print "="*80
+    print "LOGIN INFO for AM: %s" % amUrl
+    for item in amInfo["info"] :
+      output = ""
+      if options.readyonly :
+        try:
+          if item['geni_status'] != "ready" :
+            continue
+        except KeyError:
+          print "There is no status information for node %s. Print login info."
+      # If there are status info print it, if not just skip it
+      try:
+        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
+          # Check if node is in ready state
+      except KeyError:
+        pass
+
+      keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
+
+      output += "User %s logins to %s using:\n" % (item['username'], item['client_id'])
+      for key in keys: 
+        output += "\t"
+        if options.xterm :
+            output += "xterm -e "
+        if str(item['port']) != '22' : 
+            output += " -p %s " % item['port']
+        output += "ssh -i %s %s@%s" % ( key, item['username'], item['hostname'])
+        if options.xterm :
+            output += " &"
+        output += "\n"
+      print output
+
+
+def main(argv=None):
+    global slicename, options, config
+
+    parseArguments(argv=argv)
+
+    # Call omni.initialize so that we get the config structure that
+    # contains the configuration parameters from the omni_config file
+    # We need them to get the ssh keys per user
+    framework, config, args, opts = omni.initialize( [], options )
+
+    keyList = findUsersAndKeys( )
+    if sum(len(val) for val in keyList.itervalues())== 0:
+      output = "ERROR:There are no keys. You can not login to your nodes.\n"
+      sys.exit(-1)
+
+    # Run equivalent of 'omni.py getversion'
+    argv = ['getversion']
+    try:
+      text, getVersion = omni.call( argv, options )
+    except omnierror.AMAPIError:
+      print "ERROR: There was an error executing getVersion, review the logs."
+
+    loginInfoDict = {}
+    for amUrl, amOutput in getVersion.items() :
+      if not amOutput :
+        print "%s returned an error on getVersion, skip!"
+        continue
+      amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
+
+      if amType == "foam" :
+        print "No login information for FOAM! Skip %s" %amUrl
+        continue
+      # XXX Although ProtoGENI returns the service tag in the manifest
+      # it does not contain information for all the users, so we will 
+      # stick with the sliverstatus until this is fixed
+      if amType == "sfa" or amType == "protogeni" :
+        amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
+        if len(amLoginInfo) > 0 :
+          loginInfoDict[amUrl] = {'amType' : amType,
+                                  'info' : amLoginInfo
+                                 }
+        continue
+      if amType == "orca":
+        amLoginInfo = getInfoFromListResources(amUrl)
+        # Get the status only if we care
+        if len(amLoginInfo) > 0 :
+          if options.readyonly:
+            amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
+          loginInfoDict[amUrl] = {'amType':amType,
+                                  'info':amLoginInfo
+                                 }
+    printLoginInfo(loginInfoDict, keyList)
         
 if __name__ == "__main__":
     sys.exit(main())
