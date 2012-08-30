@@ -467,7 +467,7 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
         self.options_copy.devmode = True           
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
                           usercred=broken_usercred)
         self.options_copy.devmode = False
 
@@ -503,7 +503,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(slice) 
         self.options_copy.devmode = True   
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
 
@@ -561,7 +561,7 @@ class Test(ut.OmniUnittest):
         # Call listresources with this credential
         # We expect this to fail
         # with slicename left to the default
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
                           usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 

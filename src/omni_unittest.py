@@ -161,16 +161,14 @@ class OmniUnittest(unittest.TestCase):
 
     def setUp( self ):
         self.options_copy = docopy.deepcopy(self.options)
+        self.options_copy.raiseErrorOnV2AMAPIError = True
 
     def call( self, cmd, options ):
         """Make the Omni call"""
-#        try:
         ret_val = omni.call( cmd, options=options, verbose=True )
-#        except OmniError, e:
-#            print e
-#        except AMAPIError, e:
-#            print e
         return ret_val
+
+
 
     def assertIsNotNone(self, item, msg=None):
         if msg is None:
