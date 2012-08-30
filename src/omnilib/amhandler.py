@@ -3277,9 +3277,13 @@ class AMCallHandler(object):
                             amtype = ""
                             if result['code'].has_key('am_type'):
                                 amtype = result['code']['am_type']
-                            message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])                            
+                            message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])
                 # FIXME: More complete error code handling!
-                elif result['code']['geni_code'] != 0 and self.opts.api_version == 2:
+                elif self.opts.raiseErrorOnV2AMAPIError and result['code']['geni_code'] != 0 and self.opts.api_version == 2:
+                    # Allow scripts to get an Error raised if any
+                    # single AM returns a failure error code.
+                    # note it means any other AMs do not get processed
+                    # FIXME: AMAPIError needs a nice printable string
                     self._raise_omni_error(result, AMAPIError)
                 else:
                     message = _append_geni_error_output(result, message)
