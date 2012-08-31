@@ -42,7 +42,7 @@ from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from resource import Resource
 from aggregate import Aggregate
 from fakevm import FakeVM
-from gibaggregate import gib_manager   ### NEW
+from gibaggregate import gib_manager
 
 
 # See sfa/trust/rights.py
@@ -103,10 +103,12 @@ class ReferenceAggregateManager(object):
 
     # root_cert is a single cert or dir of multiple certs
     # that are trusted to sign credentials
-    def __init__(self, root_cert, urn_authority):
+    def __init__(self, root_cert, urn_authority, url):
+        self._url = url
+        self._api_version = 2
         self._slices = dict()
         self._agg = Aggregate()
-        self._agg.add_resources([FakeVM() for _ in range(3)])
+        self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
         self._cred_verifier = geni.CredentialVerifier(root_cert)
         self._urn_authority = urn_authority
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
@@ -128,7 +130,10 @@ class ReferenceAggregateManager(object):
                       schema="http://www.geni.net/resources/rspec/3/ad.xsd",
                       namespace="http://www.geni.net/resources/rspec/3",
                       extensions=[])]
+        api_versions = dict()
+        api_versions[str(self._api_version)] = self._url
         versions = dict(geni_api=2,
+                        geni_api_versions=api_versions,
                         geni_request_rspec_versions=reqver,
                         geni_ad_rspec_versions=adver)
         return dict(geni_api=versions['geni_api'],
@@ -184,6 +189,8 @@ class ReferenceAggregateManager(object):
         # Look to see what RSpec version the client requested
         # Error-check that the input value is supported.
         rspec_type = options['geni_rspec_version']['type']
+        if isinstance(rspec_type, str):
+            rspec_type = rspec_type.lower().strip()
         rspec_version = options['geni_rspec_version']['version']
         if rspec_type != 'geni':
             self.logger.error('ListResources: Unknown RSpec type %s requested', rspec_type)
@@ -195,31 +202,26 @@ class ReferenceAggregateManager(object):
 
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
-            result = None  ## NEW
             if slice_urn in self._slices:
-                ## result = self.manifest_rspec(slice_urn)
-               result = gib_manager.get_manifest()
-                   
-            if result == None :  ## NEW  
+                ### result = self.manifest_rspec(slice_urn)
+                result = gib_manager.get_manifest()
+            else:
                 # return an empty rspec
-                self.logger.error('Failed to find manifest for slice %s' %
-                                  slice_urn)
-                return self._no_such_slice(slice_urn)  ## NEW
+                return self._no_such_slice(slice_urn)
         else:
-            result = gib_manager.get_advert()  ## NEW
+            result = gib_manager.get_advert()
 
-            ## all_resources = self._agg.catalog(None)
-            ## available = 'geni_available' in options and options['geni_available']
-            ## resource_xml = ""
-            ## for r in all_resources:
-            ##     if available and not r.available:
-            ##         continue
-            ##     resource_xml = resource_xml + self.advert_resource(r)
-            ## result = self.advert_header() + resource_xml + self.advert_footer()
+            ### all_resources = self._agg.catalog(None)
+            ### available = 'geni_available' in options and options['geni_available']
+            ### resource_xml = ""
+            ### for r in all_resources:
+            ###     if available and not r.available:
+            ###         continue
+            ###     resource_xml = resource_xml + self.advert_resource(r)
+            ### result = self.advert_header() + resource_xml + self.advert_footer()
         self.logger.debug("Result is now \"%s\"", result)
         # Optionally compress the result
         if 'geni_compressed' in options and options['geni_compressed']:
-            self.logger.info("Compressing advert rspec")
             try:
                 result = base64.b64encode(zlib.compress(result))
             except Exception, exc:
@@ -266,7 +268,7 @@ class ReferenceAggregateManager(object):
             self.logger.error('Slice %s already exists.', slice_urn)
             return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
 
-        gib_manager.createSliver(rspec)   ## NEW
+        gib_manager.createSliver(rspec) 
 
         ### rspec_dom = None
         ### try:
@@ -287,8 +289,8 @@ class ReferenceAggregateManager(object):
         ###     if r.available:
         ###         allrdict[r.id] = r
 
-        # Note: This only handles unbound nodes. Any attempt by the client
-        # to specify a node is ignored.
+        ### # Note: This only handles unbound nodes. Any attempt by the client
+        ### # to specify a node is ignored.
         ### resources = dict()
         ### unbound = list()
         ### for elem in rspec_dom.documentElement.getElementsByTagName('node'):
@@ -320,19 +322,14 @@ class ReferenceAggregateManager(object):
 
         self.logger.info("Created new slice %s" % slice_urn)
         ### result = self.manifest_rspec(slice_urn)
-        ### Start of NEW code
         result = gib_manager.get_manifest()
-        if result != None :
-            self.logger.debug('Result = %s', result)
-            return dict(code=dict(geni_code=0,
-                                  am_type="gcf2",
-                                  am_code=0),
-                        value=result,
-                        output="")
-        else :
-            self.logger.error('Failed to create sliver: No manifest')
-            return self.errorResult(47, 'Failed to create sliver')
-        ### End of NEW code
+
+        self.logger.debug('Result = %s', result)
+        return dict(code=dict(geni_code=0,
+                              am_type="gcf2",
+                              am_code=0),
+                    value=result,
+                    output="")
 
     # The list of credentials are options - some single cred
     # must give the caller required permissions.
@@ -359,7 +356,7 @@ class ReferenceAggregateManager(object):
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
-            ###sliver = self._slices[slice_urn]
+            ### sliver = self._slices[slice_urn]
             ### resources = self._agg.catalog(slice_urn)
             ### if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
             ###     self.logger.info("Sliver %s not deleted because it is shutdown",
@@ -369,7 +366,7 @@ class ReferenceAggregateManager(object):
             ### for r in resources:
             ###     r.status = Resource.STATUS_UNKNOWN
 
-            gib_manager.deleteSliver()    ### NEW
+            gib_manager.deleteSliver()
 
             del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
@@ -449,10 +446,12 @@ class ReferenceAggregateManager(object):
             # But since the slice cred may not (per ISO8601), convert
             # it to naiveUTC for comparison
             requested = self._naiveUTC(requested)
-            lastexp = 0
+            maxexp = datetime.datetime.min
             for cred in creds:
                 credexp = self._naiveUTC(cred.expiration)
-                lastexp = credexp
+                if credexp > maxexp:
+                    maxexp = credexp
+                maxexp = credexp
                 if credexp >= requested:
                     sliver.expiration = requested
                     self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time)
@@ -462,10 +461,10 @@ class ReferenceAggregateManager(object):
 
             # Fell through then no credential expires at or after
             # newly requested expiration time
-            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (last expires at %r)", slice_urn, expiration_time, len(creds), str(lastexp))
+            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (latest expires at %r)", slice_urn, expiration_time, len(creds), maxexp)
             # FIXME: raise an exception so the client knows what
             # really went wrong?
-            return self.errorResult(19, "Out of range: Expiration %r is out of range." % (expiration_time))
+            return self.errorResult(19, "Out of range: Expiration %s is out of range (past last credential expiration of %s)." % (expiration_time, maxexp))
 
         else:
             return self._no_such_slice(slice_urn)
@@ -585,6 +584,7 @@ class AggregateManager(object):
 
     def __init__(self, delegate):
         self._delegate = delegate
+        self.logger = logging.getLogger('gcf.am2')
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -657,7 +657,10 @@ class AggregateManagerServer(object):
         elif not os.path.isfile(os.path.expanduser(ca_certs)):
             raise Exception('CA Certs must be an existing file of accepted root certs: %s' % ca_certs)
 
-        delegate = ReferenceAggregateManager(trust_roots_dir, base_name)
+        # Decode the addr into a URL. Is there a pythonic way to do this?
+        server_url = "https://%s:%d/" % addr
+        delegate = ReferenceAggregateManager(trust_roots_dir, base_name, 
+                                             server_url)
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         self._server.register_instance(AggregateManager(delegate))

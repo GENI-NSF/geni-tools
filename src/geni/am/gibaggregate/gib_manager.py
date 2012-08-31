@@ -65,10 +65,12 @@ def get_manifest() :
         is in a file created by rspec_handler.GeniManifest.
     """
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.manifestFile
+    config.logger.info('Reading manifest from %s' % pathToFile)
     try:
         f = open(pathToFile, 'r')
     except IOError:
-        logger.error("Failed to open manifest rspec file %s" % pathToFile)
+        config.logger.error("Failed to open manifest rspec file %s" % 
+                            pathToFile)
         return None
 
     manifest = f.read()
@@ -82,10 +84,12 @@ def get_advert() :
          from a pre-created, static file.
     """
     pathToFile = config.standardScriptsDir + '/' +  config.advertRspecFile
+    config.logger.info('Reading advert rspec from %s' % pathToFile)
     try:
         f = open(pathToFile, 'r')
     except IOError:
-        logger.error("Failed to open advertisement rspec file %s" % pathToFile)
+        config.logger.error("Failed to open advertisement rspec file %s" %
+                             pathToFile)
         return None
 
     advert = f.read()
