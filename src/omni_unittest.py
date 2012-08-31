@@ -400,11 +400,11 @@ class OmniUnittest(unittest.TestCase):
     
 
     def assertKeyValueTypeIfExists( self, method, aggName, dictionary, key, valueType ):
-        """Check that if dictionary has key that it is of type valueType.
+        """Check that if dictionary has key that it is of type valueType.  Allow values to be None as well.
         """
         self.assertDict( dictionary )
         if dictionary.has_key(key):
-            self.assertTrue(type(dictionary[key])==valueType,
+            self.assertTrue((type(dictionary[key])==valueType) or (dictionary[key] is None),
                             "Return from '%s' at %s " \
                                 "expected to have entry '%s' of type '%s' " \
                                 "but instead returned: %s" 
