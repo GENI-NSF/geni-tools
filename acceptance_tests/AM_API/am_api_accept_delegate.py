@@ -87,7 +87,7 @@ class DelegateTest(accept.Test):
                        "Credential is not a slice credential " \
                        "but expected to be: \n%s\n\n<snip> " % xml[:100] )
         # Run slice credential
-        self.subtest_ListResources(
+        self.subtest_generic_ListResources(
            slicename=slice_name,
            slicecredfile=self.options_copy.delegated_slicecredfile,
            typeOnly=True)
@@ -99,7 +99,6 @@ if __name__ == '__main__':
     DelegateTest.accept_parser(usage=usage)
 
     suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_ListResources_delegatedSliceCred")
-#    suite = unittest.TestLoader().loadTestsFromName("am_api_accept_delegate.DelegateTest.test_GetVersion")
     unittest.TextTestRunner().run(suite)
 
 
