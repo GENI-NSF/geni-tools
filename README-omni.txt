@@ -327,9 +327,9 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     each of the AMs.   Note you must specify the URL or nickname of the aggregate
     where you want to reserve resources using the `-a` option. 
     In AM API v1:
-     `omni.py -V 1 createsliver -a pg-utah MySlice request.rspec`
+     `omni.py -V 1 createsliver -a pg-utah1 MySlice request.rspec`
     In AM API v2 (default) do:
-     `omni.py createsliver -a pg-utah2 MySlice request.rspec`
+     `omni.py createsliver -a pg-utah MySlice request.rspec`
     In AM API v3 this requires 3 steps:
      `omni.py -V 3 allocate -a myV3AM MySlice request.rspec` 
      	      Reserve the resources. Optionally you may delete the
@@ -362,8 +362,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     experiment to use.  Note: If `geni_status` is `unknown`, then
     your resources might be ready.
 
-    In AM API v1 run: `omni.py -V 1 sliverstatus -a pg-utah MySlice`
-    In AM API v2 run: `omni.py sliverstatus -a pg-utah2 MySlice`
+    In AM API v1 run: `omni.py -V 1 sliverstatus -a pg-utah1 MySlice`
+    In AM API v2 run: `omni.py sliverstatus -a pg-utah MySlice`
 
     In AM API v3+:
     After calling `provision`, use `status` to poll the aggregate
@@ -390,9 +390,9 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
     To Renew:
       AM API v1: 
-         `omni.py -V 1 renewsliver -a pg-utah MySlice 20120531`
+         `omni.py -V 1 renewsliver -a pg-utah1 MySlice 20120531`
       AM API v2:
-         `omni.py renewsliver -a pg-utah2 MySlice 20120531`
+         `omni.py renewsliver -a pg-utah MySlice 20120531`
       AM API V3:
          `omni.py -V 3 renew -a myV3AM MySlice 20120531`
     
@@ -404,9 +404,9 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
     To Delete:
       AM API v1:
-         `omni.py -V 1 deletesliver -a pg-utah MySlice`
+         `omni.py -V 1 deletesliver -a pg-utah1 MySlice`
       AM API v2:
-         `omni.py deletesliver -a pg-utah2 MySlice`
+         `omni.py deletesliver -a pg-utah MySlice`
       AM API v3:
          `omni.py -V 3 delete -a myV3AM MySlice`
 
