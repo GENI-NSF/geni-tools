@@ -123,7 +123,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 \t--delegeegid <filename of co-workers cert you want to delegate to>\n\
 \t--trusted-root <filename of a trusted root certificate, eg that for\n\
 \t\tplc of pg-utah>\n\
-\t\tSupply this argument 1 or more times to\n\
+\t\tOptional. Supply this argument 1 or more times to\n\
 \t\tinclude the certificates for your Slice Authority\n\
 \t\tand Clearinghouse/Registry, and the script will\n\
 \t\tattempt to validate the credential you have generated\n\
