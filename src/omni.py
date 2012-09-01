@@ -600,7 +600,8 @@ def getParser():
  \t\t\t allocate <slicename> <rspec file> [AM API V3 only] \n\
  \t\t\t provision <slicename> [AM API V3 only] \n\
  \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
- \t\t\t poa <slicename> <action> [AM API V3 only; alias for performoperationalaction] \n\
+ \t\t\t poa <slicename> <action> \n\
+ \t\t\t\t [alias for 'performoperationalaction'; AM API V3 only] \n\
  \t\t\t sliverstatus <slicename> [AMAPI V1&2 only]\n\
  \t\t\t status <slicename> [AMAPI V3 only]\n\
  \t\t\t renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only] \n\

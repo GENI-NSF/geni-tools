@@ -133,7 +133,7 @@ gcf 2.0:
  implemented yet. (ticket #181)
   - Fuller testing of the `geni_available` flag (ticket #153)
   - Check for `geni_api_version` in `getversion` (ticket #152)
-
+  - Allow optional fields to be None (ticket #185)
 gcf 1.6.2:
  * omni
    - Added omni-configure.py script to autogenerate the omni_config (#127)

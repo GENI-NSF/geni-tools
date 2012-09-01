@@ -467,7 +467,7 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
         self.options_copy.devmode = True           
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
                           usercred=broken_usercred)
         self.options_copy.devmode = False
 
@@ -503,7 +503,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(slice) 
         self.options_copy.devmode = True   
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
 
@@ -561,15 +561,16 @@ class Test(ut.OmniUnittest):
         # Call listresources with this credential
         # We expect this to fail
         # with slicename left to the default
-        self.assertRaises((NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
                           usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
-    def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, 
-                          slicecredfile=None, typeOnly=False, sliverurns=[]):
+    def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, 
+                          usercredfile=None, slicecredfile=None, typeOnly=False,
+                          sliverurns=[], expectedExpiration=None):
         return self.subtest_query_rspec( AMAPI_call="Describe", slicename=slicename, 
                                          slicecred=slicecred, usercred=usercred, usercredfile=usercredfile, 
-                                         slicecredfile=slicecredfile, typeOnly=typeOnly, sliverurns=sliverurns )
+                                         slicecredfile=slicecredfile, typeOnly=typeOnly, sliverurns=sliverurns, expectedExpiration=expectedExpiration )
 
     def subtest_ListResources( self,  slicename=None, slicecred=None, usercred=None, usercredfile=None, 
                                slicecredfile=None, typeOnly=False, ):
@@ -578,7 +579,7 @@ class Test(ut.OmniUnittest):
                                          slicecredfile=slicecredfile, typeOnly=typeOnly )
 
     def subtest_query_rspec(self, AMAPI_call="ListResources", slicename=None, slicecred=None, 
-                            usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[]):
+                            usercred=None, usercredfile=None, slicecredfile=None, typeOnly=False, sliverurns=[], expectedExpiration=None):
         if not slicecred:
             self.assertTrue( self.checkAdRSpecVersion() )
         else:
@@ -1235,7 +1236,11 @@ class Test(ut.OmniUnittest):
                 # err_code should be BADARGS (1) or REFUSED (7) or UNSUPPORTED (13) or FORBIDDEN (3) or EXPIRED (15)
                 self.assertTrue((err_code != 0), 
                                 "Renew to past slice expiration (to %s) expected to fail, but succeeded at %s" % (twodayslate, agg))
+                # Could test that Status' geni_expires matches expectedExp
+                # self.subtest_Status( slicename, expectedExpiration=slice_exp.isoformat() )
         self.options_copy.devmode = False
+
+
 
     def subtest_RenewSliver( self, slicename, newtime):
         omniargs = ["renewsliver", slicename, newtime] 
@@ -1280,38 +1285,47 @@ class Test(ut.OmniUnittest):
 #        self.subtest_RenewSliver( slicename, fivemin )
 #        time.sleep(self.options_copy.sleep_time)
         self.subtest_Renew( slicename, twodays )
+        self.subtest_Status( slicename, expectedExpiration=twodays )
         time.sleep(self.options_copy.sleep_time)
         self.subtest_Renew( slicename, fivedays )
+        self.subtest_Status( slicename, expectedExpiration=fivedays )
 
     def subtest_Renew(self, slice_name, newtime, sliverlist = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='renew', 
                                         AMAPI_call="Renew", sliverlist=sliverlist,
-                                        newtime=newtime)
+                                        expectedExpiration=newtime)
 
-    def subtest_Provision(self, slice_name, sliverlist = None):
+    def subtest_Provision(self, slice_name, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='provision', 
-                                        AMAPI_call="Provision", sliverlist=sliverlist)
-    def subtest_Status(self, slice_name, sliverlist = None):
+                                        AMAPI_call="Provision", 
+                                        sliverlist=sliverlist,
+                                        expectedExpiration=expectedExpiration)
+    def subtest_Status(self, slice_name, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='status', 
-                                        AMAPI_call="Status", sliverlist=sliverlist)
+                                        AMAPI_call="Status", 
+                                        sliverlist=sliverlist,
+                                        expectedExpiration=expectedExpiration)
 
-    def subtest_PerformOperationalAction(self, slice_name, command, sliverlist = None):
+    def subtest_PerformOperationalAction(self, slice_name, command, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='performoperationalaction', 
                                         AMAPI_call="PerformOperationalAction", sliverlist=sliverlist,
-                                                command=command)
-    def subtest_Delete(self, slice_name, sliverlist = None):
+                                        command=command,
+                                        expectedExpiration=expectedExpiration)
+    def subtest_Delete(self, slice_name, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='delete', 
-                                        AMAPI_call="Delete", sliverlist=sliverlist)
+                                        AMAPI_call="Delete", 
+                                        sliverlist=sliverlist,
+                                        expectedExpiration=expectedExpiration)
 
     def subtest_AMAPIv3CallNoRspec( self, slicename, 
                                     omni_method='provision', 
                                     AMAPI_call="Provision",
-                                    sliverlist=None, newtime=None, 
+                                    sliverlist=None, expectedExpiration=None, 
                                     command=None):
         self.assertTrue(omni_method in ['renew', 'provision', 'status',
                                         'performoperationalaction', 'delete'],
@@ -1325,7 +1339,7 @@ class Test(ut.OmniUnittest):
                         "'PerformOperationalAction', or 'Delete'." % AMAPI_call)
 
         if AMAPI_call is "Renew":
-            omniargs = [omni_method, slicename, newtime] 
+            omniargs = [omni_method, slicename, expectedExpiration] 
         elif AMAPI_call is "PerformOperationalAction":
             omniargs = [omni_method, slicename, command] 
         else:
@@ -1347,22 +1361,26 @@ class Test(ut.OmniUnittest):
                 slivers = None
                 retVal = indAgg['value']
                 if AMAPI_call is "Renew":
-                    # FIXME: should check that renew gave sliver expiration times of what was requested
-                    # if not --best-effort, also checks that the new sliver expiration matches the requested time
-                    retVal2 = self.assertRenewReturn( agg, retVal, requestedExpiration=newtime )
+                    # if not --best-effort, also checks that the new
+                    # sliver expiration matches the requested time
+                    retVal2 = self.assertRenewReturn( agg, retVal, 
+                                              expectedExpiration=expectedExpiration )
                     numSlivers = retVal2
                 elif AMAPI_call is "Provision":
-                    retVal2 = self.assertProvisionReturn( agg, retVal )
+                    retVal2 = self.assertProvisionReturn( agg, retVal,
+                                         expectedExpiration=expectedExpiration )
                     slivers, manifest = retVal2
                     numSlivers = len(slivers)
                 elif AMAPI_call is "Status":
-                    retVal2 = self.assertStatusReturn( agg, retVal )
+                    retVal2 = self.assertStatusReturn( agg, retVal, 
+                                              expectedExpiration=expectedExpiration )
                     numSlivers = retVal2
                 elif AMAPI_call is "PerformOperationalAction":
-                    retVal2 = self.assertPerformOperationalActionReturn( agg, retVal )
+                    retVal2 = self.assertPerformOperationalActionReturn( agg, retVal, expectedExpiration=expectedExpiration )
                     numSlivers = retVal2
                 elif AMAPI_call is "Delete":
-                    retVal2 = self.assertDeleteReturn( agg, retVal )
+                    retVal2 = self.assertDeleteReturn( agg, retVal,
+                                              expectedExpiration=expectedExpiration )
                     numSlivers = retVal2
                 else:
                     print "Shouldn't get here"
@@ -1415,14 +1433,16 @@ class Test(ut.OmniUnittest):
                           self.options_copy.rspeclint)
         return 1, manifest
 
-    def subtest_Allocate(self, slice_name):
+    def subtest_Allocate(self, slice_name, expectedExpiration=None):
         return self.subtest_CreateSliverPiece( slice_name, 
                                         omni_method='allocate', 
-                                        AMAPI_call="Allocate")
+                                        AMAPI_call="Allocate", 
+                                        expectedExpiration=expectedExpiration)
 
     def subtest_CreateSliverPiece(self, slice_name, 
                                   omni_method='createsliver', 
-                                  AMAPI_call="CreateSliver"):
+                                  AMAPI_call="CreateSliver", 
+                                  expectedExpiration=None):
         """Handle CreateSliver and Allocate both of which take in a request RSpec and return a manifest RSpec.
         """
         self.assertTrue(omni_method in ['createsliver', 'allocate'],
@@ -1466,7 +1486,8 @@ class Test(ut.OmniUnittest):
             elif AMAPI_call is "Allocate":
                 retVal = indAgg['value']
                 numSlivers, manifest, slivers = self.assertAllocateReturn( agg, 
-                                                                           retVal )
+                                                                           retVal,
+                                                                           expectedExpiration=expectedExpiration)
                 self.assertTrue( numSlivers > 0,
                                  "Return from '%s' " \
                                      "expected to list allocated slivers " \
@@ -1639,7 +1660,7 @@ class Test(ut.OmniUnittest):
         elif self.options_copy.api_version >= 3:
             self.subtest_Delete( slicename, sliverlist )
 
-    def subtest_generic_CreateSliver( self, slicename, doProvision=True, doPOA=True ):
+    def subtest_generic_CreateSliver( self, slicename, doProvision=True, doPOA=True, expectedExpiration=None ):
         """For v1 and v2, call CreateSliver().  For v3, call
         Allocate(), Provision(), and then
         PerformOperationalAction('geni_start').
@@ -1648,7 +1669,8 @@ class Test(ut.OmniUnittest):
             numslivers, manifest = self.subtest_CreateSliver( slicename )
             slivers = None
         elif self.options_copy.api_version >= 3:
-            manifest, numslivers, slivers = self.subtest_Allocate( slicename )
+            manifest, numslivers, slivers = self.subtest_Allocate( slicename,
+                                                                   expectedExpiration=expectedExpiration)
             if doProvision:
                 slivers, manifest = self.subtest_Provision( slicename )
                 numslivers = len(slivers)
@@ -1661,14 +1683,14 @@ class Test(ut.OmniUnittest):
                     # Probably also check the sliver does not have operational state 'geni_ready' - in which case
                     # no 'start' is needed.
                     # FIXME: Is geni_start even a valid operation
-                    self.subtest_PerformOperationalAction( slicename, 'geni_start' )
+                    self.subtest_PerformOperationalAction( slicename, 'geni_start')
                     # FIXME: Check operational state is ready for restart
                     # FIXME: Is geni_restart even a valid operation
-                    self.subtest_PerformOperationalAction( slicename, 'geni_restart' )
+                    self.subtest_PerformOperationalAction( slicename, 'geni_restart')
                     # FIXME: Check operational state is ready for stop
                     # At least check the state is not geni_notready - ie it has already been stopped
                     # FIXME: Is geni_stop even a valid operation
-                    self.subtest_PerformOperationalAction( slicename, 'geni_stop' )
+                    self.subtest_PerformOperationalAction( slicename, 'geni_stop')
                     self.options_copy.devmode = True   
                     self.assertRaises(NotSuccessError,
                                       self.subtest_PerformOperationalAction, 
