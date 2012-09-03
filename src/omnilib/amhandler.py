@@ -3176,7 +3176,7 @@ class AMCallHandler(object):
 
     def _get_server_name(self, clienturl, clienturn):
         '''Construct a short server name from the AM URL and URN'''
-        if clienturn and clienturn is not "unspecified_AM_URN" and (not clienturn.startswith("http")):
+        if clienturn and not clienturn.startswith("unspecified_AM_URN") and (not clienturn.startswith("http")):
             # construct hrn
             # strip off any leading urn:publicid:IDN
             if clienturn.find("IDN+") > -1:
@@ -3198,7 +3198,6 @@ class AMCallHandler(object):
         # Construct server bit. Get HRN from URN, else use url
         # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
         server = self._get_server_name(clienturl, clienturn)
-            
         if self.opts.outputfile:
             filename = self.opts.outputfile
             if "%a" in self.opts.outputfile:
