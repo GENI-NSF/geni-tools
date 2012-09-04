@@ -165,10 +165,12 @@ class OmniUnittest(unittest.TestCase):
 
     def call( self, cmd, options ):
         """Make the Omni call"""
-        ret_val = omni.call( cmd, options=options, verbose=True )
+        try:
+            ret_val = omni.call( cmd, options=options, verbose=True )
+        except Exception, e:
+            print "Omni raised an error: %r" % e
+            raise
         return ret_val
-
-
 
     def assertIsNotNone(self, item, msg=None):
         if msg is None:
