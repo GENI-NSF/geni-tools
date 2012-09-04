@@ -2102,7 +2102,7 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
-                prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                prStr = "Failed to renew sliver %s on %s (%s) (got result '%s')" % (urn, client.urn, client.url, res)
                 if message != "":
                     prStr += ". " + message
                 else:
@@ -2701,7 +2701,7 @@ class AMCallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
             else:
-                prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                prStr = "Failed to delete sliver %s on %s at %s (got result '%s')" % (urn, client.urn, client.url, res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 prStr += ". " + message
@@ -3230,15 +3230,15 @@ class AMCallHandler(object):
         # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
-            self.logger.debug("Raw result from dossl call was %s?!", result)
+            self.logger.debug("Raw result from AM API call was %s?!", result)
             if not message or message.strip() == "":
                 message = "(no reason given)"
             if result is None:
                 message += " (missing result)"
             elif result == False:
-                message += " (False result)"
+                message += " ('False' result)"
             elif result == 0:
-                message += " (0 result)"
+                message += " ('0' result)"
             else:
                 message += " (empty result)"
             return (result, message)
@@ -3287,9 +3287,14 @@ class AMCallHandler(object):
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None
+            else:
+                # No code in result
+                if self.opts.api_version > 1:
+                    self.logger.warn("Result had no code!")
         else:
             # Not a dict response. Value is result in itself
-            pass
+            if self.opts.api_version > 1:
+                self.logger.warn("Result was not a dict!")
         return (value, message)
     # End of _retrieve_value
 
@@ -3808,7 +3813,7 @@ class AMCallHandler(object):
                     self.logger.info('Sliver(s) in %s will be set to expire now' % name)
                     time = datetime.datetime.utcnow()
             else:
-                self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
+                self.logger.debug('Slice expires at %s UTC, at or after requested time %s UTC' % (slice_exp, time))
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
@@ -3898,20 +3903,23 @@ def _check_valid_return_struct(client, resultObj, message, call):
 def _append_geni_error_output(retStruct, message):
     '''Add to given error message the code and output if code != 0'''
     # If return is a dict
-    if isinstance(retStruct, dict) and retStruct.has_key('code') and retStruct['code'].has_key('geni_code'):
-        if retStruct['code']['geni_code'] != 0:
+    if isinstance(retStruct, dict) and retStruct.has_key('code'):
+        message2 = ""
+        if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
             message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
-            amType = ""
-            if retStruct['code'].has_key('am_type'):
-                amType = retStruct['code']['am_type']
-            if retStruct['code'].has_key('am_code'):
-                message2 += ". %s AM code: %s" % (amType, str(retStruct['code']['am_code']))
-            if retStruct.has_key('output'):
-                message2 += ": %s" % retStruct['output']
-            message2 += "."
-            if message is not None and message.strip() != "":
-                message += ". (%s)" % message2
-            else:
-                message = message2
+        amType = ""
+        if retStruct['code'].has_key('am_type'):
+            amType = retStruct['code']['am_type']
+        if retStruct['code'].has_key('am_code'):
+            if message2 != "":
+                message2 += ". "
+            message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
+        if retStruct.has_key('output'):
+            message2 += ": %s" % retStruct['output']
+        message2 += "."
+        if message is not None and message.strip() != "":
+            message += ". (%s)" % message2
+        else:
+            message = message2
     return message
 
