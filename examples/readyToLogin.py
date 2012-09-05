@@ -72,8 +72,13 @@ def getInfoFromManifest(manifestStr):
   loginInfo = []
   for node_el in dom.findall(tag("node")):
     for serv_el in node_el.findall(tag("services")):
-      loginInfo.append(serv_el.find(tag("login")).attrib)
-  
+      try:
+        loginInfo.append(serv_el.find(tag("login")).attrib)
+        loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
+      except AttributeError:
+        print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
+        sys.exit(-1)
+
   return loginInfo
 
 def findUsersAndKeys( ):
@@ -106,7 +111,6 @@ def getInfoFromListResources( amUrl ) :
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing listresources, review the logs."
       sys.exit(-1)
-    print listresources
 
     # Parse rspec
     try:
@@ -192,10 +196,9 @@ def getAMTypeFromGetVersionOut(amUrl, amOutput) :
   # FOAM does not have a code field, use foam_version
   if amOutput.has_key("foam_version"):
     return "foam"
-  # FOAM does not have a code field, use foam_version
-  if amOutput.has_key("foam_version"):
-    return "foam"
-  # XXX Fixme : test whether orca has the am_type, if not use orca_version
+  # ORCA does not have a code field, use foam_version
+  if amOutput.has_key("value") and amOutput["value"].has_key("orca_version"):
+    return "orca"
   return None
   
 def parseArguments( argv=None ) :
@@ -353,6 +356,7 @@ def main(argv=None):
         print "%s returned an error on getVersion, skip!"
         continue
       amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
+      print amType
 
       if amType == "foam" :
         print "No login information for FOAM! Skip %s" %amUrl
