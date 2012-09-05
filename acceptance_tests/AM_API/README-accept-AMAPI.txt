@@ -530,6 +530,87 @@ Usage:
 <snip>
 }}}
 
+= Manual Tests =
+Not all AM API features and requirements can be readily tested with
+automated tests. For example, a test that says 'now wait 3 days' is
+impractical. Here we outline tests that aggregate developers should
+manually run to confirm AM API compliance.
+
+== Log in to Nodes ==
+This set of tests verifies that reserved compute resources are
+accessible as expected.
+
+ 1. Can you log in to all reserved nodes?
+In AM API v1 or 2, use AM and sliver specific mechanisms to determine
+how to 'log in' to reserved nodes. Use that and log in. See
+gcf/src/readyToLogin.py for help determining how to log in. In AM API
+v3, see the 'ssh-users' elements in the manifest RSpec.
+
+ 2. Are all keys configured in `omni_config` usable for logging in?
+All public SSH keys listed under users who are part of the `users` section of the
+`omni_config` should be installed on nodes that use such
+keys. Depending on the sliver type, the keys may be installed on a
+single user or multiple users. As above, see `readyToLogin.py` for
+hints. 
+  a. Configure `omni_config` with 2+ users, each with 2+ keys
+  b. Reserve 2+ nodes
+  c. Run `readyToLogin` for tips on how to access nodes
+  d. Try to log in using each SSH key listed in the
+  `omni_config`. Test fails if any configured key cannot access a node.
+
+== Node Configuration ==
+This set of tests verifies that reserved compute resources have the
+configuration specified in the manifest RSpec.
+
+ 1. Do reserved nodes have the hostname, IP, and disk image specifie
+ in the manifest RSpec?
+ 2. Are data plane interfaces live as described in the manifest: on
+ the expected LAN, with the expected IP address, able to reach
+ expected other nodes? And no other nodes are reachable from those
+ interfaces?
+ 3. Have any `install` and `execute` tags been run as promised?
+
+== !RenewSliver ==
+This test verifies that in AM API v2, the aggregate returns the
+correct sliver expiration time, in its own aggregate-specific way. In
+AM API v3, there is a standard way to get this value.
+
+ 1. Reserve some resources
+ 2. Check for an aggregate specific statement of sliver
+ expiration. This is often in the return from `SliverStatus`. Field
+ names include `orca_expires', `pg_expires`.
+  a. Value should be > now
+  b. Value should be <= slice expiration
+ 3. Call `RenewSliver` to renew sliver until
+ current-expiration-plus-1-minute. Assuming success:
+  a. Check aggregate specific sliver expiration (as above)
+  b. Value should be == the requested expiration time
+ 
+== Sliver Expiration ==
+This test verifies that aggregates do not expire slivers early, change
+sliver expiration after a Renew call, and actually expire slivers when
+they are supposed to expire - including freeing resources.
+
+ 1. Do renewed slivers stay active past old expiration time, until new
+ time?
+  a. Reserve resources (!CreateSliver or Allocate)
+  b. Get current sliver expiration (in AM or API specific way:
+  `geni_expires` in AM API v3, or from !SliverStatus as described above)
+  c. Renew sliver to oldTime+1 minute
+  d. Confirm (in AM specific or API specific way) that AM reports new
+  expiration time for the sliver
+  e. Wait until old expiration time
+   i. Confirm resources still reachable (nodes can be pinged, even can
+   log in)
+   ii. Confirm in AM/API specific way that AM still reports new
+   expiration time
+ 2. After sliver expiration time is reached
+  a. Confirm AM API calls reflect that the sliver has expired.
+   - Not in manifest
+   - API calls querying the sliver give errors
+  b. Confirm the resources no longer accessible. (Ping, try logging in)
+  c. Confirm the resources listed as available in the Ad RSpec.
+
 = Bibliography =
 
  1. AM API v1 documentation: http://groups.geni.net/geni/wiki/GAPI_AM_API_V1
