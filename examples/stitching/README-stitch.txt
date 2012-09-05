@@ -25,6 +25,9 @@ libstitch also serves as a complex example of using Omni as a library.
 Omni is called to make reservations at aggregates. For details on how
 Omni is called as a library here, see libstitch/src/rspec.py
 
+Note: This example needs testing, and has not been updated to work
+with AM API v3. See "Future Work" and "Current Caveats" below.
+
 ------------------------------------------------------------------
 Usage:
 ------------------------------------------------------------------
@@ -362,6 +365,11 @@ Other design questions:
 ------------------------------------------------------------------
 Future Work:
 ------------------------------------------------------------------
+ - Test with Omni 2.0
+ - Test with all AMs using GENIv3 RSpecs
+ - AM API v3: find API version, speak appropriately, take advantage of
+ Allocate()
+ - Update for latest RSpec writing conventions
 
     - Represent a 'switch'. Which can itself have properties
     - Derive aggregate namespaces, URL from RSpecs
