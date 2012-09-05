@@ -1,3 +1,11 @@
+{{{
+#!comment
+
+N.B. This page is formatted for a Trac Wiki.
+}}}
+
+[[PageOutline]]
+
 = The Omni GENI Client =
 
 Omni is a GENI experimenter tool that communicates with GENI Aggregate

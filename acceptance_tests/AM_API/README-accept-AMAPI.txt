@@ -14,11 +14,9 @@ Acceptance tests verify compliance to
 [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2 GENI AM API v2].
 
 Alternatively the tests can be run against:
-[http://groups.geni.net/geni/wiki/GAPI_AM_API_V1 GENI Aggregate Manager (AM) API v1 specification]
-plus
-[http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA change set A of the AM API v2 specification]
-or
-[http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3]).
+ - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V1 GENI Aggregate Manager (AM) API v1 specification], plus
+ - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA change set A of the AM API v2 specification], or
+ - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3]).
 
 Acceptance tests are intended to be run with credentials from the GPO ProtoGENI,
 but they work with any credentials that are trusted at the AM under test.
@@ -59,11 +57,13 @@ Test verifies:
        file) likely requires administrator assistance to recover from)
      - Optional AM API v2 support
      - Optional AM API v3 support
-        * Testing with AM API v3, runs the same tests as v1/v2, but replaces the v1/v2 AM API command with the equivalent v3 command:
-	  - Describe() for ListResources(slicename)
-	  - Status() for SliverStatus()
-	  - Allocate(), Provision(), and PerformOperationalAction() instead of CreateSliver()
-	  - Delete() instead of DeleteSliver()
+        * Testing with AM API v3, runs the same tests as v1/v2, but
+	replaces the v1/v2 AM API command with the equivalent v3
+	command: 
+	  - `Describe()` for `ListResources(slicename)`
+	  - `Status()` for `SliverStatus()`
+	  - `Allocate()`, `Provision()`, and `PerformOperationalAction()` instead of `CreateSliver()`
+	  - `Delete()` instead of `DeleteSliver()`
 
 = Installation & Getting Started =
 
@@ -77,11 +77,14 @@ Requires:
 
    (1) Install LibXML (which rspeclint relies on) from CPAN.
     -- On Ubuntu Linux this is the libxml-libxml-perl package
+{{{
      	$ sudo apt-get install libxml-libxml-perl
+}}}
     -- On Fedora Linux this is the perl-XML-LibXML package
+{{{
      	$ sudo yum install perl-XML-LibXML
-
-   (2) Download rspeclint from ProtoGENI and save the file as "rspeclint" from:
+}}}
+   (2) Download rspeclint from ProtoGENI and save the file as `rspeclint` from:
         http://www.protogeni.net/trac/protogeni/wiki/RSpecDebugging
 
    (3) Add rspeclint to your path.
@@ -104,10 +107,10 @@ The GENI AM API Acceptance Tests:
  * $GCF/acceptance_tests/AM_API/am_api_accept_delegate.py
 
 Default omni_config file:
- * $GCF/acceptance_tests/AM_API/omni_config.sample
+ * `$GCF/acceptance_tests/AM_API/omni_config.sample`
 
 Logging configuration file:
- * $GCF/acceptance_tests/AM_API/logging.conf
+ * `$GCF/acceptance_tests/AM_API/logging.conf`
 
 Script to facilitate using Omni and unittest together:
  * $GCF/src/omni_unittest.py
@@ -134,32 +137,37 @@ help@geni.net
   (a) Install and test gcf per the instructions in INSTALL.txt.
    All of the tests should return "passed".
 
-  (b) Change into the directory where you will run the acceptance test:
+  (b) Change into the directory where you will run the acceptance
+  test:
+{{{
       $ cd $GCF/acceptance_tests/AM_API
+}}}
 
-  (c) Configure omni_config.
+  (c) Configure `omni_config`.
 
      (i) Omni configuration is described in README-omni.txt. 
 
      (ii) Verify the ProtoGENI .pem files are found in the location
      specified in the omni_config
-
+{{{
       $ cp omni_config.sample omni_config
+}}}
 
-  (d) Set PYTHONPATH so the acceptance tests can locate omni.py:
-
+  (d) Set PYTHONPATH so the acceptance tests can locate `omni.py`:
+{{{
       $ export PYTHONPATH=$PYTHONPATH:$GCF/src
+}}}
 
-      Or add the following to your ~/.bashrc:
-
+      Or add the following to your `~/.bashrc`:
+{{{
       export PYTHONPATH=${PYTHONPATH}:$GCF/src
-
+}}}
   (e) Verify rspeclint is in your path so that am_api_accept.py can find it.
-
+{{{
       $ rspeclint
 
       Usage: rspeclint [<namespace> <schema>]+ <document>
-
+}}}
       Schema and document locations are either paths or URLs.
 
 (2) (optional) Run acceptance test with default AM to ensure everything works.
@@ -172,28 +180,28 @@ help@geni.net
        $ cp bad.xml.sample bad.xml
  }}}
   (b) Run all of the acceptance tests:
-
+{{{
       $ am_api_accept.py -a am-undertest
-
+}}}
       Optional: To run individual tests:
-
+{{{
       $ am_api_accept.py -a am-undertest Test.test_GetVersion
-
-  (c) All tests should pass except for Test.test_CreateSliver_badrspec_manifest.
+}}}
+  (c) All tests should pass except for `Test.test_CreateSliver_badrspec_manifest`.
    As shown in Sample Output section below.
 
 (3) Configure to point to AM under test.
 
   (a) Configure omni_config
-    (i) Edit "aggregates" to point to the url of the AM under test.
+    (i) Edit `aggregates` to point to the url of the AM under test.
 
-    (ii) Edit "am-undertest" to point to the url of the AM under test.
+    (ii) Edit `am-undertest` to point to the url of the AM under test.
 
   (b) Write three request RSpecs for AM under test.
     (i) Remove the sample RSpecs if you executed (2).
-
+{{{
           $ rm request.xml request1.xml request2.xml request3.xml
-
+}}}
     (ii) Write three [#BoundRSpecs bound request RSpecs] for the AM under test and save as:
  {{{
           $GCF/acceptance_tests/AM_API/request.xml
@@ -205,8 +213,9 @@ help@geni.net
 
   (c) Write a manifest RSpec for AM under test.
     (i) Remove sample rspec if you executed (2).
+{{{
          $ rm bad.xml
-
+}}}
     (ii) Write a manifest RSpec for the AM under test and save as:
 {{{
          $GCF/acceptance_tests/AM_API/bad.xml
@@ -217,144 +226,157 @@ help@geni.net
    delegate the slice credential to you.
 
     (i) Have a colleague create a slice. (Keep the slice name under 12
-     characters. Here using "delegSlice".)
+    characters. Here using "delegSlice".)
+{{{
          $ $GCF/src/omni.py -o createslice delegSlice
-
+}}}
     (ii) Have your colleague reserve resources at the AM under test.
+{{{
          $ $GCF/src/omni.py -a am-undertest -o createsliver delegSlice req.xml
-
+}}}
     (iii) Have your colleague download their slice credential.
+{{{
          $ $GCF/src/omni.py getslicecred delegSlice -o
-
+}}}
     (iv) Have your colleague delegate their slice to you.
      See $GCF/src/delegateSliceCred.py -h for more information.
-
-         $ $GCF/src/delegateSliceCred.py --cert path/to/their/cert.pem --key path/to/their/key.pem --delegeegid path/to/your/gid_file.pem --slicecred delegSlice-cred.xml
-
+{{{
+         $ $GCF/src/delegateSliceCred.py --cert path/to/their/cert.pem \
+              --key path/to/their/key.pem --delegeegid path/to/your/gid_file.pem \
+              --slicecred delegSlice-cred.xml
+}}}
      Note: Command generates a delegation file named something like
-     pgeni--gpolab-bbn--com-lnevers-delegated-delegSlice-cred.xml.
+     `pgeni--gpolab-bbn--com-lnevers-delegated-delegSlice-cred.xml`.
 
     (v) Place the output delegation file your acceptance test path as
+{{{
      $GCF/acceptance_tests/AM_API/delegated.xml
+}}}
 
 (4) Run "GENI AM API" acceptance tests with a GENI credential accepted by the AM
 under test(double check). Make sure you are still in the directory where you will
 run the acceptance tests.
-
+{{{
     $ cd $GCF/acceptance_tests/AM_API
-
+}}}
   (a) Run all of the tests:
-
+{{{
     $ am_api_accept.py -a am-undertest
-
+}}}
     Optional: To run individual tests replace test_GetVersion with the name of
     the appropriate test:
-
+{{{
     $ am_api_accept.py -a am-undertest Test.test_GetVersion
-    
+}}}
     Optional: To run with AM API v3:
-    
+{{{ 
     $ am_api_accept.py -a am-undertest -V 3 --NoGetVersionCache
-
+}}}
   (b) Correct errors and run step (4a) again, as needed.
 
     (i) See "Common Errors and What to Do About It" below.
 
-    (ii) You may find --more-strict helpful if your AM returns an empty RSpec
+    (ii) You may find `--more-strict` helpful if your AM returns an empty RSpec
      from !ListResources when a slice does not exist.
 
 (5) Run "Credential Delegation" acceptance tests:
-
+{{{
         $ am_api_accept_delegate.py -a am-undertest
-
+}}}
 (6) Run "Shutdown" acceptance tests.  Beware that this test likely requires an
 admin to recover from as it runs the AM API command "Shutdown" on a slice.
-
+{{{
         $ am_api_accept_shutdown.py -a am-undertest
-
+}}}
 (7) Congratulations! You are done.
 
 == Variations ==
 
- * To run the tests with AM API v1 plus Change Set A use -V 1.  To run
-   with AM API v3 use -V 3.  But be sure to update the 'am-undertest'
-   definition to the url of the new AM in omni_config.
+ * To run the tests with AM API v1 plus Change Set A use `-V 1`.  To run
+   with AM API v3 use `-V 3`.  But be sure to update the `am-undertest`
+   definition to the url of the new AM in `omni_config`.
 
- * Use --vv to have the underlying unittest be more verbose (including
+ * Use `--vv` to have the underlying unittest be more verbose (including
    printing names of tests and descriptions of tests).
 
- * To validate your RSpecs with rspeclint add the --rspeclint option:
+ * To validate your RSpecs with rspeclint add the `--rspeclint`
+   option:
+{{{
         $ am_api_accept.py -a am-undertest --rspeclint
+}}}
 
  * To run with ProtoGENI v2 RSpecs instead of GENI v3 use:
-   --ProtoGENIv2, --rspec-file, and --bad-rspec-file.
-   (Also replace request.xml, request1.xml, request2.xml, and
-   request3.xml with appropriate files.)
+   `--ProtoGENIv2`, `--rspec-file`, and `--bad-rspec-file`.
+   (Also replace `request.xml`, `request1.xml`, `request2.xml`, and
+   `request3.xml` with appropriate files.)
 
    For example, with the default AM configuration, run:
-
+{{{
      $ am_api_accept.py -a am-undertest --ProtoGENIv2 --rspec-file request_pgv2.xml
-    
+}}}
    This provides an appropriate ProtoGENI v2 request RSpec for the test.
 
-   Use --bad-rspec-file to provide an alternative manifest RSpec or
+   Use `--bad-rspec-file` to provide an alternative manifest RSpec or
    other inappropriate file to verify !CreateSliver fails when passed
    a bad request RSpec.
 
- * To run the test with unbound RSpecs add the --un-bound flag.
+ * To run the test with unbound RSpecs add the `--un-bound` flag.
 
  * It is possible to edit the omni_config to support use of other
    frameworks. 
 
-   - Use --rspec-file and --bad-rspec-file to override the default RSpecs.
-   (Also replace request.xml, request1.xml, request2.xml, and
-   request3.xml with appropriate files.)
+   - Use `--rspec-file` and `--bad-rspec-file` to override the default RSpecs.
+   (Also replace `request.xml`, `request1.xml`, `request2.xml`, and
+   `request3.xml` with appropriate files.)
 
    - If you use PlanetLab, make sure to run the following which will
    cause your PlanetLab credential to be downloaded:
-
+{{{
         $ omni.py -f plc listresources
+}}}
+   - If you use gcf, make sure to use the `--more-strict` option.
 
-   - If you use gcf, make sure to use the --more-strict option.
+ * `--untrusted-usercred` allows you to pass in a user credential that
+     is not trusted by the framework defined in the `omni_config` for
+     use in `Test.test_ListResources_untrustedCredential`
 
- * --untrusted-usercred allows you to pass in a user credential that
-     is not trusted by the framework defined in the omni_config for
-     use in test_ListResources_untrustedCredential 
-
- * Future versions of this test will provide options --rspec-file-list
-     and --reuse-slice-list which take lists of RSpec file and lists
-     of existing slicenames for use in
-     test_CreateSliverWorkflow_multiSlice
+ * Future versions of this test will provide options
+   `--rspec-file-list` and `--reuse-slice-list` which take lists of
+   RSpec file and lists of existing slicenames for use in
+   `Test.test_CreateSliverWorkflow_multiSlice`
 
 == Common Errors and What to Do About It ==
 
  * When running with ProtoGENI as the AM, you may occasionally get
    intermittent errors caused by making the AM API calls to quickly.
    If you see these errors, either rerun the test or use the
-   --sleep-time option to increase the time between calls.
+   `--sleep-time` option to increase the time between calls.
 
  * If you see:
-   !NotNoneAssertionError: Return from '!CreateSliver'expected to be XML file but instead returned None.
+{{{
+   NotNoneAssertionError: Return from 'CreateSliver'expected to be XML file but instead returned None.
+}}}
 
 Then:
    It's possible that a previous run of the test failed to delete the sliver.
    Manually delete the sliver and try again:
-
+{{{
         $ $GCF/src/omni.py -a am-undertest deleteSliver acc<username>
-
+}}}
 where <username> is your Unix account username.
 
  * If a test fails, rerun the individual test by itself and look at
    the contents of the `acceptance.log` file for an indication of the
    source of the problem using syntax like the following:
-
+{{{
         $ am_api_accept.py -a am-undertest Test.test_GetVersion
-
+}}}
 == Sample Output ==
 
 A successful run looks something like this:
 {{{
-$ ./am_api_accept.py --NoGetVersionCache --sleep-time 0 -a https://localhost:8001 -V 2 --rspec-file ../../src/geni/am/amapi2-request.xml
+$ ./am_api_accept.py --NoGetVersionCache --sleep-time 0 -a https://localhost:8001 \
+                     -V 2 --rspec-file ../../src/geni/am/amapi2-request.xml
 .............
 ----------------------------------------------------------------------
 Ran 13 tests in 18.542s
@@ -502,7 +524,8 @@ $ ./am_api_accept_shutdown.py -h
 Usage:                                                                 
       ./am_api_accept_shutdown.py -a am-undertest                      
       Also try --vv                                                    
-  WARNING: Be very careful running this test. Administator support is likely to be needed to recover from running this test. 
+  WARNING: Be very careful running this test. Administator support is
+  likely to be needed to recover from running this test. 
 
 <snip>
 }}}
@@ -527,4 +550,4 @@ because the acceptance tests compare the component IDs of the
 resources in the request RSpec with those in the manifest RSpecs to
 make sure that !CreateSliver and !ListResources are working properly.
 
-To run the test with unbound RSpecs, add the --un-bound flag.
+To run the test with unbound RSpecs, add the `--un-bound` flag.
