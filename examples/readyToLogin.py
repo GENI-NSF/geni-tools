@@ -67,7 +67,12 @@ def getInfoFromManifest(manifestStr):
   This function returns a list of dictionaries, each dictionary contains 
   login information
   '''
-  dom = etree.fromstring(manifestStr) 
+  try:
+    dom = etree.fromstring(manifestStr) 
+  except Exception, e:
+    print "Couldn't parse the manifest RSpec. Wait a little and try again?"
+    sys.exit(-1)
+
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
   loginInfo = []
   for node_el in dom.findall(tag("node")):
@@ -86,6 +91,10 @@ def findUsersAndKeys( ):
     are installed in the nodes. It uses the global variable config and returns
     keyList which is a dictionary of keyLists per user"""
     keyList = {}
+    if not config.has_key('users'):
+      print "Your omni_config is missing the 'users' attribute."
+      return keyList
+
     for user in config['users']:
         # convert strings containing public keys (foo.pub) into
         # private keys (foo)
@@ -107,17 +116,32 @@ def getInfoFromListResources( amUrl ) :
     # Run the equivalent of 'omni.py listresources <slicename>'
     argv = ['listresources', slicename]
     try:
-      text, listresources = omni.call( argv, options )
+      text, listresources = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing listresources, review the logs."
       sys.exit(-1)
 
-    # Parse rspec
-    try:
-      manifest = listresources[amUrl]["value"]
-    except :
-      print "Error getting the manifest from %s" % amUrl
-      return []
+    key = amUrl
+    if tmpoptions.api_version == 1:
+      # Key is (urn,url)
+      key = ("unspecified_AM_URN", amUrl)
+
+    if not listresources.has_key(key):
+      print "ERROR: No manifest found from listresources at %s; review the logs." % amUrl
+      sys.exit(-1)
+
+    if tmpoptions.api_version == 1:
+      manifest = listresources[key]
+    else:
+      if not listresources[key].has_key("value"):
+        print "ERROR: No value slot in return from listresources from %s; review the logs." % amUrl
+        sys.exit(-1)
+      value = listresources[key]["value"]
+      if tmpoptions.api_version == 2:
+        manifest = value
+      else:
+        print "ERROR: API v3 not yet supported"
+        sys.exit(-1)
 
     return getInfoFromManifest(manifest)
 
@@ -125,6 +149,18 @@ def getInfoFromSliverStatusPG( sliverStat ):
 
     loginInfo = []
     pgKeyList = {}
+    if not sliverStat:
+      print "ERROR: empty sliver status!"
+      return loginInfo
+
+    if not sliverStat.has_key("users"):
+      print "ERROR: No 'users' key in sliver status!"
+      return loginInfo
+
+    if not sliverStat.has_key('geni_resources'):
+      print "ERROR: Sliver Status lists no resources"
+      return loginInfo
+
     for userDict in sliverStat['users'] :
       pgKeyList[userDict['login']] = [] 
       for k in userDict['keys']:
@@ -154,6 +190,10 @@ def getInfoFromSliverStatusPG( sliverStat ):
 def getInfoFromSliverStatusPL( sliverStat ):
 
     loginInfo = []
+    if not sliverStat or not sliverStat.has_key('geni_resources'):
+      print "ERROR: Empty Sliver Status, or no geni_resources listed"
+      return loginInfo
+
     for resourceDict in sliverStat['geni_resources']: 
       if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
           continue
@@ -177,6 +217,14 @@ def getInfoFromSliverStatus( amUrl, amType ) :
       text, sliverStatus = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing sliverstatus, review the logs."
+      sys.exit(-1)
+
+    if not sliverStatus:
+      print "ERROR: Got no SliverStatus for AM %s; check the logs. Message: %s" % (amUrl, text)
+      sys.exit(-1)
+
+    if not sliverStatus.has_key(amUrl):
+      print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
       sys.exit(-1)
 
     if amType == 'sfa' : 
@@ -237,6 +285,9 @@ def getKeysForUser( amType, username, keyList ):
      list from omni_config file that is saved at keyList
   '''
   userKeyList = []
+  if not keyList:
+    return userKeyList
+
   for user,keys in keyList.items() :
     #ProtoGENI actually creates accounts per user so check the username
     # before adding the key. ORCA and PL just add all the keys to one
@@ -349,11 +400,16 @@ def main(argv=None):
       text, getVersion = omni.call( argv, options )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing getVersion, review the logs."
+      sys.exit(-1)
+
+    if not getVersion:
+      print "ERROR: Got no GetVersion output; review the logs."
+      sys.exit(-1)
 
     loginInfoDict = {}
     for amUrl, amOutput in getVersion.items() :
       if not amOutput :
-        print "%s returned an error on getVersion, skip!"
+        print "%s returned an error on getVersion, skip!" % amUrl
         continue
       amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
       print amType
