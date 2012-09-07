@@ -287,7 +287,7 @@ class OmniUnittest(unittest.TestCase):
                "expected to NOT be empty " \
                "but was. Return was: " \
                "\n%s\n" 
-                      % (manifest2))
+                      % (manifest))
 
     # FIXME: This whole method could just be a call to rspec_util.is_rspec_string
     def assertRspec( self, AMAPI_call, rspec, rspec_namespace=None, rspec_schema=None, runRspeclint=True ):
