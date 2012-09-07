@@ -204,7 +204,7 @@ def getInfoFromSliverStatusPG( sliverStat ):
             geni_status = resourceDict["geni_status"]
           am_status = ""
           if resourceDict.has_key("pg_status"):
-            am_status = resourceDict["am_status"]
+            am_status = resourceDict["pg_status"]
           for user, keys in pgKeyList.items():
             loginInfo.append({'authentication':'ssh-keys', 
                               'hostname':hostname,
@@ -212,8 +212,8 @@ def getInfoFromSliverStatusPG( sliverStat ):
                               'port':port,
                               'username':user,
                               'keys' : keys,
-                              'geni_status':resourceDict['geni_status'],
-                              'am_status':resourceDict['pg_status']
+                              'geni_status':geni_status,
+                              'am_status':am_status
                              })
     return loginInfo
      
