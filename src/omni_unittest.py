@@ -168,7 +168,11 @@ class OmniUnittest(unittest.TestCase):
         try:
             ret_val = omni.call( cmd, options=options, verbose=True )
         except Exception, e:
+            # FIXME: If the error was expected, printing this is confusing
             print "Omni raised an error: %r" % e
+            # FIXME: If the error is an AMAPIError and the caller
+            # doesn't explicitly say they're expecting it, this prints
+            # an ugly stacktrace
             raise
         return ret_val
 
