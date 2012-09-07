@@ -162,27 +162,58 @@ def getInfoFromSliverStatusPG( sliverStat ):
       return loginInfo
 
     for userDict in sliverStat['users'] :
+      if not userDict.has_key('login'):
+        print "User entry had no 'login' key"
+        continue
       pgKeyList[userDict['login']] = [] 
+      if not userDict.has_key("keys"):
+        print "User entry for %s had no keys" % userDict['login']
+        continue
       for k in userDict['keys']:
           #XXX nriga Keep track of keys, in the future we can verify what key goes with
           # which private key
           pgKeyList[userDict['login']].append(k['key'])
 
     for resourceDict in sliverStat['geni_resources']: 
+      if not resourceDict.has_key("pg_manifest"):
+        print "No pg_manifest in this entry"
+        continue
+      if not resourceDict['pg_manifest'].has_key('children'):
+        print "pg_manifest entry has no children"
+        continue
       for children1 in resourceDict['pg_manifest']['children']:
+        if not children1.has_key('children'):
+          continue
         for children2 in children1['children']:
-          child = children2['attributes']
-          if (not child.has_key('hostname')):
+          if not children2.has_key("attributes"):
             continue
+          child = children2['attributes']
+          port = ""
+          hostname = ""
+          if child.has_key("hostname"):
+            hostname = child["hostname"]
+          else:
+            continue
+          if child.has_key("port"):
+            port = child["port"]
+          client_id = ""
+          if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
+            client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+          geni_status = ""
+          if resourceDict.has_key("geni_status"):
+            geni_status = resourceDict["geni_status"]
+          am_status = ""
+          if resourceDict.has_key("pg_status"):
+            am_status = resourceDict["pg_status"]
           for user, keys in pgKeyList.items():
             loginInfo.append({'authentication':'ssh-keys', 
-                              'hostname':child['hostname'],
-                              'client_id': resourceDict['pg_manifest']['attributes']['client_id'],
-                              'port':child['port'],
+                              'hostname':hostname,
+                              'client_id': client_id,
+                              'port':port,
                               'username':user,
                               'keys' : keys,
-                              'geni_status':resourceDict['geni_status'],
-                              'am_status':resourceDict['pg_status']
+                              'geni_status':geni_status,
+                              'am_status':am_status
                              })
     return loginInfo
      
