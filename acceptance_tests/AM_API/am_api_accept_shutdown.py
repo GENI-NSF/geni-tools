@@ -113,6 +113,7 @@ class ShutdownTest(accept.Test):
 
 
         numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename )
+        time.sleep(self.options_copy.sleep_time)
 
         self.assertRspec( "CreateSliver", manifest, 
                           rspec_namespace, rspec_schema,
@@ -123,6 +124,7 @@ class ShutdownTest(accept.Test):
             self.subtest_Shutdown( slicename )
         except:
             # If Shutdown fails, then DeleteSliver to clean up for next run
+            time.sleep(self.options_copy.sleep_time)
             self.subtest_generic_DeleteSliver( slicename )
 
         if not self.options_copy.reuse_slice_name:
