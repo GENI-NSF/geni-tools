@@ -358,10 +358,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
       for key in keys: 
         output += "\t"
         if options.xterm :
-            output += "xterm -e "
+            output += "xterm -e ssh"
         if str(item['port']) != '22' : 
             output += " -p %s " % item['port']
-        output += "ssh -i %s %s@%s" % ( key, item['username'], item['hostname'])
+        output += " -i %s %s@%s" % ( key, item['username'], item['hostname'])
         if options.xterm :
             output += " &"
         output += "\n"
