@@ -219,9 +219,27 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
 
     scriptFile.write('\n## Define containers for each of the hosts in the experiment.\n')
     hostNames = experimentHosts.keys()
+    
+    # check the type of machine being run, the containers
+    # must be the same type as the host machine
+    scriptFile.write(". /etc/lsb-release\n")
+    scriptFile.write("if [ $DISTRIB_ID == \"Ubuntu\" ] \n")
+    scriptFile.write("then \n")
+    
+    # write out the templates for ubuntu containers
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
-        scriptFile.write('vzctl create %s --ostemplate fedora-15-x86 --config basic\n' % hostObject.containerName)
+        scriptFile.write('    vzctl create %s --ostemplate ubuntu-10.04-x86\n' % hostObject.containerName)
+    
+    scriptFile.write("elif [ $DISTRIB_ID == \"Fedora\" ] \n")
+    scriptFile.write("then \n")
+    
+    # write out the templates for fedora containers
+    for i in range(len(hostNames)) :
+        hostObject = experimentHosts[hostNames[i]]
+        scriptFile.write('    vzctl create %s --ostemplate fedora-15-x86 --config basic\n' % hostObject.containerName)
+
+    scriptFile.write("fi\n")
 
     scriptFile.write('\n## Set up host names and control network IP addresses for the containers. \n')
     for i in range(len(hostNames)) :
