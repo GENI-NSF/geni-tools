@@ -171,7 +171,7 @@ def _annotateGraph(experimentHosts, experimentLinks, experimentNICs) :
         networkNumber += 1
 
 
-def _generateBashScript(experimentHosts, experimentLinks, experimentNICs) :
+def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users) :
     ''' Generate the Bash script that is run to actually create and set up the
             Virtual Machines and networks used in the experiment.
     '''
@@ -520,11 +520,47 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs) :
                                         % item.command)
 
         scriptFile.write('\n')
+        
+        # set up the user accounts and ssh public keys for each container
+        for user in users :
+            userName = ""       # the current user the public key is installed for
+            publicKeys = []     # the public keys for the current user, these are not files
+            
+            # go through every user and get the user's name and ssh public key
+            for key in user.keys() :
+                
+                # found a user, there should only be one of these per key in 'user'
+                if key == "urn" :
+                    userName = user[key]
+                    userName = userName.split("+")[-1]
+                
+                # found a new public key list, store all the public keys
+                elif key == "keys" :
+                    for value in user[key] :
+                        publicKeys.append(value)
+            
+            # only install the user account if there is a user to install
+            if userName != "":
+                scriptFile.write("# Create user %s for container %i and install public keys\n" % (userName, hostObject.containerName))
+                scriptFile.write("echo \"Creating user %s for container %s and installing public keys...\"\n" % (userName, hostObject.nodeName))
+                scriptFile.write("vzctl set %i --userpasswd %s:geniinabox\n" % (hostObject.containerName, userName))
+            
+                # install all of the public keys for this user
+                for publicKey in publicKeys :
+                    scriptFile.write("mkdir -p /vz/private/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 600 /vz/private/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("touch /vz/private/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 600 /vz/private/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("echo \"%s\">>/vz/private/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
+            
+            scriptFile.write('\n')
+            
+        scriptFile.write('\n')
 
     scriptFile.close()
 
 
-def provisionSliver(experimentHosts, experimentLinks, experimentNICs) :
+def provisionSliver(experimentHosts, experimentLinks, experimentNICs, users) :
     """
         Provision the sliver.  First fill in missing information in the
         VMNode, NIC and Link objects created when parsing the request rspec.
@@ -535,5 +571,5 @@ def provisionSliver(experimentHosts, experimentLinks, experimentNICs) :
     _annotateGraph(experimentHosts, experimentLinks, experimentNICs)
 
     # Generate the bash script
-    _generateBashScript(experimentHosts, experimentLinks, experimentNICs)
+    _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
     

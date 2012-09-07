@@ -267,8 +267,8 @@ class ReferenceAggregateManager(object):
         if slice_urn in self._slices:
             self.logger.error('Slice %s already exists.', slice_urn)
             return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
-
-        gib_manager.createSliver(rspec) 
+        
+        gib_manager.createSliver(rspec, users) 
 
         ### rspec_dom = None
         ### try:

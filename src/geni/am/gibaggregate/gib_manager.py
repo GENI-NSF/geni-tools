@@ -15,7 +15,7 @@ experimentNICs = {}     # Map of client supplied network interface names to
                         #    corresponding NIC objects
 
 # GENI-in-a-box specific createSliver
-def createSliver(requestRspec) :
+def createSliver(requestRspec, users) :
     """
         Create a sliver on this aggregate.
     """
@@ -28,7 +28,7 @@ def createSliver(requestRspec) :
     # Provision the sliver i.e. assign resource as specifed in the request rspec
     #    The sliver isn't created yet.  The shell commands used to create
     #    the sliver are written into the file named in config.py
-    resources.provisionSliver(experimentHosts, experimentLinks, experimentNICs)
+    resources.provisionSliver(experimentHosts, experimentLinks, experimentNICs, users)
 
     # Generate the manifest rspec.  The manifest is written to the file named
     #    in config.py
