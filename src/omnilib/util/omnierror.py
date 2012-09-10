@@ -45,6 +45,8 @@ class AMAPIError(OmniError):
     def __init__(self, msg=None, struct=None):
         self.value = msg
         self.returnstruct = struct
+        # FIXME: gen a message from struct and make that arg here
+        OmniError.__init__(self, struct)
 
 #    def __repr__(self):
     def __str__(self):
