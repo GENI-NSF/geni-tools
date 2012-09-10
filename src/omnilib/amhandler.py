@@ -3300,7 +3300,7 @@ class AMCallHandler(object):
                     # single AM returns a failure error code.
                     # note it means any other AMs do not get processed
                     # FIXME: AMAPIError needs a nice printable string
-                    self._raise_omni_error(result, AMAPIError)
+                    self._raise_omni_error(message, AMAPIError, result)
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None
@@ -3384,9 +3384,16 @@ class AMCallHandler(object):
         return name, urn, slice_cred, retVal, slice_exp
     # End of _args_to_slicecred
 
-    def _raise_omni_error( self, msg, err=OmniError ):
-        self.logger.error( msg )
-        raise err, msg
+    def _raise_omni_error( self, msg, err=OmniError, triple=None ):
+        msg2 = msg
+        if triple is not None:
+            msg2 += " "
+            msg2 += str(triple)
+        self.logger.error( msg2 )
+        if triple is None:
+            raise err, msg
+        else: 
+            raise err, (msg, triple)
 
     def _printResults(self, header, content, filename=None):
         """Print header string and content string to file of given
