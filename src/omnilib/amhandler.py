@@ -3931,10 +3931,11 @@ def _append_geni_error_output(retStruct, message):
             if message2 != "":
                 message2 += ". "
             message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
-        if retStruct.has_key('output'):
+        if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
-        message2 += "."
-        if message is not None and message.strip() != "":
+        if message2 != "":
+            message2 += "."
+        if message is not None and message.strip() != "" and message2 != "":
             message += ". (%s)" % message2
         else:
             message = message2
