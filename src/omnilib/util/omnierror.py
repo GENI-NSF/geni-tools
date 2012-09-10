@@ -42,13 +42,18 @@ class RefusedError(OmniError):
 class AMAPIError(OmniError):
     '''Raise an Exception if the AM returned an AM API v2+ non-0 error code.
     Include the full code/value/output struct in the error.'''
-    def __init__(self, struct):
+    def __init__(self, msg=None, struct=None):
+        self.value = msg
         self.returnstruct = struct
 
-    def __repr__(self):
+#    def __repr__(self):
+    def __str__(self):
         if not self.returnstruct:
             return super(AMAPIError, self).__repr__()
         message = "AMAPIError: "
+        if self.value:
+            message += self.value
+            message += "\n"
         retStruct = self.returnstruct
 
         if isinstance(retStruct, dict) and retStruct.has_key('code'):
