@@ -44,6 +44,8 @@ class AMAPIError(OmniError):
     Include the full code/value/output struct in the error.'''
     def __init__(self, struct):
         self.returnstruct = struct
+        # FIXME: gen a message from struct and make that arg here
+        OmniError.__init__(self, struct)
 
     def __repr__(self):
         if not self.returnstruct:
