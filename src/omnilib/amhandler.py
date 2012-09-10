@@ -496,6 +496,10 @@ class AMCallHandler(object):
             # Pulls from cache or caches latest, error checks return
             # getversion output should be the whole triple
             (thisVersion, message) = self._do_and_check_getversion(client)
+            if self.opts.devmode:
+                pp = pprint.PrettyPrinter(indent=4)
+                prettyVersion = pp.pformat(thisVersion)
+                self.logger.debug("AM %s raw getversion:\n%s", client.url, prettyVersion)
             thisVersionValue, message = self._retrieve_value(thisVersion, message, self.framework)
 
             # Method specific result handling
@@ -3000,6 +3004,9 @@ class AMCallHandler(object):
         # What else would this do? See if it is reachable? We'll do that elsewhere
 
         cver, message = self._get_this_api_version(client)
+        if isinstance(cver, str):
+            self.logger.warn("AM %s reported a string API version %s", client.url, cver)
+            cver = int(cver)
         configver = self.opts.api_version
         if cver and cver == configver:
             return (cver, client)
@@ -3009,43 +3016,53 @@ class AMCallHandler(object):
                 self.logger.warn("... skipping this aggregate")
                 return (0, None)
             else:
+                self.logger.warn("... but continuing with requested version and client")
                 return (configver, client)
 
         # This AM doesn't speak the desired API version - see if there's an alternate
-
         svers, message = self._get_api_versions(client)
         if svers:
-            if svers.has_key(configver):
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[configver])
+            if svers.has_key(str(configver)):
+                self.logger.warn("Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[str(configver)])
                 # do a makeclient with the corrected URL and return that client?
                 if not self.opts.devmode:
-                    newclient = make_client(svers[configver], self.framework, self.opts)
+                    newclient = make_client(svers[str(configver)], self.framework, self.opts)
                     newclient.urn = client.urn # Wrong urn?
                     (ver, c) = self._checkValidClient(newclient)
                     if ver == configver and c.url == newclient.url and c is not None:
+                        self.logger.info("Switching AM URL to match requested version")
                         return (ver, c)
-                self.logger.warn("... skipping this aggregate")
-                return (configver, None)
+                    else:
+                        self.logger.warn("... skipping this aggregate - failed to get a connection to the AM URL with the right version")
+                        return (configver, None)
+                else:
+                    self.logger.warn("... but continuing with requested version and client")
+                    return (configver, client)
             else:
                 self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not talk that version. It advertises: %s", configver, client.url, cver, pprint.pformat(svers))
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
 #                    self.logger.warn("Changing to use API version %d", cver)
-                    return (cver, client)
-                else:
-                    # FIXME: Pick out the max API version supported at this client, and use that?
                     self.logger.warn("... skipping this aggregate")
                     return (cver, None)
+                else:
+                    # FIXME: Pick out the max API version supported at this client, and use that?
+                    self.logger.warn("... but continuing with requested version and client")
+                    return (configver, client)
         else:
             self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not advertise other versions.", configver, client.url, cver)
             # FIXME: If we're continuing, change api_version to be correct, or we will get errors
             if not self.opts.devmode:
 #                self.logger.warn("Changing to use API version %d", cver)
-                return (cver, client)
-            else:
                 self.logger.warn("... skipping this aggregate")
                 return (cver, None)
-        self.logger.warn("... skipping this aggregate")
+            else:
+                self.logger.warn("... but continuing with requested version and client")
+                return (configver, client)
+                #self.logger.warn("... skipping this aggregate")
+                #return (cver, None)
+        # Shouldn't get here...
+        self.logger.warn("Cannot validate client ... skipping this aggregate")
         return (cver, None)
     # End of _checkValidClient
 
