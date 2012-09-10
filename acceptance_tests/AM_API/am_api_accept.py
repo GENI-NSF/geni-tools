@@ -768,7 +768,8 @@ class Test(ut.OmniUnittest):
             # the Request
             self.assertManifestMatchesRequest( request, manifest, 
                                                self.RSpecVersion(),
-                                               self.options_copy.bound )
+                                               self.options_copy.bound,
+                                               "Created sliver")
 
             time.sleep(self.options_copy.sleep_time)
             self.subtest_generic_SliverStatus( slicename )        
@@ -864,7 +865,8 @@ class Test(ut.OmniUnittest):
             # the Request
             self.assertManifestMatchesRequest( request, manifest2, 
                                                self.RSpecVersion(),
-                                               self.options_copy.bound )
+                                               self.options_copy.bound,
+                                               "ListResources/Described resources in slice")
 
 
             time.sleep(self.options_copy.sleep_time)

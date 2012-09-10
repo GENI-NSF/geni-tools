@@ -255,7 +255,7 @@ class OmniUnittest(unittest.TestCase):
                     "but did not."
             raise NotEqualClientIDsError, msg
 
-    def assertManifestMatchesRequest( self, request, manifest, rspec_version, bound ):
+    def assertManifestMatchesRequest( self, request, manifest, rspec_version, bound, msg ):
         if rspec_util.has_child_node( manifest, rspec_version):
             # FIXME: could just check all req comp IDs are in the set of man comp IDs
             # even better: for each node or link in req:
@@ -264,18 +264,18 @@ class OmniUnittest(unittest.TestCase):
             if bound:
                 self.assertCompIDsEqual( request, manifest, 
                              rspec_version,
-                             "Request RSpec and Manifest RSpec " \
+                             str(msg)+": Request RSpec and Manifest RSpec " \
                              "expected to have same component_ids " \
                              "but did not." )
             self.assertClientIDsEqual( request, manifest, 
                              rspec_version,
-                             "Request RSpec and Manifest RSpec " \
+                             str(msg)+": Request RSpec and Manifest RSpec " \
                              "expected to have same client_ids " \
                              "but did not.")
         else:
             # the top level node should have a child
             self.assertResourcesExist( manifest,
-               "Manifest RSpec " \
+               str(msg)+": Manifest RSpec " \
                "expected to NOT be empty " \
                "but was. Return was: " \
                "\n%s\n" 
