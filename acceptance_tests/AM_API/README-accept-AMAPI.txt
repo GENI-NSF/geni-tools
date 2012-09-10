@@ -494,6 +494,7 @@ Options:
                         provisioned slivers - may be ignored by the AM        
   -v, --verbose         Turn on verbose command summary for omni commandline  
                         tool                                                  
+  --verbosessl          Turn on verbose SSL / XMLRPC logging
   -q, --quiet           Turn off verbose command summary for omni commandline 
                         tool                                                  
   -l LOGCONFIG, --logconfig=LOGCONFIG                                         

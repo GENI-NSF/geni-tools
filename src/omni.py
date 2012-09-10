@@ -663,6 +663,8 @@ def getParser():
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
+    parser.add_option("--verbosessl", default=False, action="store_true",
+                      help="Turn on verbose SSL / XMLRPC logging")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
                       help="Turn off verbose command summary for omni commandline tool")
     parser.add_option("-l", "--logconfig", default=None,
