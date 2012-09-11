@@ -983,7 +983,7 @@ class ReferenceAggregateManager(object):
                     raise ApiErrorException(AM_API.SEARCH_FAILED,
                                             'Unknown sliver "%s"' % (urn_str))
             else:
-                raise Exception('Bad URN type "%s"', urn_type)
+                raise Exception("Bad URN type '%s'" % urn_type)
         # Now verify that everything is part of the same slice
         all_slices = set([o.slice() for o in slivers])
         if len(all_slices) == 1:
