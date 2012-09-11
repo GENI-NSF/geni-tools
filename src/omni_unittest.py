@@ -289,7 +289,7 @@ class OmniUnittest(unittest.TestCase):
 
         
         # do all comparisons as lowercase
-        rspec = rspec.lower()
+        # rspec = rspec.lower()
 
         # (1) Check if rspec is a well-formed XML document
         self.assertIsXML( rspec, "RSpec returned from '%s' is unexpectedly not well-formed XML. Return was: %s" % (AMAPI_call, str(rspec))  )
