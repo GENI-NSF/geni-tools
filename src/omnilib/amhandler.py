@@ -2867,9 +2867,9 @@ class AMCallHandler(object):
 
                 # Construct print / save out result
 
-                if not isinstance(realres, dict):
+                if not isinstance(realres, list):
                     # malformed describe return
-                    self.logger.warn('Malformed delete result from AM %s. Expected struct, got type %s.' % (client.url, realres.__class__.__name__))
+                    self.logger.warn('Malformed delete result from AM %s. Expected list, got type %s.' % (client.url, realres.__class__.__name__))
                     # FIXME: Add something to retVal that the result was malformed?
                     if isinstance(realres, str):
                         prettyResult = str(realres)
