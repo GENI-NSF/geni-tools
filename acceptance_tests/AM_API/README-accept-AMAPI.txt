@@ -177,7 +177,6 @@ help@geni.net
        $ cp request1.xml.sample request1.xml
        $ cp request2.xml.sample request2.xml
        $ cp request3.xml.sample request3.xml
-       $ cp bad.xml.sample bad.xml
  }}}
   (b) Run all of the acceptance tests:
 {{{
@@ -187,10 +186,6 @@ help@geni.net
 {{{
       $ am_api_accept.py -a am-undertest Test.test_GetVersion
 }}}
-  (c) All tests should pass except for `Test.test_CreateSliver_badrspec_manifest`.
-   Success should look something like the example shown in the Sample
-  Output section below. Note in particular that multiple AMAPIErrors
-  are expected, as the tests try to pass bad input to the aggregate.
 
 (3) Configure to point to AM under test.
 
@@ -213,16 +208,7 @@ help@geni.net
  }}}
 	If you need to run with unbound RSpecs, use the `--un-bound` option.
 
-  (c) Write a manifest RSpec for AM under test.
-    (i) Remove sample rspec if you executed (2).
-{{{
-         $ rm bad.xml
-}}}
-    (ii) Write a manifest RSpec for the AM under test and save as:
-{{{
-         $GCF/acceptance_tests/AM_API/bad.xml
-}}}
-  (d) To test slice delegation, you will need to:
+  (c) To test slice delegation, you will need to:
    send your cert to a co-worker with a PG GPO account and have
    them create a slice, reserve resources on that slice, and
    delegate the slice credential to you.
@@ -308,9 +294,9 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
 }}}
 
  * To run with ProtoGENI v2 RSpecs instead of GENI v3 use:
-   `--ProtoGENIv2`, `--rspec-file`, and `--bad-rspec-file`.
-   (Also replace `request.xml`, `request1.xml`, `request2.xml`, and
-   `request3.xml` with appropriate files.)
+   `--ProtoGENIv2` and `--rspec-file`.(Also replace `request.xml`,
+   `request1.xml`, `request2.xml`, and `request3.xml` with appropriate
+   files.)
 
    For example, with the default AM configuration, run:
 {{{
@@ -318,16 +304,12 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
 }}}
    This provides an appropriate ProtoGENI v2 request RSpec for the test.
 
-   Use `--bad-rspec-file` to provide an alternative manifest RSpec or
-   other inappropriate file to verify !CreateSliver fails when passed
-   a bad request RSpec.
-
  * To run the test with unbound RSpecs add the `--un-bound` flag.
 
  * It is possible to edit the omni_config to support use of other
    frameworks. 
 
-   - Use `--rspec-file` and `--bad-rspec-file` to override the default RSpecs.
+   - Use `--rspec-file` to override the default RSpec.
    (Also replace `request.xml`, `request1.xml`, `request2.xml`, and
    `request3.xml` with appropriate files.)
 
@@ -479,9 +461,6 @@ Options:
   --rspec-file=RSPEC_FILE
                         In CreateSliver tests, use _bound_ request RSpec file
                         provided instead of default of 'request.xml'
-  --bad-rspec-file=BAD_RSPEC_FILE
-                        In negative CreateSliver tests, use request RSpec file
-                        provided instead of default of 'bad.xml'
   --untrusted-usercredfile=UNTRUSTED_USER_CRED_FILENAME
                         Name of an untrusted user credential file to use in
                         test: test_ListResources_untrustedCredential

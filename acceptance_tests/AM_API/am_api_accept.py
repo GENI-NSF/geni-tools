@@ -1729,10 +1729,10 @@ class Test(ut.OmniUnittest):
                            dest='rspec_file', default=REQ_RSPEC_FILE,
                            help="In CreateSliver tests, use _bound_ request RSpec file provided instead of default of '%s'" % REQ_RSPEC_FILE )
 
-        parser.add_option( "--bad-rspec-file", 
-                           action="store", type='string', 
-                           dest='bad_rspec_file', default=BAD_RSPEC_FILE,
-                           help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
+        # parser.add_option( "--bad-rspec-file", 
+        #                    action="store", type='string', 
+        #                    dest='bad_rspec_file', default=BAD_RSPEC_FILE,
+        #                    help="In negative CreateSliver tests, use request RSpec file provided instead of default of '%s'" % BAD_RSPEC_FILE )
 
         parser.add_option("--untrusted-usercredfile", default='untrusted-usercred.xml', metavar="UNTRUSTED_USER_CRED_FILENAME",
                       help="Name of an untrusted user credential file to use in test: test_ListResources_untrustedCredential")
