@@ -386,55 +386,6 @@ Ran 13 tests in 18.542s
 OK
 }}}
 
-or
-
-{{{
-~/gcf/acceptance_tests/AM_API$ am_api_accept.py -a am-undertest
-Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: *** verifygenicred:
-    /tmp/YXBzXR6BUw does not conform to schema /usr/testbed/lib/protogeni/security/credential.xsd
-.
-Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: Expiration is greater then slice expiration.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No slice or aggregate here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: Nothing here by that name.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-.Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No slice or aggregate here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: Nothing here by that name.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-.Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: *** verifygenicred:
-    /tmp/8z79bhlAon does not conform to schema /usr/testbed/lib/protogeni/security/credential.xsd
-.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No slice or aggregate here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: Nothing here by that name.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No slice or aggregate here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: Nothing here by that name.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No slice or aggregate here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: Nothing here by that name.
-Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-.Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 1. protogeni AM code: 1: Malformed arguments: Bad characters in rspec.
-.Omni raised an error: AMAPIError: Error from Aggregate: code 12. protogeni AM code: 12: No such slice here.
-Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: rspec is not well formed.
-...Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: *** verifygenicred:
-    /tmp/TCFU2l9gUZ does not conform to schema /usr/testbed/lib/protogeni/security/credential.xsd
-.
-..Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: *** verifygenicred:
-    /tmp/paBZytOuPe does not conform to schema /usr/testbed/lib/protogeni/security/credential.xsd
-.
-...Omni raised an error: AMAPIError: Error from Aggregate: code 2. protogeni AM code: 2: *** verifygenicred:
-    invalid credential (expired at 2012-01-10T18:27:18)
-.
-.
-----------------------------------------------------------------------
-Ran 13 tests in 1165.318s
-
-OK
-}}}
-
 Acceptance Tests output of help message:
 {{{
  ./am_api_accept.py -h                   
