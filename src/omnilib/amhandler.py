@@ -1978,7 +1978,7 @@ class AMCallHandler(object):
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
 
-            if not realresult:
+            if realresult is None:
                 # Failure
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
@@ -2261,7 +2261,7 @@ class AMCallHandler(object):
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
-            if not res:
+            if res is None:
                 prStr = "Failed to renew %s on %s (%s)" % (descripMsg, client.urn, client.url)
                 if message != "":
                     prStr += ": " + message
@@ -2859,7 +2859,7 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            if realres:
+            if realres is not None:
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
