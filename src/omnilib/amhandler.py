@@ -1696,7 +1696,15 @@ class AMCallHandler(object):
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       op)
 
-        options = self._build_options(op, None)
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = self._get_users_arg()
+
+        # If there are slice_users, include that option
+        options = {}
+        if slice_users and len(slice_users) > 0:
+            options['geni_users'] = slice_users
+
+        options = self._build_options(op, options)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "slivers in slice %s" % urn
