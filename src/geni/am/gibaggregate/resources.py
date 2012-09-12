@@ -217,30 +217,27 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
     scriptFile.write('%s/%s \n' % (config.standardScriptsDir,
                                    config.deleteSliver))
 
-    scriptFile.write('\n## Define containers for each of the hosts in the experiment.\n')
     hostNames = experimentHosts.keys()
-    
-    # check the type of machine being run, the containers
-    # must be the same type as the host machine
-    scriptFile.write(". /etc/lsb-release\n")
-    scriptFile.write("if [ $DISTRIB_ID == \"Ubuntu\" ] \n")
-    scriptFile.write("then \n")
-    
-    # write out the templates for ubuntu containers
+
+    # Set the sliver status for each host to "unknown"
+    scriptFile.write('\n# Setting sliver status of hosts to unknown \n')
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
-        scriptFile.write('    vzctl create %s --ostemplate ubuntu-10.04-x86\n' % hostObject.containerName)
+        statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
+                                             hostObject.containerName)
+        scriptFile.write('echo \"unknown\" > %s \n' % statusFileName)
     
-    scriptFile.write("elif [ $DISTRIB_ID == \"Fedora\" ] \n")
-    scriptFile.write("then \n")
-    
-    # write out the templates for fedora containers
+
+    # Create container templates
+    scriptFile.write('\n## Define containers for each of the hosts in the experiment.\n')
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
-        scriptFile.write('    vzctl create %s --ostemplate fedora-15-x86 --config basic\n' % hostObject.containerName)
 
-    scriptFile.write("fi\n")
-
+        if config.distro == 'UBUNTU10-STD' : 
+            scriptFile.write('vzctl create %s --ostemplate ubuntu-10.04-x86\n --config basic \n' % hostObject.containerName)
+        else :
+            scriptFile.write('vzctl create %s --ostemplate fedora-15-x86 --config basic\n' % hostObject.containerName)
+            
     scriptFile.write('\n## Set up host names and control network IP addresses for the containers. \n')
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
@@ -292,8 +289,14 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
         scriptFile.write('pingNode %d \n' % hostObject.containerName)
         scriptFile.write('if [ $? -ne 0 ] \n')
         scriptFile.write('then \n')
-        scriptFile.write('    echo \"Container %d failed to start up.  Exiting CreateSliver.\" \n' % hostObject.containerName)
-        scriptFile.write('    exit 1 \n')
+        scriptFile.write('    echo \"Container %d failed to start up. \n' % hostObject.containerName)
+        statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
+                                             hostObject.containerName)
+        scriptFile.write('    echo \"failed\" > %s \n' % statusFileName)
+        scriptFile.write('else \n')
+        statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
+                                             hostObject.containerName)
+        scriptFile.write('    echo \"configuring\" > %s \n' % statusFileName)
         scriptFile.write('fi \n')
         
     scriptFile.write('\n## Set up interfaces on each host (container) \n')
@@ -530,7 +533,7 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
             if item.shell == 'sh' or 'bash' :
                 pathToScript = '/vz/root/%s/%s' % (hostObject.containerName,
                                                    item.command)
-                scriptFile.write('vzctl runscript %s %s \n' % \
+                scriptFile.write('# vzctl runscript %s %s \n' % \
                                      (hostObject.containerName, pathToScript))
             else :
                 # Not a script type we recognize.  Log error
@@ -546,7 +549,6 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
             
             # go through every user and get the user's name and ssh public key
             for key in user.keys() :
-                
                 # found a user, there should only be one of these per key in 'user'
                 if key == "urn" :
                     userName = user[key]
@@ -575,6 +577,43 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
             
         scriptFile.write('\n')
 
+    scriptFile.close()
+
+
+def specialFiles(slice_urn, experimentHosts) :
+    # Re-open the file containing the bash script in append mode
+    pathToFile = config.sliceSpecificScriptsDir + '/' + config.shellScriptFile
+    try:
+        scriptFile = open(pathToFile, 'a')
+    except IOError:
+        config.logger.error("Failed to re-open file that creates sliver: %s" %
+                            pathToFile)
+        return None
+
+    scriptFile.write('\n# Set up special files that contain slice info. \n')
+    scriptFile.write('# Copy slice manifest to /proj/<siteName>/exp/<sliceName>/tbdata/geni_manifest on each VM \n')
+    hostNames = experimentHosts.keys()
+    for i in range(len(hostNames)) :
+        hostObject = experimentHosts[hostNames[i]]
+        
+        # Figure out name of destination directory for manifest.  Create that
+        #    directory (and any necessary parent/ancestor directories in path) 
+        #    if it does not exist
+        dest = '/vz/root/%s/proj/geni-in-a-box.net/exp/%s/tbdata/geni_manifest' % (hostObject.containerName, slice_urn)
+        if not os.path.isdir(dest) :
+            scriptFile.write('mkdir -p %s \n' % dest)
+
+        # Copy the manifest to this directory
+        src = config.sliceSpecificScriptsDir + '/' +  config.manifestFile
+        scriptFile.write('cp %s %s \n' % (src, dest))
+
+        # Set status of the node to ready
+        statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
+                                             hostObject.containerName)
+        scriptFile.write('    echo \"ready\" > %s \n' % statusFileName)
+
+        scriptFile.write('\n')
+        
     scriptFile.close()
 
 

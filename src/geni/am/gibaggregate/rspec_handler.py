@@ -177,7 +177,8 @@ class GeniManifest :
     This constructor expects the request rspec has already
     been parsed and the structure is already set up.
     """
-    def __init__(self, rspec, experimentHosts, experimentLinks, experimentNICs) :
+    def __init__(self, sliceName, rspec, experimentHosts, experimentLinks, experimentNICs) :
+        self.sliceName = sliceName
         self.rspec = rspec
         self.hosts = experimentHosts
         self.links = experimentLinks

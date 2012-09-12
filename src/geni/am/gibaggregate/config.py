@@ -1,6 +1,7 @@
 # Configuration information used by multiple modules of the gibaggregate
 #    package.
 
+import sys
 import logging
 import os.path
 
@@ -21,5 +22,16 @@ sliceSpecificScriptsDir = gibDirectory + '/sliceSpecificScripts'
 manifestFile = 'gib-manifest.rspec'   # Slice manifest is written to this file
 shellScriptFile = 'createSliver.sh'   # Shell script generated to create and
                                       #     configure the sliver
+
+# Figure out the Linux distribution: Red Hat Fedora or Ubuntu
+_version = open('/proc/version').read()
+if _version.find('Ubuntu') != -1 :
+    distro = 'UBUNTU10-STD'
+elif _version.find('Red Hat') != -1 :
+    distro = 'FEDORA15-STD'
+else :
+    _exitMsg = 'Running on an unsupported Linux distribution: %s' % _version 
+    logger.error(_exitMsg)
+    sys.exit(_exitMsg)
 
 rootPwd = 'gib2012'     # No comment  :-)

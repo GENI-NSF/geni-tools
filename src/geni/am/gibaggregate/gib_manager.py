@@ -3,6 +3,7 @@ import logging
 import os
 import os.path
 import subprocess
+import re
 
 import resources
 import rspec_handler
@@ -15,11 +16,16 @@ experimentNICs = {}     # Map of client supplied network interface names to
                         #    corresponding NIC objects
 
 # GENI-in-a-box specific createSliver
-def createSliver(requestRspec, users) :
+def createSliver(slice_urn, requestRspec, users) :
     """
         Create a sliver on this aggregate.
     """
     config.logger.info("createSliver called")
+
+    # Get the slice name.  This is the last part of the URN.  For example,
+    #    the slice name in the URN urn:publicid:IDN+geni:gpo:gcf+slice+myslice
+    #    is myslice.
+    sliceName = re.split(r'[:\+]+', slice_urn)[-1]
 
     # Parse the request rspec
     rspec_handler.parseRequestRspec(requestRspec, experimentHosts,
@@ -28,12 +34,18 @@ def createSliver(requestRspec, users) :
     # Provision the sliver i.e. assign resource as specifed in the request rspec
     #    The sliver isn't created yet.  The shell commands used to create
     #    the sliver are written into the file named in config.py
-    resources.provisionSliver(experimentHosts, experimentLinks, experimentNICs, users)
+    resources.provisionSliver(experimentHosts, experimentLinks, experimentNICs,
+                              users)
 
     # Generate the manifest rspec.  The manifest is written to the file named
     #    in config.py
-    (rspec_handler.GeniManifest(requestRspec, experimentHosts, 
+    (rspec_handler.GeniManifest(sliceName, requestRspec, experimentHosts, 
                                 experimentLinks, experimentNICs)).create()
+
+    # Add commands to the bash script that create special files/directories
+    #    in the containers.  They contain slice configuration information
+    #    such as manifest rspec, slice name, etc.
+    resources.specialFiles(sliceName, experimentHosts)
 
     ## Execute the shell script that create a new sliver
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.shellScriptFile
