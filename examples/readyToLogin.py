@@ -468,7 +468,11 @@ def main(argv=None):
                                   'info':amLoginInfo
                                  }
     printSSHConfigInfo(loginInfoDict, keyList)
-    printLoginInfo(loginInfoDict, keyList)
-        
+    printLoginInfo(loginInfoDict, keyList) 
+    if not loginInfoDict:
+      print "No login information found!!"
+    if not keyList:
+      print "No keys found!!"
+
 if __name__ == "__main__":
     sys.exit(main())

@@ -1541,6 +1541,12 @@ class Test(ut.OmniUnittest):
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_status', str )
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_resources', list )
             resources = status['geni_resources']
+            self.assertTrue( len(resources) > 0,
+                            "Return from 'SliverStatus' for Aggregate %s " \
+                            "expected to have 'geni_resources' " \
+                            "be a list of non-zero length, but it was not."
+                            % (aggName))
+
             for resource in resources:
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_urn', str )
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_status', str )
