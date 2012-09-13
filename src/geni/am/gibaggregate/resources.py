@@ -234,7 +234,7 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
         hostObject = experimentHosts[hostNames[i]]
 
         if config.distro == 'UBUNTU10-STD' : 
-            scriptFile.write('vzctl create %s --ostemplate ubuntu-10.04-x86\n --config basic \n' % hostObject.containerName)
+            scriptFile.write('vzctl create %s --ostemplate ubuntu-10.04-x86\n' % hostObject.containerName)
         else :
             scriptFile.write('vzctl create %s --ostemplate fedora-15-x86 --config basic\n' % hostObject.containerName)
             
