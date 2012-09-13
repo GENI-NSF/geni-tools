@@ -169,6 +169,11 @@ class GeniManifest :
     nameTag             = "name"                    # tag used for naming attributes
     hostTag             = "host"                    # used for identifying host elements under node elements
     rsVnodeTag          = "rs:vnode"                # used for identifying rs:vnode elements
+    loginTag            = "login"                   # tag used for specifying login info under the services element
+    authenticationTag   = "authentication"          # tag used for attributes under login elements
+    hostNameTag         = "hostname"                # tag used for attributes under login elements
+    userNameTag         = "username"                # tag used for attributes under login elements
+    portTag             = "port"                    # tag used for attributes under login elements
     webpage             = "http://www.protogeni.net/resources/rspec/0.1"
     
     
@@ -178,7 +183,8 @@ class GeniManifest :
     This constructor expects the request rspec has already
     been parsed and the structure is already set up.
     """
-    def __init__(self, sliceName, rspec, experimentHosts, experimentLinks, experimentNICs) :
+    def __init__(self, users, sliceName, rspec, experimentHosts, experimentLinks, experimentNICs) :
+        self.users = users
         self.sliceName = sliceName
         self.rspec = rspec
         self.hosts = experimentHosts
@@ -188,9 +194,38 @@ class GeniManifest :
     
     
     """\
+    Retrieves the user names from a users dictionary.
+    """
+    @classmethod
+    def _get_user_names(self, users) :
+        
+        userNames = [] # the returned list of user names
+        
+        for user in users :
+            userName = None     # the current user the public key is installed for
+            
+            # go through every user and get the user's name
+            for key in user.keys() :
+                # found a user, there should only be one of these per key in 'user'
+                if key == "urn" :
+                    userName = user[key]
+                    userName = userName.split("+")[-1]
+                    print "FOUND USER: " + userName
+            
+            # only install the user account if there is a user to install
+            if userName != None :
+                userNames.append(userName)
+    
+        return userNames
+    
+    
+    """\
     Creates a manifest rspec file to the given file name.
     """
     def create(self) :
+        
+        # get the user names that are on the machine for login elements
+        userNames = GeniManifest._get_user_names(self.users)
         
         # parse the original document and then set up the children nodes
         originalRspec = parseString(self.rspec).childNodes[0]
@@ -252,22 +287,55 @@ class GeniManifest :
                 if currentHost != None :
                     rspecChild.setAttribute(GeniManifest.componentManagerIdTag, "urn:publicid:geni-in-a-box.net+authority+cm")
                     rspecChild.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+node+pc{0}".format(currentHost.containerName))
+                    
+                    # check if there is a services tag before continuing, there has to be one in order to set login values,
+                    # it can't be removed then readded or just appended since it will erase an existing one if it does exist,
+                    # which will lose all of the needed information such as installs and downloads
+                    hasServicesElement = False
+                    for nodeChild in rspecChild.childNodes :
+                        if nodeChild.nodeType == nodeChild.TEXT_NODE :
+                            continue
                         
+                        if nodeChild.nodeName == GeniManifest.servicesTag :
+                            hasServicesElement = True
+                            break
+                    
+                    # add the services element if the rspecChild node needs it
+                    if not hasServicesElement :
+                        servicesElement = manifest.createElement(GeniManifest.servicesTag)
+                        rspecChild.appendChild(servicesElement)
+                    
+                    # add a rs:vnode element then set the correct name with container number
+                    rsVnode = manifest.createElement(GeniManifest.rsVnodeTag)
+                    rsVnode.setAttribute(GeniManifest.nameTag, "pc" + str(currentHost.containerName))
+                    rspecChild.appendChild(rsVnode)
+                    
+                    # now go through each child element and set the correct values
                     for nodeChild in rspecChild.childNodes :
                         
                         if nodeChild.nodeType == nodeChild.TEXT_NODE :
                             continue
+                            
+                        # if on a services element then add the login element for each user
+                        if nodeChild.nodeName == GeniManifest.servicesTag :
+                            for userName in userNames :
+                                login = manifest.createElement(GeniManifest.loginTag)
+                                login.setAttribute(GeniManifest.authenticationTag, "ssh-keys")
+                                login.setAttribute(GeniManifest.hostNameTag, "pc" + str(currentHost.containerName) + ".geni-in-a-box.net")
+                                login.setAttribute(GeniManifest.portTag, "22") # for now always set to port 22
+                                login.setAttribute(GeniManifest.userNameTag, userName)
+                                nodeChild.appendChild(login)
                         
                         # if the child node is a sliver type element
                         # then set the correct sliver type
-                        if nodeChild.nodeName == GeniManifest.sliverTypeTag :
+                        elif nodeChild.nodeName == GeniManifest.sliverTypeTag :
                             nodeChild.setAttribute(GeniManifest.nameTag, "virtual-pc")
                             
                             # go through and find the children of the sliver type element,
                             # specifically look for disk images and set the correct type
                             for sliverTypeChild in nodeChild.childNodes :
                                 if sliverTypeChild.nodeName == GeniManifest.diskImageTag :
-                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image+emulab-ops//" + config.distro)
+                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image//" + config.distro)
                     
                         # if the child node is an interface
                         # then set up the ip and mac addresses
@@ -289,10 +357,6 @@ class GeniManifest :
                         # if a host element then set the correct host name
                         elif nodeChild.nodeName == GeniManifest.hostTag :
                             nodeChild.setAttribute(GeniManifest.nameTag, currentHost.nodeName + "." + self.sliceName + ".geni-in-a-box.net")
-                        
-                        # if a rs:vnode element then set the correct name with container number
-                        elif nodeChild.nodeName == GeniManifest.rsVnodeTag :
-                            nodeChild.setAttribute(GeniManifest.nameTag, "pc" + str(currentHost.containerName))
         
         
         # print the rspec to the terminal for display and debugging,
