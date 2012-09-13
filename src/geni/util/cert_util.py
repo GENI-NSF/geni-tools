@@ -55,25 +55,28 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
     uuidI = None
     if uuidarg:
         uuidO = None
-        try:
-            uuidO = uuid.UUID(uuidarg)
-        except:
+        if isinstance(uuidarg, uuid.UUID):
+            uuidO = uuidarg
+        else:
             try:
-                uuidO = uuid.UUID(int=uuidarg)
-            except Exception, e:
+                uuidO = uuid.UUID(uuidarg)
+            except:
                 try:
-                    uuidO = uuid.UUID(int=int(uuidarg))
+                    uuidO = uuid.UUID(int=uuidarg)
                 except Exception, e:
                     try:
-                        uuidO = uuid.UUID(fields=uuidarg)
-                    except:
+                        uuidO = uuid.UUID(int=int(uuidarg))
+                    except Exception, e:
                         try:
-                            uuidO = uuid.UUID(bytes=uuidarg)
+                            uuidO = uuid.UUID(fields=uuidarg)
                         except:
                             try:
-                                uuidO = uuid.UUID(bytes_le=uuidarg)
+                                uuidO = uuid.UUID(bytes=uuidarg)
                             except:
-                                pass
+                                try:
+                                    uuidO = uuid.UUID(bytes_le=uuidarg)
+                                except:
+                                    pass
         if uuidO is not None:
             uuidI = uuidO.int
 
