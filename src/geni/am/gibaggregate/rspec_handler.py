@@ -162,14 +162,15 @@ class GeniManifest :
     ipTag               = "ip"                      # used for creating an ip element for a node
     addressTag          = "address"                 # used for creating an address for an ip for a node
     componentManagerTag = "component_manager"       # tag used for a component manager sub-element
+    componentManagerIdTag = "component_manager_id"  # tag used for component manager attributes on nodes
     sliverTypeTag       = "sliver_type"             # tag used for defining a sliver type on a host
     diskImageTag        = "disk_image"              # tag used for defining the type of image on a host
+    servicesTag         = "services"                # tag used for defining services on a host node
+    nameTag             = "name"                    # tag used for naming attributes
+    hostTag             = "host"                    # used for identifying host elements under node elements
+    rsVnodeTag          = "rs:vnode"                # used for identifying rs:vnode elements
     webpage             = "http://www.protogeni.net/resources/rspec/0.1"
     
-    knownLinkSubElements = ["component_manager", "property", "interface_ref"]
-    knownHostSubElements = ["services", "sliver_type"]
-    
-
     
     """\
     Initializes a new instance of GeniManifest.
@@ -191,118 +192,120 @@ class GeniManifest :
     """
     def create(self) :
         
-        originalRspec = parseString(self.rspec)
+        # parse the original document and then set up the children nodes
+        originalRspec = parseString(self.rspec).childNodes[0]
         
         # create the document and the main header/wrapper portion
         manifest = Document()
-        header = manifest.createElement(GeniManifest.headerTag)
-        header.setAttribute(GeniManifest.typeTag, "manifest")
-        header.setAttribute(GeniManifest.expiresTag, "{0}".format(self.validUntil))
-        manifest.appendChild(header)
+        manifest.appendChild(originalRspec)
+        originalRspec.setAttribute(GeniManifest.typeTag, "manifest")
         
-        # get the original link and host elements from the rspec
-        # so misc information can be copied over to the manifest
-        originalLinks = originalRspec.getElementsByTagName("link")
-        originalHosts = originalRspec.getElementsByTagName("node")
-        
-        # go through and add all the interface links to the manifest,
-        # these become the connections the allocated computers possess
-        for i in xrange(0, len(self.links)) :
+        # go through every child node within the rspec and
+        # set the appropriate values for known node elements
+        # and copy over the others that are not known
+        for rspecChild in originalRspec.childNodes :
+
+            # skip any test nodes, formatting is taken care
+            # of just before the final manifest is written,
+            # WARNING: minidom has weird behaviors when text
+            # nodes are included, they must be excluded for
+            # proper functioning of the xml parser
+            if rspecChild.nodeType == rspecChild.TEXT_NODE :
+                continue
             
-            # find the link in the original rspec that belongs to the current node being looked at,
-            # then copy all the known information to the manifest, this must be done since the
-            # 'currentLink' element cannot be added to the manifest directly
-            currentLink = originalLinks[0]
-            for nextLink in originalLinks :
-                if nextLink.hasAttribute(GeniManifest.clientIdTag) and nextLink.attributes[GeniManifest.clientIdTag].value == self.links[i].linkName :
-                    currentLink = nextLink
-                    break
-            
-            link = manifest.createElement(GeniManifest.linkTag)
-            link.setAttribute(GeniManifest.clientIdTag, self.links[i].linkName)
-            
-            # add each sub-element of the link that should be copied over to the manifest
-            for currentSubElement in GeniManifest.knownLinkSubElements :
-                subElements = currentLink.getElementsByTagName(currentSubElement)
-                for subElement in subElements :
+            # if a link element then go through and set the correct values such as ip address and mac addresses
+            if rspecChild.nodeName == GeniManifest.linkTag and rspecChild.hasAttribute(GeniManifest.clientIdTag):
                     
-                    # if the current sub element is a component manager
-                    # then set it to be something special for geni-in-a-box
-                    if subElement.nodeName == GeniManifest.componentManagerTag :
-                        subElement.setAttribute("name", "urn:publicid:geni-in-a-box+authority+cm")
+                for linkChild in rspecChild.childNodes :
                     
-                    # if the current sub element is an interface
-                    # reference the component id needs to be set
-                    elif subElement.nodeName == GeniManifest.interfaceRefTag :
-                        interfaceRefClientId = subElement.attributes[GeniManifest.clientIdTag].value
-                        componentId = "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(\
-                        self.NICs[interfaceRefClientId].myHost.nodeName,\
-                        self.NICs[interfaceRefClientId].deviceNumber)
+                    if linkChild.nodeType == linkChild.TEXT_NODE :
+                        continue
+                    
+                    # if the child node is a component manager element
+                    # then set the name to be geni-in-a-box specific
+                    if linkChild.nodeName == GeniManifest.componentManagerTag :
+                        linkChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+authority+cm")
                         
-                        # set the attribute for the component id
-                        subElement.setAttribute(GeniManifest.componentIdTag, componentId)
+                    # if the child node is an interface reference
+                    # then set the appropriate component id
+                    elif linkChild.nodeName == GeniManifest.interfaceRefTag and linkChild.hasAttribute(GeniManifest.clientIdTag):
+                        # find the NIC object that goes with this interface reference element
+                        if linkChild.attributes[GeniManifest.clientIdTag].value in self.NICs.keys() :
+                            clientId = linkChild.attributes[GeniManifest.clientIdTag].value
+                            componentId = "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(self.NICs[clientId].myHost.nodeName, self.NICs[clientId].deviceNumber)
+                            linkChild.setAttribute(GeniManifest.componentIdTag, componentId)
+                    
+                    
+            
+            # if a node element then go through and set the correct values
+            if rspecChild.nodeName == GeniManifest.nodeTag and rspecChild.hasAttribute(GeniManifest.clientIdTag) :
+                rspecChild.setAttribute(GeniManifest.exclusiveTag, "false") # no container is exclusive in geni-in-a-box
+                
+                # find the host object associated with this node
+                currentHost = None
+                for hostName in self.hosts.keys() :
+                    if self.hosts[hostName].nodeName == rspecChild.attributes[GeniManifest.clientIdTag].value :
+                        currentHost = self.hosts[hostName]
+                        break
+                
+                # there needs to be a host associated with this node otherwise it is invalid
+                if currentHost != None :
+                    rspecChild.setAttribute(GeniManifest.componentManagerIdTag, "urn:publicid:geni-in-a-box.net+authority+cm")
+                    rspecChild.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+node+pc{0}".format(currentHost.containerName))
                         
-                    # append the sub element to the manifest file link node
-                    link.appendChild(subElement)
-
-            # add the link to the overall manifest file
-            header.appendChild(link)
-        
-        
-        # go through and add all of the host nodes to the manifest,
-        # these become the computers the user wanted allocated
-        hostNames = self.hosts.keys()
-        for i in xrange(0, len(hostNames)) :
-            # add the allocated computer to the manifest rspec
-            node = manifest.createElement(GeniManifest.nodeTag)
-            node.setAttribute(GeniManifest.exclusiveTag, "false")
-            node.setAttribute(GeniManifest.clientIdTag, self.hosts[hostNames[i]].nodeName)
-            
-            # find the host in the original rspec that belongs to the current node being looked at,
-            # then copy all of the known information to the manifest, this must be done since the
-            # 'currentHost' element cannot be added to the manifest directly
-            currentHost = originalHosts[0]
-            for nextHost in originalHosts :
-                if nextHost.hasAttribute(GeniManifest.clientIdTag) and nextHost.attributes[GeniManifest.clientIdTag].value == self.hosts[hostNames[i]].nodeName :
-                    currentHost = nextHost
-                    break
-            
-            # add each sub-element of the link that should be copied over to the manifest
-            for currentSubElement in GeniManifest.knownHostSubElements :
-                subElements = currentHost.getElementsByTagName(currentSubElement)
-                for subElement in subElements :
+                    for nodeChild in rspecChild.childNodes :
+                        
+                        if nodeChild.nodeType == nodeChild.TEXT_NODE :
+                            continue
+                        
+                        # if the child node is a sliver type element
+                        # then set the correct sliver type
+                        if nodeChild.nodeName == GeniManifest.sliverTypeTag :
+                            nodeChild.setAttribute(GeniManifest.nameTag, "virtual-pc")
+                            
+                            # go through and find the children of the sliver type element,
+                            # specifically look for disk images and set the correct type
+                            for sliverTypeChild in nodeChild.childNodes :
+                                if sliverTypeChild.nodeName == GeniManifest.diskImageTag :
+                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image+emulab-ops//" + config.distro)
                     
-                    # if the sub-element is a sliver_type element then set the
-                    # disk_image sub-element of sliver_type to be fedora15
-                    if subElement.nodeName == GeniManifest.sliverTypeTag :
-                        diskImageElements = subElement.getElementsByTagName(GeniManifest.diskImageTag)
-                        for diskImageElement in diskImageElements :
-                            diskImageElement.setAttribute("name", "urn:publicid:geni-in-a-box.net+image+emulab-ops//FEDORA15-STD")
-                    
-                    node.appendChild(subElement) # add the sub-element, TODO: FORMATTING ISSUES
-            
-            
-            # go through each of this node's interfaces and create those elements
-            for nic in self.hosts[hostNames[i]].NICs :
-                interface = manifest.createElement(GeniManifest.interfaceTag)   # an interface element for the node
-                interface.setAttribute(GeniManifest.clientIdTag, nic.nicName)
-                interface.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(self.hosts[hostNames[i]].nodeName, nic.deviceNumber))
-                interface.setAttribute(GeniManifest.macTag, nic.macAddress)
+                        # if the child node is an interface
+                        # then set up the ip and mac addresses
+                        elif nodeChild.nodeName == GeniManifest.interfaceTag :
+                            # find the NIC object that goes with this interface element
+                            if nodeChild.attributes[GeniManifest.clientIdTag].value in self.NICs.keys() :
+                                nic = self.NICs[nodeChild.attributes[GeniManifest.clientIdTag].value]
+                            
+                                nodeChild.setAttribute(GeniManifest.clientIdTag, nic.nicName)
+                                nodeChild.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(nic.myHost.nodeName, nic.deviceNumber))
+                                nodeChild.setAttribute(GeniManifest.macTag, nic.macAddress)
+        
+                                # set the ip address, for now this is a sub-element of the
+                                # interface element this could also possibly be an attribute
+                                ipAddress = manifest.createElement(GeniManifest.ipTag)
+                                ipAddress.setAttribute(GeniManifest.addressTag, nic.ipAddress)
+                                nodeChild.appendChild(ipAddress)
 
-                # set the ip address, for now this is a sub-element of the interface element
-                # this could also possibly be an attribute
-                ipAddress = manifest.createElement(GeniManifest.ipTag)
-                ipAddress.setAttribute(GeniManifest.addressTag, nic.ipAddress)
-                interface.appendChild(ipAddress)
-
-                node.appendChild(interface)
-            
-            header.appendChild(node)
-
+                        # if a host element then set the correct host name
+                        elif nodeChild.nodeName == GeniManifest.hostTag :
+                            nodeChild.setAttribute(GeniManifest.nameTag, currentHost.nodeName + "." + self.sliceName + ".geni-in-a-box.net")
+                        
+                        # if a rs:vnode element then set the correct name with container number
+                        elif nodeChild.nodeName == GeniManifest.rsVnodeTag :
+                            nodeChild.setAttribute(GeniManifest.nameTag, "pc" + str(currentHost.containerName))
+        
         
         # print the rspec to the terminal for display and debugging,
         # this can be removed later on
-        print manifest.toprettyxml(indent = "  ", newl = "\n");
+        manifestXml = manifest.toprettyxml(indent = "  ");
+        finalManifest = ""
+        
+        # clean up some of the spacing that happens from minidom
+        for line in manifestXml.split('\n'):
+            if line.strip():
+                finalManifest += line + '\n'
+                
+        print finalManifest
         
         # Create the file into which the manifest will be written
         pathToFile = config.sliceSpecificScriptsDir + '/' + config.manifestFile
@@ -313,6 +316,6 @@ class GeniManifest :
                                 pathToFile)
             return None
 
-        manifest.writexml(manFile, addindent = "  ", newl = "\n")
+        manFile.write(finalManifest)
         manFile.close()
         return 0;
