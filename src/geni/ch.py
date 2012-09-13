@@ -239,13 +239,17 @@ class Clearinghouse(object):
 
         # First ensure we have a slice_urn
         if urn_req:
-            # FIXME: Validate urn_req has the right form
+            # Validate urn_req has the right form
             # to be issued by this CH
             if not urn_util.is_valid_urn(urn_req):
                 # FIXME: make sure it isnt empty, etc...
                 urn = urn_util.publicid_to_urn(urn_req)
             else:
                 urn = urn_req
+
+            # Validate the urn meets name restrictions
+            if not urn_util.is_valid_urn_bytype(urn, 'slice', self.logger):
+                raise Exception("Cannot create slice with urn %s: URN is invalid" % urn)
         else:
             # Generate a unique URN for the slice
             # based on this CH location and a UUID
@@ -264,6 +268,9 @@ class Clearinghouse(object):
 
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
+            # FIXME: For APIv3 compliance, we need
+            # - slice email address
+            # - unique cert serial number
             try:
                 slice_gid = cert_util.create_cert(urn, self.keyfile, self.certfile, uuidarg = slice_uuid)[0]
             except Exception, exc:
