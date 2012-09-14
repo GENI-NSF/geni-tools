@@ -242,6 +242,12 @@ class Framework(Framework_Base):
                 return None
             elif response['code']:
                 self.logger.error('Failed to get credential for existing PG slice %s: %s (code %d)', urn, response['output'], response['code'])
+            if not response.has_key('value'):
+                self.logger.debug("Got GetCredential response %r", response)
+                raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
+            if not type(response['value']) is str:
+                self.logger.debug("Got GetCredential response %r", response)
+                raise Exception("Failed to get valid PG slice credential for %s. Got non string: %r" % (urn, response['value']))
             return response['value']
 
     def delete_slice(self, urn):
