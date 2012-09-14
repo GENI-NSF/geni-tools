@@ -183,13 +183,13 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
                 logger.warn("Sliver names may only be alphanumeric plus hyphen: %s", name)
             return False
     elif urntype == 'user':
-        # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]{1,8}$').
+        # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]{0,7}$').
         # Usernames are limited to 8 characters.
         if len(name) > 8:
             if logger:
                 logger.warn("URN %s too long. User names are max 8 characters", inurn)
             return False
-        if not re.match("^[a-zA-Z][\w]{1,8}$", name):
+        if not re.match("^[a-zA-Z][\w]{0,7}$", name):
             if logger:
                 logger.warn("User names may only be alphanumeric plus underscore, beginning with a letter: %s", name)
             return False
