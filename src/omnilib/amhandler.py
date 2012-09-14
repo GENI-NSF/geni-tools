@@ -981,7 +981,7 @@ class AMCallHandler(object):
 
             retVal, filename = self._writeRSpec(rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
-                savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
+                savedFileDesc += "Saved listresources RSpec at '%s' (url '%s') to file %s; " % (urn, url, filename)
         # End of loop over rspecs
         self.logger.debug("rspecCtr %d", rspecCtr)
 
@@ -3504,6 +3504,8 @@ class AMCallHandler(object):
             server = server[:(server.index("/xmlrpc"))]
         elif server.endswith("/xmlrpc/am/2.0"):
             server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
+        elif server.endswith("/xmlrpc/am/2.0"):
+            server = server[:(server.index("/xmlrpc/am/3.0"))] + "v3"
         elif server.endswith("/openflow/gapi/"):
             server = server[:(server.index("/openflow/gapi/"))]
         elif server.endswith(":3626/foam/gapi/1"):
