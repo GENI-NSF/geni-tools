@@ -39,7 +39,7 @@ def createSliver(slice_urn, requestRspec, users) :
 
     # Generate the manifest rspec.  The manifest is written to the file named
     #    in config.py
-    (rspec_handler.GeniManifest(sliceName, requestRspec, experimentHosts, 
+    (rspec_handler.GeniManifest(users, sliceName, requestRspec, experimentHosts, 
                                 experimentLinks, experimentNICs)).create()
 
     # Add commands to the bash script that create special files/directories
