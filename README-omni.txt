@@ -243,32 +243,32 @@ New in v1.3:
 Full changes are listed in the CHANGES file.
 
 == Handling Omni Output ==
-Omni supports the '-o' option to have Omni save the output of Omni to
+Omni supports the `-o` option to have Omni save the output of Omni to
 one or more files. See the [#RunningOmni documentation] for individual
 commands for details.
 
 Omni output is done through the python logging package, and
 prints to STDERR by default. Logging levels, format, and output
 destinations are configurable by supplying a custom Python logging
-configuration file, using the '-l' option. Note that these settings
+configuration file, using the `-l` option. Note that these settings
 will apply to the entire Python process. For help creating a logging
 config file, see
 http://docs.python.org/library/logging.config.html#configuration-file-format
-and see the sample 'omni_log_conf_sample.conf'. Note that if present
+and see the sample `omni_log_conf_sample.conf`. Note that if present
 in your configuration file, Omni will use the special variable
 'optlevel' to set logging to INFO by default, and DEBUG if you
-specify the '--debug' option to Omni.
+specify the `--debug` option to Omni.
 
 For further control of Omni output, use Omni as a library from your
 own python script (see [#OmniasaLibrary below] for details). 
-For example, your script can modify the '-l' logging config file 
+For example, your script can modify the `-l` logging config file
 option between Omni calls. 
 Alternatively, you can call the Omni function
-'omni.applyLogConfig(<path to your log config file>)'. See the
-documentation for 'applyLogConfig' for details.
+`omni.applyLogConfig(<path to your log config file>)`. See the
+documentation for `applyLogConfig` for details.
 
-When using Omni as a [#OmniasaLibrary script] and you do 'omni.call'
-or 'omni.applyLogConfig' to load a logging configuration from a file,
+When using Omni as a [#OmniasaLibrary script] and you do `omni.call`
+or `omni.applyLogConfig` to load a logging configuration from a file,
 existing loggers are NOT disabled (which is the python logging
 default). However, those existing loggers will not be modified with
 the new logging settings, unless they are explicitly named in the
