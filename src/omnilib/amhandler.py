@@ -1301,6 +1301,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
+        # Test if the rspec is really json containing an RSpec, and pull out the right thing
+        rspec = self._maybeGetRSpecFromStruct(rspec)
+
         # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
         # out of the RSpec
 
@@ -1476,20 +1479,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # Test if the rspec is really json containing an RSpec, and pull out the right thing
-        if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
-            try:
-                rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
-                if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
-                    rspec = rspecStruct['geni_rspec']
-            except Exception, e:
-                import traceback
-                msg = "Failed to read RSpec from JSON file %s: %s" % (rspecfile, e)
-                self.logger.debug(traceback.format_exc())
-                if self.opts.devmode:
-                    self.logger.warn(msg)
-                else:
-                    self._raise_omni_error(msg)
+        # Test if the rspec is really json containing an RSpec, and
+        # pull out the right thing
+        rspec = self._maybeGetRSpecFromStruct(rspec)
 
         # Build args
         options = self._build_options('Allocate', None)
@@ -3073,6 +3065,24 @@ class AMCallHandler(object):
         self.logger.warn("Cannot validate client ... skipping this aggregate")
         return (cver, None)
     # End of _checkValidClient
+
+    def _maybeGetRSpecFromStruct(self, rspec):
+        '''RSpec might be string of JSON, in which case extract the
+        XML out of the struct.'''
+        if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
+            try:
+                rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
+                if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
+                    rspec = rspecStruct['geni_rspec']
+            except Exception, e:
+                import traceback
+                msg = "Failed to read RSpec from JSON file %s: %s" % (rspecfile, e)
+                self.logger.debug(traceback.format_exc())
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
+        return rspec
 
     def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
         '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
