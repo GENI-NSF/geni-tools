@@ -61,7 +61,7 @@ def main(argv=None):
   #  print some summary info
   printStr = "="*80+"\n"
   if len(sliceList)>0:
-    printStr += "User %s has %d slices\n"%(username, len(sliceList))
+    printStr += "User %s has %d slice(s):\n"%(username, len(sliceList))
   else:
     printStr += "User %s has NO slices\n"%(username)
 
