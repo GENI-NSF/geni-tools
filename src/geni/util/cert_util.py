@@ -81,6 +81,8 @@ def create_cert(urn, issuer_key=None, issuer_cert=None, ca=False,
             uuidI = uuidO.int
 
     newgid = GID(create=True, subject=subject, uuid=uuidI, urn=urn, lifeDays=lifeDays)
+    if email:
+        newgid.set_email(email)
     
     if public_key is None:
         # create a new key pair
