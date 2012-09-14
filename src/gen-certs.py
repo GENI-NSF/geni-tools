@@ -103,14 +103,17 @@ def getAbsPath(path):
     else:
         return os.path.abspath(path)
 
-def make_ch_cert(dir, uuid=uuid.uuid4()):
+def make_ch_cert(dir, uuidArg=uuid.uuid4()):
     '''Make a self-signed cert for the clearinghouse saved to 
     given directory and returned.'''
     # Create a cert with urn like geni.net:gpo:gcf+authority+sa
     urn = geni.URN(CERT_AUTHORITY, AUTHORITY_CERT_TYPE, CH_CERT_SUBJ).urn_string()
     
+    if not uuidArg:
+        uuidArg = uuid.uuid4()
+
     # add lifeDays arg to change # of days cert lasts
-    (ch_gid, ch_keys) = create_cert(urn, ca=True, uuidarg=uuid)
+    (ch_gid, ch_keys) = create_cert(urn, ca=True, uuidarg=uuidArg)
     ch_gid.save_to_file(os.path.join(dir, CH_CERT_FILE))
     ch_keys.save_to_file(os.path.join(dir, CH_KEY_FILE))
 
@@ -132,20 +135,24 @@ def make_ch_cert(dir, uuid=uuid.uuid4()):
                                                          getAbsPath(config['global']['rootcadir']) + "/" + fname)
     return (ch_keys, ch_gid)
 
-def make_am_cert(dir, ch_cert, ch_key, uuid=uuid.uuid4()):
+def make_am_cert(dir, ch_cert, ch_key, uuidArg=uuid.uuid4()):
     '''Make a cert for the aggregate manager signed by given CH cert/key
     and saved in given dir. NOT RETURNED.
     AM publicid will be from gcf_config base_name//am-name'''
     # Create a cert with urn like geni.net:gpo:gcf:am1+authority+am
     auth_name = CERT_AUTHORITY + "//" + config['aggregate_manager']['name']
     urn = geni.URN(auth_name, AUTHORITY_CERT_TYPE, AM_CERT_SUBJ).urn_string()
+
+    if not uuidArg:
+        uuidArg = uuid.uuid4()
+
     # add lifeDays arg to change # of days cert lasts
-    (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, ca=True, uuidarg=uuid)
+    (am_gid, am_keys) = create_cert(urn, ch_key, ch_cert, ca=True, uuidarg=uuidArg)
     am_gid.save_to_file(os.path.join(dir, AM_CERT_FILE))
     am_keys.save_to_file(os.path.join(dir, AM_KEY_FILE))
     print "Created AM cert/keys in %s/%s and %s" % (dir, AM_CERT_FILE, AM_KEY_FILE)
 
-def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None, uuid=uuid.uuid4()):
+def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None, uuidArg=uuid.uuid4()):
     '''Make a GID/Cert for given username signed by given CH GID/keys, 
     saved in given directory. Not returned.'''
     # Create a cert like PREFIX+TYPE+name
@@ -154,13 +161,17 @@ def make_user_cert(dir, username, ch_keys, ch_gid, public_key=None, email=None, 
     logging.basicConfig(level=logging.INFO)
     if not is_valid_urn_bytype(urn, 'user', logging.getLogger("gen-certs")):
         sys.exit("Username %s invalid" % username)
+
+    if not uuidArg:
+        uuidArg = uuid.uuid4()
+
     # add lifeDays arg to change # of days cert lasts
     (alice_gid, alice_keys) = create_cert(urn, issuer_key=ch_keys,
                                           issuer_cert=ch_gid,
                                           ca=False,
                                           public_key=public_key,
                                           email=email,
-                                          uuidarg=uuid)
+                                          uuidarg=uuidArg)
     alice_gid.save_to_file(os.path.join(dir, USER_CERT_FILE))
     if public_key is None:
         alice_keys.save_to_file(os.path.join(dir, USER_KEY_FILE))
@@ -210,7 +221,7 @@ def main(argv=None):
     CERT_AUTHORITY=config['global']['base_name']
     username = "alice"
     if opts.username:
-        # We'll check this is legal once we hav a full URN
+        # We'll check this is legal once we have a full URN
         username = opts.username
     dir = "."
     if opts.directory:
@@ -264,7 +275,7 @@ def main(argv=None):
         make_user_cert(dir, username, ch_keys, ch_cert,
                        public_key=opts.pubkey,
                        email=opts.email,
-                       uuid=opts.uuid)
+                       uuidArg=opts.uuid)
 
     return 0
 
