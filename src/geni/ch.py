@@ -233,7 +233,10 @@ class Clearinghouse(object):
             else:
                 self.logger.debug("Slice cred is still valid at %r until %r - return it", datetime.datetime.utcnow(), slice_exp)
                 return slice_cred.save_to_string()
-        
+
+        # Create a random uuid for the slice
+        slice_uuid = uuid.uuid4()
+
         # First ensure we have a slice_urn
         if urn_req:
             # FIXME: Validate urn_req has the right form
@@ -251,7 +254,7 @@ class Clearinghouse(object):
             (ipaddr, port) = self._server.socket._sock.getsockname()
             # FIXME: Get public_id start from a properties file
             # Create a unique name for the slice based on uuid
-            slice_name = uuid.uuid4().__str__()[4:12]
+            slice_name = slice_uuid.__str__()[4:12]
             public_id = 'IDN %s slice %s//%s:%d' % (SLICE_AUTHORITY, slice_name,
                                                                    ipaddr,
                                                                    port)
@@ -262,7 +265,7 @@ class Clearinghouse(object):
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
             try:
-                slice_gid = cert_util.create_cert(urn, self.keyfile, self.certfile)[0]
+                slice_gid = cert_util.create_cert(urn, self.keyfile, self.certfile, uuidarg = slice_uuid)[0]
             except Exception, exc:
                 self.logger.error("Cant create slice gid for slice urn %s: %s", urn, traceback.format_exc())
                 raise Exception("Failed to create slice %s. Cant create slice gid" % urn, exc)
