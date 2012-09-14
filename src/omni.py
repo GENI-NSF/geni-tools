@@ -268,6 +268,7 @@ def call(argv, options=None, verbose=False):
 
      Your myscript.py code does:
 import os
+import pprint
 import re
 import sys
 
@@ -402,8 +403,12 @@ def main(argv=None):
     numItems = len(retItem.keys())
   elif type(retItem) == type([]):
     numItems = len(retItem)
+  elif retItem is None:
+    numItems = 0
+  else:
+    numItems = 1
   if numItems:
-    print "\nThere were %d items returned." % numItems
+    print "\nThere were %d item(s) returned." % numItems
 
 if __name__ == "__main__":
   sys.exit(main())
