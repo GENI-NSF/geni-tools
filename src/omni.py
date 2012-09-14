@@ -473,6 +473,16 @@ def API_call( framework, config, args, opts, verbose=False ):
             if has == False:
                 continue
             if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
+                # If default is a relative path we expanded,
+                # then it looks like it changed here. So try expanding
+                # any defaults to see if that makes it match
+                try:
+                    defVal = parser.defaults[attr]
+                    defVal = os.path.normcase(os.path.expanduser(defVal))
+                    if defVal == getattr(opts, attr):
+                        continue
+                except:
+                    pass
                 # non-default value
                 nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
 
