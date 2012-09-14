@@ -3315,7 +3315,11 @@ class AMCallHandler(object):
             else:
                 # No code in result
                 if self.opts.api_version > 1:
-                    self.logger.warn("Result had no code!")
+                    # This happens doing getversion at a v1 AM.
+                    if isinstance(result, dict) and result.has_key('geni_api') and result['geni_api'] == 1:
+                        pass
+                    else:
+                        self.logger.warn("Result had no code!")
         else:
             # Not a dict response. Value is result in itself
             if self.opts.api_version > 1:
