@@ -33,7 +33,7 @@ gcf 2.0:
  Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
  (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
   AM API v2+ aggregates require that you specify the RSpec format you
- want, when using ListResources. Omni now specifies the RSpec format
+ want, when using `ListResources`. Omni now specifies the RSpec format
  GENI 3 by default: you can always request a different format, if the
  AM supports it. (ticket #90, #141)
 
@@ -80,10 +80,10 @@ gcf 2.0:
     this. (ticket #177)
   - Added new option `--devmode` (default `False`). When true, only warn on bad
     inputs, but try to pass the bad inputs along anyhow. (ticket #78)
-  - Added a new GetVersion Cache: the results of GetVersion are
-    cached locally as serialed JSON. ListResources an other calls that
-    require information from GetVersion may use this cache instead.
-    GetVersion does not use the cache by default. Cache entries
+  - Added a new !GetVersion Cache: the results of `GetVersion` are
+    cached locally as serialed JSON. `ListResources` and other calls that
+    require information from `GetVersion` may use this cache instead.
+    `GetVersion` does not use the cache by default. Cache entries
     have a max age, after which we always re-query the AM. (ticket #81)
   - libstitch example: Allow caller to specify the per-AM fake manifest RSpec to
     use when in fake mode, by using a comment in the request
@@ -125,7 +125,7 @@ gcf 2.0:
     URNs. (ticket #113)
   - Updated to latest SFA (from around July 20th, 2012)
   - Clean up createsliver output (ticket #139)
-  - Listresources notes if supplied slice credential is expired (ticket #162)
+  - `Listresources` notes if supplied slice credential is expired (ticket #162)
 
  * gcf
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
@@ -150,6 +150,7 @@ gcf 2.0:
   - Fuller testing of the `geni_available` flag (ticket #153)
   - Check for `geni_api_version` in `getversion` (ticket #152)
   - Allow optional fields to be None (ticket #185)
+
 gcf 1.6.2:
  * omni
    - Added omni-configure.py script to autogenerate the omni_config (#127)
