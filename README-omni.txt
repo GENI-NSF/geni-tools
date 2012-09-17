@@ -37,6 +37,16 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.1:
+ - Fix ugly error on createslice error (ticket #192)
+ - Fix ugly error on unexpected result format in sample myscript
+ (ticket #193)
+ - `CreateSliver` now accepts an RSpec in JSON format
+ - Clean some output messages (`ListResources`, whether omni lists
+ the getversion cache name option, a WARN on v2 getversion at a v1
+ AM, etc)
+ - Clean generated filenames from a protogeni v3 AM
+
 New in v2.0:
 
 This is a major release. It includes:
