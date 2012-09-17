@@ -28,6 +28,8 @@ gcf 2.0:
  multiple `-a` options.
  - Lots of code cleanup and bug fixes.
 
+== Changes in gcf 2.0 ==
+
  * omni
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
  Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
