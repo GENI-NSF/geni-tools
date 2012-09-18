@@ -15,8 +15,8 @@ Acceptance tests verify compliance to
 
 Alternatively the tests can be run against:
  - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V1 GENI Aggregate Manager (AM) API v1 specification], plus
- - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA change set A of the AM API v2 specification], or
- - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3]).
+ - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA Change set A of the AM API v2 specification], or
+ - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3].
 
 Acceptance tests are intended to be run with credentials from the GPO ProtoGENI,
 but they work with any credentials that are trusted at the AM under test.
@@ -313,8 +313,8 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
    (Also replace `request.xml`, `request1.xml`, `request2.xml`, and
    `request3.xml` with appropriate files.)
 
-   - If you use PlanetLab, make sure to run the following which will
-   cause your PlanetLab credential to be downloaded:
+   - If you use !PlanetLab, make sure to run the following which will
+   cause your !PlanetLab credential to be downloaded:
 {{{
         $ omni.py -f plc listresources
 }}}
