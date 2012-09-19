@@ -47,12 +47,19 @@ options = None
 slicename = None
 config = None
 NSPrefix = None
+VALID_NS = ['{http://www.geni.net/resources/rspec/3}',
+            '{http://www.protogeni.net/resources/rspec/2}'
+           ]
 
 def setNSPrefix(prefix):
   ''' Helper function for parsing rspecs. It sets the global variabl NSPrefix to
   the currently parsed rspec namespace. 
   '''
   global NSPrefix
+  if prefix not in VALID_NS:
+    print "Listresources namespace %s is not valid. Exit!"
+    sys.exit(-1)
+
   NSPrefix = prefix
 
 def tag(tag):
