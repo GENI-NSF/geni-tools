@@ -3,17 +3,10 @@ import logging
 import os
 import os.path
 import subprocess
-import re
 
 import resources
 import rspec_handler
 import config
-
-experimentHosts = {}    # Map of container names (e.g. 101) to corresponding
-                        #    VMNode objects
-experimentLinks = []    # List of links specified by the experimenter 
-experimentNICs = {}     # Map of client supplied network interface names to
-                        #    corresponding NIC objects
 
 # GENI-in-a-box specific createSliver
 def createSliver(slice_urn, requestRspec, users) :
@@ -22,30 +15,22 @@ def createSliver(slice_urn, requestRspec, users) :
     """
     config.logger.info("createSliver called")
 
-    # Get the slice name.  This is the last part of the URN.  For example,
-    #    the slice name in the URN urn:publicid:IDN+geni:gpo:gcf+slice+myslice
-    #    is myslice.
-    sliceName = re.split(r'[:\+]+', slice_urn)[-1]
-
     # Parse the request rspec
-    rspec_handler.parseRequestRspec(requestRspec, experimentHosts,
-                                    experimentLinks, experimentNICs)
+    rspec_handler.parseRequestRspec(slice_urn, requestRspec)
 
     # Provision the sliver i.e. assign resource as specifed in the request rspec
     #    The sliver isn't created yet.  The shell commands used to create
     #    the sliver are written into the file named in config.py
-    resources.provisionSliver(experimentHosts, experimentLinks, experimentNICs,
-                              users)
+    resources.provisionSliver(users)
 
     # Generate the manifest rspec.  The manifest is written to the file named
     #    in config.py
-    (rspec_handler.GeniManifest(users, sliceName, requestRspec, experimentHosts, 
-                                experimentLinks, experimentNICs)).create()
+    (rspec_handler.GeniManifest(users, requestRspec)).create()
 
     # Add commands to the bash script that create special files/directories
     #    in the containers.  They contain slice configuration information
     #    such as manifest rspec, slice name, etc.
-    resources.specialFiles(sliceName, experimentHosts)
+    resources.specialFiles()
 
     ## Execute the shell script that create a new sliver
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.shellScriptFile
@@ -70,6 +55,51 @@ def deleteSliver() :
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.manifestFile
     os.remove(pathToFile)
     
+
+def sliverStatus(slice_urn) :
+    """
+        Return the status of the resources that belong to this sliver.
+    """
+    config.logger.info("sliverStatus called")
+
+    # Get a list of statuses for each of the VM resources
+    resourceStatusList = resources.getResourceStatus()
+
+    # Determine the overall status of the slice at this aggregate
+    #     If any resource is 'shutdown', the sliver is 'shutdown'
+    #     else if any resource is 'failed', the sliver is 'failed'
+    #     else if any resource is 'configuring', the sliver is 'configuring'
+    #     else if all resources are 'ready', the sliver is 'ready'
+    #     else the sliver is 'unknown'
+    
+    # Make a list that contains the status of all resources
+    statusList = list()
+    for i in range(len(resourceStatusList)) :
+        statusList.append(resourceStatusList[i]['geni_status'])
+
+    sliceStatus = 'unknown'
+    if 'shutdown' in statusList :
+        sliceStatus = 'shutdown'
+    elif 'failed' in statusList :
+        sliceStatus = 'failed'
+    elif 'configuring' in statusList :
+        sliceStatus = 'configuring'
+    elif 'ready' in statusList :
+        # Count number of resources that are ready.  If all resources are
+        #    ready, the slice is ready.
+        readyCount = 0;
+        for i in range(len(resourceStatusList)) :
+            if resourceStatusList[i]['geni_status'] == 'ready' :
+                readyCount += 1
+        print '%s resources are ready\n' % readyCount
+        if readyCount == len(resourceStatusList) :
+            sliceStatus = 'ready'
+
+    return dict(geni_urn = resources.sliceURN, \
+                    geni_status = sliceStatus, \
+                    geni_resources = resourceStatusList)
+    
+
 
 def get_manifest() :
     """

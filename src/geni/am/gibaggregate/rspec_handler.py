@@ -1,17 +1,28 @@
 
 import sys
-from xml.dom.minidom import *
 import datetime
+import re
+from xml.dom.minidom import *
 
 import config
-from resources import VMNode, NIC, Link, installItem, executeItem
+import resources
+from resources import VMNode, NIC, Link, installItem, executeItem, \
+    experimentHosts, experimentLinks, experimentNICs 
 
-def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
-                          experimentNICs) :
+def parseRequestRspec(slice_urn, rspec) :
     """ This function parses a request Rspec and creates an in-memory 
         representation of the experimenter specified topology using 
         VMNode, NIC and Link objects.
+
+        This function returns None if everything goes well.  In case of
+        of an error it returns a string describing the error.
     """
+    # Get the slice name.  This is the last part of the URN.  For example,
+    #    the slice name in the URN urn:publicid:IDN+geni:gpo:gcf+slice+myslice
+    #    is myslice.
+    resources.sliceURN = slice_urn
+    resources.sliceName = re.split(r'[:\+]+', slice_urn)[-1]
+
     # Parse the xml rspec
     rspec_dom = parseString(rspec)
 
@@ -24,8 +35,8 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
     for host in hostList : 
         hostCount += 1
         if hostCount >  VMNode.numVMs :
-           print 'parseRequestRspec: Experimenter requested more nodes than we have'
-           return None;   # failed to parse rspec
+            config.logger.error('Experimenter requested more nodes than available')
+            return 'Number of nodes requested exceeds availability.  Number of nodes available: %s' % VMNode.numVMs 
 
         # Create a VMNode object for this host and add it to our collection
         #    of hosts allocated to the experiment
@@ -44,8 +55,8 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
         for netInterface in netInterfaceList :
             interfaceCount += 1
             if interfaceCount > 3 :
-                print 'parseRequestRspec: Exceeded number of interfaces available on node'
-                return None;    # failed to parse rspec
+                config.logger.error('Exceeded number of interfaces available on node')
+                return 'Attempted to request a node with more than three interfaces.'
             
             # Create a NIC object for this interface and add it to the list 
             #    of NICs associated with this hostObject
@@ -56,8 +67,8 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
             # Get information about the interface from the rspec
             nicAttributes = netInterface.attributes 
             if not nicAttributes.has_key('client_id') :
-                print 'parseRequestRspec: Network interface does not have a name'
-                return None
+                config.logger.error('Network interface does not have a name')
+                return 'Un-named network interface.  Make sure all interfaces in the request rspec have a client_id attribute.'
 
             nicObject.nicName = nicAttributes['client_id'].value
             experimentNICs[nicObject.nicName] = nicObject    # Add to 
@@ -72,8 +83,8 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
                 installAttributes = item.attributes
                 if not (installAttributes.has_key('url') and 
                         installAttributes.has_key('install_path')) :
-                    print 'parseRequestRspec: Source URL or destination path missing for install element in request rspec'
-                    return None
+                    config.logger.error('Source URL or destination path missing for install element in request rspec')
+                    return 'Source URL or destination path missing for install element in request rspec'
                 
                 instItem = installItem()
                 instItem.sourceURL = installAttributes['url'].value
@@ -87,8 +98,8 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
             for item in executeElements :
                 executeAttributes = item.attributes
                 if not executeAttributes.has_key('command') :
-                    print 'parseRequestRspec: Command missing for execute element in request rspec'
-                    return None
+                    config.logger.error('Command missing for execute element in request rspec')
+                    return 'Command attribute missing for execute element in request rspec'
                 
                 execItem = executeItem()
                 execItem.command = executeAttributes['command'].value
@@ -106,8 +117,9 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
         linkAttributes = link.attributes    # DOM attributes object 
                                             #    associated with link
         if not linkAttributes.has_key('client_id') :
-            print 'parseRequestRspec: Link does not have a name'
-            return None;
+            config.logger.error('Link does not have a name')
+            return 'Un-named link.  Make sure all links in the request rspec have a client_id attribute.'
+
         linkObject.linkName = linkAttributes['client_id'].value
         experimentLinks.append(linkObject) # Add to collection of links 
                                            #    used by this experiment
@@ -129,7 +141,7 @@ def parseRequestRspec(rspec, experimentHosts, experimentLinks, \
             # Add this NIC Object to the list of end points for the link
             linkObject.endPoints = linkObject.endPoints + [nicObject]
             
-    return   # What should we return on success?
+    return None  # Success
 
 
 
@@ -148,14 +160,15 @@ class GeniManifest :
     """
     headerTag           = "rspec"                   # outer level node for the manifest file
     typeTag             = "type"                    # the type of manifest this was, only available is request
-    xmlnsTag            = "xmlns"                   # tag used for the protogeni website
+    xmlnsTag            = "xmlns"                   # xml name space tag
     expiresTag          = "expires"                 # the rpsec block specifying how long the manifest is good for
-    nodeTag             = "node"                    # the tag for a node, or host element
+    nodeTag             = "node"                    # tag for node/host element
     exclusiveTag        = "exclusive"               # tag for specifying exclusivity of a host
     interfaceRefTag     = "interface_ref"           # tag for creating an interface element for a link
     interfaceTag        = "interface"               # tag for creating interfaces for a host
-    componentIdTag      = "component_id"            # component id for an interface that belongs to a host
-    clientIdTag         = "client_id"               # the id element for hosts
+    componentIdTag      = "component_id"            # component id for resource
+    sliverIdTag         = "sliver_id"               # sliver id for resource
+    clientIdTag         = "client_id"               # experimenter specified id for resource
     linkTag             = "link"                    # tag for links added to the manifest
     macTag              = "mac_address"             # tag for mac addresses on interfaces
     ipAddressTag        = "ip_address"              # the ip address for an interface reference
@@ -169,12 +182,14 @@ class GeniManifest :
     nameTag             = "name"                    # tag used for naming attributes
     hostTag             = "host"                    # used for identifying host elements under node elements
     rsVnodeTag          = "rs:vnode"                # used for identifying rs:vnode elements
+    rsnsTag             = "xmlns:rs"                # name space for rs:
     loginTag            = "login"                   # tag used for specifying login info under the services element
     authenticationTag   = "authentication"          # tag used for attributes under login elements
     hostNameTag         = "hostname"                # tag used for attributes under login elements
     userNameTag         = "username"                # tag used for attributes under login elements
     portTag             = "port"                    # tag used for attributes under login elements
     webpage             = "http://www.protogeni.net/resources/rspec/0.1"
+    componentMgrURN     = "urn:publicid:IDN+geni-in-a-box.net+authority+cm"
     
     
     """\
@@ -183,14 +198,14 @@ class GeniManifest :
     This constructor expects the request rspec has already
     been parsed and the structure is already set up.
     """
-    def __init__(self, users, sliceName, rspec, experimentHosts, experimentLinks, experimentNICs) :
+    def __init__(self, users, rspec) :
         self.users = users
-        self.sliceName = sliceName
         self.rspec = rspec
         self.hosts = experimentHosts
         self.links = experimentLinks
         self.NICs = experimentNICs
-        self.validUntil = datetime.datetime.today() + datetime.timedelta(days = 365)
+        self.validUntil = datetime.datetime.today() +  \
+            datetime.timedelta(days = 365)
     
     
     """\
@@ -203,7 +218,6 @@ class GeniManifest :
         
         for user in users :
             userName = None     # the current user the public key is installed for
-            
             # go through every user and get the user's name
             for key in user.keys() :
                 # found a user, there should only be one of these per key in 'user'
@@ -259,7 +273,8 @@ class GeniManifest :
                     # if the child node is a component manager element
                     # then set the name to be geni-in-a-box specific
                     if linkChild.nodeName == GeniManifest.componentManagerTag :
-                        linkChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+authority+cm")
+                        linkChild.setAttribute(GeniManifest.nameTag,
+                                               GeniManifest.componentMgrURN)
                         
                     # if the child node is an interface reference
                     # then set the appropriate component id
@@ -267,9 +282,12 @@ class GeniManifest :
                         # find the NIC object that goes with this interface reference element
                         if linkChild.attributes[GeniManifest.clientIdTag].value in self.NICs.keys() :
                             clientId = linkChild.attributes[GeniManifest.clientIdTag].value
-                            componentId = "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(self.NICs[clientId].myHost.nodeName, self.NICs[clientId].deviceNumber)
-                            linkChild.setAttribute(GeniManifest.componentIdTag, componentId)
-                    
+                            componentId = self.NICs[clientId].componentID
+                            linkChild.setAttribute(GeniManifest.componentIdTag,
+                                                   componentId)
+                            sliverID = self.NICs[clientId].sliverURN
+                            linkChild.setAttribute(GeniManifest.sliverIdTag, 
+                                                   componentId)
                     
             
             # if a node element then go through and set the correct values
@@ -285,9 +303,16 @@ class GeniManifest :
                 
                 # there needs to be a host associated with this node otherwise it is invalid
                 if currentHost != None :
-                    rspecChild.setAttribute(GeniManifest.componentManagerIdTag, "urn:publicid:geni-in-a-box.net+authority+cm")
-                    rspecChild.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+node+pc{0}".format(currentHost.containerName))
-                    
+                    rspecChild.setAttribute(GeniManifest.clientIdTag,
+                                            currentHost.nodeName)
+                    rspecChild.setAttribute(GeniManifest.componentManagerIdTag,
+                                            GeniManifest.componentMgrURN)
+
+                    rspecChild.setAttribute(GeniManifest.componentIdTag,
+                                            currentHost.componentID)
+                    rspecChild.setAttribute(GeniManifest.sliverIdTag, 
+                                            currentHost.sliverURN)
+
                     # check if there is a services tag before continuing, there has to be one in order to set login values,
                     # it can't be removed then readded or just appended since it will erase an existing one if it does exist,
                     # which will lose all of the needed information such as installs and downloads
@@ -307,8 +332,18 @@ class GeniManifest :
                     
                     # add a rs:vnode element then set the correct name with container number
                     rsVnode = manifest.createElement(GeniManifest.rsVnodeTag)
-                    rsVnode.setAttribute(GeniManifest.nameTag, "pc" + str(currentHost.containerName))
+                    rsVnode.setAttribute(GeniManifest.nameTag, 
+                                         "pc" + str(currentHost.containerName))
+                    rsVnode.setAttribute(GeniManifest.rsnsTag,
+                       "http://www.protogeni.net/resources/rspec/ext/emulab/1")
+
                     rspecChild.appendChild(rsVnode)
+
+                    hostElement = manifest.createElement(GeniManifest.hostTag)
+                    hostElement.setAttribute(GeniManifest.nameTag, "pc" +
+                                         str(currentHost.containerName) + 
+                                         ".geni-in-a-box.net")
+                    rspecChild.appendChild(hostElement)
                     
                     # now go through each child element and set the correct values
                     for nodeChild in rspecChild.childNodes :
@@ -321,7 +356,10 @@ class GeniManifest :
                             for userName in userNames :
                                 login = manifest.createElement(GeniManifest.loginTag)
                                 login.setAttribute(GeniManifest.authenticationTag, "ssh-keys")
-                                login.setAttribute(GeniManifest.hostNameTag, "pc" + str(currentHost.containerName) + ".geni-in-a-box.net")
+                                login.setAttribute(GeniManifest.hostNameTag,
+                                              "pc" + 
+                                               str(currentHost.containerName) + 
+                                               ".geni-in-a-box.net")
                                 login.setAttribute(GeniManifest.portTag, "22") # for now always set to port 22
                                 login.setAttribute(GeniManifest.userNameTag, userName)
                                 nodeChild.appendChild(login)
@@ -345,8 +383,11 @@ class GeniManifest :
                                 nic = self.NICs[nodeChild.attributes[GeniManifest.clientIdTag].value]
                             
                                 nodeChild.setAttribute(GeniManifest.clientIdTag, nic.nicName)
-                                nodeChild.setAttribute(GeniManifest.componentIdTag, "urn:publicid:geni-in-a-box.net+interface+{0}:eth{1}".format(nic.myHost.nodeName, nic.deviceNumber))
-                                nodeChild.setAttribute(GeniManifest.macTag, nic.macAddress)
+                                nodeChild.setAttribute(GeniManifest.componentIdTag, nic.componentID)
+                                nodeChild.setAttribute(GeniManifest.sliverIdTag,
+                                                       nic.sliverURN)
+                                nodeChild.setAttribute(GeniManifest.macTag, 
+                                                       nic.macAddress)
         
                                 # set the ip address, for now this is a sub-element of the
                                 # interface element this could also possibly be an attribute
@@ -356,8 +397,9 @@ class GeniManifest :
 
                         # if a host element then set the correct host name
                         elif nodeChild.nodeName == GeniManifest.hostTag :
-                            nodeChild.setAttribute(GeniManifest.nameTag, currentHost.nodeName + "." + self.sliceName + ".geni-in-a-box.net")
-        
+                            nodeChild.setAttribute(GeniManifest.nameTag, "pc" +
+                                               str(currentHost.containerName) + 
+                                               ".geni-in-a-box.net")
         
         # print the rspec to the terminal for display and debugging,
         # this can be removed later on
@@ -376,7 +418,7 @@ class GeniManifest :
         try:
             manFile = open(pathToFile, 'w')
         except IOError:
-            config.logger.error("Failed to open file that creates sliver: ",
+            config.logger.error("Failed to open file that holds manifest: ",
                                 pathToFile)
             return None
 

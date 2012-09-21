@@ -35,3 +35,6 @@ if [ -e ~/.ssh/known_hosts ]
 then
     rm ~/.ssh/known_hosts
 fi
+
+# Delete the files that hold the sliver status
+rm -f ../sliceSpecificScripts/*.status

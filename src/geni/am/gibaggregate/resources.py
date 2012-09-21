@@ -2,10 +2,14 @@
 import sys
 import stat
 import os.path
+import uuid
 
 import config
 import graphUtils 
 from graphUtils import GraphNode
+
+sliceURN = ""
+sliceName = ""
 
 class VMNode(GraphNode) :
     """ This class holds information about a VM (compute node) requested
@@ -25,6 +29,8 @@ class VMNode(GraphNode) :
         self.NICs = []        # List of NICs for this node
         self.installList = [] # List of files to be installed in VM during setup
         self.executeList = [] # List of commands to be executed on startup
+        self.componentID = '' # component ID for the resource
+        self.sliverURN = ''   # sliver urn
 
     def getNeighbors(self) :
         return self.NICs 
@@ -51,6 +57,8 @@ class NIC(GraphNode) :
         self.myHost = None;       # The host (VMNode) associated with this NIC
         self.virtualEthName = ''  # Name of corresponding VETH in the host OS
         self.link = None          # The link object associated with this NIC
+        self.componentID = ''     # component ID for the resource
+        self.sliverURN = ''       # sliver urn
 
     def getNeighbors(self) :
         return [self.link, self.myHost]
@@ -75,6 +83,7 @@ class Link(GraphNode) :
         self.bridgeID = ''     # Name of the host ethernet bridge associated
                                #  w/ the link (e.g. br3 for subnet 10.0.3.0/24)
         self.endPoints = []    # NICs at the end points of this link
+        self.sliverURN = ''    # sliver urn
 
     def getNeighbors(self) :
         return self.endPoints
@@ -103,7 +112,13 @@ class executeItem :
         self.shell = 'sh'      # Shell used to execute command
 
 
-def _annotateGraph(experimentHosts, experimentLinks, experimentNICs) :
+experimentHosts = {}    # Map of container names (e.g. 101) to corresponding
+                        #    VMNode objects
+experimentLinks = []    # List of links specified by the experimenter 
+experimentNICs = {}     # Map of client supplied network interface names to
+                        #    corresponding NIC objects
+
+def _annotateGraph() :
     """ This function walks through the VMNode, NIC and LINK objects 
         created by parsing the request Rspec and fills in the missing
         information (e.g. MAC and IP addresses for interfaces, bridge names
@@ -155,7 +170,7 @@ def _annotateGraph(experimentHosts, experimentLinks, experimentNICs) :
     # Give each link a subnet address and bridge name
     networkNumber = 2;   # Subnet number to assign to link. Starts with 2
                                        # since subnet 1 is for control network
-    for i in range(0,len(experimentLinks)) :
+    for i in range(len(experimentLinks)) :
         linkObject = experimentLinks[i]
         linkObject.subnetNumber = networkNumber
         linkObject.bridgeID = 'br%d' % networkNumber
@@ -170,8 +185,33 @@ def _annotateGraph(experimentHosts, experimentLinks, experimentNICs) :
 
         networkNumber += 1
 
+    # Assign URNs to the VM resources
+    for i in range(len(hostNames)) :
+        hostObject = experimentHosts[hostNames[i]]
+        hostObject.componentID = ('urn:publicid:IDN+geni-in-a-box.net+node+pc%s'
+                                 % hostObject.containerName)
+        hostObject.sliverURN = ('urn:publicid:IDN+geni-in-a-box.net+sliver+%s'
+                                % hostObject.containerName)
+        
+    # Assign URNs to the NICs 
+    for i in range(len(nicNames)) :
+        nicObject = experimentNICs[nicNames[i]]
+        nicObject.componentID =  \
+            ('urn:publicid:IDN+geni-in-a-box.net+interface+pc%s:eth%s' % 
+             (nicObject.myHost.containerName, nicObject.deviceNumber))
+        nicObject.sliverURN = ('urn:publicid:IDN+geni-in-a-box.net+sliver+%s%s'
+                               % (nicObject.myHost.containerName,
+                                  nicObject.deviceNumber))
 
-def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users) :
+    # Assign URNs to the links 
+    for i in range(len(experimentLinks)) :
+        linkObject = experimentLinks[i]
+        linkObject.sliverURN =  \
+            'urn:publicid:IDN+geni-in-a-box.net+sliver+%s' % linkObject.bridgeID
+
+
+
+def _generateBashScript(users) :
     ''' Generate the Bash script that is run to actually create and set up the
             Virtual Machines and networks used in the experiment.
     '''
@@ -426,7 +466,9 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
     # Add hostname and IP addresses to /etc/hosts.  For each host we pick
     #    IP address to add to this file.  We arbitrarily pick the IP address
     #    associated with the first eth device in the list of NICs associated
-    #    with the host.
+    #    with the host.  Examples of how hosts can be addressed: client_id,
+    #    pc101, client_id.sliceName.geni-in-a-box.net or 
+    #    pc101.geni-in-a-box.net.
     scriptFile.write('# Add host names and IP addresses to /etc/hosts \n')
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
@@ -434,15 +476,30 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
         for j in range(len(hostNames)) :
             hostObject2 = experimentHosts[hostNames[j]]
             if len(hostObject2.NICs) != 0 :
-                scriptFile.write('vzctl exec %s \"echo %s %s >> /etc/hosts\" \n' \
-                                     % (hostObject.containerName, \
-                                            hostObject2.NICs[0].ipAddress, \
-                                            hostObject2.nodeName))
+                scriptFile.write('vzctl exec %s \"echo %s %s pc%s %s.%s.geni-in-a-box.net pc%s.geni-in-a-box.net >> /etc/hosts\" \n' \
+                                     % (hostObject.containerName, 
+                                        hostObject2.NICs[0].ipAddress, 
+                                        hostObject2.nodeName,
+                                        hostObject2.containerName,
+                                        hostObject2.nodeName,
+                                        sliceName,
+                                        hostObject2.containerName))
+
+        # /etc/hosts has an entry for this host that is automatically 
+        #    put in there by OpenVZ.  The entry looks like:
+        #         10.0.1.101 hostName
+        # We don't want this entry because is uses the control network. To
+        #    delete this entry we copy /etc/hosts to /tmp/etc.hosts, delete
+        #    the offending line, and write to /etc/hosts.  The offending
+        #    line will always start with 10.0.1. (control network)
+        scriptFile.write('# Deleting entry for %s that was inserted by OpenVz\n' % hostObject.nodeName)
+        scriptFile.write('vzctl exec %s \"cp /etc/hosts /tmp/etc.hosts\"\n' 
+                         % hostObject.containerName)
+        scriptFile.write('vzctl exec %s \"cat /tmp/etc.hosts | sed \'/^10.0.1./d\' > /etc/hosts\" \n' % hostObject.containerName)
+        scriptFile.write('vzctl exec %s \"rm /tmp/etc.hosts\" \n' %
+                             hostObject.containerName)
         scriptFile.write('\n')
     
-    # Create user accounts and install public keys into their .ssh directory
-    #   ... Code from Zech goes here
-
     
     # Download and install experimenter specified  files into the VMs
     # Go through each host and find out what needs to be installed
@@ -544,8 +601,8 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
         
         # set up the user accounts and ssh public keys for each container
         for user in users :
-            userName = ""       # the current user the public key is installed for
-            publicKeys = []     # the public keys for the current user, these are not files
+            userName = ""    # the current user the public key is installed for
+            publicKeys = []  # the public keys for the current user, these are not files
             
             # go through every user and get the user's name and ssh public key
             for key in user.keys() :
@@ -567,11 +624,11 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
             
                 # install all of the public keys for this user
                 for publicKey in publicKeys :
-                    scriptFile.write("mkdir -p /vz/private/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 600 /vz/private/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
-                    scriptFile.write("touch /vz/private/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 600 /vz/private/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
-                    scriptFile.write("echo \"%s\">>/vz/private/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
+                    scriptFile.write("mkdir -p /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 600 /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("touch /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 600 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("echo \"%s\">>/vz/root/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
             
             scriptFile.write('\n')
             
@@ -580,7 +637,7 @@ def _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
     scriptFile.close()
 
 
-def specialFiles(slice_urn, experimentHosts) :
+def specialFiles() :
     # Re-open the file containing the bash script in append mode
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.shellScriptFile
     try:
@@ -591,33 +648,81 @@ def specialFiles(slice_urn, experimentHosts) :
         return None
 
     scriptFile.write('\n# Set up special files that contain slice info. \n')
-    scriptFile.write('# Copy slice manifest to /proj/<siteName>/exp/<sliceName>/tbdata/geni_manifest on each VM \n')
     hostNames = experimentHosts.keys()
     for i in range(len(hostNames)) :
         hostObject = experimentHosts[hostNames[i]]
         
+        # Put the slice manifest in the VMs 
         # Figure out name of destination directory for manifest.  Create that
         #    directory (and any necessary parent/ancestor directories in path) 
         #    if it does not exist
-        dest = '/vz/root/%s/proj/geni-in-a-box.net/exp/%s/tbdata/geni_manifest' % (hostObject.containerName, slice_urn)
-        if not os.path.isdir(dest) :
-            scriptFile.write('mkdir -p %s \n' % dest)
+        scriptFile.write('# Put slice manifest in /proj/<siteName>/exp/<sliceName>/tbdata/geni_manifest \n')
+        dest = '/vz/root/%s/proj/geni-in-a-box.net/exp/%s/tbdata/geni_manifest' % (hostObject.containerName, sliceName)
+        scriptFile.write('mkdir -p %s \n' % dest)
 
         # Copy the manifest to this directory
         src = config.sliceSpecificScriptsDir + '/' +  config.manifestFile
         scriptFile.write('cp %s %s \n' % (src, dest))
 
+
+        # Put slice information in /var/emulab/boot/nickname
+        #    This file has the fully qualified name of the host in the form
+        #    <experimenterSpecifiedHostName>.<sliceName>.geni-in-a-box.net
+        scriptFile.write('# Create nickname file \n')
+        dest = '/vz/root/%s/var/emulab/boot' %  \
+            hostObject.containerName
+        scriptFile.write('mkdir -p %s \n' % dest)
+
+        fileContents = '%s.%s.geni-in-a-box.net' % (hostObject.nodeName,
+                                                    sliceName)
+        scriptFile.write('echo \"%s\" > %s/nickname \n' % (fileContents, dest))
+
         # Set status of the node to ready
+        scriptFile.write('# Set node status to ready \n')
         statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
                                              hostObject.containerName)
-        scriptFile.write('    echo \"ready\" > %s \n' % statusFileName)
+        scriptFile.write('echo \"ready\" > %s \n' % statusFileName)
 
         scriptFile.write('\n')
         
     scriptFile.close()
 
 
-def provisionSliver(experimentHosts, experimentLinks, experimentNICs, users) :
+def getResourceStatus() :
+    """
+        Return a list with the status of all VM resources.  Each item in the
+        list is a dictionary with resource URN, resource status and error code.
+        This is what the list looks like:
+            [ { geni_urn: <resource URN>
+                geni_status: <status: configuring, ready, failed or unknown>
+                geni_error: <error code> }
+              { geni_urn: <resource URN>
+                geni_status: <status: configuring, ready, failed or unknown>
+                geni_error: <error code> }
+            ]
+    """
+    resStatus = list()
+    hostNames = experimentHosts.keys()
+    for i in range(len(hostNames)) :
+        hostObject = experimentHosts[hostNames[i]]
+        resStatusFile = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
+                                             hostObject.containerName)
+        try :
+            f = open(resStatusFile, 'r')
+            resStatus.append(dict(geni_urn = hostObject.sliverURN,
+                                  geni_status = f.readline().strip('\n'),
+                                  geni_error = ''))
+            f.close()
+        except :
+            resStatus.append(dict(geni_urn = hostObject.sliverURN,
+                                  geni_status = "unknown",
+                                  geni_error = ''))
+
+    return resStatus
+
+
+
+def provisionSliver(users) :
     """
         Provision the sliver.  First fill in missing information in the
         VMNode, NIC and Link objects created when parsing the request rspec.
@@ -625,8 +730,8 @@ def provisionSliver(experimentHosts, experimentLinks, experimentNICs, users) :
         the OpenVZ containers.
     """
     # Fill in missing information in VMNode, NIC and Link objects
-    _annotateGraph(experimentHosts, experimentLinks, experimentNICs)
+    _annotateGraph()
 
     # Generate the bash script
-    _generateBashScript(experimentHosts, experimentLinks, experimentNICs, users)
+    _generateBashScript(users)
     

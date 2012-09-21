@@ -30,9 +30,11 @@ class Framework(pg_framework):
     GCF"""
 
     def __init__(self, config, opts):
-        pg_framework.__init__(self, config, opts)        
+        pg_framework.__init__(self, config, opts)
         self.logger = logging.getLogger("omni.pgch")
 
+    # Use an 'authority' field from the omni_config to set the
+    # authority part of the URN
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
 
@@ -59,3 +61,7 @@ class Framework(pg_framework):
         auth = self.config['authority']
         return URN(auth, "slice", name).urn_string()
 
+    # Auto recreate slices whenever the user asks for a slice
+    # Note any slice renewal from last time will be gone
+    def get_slice_cred(self, urn):
+        return self.create_slice(urn)

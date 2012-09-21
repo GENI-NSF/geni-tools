@@ -268,7 +268,10 @@ class ReferenceAggregateManager(object):
             self.logger.error('Slice %s already exists.', slice_urn)
             return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
         
-        gib_manager.createSliver(slice_urn, rspec, users) 
+        if (errString = gib_manager.createSliver(slice_urn, rspec, users)) \
+                != None :
+            # Something went wrong: we got back an error string.
+            return self.errorResult(500, errString)
 
         ### rspec_dom = None
         ### try:
@@ -396,24 +399,26 @@ class ReferenceAggregateManager(object):
         if slice_urn in self._slices:
             theSlice = self._slices[slice_urn]
             # Now calculate the status of the sliver
-            res_status = list()
-            resources = self._agg.catalog(slice_urn)
-            for res in resources:
-                self.logger.debug('Resource = %s', str(res))
-                # Gather the status of all the resources
-                # in the sliver. This could be actually
-                # communicating with the resources, or simply
-                # reporting the state of initialized, started, stopped, ...
-                res_status.append(dict(geni_urn=self.resource_urn(res),
-                                       geni_status=res.status,
-                                       geni_error=''))
+
+            ### res_status = list()
+            ### resources = self._agg.catalog(slice_urn)
+            ### for res in resources:
+            ###     self.logger.debug('Resource = %s', str(res))
+            ###     # Gather the status of all the resources
+            ###     # in the sliver. This could be actually
+            ###     # communicating with the resources, or simply
+            ###     # reporting the state of initialized, started, stopped, ...
+            ###     res_status.append(dict(geni_urn=self.resource_urn(res),
+            ###                            geni_status=res.status,
+            ###                            geni_error=''))
+
+            result = gib_manager.sliverStatus(slice_urn)
+
             self.logger.info("Calculated and returning slice %s status", slice_urn)
-            result = dict(geni_urn=slice_urn,
-                          geni_status=theSlice.status(resources),
-                          geni_resources=res_status)
-            return dict(code=dict(geni_code=0,
-                                  am_type="gcf2",
-                                  am_code=0),
+            ### result = dict(geni_urn=slice_urn,
+            ###               geni_status=theSlice.status(resources),
+            ###               geni_resources=res_status)
+            return dict(code=dict(geni_code=0),
                         value=result,
                         output="")
         else:
