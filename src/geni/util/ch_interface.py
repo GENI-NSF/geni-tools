@@ -152,7 +152,39 @@ def decodeCHResponse(msg, logger):
     result = json.loads(json_data, encoding='ascii', object_hook=_decode_dict)
     return result
 
-def invokeCH(url, operation, logger, argsdict, mycert=None, mykey=None):
+def sign_message(key, certs, msg):
+    """Signs 'msg' and returns the multipart S/MIME signed message.
+    More info can be found in the "howto.smime.html" file in the
+    M2Crypto source.
+    """
+    # Create an SMIME signer
+    smime = M2Crypto.SMIME.SMIME()
+    # Load the key and cert to use for signing
+    smime.load_key_bio(M2Crypto.BIO.MemoryBuffer(key),
+                       M2Crypto.BIO.MemoryBuffer(certs[0]))
+    # Add the cert chain, if there is one
+    if len(certs) > 1:
+        sk = M2Crypto.X509.X509_Stack()
+        for c in certs[1:]:
+            # Load up a cert chain
+            sk.push(M2Crypto.X509.load_cert_bio(M2Crypto.BIO.MemoryBuffer(c)))
+        # Add the chain certs to the smime signer
+        smime.set_x509_stack(sk)
+    # Load the msg into a BIO
+    msg_bio = M2Crypto.BIO.MemoryBuffer(msg)
+    # get the signature
+    p7 = smime.sign(msg_bio)
+    # Create a temporary BIO to hold the multipart message
+    tmp_bio = M2Crypto.BIO.MemoryBuffer()
+    # Load the msg into a BIO again -- wish I could rewind instead
+    msg_bio = M2Crypto.BIO.MemoryBuffer(msg)
+    # Write the multipart message to the temporary BIO
+    smime.write(tmp_bio, p7, msg_bio)
+    # Extract the multipart message from the temporary BIO
+    signed_message = tmp_bio.read()
+    return signed_message
+
+def invokeCH(url, operation, logger, argsdict, mycerts=None, mykey=None):
     # Invoke the real CH
     # for now, this should json encode the args and operation, do an http put
     # entry 1 in dict is named operation and is the operation, rest are args
@@ -170,7 +202,8 @@ def invokeCH(url, operation, logger, argsdict, mycert=None, mykey=None):
     for (k,v) in argsdict.items():
         toencode[k]=v
     argstr = json.dumps(toencode)
-
+    if (mycerts and mykey):
+        argstr = sign_message(mykey, mycerts, argstr)
     logger.debug("Will do put of %s", argstr)
 #    print ("Doing  put of %s" % argstr)
 
