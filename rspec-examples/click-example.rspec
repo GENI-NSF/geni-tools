@@ -1,0 +1,108 @@
+<rspec type="request" xsi:schemaLocation="http://www.protogeni.net/resources/rspec/2 http://www.protogeni.net/resources/rspec/2/request.xsd" xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.protogeni.net/resources/rspec/2">
+  <node client_id="top" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <services>
+      <execute command="/local/click-example/click-example-startup.sh" shell="sh"/>
+      <install install_path="/local" url="http://www.gpolab.bbn.com/experiment-support/ClickExampleExperiment/click-example.tar.gz" file_type="tar.gz"/>
+    </services>
+    <interface client_id="top:if1"/>
+    <interface client_id="top:if2"/>
+    <interface client_id="top:if3"/>
+    <flack:info x="234" y="117" unbound="true"/>
+  </node>
+  <node client_id="left" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <services>
+      <execute command="/local/click-example/click-example-startup.sh" shell="sh"/>
+      <install install_path="/local" url="http://www.gpolab.bbn.com/experiment-support/ClickExampleExperiment/click-example.tar.gz" file_type="tar.gz"/>
+    </services>
+    <interface client_id="left:if1"/>
+    <interface client_id="left:if2"/>
+    <flack:info x="120" y="212" unbound="true"/>
+  </node>
+  <node client_id="right" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <services>
+      <execute command="/local/click-example/click-example-startup.sh" shell="sh"/>
+      <install install_path="/local" url="http://www.gpolab.bbn.com/experiment-support/ClickExampleExperiment/click-example.tar.gz" file_type="tar.gz"/>
+    </services>
+    <interface client_id="right:if1"/>
+    <interface client_id="right:if2"/>
+    <flack:info x="356" y="203" unbound="true"/>
+  </node>
+  <node client_id="bottom" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <services>
+      <execute command="/local/click-example/click-example-startup.sh" shell="sh"/>
+      <install install_path="/local" url="http://www.gpolab.bbn.com/experiment-support/ClickExampleExperiment/click-example.tar.gz" file_type="tar.gz"/>
+    </services>
+    <interface client_id="bottom:if1"/>
+    <interface client_id="bottom:if2"/>
+    <interface client_id="bottom:if3"/>
+    <flack:info x="229" y="319" unbound="true"/>
+  </node>
+  <node client_id="hostA" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <interface client_id="hostA:if1"/>
+    <flack:info x="234" y="25" unbound="true"/>
+  </node>
+  <node client_id="hostB" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops//FEDORA10-STD"/>
+    </sliver_type>
+    <interface client_id="hostB:if1"/>
+    <flack:info x="228" y="393" unbound="true"/>
+  </node>
+  <link client_id="link-0">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="top:if1" dest_id="left:if1" capacity="100000"/>
+    <property source_id="left:if1" dest_id="top:if1" capacity="100000"/>
+    <interface_ref client_id="top:if1"/>
+    <interface_ref client_id="left:if1"/>
+  </link>
+  <link client_id="link-1">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="top:if2" dest_id="right:if1" capacity="100000"/>
+    <property source_id="right:if1" dest_id="top:if2" capacity="100000"/>
+    <interface_ref client_id="top:if2"/>
+    <interface_ref client_id="right:if1"/>
+  </link>
+  <link client_id="link-2">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="left:if2" dest_id="bottom:if1" capacity="100000"/>
+    <property source_id="bottom:if1" dest_id="left:if2" capacity="100000"/>
+    <interface_ref client_id="left:if2"/>
+    <interface_ref client_id="bottom:if1"/>
+  </link>
+  <link client_id="link-3">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="right:if2" dest_id="bottom:if2" capacity="100000"/>
+    <property source_id="bottom:if2" dest_id="right:if2" capacity="100000"/>
+    <interface_ref client_id="right:if2"/>
+    <interface_ref client_id="bottom:if2"/>
+  </link>
+  <link client_id="link-A">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="hostA:if1" dest_id="top:if3" capacity="100000"/>
+    <property source_id="top:if3" dest_id="hostA:if1" capacity="100000"/>
+    <interface_ref client_id="hostA:if1"/>
+    <interface_ref client_id="top:if3"/>
+  </link>
+  <link client_id="link-B">
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
+    <property source_id="bottom:if3" dest_id="hostB:if1" capacity="100000"/>
+    <property source_id="hostB:if1" dest_id="bottom:if3" capacity="100000"/>
+    <interface_ref client_id="bottom:if3"/>
+    <interface_ref client_id="hostB:if1"/>
+  </link>
+</rspec>
