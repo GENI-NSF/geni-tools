@@ -1,0 +1,41 @@
+<rspec type="request" generated_by="Flack" generated="2012-09-19T17:51:53Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+  <node client_id="island1" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+pgeni.gpolab.bbn.com+image+emulab-ops//UBUNTU1004-STD"/>
+    </sliver_type>
+    <flack:node_info x="505" y="37" unbound="true"/>
+  </node>
+  <node client_id="island2" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+pgeni.gpolab.bbn.com+image+emulab-ops//UBUNTU1004-STD"/>
+    </sliver_type>
+    <flack:node_info x="501" y="205" unbound="true"/>
+  </node>
+  <node client_id="connected1" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+pgeni.gpolab.bbn.com+image+emulab-ops//UBUNTU1004-STD"/>
+    </sliver_type>
+    <interface client_id="connected1:if0">
+      <flack:interface_info addressUnset="true"/>
+    </interface>
+    <flack:node_info x="836" y="39" unbound="true"/>
+  </node>
+  <node client_id="connected2" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+      <disk_image name="urn:publicid:IDN+pgeni.gpolab.bbn.com+image+emulab-ops//UBUNTU1004-STD"/>
+    </sliver_type>
+    <interface client_id="connected2:if0">
+      <flack:interface_info addressUnset="true"/>
+    </interface>
+    <flack:node_info x="835" y="200" unbound="true"/>
+  </node>
+  <link client_id="lan0">
+    <component_manager name="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm"/>
+    <interface_ref client_id="connected1:if0"/>
+    <interface_ref client_id="connected2:if0"/>
+    <property source_id="connected1:if0" dest_id="connected2:if0"/>
+    <property source_id="connected2:if0" dest_id="connected1:if0"/>
+    <link_type name="lan"/>
+    <flack:link_info x="-1" y="-1" unboundVlantag="true"/>
+  </link>
+</rspec>
