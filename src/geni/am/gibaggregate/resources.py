@@ -168,8 +168,9 @@ def _annotateGraph() :
             interfaceCount += 1
 
     # Give each link a subnet address and bridge name
-    networkNumber = 2;   # Subnet number to assign to link. Starts with 2
-                                       # since subnet 1 is for control network
+    networkNumber = 3;   # Subnet number to assign to link. Starts with 3
+                         #    since subnet 1 is for control network and 
+                         #    subnet 2 is used by VirtualBox
     for i in range(len(experimentLinks)) :
         linkObject = experimentLinks[i]
         linkObject.subnetNumber = networkNumber
@@ -308,7 +309,6 @@ def _generateBashScript(users) :
         scriptFile.write('vzctl start %s \n' % hostObject.containerName)
         
     scriptFile.write('\n## Configure bridges on host \n')
-    # Current assumption: There is one bridge per link
     for i in range(len(experimentLinks)) :
         linkObject = experimentLinks[i]
         scriptFile.write('brctl addbr %s \n' % linkObject.bridgeID)
@@ -329,7 +329,7 @@ def _generateBashScript(users) :
         scriptFile.write('pingNode %d \n' % hostObject.containerName)
         scriptFile.write('if [ $? -ne 0 ] \n')
         scriptFile.write('then \n')
-        scriptFile.write('    echo \"Container %d failed to start up. \n' % hostObject.containerName)
+        scriptFile.write('    echo \"Container %d failed to start up.\" \n' % hostObject.containerName)
         statusFileName = '%s/pc%s.status' % (config.sliceSpecificScriptsDir, 
                                              hostObject.containerName)
         scriptFile.write('    echo \"failed\" > %s \n' % statusFileName)
@@ -686,6 +686,15 @@ def specialFiles() :
         scriptFile.write('\n')
         
     scriptFile.close()
+
+
+def freeResources() :
+    """
+        Free up resources.
+    """
+    experimentHosts.clear()
+    del experimentLinks[:]
+    experimentNICs.clear()
 
 
 def getResourceStatus() :

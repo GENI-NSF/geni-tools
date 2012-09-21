@@ -55,6 +55,9 @@ def deleteSliver() :
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.manifestFile
     os.remove(pathToFile)
     
+    # Free up internal data structures representing these resources
+    resources.freeResources()
+
 
 def sliverStatus(slice_urn) :
     """

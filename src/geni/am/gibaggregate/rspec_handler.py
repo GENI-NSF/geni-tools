@@ -124,9 +124,9 @@ def parseRequestRspec(slice_urn, rspec) :
         experimentLinks.append(linkObject) # Add to collection of links 
                                            #    used by this experiment
         
-        # Get the two end-points for this link.  
+        # Get the end-points for this link.  
         endPoints = link.getElementsByTagName('interface_ref');
-        for i in range(0, 2) :
+        for i in range(len(endPoints)) :
             endPointAttributes = endPoints[i].attributes  # DOM attributes
                                            # object associated with end point
             interfaceName = endPointAttributes['client_id'].value  # Name of
