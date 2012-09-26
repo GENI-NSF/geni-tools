@@ -16,9 +16,14 @@ cp /etc/hosts /etc/hosts.save
 cat /etc/hosts.save | sed 's/127.0.0.1[[:space:]]*localhost.localdomain[[:space:]]*localhost/& geni-in-a-box.net/' > /etc/hosts
 
 # Add entries for the VMs.  Use the IP address on the control network
-echo "10.0.1.101 pc101.geni-in-box.net pc101" >> /etc/hosts
-echo "10.0.1.102 pc102.geni-in-box.net pc102" >> /etc/hosts
-echo "10.0.1.103 pc103.geni-in-box.net pc103" >> /etc/hosts
-echo "10.0.1.104 pc104.geni-in-box.net pc104" >> /etc/hosts
-echo "10.0.1.105 pc105.geni-in-box.net pc105" >> /etc/hosts
-echo "10.0.1.106 pc106.geni-in-box.net pc106" >> /etc/hosts
+echo "10.0.1.101 pc101.geni-in-a-box.net pc101" >> /etc/hosts
+echo "10.0.1.102 pc102.geni-in-a-box.net pc102" >> /etc/hosts
+echo "10.0.1.103 pc103.geni-in-a-box.net pc103" >> /etc/hosts
+echo "10.0.1.104 pc104.geni-in-a-box.net pc104" >> /etc/hosts
+echo "10.0.1.105 pc105.geni-in-a-box.net pc105" >> /etc/hosts
+echo "10.0.1.106 pc106.geni-in-a-box.net pc106" >> /etc/hosts
+
+# Copy the .desktop file to the proper place so the gib-startup.sh script is run when the user logs in
+mkdir -p ~/.config/autostart
+cp ~/gcf/gib-config-files/gibStart.desktop ~/.config/autostart
+
