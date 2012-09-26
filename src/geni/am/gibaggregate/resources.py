@@ -255,8 +255,10 @@ def _generateBashScript(users) :
     scriptFile.write('} \n')
 
     scriptFile.write('\n## Delete any existing sliver. \n')
-    scriptFile.write('%s/%s \n' % (config.standardScriptsDir,
-                                   config.deleteSliver))
+    scriptFile.write('%s/%s %s %s\n' % (config.standardScriptsDir,
+                                        config.deleteSliver,
+                                        config.homeDirectory,
+                                        config.sliceSpecificScriptsDir))
 
     hostNames = experimentHosts.keys()
 
@@ -599,7 +601,13 @@ def _generateBashScript(users) :
 
         scriptFile.write('\n')
         
-        # set up the user accounts and ssh public keys for each container
+        # set up an account for root
+        scriptFile.write('# Create root account in container %i \n' %
+                         hostObject.containerName)
+        scriptFile.write('vzctl set %i --userpasswd root:%s \n' %
+                         (hostObject.containerName, config.rootPwd))
+
+        # set up the user accounts and ssh public keys 
         for user in users :
             userName = ""    # the current user the public key is installed for
             publicKeys = []  # the public keys for the current user, these are not files
@@ -620,15 +628,21 @@ def _generateBashScript(users) :
             if userName != "":
                 scriptFile.write("# Create user %s for container %i and install public keys\n" % (userName, hostObject.containerName))
                 scriptFile.write("echo \"Creating user %s for container %s and installing public keys...\"\n" % (userName, hostObject.nodeName))
-                scriptFile.write("vzctl set %i --userpasswd %s:geniinabox\n" % (hostObject.containerName, userName))
+                scriptFile.write("vzctl set %i --userpasswd %s:%s \n" % 
+                                 (hostObject.containerName,
+                                  userName, config.rootPwd))
             
                 # install all of the public keys for this user
                 for publicKey in publicKeys :
                     scriptFile.write("mkdir -p /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 600 /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 777 /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
                     scriptFile.write("touch /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 600 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 777 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
                     scriptFile.write("echo \"%s\">>/vz/root/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
+
+                # add this user to group wheel
+                scriptFile.write('vzctl exec %s \"usermod -a -G wheel %s" \n' %
+                                 (hostObject.containerName, userName))
             
             scriptFile.write('\n')
             

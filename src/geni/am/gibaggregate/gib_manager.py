@@ -1,7 +1,6 @@
 
 import logging
 import os
-import os.path
 import subprocess
 
 import resources
@@ -36,7 +35,7 @@ def createSliver(slice_urn, requestRspec, users) :
     pathToFile = config.sliceSpecificScriptsDir + '/' + config.shellScriptFile
     command = 'echo \"%s\" | sudo -S %s' % (config.rootPwd, pathToFile)
     print command
-    # os.system(command)
+    os.system(command)
 
 
 def deleteSliver() :
@@ -47,7 +46,11 @@ def deleteSliver() :
 
     # Invoke the deleteSliver script in the standardScipts directory
     pathToFile = config.standardScriptsDir + '/' + config.deleteSliver
-    command = 'echo \"%s\" | sudo -S %s' % (config.rootPwd, pathToFile)
+    command = 'echo \"%s\" | sudo -S %s %s %s' % (config.rootPwd,
+                                                  pathToFile,
+                                                  config.homeDirectory,
+                                                  config.sliceSpecificScriptsDir
+                                               )
     print command
     os.system(command)
 

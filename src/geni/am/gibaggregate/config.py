@@ -10,6 +10,9 @@ logger = logging.getLogger('gcf.am2.gib')
 # Find the name of the directory in which this script resides
 gibDirectory = os.path.dirname(os.path.realpath(__file__))
 
+# Find home directory of user running this aggregate manager
+homeDirectory = os.path.expanduser('~')
+
 # Files in the standardScrips subdirectory
 standardScriptsDir = gibDirectory + '/standardScripts'
 advertRspecFile = 'gib-advert.rspec'  # File containing the advertisement
@@ -33,5 +36,7 @@ else :
     _exitMsg = 'Running on an unsupported Linux distribution: %s' % _version 
     logger.error(_exitMsg)
     sys.exit(_exitMsg)
+
+
 
 rootPwd = 'gib2012'     # No comment  :-)

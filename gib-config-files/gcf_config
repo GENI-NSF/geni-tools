@@ -46,7 +46,7 @@ certfile=~/.gcf/ch-cert.pem
 # am_n = ...
 
 # Begin with our own AM
-am_1 = urn:publicid:IDN+geni:gpo:gcf:am1+authority+am, http://localhost:8001
+am_1 = urn:publicid:IDN+geni:gpo:gcf:am1+authority+am, http://geni-in-a-box.net:8001
 
 # Duration of User credentials in seconds
 user_cred_duration=86400

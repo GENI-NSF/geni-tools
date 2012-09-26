@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ $# != 2 ] 
+then
+    echo "Usage: deletesliver pathToHomeDir pathToSliceSpecificScriptsDir"
+    exit 1
+fi
+
 # Stop the PCs
 echo "Stopping running containers..."
 vzctl stop 101
@@ -30,11 +36,10 @@ for i in $(brctl show | awk '{print $1}')
     fi
 done
 
-# Remove ssh keys created for these hosts
-if [ -e ~/.ssh/known_hosts ]
-then
-    rm ~/.ssh/known_hosts
-fi
+echo "Cleaning up files created for sliver"
+rm -f $1/.ssh/known_hosts
 
 # Delete the files that hold the sliver status
-rm -f ../sliceSpecificScripts/*.status
+rm -f $2/*.status
+
+exit 0

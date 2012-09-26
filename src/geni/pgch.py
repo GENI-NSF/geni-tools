@@ -905,7 +905,7 @@ class PGClearinghouse(Clearinghouse):
             for (urn, url) in self.aggs:
                 # convert urn to hrn
                 hrn = sfa.util.xrn.urn_to_hrn(urn)
-                ret.append(dict(gid='amcert', hrn=hrn, url=url))
+                ret.append(dict(gid='amcert', hrn=hrn, url=url, urn=urn))
             return ret
         else:
             argsdict = dict(service_type=0)
