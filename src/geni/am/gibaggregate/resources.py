@@ -640,9 +640,15 @@ def _generateBashScript(users) :
                     scriptFile.write("chmod 777 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
                     scriptFile.write("echo \"%s\">>/vz/root/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
 
-                # add this user to group wheel
-                scriptFile.write('vzctl exec %s \"usermod -a -G wheel %s" \n' %
-                                 (hostObject.containerName, userName))
+                # add this user to group wheel or root depending on OS
+                groupName = ""
+                if config.distro == 'UBUNTU10-STD' : 
+                    groupName = "root"
+                else :
+                    groupName = "wheel"
+                    
+                scriptFile.write('vzctl exec %s \"usermod -a -G %s %s" \n' %
+                                (hostObject.containerName, groupName, userName))
             
             scriptFile.write('\n')
             
