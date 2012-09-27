@@ -45,7 +45,7 @@ New in v2.1:
  - Clean some output messages (`ListResources`, whether omni lists
  the getversion cache name option, a WARN on v2 getversion at a v1
  AM, etc)
- - Clean generated filenames from a protogeni v3 AM
+ - Clean generated filenames from a protogeni AM (GCF #237)
 
 New in v2.0:
 
