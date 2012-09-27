@@ -659,7 +659,10 @@ class AMCallHandler(object):
             try:
                 rspec = zlib.decompress(rspec.decode('base64'))
             except Exception, e:
-                self.logger.error("Failed to decompress RSpec: %s", e);
+                if rspec and rspec_util.is_rspec_string(rspec, self.logger):
+                    self.logger.debug("AM returned uncompressed RSpec when compressed was requested")
+                else:
+                    self.logger.error("Failed to decompress RSpec: %s", e);
                 self.logger.debug("RSpec begins: '%s'", rspec[:40])
         # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
         elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
