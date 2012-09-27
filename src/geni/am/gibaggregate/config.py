@@ -39,4 +39,4 @@ else :
 
 
 
-rootPwd = 'gib2012'     # No comment  :-)
+rootPwd = 'geniinabox'     # No comment  :-)
