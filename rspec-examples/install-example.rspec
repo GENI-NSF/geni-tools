@@ -5,7 +5,7 @@
     </sliver_type>
     <services>
       <execute command="/local/example-script1.sh" shell="sh"/>
-      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/sampleExperiment/example-script1.sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/sampleExperiment/example-script1.sh?format=raw"/>
     </services>
     <interface client_id="left:if0"/>
   </node>
@@ -15,7 +15,7 @@
     </sliver_type>
     <services>
       <execute command="/local/example-script2.sh" shell="sh"/>
-      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/sampleExperiment/example-script2.sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/sampleExperiment/example-script2.sh?format=raw"/>
     </services>
     <interface client_id="right:if0"/>
   </node>
