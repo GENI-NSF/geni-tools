@@ -119,6 +119,7 @@ def main(argv=None):
     # Then treat that as the slice
     if not sliceurn and rspecfile and not rspec:
       sliceurn = rspecfile
+      rspecfile = None
 
     # construct the args in order
     omniargs.append(command)
