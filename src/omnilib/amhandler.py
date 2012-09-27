@@ -3507,14 +3507,20 @@ class AMCallHandler(object):
         if url.find('://') > -1:
             server = url[(url.find('://') + 3):]
 
+        # protogeni often runs on port 12369 - pull that out if possible
+        if ":12369/protogeni/" in server:
+            server = server[:(server.index(":12369/"))] + server[(server.index(":12369/")+6):]
+
         # strip standard url endings that dont tell us anything
         if server.endswith("/xmlrpc/am"):
             server = server[:(server.index("/xmlrpc/am"))]
         elif server.endswith("/xmlrpc"):
             server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/xmlrpc/am/1.0"):
+            server = server[:(server.index("/xmlrpc/am/1.0"))] + "v1"
         elif server.endswith("/xmlrpc/am/2.0"):
             server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
-        elif server.endswith("/xmlrpc/am/2.0"):
+        elif server.endswith("/xmlrpc/am/3.0"):
             server = server[:(server.index("/xmlrpc/am/3.0"))] + "v3"
         elif server.endswith("/openflow/gapi/"):
             server = server[:(server.index("/openflow/gapi/"))]
