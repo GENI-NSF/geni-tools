@@ -1181,6 +1181,10 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_RenewPastSliceExpiration(self, slicename):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return
+
         # (1) Get the slicecredential
         omniargs = ["getslicecred", slicename]
         (text, slicecredstruct) = self.call(omniargs, self.options_copy)
@@ -1245,6 +1249,10 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_RenewSliver( self, slicename, newtime):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return
+
         omniargs = ["renewsliver", slicename, newtime] 
         text, (succList, failList) = self.call(omniargs, self.options_copy)
         succNum, possNum = omni.countSuccess( succList, failList )
@@ -1263,6 +1271,10 @@ class Test(ut.OmniUnittest):
                          "but did not." % (str(newtime)))
 
     def subtest_RenewSliver_many( self, slicename ):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return
+
         now = datetime.datetime.utcnow()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
@@ -1277,6 +1289,10 @@ class Test(ut.OmniUnittest):
         self.subtest_RenewSliver( slicename, fivedays )
 
     def subtest_Renew_many( self, slicename ):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return
+
         now = datetime.datetime.utcnow()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
@@ -1293,6 +1309,10 @@ class Test(ut.OmniUnittest):
         self.subtest_Status( slicename, expectedExpiration=fivedays )
 
     def subtest_Renew(self, slice_name, newtime, sliverlist = None):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return None
+
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='renew', 
                                         AMAPI_call="Renew", sliverlist=sliverlist,
@@ -1720,6 +1740,10 @@ class Test(ut.OmniUnittest):
             self.subtest_Status( slicename, sliverlist )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
+        if self.opts.skip_renew:
+            print "Skipping renew tests"
+            return
+
         if self.options_copy.api_version <= 2:
             self.subtest_RenewSliver_many( slicename )
         elif self.options_copy.api_version >= 3:
@@ -1788,6 +1812,8 @@ class Test(ut.OmniUnittest):
                            dest='bound',
                            default=True,
                            help="RSpecs are unbound (requesting some resources, not a particular resource)" )
+        parser.add_option( "--skip-renew", action="store_true", dest="skip_renew", default=False,
+                           help="Skip all Renew or RenewSliver tests (default False)")
 
 
         parser.remove_option("-t")
