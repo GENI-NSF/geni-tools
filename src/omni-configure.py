@@ -429,11 +429,11 @@ keys = %(pkey)s
 # URN is optional
 [aggregate_nicknames]
 #ProtoGENI AMs
-pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am
+pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
-pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am
+pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am/1.0
 pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 
 #PlanetLab Central AM
