@@ -489,6 +489,7 @@ Options:
                         test: test_ListResources_delegatedSliceCred
   --un-bound            RSpecs are unbound (requesting some resources, not a
                         particular resource)
+  --skip-renew          Skip all Renew or RenewSliver tests (default False)
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
 

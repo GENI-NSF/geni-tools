@@ -46,6 +46,7 @@ New in v2.1:
  the getversion cache name option, a WARN on v2 getversion at a v1
  AM, etc)
  - Clean generated filenames from a protogeni AM (GCF #196)
+ - Report PG error log URN on errors, if available (ticket #198)
 
 New in v2.0:
 
