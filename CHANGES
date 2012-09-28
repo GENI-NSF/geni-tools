@@ -17,6 +17,9 @@ gcf 2.1:
   - gen-certs: Check that user URN is valid per AM API v3
   - gcf-ch: Check that slice URN is valid per AM API v3
 
+ * AM API acceptance tests
+  - Add --skip-renew option to skip all Renew and RenewSliver tests
+
 gcf 2.0:
  This is a major release. It includes:
  - AM API version 2 is the default. Include the -V option to use AM
