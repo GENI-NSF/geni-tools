@@ -47,6 +47,7 @@ from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice
     _print_slice_expiration
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
+from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
 
@@ -1285,7 +1286,7 @@ class AMCallHandler(object):
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
             rspecfile = args[1]
-        if rspecfile is None or not os.path.isfile(rspecfile):
+        if rspecfile is None : 
 #--- Dev mode should allow missing RSpec
             msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
@@ -1293,9 +1294,12 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # read the rspec into a string, and add it to the rspecs dict
         try:
-            rspec = file(rspecfile).read()
+        # read the rspec into a string, and add it to the rspecs dict
+          if rspecfile.startswith("http://") or rspecfile.startswith("https://"):
+            rspec = readFromURL(rspecfile)
+          else :
+            rspec = readFromLocalFile(rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
