@@ -9,7 +9,8 @@ gcf 2.1:
   - Clean some output messages (`ListResources`, whether omni lists
   the getversion cache name option, a WARN on v2 getversion at a v1
   AM, etc)
-  - Clean generated filenames from a protogeni AM (GCF #196)
+  - Clean generated filenames from a protogeni AM (ticket #196)
+  - Report PG error log URN on errors, if available (ticket #198)
 
  * gcf
   - gen-certs: Include UUID in generated certs, per AM API v3
