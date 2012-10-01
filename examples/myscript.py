@@ -30,6 +30,8 @@ import sys
 
 import omni
 from omnilib.util.omnierror import OmniError
+from omnilib.util.files import *
+  
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -77,10 +79,10 @@ def main(argv=None):
     # Try to read args[1] as an RSpec filename to read
     rspecfile = args[1]
     rspec = None
-    if rspecfile and os.path.exists(rspecfile) and os.path.getsize(rspecfile) > 0:
+    if rspecfile :
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      with open(rspecfile, 'r') as f:
-        rspec = f.read()
+      rspec = readFile(rspecfile)
+      
 
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
