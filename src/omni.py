@@ -90,7 +90,6 @@ import optparse
 import os
 import sys
 
-from omnilib.util.files import *
 from omnilib.util import OmniError
 from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
@@ -317,6 +316,9 @@ def main(argv=None):
   # and maybe slice name from that file.
   # Then construct omni args appropriately: command, slicename, action or rspecfile or datetime
   ##############################################################################
+  # For reading in the rspec, you will need this import in your script
+
+  from omnilib.util.files import *
   omniargs = []
   if args and len(args)>1:
     sliceurn = None
@@ -325,12 +327,11 @@ def main(argv=None):
     rspec = None
     if rspecfile :
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      if rspecfile.startswith("http://") or rspecfile.startswith("https://"):
-        rspec = readFromURL(rspecfile)
-      else :
-        rspec = readFromLocalFile(rspecfile)
-
-
+      try:
+        rspec = readFile(rspecfile)
+      except Exception, exc:
+        msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+        print msg
 
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
