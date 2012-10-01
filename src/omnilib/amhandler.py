@@ -2442,7 +2442,8 @@ class AMCallHandler(object):
                     if status.has_key('geni_status'):
                         msg = "Slice %s at AM %s has overall SliverStatus: %s"% (urn, client.url, status['geni_status'])
                         self.logger.info(msg)
-                        retVal += msg + ". " # FIXME: newline instead?
+                        retVal += msg + ".\n "
+                        # FIXME: Do this even if many AMs?
 
                 # Save/print out result
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
@@ -2606,7 +2607,7 @@ class AMCallHandler(object):
             # Else say '%d slivers have %d different statuses
             # if op state includes geni_failed or geni_pending_allocation, say so
             # If alloc state includes geni_unallocated, say so
-            # Resulting text added to retVal
+            # Resulting text added to retVal. But do this even if lots AMs? Or only if limited # of AMs?
 
             # Print or save out result
             if not isinstance(status, dict):
