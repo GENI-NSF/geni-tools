@@ -2439,6 +2439,10 @@ class AMCallHandler(object):
                         prettyResult = pprint.pformat(status)
                 else:
                     prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+                    if status.has_key('geni_status'):
+                        msg = "Slice %s at AM %s has overall SliverStatus: %s"% (urn, client.url, status['geni_status'])
+                        self.logger.info(msg)
+                        retVal += msg + ". " # FIXME: newline instead?
 
                 # Save/print out result
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
@@ -2592,6 +2596,17 @@ class AMCallHandler(object):
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+            # FIXME: Ticket #197: Summarize overall status
+            # Use a helper routine
+            # Get all statuses in a hash (value is count)
+            # $alloc_statuses, $op_statuses = self._get_sliver_statuses(status)
+            # If only 1 sliver, get its allocation and operational status
+            # if alloc or operational status same for all slivers, say so
+            # Else say '%d slivers have %d different statuses
+            # if op state includes geni_failed or geni_pending_allocation, say so
+            # If alloc state includes geni_unallocated, say so
+            # Resulting text added to retVal
 
             # Print or save out result
             if not isinstance(status, dict):
