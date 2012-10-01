@@ -90,11 +90,13 @@ import optparse
 import os
 import sys
 
+from omnilib.util.files import *
 from omnilib.util import OmniError
 from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
 
 OMNI_VERSION="2.1"
+
 
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
@@ -321,10 +323,14 @@ def main(argv=None):
     # Try to read args[1] as an RSpec filename to read
     rspecfile = args[1]
     rspec = None
-    if rspecfile and os.path.exists(rspecfile) and os.path.getsize(rspecfile) > 0:
+    if rspecfile :
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      with open(rspecfile, 'r') as f:
-        rspec = f.read()
+      if rspecfile.startswith("http://") or rspecfile.startswith("https://"):
+        rspec = readFromURL(rspecfile)
+      else :
+        rspec = readFromLocalFile(rspecfile)
+
+
 
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
