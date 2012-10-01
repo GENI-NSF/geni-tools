@@ -1181,7 +1181,7 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_RenewPastSliceExpiration(self, slicename):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return
 
@@ -1249,7 +1249,7 @@ class Test(ut.OmniUnittest):
 
 
     def subtest_RenewSliver( self, slicename, newtime):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return
 
@@ -1271,7 +1271,7 @@ class Test(ut.OmniUnittest):
                          "but did not." % (str(newtime)))
 
     def subtest_RenewSliver_many( self, slicename ):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return
 
@@ -1289,7 +1289,7 @@ class Test(ut.OmniUnittest):
         self.subtest_RenewSliver( slicename, fivedays )
 
     def subtest_Renew_many( self, slicename ):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return
 
@@ -1309,7 +1309,7 @@ class Test(ut.OmniUnittest):
         self.subtest_Status( slicename, expectedExpiration=fivedays )
 
     def subtest_Renew(self, slice_name, newtime, sliverlist = None):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return None
 
@@ -1740,7 +1740,7 @@ class Test(ut.OmniUnittest):
             self.subtest_Status( slicename, sliverlist )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
-        if self.opts.skip_renew:
+        if self.options_copy.skip_renew:
             print "Skipping renew tests"
             return
 
