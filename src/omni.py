@@ -328,11 +328,7 @@ def main(argv=None):
     rspec = None
     if rspecfile:
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      try:
-        rspec = readFile(rspecfile)
-      except Exception, exc:
-        msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
-        print msg
+      rspec = readFile(rspecfile)
 
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
