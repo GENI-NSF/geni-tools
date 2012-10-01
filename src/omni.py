@@ -90,7 +90,6 @@ import optparse
 import os
 import sys
 
-from omnilib.util.files import *
 from omnilib.util import OmniError
 from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
@@ -275,6 +274,7 @@ import re
 import sys
 
 import omni
+from omnilib.util.files import *
 from omnilib.util.omnierror import OmniError
 
 ################################################################################
@@ -323,7 +323,7 @@ def main(argv=None):
     # Try to read args[1] as an RSpec filename to read
     rspecfile = args[1]
     rspec = None
-    if rspecfile :
+    if rspecfile:
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
       if rspecfile.startswith("http://") or rspecfile.startswith("https://"):
         rspec = readFromURL(rspecfile)

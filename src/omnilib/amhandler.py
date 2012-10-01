@@ -1286,7 +1286,7 @@ class AMCallHandler(object):
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
             rspecfile = args[1]
-        if rspecfile is None : 
+        if rspecfile is None: # FIXME: If file type arg, check the file exists: os.path.isfile(rspecfile) 
 #--- Dev mode should allow missing RSpec
             msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
