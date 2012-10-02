@@ -24,6 +24,16 @@
 import urllib2
 import os
 
+URL_PREFIXES = ("http://", "https://", "ftp://")
+
+def readFile( filestr ):
+    contentstr = None
+    if filestr.startswith(URL_PREFIXES):
+        contentstr = readFromURL(filestr)
+    else :
+        contentstr = readFromLocalFile(filestr)
+    return contentstr
+
 def readFromLocalFile( filename ):
     readstr = None
     with open(filename, 'r') as f:

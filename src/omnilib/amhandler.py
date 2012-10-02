@@ -1296,10 +1296,7 @@ class AMCallHandler(object):
 
         try:
         # read the rspec into a string, and add it to the rspecs dict
-          if rspecfile.startswith("http://") or rspecfile.startswith("https://"):
-            rspec = readFromURL(rspecfile)
-          else :
-            rspec = readFromLocalFile(rspecfile)
+          rspec = readFile(rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
