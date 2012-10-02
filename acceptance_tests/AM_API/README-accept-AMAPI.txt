@@ -209,40 +209,44 @@ help@geni.net
 	If you need to run with unbound RSpecs, use the `--un-bound` option.
 
   (c) To test slice delegation, you will need to:
-   send your cert to a co-worker with a PG GPO account and have
+   send your certificate to a co-worker with a PG GPO account and have
    them create a slice, reserve resources on that slice, and
-   delegate the slice credential to you.
+   delegate their slice credential to you.
 
     (i) Have a colleague create a slice. (Keep the slice name under 12
-    characters. Here using "delegSlice".)
+    characters. Here we are using "delegSlice".) Your colleague should do:
 {{{
          $ $GCF/src/omni.py -o createslice delegSlice
 }}}
-    (ii) Have your colleague reserve resources at the AM under test.
+    (ii) Have your colleague reserve resources at the AM under
+    test. Your colleague should do:
 {{{
          $ $GCF/src/omni.py -a am-undertest -o createsliver delegSlice req.xml
 }}}
-    (iii) Have your colleague download their slice credential.
+    (iii) Have your colleague download their slice credential:
 {{{
          $ $GCF/src/omni.py getslicecred delegSlice -o
 }}}
     (iv) Have your colleague delegate their slice to you.
      See $GCF/src/delegateSliceCred.py -h for more information.
+     Note that this is the command that your colleague runs, to
+    delegate their slice credential to you. In this case, you are the
+    delegee, and the `delegeegid` is your certificate that you sent to them.
 {{{
          $ $GCF/src/delegateSliceCred.py --cert path/to/their/cert.pem \
               --key path/to/their/key.pem --delegeegid path/to/your/gid_file.pem \
               --slicecred delegSlice-cred.xml
 }}}
-     Note: Command generates a delegation file named something like
+     Note: This command generates a delegation file named something like
      `pgeni--gpolab-bbn--com-lnevers-delegated-delegSlice-cred.xml`.
 
-    (v) Place the output delegation file your acceptance test path as
+    (v) Place the output delegation file in your acceptance test path as:
 {{{
      $GCF/acceptance_tests/AM_API/delegated.xml
 }}}
 
 (4) Run "GENI AM API" acceptance tests with a GENI credential accepted by the AM
-under test(double check). Make sure you are still in the directory where you will
+under test (double check). Make sure you are still in the directory where you will
 run the acceptance tests.
 {{{
     $ cd $GCF/acceptance_tests/AM_API
