@@ -516,7 +516,7 @@ Check that the value of 'code' is as follows:
 
     def assertOutput( self, AMAPI_call, agg, retVal ):
         """Check that the dictionary retVal has key: 
-              'value'
+              'output'
         """
         self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         output = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
