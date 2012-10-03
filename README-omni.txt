@@ -50,6 +50,9 @@ New in v2.1:
  - On API version mismatch, report that error in the run summary
   (ticket #200)
  - Remove extra \n's in rspec output (ticket #202)
+ - When we switch AM URLs, be sure result is hashed by correct URL
+  (ticket #205)
+ - Put overall sliver status in the result summary (ticket #197)
 
 New in v2.0:
 
