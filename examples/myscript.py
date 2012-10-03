@@ -79,11 +79,14 @@ def main(argv=None):
     # Try to read args[1] as an RSpec filename to read
     rspecfile = args[1]
     rspec = None
-    if rspecfile :
+    if rspecfile:
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      rspec = readFile(rspecfile)
-      
+      try:
+        rspec = readFile(rspecfile)
+      except:
+        print "Failed to read rspec from %s" % rspecfile
 
+    if rspec:
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
 #	URN: unspecified_AM_URN
@@ -93,7 +96,7 @@ def main(argv=None):
 # at AM:\n\tURN: %s\n\tURL: %s
 
       if not ("Resources at AM" in rspec or "Reserved resources for" in rspec):
-        sys.exit("Could not find slice name or AM URL in RSpec")
+        sys.exit("Could not find slice name or AM URL in RSpec %s" % rspec)
       amurn = None
       amurl = None
       # Pull out the AM URN and URL
