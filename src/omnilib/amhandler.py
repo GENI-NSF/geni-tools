@@ -3060,7 +3060,7 @@ class AMCallHandler(object):
                     self.logger.warn("... but continuing with requested version and client")
                     return (configver, client)
             else:
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not talk that version. It advertises: %s. Try running Omni with -V<one of the advertised versions>.", configver, client.url, cver, pprint.pformat(svers))
+                self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>.", configver, client.url, cver, pprint.pformat(svers))
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
 #                    self.logger.warn("Changing to use API version %d", cver)
