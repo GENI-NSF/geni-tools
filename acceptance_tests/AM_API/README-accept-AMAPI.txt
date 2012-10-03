@@ -178,7 +178,11 @@ help@geni.net
        $ cp request2.xml.sample request2.xml
        $ cp request3.xml.sample request3.xml
  }}}
-  (b) Run all of the acceptance tests:
+  (b) Clear any old acceptance log file:
+{{{
+      $ \rm acceptance.log
+}}}
+  (c) Run all of the acceptance tests:
 {{{
       $ am_api_accept.py -a am-undertest
 }}}
@@ -251,7 +255,11 @@ run the acceptance tests.
 {{{
     $ cd $GCF/acceptance_tests/AM_API
 }}}
-  (a) Run all of the tests:
+  (a) Clear any old acceptance log file:
+{{{
+      $ \rm acceptance.log
+}}}
+  (b) Run all of the tests:
 {{{
     $ am_api_accept.py -a am-undertest
 }}}
@@ -264,7 +272,7 @@ run the acceptance tests.
 {{{ 
     $ am_api_accept.py -a am-undertest -V 3 --NoGetVersionCache
 }}}
-  (b) Correct errors and run step (4a) again, as needed.
+  (c) Correct errors and run steps (4a and b) again, as needed.
 
     (i) See "Common Errors and What to Do About It" below.
 
@@ -353,9 +361,9 @@ Then:
 }}}
 where <username> is your Unix account username.
 
- * If a test fails, rerun the individual test by itself and look at
+ * If a test fails, look at
    the contents of the `acceptance.log` file for an indication of the
-   source of the problem using syntax like the following:
+   source of the problem. Consider running the single test alone, using syntax like the following:
 {{{
         $ am_api_accept.py -a am-undertest Test.test_GetVersion
 }}}

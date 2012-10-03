@@ -11,6 +11,9 @@ gcf 2.1:
   AM, etc)
   - Clean generated filenames from a protogeni AM (ticket #196)
   - Report PG error log URN on errors, if available (ticket #198)
+  - On API version mismatch, report that error in the run summary
+  (ticket #200)
+  - Remove extra \n's in rspec output (ticket #202)
 
  * gcf
   - gen-certs: Include UUID in generated certs, per AM API v3
@@ -19,6 +22,8 @@ gcf 2.1:
 
  * AM API acceptance tests
   - Add --skip-renew option to skip all Renew and RenewSliver tests
+  - acceptance.log now includes a message of what test is starting, to
+ help indicate which logs correspond to any test failures. (ticket #204)
 
 gcf 2.0:
  This is a major release. It includes:

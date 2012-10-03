@@ -47,6 +47,9 @@ New in v2.1:
  AM, etc)
  - Clean generated filenames from a protogeni AM (GCF #196)
  - Report PG error log URN on errors, if available (ticket #198)
+ - On API version mismatch, report that error in the run summary
+  (ticket #200)
+ - Remove extra \n's in rspec output (ticket #202)
 
 New in v2.0:
 
