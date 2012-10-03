@@ -77,7 +77,7 @@ def getInfoFromManifest(manifestStr):
   try:
     dom = etree.fromstring(manifestStr) 
   except Exception, e:
-    print "Couldn't parse the manifest RSpec. Wait a little and try again?"
+    print "Couldn't parse the manifest RSpec."
     sys.exit(-1)
 
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
@@ -116,16 +116,22 @@ def findUsersAndKeys( ):
                 keyList[username].append(key)
     return keyList
 
-def getInfoFromListResources( amUrl ) :
+def getInfoFromSliceManifest( amUrl ) :
     tmpoptions = copy.deepcopy(options)
     tmpoptions.aggregate = [amUrl]
 
+    
     # Run the equivalent of 'omni.py listresources <slicename>'
-    argv = ['listresources', slicename]
+    if tmpoptions.api_version >= 3:
+      apicall = 'describe'
+    else :
+      apicall = 'listresources'
+
+    argv = [apicall, slicename]
     try:
-      text, listresources = omni.call( argv, tmpoptions )
+      text, apicall = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
-      print "ERROR: There was an error executing listresources, review the logs."
+      print "ERROR: There was an error executing %s, review the logs." % apicall
       sys.exit(-1)
 
     key = amUrl
@@ -133,22 +139,28 @@ def getInfoFromListResources( amUrl ) :
       # Key is (urn,url)
       key = ("unspecified_AM_URN", amUrl)
 
-    if not listresources.has_key(key):
-      print "ERROR: No manifest found from listresources at %s; review the logs." % amUrl
+    if not apicall.has_key(key):
+      print "ERROR: No manifest found from %s at %s; review the logs." % \
+            (apicall, amUrl)
       sys.exit(-1)
 
     if tmpoptions.api_version == 1:
-      manifest = listresources[key]
+      manifest = apicall[key]
     else:
-      if not listresources[key].has_key("value"):
-        print "ERROR: No value slot in return from listresources from %s; review the logs." % amUrl
+      if not apicall [key].has_key("value"):
+        print "ERROR: No value slot in return from %s from %s; review the logs."\
+              % (apicall, amUrl)
         sys.exit(-1)
-      value = listresources[key]["value"]
+      value = apicall[key]["value"]
+
       if tmpoptions.api_version == 2:
         manifest = value
       else:
-        print "ERROR: API v3 not yet supported"
-        sys.exit(-1)
+        if tmpoptions.api_version == 3:
+          manifest = value['geni_rspec']
+        else:
+          print "ERROR: API v%s not yet supported" %tmpoptions.api_version
+          sys.exit(-1)
 
     return getInfoFromManifest(manifest)
 
@@ -458,15 +470,15 @@ def main(argv=None):
       # XXX Although ProtoGENI returns the service tag in the manifest
       # it does not contain information for all the users, so we will 
       # stick with the sliverstatus until this is fixed
-      if amType == "sfa" or amType == "protogeni" :
+      if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
         amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
         if len(amLoginInfo) > 0 :
           loginInfoDict[amUrl] = {'amType' : amType,
                                   'info' : amLoginInfo
                                  }
         continue
-      if amType == "orca":
-        amLoginInfo = getInfoFromListResources(amUrl)
+      if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
+        amLoginInfo = getInfoFromSliceManifest(amUrl)
         # Get the status only if we care
         if len(amLoginInfo) > 0 :
           if options.readyonly:
