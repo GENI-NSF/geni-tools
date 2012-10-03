@@ -443,7 +443,7 @@ class AMCallHandler(object):
 
         self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
 
-        return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
+        return _do_ssl(self.framework, None, msg, getattr(client, op), *args), client
 
     # FIXME: Must still factor dev vs exp
     # For experimenters: If exactly 1 AM, then show only the value slot, formatted nicely, printed to STDOUT.
@@ -1094,7 +1094,7 @@ class AMCallHandler(object):
 
         # get the slice name and URN or raise an error
         (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Describe")
 
         options = {}
         options['geni_compressed'] = self.opts.geni_compressed
@@ -1141,7 +1141,7 @@ class AMCallHandler(object):
                 (options, mymessage) = self._selectRSpecVersion(name, client, mymessage, options)
                 args.append(options)
                 self.logger.debug("Doing describe of %s, %d creds, options %r", descripMsg, len(creds), options)
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
                 if mymessage != "":
@@ -1368,8 +1368,10 @@ class AMCallHandler(object):
         msg = "Create Sliver %s at %s" % (urn, url)
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
         try:
-            (result, message) = self._api_call(client, msg, op,
+            ((result, message), client) = self._api_call(client, msg, op,
                                                 args)
+            url = client.url
+            client.urn = clienturn
         except BadClientException as bce:
             self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d. %s" % (client.url, self.opts.api_version, bce.validMsg))
 
@@ -1526,7 +1528,7 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("Allocate %s at %s:", descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                     ("Allocate %s at %s" % (descripMsg, client.url)),
                                     op,
                                     args)
@@ -1752,7 +1754,7 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                   ("Provision %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
@@ -1980,7 +1982,7 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                   ("PerformOperationalAction %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
@@ -2119,7 +2121,7 @@ class AMCallHandler(object):
         msg = "Renew Sliver %s on " % (urn)
         for client in clientList:
             try:
-                (res, message) = self._api_call(client,
+                ((res, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -2270,7 +2272,7 @@ class AMCallHandler(object):
         msg = "Renew %s at " % (descripMsg)
         for client in clientList:
             try:
-                (res, message) = self._api_call(client, msg + client.url, op,
+                ((res, message), client) = self._api_call(client, msg + client.url, op,
                                                 args)
             except BadClientException, bce:
                 if bce.validMsg and bce.validMsg != '':
@@ -2440,7 +2442,7 @@ class AMCallHandler(object):
         # Call SliverStatus on each client
         for client in clientList:
             try:
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -2595,7 +2597,7 @@ class AMCallHandler(object):
         msg = "Status of %s at " % (descripMsg)
         for client in clientList:
             try:
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -2624,20 +2626,69 @@ class AMCallHandler(object):
                 self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
                 self.logger.debug("%s", missingSlivers)
 
+            # Summarize result
+            if len(slivers) > 0:
+                retct = str(len(slivers) - len(missingSlivers))
+            else:
+                retct = str(len(self._getSliverResultList(status)))
+            retVal += "Retrieved Status on %s slivers in slice %s at %s:\n" % (retct, urn, client.url)
+
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            # FIXME: Ticket #197: Summarize overall status
-            # Use a helper routine
+            # Summarize sliver expiration
+            (orderedDates, sliverExps) = self._getSliverExpirations(status, None)
+            if len(orderedDates) == 1:
+                msg = "All slivers expire on %r." % orderedDates[0].isoformat()
+                self.logger.info(msg)
+            elif len(orderedDates) == 0:
+                msg = "0 Slivers reported results!"
+                self.logger.warn(msg)
+            else:
+                firstTime = orderedDates[0]
+                firstCount = len(sliverExps[time])
+                msg = "Slivers expire on %d times, next is %d at %r, and others at %d other times." % (len(orderedDates), firstCount, firstTime.isoformat(), len(orderedDates) - 1)
+                self.logger.info(msg)
+            retVal += "  " + msg + "\n"
+
+            # Summarize overall status
             # Get all statuses in a hash (value is count)
-            # $alloc_statuses, $op_statuses = self._get_sliver_statuses(status)
+            alloc_statuses, op_statuses = self._getSliverStatuses(status)
             # If only 1 sliver, get its allocation and operational status
             # if alloc or operational status same for all slivers, say so
             # Else say '%d slivers have %d different statuses
             # if op state includes geni_failed or geni_pending_allocation, say so
             # If alloc state includes geni_unallocated, say so
-            # Resulting text added to retVal. But do this even if lots AMs? Or only if limited # of AMs?
+            statusMsg = '  '
+            if len(alloc_statuses) == 1:
+                if len(slivers) == 1:
+                    statusMsg += "Sliver is "
+                else:
+                    statusMsg += "All slivers are "
+                statusMsg += "in allocation state %s.\n" % alloc_statuses.keys()[0]
+            else:
+                statusMsg += "  %d slivers have %d different allocation statuses" % (len(slivers), len(alloc_statuses.keys()))
+                if 'geni_unallocated' in alloc_statuses:
+                    statusMsg += "; some are geni_unallocated.\n"
+                else:
+                    statusMsg += ".\n"
+            if len(op_statuses) == 1:
+                if len(slivers) == 1:
+                    statusMsg += "  Sliver is "
+                else:
+                    statusMsg += "  All slivers are "
+                statusMsg += "in operational state %s.\n" % op_statuses.keys()[0]
+            else:
+                statusMsg = "  %d slivers have %d different operational statuses" % (len(slivers), len(op_statuses.keys()))
+                if 'geni_failed' in op_statuses:
+                    statusMsg += "; some are geni_failed"
+                if 'geni_pending_allocation' in op_statuses:
+                    statusMsg += "; some are geni_pending_allocation"
+                else:
+                    statusMsg += ".\n"
+            statusMsg += "\n"
+            # Resulting text added to retVal (below). But do this even if lots AMs? Or only if limited # of AMs?
 
             # Print or save out result
             if not isinstance(status, dict):
@@ -2663,6 +2714,7 @@ class AMCallHandler(object):
                 retVal += " - %d slivers missing from result!? \n" % len(missingSlivers)
             if len(sliverFails.keys()) > 0:
                 retVal += " - %d slivers failed?! \n" % len(sliverFails.keys())
+            retVal += statusMsg
             if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                 successCnt+=1
         # End of loop over clients
@@ -2737,7 +2789,7 @@ class AMCallHandler(object):
         ## where you still have resources.
         for client in clientList:
             try:
-                (res, message) = self._api_call(client,
+                ((res, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -2881,7 +2933,7 @@ class AMCallHandler(object):
         retItem = {}
         for client in clientList:
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
             except BadClientException, bce:
@@ -3011,7 +3063,7 @@ class AMCallHandler(object):
         op = "Shutdown"
         for client in clientList:
             try:
-                (res, message) = self._api_call(client, msg + client.url, op, args)
+                ((res, message), client) = self._api_call(client, msg + client.url, op, args)
             except BadClientException, bce:
                 if bce.validMsg and bce.validMsg != '':
                     retVal += bce.validMsg + ". "
@@ -3731,6 +3783,42 @@ class AMCallHandler(object):
             self.logger.debug("Result value not a list or empty")
             return list()
         return resultValue
+
+    def _getSliverStatuses(self, resultValue):
+        '''Summarize the allocation and operational statuses in a list of 2 hashes by state name'''
+        op_statuses = dict()
+        alloc_statuses = dict()
+
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+
+        for sliver in resultValue:
+            sliverUrn = ''
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+            else:
+                sliverUrn = sliver['geni_sliver_urn']
+            if not sliver.has_key('geni_allocation_status') or str(sliver['geni_allocation_status']).strip() == "":
+                self.logger.debug("Sliver %s had no allocation status", sliverUrn)
+            else:
+                aStat = sliver['geni_allocation_status']
+                if aStat in alloc_statuses:
+                    alloc_statuses[aStat] += 1
+                else:
+                    alloc_statuses[aStat] = 1
+            if not sliver.has_key('geni_operational_status') or str(sliver['geni_operational_status']).strip() == "":
+                self.logger.debug("Sliver %s had no operational status", sliverUrn)
+            else:
+                oStat = sliver['geni_operational_status']
+                if oStat in op_statuses:
+                    op_statuses[oStat] += 1
+                else:
+                    op_statuses[oStat] = 1
+        return (alloc_statuses, op_statuses)
 
     def _didSliversFail(self, resultValue):
         '''Take a result value, and return a dict of slivers that had a geni_error: URN->geni_error'''
