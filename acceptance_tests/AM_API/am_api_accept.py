@@ -104,6 +104,7 @@ class Test(ut.OmniUnittest):
             self.ad_namespace = GENI_3_NAMESPACE
             self.ad_schema = GENI_3_AD_SCHEMA
         self.success = False
+        self.logger = omni.configure_logging(self.options_copy)
 
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)
@@ -128,6 +129,7 @@ class Test(ut.OmniUnittest):
 
         # call GetVersion
         omniargs = ['getversion']
+        self.logger.info("\n=== doing checkRSpecVersion ===")
         (text, version) = self.call(omniargs, self.options_copy)
 
         mymessage = ""
@@ -173,6 +175,7 @@ class Test(ut.OmniUnittest):
         """
         # Do AM API call
         omniargs = ["getversion"]
+        self.logger.info("\n=== Test.test_GetVersion ===")
         (text, ret_dict) = self.call(omniargs, self.options_copy)
 
         pprinter = pprint.PrettyPrinter(indent=4)
@@ -341,6 +344,7 @@ class Test(ut.OmniUnittest):
     def test_ListResources(self):
         """test_ListResources: Passes if 'ListResources' returns an advertisement RSpec.
         """
+        self.logger.info("\n=== Test.test_ListResources ===")
         if self.options_copy.api_version > 1:
             self.options_copy.arbitrary_option = True
         # omni sets 'geni_compress' = True
@@ -351,6 +355,7 @@ class Test(ut.OmniUnittest):
         """test_ListResources_geni_compressed: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_compressed' = True, override
+        self.logger.info("\n=== Test.test_ListResources_geni_compressed ===")
         self.options_copy.geni_compressed = False
         self.subtest_ListResources()
         self.success = True
@@ -359,6 +364,7 @@ class Test(ut.OmniUnittest):
         """test_ListResources_geni_available: Passes if 'ListResources' returns an advertisement RSpec.
         """
         # omni sets 'geni_available' = False, override
+        self.logger.info("\n=== Test.test_ListResources_geni_available ===")
         self.options_copy.geni_available = True
         self.subtest_ListResources()
         self.success = True
@@ -374,12 +380,14 @@ class Test(ut.OmniUnittest):
     def test_ListResources_badCredential_malformedXML(self):
         """test_ListResources_badCredential_malformedXML: Run ListResources with 
         a User Credential that is missing it's first character (so that it is invalid XML). """
+        self.logger.info("\n=== Test.test_ListResources_badCredential_malformedXML. Should FAIL ===")
         self.subtest_ListResources_badCredential(self.removeFirstChar)
         self.success = True
 
     def test_ListResources_badCredential_alteredObject(self):
         """test_ListResources_badCredential_alteredObject: Run ListResources with 
         a User Credential that has been altered (so the signature doesn't match). """
+        self.logger.info("\n=== Test.test_ListResources_badCredential_alteredObject. Should FAIL ===")
         self.subtest_ListResources_badCredential(self.alterSignedObject)
         self.success = True
 
@@ -395,6 +403,7 @@ class Test(ut.OmniUnittest):
 
         # (1) Get the usercredential
         omniargs = ["getusercred"]
+        self.logger.info("\n=== Test.test_ListResources_badCredential_badtype -- Should FAIL ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
 
         geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
@@ -412,6 +421,7 @@ class Test(ut.OmniUnittest):
         a User Credential pretending to be the slice cred: should fail """
         # (1) Get the usercredential
         omniargs = ["getusercred"]
+        self.logger.info("\n=== Test.test_ListResources_slice_with_usercred ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
         self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_ListResources, 
@@ -439,6 +449,7 @@ class Test(ut.OmniUnittest):
 
         # (1) Get the usercredential
         omniargs = ["getusercred"]
+        self.logger.info("\n=== Test.test_ListResources_badCredential ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
 
         if self.options_copy.api_version >= 3:
@@ -477,6 +488,7 @@ class Test(ut.OmniUnittest):
             slice = slicelist[i]
             # (1) Get the slicecredential
             omniargs = ["getslicecred", slice]
+            self.logger.info("\n=== Test.test_ListResources_wrongSlice ===")
             (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
             if self.options_copy.api_version >= 3:
@@ -561,6 +573,7 @@ class Test(ut.OmniUnittest):
         # Call listresources with this credential
         # We expect this to fail
         # with slicename left to the default
+        self.logger.info("\n=== Test.test_ListResources_untrustedCredential - should FAIL ===")
         self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
                           usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
@@ -724,6 +737,7 @@ class Test(ut.OmniUnittest):
     def test_CreateSliver(self):
         """test_CreateSliver: Passes if the sliver creation workflow succeeds.  
         Use --rspec-file to replace the default request RSpec."""
+        self.logger.info("\n=== Test.test_CreateSliver ===")
         self.subtest_CreateSliverWorkflow()
         self.success = True
 
@@ -920,6 +934,7 @@ class Test(ut.OmniUnittest):
     def test_CreateSliverWorkflow_fail_notexist( self ):
         """test_CreateSliverWorkflow_fail_notexist:  Passes if the sliver creation workflow 
         fails when the sliver has never existed."""
+        self.logger.info("\n=== Test.test_CreateSliverWorkflow_fail_notexist -- should FAIL")
         slicename = self.create_slice_name_uniq(prefix='non')        
 
         # Create slice so that lack of existance of the slice doesn't
@@ -970,6 +985,7 @@ class Test(ut.OmniUnittest):
         """test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices 
         and ensure can not do ListResources on slices with the wrong credential."""
 
+        self.logger.info("\n=== Test.test_CreateSliverWorkflow_multiSlice ===")
         if self.options_copy.rspeclint:
             rspec_util.rspeclint_exists()
             rspec_namespace = self.manifest_namespace
@@ -1187,6 +1203,7 @@ class Test(ut.OmniUnittest):
 
         # (1) Get the slicecredential
         omniargs = ["getslicecred", slicename]
+        self.logger.info("\n=== Test.subtest_RenewPastSliceExpiration ===")
         (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
         if self.options_copy.api_version >= 3:
@@ -1218,6 +1235,7 @@ class Test(ut.OmniUnittest):
         if self.options_copy.api_version < 3:
             omniargs = ["renewsliver", slicename, twodayslate]
             try:
+                self.logger.info("\n=== Should fail - renew 2 days past slice expiration ===")
                 text, (succList, failList) = self.call(omniargs, self.options_copy)
                 succNum, possNum = omni.countSuccess( succList, failList )
             except AMAPIError, err:
@@ -1235,6 +1253,7 @@ class Test(ut.OmniUnittest):
             # FIXME: Need a call to Renew that expects failure
 #            self.subtest_Renew( slicename, twodayslate)
             omniargs = ["renew", slicename, twodayslate] 
+            self.logger.info("\n=== Should fail - renew 2 days past slice expiration ===")
             text, allAggs = self.call(omniargs, self.options_copy)
             for agg, indAgg in allAggs.items():
                 err_code, msg = self.assertCodeValueOutput( "Renew", agg, indAgg )
@@ -1254,6 +1273,7 @@ class Test(ut.OmniUnittest):
             return
 
         omniargs = ["renewsliver", slicename, newtime] 
+        self.logger.info("\n=== Test.subtest_RenewSliver ===")
         text, (succList, failList) = self.call(omniargs, self.options_copy)
         succNum, possNum = omni.countSuccess( succList, failList )
         # Assume single AM
@@ -1264,6 +1284,7 @@ class Test(ut.OmniUnittest):
 
     def subtest_RenewSlice( self, slicename, newtime ):
         omniargs = ["renewslice", slicename, newtime] 
+        self.logger.info("\n=== Test.subtest_RenewSlice ===")
         text, date = self.call(omniargs, self.options_copy)
         self.assertIsNotNone( date, 
                          "'RenewSlice' until %s " \
@@ -1279,7 +1300,7 @@ class Test(ut.OmniUnittest):
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
-        sixdays = (now + datetime.timedelta(days=6)).isoformat()            
+        sixdays = (now + datetime.timedelta(days=6)).isoformat()
         self.subtest_RenewSlice( slicename, sixdays )
         time.sleep(self.options_copy.sleep_time)
 #        self.subtest_RenewSliver( slicename, fivemin )
@@ -1373,6 +1394,7 @@ class Test(ut.OmniUnittest):
                 omniargs.append('-u')
                 omniargs.append(sliver)
 
+        self.logger.info("\n=== Test.subtest_AMAPIv3CallNoRspec ===")
         text, allAggs = self.call(omniargs, self.options_copy)
         for agg, indAgg in allAggs.items():
             err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )
@@ -1447,6 +1469,7 @@ class Test(ut.OmniUnittest):
        
         # CreateSliver
         omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
+        self.logger.info("\n=== Test.subtest_CreateSliver ===")
         text, manifest = self.call(omniargs, self.options_copy)
 
         self.assertRspec( "CreateSliver", manifest, 
@@ -1487,6 +1510,7 @@ class Test(ut.OmniUnittest):
         
         # CreateSliver() or Allocate()
         omniargs = [omni_method, slice_name, str(self.options_copy.rspec_file)] 
+        self.logger.info("\n=== Test.subtest_CreateSliverPiece ===")
         text, allAggs = self.call(omniargs, self.options_copy)
 
         for agg, indAgg in allAggs.items():
@@ -1536,6 +1560,7 @@ class Test(ut.OmniUnittest):
         # SliverStatus
         omniargs = ["sliverstatus", slice_name] 
         
+        self.logger.info("\n=== Test.subtest_SliverStatus ===")
         text, agg = self.call(omniargs, self.options_copy)
 
         self.assertIsNotNone(agg,
@@ -1574,6 +1599,7 @@ class Test(ut.OmniUnittest):
 
     def subtest_DeleteSliver(self, slice_name):
         omniargs = ["deletesliver", slice_name]
+        self.logger.info("\n=== Test.subtest_DeleteSliver ===")
         text, (successList, failList) = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( successList, failList )
@@ -1607,8 +1633,9 @@ class Test(ut.OmniUnittest):
                          % slice_name )
 
     def test_CreateSliver_badrspec_emptyfile(self):
-        """test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow fails 
+        """test_CreateSliver_badrspec_emptyfile: Passes if the sliver creation workflow FAILs
         when the request RSpec is an empty file."""
+        self.logger.info("\n=== Test.test_CreateSliver_badrspec_emptyfile == should FAIL")
         slice_name = self.create_slice_name(prefix='bad1')
         with tempfile.NamedTemporaryFile() as f:
             # write to a new temporary file
@@ -1622,6 +1649,8 @@ class Test(ut.OmniUnittest):
     def test_CreateSliver_badrspec_malformed(self):
         """test_CreateSliver_badrspec_malformed: Passes if the sliver creation workflow fails 
         when the request RSpec is not well-formed XML."""
+
+        self.logger.info("\n=== Test.test_CreateSliver_badrspec_malformed --- should FAIL ===")
 
         # Check for the existance of the Request RSpec file
         self.assertTrue( os.path.exists(self.options_copy.rspec_file),
