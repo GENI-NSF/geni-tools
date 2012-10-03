@@ -3121,7 +3121,9 @@ class AMCallHandler(object):
 
         # Create BODY
         if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
-            content = rspec_util.getPrettyRSpec(rspec)
+            # This line seems to insert extra \ns - GCF ticket #202
+#            content = rspec_util.getPrettyRSpec(rspec)
+            content = rspec
             if slicename:
                 retVal = "Got Reserved resources RSpec from %s" % server
             else:
