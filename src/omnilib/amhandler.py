@@ -53,8 +53,9 @@ from geni.util import rspec_util, urn_util
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
-    def __init__(self, client):
+    def __init__(self, client, msg):
         self.client = client
+        self.validMsg = msg
 
 class AMCallHandler(object):
     '''Dispatch AM API calls to aggregates'''
@@ -418,13 +419,13 @@ class AMCallHandler(object):
     def _api_call(self, client, msg, op, args):
         '''Make the AM API Call, after first checking that the AM we are talking
         to is of the right API version.'''
-        (ver, newc) = self._checkValidClient(client)
+        (ver, newc, validMsg) = self._checkValidClient(client)
         if newc is None:
-            raise BadClientException(client)
+            raise BadClientException(client, validMsg)
         elif newc.url != client.url:
             if ver != self.opts.api_version:
                 self.logger.error("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
-                raise BadClientException(client)
+                raise BadClientException(client, validMsg)
 #                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
 #                # FIXME: changing the api_version is not a great idea if
 #                # there are multiple clients. Push this into _checkValidClient
@@ -438,7 +439,7 @@ class AMCallHandler(object):
             client = newc
         elif ver != self.opts.api_version:
             self.logger.error("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
-            raise BadClientException(client)
+            raise BadClientException(client, validMsg)
 
         self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
 
@@ -572,7 +573,7 @@ class AMCallHandler(object):
                 # Allow developers to call an AM that fails to advertise
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
 
             self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
             # foreach item in the list that is the val
@@ -603,7 +604,7 @@ class AMCallHandler(object):
                 if not self.opts.devmode:
                     mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
                 else:
                     mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
 
@@ -630,7 +631,7 @@ class AMCallHandler(object):
                 # Allow developers to call an AM that fails to advertise
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
 
             if len(ad_rspec_version) == 1:
                 # there is only one advertisement, so use it.
@@ -647,7 +648,7 @@ class AMCallHandler(object):
                 mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
         return (options, mymessage)
     # End of _selectRSpecVersion
 
@@ -781,8 +782,14 @@ class AMCallHandler(object):
                 self.logger.debug("Have null or empty credential list in call to ListResources!")
             rspec = None
 
-            (ver, newc) = self._checkValidClient(client)
+            (ver, newc, validMsg) = self._checkValidClient(client)
             if newc is None:
+                if validMsg and validMsg != '':
+                    if not mymessage:
+                        mymessage = ""
+                    else:
+                        mymessage += ".\n"
+                    mymessage += validMsg
                 continue
             elif newc.url != client.url:
                 if ver != self.opts.api_version:
@@ -794,9 +801,9 @@ class AMCallHandler(object):
                         mymessage = ""
                     else:
                         mymessage += ".\n"
-                        mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                    mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                     continue
-#                    raise BadClientException(client)
+#                    raise BadClientException(client, mymessage)
 #                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
 #                    # FIXME: changing the api_version is not a great idea if
 #                    # there are multiple clients. Push this into _checkValidClient
@@ -814,7 +821,7 @@ class AMCallHandler(object):
                     mymessage = ""
                 else:
                     mymessage += ".\n"
-                    mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                 continue
 
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
@@ -828,6 +835,8 @@ class AMCallHandler(object):
                     mymessage = ""
                 else:
                     mymessage += ".\n"
+                if bce.validMsg and bce.validMsg != '':
+                    mymessage += bce.validMsg + ". "
                 mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
                 self.logger.warn(message + "... continuing with next AM")
                 continue
@@ -1140,9 +1149,12 @@ class AMCallHandler(object):
                         message = ""
                     message = mymessage + ". " + message
             except BadClientException as bce:
-                retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDescribe failed: " + retVal)
                 continue
 
 # FIXME: Factor this next chunk into helper method?
@@ -1359,7 +1371,7 @@ class AMCallHandler(object):
             (result, message) = self._api_call(client, msg, op,
                                                 args)
         except BadClientException as bce:
-            self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d" % (client.url, self.opts.api_version))
+            self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d. %s" % (client.url, self.opts.api_version, bce.validMsg))
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -1518,10 +1530,13 @@ class AMCallHandler(object):
                                     ("Allocate %s at %s" % (descripMsg, client.url)),
                                     op,
                                     args)
-            except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nAllocate failed: " + retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1741,10 +1756,13 @@ class AMCallHandler(object):
                                                   ("Provision %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nProvision failed: " + retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1966,10 +1984,13 @@ class AMCallHandler(object):
                                                   ("PerformOperationalAction %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nPerformOperationalAction failed: " + retVal)
                 continue
 
             retItem[ client.url ] = result
@@ -2101,10 +2122,13 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nRenewSliver failed: " + retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2248,10 +2272,13 @@ class AMCallHandler(object):
             try:
                 (res, message) = self._api_call(client, msg + client.url, op,
                                                 args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nRenew failed: " + retVal)
                 continue
             retItem[client.url] = res
 
@@ -2416,10 +2443,13 @@ class AMCallHandler(object):
                 (status, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
@@ -2568,10 +2598,13 @@ class AMCallHandler(object):
                 (status, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nStatus failed: " + retVal)
                 continue
 
             retItem[client.url] = status
@@ -2707,10 +2740,13 @@ class AMCallHandler(object):
                 (res, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDeleteSliver failed: " + retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2848,10 +2884,13 @@ class AMCallHandler(object):
                 (result, message) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDelete failed: " + retVal)
                 continue
 
             retItem[client.url] = result
@@ -2973,10 +3012,13 @@ class AMCallHandler(object):
         for client in clientList:
             try:
                 (res, message) = self._api_call(client, msg + client.url, op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nShutdown Failed: " + retVal)
                 continue
 
             retItem[client.url] = res
@@ -3030,61 +3072,73 @@ class AMCallHandler(object):
             cver = int(cver)
         configver = self.opts.api_version
         if cver and cver == configver:
-            return (cver, client)
+            return (cver, client, None)
         elif not cver:
-            self.logger.warn("Got no api_version from getversion at %s? %s", client.url, message)
+            msg = "Got no api_version from getversion at %s? %s" % (client.url, message)
+            self.logger.warn(msg)
             if not self.opts.devmode:
                 self.logger.warn("... skipping this aggregate")
-                return (0, None)
+                return (0, None, msg + " ... skipped this aggregate")
             else:
                 self.logger.warn("... but continuing with requested version and client")
-                return (configver, client)
+                return (configver, client, msg + " ... but continued with requested version and client")
 
         # This AM doesn't speak the desired API version - see if there's an alternate
         svers, message = self._get_api_versions(client)
         if svers:
             if svers.has_key(str(configver)):
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[str(configver)])
+                msg = "Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s" % (configver, client.url, cver, configver, svers[str(configver)])
+                self.logger.warn(msg)
                 # do a makeclient with the corrected URL and return that client?
                 if not self.opts.devmode:
-                    newclient = make_client(svers[str(configver)], self.framework, self.opts)
+                    try:
+                        newclient = make_client(svers[str(configver)], self.framework, self.opts)
+                    except Exception, e:
+                        msg2 = " - but that URL appears invalid: '%s'" % e
+                        self.logger.warn(" -- Cannot connect to that URL, skipping this aggregate")
+                        return (configver, None, (msg + msg2 + ". Skipped this aggregate"))
                     newclient.urn = client.urn # Wrong urn?
-                    (ver, c) = self._checkValidClient(newclient)
+                    (ver, c, msg2) = self._checkValidClient(newclient)
                     if ver == configver and c.url == newclient.url and c is not None:
                         self.logger.info("Switching AM URL to match requested version")
-                        return (ver, c)
+                        return (ver, c, "Switched AM URL from %s to %s to speak AM API v%d as requested" % (client.url, c.url, configver))
                     else:
                         self.logger.warn("... skipping this aggregate - failed to get a connection to the AM URL with the right version")
-                        return (configver, None)
+                        return (configver, None, "Skipped AM %s: failed to get a connection to %s which support APIv%d as requested" % (client.url, newclient.url, configver))
                 else:
                     self.logger.warn("... but continuing with requested version and client")
-                    return (configver, client)
+                    return (configver, client, msg + ", but continued with URL and version as requested")
             else:
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>.", configver, client.url, cver, pprint.pformat(svers))
+                if len(svers.keys()) == 1:
+                    msg = "Requested API version %d, but AM %s only speaks version %d. Try running Omni with -V%d." % (configver, client.url, cver, cver)
+                else:
+                    msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>." % (configver, client.url, cver, pprint.pformat(svers))
+                self.logger.warn(msg)
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
 #                    self.logger.warn("Changing to use API version %d", cver)
                     self.logger.warn("... skipping this aggregate")
-                    return (cver, None)
+                    return (cver, None, msg + " Skipped this aggregate")
                 else:
                     # FIXME: Pick out the max API version supported at this client, and use that?
                     self.logger.warn("... but continuing with requested version and client")
-                    return (configver, client)
+                    return (configver, client, msg + " Continued with URL as requested.")
         else:
-            self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not advertise other versions. Try running Omni again with -V%d.", configver, client.url, cver, cver)
+            msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not advertise other versions. Try running Omni again with -V%d." % (configver, client.url, cver, cver)
+            self.logger.warn(msg)
             # FIXME: If we're continuing, change api_version to be correct, or we will get errors
             if not self.opts.devmode:
 #                self.logger.warn("Changing to use API version %d", cver)
                 self.logger.warn("... skipping this aggregate")
-                return (cver, None)
+                return (cver, None, msg + " ... skipped this AM")
             else:
                 self.logger.warn("... but continuing with requested version and client")
-                return (configver, client)
+                return (configver, client, msg + " ... but continued with URL as requested")
                 #self.logger.warn("... skipping this aggregate")
-                #return (cver, None)
+                #return (cver, None, msg)
         # Shouldn't get here...
         self.logger.warn("Cannot validate client ... skipping this aggregate")
-        return (cver, None)
+        return (cver, None, ("Could not validate AM %s .. skipped" % client.url))
     # End of _checkValidClient
 
     def _maybeGetRSpecFromStruct(self, rspec):
