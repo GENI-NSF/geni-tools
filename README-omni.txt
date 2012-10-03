@@ -53,6 +53,7 @@ New in v2.1:
  - When we switch AM URLs, be sure result is hashed by correct URL
   (ticket #205)
  - Put overall sliver status in the result summary (ticket #197)
+ - RSpec can now be a URL instead of a filename (ticket #189)
 
 New in v2.0:
 
@@ -356,7 +357,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     Given a slice, and your request rspec file, you are ready to
     allocate resources by creating slivers at each of the AMs.   Note
     you must specify the URL or nickname of the aggregate where you
-    want to reserve resources using the `-a` option. 
+    want to reserve resources using the `-a` option. Note also that
+    here we show a local file for the rspec, but you can supply a URL.
 
  In AM API v1:
 `omni.py -V 1 createsliver -a pg-utah1 MySlice request.rspec`
@@ -481,8 +483,8 @@ omni.py [options] <command and arguments>
                          getversion        
                          listresources [In AM API V1 and V2 optional: slicename] 
                          describe slicename [AM API V3 only]                     
-                         createsliver <slicename> <rspec file> [AM API V1&2 only] 
-                         allocate <slicename> <rspec file> [AM API V3 only]       
+                         createsliver <slicename> <rspec filename or URL> [AM API V1&2 only]
+                         allocate <slicename> <rspec filename or URL> [AM API V3 only]
                          provision <slicename> [AM API V3 only]                   
                          performoperationalaction <slicename> <action> [AM API V3 only] 
                          poa <slicename> <action>                                       
@@ -972,7 +974,7 @@ The GENI AM API `CreateSliver()` call: reserve resources at GENI aggregates.
 For use in AM API v1+2 only. 
 For AM API v3+, use this sequence of three commands: `allocate`, `provision`, and `performoperationalaction`.
 
-Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec file>`
+Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL>`
 
 Sample Usage:
  * Reserve the resources defined in an RSpec file:
@@ -1001,7 +1003,7 @@ Sample Usage:
 Note: 
 The request RSpec file argument should have been created by using
 availability information from a previous call to `listresources`
-(e.g. `omni.py -o listresources`). 
+(e.g. `omni.py -o listresources`). The file can be local or a remote URL.
 Warning: request RSpecs are often very different from advertisement
 RSpecs.
 
@@ -1052,7 +1054,7 @@ Note you likely want to check `sliverstatus` to ensure your resource comes up.
 And check the sliver expiration time; you may want to call `renewsliver` to extend the expiration time.
 
 ==== allocate ====
-GENI AM API Allocate <slice name> <rspec file name>
+GENI AM API Allocate <slice name> <rspec filename or URL>
 
 For use with AM API v3+ only. For AM API v1 and v2 use `createsliver`.
 

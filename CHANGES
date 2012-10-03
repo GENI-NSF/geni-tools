@@ -17,6 +17,7 @@ gcf 2.1:
   - When we switch AM URLs, be sure result is hashed by correct URL
   (ticket #205)
   - Put overall sliver status in the result summary (ticket #197)
+  - RSpec can now be a URL instead of a filename (ticket #189)
 
  * gcf
   - gen-certs: Include UUID in generated certs, per AM API v3
