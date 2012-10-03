@@ -129,7 +129,7 @@ def getInfoFromSliceManifest( amUrl ) :
 
     argv = [apicall, slicename]
     try:
-      text, apicall = omni.call( argv, tmpoptions )
+      text, apicallout = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing %s, review the logs." % apicall
       sys.exit(-1)
@@ -139,19 +139,19 @@ def getInfoFromSliceManifest( amUrl ) :
       # Key is (urn,url)
       key = ("unspecified_AM_URN", amUrl)
 
-    if not apicall.has_key(key):
+    if not apicallout.has_key(key):
       print "ERROR: No manifest found from %s at %s; review the logs." % \
             (apicall, amUrl)
       sys.exit(-1)
 
     if tmpoptions.api_version == 1:
-      manifest = apicall[key]
+      manifest = apicallout[key]
     else:
-      if not apicall [key].has_key("value"):
+      if not apicallout [key].has_key("value"):
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
         sys.exit(-1)
-      value = apicall[key]["value"]
+      value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
         manifest = value
