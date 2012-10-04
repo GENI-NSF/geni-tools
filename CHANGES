@@ -23,6 +23,9 @@ gcf 2.1:
   - gen-certs: Include UUID in generated certs, per AM API v3
   - gen-certs: Check that user URN is valid per AM API v3
   - gcf-ch: Check that slice URN is valid per AM API v3
+  - am2: Wrap all API calls in a try/catch and return proper API error
+         results
+  - ch_interface: Sign outgoing messages
 
  * AM API acceptance tests
   - Add --skip-renew option to skip all Renew and RenewSliver tests
