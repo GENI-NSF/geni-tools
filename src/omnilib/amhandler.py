@@ -442,7 +442,6 @@ class AMCallHandler(object):
             raise BadClientException(client, validMsg)
 
         self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
-
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args), client
 
     # FIXME: Must still factor dev vs exp
@@ -665,7 +664,7 @@ class AMCallHandler(object):
                     self.logger.debug("AM returned uncompressed RSpec when compressed was requested")
                 else:
                     self.logger.error("Failed to decompress RSpec: %s", e);
-                self.logger.debug("RSpec begins: '%s'", rspec[:40])
+                self.logger.debug("RSpec begins: '%s'", rspec[:min(40, len(rspec))])
         # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
         elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
             try:
@@ -1508,7 +1507,7 @@ class AMCallHandler(object):
         args = [urn, creds, rspec, options]
         descripMsg = "slivers in slice %s" % urn
         op = 'Allocate'
-        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:40], options)
+        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:min(40, len(rspec))], options)
 
         successCnt = 0
         retItem = dict()
@@ -3148,7 +3147,8 @@ class AMCallHandler(object):
                     except Exception, e:
                         msg2 = " - but that URL appears invalid: '%s'" % e
                         self.logger.warn(" -- Cannot connect to that URL, skipping this aggregate")
-                        return (configver, None, (msg + msg2 + ". Skipped this aggregate"))
+                        retmsg = "Skipped AM %s: it claims to speak API v%d at a broken URL (%s)." % (client.url, configver, svers[str(configver)])
+                        return (configver, None, retmsg)
                     newclient.urn = client.urn # Wrong urn?
                     (ver, c, msg2) = self._checkValidClient(newclient)
                     if ver == configver and c.url == newclient.url and c is not None:
@@ -3156,33 +3156,36 @@ class AMCallHandler(object):
                         return (ver, c, "Switched AM URL from %s to %s to speak AM API v%d as requested" % (client.url, c.url, configver))
                     else:
                         self.logger.warn("... skipping this aggregate - failed to get a connection to the AM URL with the right version")
-                        return (configver, None, "Skipped AM %s: failed to get a connection to %s which support APIv%d as requested" % (client.url, newclient.url, configver))
+                        return (configver, None, "Skipped AM %s: failed to get a connection to %s which supports APIv%d as requested" % (client.url, newclient.url, configver))
                 else:
                     self.logger.warn("... but continuing with requested version and client")
                     return (configver, client, msg + ", but continued with URL and version as requested")
             else:
                 if len(svers.keys()) == 1:
                     msg = "Requested API version %d, but AM %s only speaks version %d. Try running Omni with -V%d." % (configver, client.url, cver, cver)
+                    retmsg = msg
                 else:
-                    msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>." % (configver, client.url, cver, pprint.pformat(svers))
+                    msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>." % (configver, client.url, cver, pprint.pformat(svers.keys()))
+                    retmsg = "Requested API version %d, but AM %s uses version %d. Try running Omni with -V%s" % (configver, client.url, cver, pprint.pformat(svers.keys()))
                 self.logger.warn(msg)
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
 #                    self.logger.warn("Changing to use API version %d", cver)
                     self.logger.warn("... skipping this aggregate")
-                    return (cver, None, msg + " Skipped this aggregate")
+                    retmsg += " Skipped this aggregate"
+                    return (cver, None, retmsg)
                 else:
                     # FIXME: Pick out the max API version supported at this client, and use that?
                     self.logger.warn("... but continuing with requested version and client")
-                    return (configver, client, msg + " Continued with URL as requested.")
+                    return (configver, client, retmsg + " Continued with URL as requested.")
         else:
-            msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not advertise other versions. Try running Omni again with -V%d." % (configver, client.url, cver, cver)
+            msg = "Requested API version %d, but AM %s advertises only version %d. Try running Omni with -V%d." % (configver, client.url, cver, cver)
             self.logger.warn(msg)
             # FIXME: If we're continuing, change api_version to be correct, or we will get errors
             if not self.opts.devmode:
 #                self.logger.warn("Changing to use API version %d", cver)
                 self.logger.warn("... skipping this aggregate")
-                return (cver, None, msg + " ... skipped this AM")
+                return (cver, None, msg + " ... skipped this Aggregate")
             else:
                 self.logger.warn("... but continuing with requested version and client")
                 return (configver, client, msg + " ... but continued with URL as requested")
@@ -3203,7 +3206,7 @@ class AMCallHandler(object):
                     rspec = rspecStruct['geni_rspec']
             except Exception, e:
                 import traceback
-                msg = "Failed to read RSpec from JSON file %s: %s" % (rspecfile, e)
+                msg = "Failed to read RSpec from JSON text %s: %s" % (rspec[:min(60, len(rspec))], e)
                 self.logger.debug(traceback.format_exc())
                 if self.opts.devmode:
                     self.logger.warn(msg)
@@ -3640,6 +3643,9 @@ class AMCallHandler(object):
         if ":12369/protogeni/" in server:
             server = server[:(server.index(":12369/"))] + server[(server.index(":12369/")+6):]
 
+        if server.startswith("boss."):
+            server = server[server.index("boss.")+len("boss."):]
+
         # strip standard url endings that dont tell us anything
         if server.endswith("/xmlrpc/am"):
             server = server[:(server.index("/xmlrpc/am"))]
@@ -3668,6 +3674,8 @@ class AMCallHandler(object):
             assert isinstance(server, str)
             table = string.maketrans(bad, '-' * len(bad))
         server = server.translate(table)
+        if server.endswith('-'):
+            server = server[:-1]
         return server
 
     def _has_slice_expired(self, sliceCred):
