@@ -63,7 +63,7 @@ slice_duration=7200
 name=am1
 
 # Address that the AM listens on
-host=127.0.0.1
+host=geni-in-a-box.net
 port=8001
 # Cert/key locations
 keyfile=~/.gcf/am-key.pem

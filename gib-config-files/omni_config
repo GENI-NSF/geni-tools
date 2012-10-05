@@ -28,7 +28,7 @@ default_cf = gib_ch
 # The slice_users argument in "CreateSliver".  It uploads
 # names and public ssh keys to allocated resources for login.
 # Details on users should be defined in sections below
-users = Alice, Bob
+users = Alice
 
 
 # Omni will by default contact every Aggregate Manager listed
@@ -192,7 +192,3 @@ urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
 # all of whom will get to log in to the same account.
 keys=~/.gcf/alice.pub 
 
-
-[Bob]
-urn=urn:publicid:IDN+plc.bbn+user+bob
-keys=~/.gcf/bob.pub

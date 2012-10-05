@@ -592,7 +592,7 @@ def _generateBashScript(users) :
             if item.shell == 'sh' or 'bash' :
                 pathToScript = '/vz/root/%s/%s' % (hostObject.containerName,
                                                    item.command)
-                scriptFile.write('# vzctl runscript %s %s \n' % \
+                scriptFile.write('vzctl runscript %s %s \n' % \
                                      (hostObject.containerName, pathToScript))
             else :
                 # Not a script type we recognize.  Log error
