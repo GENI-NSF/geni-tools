@@ -3,12 +3,20 @@
     <sliver_type name="raw-pc">
       <disk_image name="ubuntu-10.04-x86"/>
     </sliver_type>
+    <services>
+       <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
+       <execute command="/local/iperf-script.sh" shell="sh"/>
+    </services>
     <interface client_id="left:if0"/>
   </node>
   <node client_id="right" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
     <sliver_type name="raw-pc">
       <disk_image name="ubuntu-10.04-x86"/>
     </sliver_type>
+    <services>
+       <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
+       <execute command="/local/iperf-script.sh" shell="sh"/>
+    </services>
     <interface client_id="right:if0"/>
   </node>
   <link client_id="left-right-lan">

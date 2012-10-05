@@ -6,11 +6,16 @@ node type that is specified in the example RSpec, i.e. an Ubuntu host machine
 will create Ubuntu containers, a Fedora host will create Fedora containers.
 
 
-1. two-nodes.rspec
+1. two-nodes-iperf.rspec
 
     Description:
         This is used to demonstrate setting up two nodes
-        that are connected by a single LAN connection.
+        that are connected by a single LAN connection.  The rspec
+        asks the aggregate manager to download and install a script
+        on both nodes and execute this script.
+        The script installs iperf on both nodes and starts iperf as a client
+        on node left and server on node right.  The output of iperf are logged
+        so the experimenter and ssh into the nodes and view the output.
         
     Nodes:
         1. right
