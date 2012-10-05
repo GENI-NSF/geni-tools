@@ -54,6 +54,8 @@ New in v2.1:
   (ticket #205)
  - Put overall sliver status in the result summary (ticket #197)
  - RSpec can now be a URL instead of a filename (ticket #189)
+ - Strip more useless info from generated filenames
+ - Bug fixes, log message cleanup
 
 New in v2.0:
 
