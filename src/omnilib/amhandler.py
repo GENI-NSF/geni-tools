@@ -1567,6 +1567,9 @@ class AMCallHandler(object):
                 if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
                     realresult['geni_rspec'] = rspeccontent
                 if isinstance(realresult, dict):
+                    # Hmm. The rspec content looks OK here. But the
+                    # json.dumps seems to screw it up? Quotes get
+                    # double escaped.
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
                 else:
                     prettyResult = pprint.pformat(realresult)
@@ -3212,6 +3215,13 @@ class AMCallHandler(object):
                     self.logger.warn(msg)
                 else:
                     self._raise_omni_error(msg)
+
+        # If \" in rspec then make that "
+        rspec = string.replace(rspec, "\"", '"')
+        # If \n in rspec then remove that
+        rspec = string.replace(rspec, "\\n", " ")
+#        rspec = string.replace(rspec, '\n', ' ')
+
         return rspec
 
     def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
