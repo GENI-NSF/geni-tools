@@ -3221,7 +3221,6 @@ class AMCallHandler(object):
         # If \n in rspec then remove that
         rspec = string.replace(rspec, "\\n", " ")
 #        rspec = string.replace(rspec, '\n', ' ')
-
         return rspec
 
     def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
@@ -3242,7 +3241,8 @@ class AMCallHandler(object):
         if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
 #            content = rspec_util.getPrettyRSpec(rspec)
-            content = rspec
+            content = string.replace(rspec, "\\n", '\n')
+#            content = rspec
             if slicename:
                 retVal = "Got Reserved resources RSpec from %s" % server
             else:
