@@ -48,10 +48,12 @@ echo "10.0.1.105 pc105.geni-in-a-box.net pc105" >> /etc/hosts
 echo "10.0.1.106 pc106.geni-in-a-box.net pc106" >> /etc/hosts
 
 # Copy the .desktop file to the proper place so the gib-startup.sh script is run when the user logs in
-mkdir -p ~/.config/autostart
-cp ~/gcf/gib-config-files/gibStart.desktop ~/.config/autostart
+mkdir -p /home/gib/.config/autostart
+chmod 777 /home/gib/.config/autostart
+cp /home/gib/gcf/gib-config-files/gibStart.desktop /home/gib/.config/autostart
 
 # Extract the password for the user accounts in the VMs created by createsliver
 #   and write it to ~/.gcf/passwords
-echo "Password for user accounts created on VMs allocated to slice: \n" > ~/.gcf/passwords
-grep -i "rootpwd" config.py | awk '{print $3}' | sed "s/'//g" >> ~/.gcf/passwords
+echo "Password for user accounts created on VMs allocated to slice: \n" > /home/gib/.gcf/passwords
+grep -i "rootpwd" config.py | awk '{print $3}' | sed "s/'//g" >> /home/gib/.gcf/passwords
+chmod 777 /home/gib/.gcf/passwords
