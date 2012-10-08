@@ -868,7 +868,8 @@ class AMCallHandler(object):
                 else:
                     resp = rspec
             else:
-                self.logger.warn("Return struct missing proper rspec in value element!")
+                self.logger.warn("No resource listing returned!")
+                self.logger.debug("Return struct missing proper rspec in value element!")
                 if mymessage != "":
                     mymessage += ". "
                 mymessage += "No resources from AM %s: %s" % (client.url, message)
@@ -877,7 +878,10 @@ class AMCallHandler(object):
             rspecs[(client.urn, client.url)] = resp
 
         if len(clientList) > 0:
-            self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+            if slicename:
+                self.logger.info( "Listed reserved resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+            else:
+                self.logger.info( "Listed advertised resources at %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
     # End of _listresources
 
@@ -1169,7 +1173,8 @@ class AMCallHandler(object):
                     self.logger.warn("Didn't get a valid RSpec!")
                 status['value']['geni_rspec'] = rspec
             else:
-                self.logger.warn("Return struct missing geni_rspec element!")
+                self.logger.warn("Got no resource listing from AM %s", client.url)
+                self.logger.debug("Return struct missing geni_rspec element!")
 
             # Return for tools is the full code/value/output triple
             retItem[client.url] = status
