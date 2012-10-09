@@ -37,6 +37,8 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.2:
+
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
  - Fix ugly error on unexpected result format in sample myscript
