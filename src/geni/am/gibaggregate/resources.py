@@ -657,9 +657,9 @@ def _generateBashScript(users) :
                 # install all of the public keys for this user
                 for publicKey in publicKeys :
                     scriptFile.write("mkdir -p /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 777 /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 755 /vz/root/%i/home/%s/.ssh\n" % (hostObject.containerName, userName))
                     scriptFile.write("touch /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
-                    scriptFile.write("chmod 777 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
+                    scriptFile.write("chmod 744 /vz/root/%i/home/%s/.ssh/authorized_keys\n" % (hostObject.containerName, userName))
                     scriptFile.write("echo \"%s\">>/vz/root/%i/home/%s/.ssh/authorized_keys\n" % (publicKey[:-1], hostObject.containerName, userName))
 
                 # add this user to group wheel or root depending on OS

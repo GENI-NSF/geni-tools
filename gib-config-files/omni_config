@@ -52,6 +52,7 @@ users = Alice
 # Nickname=URN, URL
 # URN is optional
 [aggregate_nicknames]
+gib=,http://geni-in-a-box.net:8001
 
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
 pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
