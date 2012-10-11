@@ -32,9 +32,9 @@ gcf 2.1:
   - Do not check /etc for gcf_config
 
  * AM API acceptance tests
-  - Add --skip-renew option to skip all Renew and RenewSliver tests
+  - Add --skip-renew option to skip all Renew and !RenewSliver tests
   - acceptance.log now includes a message of what test is starting, to
- help indicate which logs correspond to any test failures. (ticket #204)
+  help indicate which logs correspond to any test failures. (ticket #204)
 
 gcf 2.0:
  This is a major release. It includes:
