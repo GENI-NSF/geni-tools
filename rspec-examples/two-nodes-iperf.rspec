@@ -1,23 +1,29 @@
-<rspec type="request" generated_by="Flack" generated="2012-09-11T16:29:16Z">
+<rspec type="request" generated_by="Flack" generated="2012-10-12T18:10:59Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
   <node client_id="left" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
     <sliver_type name="raw-pc">
       <disk_image name="ubuntu-10.04-x86"/>
     </sliver_type>
     <services>
-       <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
-       <execute command="/local/iperf-script.sh" shell="sh"/>
+      <execute command="/local/iperf-script.sh" shell="sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
     </services>
-    <interface client_id="left:if0"/>
+    <interface client_id="left:if0">
+      <flack:interface_info addressUnset="true"/>
+    </interface>
+    <flack:node_info x="324" y="194" unbound="true"/>
   </node>
   <node client_id="right" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
     <sliver_type name="raw-pc">
       <disk_image name="ubuntu-10.04-x86"/>
     </sliver_type>
     <services>
-       <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
-       <execute command="/local/iperf-script.sh" shell="sh"/>
+      <execute command="/local/iperf-script.sh" shell="sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw" file_type="tar.gz"/>
     </services>
-    <interface client_id="right:if0"/>
+    <interface client_id="right:if0">
+      <flack:interface_info addressUnset="true"/>
+    </interface>
+    <flack:node_info x="812" y="201" unbound="true"/>
   </node>
   <link client_id="left-right-lan">
     <component_manager name="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm"/>
@@ -26,5 +32,113 @@
     <property source_id="left:if0" dest_id="right:if0"/>
     <property source_id="right:if0" dest_id="left:if0"/>
     <link_type name="lan"/>
+    <flack:link_info x="550" y="125" unboundVlantag="true"/>
   </link>
+  <client:client_info name="Flack" environment="Flash Version: WIN 11,3,300,265, OS: Windows 7, Arch: x86, Screen: 2560x1440 @ 72 DPI with touchscreen type none" version="v14.41" url="https://www.emulab.net/protogeni/flack2/flack.swf?mode=public&amp;debug=0&amp;usejs=1"/>
+  <history:slice_history backIndex="8" note="Edited left" xmlns:history="http://www.protogeni.net/resources/rspec/ext/history/1">
+    <history:state>eNqVUk1v00AQvfMrRnvgksRfcZNi4gKiQorUlkpBgLhE6/XEXrB3zX7E7r9n7XWBHpDKyavxzHsz
+772d0h0yMA8d5kThT4vaEKhQoKIGy2PxkJMPDWU//irmJIniZBVHqzj5FG+z9FWWpN8IDJpnmtXY
+0hvJqOFS5KQ2psvCsO/7wM3zQKAJFWppFUMdTuThGp7VFc7rBYMuwbG1jdDZadztCU2npJH/RMHB
+hNNMGD9CsIajMP+J4Yf+gLjbnyD060CqKkyiKA6/3t4cJllWXGhDBcN56pnykKsXADshSwRPe+TO
+g/v3BJhsOynGSksFrVBNf6wSWWeLhjNeZvvru0U3YVedbGgRFIUI3NyCWlNLxc3DgrUEcGCN1fzs
+UmCUxYnSkerGldRxjAcI2o4Zof2qYyScGyYts3G3IxcnCUNO0nVEwMUmvtwQsKKQVpQz6jS1C8f2
+6eXPyR6vGgE8yxw5FGeupGgnf1xN1/AZlXbJyuDL/g7ieLlerqNomWwulvDx4KpclLLXsF3CO8Xq
+DIbLzRIOTCG6meRiEw1xmkbwFrYJXN/voeemBiMtq/XUBP5WpyqBs+fKyTlOg9R5bVXjPdOzadja
+UdPRtt+Z8flK/CfQ/elN6+7NvSMvadu9LrGwVR5Nb6vxu87jWRovp1OdzXqeOfY5qRTt6rFl5zNx
+9QvWj0OK</history:state>
+    <history:state>eNqVUk2P0zAQvfMrRj5waRsnabaF0CwgrZAqLQtSESAuleNME7OJHfzRpP8e52Nh94C0nGyNZ94b
+v/d22rTIwV5azIjGXw6NJVCiRM0sFsf8kpEPNeP3j4oZicMoXkXhKoq/RNs0eZ3G2x8EeiNSwyts
+2K3izAolM1JZ26aUdl0X+HkRSLRUo1FOczR0JKdreFYXndcLelOAZ2tqadLTsNsTmlYrq/6Jgr2l
+4wyNHiB4LVDa/8SYhv6C+L8/QejWgdIljcMwot8/3h5GWVZCGsskx3nqmfKQ6xcAO6kKhIn2KLwH
+NZ68U1w1rZJDrWGSlajHN6dl2rq8FlwU6f7mbtGO6GWrapYHeS4DP7dgzlZKC3tZ8IYA9rx2Rpx9
+Dqx2OJJ6WlP7kj4OAQHJmiElrFu1fH73HYUw90fRePK5weVOWufzEYTJqn+1IXTGoo/A5tLoRTr8
+7SjkSUGfkWQdEvCxi/wkOJkrJ4t5pxFoR4f28TbJkT6oMgBMK8yRRXkWWslm9NfXTAVfURufzBS+
+7e8gipbr5ToMl/HmagmfDr4qZKE6A9slvNe8SsHvv4QD14h+Jr7ahH2UJCG8g20MN5/30AlbgVWO
+V2Zsgkkp7wmB88SVkXOUBInPitP15LmZTcfGDY4Mtv/J3JTPeDoC053eNv6/2eTnS9a0bwrMXZmF
+490Z/GmyaJZmktPLzGc9zwK7jJSatdXQspsydf0bqdRW9w==</history:state>
+    <history:state>eNrFU01v1DAQvfMrRj5w6W4cZ9MtDZsCAiFVKqVSESAuK8eZ3ZgmdvDHJv33OB+FVqKinDjtajLz
+nt+bNxtjWxTgblvMicEfHq0jsEeFhjsst8VtTt7XXNzcK+YkiVmyZPGSJZ/YSZaeZsfsG4HeysyK
+Cht+oQV3UqucVM61GaVd10VhXkYKHTVotTcCLR3J6Qqe1EXn50W9LSGwNbWy2W542wOa1minH0XB
+3tFxhrI7CFFLVO4fMaah3yBB+wOEbhVps6dJHDP69cPF9WjLUirruBI4Tz3RHnL2DGCjdIkw0W5l
+2EGNu7ApoZtWq6HWcMX3aMZv3qis9UUthSyz83eXR+2Ivm91zYuoKFQU5o64d5U20t0eiYYA9qL2
+Vh5CDpzxOJIGWluHktkOAQHFmyElvFu2Yv4eOkppb7ayCeRzgy+8cj7kI4rTZf9iTeiMRe+BzaVx
+F9mgbSvVTkOfk3QVEwixY2ESvCq0V+X8phFoQ4f2P3py9fZ/OkIf17ReJ7Om079pmuRkd6oGgIll
+PkNUB2m0asbMhpqt4DMaG64tgy/nl8DYYrVYxfEiWR8v4ON1qEpV6s7CyQLeGFFlEHaygGthEMNM
+cryOe5amMbyGkwTeXZ1DJ10FTntR2bEJJq3BVQKHiSsnB5ZGaci/N/WUYzsHGRs/eDpE+dcdTTeX
+TD+R7XavmqA3nzbynDftyxILv8/j8b+3+N3mbLZmsjO4LmY/DxK7nOwNb6uhZTPdydlPd3ac+Q==</history:state>
+    <history:state>eNrdU01v00AQvfMrRnvgksRrO25KTVxAqpAilYJUBIhLtF5P7KX2rtmP2Pn3rD8KrQSiXDnZmp15
+b+bNvK02LXKwpxYzovG7Q2MJlChRM4vFPj9l5G3N+N2DYEbiMIpXUbiK4o/ReZpcpGfJVwK9Eanh
+FTbsWnFmhZIZqaxtU0q7rgt8vQgkWqrRKKc5GjqS0zU8KYvO7QW9KcCzNbU06WHo7RFNq5VVf0TB
+3tKxhkb3ELwWKO0/YkxFv0D87I8QunWgdEnjMIzol3fXt6MsKyGNZZLjXPVEecjlM4CtVAXCRLsX
+fgc1HvymuGpaJYdYwyQrUY9vTsu0dXktuCjS3dXNoh3Ry1bVLA/yXAa+bsGcrZQW9rTgDQHsee2M
+OPo7sNrhSOppTe1Dej8cCEjWDFfCulXL53efUQhztxeNJ58TXO6kdf4+gjBZ9S82hM5Y9AHYHBp3
+kQ6z7YU8KOgzkqxDAv7sIl8JTubKyWLuaQTa0iH9t5poUVb/pyibTTyLcvE3USY90ntZBoCphdnH
+KI9CK9mMR+9jpoJPqI23awqfdzcQRcv1ch2Gy3hztoT3tz4qZKE6A+dLeKN5lYLvfwm3XCP6mvhs
+E/ZRkoTwGs5juPqwg07YCqxyvDJjEkxK+Z0QOE5cGTlGSZB4AzldT0YwsxOwccNGBi/8NOJk2nj6
+BKY7vGr8vNm0z+esaV8WmLsyC8d/Z/CbyaJZmklOLzOf9TwK7DJSatZWQ8p2MtrlD5+ksNk=</history:state>
+    <history:state>eNrdU01v1DAQvfMrRj5w6W6cZLPbNmwKSBXSSm1BKgLEZeU4s4lpYgd/bNJ/j/NRaCUQ5cop0Xjm
+vZk387batMjB3reYEY3fHRpLoESJmlks9vl9Rt7VjN89CmYkDqN4GYXLKP4YnabJebo++0qgNyI1
+vMKGXSnOrFAyI5W1bUpp13WBrxeBREs1GuU0R0NHcrqCZ2XRub2gNwV4tqaWJj0MvT2habWy6o8o
+2Fs61tDoAYLXAqX9R4yp6BeIn/0JQrcKlC5pHIYR/XJ9dTvKshTSWCY5zlXPlIdcvADYSlUgTLR7
+4XdQ48FviqumVXKINUyyEvX45rRMW5fXgosi3V3enLQjetmqmuVBnsvA150wZyulhb0/4Q0B7Hnt
+jDj6O7Da4UjqaU3tQ3o/HAhI1gxXwrply+d3n1EIc7cXjSefE1zupHX+PoIwWfZnG0JnLPoIbA6N
+u0iH2fZCHhT0GUlWIQF/dpGvBCdz5WQx9zQCbemQ/ltNtCir/1OUzSaeRTn/myiTHumDLAPA1MLs
+Y5RHoZVsxqP3MVPBJ9TG2zWFz7sbiKLFarEKw0W8WS/g/a2PClmozsDpAt5qXqXg+1/ALdeIviZe
+b8I+SpIQ3sBpDJcfdtAJW4FVjldmTIJJKb8TAseJKyPHKAkSbyCn68kIZnYCNm7YyOCFn0acTBtP
+n8B0h9eNnzeb9vmSNe2rAnNXZuH47wx+M1k0SzPJ6WXms55HgV1GSs3aakjZTka7+AGytLDd</history:state>
+    <history:state>eNrdVE1vnDAQvfdXWBx6yS4G9iMNXdJWqipFStNKadOql5UxA7gBm/pjIf++BsNmt0nV5NoTaJh5
+b+bN8DZSNUCRvmsg8ST8MqC0hwrgIImGbJveJd6HitDbg2DiRUEYzcNgHkZfwtN4eRavzn54qFMs
+VrSEmlwKSjQTPPFKrZsY47ZtfVvPfA4aS1DCSAoKD+R4gZ6Uhcf2/E5lyLLVFVdx3vd2RNNIocVf
+UaDTeKjB4QRBKwZcPxPDFd2D2NmPENqFL2SBoyAI8fePl9eDLHPGlSacwlj1RHm88xcIbbjIADna
+LbM7qCC3m6KibgTvYzXhpAA5fDOSx41JK0ZZFl+8vzppBvSiERVJ/TTlvq07IUaXQjJ9d0JrD0FH
+K6PYzt6BlgYGUkurKhuS2/5AECd1fyWknTd0/G4zMqZut6y25GOCSQ3Xxt6HHyzn3au1h0csfAA2
+hhjXIHNCH4wWszy45xhWFu+Tt4znApEss1qpr1yBHpveM+1Tx4AD6DV0tV3iLReBh+x5h7ZDZHgq
+DM8OYTa4T39Ue8mK8j8Q/xFR1utoFOXsX6JUjN8einJJ+NT3A2Gm5p4vDf7zULYS8kePZcrs+zqU
+rLJ94aOJh4xp4tVqPINotZ/4xtZoUhwP3lcNb448nnrocRzTaJTAd0wKXg+uYmOqRDcglfXDGH27
+uEJhOFvMFkEwi9arGfp0baOMZ6JV6HSG3klaxsguboauqQSwNdFqHXThchmgt+g0Qu8/X6CW6RJp
+YWiphiTk5rWae2jnuBJvFy79pXUoIyvnNGq0GqhNr3dvNnunc64YuYev2vxNbReduG29JHXzOoPU
+FEkwvBsFP1USjtI4Ve19TX/mjkGbeIUkTdmnbJyTnf8GrcsjAw==</history:state>
+    <history:state>eNrdVclu1EAQvfMVJR+4ZMZte5aAiQNIEVKkEJACAXEZtds1dhO72/Qynvl72stsJCjJgQsnW+VX
+r6pfvS6fKV0jA7OpMfEU/rKojQc5ClTUYLZIN4n3oaTs7iCYeFEQRuMwGIfRl/A0ngVxGP3wYK15
+rFmBFb2SjBouReIVxtQxIU3T+C6f+wINUailVQw16YqTCTwJRYb2/LXOwFWrSqHjZdvbUZlaSSP/
+yoJrQ7ocEm4pWMlRmGdy9El7Enf2I4Zm4kuVkygIQvL949VNJ8uYC22oYDhkPVEe7/wFwJmQGUJf
+dsHdDEpcukkxWdVStLGKCpqj6r5ZJeLapiVnPIsvL65P6o49r2VJUz9Nhe/yTqg1hVTcbE5Y5QGu
+WWk1XzkfGGWxK+rK6tKF1KI1CAhatS6hzbhmw3eHyLi+W/DKFR8ANrXCWOcPP5iO16/mHhm4yAHZ
+EOLCoFpSdu9oMV8G+xrdyOIdeMHFUgLNMqeV/io0mqHpXaUddAj0BK2Gfe468aaTwANn79B1CFak
+0orskOaMtPAHtVc8L/5X8buz/Xv15/NoUP/1Y+qXXNwddnhFxVagexPYqvD8GZA/RVkoXD7oykeR
+ewm3ULdQalRmA/3VPuaDzG21ZyTuUfvMe821oh0ap3SikaNxdIjtOGaz4TJEs904bl2OofnxVNqs
+7q0/b7w9dsvTVxp+FyhWXElRdbvVxXQBt6i0+yvE8O3yGsJwNBlNgmAUzWcj+HTjolxkstFwOoL3
+ihUxOPuO4IYpRJcTzebBOpxOA3gHpxFcfL6EhpsCjLSs0B0I+vM6Q3iw6msl3iqc+lO3p60q+32r
+h4WLlW3N0K7c3b7v/w1R//B1s3xbORcmvZVe0qp+k2Fq8yTo3q3GnzoJB2l6Vd0t296QFccm8XJF
+66KFnPX7/Pw399F4qw==</history:state>
+    <history:state>eNrdVU1vm0AQvfdXrDj0EpsFbCcuNWkrRZUipWmltGnVi7UsY9gGdul+GPvfd2HBH0mqJIdeegIN
+b97svHk7LKSqgSK9rSHxJPw2oLSHcuAgiYZsmW4T72NJ6N1BMPGiIIzGYTAOo6/hPA7CeDr/6aGN
+YrGiBVTkSlCimeCJV2hdxxg3TePbfOZz0FiCEkZSULgrjifoWSjcH8/fqAzZalXJVbxqz3ZUppZC
+i7+ywEbjLgeHAwUtGXD9Qg6XtCexvR8xNBNfyBxHQRDiH5+ubjpZxowrTTiFPuuZ8njnrxBacJEB
+cmWXzM6ghJWdFBVVLXgbqwgnOcjum5E8rk1aMsqy+PLi+qTu2PNalCT105T7Nu+EGF0IyfT2hFYe
+gg0tjWJr6wMtDXRFbVlV2pBctgZBnFStS0gzrmn/3SIypu6WrLLFe4BJDdfG+sMPpuPN/NTDPRc+
+IOtDjGuQK0IftBazVbCv0Y0s3oGXjK8EIllmtVLfuALdH3pXaQftA46g1dDlbhJvEk09ZO0dvrFP
+w1NheHZIs8At/FHtJcuL/1X8rrd/r/48jDr17Sp5Sv2S8bv79hh3xxyXhA9aPRjGIMjLx4Hv67OU
+sHrUoE8i92oOULtbapB6i9wtP+ZDmV1wL0jco/aZDw7X6nfooVY0fDSZDjFMZjYL3L2IZrvJ3Noc
+TfLjAbVZ3ZvrNx7abnlcpf7PAXzNpOBVt2ZtTBXoFqSyP4gYfb+8RmE4mowmQTCKTmcj9PnGRhnP
+RKPQ2Qh9kLSIkXXyCN1QCWBzotlpsAmn0wC9R2cRuvhyiRqmC6SFoYXqQMj1aw3hobWrlXjrcOpP
+W7vJ0q1e1e9eqExrhnb77la/+01E7uGrZvWusoZMnJVek6p+m0Fq8iTo3o2CXyoJe2mcqvbCDZdl
+zaBJvFySumghC7faz/8ADYh84w==</history:state>
+    <history:state>eNrdVU2P5DQQvfMrLB+4TCdO0t2zQ5jsAlqBRloWpIEFcWm5nerETGIHf3R6+PVUnKQ/dgbtzoEL
+p1iVqleuV89Vt8Z2IIh77KCgBv7yYB0lFSgw3EG52T4W9PuGi4czY0GzJM2iNInS7Jf0Jk+TfHX9
+ByUHK3Mramj5Oy24k1oVtHauyxnr+z7GeBkrcMyA1d4IsCwkZ0vyWV5sul58sCXBbG2jbL4b7naR
+pjPa6X9FgYNjIYalM4RoJCj3Qowx6ASCtV8g9MtYm4plSZKy3398dx9oiaSyjisBU9Rn0kNff0HI
+rdIlkDHtRmIPGthhp4RuO60GW8sVr8CEf96ovPPbRgpZ5ndv3191Ab3qdMO38XarYoy74t7V2kj3
+eCVaSuAgGm/lHnXgjIeQFNPaBk1mMwiEKN4OKuF91InpP3qU0j5sZIvJJwe/9cp51EecrKLDzTVl
+ExY7A5vhwewl1npEgwMI72AoDCvCWliDYmqY7MDsIiuM7Fxsa0psDU1TUDyyY3Dgt2nI9N103NUz
+AiXeNEfGK6N9Z0+kDwfGneOibofG9vJBsh/kd1EFzklV3TtuUPqX10BbXP39ZqdNy12BvJxVelEX
+XsxhHBdPOpjLXXKiMigzPzpvpNppwssSJWF/VRbc1JtjmqPrZBgBBqmMsYeCLrMVJfiK06/w69VW
++4HVE8wtG9yflZiRVf0/0Niz5Ifa/nv2b9IssI8T81PsN1I9fCyPKFwzariauXrSjJmQl7eDfczP
+xsDuWYF+0vPE5uyKIxSfinsk4zC7xCMlzvEXBJ68TpFPLjfwd66hgTR20ZngMXdmvU7Gd5Gtj535
+gDGOV5cNGqLCaaw3n8secMZM04IEtZdGqzZsE7TZmnwAY3EP5uS3u/ckTRfLxTJJFtn1ekF+uker
+VKXuLXm1IN8aUecElbwg98IAYEy2vk4O6WqVkG/Iq4y8/fmO9NLVxGkvahucyFgvCoKS/ZiroPt0
+Fa/Ss3lnpxUDrR/EMMy744Ybt2E2fmLb7960KMhilNKXvO2+LmHrqyIJZ2/hT1ukEzUjq/jg5sey
+l9AXtDK8C1P5dtxgr/8BroPLHA==</history:state>
+  </history:slice_history>
+  <flack:slice_info view="graph"/>
 </rspec>
