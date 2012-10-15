@@ -212,6 +212,7 @@ class GeniManifest :
     portTag             = "port"                    # tag used for attributes under login elements
     webpage             = "http://www.protogeni.net/resources/rspec/0.1"
     componentMgrURN     = "urn:publicid:IDN+geni-in-a-box.net+authority+cm"
+    xsiSchemaLocationTag = "xsi:schemaLocation"     # location tag in the main rspec header
     
     
     """\
@@ -246,7 +247,6 @@ class GeniManifest :
                 if key == "urn" :
                     userName = user[key]
                     userName = userName.split("+")[-1]
-                    print "FOUND USER: " + userName
             
             # only install the user account if there is a user to install
             if userName != None :
@@ -270,6 +270,17 @@ class GeniManifest :
         manifest = Document()
         manifest.appendChild(originalRspec)
         originalRspec.setAttribute(GeniManifest.typeTag, "manifest")
+        
+        # if the rspec has a xsi:schemaLocation element in the header
+        # set the appropriate value to say "manifest" instead of "request"
+        if originalRspec.hasAttribute(GeniManifest.xsiSchemaLocationTag) :
+            xsiSchemaLocation = originalRspec.attributes[GeniManifest.xsiSchemaLocationTag].value
+            xsiSchemaLocation = xsiSchemaLocation.replace("request.xsd", "manifest.xsd")
+            originalRspec.setAttribute(GeniManifest.xsiSchemaLocationTag, xsiSchemaLocation)
+        
+        # if no attribute for xsi:schemaLocation exists then add one
+        else :
+            originalRspec.setAttribute(GeniManifest.xsiSchemaLocationTag, "xsi:schemaLocation=\"http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd\"")
         
         # go through every child node within the rspec and
         # set the appropriate values for known node elements
@@ -395,7 +406,7 @@ class GeniManifest :
                             # specifically look for disk images and set the correct type
                             for sliverTypeChild in nodeChild.childNodes :
                                 if sliverTypeChild.nodeName == GeniManifest.diskImageTag :
-                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image//" + config.distro)
+                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image+//" + config.distro)
                     
                         # if the child node is an interface
                         # then set up the ip and mac addresses
