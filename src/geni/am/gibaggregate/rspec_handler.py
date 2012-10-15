@@ -246,7 +246,6 @@ class GeniManifest :
                 if key == "urn" :
                     userName = user[key]
                     userName = userName.split("+")[-1]
-                    print "FOUND USER: " + userName
             
             # only install the user account if there is a user to install
             if userName != None :
@@ -395,7 +394,7 @@ class GeniManifest :
                             # specifically look for disk images and set the correct type
                             for sliverTypeChild in nodeChild.childNodes :
                                 if sliverTypeChild.nodeName == GeniManifest.diskImageTag :
-                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image//" + config.distro)
+                                    sliverTypeChild.setAttribute(GeniManifest.nameTag, "urn:publicid:geni-in-a-box.net+image+//" + config.distro)
                     
                         # if the child node is an interface
                         # then set up the ip and mac addresses
