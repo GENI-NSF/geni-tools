@@ -1,4 +1,4 @@
-<rspec type="request" generated_by="Flack" generated="2012-10-12T18:10:59Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd " xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
+<rspec type="request" generated_by="Flack" generated="2012-10-12T18:10:59Z" xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd " xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" xmlns:client="http://www.protogeni.net/resources/rspec/ext/client/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.geni.net/resources/rspec/3">
   <node client_id="left" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
     <sliver_type name="raw-pc">
       <disk_image name="ubuntu-10.04-x86"/>
