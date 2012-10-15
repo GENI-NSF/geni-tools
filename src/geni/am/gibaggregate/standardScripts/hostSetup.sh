@@ -45,17 +45,22 @@ echo "# Lines added by GENI-in-a-Box setup script" >> ~/.bash_profile
 echo "PATH=$PATH:$HOME/bin:$HOME/gcf/src" >> ~/.bash_profile
 echo "export PATH" >> ~/.bash_profile
 
-# Create keys for user alice with empty passphrase.  Move the private key
+# Create keys for default user with empty passphrase.  Move the private key
 #   to the .ssh directory
-ssh-keygen -t rsa -N "" -f ~/.gcf/alice
-mkdir ~/.ssh
-mv ~/.gcf/alice ~/.ssh
+ssh-keygen -t rsa -N "" -f ~/.gcf/$USER
+mkdir -p ~/.ssh
+mv ~/.gcf/$USER ~/.ssh/id_rsa
 
-# Make sure we have the Python package needed by gcf  installed
+# Install the Python packages needed by gcf 
 sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
 
-# Run gen-certs to create CH, AM and alice certs.
-~/gcf/src/gen-certs.py
+# TO DO: Add entry for $USER in omni_config.  For now this will be a manual
+#    step.
+
+# Run gen-certs to create CH, AM and user certs.
+~/gcf/src/gen-certs.py --notAll --ch
+~/gcf/src/gen-certs.py --notAll --am
+~/gcf/src/gen-certs.py --notAll --exp -u $USER
 
 # Extract the password for the user accounts in the VMs created by createsliver
 #   and write it to ~/.gcf/passwords
