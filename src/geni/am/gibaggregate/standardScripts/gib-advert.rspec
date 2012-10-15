@@ -1,9 +1,11 @@
-<?xml version="1.0" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- Resources at AM:
 	URN: urn:publicid:IDN+geni-in-a-box.net+authority+cm
-	URL: http://localhost:8001
+	URL: http://geni-in-a-box.net:8001
  -->
-<rspec expires="2013-08-20T22:26:14Z" generated="2012-07-16T22:26:14Z" type="advertisement" xmlns="http://www.protogeni.net/resources/rspec/2" xmlns:emulab="http://www.protogeni.net/resources/rspec/ext/emulab/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.protogeni.net/resources/rspec/2 http://www.protogeni.net/resources/rspec/2/ad.xsd ">  
+<rspec expires="2013-12-20T22:26:14Z" type="advertisement" xmlns="http://www.geni.net/resources/rspec/3" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/ad.xsd" >
   <node component_id="urn:publicid:IDN+geni-in-a-box.net+node+pc101" component_manager_id="urn:publicid:IDN+geni-in-a-box.net+authority+cm" component_name="pc101" exclusive="true">    
       <hardware_type name="openVZ container">      
       </hardware_type>    
