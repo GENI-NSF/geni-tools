@@ -192,7 +192,11 @@ class Clearinghouse(object):
                      ca_certs=None):
         """Creates the XML RPC server."""
         # ca_certs is a file of concatenated certs
-        return SecureXMLRPCServer(addr, keyfile=keyfile, certfile=certfile,
+        # make 2nd arg logRequests=True if --debug
+        debug = False
+        if self.config.has_key('debug'):
+            debug = self.config['debug']
+        return SecureXMLRPCServer(addr, logRequests=debug, keyfile=keyfile, certfile=certfile,
                                   ca_certs=ca_certs)
 
     def _naiveUTC(self, dt):
