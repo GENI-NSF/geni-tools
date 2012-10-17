@@ -163,7 +163,7 @@ class AggregateManagerServer(object):
             raise Exception('Missing CA Certs')
         elif not os.path.isfile(os.path.expanduser(ca_certs)):
             raise Exception('CA Certs must be an existing file of accepted root certs: %s' % ca_certs)
-
+        # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         if delegate is None:
