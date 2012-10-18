@@ -272,11 +272,13 @@ class Credential(object):
             if os.path.isfile(path + '/' + 'xmlsec1'):
                 self.xmlsec_path = path + '/' + 'xmlsec1'
                 break
+        if not self.xmlsec_path:
+            logger.warn("Could not locate binary for xmlsec1 - SFA will be unable to sign stuff !!")
 
     def get_subject(self):
         if not self.gidObject:
             self.decode()
-        return self.gidObject.get_printable_subject()
+        return self.gidObject.get_subject()
 
     # sounds like this should be __repr__ instead ??
     def get_summary_tostring(self):
@@ -626,7 +628,11 @@ class Credential(object):
     # you have loaded an existing signed credential, do not call encode() or sign() on it.
 
     def sign(self):
-        if not self.issuer_privkey or not self.issuer_gid:
+        if not self.issuer_privkey:
+            logger.warn("Cannot sign credential (no private key)")
+            return
+        if not self.issuer_gid:
+            logger.warn("Cannot sign credential (no issuer gid)")
             return
         doc = parseString(self.get_xml())
         sigs = doc.getElementsByTagName("signatures")[0]
@@ -1035,7 +1041,7 @@ class Credential(object):
         print self.dump_string(*args, **kwargs)
 
 
-    def dump_string(self, dump_parents=False):
+    def dump_string(self, dump_parents=False, show_xml=False):
         result=""
         result += "CREDENTIAL %s\n" % self.get_subject()
         filename=self.get_filename()
@@ -1058,5 +1064,17 @@ class Credential(object):
         if self.parent and dump_parents:
             result += "\nPARENT"
             result += self.parent.dump_string(True)
+
+        if show_xml:
+            try:
+                tree = etree.parse(StringIO(self.xml))
+                aside = etree.tostring(tree, pretty_print=True)
+                result += "\nXML\n"
+                result += aside
+                result += "\nEnd XML\n"
+            except:
+                import traceback
+                print "exc. Credential.dump_string / XML"
+                traceback.print_exc()
 
         return result
