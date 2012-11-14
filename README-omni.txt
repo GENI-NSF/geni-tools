@@ -40,6 +40,10 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version,
  print a more helpful message. (ticket #211)
+ - If an aggregate does not speak the requested Ad RSpec version and
+ the user is just using the default and the aggregate either speaks
+ only 1 RSpec format or specified a default Ad format, then use that
+ (ticket #212)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)

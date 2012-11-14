@@ -596,30 +596,50 @@ class AMCallHandler(object):
                     hasGENI3 = True
                 elif str(availversion['type']).lower().strip() == 'protogeni' and str(availversion['version']).lower().strip() == '2':
                     hasPG2 = True
+
             # if no success
             if match == False:
-                # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
-
-                #   return error showing ad_rspec_versions
-                pp = pprint.PrettyPrinter(indent=4)
-                self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                tryOthersMsg = "";
-                if hasGENI3:
-                    tryOthersMsg = ". Try calling Omni with '-t GENI 3' for GENI v3 RSpecs."
-                elif hasPG2:
-                    tryOthersMsg = ". Try calling Omni with '-t ProtoGENI 2' for ProtoGENI v2 RSpecs."
+                # if user did not explicitly specify this version, then maybe try to get the RSpec with another format
+                if not self.opts.explicitRSpecVersion:
+                    # if only 1 version is supported, use it
+                    if len(ad_rspec_version) == 1:
+                        ver = ad_rspec_version[0]
+                        if ver.has_key('type') and ver.has_key('version'):
+                            self.logger.warning("AM doesn't support default RSpec version %s %s. Returning RSpec in only supported format. Next time at this AM, call Omni with '-t %s %s'.", rtype, rver, ver['type'], ver['version'])
+                            rtype=ver['type']
+                            rver=ver['version']
+                    # if this is an ad, and default_ad_rspec is set, use that
+                    elif not slicename:
+                        (default_ad, message) = self._get_getversion_key(client, 'default_ad_rspec')
+                        if default_ad and default_ad.has_key('type') and default_ad.has_key('version'):
+                            self.logger.warning("AM doesn't support default RSpec version %s %s. Returning RSpec in AM specified default Ad format. Next time at this AM, call Omni with '-t %s %s'.", rtype, rver, default_ad['type'], default_ad['version'])
+                            rtype=default_ad['type']
+                            rver=default_ad['version']
+                    # more than 1 format advertised but no default.
                 else:
-                    tryOthersMsg = ". Try calling Omni with '-t <another supported RSpec format>'."
-                if mymessage != "" and not mymessage.endswith('.'):
-                    mymessage += ". "
+                    # User explicitly picked this version that is not supported
+                    # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
 
-                if not self.opts.devmode:
-                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
-                    mymessage = mymessage + tryOthersMsg
-                    # Skip this AM/client
-                    raise BadClientException(client, mymessage)
-                else:
-                    mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
+                    #   return error showing ad_rspec_versions
+                    pp = pprint.PrettyPrinter(indent=4)
+                    self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                    tryOthersMsg = "";
+                    if hasGENI3:
+                        tryOthersMsg = ". Try calling Omni with '-t GENI 3' for GENI v3 RSpecs."
+                    elif hasPG2:
+                        tryOthersMsg = ". Try calling Omni with '-t ProtoGENI 2' for ProtoGENI v2 RSpecs."
+                    else:
+                        tryOthersMsg = ". Try calling Omni with '-t <another supported RSpec format>'."
+                    if mymessage != "" and not mymessage.endswith('.'):
+                        mymessage += ". "
+
+                    if not self.opts.devmode:
+                        mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                        mymessage = mymessage + tryOthersMsg
+                        # Skip this AM/client
+                        raise BadClientException(client, mymessage)
+                    else:
+                        mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
 
 #--- API version differences:
             if self.opts.api_version == 1:
@@ -628,6 +648,7 @@ class AMCallHandler(object):
                 options['geni_rspec_version'] = dict(type=rtype, version=rver)
 
 #--- Dev mode should not force supplying this option maybe?
+        # This elif is only if no rspec type option was supplied - which you can't really do at this point
         elif self.opts.api_version >= 2:
             # User did not specify an rspec type but did request version 2.
             # Make an attempt to do the right thing, otherwise bail and tell the user.
@@ -650,6 +671,7 @@ class AMCallHandler(object):
                 # there is only one advertisement, so use it.
                 options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
                                                      version=ad_rspec_version[0]['version'])
+            # FIXME: if there is a default_ad_rspec and this is for ads, use that?
             else:
                 # FIXME: Could we pick GENI v3 if there, else PG v2?
 

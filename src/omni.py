@@ -744,6 +744,10 @@ def parse_args(argv, options=None):
 
     (options, args) = parser.parse_args(argv, options)
 
+    # Set an option indicating if the user explicitly requested the RSpec version
+    options.ensure_value('explicitRSpecVersion', False)
+    options.explicitRSpecVersion = ('-t' in argv)
+
     # Validate options here if we want to be careful that options are of the right types...
     # particularly if the user passed in an options argument
 
