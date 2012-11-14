@@ -577,6 +577,8 @@ class AMCallHandler(object):
             self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
             # foreach item in the list that is the val
             match = False
+            hasGENI3 = False
+            hasPG2 = False
             for availversion in ad_rspec_version:
                 if not (availversion.has_key('type') and availversion.has_key('version')):
                     self.logger.warning("AM getversion rspec_version entry malformed: no type or no version")
@@ -590,6 +592,10 @@ class AMCallHandler(object):
                     rtype=availversion['type']
                     rver=availversion['version']
                     break
+                if str(availversion['type']).lower().strip() == 'geni' and str(availversion['version']).lower().strip() == '3':
+                    hasGENI3 = True
+                elif str(availversion['type']).lower().strip() == 'protogeni' and str(availversion['version']).lower().strip() == '2':
+                    hasPG2 = True
             # if no success
             if match == False:
                 # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
@@ -597,11 +603,19 @@ class AMCallHandler(object):
                 #   return error showing ad_rspec_versions
                 pp = pprint.PrettyPrinter(indent=4)
                 self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                if mymessage != "":
+                tryOthersMsg = "";
+                if hasGENI3:
+                    tryOthersMsg = ". Try calling Omni with '-t GENI 3' for GENI v3 RSpecs."
+                elif hasPG2:
+                    tryOthersMsg = ". Try calling Omni with '-t ProtoGENI 2' for ProtoGENI v2 RSpecs."
+                else:
+                    tryOthersMsg = ". Try calling Omni with '-t <another supported RSpec format>'."
+                if mymessage != "" and not mymessage.endswith('.'):
                     mymessage += ". "
 
                 if not self.opts.devmode:
                     mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                    mymessage = mymessage + tryOthersMsg
                     # Skip this AM/client
                     raise BadClientException(client, mymessage)
                 else:
@@ -623,7 +637,7 @@ class AMCallHandler(object):
                 (ad_rspec_version, message) = self._get_request_rspecs(client)
             if ad_rspec_version is None:
                 if message:
-                    if mymessage != "":
+                    if mymessage != "" and not mymessage.endswith('.'):
                         mymessage += ". "
                     mymessage = mymessage + message
                 self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
@@ -642,7 +656,7 @@ class AMCallHandler(object):
                 # Inform the user that they have to pick.
                 ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
                 self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
-                if mymessage != "":
+                if mymessage != "" and not mymessage.endswith('.'):
                     mymessage += ". "
                 mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
                 if not self.opts.devmode:
@@ -787,7 +801,10 @@ class AMCallHandler(object):
                     if not mymessage:
                         mymessage = ""
                     else:
-                        mymessage += ".\n"
+                        if not mymessage.endswith('.'):
+                            mymessage += ".\n"
+                        else:
+                            mymyessage += "\n"
                     mymessage += validMsg
                 continue
             elif newc.url != client.url:
@@ -799,7 +816,10 @@ class AMCallHandler(object):
                     if not mymessage:
                         mymessage = ""
                     else:
-                        mymessage += ".\n"
+                        if not mymessage.endswith('.'):
+                            mymessage += ".\n"
+                        else:
+                            mymyessage += "\n"
                     mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                     continue
 #                    raise BadClientException(client, mymessage)
@@ -819,7 +839,10 @@ class AMCallHandler(object):
                 if not mymessage:
                     mymessage = ""
                 else:
-                    mymessage += ".\n"
+                    if not mymessage.endswith('.'):
+                        mymessage += ".\n"
+                    else:
+                        mymessage += "\n"
                 mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                 continue
 
@@ -833,10 +856,15 @@ class AMCallHandler(object):
                 if not mymessage:
                     mymessage = ""
                 else:
-                    mymessage += ".\n"
+                    if not mymessage.endswith('.'):
+                        mymessage += ".\n"
+                    else:
+                        mymessage += "\n"
                 if bce.validMsg and bce.validMsg != '':
-                    mymessage += bce.validMsg + ". "
-                mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
+                    mymessage += bce.validMsg
+                    if not mymessage.endswith('.'):
+                        mymessage += ". "
+                # mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
                 self.logger.warn(message + "... continuing with next AM")
                 continue
 
@@ -861,7 +889,10 @@ class AMCallHandler(object):
                 else:
                     self.logger.warn("Didn't get a valid RSpec!")
                     if mymessage != "":
-                        mymessage += ". "
+                        if mymessage.endswith('.'):
+                            mymessage += ' '
+                        else:
+                            mymessage += ". "
                     mymessage += "No resources from AM %s: %s" % (client.url, message)
                 if self.opts.api_version > 1:
                     resp['value']=rspec
@@ -871,7 +902,10 @@ class AMCallHandler(object):
                 self.logger.warn("No resource listing returned!")
                 self.logger.debug("Return struct missing proper rspec in value element!")
                 if mymessage != "":
-                    mymessage += ". "
+                    if mymessage.endswith('.'):
+                        mymessage += ' '
+                    else:
+                        mymessage += ". "
                 mymessage += "No resources from AM %s: %s" % (client.url, message)
 
             # Return for tools is the full code/value/output triple
@@ -1395,7 +1429,9 @@ class AMCallHandler(object):
                 # We could of course do this for the user.
                 prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
                 self.logger.info(prstr)
-                retVal += ". " + prstr
+                if not retVal.endswith('.'):
+                    retVal += '.'
+                retVal += " " + prstr
         else:
             prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
             if message is None or message.strip() == "":
@@ -2146,7 +2182,9 @@ class AMCallHandler(object):
             if not res:
                 prStr = "Failed to renew sliver %s on %s (%s) (got result '%s')" % (urn, client.urn, client.url, res)
                 if message != "":
-                    prStr += ". " + message
+                    if not prStr.endswith('.'):
+                        prStr += '.'
+                    prStr += " " + message
                 else:
                     prStr += " (no reason given)"
                 if len(clientList) == 1:
@@ -2679,7 +2717,9 @@ class AMCallHandler(object):
                 if 'geni_unallocated' in alloc_statuses:
                     statusMsg += "; some are geni_unallocated.\n"
                 else:
-                    statusMsg += ".\n"
+                    if not statusMsg.endswith('.'):
+                        statusMsg += '.'
+                    statusMsg += "\n"
             if len(op_statuses) == 1:
                 if len(slivers) == 1:
                     statusMsg += "  Sliver is "
@@ -2693,7 +2733,9 @@ class AMCallHandler(object):
                 if 'geni_pending_allocation' in op_statuses:
                     statusMsg += "; some are geni_pending_allocation"
                 else:
-                    statusMsg += ".\n"
+                    if not statusMsg.endswith('.'):
+                        statusMsg += '.'
+                    statusMsg += "\n"
             statusMsg += "\n"
             # Resulting text added to retVal (below). But do this even if lots AMs? Or only if limited # of AMs?
 
@@ -2824,7 +2866,9 @@ class AMCallHandler(object):
                 prStr = "Failed to delete sliver %s on %s at %s (got result '%s')" % (urn, client.urn, client.url, res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr += ". " + message
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -3095,7 +3139,9 @@ class AMCallHandler(object):
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr += ". " + message
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -4154,16 +4200,21 @@ def _append_geni_error_output(retStruct, message):
             amType = retStruct['code']['am_type']
         if retStruct['code'].has_key('am_code'):
             if message2 != "":
-                message2 += ". "
+                if not message2.endswith('.'):
+                    message2 += '.'
+                message2 += " "
             message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
         if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
         if amType == 'protogeni' and retStruct['code'].has_key('protogeni_error_log'):
             message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
         if message2 != "":
-            message2 += "."
+            if not message2.endswith('.'):
+                message2 += '.'
         if message is not None and message.strip() != "" and message2 != "":
-            message += ". (%s)" % message2
+            if not message2.endswith('.'):
+                message2 += '.'
+            message += " (%s)" % message2
         else:
             message = message2
     return message
