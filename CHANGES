@@ -2,6 +2,9 @@
 
 gcf 2.2:
  * Updated SFA library files to tag 2.1-17
+ * omni
+  - If an aggregate does not speak the requested Ad RSpec version,
+  print a more helpful message. (ticket #211)
 
 gcf 2.1:
  * omni
