@@ -658,7 +658,7 @@ def getParser():
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
     parser.add_option("-r", "--project", 
-                      help="Name of project. (For use with pgch clearinghouse.)")
+                      help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, default 'GENI 3'")
