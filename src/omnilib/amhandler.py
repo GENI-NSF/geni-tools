@@ -88,7 +88,136 @@ class AMCallHandler(object):
             return
         if not hasattr(self,call):
             self._raise_omni_error('Unknown function: %s' % call)
+
+        # Try to auto-correct API version
+        self._correctAPIVersion(args)
+
         return getattr(self,call)(args[1:])
+
+    def _correctAPIVersion(self, args):
+        '''Switch AM API versions if the AMs all speak something else. But be conservative.'''
+
+        configVer = str(self.opts.api_version) # turn int into a string
+        (clients, message) = self._getclients()
+        clientCount = len(clients)
+        liveVers = {}
+        versions = {}
+        for client in clients:
+            (thisVer, message) = self._get_this_api_version(client)
+            thisVer = str(thisVer) # turn int into a string
+            liveVers[thisVer]  = liveVers.get(thisVer, 0) + 1 # hash is by strings
+            (thisVersions, message) = self._get_api_versions(client)
+            if thisVersions:
+                for version in thisVersions.keys(): # version is a string
+#                    self.logger.debug("%s supports %d at %s", client.url, int(version), thisVersions[version])
+                    versions[version] = versions.get(version, 0) + 1 # hash by strings
+#                    self.logger.debug("%d spoken by %d", int(version), versions[version])
+            else:
+                versions[thisVer] = versions.get(thisVer, 0) + 1
+
+        liveVers[configVer] = liveVers.get(configVer, 0)
+        versions[configVer] = versions.get(configVer, 0)
+
+        # If all the AMs talk the desired version here, great
+        if liveVers[configVer] == clientCount:
+            self.logger.debug("Config version spoken here by all AMs")
+            return
+
+        # If all the AMs talk the desired version somewhere, fine. We'll switch URLs later.
+        if versions[configVer] == clientCount:
+            self.logger.debug("Config version spoken somewhere by all AMs")
+            return
+
+        # Some AM does not talk the desired version
+        self.logger.warn("You asked to use AM API %s, but the AM(s) you are contacting do not all speak that version.", configVer)
+
+        # If all AMs speak the same (different) version at the current URL, use that
+        if len(liveVers.keys()) == 1:
+            newVer = int(liverVers.keys()[0])
+            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
+            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        # If the configured version is spoken somewhere by a majority of AMs, use it
+        if versions[configVer] >= clientCount/2:
+            self.logger.debug("Config version spoken somewhere by a majority of AMs")
+            self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
+            return
+
+        self.logger.warn("Configured API version %s is not supported by most of your AMs", configVer)
+
+        # We could now prefer the version that the most AMs talk at the current URL - particularly if that
+        # is the configVer
+        # Or a version that the most AMs talk at another URL (could be all) - particularly if that is the
+        # configVer again
+
+        # So we need to find the version that the most AMs support.
+        # Sort my versions array by value
+        from operator import itemgetter
+        sortedVersions = sorted(versions.iteritems(), key=itemgetter(1), reverse=True)
+        sortedLiveVersions = sorted(liveVers.iteritems(), key=itemgetter(1), reverse=True)
+        mostLive = sortedLiveVersions[0][0]
+        mostAnywhere = sortedVersions[0][0]
+
+        if mostLive == configVer or liveVers[configVer] == liveVers[mostLive]:
+            # The configured API version is what is spoken at the most AMs at the current URL
+            self.logger.debug("Config version is the most common live version")
+            self.logger.info("Sticking with API version %d, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
+            return
+
+        if liveVers[mostLive] == clientCount:
+            newVer = int(mostLive)
+            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
+            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if mostAnywhere == configVer or versions[configVer] == versions[mostAnywhere]:
+            # The configured API version is what is spoken at the most AMs at _some_ URL
+            self.logger.debug("Config version is the most common anywhere version")
+            self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
+            return
+
+        # If we get here, the configured version is not the most popular, nor supported by most AMs
+        # IE, something else is more popular
+
+        if versions[mostAnywhere] == clientCount:
+            # The most popular anywhere API version is spoken by all AMs
+            newVer = int(mostAnywhere)
+            self.logger.warn("Switching to AM API %d, which is supported by all your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if liveVers[mostLive] >= clientCount/2:
+            # The most popular live API version is spoken by a majority of AMs
+            newVer = int(mostLive)
+            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if versions[mostAnywhere] >= clientCount/2:
+            # The most popular anywhere API version is spoken by a majority of AMs
+            newVer = int(mostAnywhere)
+            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        # No API version is supported by a majority of AMs
+
+        if versions[configVer] > 0:
+            # Somebody speaks the desired version. Use that
+            self.logger.debug("Config ver is supported _somewhere_ at least")
+            return
+
+        # No AM speaks the desired API version. No version is supported by a majority of AMs
+        # Go with the most popular live version? The most popular anywhere version?
+
+        newVer = int(mostAnywhere)
+        self.logger.warn("Switching to AM API %d, the most commonly supported version. Next time call Omni with '-V%d'.", newVer, newVer)
+        self.opts.api_version = newVer
+        return
+
 
     # ------- AM API methods and direct support methods follow
 
@@ -217,10 +346,10 @@ class AMCallHandler(object):
             # On error, leave existing data alone - just record the last error
             if self.GetVersionCache.has_key(client.url):
                 self.GetVersionCache[client.url]['lasterror'] = error
-            self.logger.debug("Added GetVersion error output to cache")
+            self.logger.debug("Added GetVersion error output to cache for %s: %s", client.url, error)
         else:
             self.GetVersionCache[client.url] = res
-            self.logger.debug("Added GetVersion success output to cache")
+            self.logger.debug("Added GetVersion success output to cache for %s", client.url)
 
         # Write the file as serialized JSON
         self._save_getversion_cache()
@@ -321,6 +450,13 @@ class AMCallHandler(object):
         '''Do GetVersion (possibly from cache), check error returns to produce a message,
         pull out the value slot (dropping any code/output).'''
         message = None
+
+        # We cache results by URL
+        if not hasattr(self, 'gvValueCache'):
+            self.gvValueCache = dict()
+        if self.gvValueCache.has_key(client.url):
+            return self.gvValueCache[client.url]
+
         (thisVersion, message) = self._do_and_check_getversion(client)
         if thisVersion is None:
             # error - return what the error check had
@@ -329,6 +465,7 @@ class AMCallHandler(object):
             versionSpot = thisVersion
         else:
             versionSpot = thisVersion['value']
+        self.gvValueCache[client.url] = (versionSpot, message)
         return (versionSpot, message)
 
     def _get_getversion_key(self, client, key):
@@ -609,6 +746,7 @@ class AMCallHandler(object):
                             rtype=ver['type']
                             rver=ver['version']
                     # if this is an ad, and default_ad_rspec is set, use that
+                    # FIXME: Maybe do this even for manifests?
                     elif not slicename:
                         (default_ad, message) = self._get_getversion_key(client, 'default_ad_rspec')
                         if default_ad and default_ad.has_key('type') and default_ad.has_key('version'):
@@ -851,7 +989,7 @@ class AMCallHandler(object):
 #                    # and only do it if there is one client.
 #1                    self.opts.api_version = ver
                 else:
-                    self.logger.debug("Using new AM url %s but same API version %", newc.url, ver)
+                    self.logger.debug("Using new AM url %s but same API version %d", newc.url, ver)
                 client = newc
             elif ver != self.opts.api_version:
                 self.logger.error("AM %s speaks API version %d, not %d. Rerun with option '-V%d'.", client.url, ver, self.opts.api_version, ver)
@@ -1021,9 +1159,11 @@ class AMCallHandler(object):
         # Query the various aggregates for resources
         # rspecs[(urn, url)] = decompressed rspec
         (rspecs, message) = self._listresources( args )
-        numAggs = 0
-        if rspecs is not None:
-            numAggs = len(rspecs.keys())
+#        numAggs = 0
+#        if rspecs is not None:
+#            numAggs = len(rspecs.keys())
+        (aggs, mla) = _listaggregates(self)
+        numAggs = len(aggs)
         
         # handle empty case
         if not rspecs or rspecs == {}:
@@ -4220,7 +4360,7 @@ def _append_geni_error_output(retStruct, message):
         amType = ""
         if retStruct['code'].has_key('am_type'):
             amType = retStruct['code']['am_type']
-        if retStruct['code'].has_key('am_code'):
+        if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0:
             if message2 != "":
                 if not message2.endswith('.'):
                     message2 += '.'
