@@ -44,6 +44,10 @@ New in v2.2:
  the user is just using the default and the aggregate either speaks
  only 1 RSpec format or specified a default Ad format, then use that
  (ticket #212)
+ - If all requested aggregates (or most) speak a different AM API
+ version than requested, switch to that. Note that API version
+ changes are for the entire Omni invocation, not per
+ aggregate. (ticket #213)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
