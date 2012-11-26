@@ -497,7 +497,12 @@ class AMCallHandler(object):
         '''Get the supported API versions and URLs for this AM (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_api_versions')
         if res is None:
-            self.logger.warning("Couldnt get api versions supported from GetVersion: %s" % message)
+            msg = "Couldnt get api versions supported from GetVersion: %s" % message
+            (thisVer, msg2) = self._get_getversion_key(client, 'geni_api')
+            if thisVer and thisVer < 2:
+                self.logger.debug(msg)
+            else:
+                self.logger.warning(msg)
         # Return is a dict: Int API version -> string URL of AM
         return (res, message)
 
