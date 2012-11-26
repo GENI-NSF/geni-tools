@@ -211,6 +211,11 @@ def load_config(opts, logger):
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
 
+    # Fill in the project if it is configured
+    if not opts.project:
+        if config['omni'].has_key('default_project'):
+            opts.project = config['omni']['default_project']
+
     logger.info("Using control framework %s" % opts.framework)
 
     # Find the control framework
@@ -223,7 +228,7 @@ def load_config(opts, logger):
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
         config['selected_framework'][key] = val
-    
+
     return config
 
 def load_framework(config, opts):
@@ -611,7 +616,7 @@ def getParser():
     """Construct an Options Parser for parsing omni arguments.
     Do not actually parse anything"""
 
-    usage = "\n" + getOmniVersion() + "\n\n%prog [options] <command and arguments> \n\
+    usage = "\n" + getOmniVersion() + "\n\n%prog [options] [--project <proj_name>] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
  \t\t\t getversion \n\
@@ -652,6 +657,8 @@ def getParser():
                       help="Specify version of AM API to use (default 2)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
+    parser.add_option("-r", "--project", 
+                      help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, default 'GENI 3'")
