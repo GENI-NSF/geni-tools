@@ -23,26 +23,30 @@
 
 from omnilib.frameworks.framework_pg import Framework as pg_framework
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+
+import logging
 from urlparse import urlparse
 
 class Framework(pg_framework):
-    """The a ProtoGENI CH shim for Omni.
+    """Framework to talk to the GENI Clearinghouse (or similar) using PG CH APIs.
+    The difference here is that there is a project name which is appended to the 
+    SA hostname to construct the authority field in the slice URN.
     """
 
     def __init__(self, config, opts):
         pg_framework.__init__(self,config, opts)
         self.opts = opts
+        self.logger = logging.getLogger("omni.pgch")
     
     def slice_name_to_urn(self, name):
         """Convert a slice name and project name to a slice urn."""
         #
-        # Sample URNs:
+        # Sample URN:
         #   urn:publicid:IDN+portal:myproject+slice+myexperiment
         #
 
         if name is None or name.strip() == '':
             raise Exception('Empty slice name')
-
 
         if not self.config.has_key('sa'):
             raise Exception("Invalid configuration: no slice authority (sa) defined")
@@ -57,9 +61,8 @@ class Framework(pg_framework):
             # otherwise, default to 'default_project' in 'omni_config'
             project = self.config['default_project']
 
-        # if config has an authority, make sure it matches
-        if self.config.has_key('sa'):
-            url = urlparse(self.config['sa'])
+        # Get the authority from the SA hostname
+        url = urlparse(self.config['sa'])
         sa_host = url.hostname
         try:
             sa_hostname, sa_domain = sa_host.split(".",1)
