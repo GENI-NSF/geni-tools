@@ -95,6 +95,11 @@ class SampleClearinghouseServer(object):
     def ListAggregates(self):
         return self._delegate.ListAggregates()
     
+    def ListMySlices(self, urn):
+        '''List slices owned by the user URN provided, returning a list of slice URNs.
+        Expired slices are deleted (and not returned).'''
+        return self._delegate.ListMySlices(urn)
+
     def CreateUserCredential(self, cert):
         return self._delegate.CreateUserCredential(cert)
 
@@ -192,7 +197,11 @@ class Clearinghouse(object):
                      ca_certs=None):
         """Creates the XML RPC server."""
         # ca_certs is a file of concatenated certs
-        return SecureXMLRPCServer(addr, keyfile=keyfile, certfile=certfile,
+        # make 2nd arg logRequests=True if --debug
+        debug = False
+        if self.config.has_key('debug'):
+            debug = self.config['debug']
+        return SecureXMLRPCServer(addr, logRequests=debug, keyfile=keyfile, certfile=certfile,
                                   ca_certs=ca_certs)
 
     def _naiveUTC(self, dt):
@@ -239,13 +248,17 @@ class Clearinghouse(object):
 
         # First ensure we have a slice_urn
         if urn_req:
-            # FIXME: Validate urn_req has the right form
+            # Validate urn_req has the right form
             # to be issued by this CH
             if not urn_util.is_valid_urn(urn_req):
                 # FIXME: make sure it isnt empty, etc...
                 urn = urn_util.publicid_to_urn(urn_req)
             else:
                 urn = urn_req
+
+            # Validate the urn meets name restrictions
+            if not urn_util.is_valid_urn_bytype(urn, 'slice', self.logger):
+                raise Exception("Cannot create slice with urn %s: URN is invalid" % urn)
         else:
             # Generate a unique URN for the slice
             # based on this CH location and a UUID
@@ -264,6 +277,9 @@ class Clearinghouse(object):
 
         # Now create a GID for the slice (signed credential)
         if slice_gid is None:
+            # FIXME: For APIv3 compliance, we need
+            # - slice email address
+            # - unique cert serial number
             try:
                 slice_gid = cert_util.create_cert(urn, self.keyfile, self.certfile, uuidarg = slice_uuid)[0]
             except Exception, exc:
@@ -355,6 +371,35 @@ class Clearinghouse(object):
         self.logger.info("Called ListAggregates")
         # TODO: Allow dynamic registration of aggregates
         return self.aggs
+
+    def ListMySlices(self, urn):
+        '''List slices owned by the user URN provided, returning a list of slice URNs.
+        Expired slices are deleted (and not returned).'''
+
+        ret = list()
+        self.logger.debug("Looking for slices owned by %s", urn)
+
+        # We could take hrn or return hrn too. Or return hrn and uuid.
+        # Here we take a URN and return a URN
+        if not self.slices:
+#            self.logger.debug("Returning from lms early")
+            return ret
+
+        for slicecred in self.slices.values():
+            if slicecred.get_gid_caller().get_urn() == urn:
+                # Confirm it has not expired. If it has, remove it from the list of slices
+                slice_exp = self._naiveUTC(slicecred.expiration)
+                sliceurn = slicecred.get_gid_object().get_urn()
+#                self.logger.debug("Matching slice %s", sliceurn)
+                if slice_exp <= datetime.datetime.utcnow():
+                    self.logger.info("Removing expired slice %s", sliceurn)
+                    self.slices.pop(sliceurn)
+                    continue
+                ret.append(sliceurn)
+            else:
+                self.logger.debug("Found slice %s owned by different user %s", slicecred.get_gid_object().get_urn(), slicecred.get_gid_caller().get_urn())
+ 
+        return ret
     
     def CreateUserCredential(self, user_gid):
         '''Return string representation of a user credential
