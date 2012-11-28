@@ -20,11 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
-from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 import omnilib.util.credparsing as credutils
+
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+
 import os
+import string
 import sys
 
 class Framework(Framework_Base):
@@ -81,6 +85,38 @@ class Framework(Framework_Base):
         
         return aggs
 
+    def list_my_slices(self, user):
+        '''List slices owned by the user (name or URN) provided, returning a list of slice names.'''
+
+        if user is None or user.strip() == '':
+            raise Exception('Empty user name')
+
+        # construct a urn from that user
+        if is_valid_urn(user):
+            # FIXME: Validate type, authority?
+            userurn = user
+        else:
+            if not self.config.has_key('authority'):
+                raise Exception("Invalid configuration: no authority defined")
+
+            auth = self.config['authority']
+            userurn = URN(auth, "user", user).urn_string()
+
+        # invoke ListMySlices(urn)
+        (slices, message) = _do_ssl(self, None, ("List Slices for %s at GCF CH %s" % (user, self.config['ch'])), self.ch.ListMySlices, userurn)
+        # FIXME: use any message?
+        _ = message #Appease eclipse
+
+        # Return is a urn. Strip out the name
+        slicenames = list()
+        if slices and isinstance(slices, list):
+            for slice in slices:
+                slicelower = string.lower(slice)
+                if not string.find(slicelower, "+slice+"):
+                    continue
+                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
+                slicenames.append(slicename)
+        return slicenames
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""

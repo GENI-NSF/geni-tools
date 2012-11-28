@@ -95,6 +95,11 @@ class SampleClearinghouseServer(object):
     def ListAggregates(self):
         return self._delegate.ListAggregates()
     
+    def ListMySlices(self, urn):
+        '''List slices owned by the user URN provided, returning a list of slice URNs.
+        Expired slices are deleted (and not returned).'''
+        return self._delegate.ListMySlices(urn)
+
     def CreateUserCredential(self, cert):
         return self._delegate.CreateUserCredential(cert)
 
@@ -366,6 +371,35 @@ class Clearinghouse(object):
         self.logger.info("Called ListAggregates")
         # TODO: Allow dynamic registration of aggregates
         return self.aggs
+
+    def ListMySlices(self, urn):
+        '''List slices owned by the user URN provided, returning a list of slice URNs.
+        Expired slices are deleted (and not returned).'''
+
+        ret = list()
+        self.logger.debug("Looking for slices owned by %s", urn)
+
+        # We could take hrn or return hrn too. Or return hrn and uuid.
+        # Here we take a URN and return a URN
+        if not self.slices:
+#            self.logger.debug("Returning from lms early")
+            return ret
+
+        for slicecred in self.slices.values():
+            if slicecred.get_gid_caller().get_urn() == urn:
+                # Confirm it has not expired. If it has, remove it from the list of slices
+                slice_exp = self._naiveUTC(slicecred.expiration)
+                sliceurn = slicecred.get_gid_object().get_urn()
+#                self.logger.debug("Matching slice %s", sliceurn)
+                if slice_exp <= datetime.datetime.utcnow():
+                    self.logger.info("Removing expired slice %s", sliceurn)
+                    self.slices.pop(sliceurn)
+                    continue
+                ret.append(sliceurn)
+            else:
+                self.logger.debug("Found slice %s owned by different user %s", slicecred.get_gid_object().get_urn(), slicecred.get_gid_caller().get_urn())
+ 
+        return ret
     
     def CreateUserCredential(self, user_gid):
         '''Return string representation of a user credential

@@ -48,6 +48,7 @@ New in v2.2:
  version than requested, switch to that. Note that API version
  changes are for the entire Omni invocation, not per
  aggregate. (ticket #213)
+ - Support GCF CH list_my_slices (ticket #214)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
