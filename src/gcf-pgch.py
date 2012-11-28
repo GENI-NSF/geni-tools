@@ -128,6 +128,7 @@ def main(argv=None):
             setattr(opts,key,val)
     if getattr(opts,'rootcadir') is None:
         setattr(opts,'rootcadir',config['global']['rootcadir'])        
+    config['debug'] = opts.debug
 
     ch = CommandHandler()        
     if hasattr(ch, handler):

@@ -39,6 +39,7 @@ import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
 import sfa.trust.gid as gid
+import sfa.trust.credential
 import sfa.util.xrn
 from geni.util.ch_interface import *
 from ch import Clearinghouse
@@ -192,6 +193,43 @@ class PGSAnCHServer(object):
 
         return dict(code=code, value=value, output=output)
 
+    def RenewSlice(self, args):
+        # Omni uses this, Flack should not for our purposes
+        # args are credential, hrn, urn, type
+        # cred is user cred, type must be Slice
+        # returns slice cred
+        code = None
+        output = None
+        value = None
+        try:
+            self.logger.debug("Calling register in delegate")
+            value = self._delegate.RenewSlice(args)
+        except Exception, e:
+            output = str(e)
+            code = 1 # FIXME: Better codes
+            value = ''
+
+        # If the underlying thing is a triple, return it as is
+        if isinstance(value, dict) and value.has_key('value'):
+            if value.has_key('code'):
+                code = value['code']
+            if value.has_key('output'):
+                output = value['output']
+            value = value['value']
+
+        if value is None:
+            value = ""
+            if code is None or code == 0:
+                code = 1
+            if output is None:
+                output = "User not found or couldn't create slice"
+        if output is None:
+            output = ""
+        if code is None:
+            code = 0
+
+        return dict(code=code, value=value, output=output)
+
 # Skipping Remove, DiscoverResources
 
     def GetKeys(self, args):
@@ -280,6 +318,8 @@ class PGClearinghouse(Clearinghouse):
         Clearinghouse.__init__(self)
         self.logger = cred_util.logging.getLogger('gcf-pgch')
         self.gcf=gcf
+        # Cache inside keys for users.
+        self.inside_keys = dict()
 
     def loadURLs(self):
         for (key, val) in self.config['clearinghouse'].items():
@@ -363,6 +403,48 @@ class PGClearinghouse(Clearinghouse):
         self.logger.info('GENI PGCH Listening on port %d...' % (addr[1]))
         self._server.serve_forever()
 
+    def readfile(self, path):
+        f = open(path)
+        x = f.read()
+        f.close()
+        return x
+
+    def split_chain(self, chain):
+        x = chain.split('\n')
+        sep = '-----END CERTIFICATE-----'
+        out = list()
+        while x.count(sep):
+            pos = x.index(sep)
+            out.append("\n".join(x[0:pos+1]))
+            x = x[pos+1:]
+        return out
+
+    def getInsideKeys(self, uuid):
+        if self.inside_keys.has_key(uuid):
+            return self.inside_keys[uuid]
+        # Fetch the inside keys...
+        self.logger.info("get inside keys for %r", uuid);
+        argsdict = dict(member_id=uuid)
+        portalKey = self.readfile('/usr/share/geni-ch/portal/portal-key.pem')
+        portalCert = self.readfile('/usr/share/geni-ch/portal/portal-cert.pem')
+        triple = invokeCH(self.ma_url, "lookup_keys_and_certs", self.logger,
+                          argsdict,
+                          # Temporarily hardcode authority keys to get
+                          # the user's inside keys
+                          [portalCert], portalKey)
+        if triple['code'] != 0:
+            self.logger.error("Failed to get inside keys for %s: %s",
+                              uuid,
+                              triple['output'])
+            return None
+        keysdict = triple['value']
+        inside_key = keysdict['private_key']
+        inside_certs = self.split_chain(keysdict['certificate'])
+        result = (inside_key, inside_certs)
+        # Put it in the cache
+        self.inside_keys[uuid] = result
+        return result
+
     def GetCredential(self, args=None):
         #args: credential, type, uuid, urn
         credential = None
@@ -410,7 +492,12 @@ class PGClearinghouse(Clearinghouse):
                 argsdict=dict(experimenter_certificate=user_certstr)
                 restriple = None
                 try:
-                    restriple = invokeCH(self.sa_url, "get_user_credential", self.logger, argsdict)
+                    # CAUTION: untested use of inside cert/key
+                    user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                    inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    restriple = invokeCH(self.sa_url, "get_user_credential",
+                                         self.logger, argsdict, inside_certs,
+                                         inside_key)
                 except Exception, e:
                     self.logger.error("GetCred exception invoking get_user_credential: %s", e)
                     raise
@@ -469,7 +556,12 @@ class PGClearinghouse(Clearinghouse):
             argsdict=dict(slice_urn=urn)
             slicetriple = None
             try:
-                slicetriple = invokeCH(self.sa_url, 'lookup_slice_by_urn', self.logger, argsdict)
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                slicetriple = invokeCH(self.sa_url, 'lookup_slice_by_urn',
+                                       self.logger, argsdict, inside_certs,
+                                       inside_key)
             except Exception, e:
                 self.logger.error("Exception doing lookup_slice: %s" % e)
                 raise
@@ -490,7 +582,10 @@ class PGClearinghouse(Clearinghouse):
         argsdict = dict(experimenter_certificate=user_certstr, slice_id=slice_id)
         res = None
         try:
-            res = invokeCH(self.sa_url, 'get_slice_credential', self.logger, argsdict)
+            user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+            inside_key, inside_certs = self.getInsideKeys(user_uuid)
+            res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
+                           argsdict, inside_certs, inside_key)
         except Exception, e:
             self.logger.error("Exception doing get_slice_cred: %s" % e)
             raise
@@ -560,7 +655,7 @@ class PGClearinghouse(Clearinghouse):
             if hrn and (not urn or not urn_util.is_valid_urn(urn)):
                 # Convert hrn to urn
                 urn = sfa.util.xrn.hrn_to_urn(hrn, "slice")
-                self.loger.debug("Made slice urn %s from hrn %s", urn, hrn)
+                self.logger.debug("Made slice urn %s from hrn %s", urn, hrn)
                 #raise Exception("We don't handle hrn inputs")
 
             if not urn or not urn_util.is_valid_urn(urn):
@@ -617,7 +712,11 @@ class PGClearinghouse(Clearinghouse):
                     op = 'lookup_slice'
                 slicetriple = None
                 try:
-                    slicetriple = invokeCH(self.sa_url, op, self.logger, argsdict)
+                    # CAUTION: untested use of inside cert/key
+                    user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                    inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    slicetriple = invokeCH(self.sa_url, op, self.logger,
+                                           argsdict, inside_certs, inside_key)
                 except Exception, e:
                     self.logger.error("Exception doing lookup_slice: %s" % e)
                     raise
@@ -649,29 +748,106 @@ class PGClearinghouse(Clearinghouse):
 
         elif type.lower() == 'user':
             # type is user
+            # To date, this is only used for ListMySlices - given an hrn, return slice names. But the PG API
+            # returns other stuff as well
+
+            uuidO = None
             # This should be an hrn. Maybe handle others?
+
+            # turn an hrn into a urn
             if hrn and (not urn or not urn_util.is_valid_urn(urn)):
                 urn = sfa.util.xrn.hrn_to_urn(hrn, "user")
-                self.loger.debug("Made user urn %s from hrn %s", urn, hrn)
+                self.logger.debug("Made user urn %s from hrn %s", urn, hrn)
             if not urn or not urn_util.is_valid_urn(urn):
                 self.logger.error("Didnt get a valid URN for user in resolve: %s", urn)
-                if uuid:
-                    self.logger.error("Got a UUID instead? %s" % uuid)
-                    try:
-                        uuidO = uuidModule.UUID(uuid)
-                    except:
-                        self.logger.error("Resolve(user): Invalid UUID %s", uuid)
-                        raise Exception("Resolve(user): No valid URN (even using hrn) and no valid UUID")
-                else:
-                    raise Exception("Resolve(user): No valid URN (even using hrn) and no valid UUID")
-                        # FIXME: then what?
-            # Now I need an owner uuid from the urn
-            # FIXME: We don't have this yet!
-            # return a list of slices
-            #
-            # FIXME
-            self.logger.warn("Resolve(user) unimplemented. Was asked about user with hrn=%s (or urn=%s, uuid=%s)" % (hrn, urn, uuid))
-            return dict(slices=list())
+
+            # Validate uuid
+            if uuid:
+                self.logger.error("Got a UUID instead? %s" % uuid)
+                try:
+                    uuidO = uuidModule.UUID(uuid)
+                except:
+                    self.logger.error("Resolve(user): Invalid UUID %s", uuid)
+
+            # If no urn and no valid UUID, give up
+            if (not urn or not urn_util.is_valid_urn(urn)) and not uuidO:
+                raise Exception("Resolve(user): No valid URN (even using hrn) and no valid UUID")
+
+            # Handle GCF mode: input is a URN, output is a list of URNs that we'll convert
+            if self.gcf:
+                if uuidO and (not urn or not urn_util.is_valid_urn(urn)):
+                    # If uuid matches the caller uuid, then pull out the URN from the caller cert
+                    client_uuidO = uuidModule.UUID(int=user_gid.get_uuid())
+                    if uuidO.int == client_uuidO.int:
+                        urn = user_gid.get_urn()
+                # If we still have no URN, bail
+                if not urn or not urn_util.is_valid_urn(urn):
+                    self.logger.warn("Resolve(user) on gcf implemented only when given a urn or can construct on. Was asked about user with hrn=%s (or urn=%s, uuid=%s)" % (hrn, urn, uuid))
+                    return dict(slices=list())
+
+                # OK, we have a URN
+                slices = self.ListMySlices(urn)
+                # This is a list of URNs. I want names, and keyed by slices=
+                slicenames = list()
+                for slice in slices:
+                    slicenames.append(urn_util.nameFromURN(slice))
+                return dict(slices=slicenames)
+
+            else:
+                # Talking to the real CH. Need a uuid, from which we can get a lot of data about slices
+                # for which that uuid is a member.
+
+                # If we have a uuid, we can look up the user with that
+                # Else, try to match the urn with the subjectAltName in the client cert,
+                # and get the UUID from there
+                if not uuidO and urn and urn_util.is_valid_urn(urn):
+                    client_uuidO = uuidModule.UUID(int=user_gid.get_uuid())
+                    client_urn = user_gid.get_urn()
+                    if urn == client_urn:
+                        self.logger.debug("Client urn matches query URN. Get UUID that way")
+                        uuidO = client_uuidO
+
+                if not uuidO:
+                    self.logger.warn("Resolve(user) implemented only when given a uuid or the hrn/urn of the client making the query. Was asked about user with hrn=%s (or urn=%s, uuid=%s)" % (hrn, urn, uuid))
+                    return dict(slices=list())
+
+                # Query the SA for a list of slices that this UUID is a member of
+                # call is lookup_slices(sa_url, signer, None, uuidO)
+                # that returns 
+                # code/value/output triple
+                # value is a list of arrays: 'slice_id', 'slice_name', 'project_id', 'expiration', ....
+                argsdict = dict(project_id=None,member_id=str(uuidO))
+                self.logger.debug("Doing lookup_slices on project_id=None, member_id=%s", str(uuidO))
+                try:
+                    # CAUTION: untested use of inside cert/key
+                    inside_key, inside_certs = self.getInsideKeys(str(uuidO))
+                    slicestriple = invokeCH(self.sa_url, "lookup_slices",
+                                            self.logger, argsdict, inside_certs,
+                                            inside_key)
+                except Exception, e:
+                    self.logger.error("Exception getting slices for member %s: %s", str(uuidO), e)
+                    raise
+
+                # If there was an error, return it
+                getValueFromTriple(slicestriple, self.logger, "lookup_slices")
+                if slicestriple["code"] != 0:
+                    self.logger.error("Resolve got error getting from lookup_slices. Code: %d, Msg: %s", slicestriple["code"], slicestriple["output"])
+                    return slicestriple
+
+                # otherwise, create a list of the slice_name fields, and return that
+                slices = getValueFromTriple(slicestriple, self.logger, "lookup_slices", unwrap=True)
+                slicenames = list()
+                if slices:
+                    if isinstance(slices, list):
+                        for slice in slices:
+                            if isinstance(slice, dict) and slice.has_key('slice_name'):
+                                slicenames.append(slice['slice_name'])
+                            else:
+                                self.logger.error("Malformed entry in list of slices from lookup_slices: %r", slice)
+                    else:
+                        self.logger.error("Malformed value (not a list) from lookup_slices: %r", slices)
+                return dict(slices=slicenames)
+
         else:
             self.logger.error("Unknown type %s" % type)
             raise Exception("Unknown type %s" % type)
@@ -758,7 +934,12 @@ class PGClearinghouse(Clearinghouse):
                 argsdict = dict(project_name=project_name)
                 projtriple = None
                 try:
-                    projtriple = invokeCH(self.pa_url, "lookup_project", self.logger, argsdict)
+                    # CAUTION: untested use of inside cert/key
+                    user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                    inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    projtriple = invokeCH(self.pa_url, "lookup_project",
+                                          self.logger, argsdict, inside_certs,
+                                          inside_key)
                 except Exception, e:
                     self.logger.error("Exception getting project of name %s: %s", project_name, e)
                     #raise
@@ -768,7 +949,11 @@ class PGClearinghouse(Clearinghouse):
             argsdict = dict(project_id=project_id, slice_name=slice_name, owner_id=owner_id, project_name=project_name)
             slicetriple = None
             try:
-                slicetriple = invokeCH(self.sa_url, "create_slice", self.logger, argsdict)
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                slicetriple = invokeCH(self.sa_url, "create_slice", self.logger,
+                                       argsdict, inside_certs, inside_key)
             except Exception, e:
                 self.logger.error("Exception creating slice %s: %s" % (urn, e))
                 raise
@@ -788,7 +973,107 @@ class PGClearinghouse(Clearinghouse):
             argsdict = dict(experimenter_certificate=user_certstr, slice_id=sliceval['slice_id'])
             res = None
             try:
-                res = invokeCH(self.sa_url, 'get_slice_credential', self.logger, argsdict)
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
+                               argsdict, inside_certs, inside_key)
+            except Exception, e:
+                self.logger.error("Exception doing get_slice_cred after create_slice: %s" % e)
+                raise
+            getValueFromTriple(res, self.logger, "get_slice_credential after create_slice")
+            if not res['value']:
+                return res
+            if not isinstance(res['value'], dict) and res['value'].has_key('slice_credential'):
+                return res
+            return res['value']['slice_credential']
+
+    def RenewSlice(self, args):
+        # args are credential, expiration
+        # cred is user cred
+        # returns renewed slice credential
+
+        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        try:
+            user_gid = gid.GID(string=user_certstr)
+        except Exception, exc:
+            self.logger.error("RenewSlice failed to create user_gid from SSL client cert: %s", traceback.format_exc())
+            raise Exception("Failed to RenewSlice. Cant get user GID from SSL client certificate." % exc)
+
+        try:
+            user_gid.verify_chain(self.trusted_roots)
+        except Exception, exc:
+            self.logger.error("RenewSlice got unverifiable experimenter cert: %s", exc)
+            raise
+
+        expiration = None
+        if args and args.has_key('expiration'):
+            expiration = args['expiration']
+
+        credential = None
+        if args and args.has_key('credential'):
+            credential = args['credential']
+
+        if credential is None:
+            self.logger.error("RenewSlice has no slice credential in its arguments")
+            raise Exception("RenewSlice has no slice credential in its arguments")
+
+        # Validate slice credential
+        creds = list()
+        creds.append(credential)
+        privs = ()
+        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+
+        # get Slice UUID (aka slice_id)
+        slice_cert = sfa.trust.credential.Credential(string=credential).get_gid_object()
+        try:
+            slice_uuid = str(uuidModule.UUID(int=slice_cert.get_uuid()))
+            self.logger.error("Got UUID from slice cert: %s", slice_uuid)
+        except Exception, e:
+            self.logger.error("Failed to get a UUID from slice cert: %s", e)
+
+        if self.gcf:
+            # Pull urn from slice credential
+            urn = sfa.trust.credential.Credential(string=credential).get_gid_object().get_urn()            
+            if self.RenewSlice(urn, expiration):
+                # return the new slice credential
+                return self.slices[urn]
+            else:
+                # error
+                raise "Failed to renew slice %s until %s" % (urn, expiration)
+        else:
+            argsdict = dict(slice_id=slice_uuid,expiration=expiration)#HEREHERE
+            slicetriple = None
+            try:
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                slicetriple = invokeCH(self.sa_url, "renew_slice", self.logger,
+                                       argsdict, inside_certs, inside_key)
+            except Exception, e:
+                self.logger.error("Exception renewing slice %s: %s" % (urn, e))
+                raise
+
+            # Will raise an exception if triple malformed
+            slicetriple = getValueFromTriple(slicetriple, self.logger, "renew_slice")
+            if not slicetriple['value']:
+                self.logger.error("No slice renewed. Return the triple with the error")
+                return slicetriple
+            if slicetriple['code'] != 0:
+                self.logger.error("Return code != 0. Return the triple")
+                return slicetriple
+            sliceval = getValueFromTriple(slicetriple, self.logger, "renew_slice", unwrap=True)
+
+            # OK, this gives us the info about the slice.
+            # Now though we need the _updated_ slice credential
+            argsdict = dict(experimenter_certificate=user_certstr, slice_id=sliceval['slice_id'])
+            res = None
+            try:
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
+                               argsdict, inside_certs, inside_key)
             except Exception, e:
                 self.logger.error("Exception doing get_slice_cred after create_slice: %s" % e)
                 raise
@@ -845,8 +1130,10 @@ class PGClearinghouse(Clearinghouse):
         else:
             self.logger.info("GetKeys called for user with uuid %s" % user_uuid)
         # Use new MA lookup_ssh_keys method
+        inside_key, inside_certs = self.getInsideKeys(user_uuid)
         argsdict=dict(member_id=user_uuid);
-        keys_triple=invokeCH(self.ma_url, "lookup_ssh_keys", self.logger, argsdict);
+        keys_triple=invokeCH(self.ma_url, "lookup_ssh_keys", self.logger,
+                             argsdict, inside_certs, inside_key)
         self.logger.info("lookup_ssh_keys: " + str(keys_triple));
         if not keys_triple['value']:
             self.logger.error("No SSH key structure. Return the triple with error");
@@ -911,7 +1198,12 @@ class PGClearinghouse(Clearinghouse):
             argsdict = dict(service_type=0)
             amstriple = None
             try:
-                amstriple = invokeCH(self.sr_url, "get_services_of_type", self.logger, argsdict)
+                # CAUTION: untested use of inside cert/key
+                user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
+                inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                amstriple = invokeCH(self.sr_url, "get_services_of_type",
+                                     self.logger, argsdict, inside_certs,
+                                     inside_key)
             except Exception, e:
                 self.logger.error("Exception looking up AMs at SR: %s", e)
                 raise
