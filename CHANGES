@@ -14,9 +14,11 @@ gcf 2.2:
   changes are for the entire Omni invocation, not per
   aggregate. (ticket #213)
   - Support GCF CH list_my_slices (ticket #214)
+  - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
 
  * gcf
   - Implement list_my_slices (ticket #214)
+  - Add pgch: gcf CH with a ProtoGENI style CH API
 
 gcf 2.1:
  * omni

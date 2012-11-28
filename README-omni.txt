@@ -49,6 +49,7 @@ New in v2.2:
  changes are for the entire Omni invocation, not per
  aggregate. (ticket #213)
  - Support GCF CH list_my_slices (ticket #214)
+ - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
