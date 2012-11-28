@@ -23,6 +23,7 @@
 
 from omnilib.frameworks.framework_pg import Framework as pg_framework
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from sfa.util.xrn import urn_to_hrn
 
 import logging
 from urlparse import urlparse
@@ -37,7 +38,53 @@ class Framework(pg_framework):
         pg_framework.__init__(self,config, opts)
         self.opts = opts
         self.logger = logging.getLogger("omni.pgch")
-    
+
+    def list_my_slices(self, user):
+        '''List slices owned by the user (name or hrn or URN) provided, returning a list of slice names.'''
+        userhrn = self.user_name_to_hrn(user)
+        return self._list_my_slices(userhrn)
+
+    def user_name_to_hrn(self, name):
+        '''Convert a username to an HRN. Accept an HRN or URN though. Authority
+        is taken from the SA hostname.'''
+
+        if name is None or name.strip() == '':
+            raise Exception('Empty user name')
+
+        # If the name is a URN, convert it
+        if is_valid_urn(name):
+            (hrn, type) = urn_to_hrn(name)
+            if type != 'user':
+                raise Exception("Not a user! %s is of type %s" % (name, type))
+            self.logger.debug("Treating name %s as a URN, with hrn %s", name, hrn)
+            name = hrn
+
+        # Otherwise, construct the hrn (or maybe this is one)
+
+        if not self.config.has_key('sa'):
+            raise Exception("Invalid configuration: no slice authority (sa) defined")
+
+        # Get the authority from the SA hostname
+        url = urlparse(self.config['sa'])
+        sa_host = url.hostname
+        try:
+            sa_hostname, sa_domain = sa_host.split(".",1)
+            auth = sa_hostname
+        except:
+            # Funny SA
+            self.logger.debug("Found no . in sa hostname. Using whole hostname")
+            auth = sa_host
+
+        # Assume for now that if the name looks like auth.name, then it is a valid hrn
+        if name.startswith(auth + '.'):
+            self.logger.debug("Treating %s as an hrn", name)
+            return name
+
+        hrn = auth + '.' + name
+        self.logger.debug("Treating %s as just the name, with full hrn %s", name, hrn)
+
+        return hrn
+
     def slice_name_to_urn(self, name):
         """Convert a slice name and project name to a slice urn."""
         #
