@@ -78,8 +78,10 @@ class CallHandler(object):
             return getattr(self.chhandler, call)(args[1:])
         elif hasattr(self.amhandler, call):
             # Try to auto-correct API version
-            self.amhandler._correctAPIVersion(args)
-            return getattr(self.amhandler, call)(args[1:])
+            msg = self.amhandler._correctAPIVersion(args)
+
+            (message, val) = getattr(self.amhandler,call)(args[1:])
+            return (msg+message, val)
         else:
             self._raise_omni_error('Unknown function: %s' % call)
 

@@ -90,9 +90,10 @@ class AMCallHandler(object):
             self._raise_omni_error('Unknown function: %s' % call)
 
         # Try to auto-correct API version
-        self._correctAPIVersion(args)
+        msg = self._correctAPIVersion(args)
 
-        return getattr(self,call)(args[1:])
+        (message, val) = getattr(self,call)(args[1:])
+        return (msg+message, val)
 
     def _correctAPIVersion(self, args):
         '''Switch AM API versions if the AMs all or mostly speak something else. But be conservative.'''
@@ -102,6 +103,7 @@ class AMCallHandler(object):
         clientCount = len(clients)
         liveVers = {}
         versions = {}
+        retmsg = "" # Message to put at start of result summary
         for client in clients:
             (thisVer, message) = self._get_this_api_version(client)
             thisVer = str(thisVer) # turn int into a string
@@ -119,12 +121,12 @@ class AMCallHandler(object):
         # If all the AMs talk the desired version here, great
         if liveVers.has_key(configVer) and liveVers[configVer] == clientCount:
             self.logger.debug("Config version spoken here by all AMs")
-            return
+            return retmsg
 
         # If all the AMs talk the desired version somewhere, fine. We'll switch URLs later.
         if versions.has_key(configVer) and versions[configVer] == clientCount:
             self.logger.debug("Config version spoken somewhere by all AMs")
-            return
+            return retmsg
 
         # Some AM does not talk the desired version
         self.logger.warn("You asked to use AM API %s, but the AM(s) you are contacting do not all speak that version.", configVer)
@@ -132,17 +134,29 @@ class AMCallHandler(object):
         # If all AMs speak the same (different) version at the current URL, use that
         if len(liveVers.keys()) == 1:
             newVer = int(liveVers.keys()[0])
-            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
-            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
-            self.opts.api_version = newVer
-            return
+            msg = "At the URLs you are contacting, all your AMs speak AM API v%d. " % newVer
+            self.logger.warn(msg)
+            if self.opts.devmode:
+                self.logger.warn("Would switch AM API versions, but in dev mode, so continuing...")
+            elif self.opts.explicitAPIVersion:
+                retmsg = ("Your AMs do not all speak requested API v%s. " % configVer) + msg
+                msg = "Continuing with your requested API version %s, but consider next time calling Omni with '-V%d'." % (configVer, newVer)
+                retmsg += msg + "\n"
+                self.logger.warn(msg)
+            else:
+                retmsg = "Your AMs do not all speak requested API v%d. " + msg
+                msg = "Switching to AM API v%d. Next time call Omni with '-V%d'." % (newVer, newVer)
+                retmsg += msg + "\n"
+                self.logger.warn(msg)
+                self.opts.api_version = newVer
+            return retmsg
 
         # If the configured version is spoken somewhere by a majority of AMs, use it
         if versions.has_key(configVer) and float(versions[configVer]) >= float(clientCount)/float(2):
             self.logger.debug("Config version spoken somewhere by a majority of AMs")
             #self.logger.debug("clientCount/2 = %r", float(clientCount)/float(2))
             self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
-            return
+            return retmsg
 
         self.logger.warn("Configured API version %s is not supported by most of your AMs", configVer)
 
@@ -164,20 +178,31 @@ class AMCallHandler(object):
             self.logger.debug("Config version is the most common live version")
             configSup = versions.get(configVer, 0)
             self.logger.info("Sticking with API version %d, even though only %d of %d AMs support it", configVer, configSup, clientCount)
-            return
+            return retmsg
 
         if liveVers[mostLive] == clientCount:
             newVer = int(mostLive)
-            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
-            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
-            self.opts.api_version = newVer
-            return
+            msg = "At the URLs you are contacting, all your AMs speak AM API v%d. " % newVer
+            self.logger.warn(msg)
+            if self.opts.devmode:
+                self.logger.warn("Would switch AM API version, but continuing...")
+            elif self.opts.explicitAPIVersion:
+                retmsg = "Most of your AMs do not support requested API version %d. " + msg
+                msg = "Continuing with your requested API version %s, but consider next time calling Omni with '-V%d'." % (configVer, newVer)
+                retmsg += msg + "\n"
+                self.logger.warn(msg)
+            else:
+                msg = "Switching to AM API v%d. Next time call Omni with '-V%d'." % (newVer, newVer)
+                retmsg += msg + "\n"
+                self.logger.warn(msg)
+                self.opts.api_version = newVer
+            return retmsg
 
         if mostAnywhere == configVer or (versions.has_key(configVer) and versions[configVer] == versions[mostAnywhere]):
             # The configured API version is what is spoken at the most AMs at _some_ URL
             self.logger.debug("Config version is the most common anywhere version")
             self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
-            return
+            return retmsg
 
         # If we get here, the configured version is not the most popular, nor supported by most AMs
         # IE, something else is more popular
@@ -185,38 +210,75 @@ class AMCallHandler(object):
         if versions[mostAnywhere] == clientCount:
             # The most popular anywhere API version is spoken by all AMs
             newVer = int(mostAnywhere)
-            self.logger.warn("Switching to AM API %d, which is supported by all your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
-            self.opts.api_version = newVer
-            return
+            if self.opts.devmode:
+                self.logger.warn("Would switch AM API version to %d, which is supported by all your AMs, but continuing...")
+            elif self.opts.explicitAPIVersion:
+                msg = "Continuing with your requested API version %s (even though it is not well supported by your AMs), but consider next time calling Omni with '-V%d' (which all your AMs support). " % (configVer, newVer)
+                self.logger.warn(msg)
+                retmsg = msg + "\n"
+            else:
+                retmsg = "Your requested AM API version is not well supported by your AMs. "
+                msg = "Switching to AM API v%d, which is supported by all your AMs. Next time call Omni with '-V%d'." % (newVer, newVer)
+                retmsg += msg + "\n"
+                self.logger.warn(msg)
+                self.opts.api_version = newVer
+            return retmsg
 
         if float(liveVers[mostLive]) >= float(clientCount)/float(2):
             # The most popular live API version is spoken by a majority of AMs
             newVer = int(mostLive)
-            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
-            self.opts.api_version = newVer
-            return
+            if self.opts.devmode:
+                self.logger.warn("Would switch AM API version to %d, which is running at a majority of your AMs, but continuing...", newVer)
+            elif self.opts.explicitAPIVersion:
+                msg = "Continuing with your requested API version %s (which is not well supported by your AMs), but consider next time calling Omni with '-V%d' (which most of your AMs are running). " % (configVer, newVer)
+                self.logger.warn(msg)
+                retmsg = msg + "\n"
+            else:
+                msg = "Switching to AM API v%d, which is running at a majority of your AMs. Next time call Omni with '-V%d'." % (newVer, newVer)
+                retmsg = msg + "\n"
+                self.logger.warn(msg)
+                self.opts.api_version = newVer
+            return retmsg
 
         if float(versions[mostAnywhere]) >= float(clientCount)/float(2):
             # The most popular anywhere API version is spoken by a majority of AMs
             newVer = int(mostAnywhere)
-            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
-            self.opts.api_version = newVer
-            return
+            if self.opts.devmode:
+                self.logger.warn("Would switch AM API version to %d, which is supported by a majority of your AMs, but continuing...", newVer)
+            elif self.opts.explicitAPIVersion:
+                msg = "Continuing with your requested API version %s, but consider next time calling Omni with '-V%d' (which is supported by most of your AMs). " % (configVer, newVer)
+                retmsg = msg + "\n"
+                self.logger.warn(msg)
+            else:
+                msg = "Switching to AM API v%d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'." % (newVer, newVer)
+                retmsg = msg + "\n"
+                self.logger.warn(msg)
+                self.opts.api_version = newVer
+            return retmsg
 
         # No API version is supported by a majority of AMs
 
         if versions.has_key(configVer) and versions[configVer] > 0:
             # Somebody speaks the desired version. Use that
             self.logger.debug("Config ver is supported _somewhere_ at least")
-            return
+            return retmsg
 
         # No AM speaks the desired API version. No version is supported by a majority of AMs
         # Go with the most popular live version? The most popular anywhere version?
 
         newVer = int(mostAnywhere)
-        self.logger.warn("Switching to AM API %d, the most commonly supported version. Next time call Omni with '-V%d'.", newVer, newVer)
-        self.opts.api_version = newVer
-        return
+        if self.opts.devmode:
+            self.logger.warn("Would switch AM API version to %d, the most commonly supported version, but continuing...", newVer)
+        elif self.opts.explicitAPIVersion:
+            msg = "Continuing with your requested API version %s, but consider next time calling Omni with '-V%d' (which is the most common version your AMs support). " % (configVer, newVer)
+            retmsg = msg + "\n"
+            self.logger.warn(msg)
+        else:
+            msg = "Switching to AM API v%d, the most commonly supported version. Next time call Omni with '-V%d'." % (newVer, newVer)
+            retmsg = msg + "\n"
+            self.logger.warn(msg)
+            self.opts.api_version = newVer
+        return retmsg
 
 
     # ------- AM API methods and direct support methods follow

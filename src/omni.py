@@ -753,7 +753,12 @@ def parse_args(argv, options=None):
 
     # Set an option indicating if the user explicitly requested the RSpec version
     options.ensure_value('explicitRSpecVersion', False)
-    options.explicitRSpecVersion = ('-t' in argv)
+    options.explicitRSpecVersion = ('-t' in argv or '--rspec-type' in argv)
+
+    # Set an option indicating if the user explicitly requested the API version
+    options.ensure_value('explicitAPIVersion', False)
+    # FIXME: Do something more extensible...
+    options.explicitAPIVersion = ('-V' in argv or '--api-version' in argv or '-V1' in argv or '-V2' in argv or '-V3' in argv or '-V4' in argv or '-V5' in argv)
 
     # Validate options here if we want to be careful that options are of the right types...
     # particularly if the user passed in an options argument
