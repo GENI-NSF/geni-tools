@@ -1,5 +1,59 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.2:
+ * Updated SFA library files to tag 2.1-17
+ * omni
+  - If an aggregate does not speak the requested Ad RSpec version,
+  print a more helpful message. (ticket #211)
+  - If an aggregate does not speak the requested Ad RSpec version and
+  the user is just using the default and the aggregate either speaks
+  only 1 RSpec format or specified a default Ad format, then use that
+  (ticket #212)
+  - If all requested aggregates (or most) speak a different AM API
+  version than requested, switch to that. Note that API version
+  changes are for the entire Omni invocation, not per
+  aggregate. (ticket #213)
+  - Support GCF CH list_my_slices (ticket #214)
+  - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
+
+ * gcf
+  - Implement list_my_slices (ticket #214)
+  - Add pgch: gcf CH with a ProtoGENI style CH API
+
+gcf 2.1:
+ * omni
+  - Fix ugly error on createslice error (ticket #192)
+  - Fix ugly error on unexpected result format in sample myscript
+  (ticket #193)
+  - `CreateSliver` now accepts an RSpec in JSON format
+  - Clean some output messages (`ListResources`, whether omni lists
+  the getversion cache name option, a WARN on v2 getversion at a v1
+  AM, etc)
+  - Clean generated filenames from a protogeni AM (ticket #196)
+  - Report PG error log URN on errors, if available (ticket #198)
+  - On API version mismatch, report that error in the run summary
+  (ticket #200)
+  - Remove extra \n's in rspec output (ticket #202)
+  - When we switch AM URLs, be sure result is hashed by correct URL
+  (ticket #205)
+  - Put overall sliver status in the result summary (ticket #197)
+  - RSpec can now be a URL instead of a filename (ticket #189)
+  - Strip more useless info from generated filenames
+  - Bug fixes, log message cleanup
+
+ * gcf
+  - gen-certs: Include UUID in generated certs, per AM API v3
+  - gen-certs: Check that user URN is valid per AM API v3
+  - gcf-ch: Check that slice URN is valid per AM API v3
+  - am2: Wrap all API calls in a try/catch and return proper API error results
+  - ch_interface: Sign outgoing messages
+  - Do not check /etc for gcf_config
+
+ * AM API acceptance tests
+  - Add --skip-renew option to skip all Renew and !RenewSliver tests
+  - acceptance.log now includes a message of what test is starting, to
+  help indicate which logs correspond to any test failures. (ticket #204)
+
 gcf 2.0:
  This is a major release. It includes:
  - AM API version 2 is the default. Include the -V option to use AM
@@ -12,12 +66,14 @@ gcf 2.0:
  multiple `-a` options.
  - Lots of code cleanup and bug fixes.
 
+== Changes in gcf 2.0 ==
+
  * omni
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
  Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
  (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
   AM API v2+ aggregates require that you specify the RSpec format you
- want, when using ListResources. Omni now specifies the RSpec format
+ want, when using `ListResources`. Omni now specifies the RSpec format
  GENI 3 by default: you can always request a different format, if the
  AM supports it. (ticket #90, #141)
 
@@ -64,10 +120,10 @@ gcf 2.0:
     this. (ticket #177)
   - Added new option `--devmode` (default `False`). When true, only warn on bad
     inputs, but try to pass the bad inputs along anyhow. (ticket #78)
-  - Added a new GetVersion Cache: the results of GetVersion are
-    cached locally as serialed JSON. ListResources an other calls that
-    require information from GetVersion may use this cache instead.
-    GetVersion does not use the cache by default. Cache entries
+  - Added a new !GetVersion Cache: the results of `GetVersion` are
+    cached locally as serialed JSON. `ListResources` and other calls that
+    require information from `GetVersion` may use this cache instead.
+    `GetVersion` does not use the cache by default. Cache entries
     have a max age, after which we always re-query the AM. (ticket #81)
   - libstitch example: Allow caller to specify the per-AM fake manifest RSpec to
     use when in fake mode, by using a comment in the request
@@ -109,7 +165,7 @@ gcf 2.0:
     URNs. (ticket #113)
   - Updated to latest SFA (from around July 20th, 2012)
   - Clean up createsliver output (ticket #139)
-  - Listresources notes if supplied slice credential is expired (ticket #162)
+  - `Listresources` notes if supplied slice credential is expired (ticket #162)
 
  * gcf
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
@@ -134,6 +190,7 @@ gcf 2.0:
   - Fuller testing of the `geni_available` flag (ticket #153)
   - Check for `geni_api_version` in `getversion` (ticket #152)
   - Allow optional fields to be None (ticket #185)
+
 gcf 1.6.2:
  * omni
    - Added omni-configure.py script to autogenerate the omni_config (#127)

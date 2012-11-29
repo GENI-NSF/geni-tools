@@ -42,6 +42,32 @@ class RefusedError(OmniError):
 class AMAPIError(OmniError):
     '''Raise an Exception if the AM returned an AM API v2+ non-0 error code.
     Include the full code/value/output struct in the error.'''
-    def __init__(self, struct):
+    def __init__(self, msg=None, struct=None):
+        self.value = msg
         self.returnstruct = struct
+        # FIXME: gen a message from struct and make that arg here
+        OmniError.__init__(self, struct)
 
+#    def __repr__(self):
+    def __str__(self):
+        if not self.returnstruct:
+            return super(AMAPIError, self).__repr__()
+        message = "AMAPIError: "
+        if self.value:
+            message += self.value
+            message += "\n"
+        retStruct = self.returnstruct
+
+        if isinstance(retStruct, dict) and retStruct.has_key('code'):
+            if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
+                message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
+            amType = ""
+            if retStruct['code'].has_key('am_type'):
+                amType = retStruct['code']['am_type']
+            if retStruct['code'].has_key('am_code'):
+                message2 += ". %s AM code: %s" % (amType, str(retStruct['code']['am_code']))
+            if retStruct.has_key('output'):
+                message2 += ": %s" % retStruct['output']
+            message2 += "."
+            message += "%s" % message2
+        return message

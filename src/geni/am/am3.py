@@ -983,7 +983,7 @@ class ReferenceAggregateManager(object):
                     raise ApiErrorException(AM_API.SEARCH_FAILED,
                                             'Unknown sliver "%s"' % (urn_str))
             else:
-                raise Exception('Bad URN type "%s"', urn_type)
+                raise Exception("Bad URN type '%s'" % urn_type)
         # Now verify that everything is part of the same slice
         all_slices = set([o.slice() for o in slivers])
         if len(all_slices) == 1:
@@ -1201,6 +1201,7 @@ class AggregateManagerServer(object):
         server_url = "https://%s:%d/" % addr
         delegate = ReferenceAggregateManager(trust_roots_dir, base_name,
                                              server_url)
+        # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         self._server.register_instance(AggregateManager(delegate))

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -21,33 +21,28 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import ConfigParser
+import urllib2
 import os
 
-def read_config(path=None):
-    """Read the config file into a dictionary where each section
-    of the config is its own sub-dictionary
-    """
-    confparser = ConfigParser.RawConfigParser()
-    paths = ['gcf_config', os.path.expanduser('~/.gcf/gcf_config')]
-    if path:
-        paths.insert(0, path)
+URL_PREFIXES = ("http://", "https://", "ftp://")
 
-    foundFile = None
-    for file in paths:
-        foundFile = confparser.read(file)
-        if foundFile:
-            break
+def readFile( filestr ):
+    contentstr = None
+    if filestr.startswith(URL_PREFIXES):
+        contentstr = readFromURL(filestr)
+    else :
+        contentstr = readFromLocalFile(filestr)
+    return contentstr
 
-    if not foundFile:
-        import sys
-        sys.exit("Config file could not be found or was not properly formatted (I searched in paths: %s)" % paths)
+def readFromLocalFile( filename ):
+    readstr = None
+    with open(filename, 'r') as f:
+        readstr = f.read()
+    return readstr
 
-    config = {}
-
-    for section in confparser.sections():
-        config[section] = {}
-        for (key,val) in confparser.items(section):
-            config[section][key] = val
-
-    return config
+def readFromURL( url ):
+    readstr = None
+    u = urllib2.urlopen(url) 
+    readstr = u.read()
+    return readstr
+ 

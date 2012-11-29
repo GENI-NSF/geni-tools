@@ -94,7 +94,8 @@ from omnilib.util import OmniError
 from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
 
-OMNI_VERSION="2.0"
+OMNI_VERSION="2.2"
+
 
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
@@ -210,6 +211,11 @@ def load_config(opts, logger):
     if not opts.framework:
         opts.framework = config['omni']['default_cf']
 
+    # Fill in the project if it is configured
+    if not opts.project:
+        if config['omni'].has_key('default_project'):
+            opts.project = config['omni']['default_project']
+
     logger.info("Using control framework %s" % opts.framework)
 
     # Find the control framework
@@ -222,7 +228,7 @@ def load_config(opts, logger):
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
         config['selected_framework'][key] = val
-    
+
     return config
 
 def load_framework(config, opts):
@@ -268,10 +274,12 @@ def call(argv, options=None, verbose=False):
 
      Your myscript.py code does:
 import os
+import pprint
 import re
 import sys
 
 import omni
+from omnilib.util.files import *
 from omnilib.util.omnierror import OmniError
 
 ################################################################################
@@ -320,11 +328,14 @@ def main(argv=None):
     # Try to read args[1] as an RSpec filename to read
     rspecfile = args[1]
     rspec = None
-    if rspecfile and os.path.exists(rspecfile) and os.path.getsize(rspecfile) > 0:
+    if rspecfile:
       print "Looking for slice name and AM URL in RSpec file %s" % rspecfile
-      with open(rspecfile, 'r') as f:
-        rspec = f.read()
+      try:
+        rspec = readFile(rspecfile)
+      except:
+        print "Failed to read rspec from %s" % rspecfile
 
+    if rspec:
     # Now parse the comments, whch look like this:
 #<!-- Resources at AM:
 #	URN: unspecified_AM_URN
@@ -334,7 +345,7 @@ def main(argv=None):
 # at AM:\n\tURN: %s\n\tURL: %s
 
       if not ("Resources at AM" in rspec or "Reserved resources for" in rspec):
-        sys.exit("Could not find slice name or AM URL in RSpec")
+        sys.exit("Could not find slice name or AM URL in RSpec %s" % rspec)
       amurn = None
       amurl = None
       # Pull out the AM URN and URL
@@ -362,6 +373,7 @@ def main(argv=None):
     # Then treat that as the slice
     if not sliceurn and rspecfile and not rspec:
       sliceurn = rspecfile
+      rspecfile = None
 
     # construct the args in order
     omniargs.append(command)
@@ -402,8 +414,12 @@ def main(argv=None):
     numItems = len(retItem.keys())
   elif type(retItem) == type([]):
     numItems = len(retItem)
+  elif retItem is None:
+    numItems = 0
+  else:
+    numItems = 1
   if numItems:
-    print "\nThere were %d items returned." % numItems
+    print "\nThere were %d item(s) returned." % numItems
 
 if __name__ == "__main__":
   sys.exit(main())
@@ -473,6 +489,16 @@ def API_call( framework, config, args, opts, verbose=False ):
             if has == False:
                 continue
             if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
+                # If default is a relative path we expanded,
+                # then it looks like it changed here. So try expanding
+                # any defaults to see if that makes it match
+                try:
+                    defVal = parser.defaults[attr]
+                    defVal = os.path.normcase(os.path.expanduser(defVal))
+                    if defVal == getattr(opts, attr):
+                        continue
+                except:
+                    pass
                 # non-default value
                 nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
 
@@ -590,14 +616,14 @@ def getParser():
     """Construct an Options Parser for parsing omni arguments.
     Do not actually parse anything"""
 
-    usage = "\n" + getOmniVersion() + "\n\n%prog [options] <command and arguments> \n\
+    usage = "\n" + getOmniVersion() + "\n\n%prog [options] [--project <proj_name>] <command and arguments> \n\
 \n \t Commands and their arguments are: \n\
  \t\tAM API functions: \n\
  \t\t\t getversion \n\
  \t\t\t listresources [In AM API V1 and V2 optional: slicename] \n\
  \t\t\t describe slicename [AM API V3 only] \n\
- \t\t\t createsliver <slicename> <rspec file> [AM API V1&2 only] \n\
- \t\t\t allocate <slicename> <rspec file> [AM API V3 only] \n\
+ \t\t\t createsliver <slicename> <rspec filename or URL> [AM API V1&2 only] \n\
+ \t\t\t allocate <slicename> <rspec filename or URL> [AM API V3 only] \n\
  \t\t\t provision <slicename> [AM API V3 only] \n\
  \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
  \t\t\t poa <slicename> <action> \n\
@@ -631,6 +657,8 @@ def getParser():
                       help="Specify version of AM API to use (default 2)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
+    parser.add_option("-r", "--project", 
+                      help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
                       help="Ad RSpec type and version to return, default 'GENI 3'")
@@ -663,6 +691,8 @@ def getParser():
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
     parser.add_option("-v", "--verbose", default=True, action="store_true",
                       help="Turn on verbose command summary for omni commandline tool")
+    parser.add_option("--verbosessl", default=False, action="store_true",
+                      help="Turn on verbose SSL / XMLRPC logging")
     parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
                       help="Turn off verbose command summary for omni commandline tool")
     parser.add_option("-l", "--logconfig", default=None,
@@ -720,6 +750,10 @@ def parse_args(argv, options=None):
         return
 
     (options, args) = parser.parse_args(argv, options)
+
+    # Set an option indicating if the user explicitly requested the RSpec version
+    options.ensure_value('explicitRSpecVersion', False)
+    options.explicitRSpecVersion = ('-t' in argv)
 
     # Validate options here if we want to be careful that options are of the right types...
     # particularly if the user passed in an options argument

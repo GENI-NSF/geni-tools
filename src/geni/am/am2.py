@@ -608,6 +608,7 @@ class AggregateManager(object):
         try:
             return self._delegate.GetVersion(options)
         except Exception as e:
+            self.logger.exception("Error in GetVersion:")
             return self._exception_result(e)
 
     def ListResources(self, credentials, options):
@@ -617,7 +618,11 @@ class AggregateManager(object):
         to that slice. If geni_available is specified in the options,
         then only report available resources. And if geni_compressed
         option is specified, then compress the result.'''
-        return self._delegate.ListResources(credentials, options)
+        try:
+            return self._delegate.ListResources(credentials, options)
+        except Exception as e:
+            self.logger.exception("Error in ListResources:")
+            return self._exception_result(e)
 
     def CreateSliver(self, slice_urn, credentials, rspec, users, options):
         """Create a sliver with the given URN from the resources in
@@ -626,27 +631,48 @@ class AggregateManager(object):
         users argument provides extra information on configuring the resources
         for runtime access.
         """
-        return self._delegate.CreateSliver(slice_urn, credentials, rspec, users, options)
+        try:
+            return self._delegate.CreateSliver(slice_urn, credentials, rspec,
+                                               users, options)
+        except Exception as e:
+            self.logger.exception("Error in CreateSliver:")
+            return self._exception_result(e)
 
     def DeleteSliver(self, slice_urn, credentials, options):
         """Delete the given sliver. Return true on success."""
-        return self._delegate.DeleteSliver(slice_urn, credentials, options)
+        try:
+            return self._delegate.DeleteSliver(slice_urn, credentials, options)
+        except Exception as e:
+            self.logger.exception("Error in DeleteSliver:")
+            return self._exception_result(e)
 
     def SliverStatus(self, slice_urn, credentials, options):
         '''Report as much as is known about the status of the resources
         in the sliver. The AM may not know.'''
-        return self._delegate.SliverStatus(slice_urn, credentials, options)
+        try:
+            return self._delegate.SliverStatus(slice_urn, credentials, options)
+        except Exception as e:
+            self.logger.exception("Error in SliverStatus:")
+            return self._exception_result(e)
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
         """Extend the life of the given sliver until the given
         expiration time. Return False on error."""
-        return self._delegate.RenewSliver(slice_urn, credentials,
-                                          expiration_time, options)
+        try:
+            return self._delegate.RenewSliver(slice_urn, credentials,
+                                              expiration_time, options)
+        except Exception as e:
+            self.logger.exception("Error in RenewSliver:")
+            return self._exception_result(e)
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
-        return self._delegate.Shutdown(slice_urn, credentials, options)
+        try:
+            return self._delegate.Shutdown(slice_urn, credentials, options)
+        except Exception as e:
+            self.logger.exception("Error in Shutdown:")
+            return self._exception_result(e)
 
 
 class AggregateManagerServer(object):
@@ -666,6 +692,7 @@ class AggregateManagerServer(object):
         server_url = "https://%s:%d/" % addr
         delegate = ReferenceAggregateManager(trust_roots_dir, base_name, 
                                              server_url)
+        # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         self._server.register_instance(AggregateManager(delegate))

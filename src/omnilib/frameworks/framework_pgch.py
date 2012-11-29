@@ -21,47 +21,117 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import logging
+from omnilib.frameworks.framework_pg import Framework as pg_framework
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
-from framework_pg import Framework as pg_framework
+from sfa.util.xrn import urn_to_hrn
+
+import logging
+from urlparse import urlparse
 
 class Framework(pg_framework):
-    """Framework to talk to a PG-style clearinghouse implemented using
-    GCF"""
+    """Framework to talk to the GENI Clearinghouse (or similar) using PG CH APIs.
+    The difference here is that there is a project name which is appended to the 
+    SA hostname to construct the authority field in the slice URN.
+    """
 
     def __init__(self, config, opts):
-        pg_framework.__init__(self, config, opts)
+        pg_framework.__init__(self,config, opts)
+        self.opts = opts
         self.logger = logging.getLogger("omni.pgch")
 
-    # Use an 'authority' field from the omni_config to set the
-    # authority part of the URN
+    def list_my_slices(self, user):
+        '''List slices owned by the user (name or hrn or URN) provided, returning a list of slice names.'''
+        userhrn = self.user_name_to_hrn(user)
+        return self._list_my_slices(userhrn)
+
+    def user_name_to_hrn(self, name):
+        '''Convert a username to an HRN. Accept an HRN or URN though. Authority
+        is taken from the SA hostname.'''
+
+        if name is None or name.strip() == '':
+            raise Exception('Empty user name')
+
+        # If the name is a URN, convert it
+        if is_valid_urn(name):
+            (hrn, type) = urn_to_hrn(name)
+            if type != 'user':
+                raise Exception("Not a user! %s is of type %s" % (name, type))
+            self.logger.debug("Treating name %s as a URN, with hrn %s", name, hrn)
+            name = hrn
+
+        # Otherwise, construct the hrn (or maybe this is one)
+
+        if not self.config.has_key('sa'):
+            raise Exception("Invalid configuration: no slice authority (sa) defined")
+
+        # Get the authority from the SA hostname
+        url = urlparse(self.config['sa'])
+        sa_host = url.hostname
+        try:
+            sa_hostname, sa_domain = sa_host.split(".",1)
+            auth = sa_hostname
+        except:
+            # Funny SA
+            self.logger.debug("Found no . in sa hostname. Using whole hostname")
+            auth = sa_host
+
+        # Assume for now that if the name looks like auth.name, then it is a valid hrn
+        if name.startswith(auth + '.'):
+            self.logger.debug("Treating %s as an hrn", name)
+            return name
+
+        hrn = auth + '.' + name
+        self.logger.debug("Treating %s as just the name, with full hrn %s", name, hrn)
+
+        return hrn
+
     def slice_name_to_urn(self, name):
-        """Convert a slice name to a slice urn."""
+        """Convert a slice name and project name to a slice urn."""
+        #
+        # Sample URN:
+        #   urn:publicid:IDN+portal:myproject+slice+myexperiment
+        #
 
         if name is None or name.strip() == '':
             raise Exception('Empty slice name')
 
+        if not self.config.has_key('sa'):
+            raise Exception("Invalid configuration: no slice authority (sa) defined")
+
+        if (not self.opts.project) and (not self.config.has_key('default_project')):
+            raise Exception("Invalid configuration: no default project defined")
+
+        if self.opts.project:
+            # use the command line option --project
+            project = self.opts.project
+        else:
+            # otherwise, default to 'default_project' in 'omni_config'
+            project = self.config['default_project']
+
+        # Get the authority from the SA hostname
+        url = urlparse(self.config['sa'])
+        sa_host = url.hostname
+        try:
+            sa_hostname, sa_domain = sa_host.split(".",1)
+            auth = sa_hostname
+        except:
+            # Funny SA
+            self.logger.debug("Found no . in sa hostname. Using whole hostname")
+            auth = sa_host
+
+        # Authority is of form: host:project
+        auth = auth+":"+project
+
+        # Could use is_valid_urn_bytype here, or just let the SA/AM do the check
         if is_valid_urn(name):
-            urn = URN(None, None, None, name)
-            if not urn.getType() == "slice":
-                raise Exception("Invalid Slice name: got a non Slice URN %s", name)
+            urn = URN(None, None, None, urn=name)
+            if not string_to_urn_format(urn.getType()) == "slice":
+                raise Exception("Invalid Slice name: got a non Slice URN %s"% name)
             # if config has an authority, make sure it matches
-            if self.config.has_key('authority'):
-                auth = self.config['authority']
-                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
-                if urn_fmt_auth != auth:
-                    self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
-                    self.logger.info("This may be OK though if you are using delegated slice credentials...")
-#                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+            urn_auth = string_to_urn_format(urn.getAuthority())
+            if urn_auth != auth:
+                self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_auth, auth))
+                self.logger.info("This may be OK though if you are using delegated slice credentials...")
             return name
 
-        if not self.config.has_key('authority'):
-            raise Exception("Invalid configuration: no authority defined")
-
-        auth = self.config['authority']
         return URN(auth, "slice", name).urn_string()
-
-    # Auto recreate slices whenever the user asks for a slice
-    # Note any slice renewal from last time will be gone
-    def get_slice_cred(self, urn):
-        return self.create_slice(urn)

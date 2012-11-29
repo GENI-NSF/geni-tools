@@ -47,13 +47,15 @@ from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice
     _print_slice_expiration
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
+from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
-    def __init__(self, client):
+    def __init__(self, client, msg):
         self.client = client
+        self.validMsg = msg
 
 class AMCallHandler(object):
     '''Dispatch AM API calls to aggregates'''
@@ -86,7 +88,136 @@ class AMCallHandler(object):
             return
         if not hasattr(self,call):
             self._raise_omni_error('Unknown function: %s' % call)
+
+        # Try to auto-correct API version
+        self._correctAPIVersion(args)
+
         return getattr(self,call)(args[1:])
+
+    def _correctAPIVersion(self, args):
+        '''Switch AM API versions if the AMs all or mostly speak something else. But be conservative.'''
+
+        configVer = str(self.opts.api_version) # turn int into a string
+        (clients, message) = self._getclients()
+        clientCount = len(clients)
+        liveVers = {}
+        versions = {}
+        for client in clients:
+            (thisVer, message) = self._get_this_api_version(client)
+            thisVer = str(thisVer) # turn int into a string
+            liveVers[thisVer]  = liveVers.get(thisVer, 0) + 1 # hash is by strings
+            (thisVersions, message) = self._get_api_versions(client)
+            if thisVersions:
+                for version in thisVersions.keys(): # version is a string
+#                    self.logger.debug("%s supports %d at %s", client.url, int(version), thisVersions[version])
+                    versions[version] = versions.get(version, 0) + 1 # hash by strings
+#                    self.logger.debug("%d spoken by %d", int(version), versions[version])
+            else:
+                #self.logger.debug("Incrementing counter of clients that speak %r somewhere", thisVer)
+                versions[thisVer] = versions.get(thisVer, 0) + 1
+
+        # If all the AMs talk the desired version here, great
+        if liveVers.has_key(configVer) and liveVers[configVer] == clientCount:
+            self.logger.debug("Config version spoken here by all AMs")
+            return
+
+        # If all the AMs talk the desired version somewhere, fine. We'll switch URLs later.
+        if versions.has_key(configVer) and versions[configVer] == clientCount:
+            self.logger.debug("Config version spoken somewhere by all AMs")
+            return
+
+        # Some AM does not talk the desired version
+        self.logger.warn("You asked to use AM API %s, but the AM(s) you are contacting do not all speak that version.", configVer)
+
+        # If all AMs speak the same (different) version at the current URL, use that
+        if len(liveVers.keys()) == 1:
+            newVer = int(liveVers.keys()[0])
+            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
+            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        # If the configured version is spoken somewhere by a majority of AMs, use it
+        if versions.has_key(configVer) and float(versions[configVer]) >= float(clientCount)/float(2):
+            self.logger.debug("Config version spoken somewhere by a majority of AMs")
+            #self.logger.debug("clientCount/2 = %r", float(clientCount)/float(2))
+            self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
+            return
+
+        self.logger.warn("Configured API version %s is not supported by most of your AMs", configVer)
+
+        # We could now prefer the version that the most AMs talk at the current URL - particularly if that
+        # is the configVer
+        # Or a version that the most AMs talk at another URL (could be all) - particularly if that is the
+        # configVer again
+
+        # So we need to find the version that the most AMs support.
+        # Sort my versions array by value
+        from operator import itemgetter
+        sortedVersions = sorted(versions.iteritems(), key=itemgetter(1), reverse=True)
+        sortedLiveVersions = sorted(liveVers.iteritems(), key=itemgetter(1), reverse=True)
+        mostLive = sortedLiveVersions[0][0]
+        mostAnywhere = sortedVersions[0][0]
+
+        if mostLive == configVer or (liveVers.has_key(configVer) and liveVers[configVer] == liveVers[mostLive]):
+            # The configured API version is what is spoken at the most AMs at the current URL
+            self.logger.debug("Config version is the most common live version")
+            configSup = versions.get(configVer, 0)
+            self.logger.info("Sticking with API version %d, even though only %d of %d AMs support it", configVer, configSup, clientCount)
+            return
+
+        if liveVers[mostLive] == clientCount:
+            newVer = int(mostLive)
+            self.logger.warn("At the URLs you are contacting, all your AMs speak AM API %d.", newVer)
+            self.logger.warn("Switching to AM API %d. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if mostAnywhere == configVer or (versions.has_key(configVer) and versions[configVer] == versions[mostAnywhere]):
+            # The configured API version is what is spoken at the most AMs at _some_ URL
+            self.logger.debug("Config version is the most common anywhere version")
+            self.logger.info("Sticking with API version %s, even though only %d of %d AMs support it", configVer, versions[configVer], clientCount)
+            return
+
+        # If we get here, the configured version is not the most popular, nor supported by most AMs
+        # IE, something else is more popular
+
+        if versions[mostAnywhere] == clientCount:
+            # The most popular anywhere API version is spoken by all AMs
+            newVer = int(mostAnywhere)
+            self.logger.warn("Switching to AM API %d, which is supported by all your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if float(liveVers[mostLive]) >= float(clientCount)/float(2):
+            # The most popular live API version is spoken by a majority of AMs
+            newVer = int(mostLive)
+            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        if float(versions[mostAnywhere]) >= float(clientCount)/float(2):
+            # The most popular anywhere API version is spoken by a majority of AMs
+            newVer = int(mostAnywhere)
+            self.logger.warn("Switching to AM API %d, which is supported by a majority of your AMs. Next time call Omni with '-V%d'.", newVer, newVer)
+            self.opts.api_version = newVer
+            return
+
+        # No API version is supported by a majority of AMs
+
+        if versions.has_key(configVer) and versions[configVer] > 0:
+            # Somebody speaks the desired version. Use that
+            self.logger.debug("Config ver is supported _somewhere_ at least")
+            return
+
+        # No AM speaks the desired API version. No version is supported by a majority of AMs
+        # Go with the most popular live version? The most popular anywhere version?
+
+        newVer = int(mostAnywhere)
+        self.logger.warn("Switching to AM API %d, the most commonly supported version. Next time call Omni with '-V%d'.", newVer, newVer)
+        self.opts.api_version = newVer
+        return
+
 
     # ------- AM API methods and direct support methods follow
 
@@ -215,10 +346,10 @@ class AMCallHandler(object):
             # On error, leave existing data alone - just record the last error
             if self.GetVersionCache.has_key(client.url):
                 self.GetVersionCache[client.url]['lasterror'] = error
-            self.logger.debug("Added GetVersion error output to cache")
+            self.logger.debug("Added GetVersion error output to cache for %s: %s", client.url, error)
         else:
             self.GetVersionCache[client.url] = res
-            self.logger.debug("Added GetVersion success output to cache")
+            self.logger.debug("Added GetVersion success output to cache for %s", client.url)
 
         # Write the file as serialized JSON
         self._save_getversion_cache()
@@ -319,6 +450,13 @@ class AMCallHandler(object):
         '''Do GetVersion (possibly from cache), check error returns to produce a message,
         pull out the value slot (dropping any code/output).'''
         message = None
+
+        # We cache results by URL
+        if not hasattr(self, 'gvValueCache'):
+            self.gvValueCache = dict()
+        if self.gvValueCache.has_key(client.url):
+            return self.gvValueCache[client.url]
+
         (thisVersion, message) = self._do_and_check_getversion(client)
         if thisVersion is None:
             # error - return what the error check had
@@ -327,6 +465,7 @@ class AMCallHandler(object):
             versionSpot = thisVersion
         else:
             versionSpot = thisVersion['value']
+        self.gvValueCache[client.url] = (versionSpot, message)
         return (versionSpot, message)
 
     def _get_getversion_key(self, client, key):
@@ -358,7 +497,12 @@ class AMCallHandler(object):
         '''Get the supported API versions and URLs for this AM (from GetVersion)'''
         (res, message) = self._get_getversion_key(client, 'geni_api_versions')
         if res is None:
-            self.logger.warning("Couldnt get api versions supported from GetVersion: %s" % message)
+            msg = "Couldnt get api versions supported from GetVersion: %s" % message
+            (thisVer, msg2) = self._get_getversion_key(client, 'geni_api')
+            if thisVer and thisVer < 2:
+                self.logger.debug(msg)
+            else:
+                self.logger.warning(msg)
         # Return is a dict: Int API version -> string URL of AM
         return (res, message)
 
@@ -417,13 +561,13 @@ class AMCallHandler(object):
     def _api_call(self, client, msg, op, args):
         '''Make the AM API Call, after first checking that the AM we are talking
         to is of the right API version.'''
-        (ver, newc) = self._checkValidClient(client)
+        (ver, newc, validMsg) = self._checkValidClient(client)
         if newc is None:
-            raise BadClientException(client)
+            raise BadClientException(client, validMsg)
         elif newc.url != client.url:
             if ver != self.opts.api_version:
                 self.logger.error("AM %s doesn't speak API version %d. Try the AM at %s and tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, newc.url, ver, ver)
-                raise BadClientException(client)
+                raise BadClientException(client, validMsg)
 #                self.logger.warn("Changing API version to %d. Is this going to work?", ver)
 #                # FIXME: changing the api_version is not a great idea if
 #                # there are multiple clients. Push this into _checkValidClient
@@ -437,11 +581,10 @@ class AMCallHandler(object):
             client = newc
         elif ver != self.opts.api_version:
             self.logger.error("AM %s doesn't speak API version %d. Tell Omni to use API version %d, using the option '-V%d'.", client.url, self.opts.api_version, ver, ver)
-            raise BadClientException(client)
+            raise BadClientException(client, validMsg)
 
         self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
-
-        return _do_ssl(self.framework, None, msg, getattr(client, op), *args)
+        return _do_ssl(self.framework, None, msg, getattr(client, op), *args), client
 
     # FIXME: Must still factor dev vs exp
     # For experimenters: If exactly 1 AM, then show only the value slot, formatted nicely, printed to STDOUT.
@@ -496,6 +639,10 @@ class AMCallHandler(object):
             # Pulls from cache or caches latest, error checks return
             # getversion output should be the whole triple
             (thisVersion, message) = self._do_and_check_getversion(client)
+            if self.opts.devmode:
+                pp = pprint.PrettyPrinter(indent=4)
+                prettyVersion = pp.pformat(thisVersion)
+                self.logger.debug("AM %s raw getversion:\n%s", client.url, prettyVersion)
             thisVersionValue, message = self._retrieve_value(thisVersion, message, self.framework)
 
             # Method specific result handling
@@ -567,11 +714,13 @@ class AMCallHandler(object):
                 # Allow developers to call an AM that fails to advertise
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
 
             self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
             # foreach item in the list that is the val
             match = False
+            hasGENI3 = False
+            hasPG2 = False
             for availversion in ad_rspec_version:
                 if not (availversion.has_key('type') and availversion.has_key('version')):
                     self.logger.warning("AM getversion rspec_version entry malformed: no type or no version")
@@ -585,22 +734,55 @@ class AMCallHandler(object):
                     rtype=availversion['type']
                     rver=availversion['version']
                     break
+                if str(availversion['type']).lower().strip() == 'geni' and str(availversion['version']).lower().strip() == '3':
+                    hasGENI3 = True
+                elif str(availversion['type']).lower().strip() == 'protogeni' and str(availversion['version']).lower().strip() == '2':
+                    hasPG2 = True
+
             # if no success
             if match == False:
-                # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
-
-                #   return error showing ad_rspec_versions
-                pp = pprint.PrettyPrinter(indent=4)
-                self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
-                if mymessage != "":
-                    mymessage += ". "
-
-                if not self.opts.devmode:
-                    mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
-                    # Skip this AM/client
-                    raise BadClientException(client)
+                # if user did not explicitly specify this version, then maybe try to get the RSpec with another format
+                if not self.opts.explicitRSpecVersion:
+                    # if only 1 version is supported, use it
+                    if len(ad_rspec_version) == 1:
+                        ver = ad_rspec_version[0]
+                        if ver.has_key('type') and ver.has_key('version'):
+                            self.logger.warning("AM doesn't support default RSpec version %s %s. Returning RSpec in only supported format. Next time at this AM, call Omni with '-t %s %s'.", rtype, rver, ver['type'], ver['version'])
+                            rtype=ver['type']
+                            rver=ver['version']
+                    # if this is an ad, and default_ad_rspec is set, use that
+                    # FIXME: Maybe do this even for manifests?
+                    elif not slicename:
+                        (default_ad, message) = self._get_getversion_key(client, 'default_ad_rspec')
+                        if default_ad and default_ad.has_key('type') and default_ad.has_key('version'):
+                            self.logger.warning("AM doesn't support default RSpec version %s %s. Returning RSpec in AM specified default Ad format. Next time at this AM, call Omni with '-t %s %s'.", rtype, rver, default_ad['type'], default_ad['version'])
+                            rtype=default_ad['type']
+                            rver=default_ad['version']
+                    # more than 1 format advertised but no default.
                 else:
-                    mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
+                    # User explicitly picked this version that is not supported
+                    # FIXME: Could or should we pick PGv2 if GENIv3 not there, and vice versa?
+
+                    #   return error showing ad_rspec_versions
+                    pp = pprint.PrettyPrinter(indent=4)
+                    self.logger.warning("AM cannot provide Rspec in requested version (%s %s) at AM %s [%s]. This AM only supports: \n%s", rtype, rver, client.urn, client.url, pp.pformat(ad_rspec_version))
+                    tryOthersMsg = "";
+                    if hasGENI3:
+                        tryOthersMsg = ". Try calling Omni with '-t GENI 3' for GENI v3 RSpecs."
+                    elif hasPG2:
+                        tryOthersMsg = ". Try calling Omni with '-t ProtoGENI 2' for ProtoGENI v2 RSpecs."
+                    else:
+                        tryOthersMsg = ". Try calling Omni with '-t <another supported RSpec format>'."
+                    if mymessage != "" and not mymessage.endswith('.'):
+                        mymessage += ". "
+
+                    if not self.opts.devmode:
+                        mymessage = mymessage + "Skipped AM %s that didnt support required RSpec format %s %s" % (client.url, rtype, rver)
+                        mymessage = mymessage + tryOthersMsg
+                        # Skip this AM/client
+                        raise BadClientException(client, mymessage)
+                    else:
+                        mymessage = mymessage + "AM %s didnt support required RSpec format %s %s, but continuing" % (client.url, rtype, rver)
 
 #--- API version differences:
             if self.opts.api_version == 1:
@@ -609,6 +791,7 @@ class AMCallHandler(object):
                 options['geni_rspec_version'] = dict(type=rtype, version=rver)
 
 #--- Dev mode should not force supplying this option maybe?
+        # This elif is only if no rspec type option was supplied - which you can't really do at this point
         elif self.opts.api_version >= 2:
             # User did not specify an rspec type but did request version 2.
             # Make an attempt to do the right thing, otherwise bail and tell the user.
@@ -618,31 +801,32 @@ class AMCallHandler(object):
                 (ad_rspec_version, message) = self._get_request_rspecs(client)
             if ad_rspec_version is None:
                 if message:
-                    if mymessage != "":
+                    if mymessage != "" and not mymessage.endswith('.'):
                         mymessage += ". "
                     mymessage = mymessage + message
                 self.logger.debug("AM %s failed to advertise supported RSpecs", client.url)
                 # Allow developers to call an AM that fails to advertise
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
 
             if len(ad_rspec_version) == 1:
                 # there is only one advertisement, so use it.
                 options['geni_rspec_version'] = dict(type=ad_rspec_version[0]['type'],
                                                      version=ad_rspec_version[0]['version'])
+            # FIXME: if there is a default_ad_rspec and this is for ads, use that?
             else:
                 # FIXME: Could we pick GENI v3 if there, else PG v2?
 
                 # Inform the user that they have to pick.
                 ad_versions = [(x['type'], x['version']) for x in ad_rspec_version]
                 self.logger.warning("Please use the -t option to specify the desired RSpec type for AM %s as one of %r", client.url, ad_versions)
-                if mymessage != "":
+                if mymessage != "" and not mymessage.endswith('.'):
                     mymessage += ". "
                 mymessage = mymessage + "AM %s supports multiple RSpec versions: %r" % (client.url, ad_versions)
                 if not self.opts.devmode:
                     # Skip this AM/client
-                    raise BadClientException(client)
+                    raise BadClientException(client, mymessage)
         return (options, mymessage)
     # End of _selectRSpecVersion
 
@@ -655,7 +839,11 @@ class AMCallHandler(object):
             try:
                 rspec = zlib.decompress(rspec.decode('base64'))
             except Exception, e:
-                self.logger.error("Failed to decompress RSpec: %s", e);
+                if rspec and rspec_util.is_rspec_string(rspec, self.logger):
+                    self.logger.debug("AM returned uncompressed RSpec when compressed was requested")
+                else:
+                    self.logger.error("Failed to decompress RSpec: %s", e);
+                self.logger.debug("RSpec begins: '%s'", rspec[:min(40, len(rspec))])
         # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
         elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
             try:
@@ -772,8 +960,17 @@ class AMCallHandler(object):
                 self.logger.debug("Have null or empty credential list in call to ListResources!")
             rspec = None
 
-            (ver, newc) = self._checkValidClient(client)
+            (ver, newc, validMsg) = self._checkValidClient(client)
             if newc is None:
+                if validMsg and validMsg != '':
+                    if not mymessage:
+                        mymessage = ""
+                    else:
+                        if not mymessage.endswith('.'):
+                            mymessage += ".\n"
+                        else:
+                            mymyessage += "\n"
+                    mymessage += validMsg
                 continue
             elif newc.url != client.url:
                 if ver != self.opts.api_version:
@@ -784,17 +981,20 @@ class AMCallHandler(object):
                     if not mymessage:
                         mymessage = ""
                     else:
-                        mymessage += ".\n"
-                        mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                        if not mymessage.endswith('.'):
+                            mymessage += ".\n"
+                        else:
+                            mymyessage += "\n"
+                    mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                     continue
-#                    raise BadClientException(client)
+#                    raise BadClientException(client, mymessage)
 #                    self.logger.warn("Changing API version to %d. Is this going to work?", ver)
 #                    # FIXME: changing the api_version is not a great idea if
 #                    # there are multiple clients. Push this into _checkValidClient
 #                    # and only do it if there is one client.
 #1                    self.opts.api_version = ver
                 else:
-                    self.logger.debug("Using new AM url %s but same API version %", newc.url, ver)
+                    self.logger.debug("Using new AM url %s but same API version %d", newc.url, ver)
                 client = newc
             elif ver != self.opts.api_version:
                 self.logger.error("AM %s speaks API version %d, not %d. Rerun with option '-V%d'.", client.url, ver, self.opts.api_version, ver)
@@ -804,8 +1004,11 @@ class AMCallHandler(object):
                 if not mymessage:
                     mymessage = ""
                 else:
-                    mymessage += ".\n"
-                    mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
+                    if not mymessage.endswith('.'):
+                        mymessage += ".\n"
+                    else:
+                        mymessage += "\n"
+                mymessage += "Skipped AM %s: speaks only API v%d, not %d. Try -V%d option." % (client.url, ver, self.opts.api_version, ver)
                 continue
 
             self.logger.debug("Connecting to AM: %s at %s", client.urn, client.url)
@@ -818,8 +1021,15 @@ class AMCallHandler(object):
                 if not mymessage:
                     mymessage = ""
                 else:
-                    mymessage += ".\n"
-                mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
+                    if not mymessage.endswith('.'):
+                        mymessage += ".\n"
+                    else:
+                        mymessage += "\n"
+                if bce.validMsg and bce.validMsg != '':
+                    mymessage += bce.validMsg
+                    if not mymessage.endswith('.'):
+                        mymessage += ". "
+                # mymessage += "AM %s doesn't advertise matching RSpec versions" % client.url
                 self.logger.warn(message + "... continuing with next AM")
                 continue
 
@@ -844,23 +1054,33 @@ class AMCallHandler(object):
                 else:
                     self.logger.warn("Didn't get a valid RSpec!")
                     if mymessage != "":
-                        mymessage += ". "
+                        if mymessage.endswith('.'):
+                            mymessage += ' '
+                        else:
+                            mymessage += ". "
                     mymessage += "No resources from AM %s: %s" % (client.url, message)
                 if self.opts.api_version > 1:
                     resp['value']=rspec
                 else:
                     resp = rspec
             else:
-                self.logger.warn("Return struct missing proper rspec in value element!")
+                self.logger.warn("No resource listing returned!")
+                self.logger.debug("Return struct missing proper rspec in value element!")
                 if mymessage != "":
-                    mymessage += ". "
+                    if mymessage.endswith('.'):
+                        mymessage += ' '
+                    else:
+                        mymessage += ". "
                 mymessage += "No resources from AM %s: %s" % (client.url, message)
 
             # Return for tools is the full code/value/output triple
             rspecs[(client.urn, client.url)] = resp
 
         if len(clientList) > 0:
-            self.logger.info( "Listed resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+            if slicename:
+                self.logger.info( "Listed reserved resources on %d out of %d possible aggregates." % (successCnt, len(clientList)))
+            else:
+                self.logger.info( "Listed advertised resources at %d out of %d possible aggregates." % (successCnt, len(clientList)))
         return (rspecs, mymessage)
     # End of _listresources
 
@@ -944,9 +1164,11 @@ class AMCallHandler(object):
         # Query the various aggregates for resources
         # rspecs[(urn, url)] = decompressed rspec
         (rspecs, message) = self._listresources( args )
-        numAggs = 0
-        if rspecs is not None:
-            numAggs = len(rspecs.keys())
+#        numAggs = 0
+#        if rspecs is not None:
+#            numAggs = len(rspecs.keys())
+        (aggs, mla) = _listaggregates(self)
+        numAggs = len(aggs)
         
         # handle empty case
         if not rspecs or rspecs == {}:
@@ -977,7 +1199,7 @@ class AMCallHandler(object):
 
             retVal, filename = self._writeRSpec(rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
-                savedFileDesc += "Saved listresources RSpec at '%s' to file %s; " % (urn, filename)
+                savedFileDesc += "Saved listresources RSpec at '%s' (url '%s') to file %s; " % (urn, url, filename)
         # End of loop over rspecs
         self.logger.debug("rspecCtr %d", rspecCtr)
 
@@ -1076,7 +1298,7 @@ class AMCallHandler(object):
 
         # get the slice name and URN or raise an error
         (name, urn, slice_cred,
-         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
+         retVal, slice_exp) = self._args_to_slicecred(args, 1, "Describe")
 
         options = {}
         options['geni_compressed'] = self.opts.geni_compressed
@@ -1123,7 +1345,7 @@ class AMCallHandler(object):
                 (options, mymessage) = self._selectRSpecVersion(name, client, mymessage, options)
                 args.append(options)
                 self.logger.debug("Doing describe of %s, %d creds, options %r", descripMsg, len(creds), options)
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
                 if mymessage != "":
@@ -1131,9 +1353,12 @@ class AMCallHandler(object):
                         message = ""
                     message = mymessage + ". " + message
             except BadClientException as bce:
-                retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Describe skipping AM %s. No matching RSpec version or wrong AM API version - check logs" % (client.url)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDescribe failed: " + retVal)
                 continue
 
 # FIXME: Factor this next chunk into helper method?
@@ -1149,7 +1374,8 @@ class AMCallHandler(object):
                     self.logger.warn("Didn't get a valid RSpec!")
                 status['value']['geni_rspec'] = rspec
             else:
-                self.logger.warn("Return struct missing geni_rspec element!")
+                self.logger.warn("Got no resource listing from AM %s", client.url)
+                self.logger.debug("Return struct missing geni_rspec element!")
 
             # Return for tools is the full code/value/output triple
             retItem[client.url] = status
@@ -1277,7 +1503,7 @@ class AMCallHandler(object):
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
             rspecfile = args[1]
-        if rspecfile is None or not os.path.isfile(rspecfile):
+        if rspecfile is None: # FIXME: If file type arg, check the file exists: os.path.isfile(rspecfile) 
 #--- Dev mode should allow missing RSpec
             msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
@@ -1285,9 +1511,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # read the rspec into a string, and add it to the rspecs dict
         try:
-            rspec = file(rspecfile).read()
+        # read the rspec into a string, and add it to the rspecs dict
+          rspec = readFile(rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
@@ -1296,6 +1522,9 @@ class AMCallHandler(object):
                 self.logger.warn(msg)
             else:
                 self._raise_omni_error(msg)
+
+        # Test if the rspec is really json containing an RSpec, and pull out the right thing
+        rspec = self._maybeGetRSpecFromStruct(rspec)
 
         # FIXME: We could try to parse the RSpec right here, and get the AM URL or nickname
         # out of the RSpec
@@ -1344,10 +1573,12 @@ class AMCallHandler(object):
         msg = "Create Sliver %s at %s" % (urn, url)
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
         try:
-            (result, message) = self._api_call(client, msg, op,
+            ((result, message), client) = self._api_call(client, msg, op,
                                                 args)
+            url = client.url
+            client.urn = clienturn
         except BadClientException as bce:
-            self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d" % (client.url, self.opts.api_version))
+            self._raise_omni_error("Cannot CreateSliver at %s: The AM speaks the wrong API version, not %d. %s" % (client.url, self.opts.api_version, bce.validMsg))
 
         # Get the manifest RSpec out of the result (accounting for API version diffs, ABAC)
         (result, message) = self._retrieve_value(result, message, self.framework)
@@ -1365,7 +1596,9 @@ class AMCallHandler(object):
                 # We could of course do this for the user.
                 prstr = "Please run the omni sliverstatus call on your slice %s to determine your login name to PL resources." % slicename
                 self.logger.info(prstr)
-                retVal += ". " + prstr
+                if not retVal.endswith('.'):
+                    retVal += '.'
+                retVal += " " + prstr
         else:
             prStr = "Failed CreateSliver for slice %s at %s." % (slicename, url)
             if message is None or message.strip() == "":
@@ -1472,20 +1705,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # Test if the rspec is really json containing an RSpec, and pull out the right thing
-        if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
-            try:
-                rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
-                if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
-                    rspec = rspecStruct['geni_rspec']
-            except Exception, e:
-                import traceback
-                msg = "Failed to read RSpec from JSON file %s: %s" % (rspecfile, e)
-                self.logger.debug(traceback.format_exc())
-                if self.opts.devmode:
-                    self.logger.warn(msg)
-                else:
-                    self._raise_omni_error(msg)
+        # Test if the rspec is really json containing an RSpec, and
+        # pull out the right thing
+        rspec = self._maybeGetRSpecFromStruct(rspec)
 
         # Build args
         options = self._build_options('Allocate', None)
@@ -1493,7 +1715,7 @@ class AMCallHandler(object):
         args = [urn, creds, rspec, options]
         descripMsg = "slivers in slice %s" % urn
         op = 'Allocate'
-        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:40], options)
+        self.logger.debug("Doing Allocate with urn %s, %d creds, rspec starting: \'%s...\', and options %s", urn, len(creds), rspec[:min(40, len(rspec))], options)
 
         successCnt = 0
         retItem = dict()
@@ -1513,14 +1735,17 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("Allocate %s at %s:", descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                     ("Allocate %s at %s" % (descripMsg, client.url)),
                                     op,
                                     args)
-            except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nAllocate failed: " + retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1550,6 +1775,9 @@ class AMCallHandler(object):
                 if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
                     realresult['geni_rspec'] = rspeccontent
                 if isinstance(realresult, dict):
+                    # Hmm. The rspec content looks OK here. But the
+                    # json.dumps seems to screw it up? Quotes get
+                    # double escaped.
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
                 else:
                     prettyResult = pprint.pformat(realresult)
@@ -1692,7 +1920,15 @@ class AMCallHandler(object):
         (slicename, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1,
                                                       op)
 
-        options = self._build_options(op, None)
+        # Copy the user config and read the keys from the files into the structure
+        slice_users = self._get_users_arg()
+
+        # If there are slice_users, include that option
+        options = {}
+        if slice_users and len(slice_users) > 0:
+            options['geni_users'] = slice_users
+
+        options = self._build_options(op, options)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "slivers in slice %s" % urn
@@ -1728,14 +1964,17 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                   ("Provision %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nProvision failed: " + retVal)
                 continue
 
             # Make the RSpec more pretty-printed
@@ -1953,20 +2192,23 @@ class AMCallHandler(object):
         for client in clientList:
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                   ("PerformOperationalAction %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nPerformOperationalAction failed: " + retVal)
                 continue
 
             retItem[ client.url ] = result
             (realresult, message) = self._retrieve_value(result, message, self.framework)
 
-            if not realresult:
+            if realresult is None:
                 # Failure
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
@@ -2089,22 +2331,27 @@ class AMCallHandler(object):
         msg = "Renew Sliver %s on " % (urn)
         for client in clientList:
             try:
-                (res, message) = self._api_call(client,
+                ((res, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped client %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nRenewSliver failed: " + retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
-                prStr = "Failed to renew sliver %s on %s (%s)" % (urn, client.urn, client.url)
+                prStr = "Failed to renew sliver %s on %s (%s) (got result '%s')" % (urn, client.urn, client.url, res)
                 if message != "":
-                    prStr += ". " + message
+                    if not prStr.endswith('.'):
+                        prStr += '.'
+                    prStr += " " + message
                 else:
                     prStr += " (no reason given)"
                 if len(clientList) == 1:
@@ -2237,19 +2484,22 @@ class AMCallHandler(object):
         msg = "Renew %s at " % (descripMsg)
         for client in clientList:
             try:
-                (res, message) = self._api_call(client, msg + client.url, op,
+                ((res, message), client) = self._api_call(client, msg + client.url, op,
                                                 args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nRenew failed: " + retVal)
                 continue
             retItem[client.url] = res
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
-            if not res:
+            if res is None:
                 prStr = "Failed to renew %s on %s (%s)" % (descripMsg, client.urn, client.url)
                 if message != "":
                     prStr += ": " + message
@@ -2404,13 +2654,16 @@ class AMCallHandler(object):
         # Call SliverStatus on each client
         for client in clientList:
             try:
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nSliverStatus failed: " + retVal)
                 continue
 
             # Get the dict status out of the result (accounting for API version diffs, ABAC)
@@ -2427,6 +2680,11 @@ class AMCallHandler(object):
                         prettyResult = pprint.pformat(status)
                 else:
                     prettyResult = json.dumps(status, ensure_ascii=True, indent=2)
+                    if status.has_key('geni_status'):
+                        msg = "Slice %s at AM %s has overall SliverStatus: %s"% (urn, client.url, status['geni_status'])
+                        self.logger.info(msg)
+                        retVal += msg + ".\n "
+                        # FIXME: Do this even if many AMs?
 
                 # Save/print out result
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
@@ -2551,13 +2809,16 @@ class AMCallHandler(object):
         msg = "Status of %s at " % (descripMsg)
         for client in clientList:
             try:
-                (status, message) = self._api_call(client,
+                ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nStatus failed: " + retVal)
                 continue
 
             retItem[client.url] = status
@@ -2577,9 +2838,73 @@ class AMCallHandler(object):
                 self.logger.warn("%d slivers from request missing in result?!", len(missingSlivers))
                 self.logger.debug("%s", missingSlivers)
 
+            # Summarize result
+            if len(slivers) > 0:
+                retct = str(len(slivers) - len(missingSlivers))
+            else:
+                retct = str(len(self._getSliverResultList(status)))
+            retVal += "Retrieved Status on %s slivers in slice %s at %s:\n" % (retct, urn, client.url)
+
             sliverFails = self._didSliversFail(status)
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
+
+            # Summarize sliver expiration
+            (orderedDates, sliverExps) = self._getSliverExpirations(status, None)
+            if len(orderedDates) == 1:
+                msg = "All slivers expire on %r." % orderedDates[0].isoformat()
+                self.logger.info(msg)
+            elif len(orderedDates) == 0:
+                msg = "0 Slivers reported results!"
+                self.logger.warn(msg)
+            else:
+                firstTime = orderedDates[0]
+                firstCount = len(sliverExps[time])
+                msg = "Slivers expire on %d times, next is %d at %r, and others at %d other times." % (len(orderedDates), firstCount, firstTime.isoformat(), len(orderedDates) - 1)
+                self.logger.info(msg)
+            retVal += "  " + msg + "\n"
+
+            # Summarize overall status
+            # Get all statuses in a hash (value is count)
+            alloc_statuses, op_statuses = self._getSliverStatuses(status)
+            # If only 1 sliver, get its allocation and operational status
+            # if alloc or operational status same for all slivers, say so
+            # Else say '%d slivers have %d different statuses
+            # if op state includes geni_failed or geni_pending_allocation, say so
+            # If alloc state includes geni_unallocated, say so
+            statusMsg = '  '
+            if len(alloc_statuses) == 1:
+                if len(slivers) == 1:
+                    statusMsg += "Sliver is "
+                else:
+                    statusMsg += "All slivers are "
+                statusMsg += "in allocation state %s.\n" % alloc_statuses.keys()[0]
+            else:
+                statusMsg += "  %d slivers have %d different allocation statuses" % (len(slivers), len(alloc_statuses.keys()))
+                if 'geni_unallocated' in alloc_statuses:
+                    statusMsg += "; some are geni_unallocated.\n"
+                else:
+                    if not statusMsg.endswith('.'):
+                        statusMsg += '.'
+                    statusMsg += "\n"
+            if len(op_statuses) == 1:
+                if len(slivers) == 1:
+                    statusMsg += "  Sliver is "
+                else:
+                    statusMsg += "  All slivers are "
+                statusMsg += "in operational state %s.\n" % op_statuses.keys()[0]
+            else:
+                statusMsg = "  %d slivers have %d different operational statuses" % (len(slivers), len(op_statuses.keys()))
+                if 'geni_failed' in op_statuses:
+                    statusMsg += "; some are geni_failed"
+                if 'geni_pending_allocation' in op_statuses:
+                    statusMsg += "; some are geni_pending_allocation"
+                else:
+                    if not statusMsg.endswith('.'):
+                        statusMsg += '.'
+                    statusMsg += "\n"
+            statusMsg += "\n"
+            # Resulting text added to retVal (below). But do this even if lots AMs? Or only if limited # of AMs?
 
             # Print or save out result
             if not isinstance(status, dict):
@@ -2605,6 +2930,7 @@ class AMCallHandler(object):
                 retVal += " - %d slivers missing from result!? \n" % len(missingSlivers)
             if len(sliverFails.keys()) > 0:
                 retVal += " - %d slivers failed?! \n" % len(sliverFails.keys())
+            retVal += statusMsg
             if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
                 successCnt+=1
         # End of loop over clients
@@ -2679,13 +3005,16 @@ class AMCallHandler(object):
         ## where you still have resources.
         for client in clientList:
             try:
-                (res, message) = self._api_call(client,
+                ((res, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDeleteSliver failed: " + retVal)
                 continue
 
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
@@ -2701,10 +3030,12 @@ class AMCallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
             else:
-                prStr = "Failed to delete sliver %s on %s at %s" % (urn, client.urn, client.url)
+                prStr = "Failed to delete sliver %s on %s at %s (got result '%s')" % (urn, client.urn, client.url, res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr += ". " + message
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -2820,13 +3151,16 @@ class AMCallHandler(object):
         retItem = {}
         for client in clientList:
             try:
-                (result, message) = self._api_call(client,
+                ((result, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nDelete failed: " + retVal)
                 continue
 
             retItem[client.url] = result
@@ -2847,7 +3181,7 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            if realres:
+            if realres is not None:
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
@@ -2863,9 +3197,9 @@ class AMCallHandler(object):
 
                 # Construct print / save out result
 
-                if not isinstance(realres, dict):
+                if not isinstance(realres, list):
                     # malformed describe return
-                    self.logger.warn('Malformed delete result from AM %s. Expected struct, got type %s.' % (client.url, realres.__class__.__name__))
+                    self.logger.warn('Malformed delete result from AM %s. Expected list, got type %s.' % (client.url, realres.__class__.__name__))
                     # FIXME: Add something to retVal that the result was malformed?
                     if isinstance(realres, str):
                         prettyResult = str(realres)
@@ -2947,11 +3281,14 @@ class AMCallHandler(object):
         op = "Shutdown"
         for client in clientList:
             try:
-                (res, message) = self._api_call(client, msg + client.url, op, args)
-            except BadClientException:
-                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                ((res, message), client) = self._api_call(client, msg + client.url, op, args)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
                 if len(clientList) == 1:
-                    self._raise_omni_error(retVal)
+                    self._raise_omni_error("\nShutdown Failed: " + retVal)
                 continue
 
             retItem[client.url] = res
@@ -2969,7 +3306,9 @@ class AMCallHandler(object):
                 prStr = "Failed to shutdown sliver %s on AM %s at %s" % (urn, client.urn, client.url) 
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr += ". " + message
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
                 self.logger.warn(prStr)
                 if len(clientList) == 1:
                     retVal = prStr
@@ -3000,54 +3339,107 @@ class AMCallHandler(object):
         # What else would this do? See if it is reachable? We'll do that elsewhere
 
         cver, message = self._get_this_api_version(client)
+        if isinstance(cver, str):
+            self.logger.warn("AM %s reported a string API version %s", client.url, cver)
+            cver = int(cver)
         configver = self.opts.api_version
         if cver and cver == configver:
-            return (cver, client)
+            return (cver, client, None)
         elif not cver:
-            self.logger.warn("Got no api_version from getversion at %s? %s", client.url, message)
+            msg = "Got no api_version from getversion at %s? %s" % (client.url, message)
+            self.logger.warn(msg)
             if not self.opts.devmode:
                 self.logger.warn("... skipping this aggregate")
-                return (0, None)
+                return (0, None, msg + " ... skipped this aggregate")
             else:
-                return (configver, client)
+                self.logger.warn("... but continuing with requested version and client")
+                return (configver, client, msg + " ... but continued with requested version and client")
 
         # This AM doesn't speak the desired API version - see if there's an alternate
-
         svers, message = self._get_api_versions(client)
         if svers:
-            if svers.has_key(configver):
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s", configver, client.url, cver, configver, svers[configver])
+            if svers.has_key(str(configver)):
+                msg = "Requested API version %d, but AM %s uses version %d. Same aggregate talks API v%d at a different URL: %s" % (configver, client.url, cver, configver, svers[str(configver)])
+                self.logger.warn(msg)
                 # do a makeclient with the corrected URL and return that client?
                 if not self.opts.devmode:
-                    newclient = make_client(svers[configver], self.framework, self.opts)
+                    try:
+                        newclient = make_client(svers[str(configver)], self.framework, self.opts)
+                    except Exception, e:
+                        msg2 = " - but that URL appears invalid: '%s'" % e
+                        self.logger.warn(" -- Cannot connect to that URL, skipping this aggregate")
+                        retmsg = "Skipped AM %s: it claims to speak API v%d at a broken URL (%s)." % (client.url, configver, svers[str(configver)])
+                        return (configver, None, retmsg)
                     newclient.urn = client.urn # Wrong urn?
-                    (ver, c) = self._checkValidClient(newclient)
+                    (ver, c, msg2) = self._checkValidClient(newclient)
                     if ver == configver and c.url == newclient.url and c is not None:
-                        return (ver, c)
-                self.logger.warn("... skipping this aggregate")
-                return (configver, None)
+                        self.logger.info("Switching AM URL to match requested version")
+                        return (ver, c, "Switched AM URL from %s to %s to speak AM API v%d as requested" % (client.url, c.url, configver))
+                    else:
+                        self.logger.warn("... skipping this aggregate - failed to get a connection to the AM URL with the right version")
+                        return (configver, None, "Skipped AM %s: failed to get a connection to %s which supports APIv%d as requested" % (client.url, newclient.url, configver))
+                else:
+                    self.logger.warn("... but continuing with requested version and client")
+                    return (configver, client, msg + ", but continued with URL and version as requested")
             else:
-                self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not talk that version. It advertises: %s", configver, client.url, cver, pprint.pformat(svers))
+                if len(svers.keys()) == 1:
+                    msg = "Requested API version %d, but AM %s only speaks version %d. Try running Omni with -V%d." % (configver, client.url, cver, cver)
+                    retmsg = msg
+                else:
+                    msg = "Requested API version %d, but AM %s uses version %d. This aggregate does not talk your requested version. It advertises: %s. Try running Omni with -V<one of the advertised versions>." % (configver, client.url, cver, pprint.pformat(svers.keys()))
+                    retmsg = "Requested API version %d, but AM %s uses version %d. Try running Omni with -V%s" % (configver, client.url, cver, pprint.pformat(svers.keys()))
+                self.logger.warn(msg)
                 # FIXME: If we're continuing, change api_version to be correct, or we will get errors
                 if not self.opts.devmode:
 #                    self.logger.warn("Changing to use API version %d", cver)
-                    return (cver, client)
+                    self.logger.warn("... skipping this aggregate")
+                    retmsg += " Skipped this aggregate"
+                    return (cver, None, retmsg)
                 else:
                     # FIXME: Pick out the max API version supported at this client, and use that?
-                    self.logger.warn("... skipping this aggregate")
-                    return (cver, None)
+                    self.logger.warn("... but continuing with requested version and client")
+                    return (configver, client, retmsg + " Continued with URL as requested.")
         else:
-            self.logger.warn("Requested API version %d, but AM %s uses version %d. This aggregate does not advertise other versions.", configver, client.url, cver)
+            msg = "Requested API version %d, but AM %s advertises only version %d. Try running Omni with -V%d." % (configver, client.url, cver, cver)
+            self.logger.warn(msg)
             # FIXME: If we're continuing, change api_version to be correct, or we will get errors
             if not self.opts.devmode:
 #                self.logger.warn("Changing to use API version %d", cver)
-                return (cver, client)
-            else:
                 self.logger.warn("... skipping this aggregate")
-                return (cver, None)
-        self.logger.warn("... skipping this aggregate")
-        return (cver, None)
+                return (cver, None, msg + " ... skipped this Aggregate")
+            else:
+                self.logger.warn("... but continuing with requested version and client")
+                return (configver, client, msg + " ... but continued with URL as requested")
+                #self.logger.warn("... skipping this aggregate")
+                #return (cver, None, msg)
+        # Shouldn't get here...
+        self.logger.warn("Cannot validate client ... skipping this aggregate")
+        return (cver, None, ("Could not validate AM %s .. skipped" % client.url))
     # End of _checkValidClient
+
+    def _maybeGetRSpecFromStruct(self, rspec):
+        '''RSpec might be string of JSON, in which case extract the
+        XML out of the struct.'''
+        if "'geni_rspec'" in rspec or "\"geni_rspec\"" in rspec or '"geni_rspec"' in rspec:
+            try:
+                rspecStruct = json.loads(rspec, encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
+                if rspecStruct and isinstance(rspecStruct, dict) and rspecStruct.has_key('geni_rspec'):
+                    rspec = rspecStruct['geni_rspec']
+            except Exception, e:
+                import traceback
+                msg = "Failed to read RSpec from JSON text %s: %s" % (rspec[:min(60, len(rspec))], e)
+                self.logger.debug(traceback.format_exc())
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
+
+        # If \" in rspec then make that "
+        rspec = string.replace(rspec, "\"", '"')
+        # If \n in rspec then remove that
+        rspec = string.replace(rspec, "\\n", " ")
+#        rspec = string.replace(rspec, '\n', ' ')
+        return rspec
 
     def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
         '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
@@ -3065,7 +3457,10 @@ class AMCallHandler(object):
 
         # Create BODY
         if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
-            content = rspec_util.getPrettyRSpec(rspec)
+            # This line seems to insert extra \ns - GCF ticket #202
+#            content = rspec_util.getPrettyRSpec(rspec)
+            content = string.replace(rspec, "\\n", '\n')
+#            content = rspec
             if slicename:
                 retVal = "Got Reserved resources RSpec from %s" % server
             else:
@@ -3176,7 +3571,7 @@ class AMCallHandler(object):
 
     def _get_server_name(self, clienturl, clienturn):
         '''Construct a short server name from the AM URL and URN'''
-        if clienturn and clienturn is not "unspecified_AM_URN" and (not clienturn.startswith("http")):
+        if clienturn and not clienturn.startswith("unspecified_AM_URN") and (not clienturn.startswith("http")):
             # construct hrn
             # strip off any leading urn:publicid:IDN
             if clienturn.find("IDN+") > -1:
@@ -3198,7 +3593,6 @@ class AMCallHandler(object):
         # Construct server bit. Get HRN from URN, else use url
         # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
         server = self._get_server_name(clienturl, clienturn)
-            
         if self.opts.outputfile:
             filename = self.opts.outputfile
             if "%a" in self.opts.outputfile:
@@ -3231,15 +3625,15 @@ class AMCallHandler(object):
         # Existing code is inconsistent on whether it is if code or elif code.
         # IE is the whole code struct shoved inside the success thing maybe?
         if not result:
-            self.logger.debug("Raw result from dossl call was %s?!", result)
+            self.logger.debug("Raw result from AM API call was %s?!", result)
             if not message or message.strip() == "":
                 message = "(no reason given)"
             if result is None:
                 message += " (missing result)"
             elif result == False:
-                message += " (False result)"
+                message += " ('False' result)"
             elif result == 0:
-                message += " (0 result)"
+                message += " ('0' result)"
             else:
                 message += " (empty result)"
             return (result, message)
@@ -3284,13 +3678,22 @@ class AMCallHandler(object):
                     # single AM returns a failure error code.
                     # note it means any other AMs do not get processed
                     # FIXME: AMAPIError needs a nice printable string
-                    self._raise_omni_error(result, AMAPIError)
+                    self._raise_omni_error(message, AMAPIError, result)
                 else:
                     message = _append_geni_error_output(result, message)
                     value = None
+            else:
+                # No code in result
+                if self.opts.api_version > 1:
+                    # This happens doing getversion at a v1 AM.
+                    if isinstance(result, dict) and result.has_key('geni_api') and result['geni_api'] == 1:
+                        pass
+                    else:
+                        self.logger.warn("Result had no code!")
         else:
             # Not a dict response. Value is result in itself
-            pass
+            if self.opts.api_version > 1:
+                self.logger.warn("Result was not a dict!")
         return (value, message)
     # End of _retrieve_value
 
@@ -3363,9 +3766,16 @@ class AMCallHandler(object):
         return name, urn, slice_cred, retVal, slice_exp
     # End of _args_to_slicecred
 
-    def _raise_omni_error( self, msg, err=OmniError ):
-        self.logger.error( msg )
-        raise err, msg
+    def _raise_omni_error( self, msg, err=OmniError, triple=None ):
+        msg2 = msg
+        if triple is not None:
+            msg2 += " "
+            msg2 += str(triple)
+        self.logger.error( msg2 )
+        if triple is None:
+            raise err, msg
+        else: 
+            raise err, (msg, triple)
 
     def _printResults(self, header, content, filename=None):
         """Print header string and content string to file of given
@@ -3457,13 +3867,24 @@ class AMCallHandler(object):
         if url.find('://') > -1:
             server = url[(url.find('://') + 3):]
 
+        # protogeni often runs on port 12369 - pull that out if possible
+        if ":12369/protogeni/" in server:
+            server = server[:(server.index(":12369/"))] + server[(server.index(":12369/")+6):]
+
+        if server.startswith("boss."):
+            server = server[server.index("boss.")+len("boss."):]
+
         # strip standard url endings that dont tell us anything
         if server.endswith("/xmlrpc/am"):
             server = server[:(server.index("/xmlrpc/am"))]
         elif server.endswith("/xmlrpc"):
             server = server[:(server.index("/xmlrpc"))]
+        elif server.endswith("/xmlrpc/am/1.0"):
+            server = server[:(server.index("/xmlrpc/am/1.0"))] + "v1"
         elif server.endswith("/xmlrpc/am/2.0"):
             server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
+        elif server.endswith("/xmlrpc/am/3.0"):
+            server = server[:(server.index("/xmlrpc/am/3.0"))] + "v3"
         elif server.endswith("/openflow/gapi/"):
             server = server[:(server.index("/openflow/gapi/"))]
         elif server.endswith(":3626/foam/gapi/1"):
@@ -3481,6 +3902,8 @@ class AMCallHandler(object):
             assert isinstance(server, str)
             table = string.maketrans(bad, '-' * len(bad))
         server = server.translate(table)
+        if server.endswith('-'):
+            server = server[:-1]
         return server
 
     def _has_slice_expired(self, sliceCred):
@@ -3596,6 +4019,42 @@ class AMCallHandler(object):
             self.logger.debug("Result value not a list or empty")
             return list()
         return resultValue
+
+    def _getSliverStatuses(self, resultValue):
+        '''Summarize the allocation and operational statuses in a list of 2 hashes by state name'''
+        op_statuses = dict()
+        alloc_statuses = dict()
+
+        resultValue = self._getSliverResultList(resultValue)
+        if len(resultValue) == 0:
+            self.logger.debug("Result value not a list or empty")
+
+        for sliver in resultValue:
+            sliverUrn = ''
+            if not isinstance(sliver, dict):
+                self.logger.debug("entry in result list was not a dict")
+                continue
+            if not sliver.has_key('geni_sliver_urn') or str(sliver['geni_sliver_urn']).strip() == "":
+                self.logger.debug("entry in result had no 'geni_sliver'urn'")
+            else:
+                sliverUrn = sliver['geni_sliver_urn']
+            if not sliver.has_key('geni_allocation_status') or str(sliver['geni_allocation_status']).strip() == "":
+                self.logger.debug("Sliver %s had no allocation status", sliverUrn)
+            else:
+                aStat = sliver['geni_allocation_status']
+                if aStat in alloc_statuses:
+                    alloc_statuses[aStat] += 1
+                else:
+                    alloc_statuses[aStat] = 1
+            if not sliver.has_key('geni_operational_status') or str(sliver['geni_operational_status']).strip() == "":
+                self.logger.debug("Sliver %s had no operational status", sliverUrn)
+            else:
+                oStat = sliver['geni_operational_status']
+                if oStat in op_statuses:
+                    op_statuses[oStat] += 1
+                else:
+                    op_statuses[oStat] = 1
+        return (alloc_statuses, op_statuses)
 
     def _didSliversFail(self, resultValue):
         '''Take a result value, and return a dict of slivers that had a geni_error: URN->geni_error'''
@@ -3809,7 +4268,7 @@ class AMCallHandler(object):
                     self.logger.info('Sliver(s) in %s will be set to expire now' % name)
                     time = datetime.datetime.utcnow()
             else:
-                self.logger.debug('Slice expires at %s UTC after requested time %s UTC' % (slice_exp, time))
+                self.logger.debug('Slice expires at %s UTC, at or after requested time %s UTC' % (slice_exp, time))
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
@@ -3846,7 +4305,7 @@ def make_client(url, framework, opts):
             raise OmniError(err)
 
     if opts.ssl:
-        tmp_client =  omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert)
+        tmp_client =  omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert, opts.verbosessl)
     else:
         tmp_client = omnilib.xmlrpc.client.make_client(url, None, None)
     tmp_client.url = str(url)
@@ -3899,20 +4358,31 @@ def _check_valid_return_struct(client, resultObj, message, call):
 def _append_geni_error_output(retStruct, message):
     '''Add to given error message the code and output if code != 0'''
     # If return is a dict
-    if isinstance(retStruct, dict) and retStruct.has_key('code') and retStruct['code'].has_key('geni_code'):
-        if retStruct['code']['geni_code'] != 0:
+    if isinstance(retStruct, dict) and retStruct.has_key('code'):
+        message2 = ""
+        if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
             message2 = "Error from Aggregate: code " + str(retStruct['code']['geni_code'])
-            amType = ""
-            if retStruct['code'].has_key('am_type'):
-                amType = retStruct['code']['am_type']
-            if retStruct['code'].has_key('am_code'):
-                message2 += ". %s AM code: %s" % (amType, str(retStruct['code']['am_code']))
-            if retStruct.has_key('output'):
-                message2 += ": %s" % retStruct['output']
-            message2 += "."
-            if message is not None and message.strip() != "":
-                message += ". (%s)" % message2
-            else:
-                message = message2
+        amType = ""
+        if retStruct['code'].has_key('am_type'):
+            amType = retStruct['code']['am_type']
+        if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0:
+            if message2 != "":
+                if not message2.endswith('.'):
+                    message2 += '.'
+                message2 += " "
+            message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
+        if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
+            message2 += ": %s" % retStruct['output']
+        if amType == 'protogeni' and retStruct['code'].has_key('protogeni_error_log'):
+            message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
+        if message2 != "":
+            if not message2.endswith('.'):
+                message2 += '.'
+        if message is not None and message.strip() != "" and message2 != "":
+            if not message2.endswith('.'):
+                message2 += '.'
+            message += " (%s)" % message2
+        else:
+            message = message2
     return message
 

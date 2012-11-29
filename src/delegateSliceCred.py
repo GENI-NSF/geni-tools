@@ -121,18 +121,18 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 \t--slicecred <filename of saved slice credential to delegate,\n\
 \t\teg mySliceCred.xml>\n\
 \t--delegeegid <filename of co-workers cert you want to delegate to>\n\
+\t--trusted-root <filename of a trusted root certificate, eg that for\n\
+\t\tplc of pg-utah>\n\
+\t\tOptional. Supply this argument 1 or more times to\n\
+\t\tinclude the certificates for your Slice Authority\n\
+\t\tand Clearinghouse/Registry, and the script will\n\
+\t\tattempt to validate the credential you have generated\n\
 \t[--delegatable -- an optional argument that makes the new credential\n\
 \t\tdelegatable too, so your friend could re-delegate\n\
 \t\tthis credential]\n\
 \t[--newExpiration <datetime string> Option argument to set a new\n\
 \t\texpiration time shorter than the original, for the\n\
-\t\tnew credential]\n\
-\t[--trusted-root <filename of a trusted root certificate, eg that for\n\
-\t\tplc of pg-utah>\n\
-\t\tOptional. Supply this argument 1 or more times to\n\
-\t\tinclude the certificates for your Slice Authority\n\
-\t\tand Clearinghouse/Registry, and the script will\n\
-\t\tattempt to validate the credential you have generated.]"
+\t\tnew credential]."
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("--cert", action="store", default=None,
@@ -242,11 +242,12 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     if delegee_cert.cert.has_expired():
         sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
 
-    try:
-        owner_cert.verify_chain(trusted_certs=root_objects)
-    except Exception, exc:
-        logger.warn("Owner cert did not validate: %s", exc)
-        raise
+    if len(root_objects) > 0:
+        try:
+            owner_cert.verify_chain(trusted_certs=root_objects)
+        except Exception, exc:
+            logger.warn("Owner cert did not validate: %s", exc)
+            raise
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
@@ -269,11 +270,12 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     object_gid = slicecred.get_gid_object()
 
-    try:
-        delegee_cert.verify_chain(trusted_certs=root_objects)
-    except Exception, exc:
-        logger.warn("Delegee cert did not validate: %s", exc)
-        raise
+    if len(root_objects) > 0:
+        try:
+            delegee_cert.verify_chain(trusted_certs=root_objects)
+        except Exception, exc:
+            logger.warn("Delegee cert did not validate: %s", exc)
+            raise
 
     # OK, inputs are verified
     logger.info("Delegating %s's rights to %s to %s until %s UTC", owner_cert.get_urn(), object_gid.get_urn(), delegee_cert.get_urn(), newExpiration)

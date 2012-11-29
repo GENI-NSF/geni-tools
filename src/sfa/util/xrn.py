@@ -32,9 +32,6 @@ def urn_to_hrn(urn): xrn=Xrn(urn); return (xrn.hrn, xrn.type)
 def hrn_to_urn(hrn,type): return Xrn(hrn, type=type).urn
 def hrn_authfor_hrn(parenthrn, hrn): return Xrn.hrn_is_auth_for_hrn(parenthrn, hrn)
 
-def urn_to_sliver_id(urn, slice_id, node_id, index=0, authority=None):
-    return Xrn(urn).get_sliver_id(slice_id, node_id, index, authority)
-
 class Xrn:
 
     ########## basic tools on HRNs
@@ -119,18 +116,25 @@ class Xrn:
     # self.type
     # self.path
     # provide either urn, or (hrn + type)
-    def __init__ (self, xrn, type=None):
+    def __init__ (self, xrn, type=None, id=None):
         if not xrn: xrn = ""
         # user has specified xrn : guess if urn or hrn
+        self.id = id
+        self.type = type
+
         if Xrn.is_urn(xrn):
             self.hrn=None
             self.urn=xrn
             self.urn_to_hrn()
+            if id:
+                self.hrn_to_urn()
         else:
             self.urn=None
             self.hrn=xrn
             self.type=type
             self.hrn_to_urn()
+
+        self._normalize()
 # happens all the time ..
 #        if not type:
 #            debug_logger.debug("type-less Xrn's are not safe")
@@ -167,17 +171,15 @@ class Xrn:
         self._normalize()
         return ':'.join( [Xrn.unescape(x) for x in self.authority] )
 
-    def get_sliver_id(self, slice_id, node_id, index=0, authority=None):
+    def set_authority(self, authority):
+        """
+        update the authority section of an existing urn
+        """
+        authority_hrn = self.get_authority_hrn()
+        if not authority_hrn.startswith(authority+"."):
+            self.hrn = authority + "." + self.hrn
+            self.hrn_to_urn()
         self._normalize()
-        urn = self.get_urn()
-        if authority:
-            authority_hrn = self.get_authority_hrn()
-            if not authority_hrn.startswith(authority):
-                hrn = ".".join([authority,authority_hrn, self.get_leaf()])
-            else:
-                hrn = ".".join([authority_hrn, self.get_leaf()])
-            urn = Xrn(hrn, self.get_type()).get_urn()
-        return ":".join(map(str, [urn, slice_id, node_id, index]))
 
     def urn_to_hrn(self):
         """
@@ -208,6 +210,10 @@ class Xrn:
         hrn = '.'.join([Xrn.escape(part).replace(':','.') for part in parts if part])
         # dont replace ':' in the name section
         if name:
+            parts = name.split(':')
+            if len(parts) > 1:
+                self.id = ":".join(parts[1:])
+                name = parts[0]
             hrn += '.%s' % Xrn.escape(name) 
 
         self.hrn=str(hrn)
@@ -237,13 +243,17 @@ class Xrn:
         else:
             self.authority = Xrn.hrn_auth_list(self.hrn)
             name = Xrn.hrn_leaf(self.hrn)
+            # separate name from id
             authority_string = self.get_authority_urn()
 
         if self.type == None:
             urn = "+".join(['',authority_string,Xrn.unescape(name)])
         else:
             urn = "+".join(['',authority_string,self.type,Xrn.unescape(name)])
-        
+
+        if hasattr(self, 'id') and self.id:
+            urn = "%s-%s" % (urn, self.id)
+
         self.urn = Xrn.URN_PREFIX + urn
 
     def dump_string(self):
