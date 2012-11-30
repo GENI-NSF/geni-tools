@@ -42,7 +42,6 @@ from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from resource import Resource
 from aggregate import Aggregate
 from fakevm import FakeVM
-from gibaggregate import gib_manager
 
 
 # See sfa/trust/rights.py
@@ -203,22 +202,19 @@ class ReferenceAggregateManager(object):
         if 'geni_slice_urn' in options:
             slice_urn = options['geni_slice_urn']
             if slice_urn in self._slices:
-                ### result = self.manifest_rspec(slice_urn)
-                result = gib_manager.get_manifest()
+                result = self.manifest_rspec(slice_urn)
             else:
                 # return an empty rspec
                 return self._no_such_slice(slice_urn)
         else:
-            result = gib_manager.get_advert()
-
-            ### all_resources = self._agg.catalog(None)
-            ### available = 'geni_available' in options and options['geni_available']
-            ### resource_xml = ""
-            ### for r in all_resources:
-            ###     if available and not r.available:
-            ###         continue
-            ###     resource_xml = resource_xml + self.advert_resource(r)
-            ### result = self.advert_header() + resource_xml + self.advert_footer()
+            all_resources = self._agg.catalog(None)
+            available = 'geni_available' in options and options['geni_available']
+            resource_xml = ""
+            for r in all_resources:
+                if available and not r.available:
+                    continue
+                resource_xml = resource_xml + self.advert_resource(r)
+            result = self.advert_header() + resource_xml + self.advert_footer()
         self.logger.debug("Result is now \"%s\"", result)
         # Optionally compress the result
         if 'geni_compressed' in options and options['geni_compressed']:
@@ -268,17 +264,12 @@ class ReferenceAggregateManager(object):
             self.logger.error('Slice %s already exists.', slice_urn)
             return self.errorResult(17, 'Slice %s already exists' % (slice_urn))
 
-        errString = gib_manager.createSliver(slice_urn, rspec, users)
-        if  errString != None :
-            # Something went wrong: we got back an error string.
-            return self.errorResult(500, errString)
-
-        ### rspec_dom = None
-        ### try:
-        ###     rspec_dom = minidom.parseString(rspec)
-        ### except Exception, exc:
-        ###     self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
-        ###     return self.errorResult(1, 'Bad Args: RSpec is unparseable')
+        rspec_dom = None
+        try:
+            rspec_dom = minidom.parseString(rspec)
+        except Exception, exc:
+            self.logger.error("Cant create sliver %s. Exception parsing rspec: %s" % (slice_urn, exc))
+            return self.errorResult(1, 'Bad Args: RSpec is unparseable')
 
         # Look at the version of the input request RSpec
         # Make sure it is supported
@@ -286,27 +277,27 @@ class ReferenceAggregateManager(object):
         # EG if both V1 and V2 are supported, and the user gives V2 request,
         # then you must return a V2 request and not V1
 
-        ### allresources = self._agg.catalog()
-        ### allrdict = dict()
-        ### for r in allresources:
-        ###     if r.available:
-        ###         allrdict[r.id] = r
+        allresources = self._agg.catalog()
+        allrdict = dict()
+        for r in allresources:
+            if r.available:
+                allrdict[r.id] = r
 
-        ### # Note: This only handles unbound nodes. Any attempt by the client
-        ### # to specify a node is ignored.
-        ### resources = dict()
-        ### unbound = list()
-        ### for elem in rspec_dom.documentElement.getElementsByTagName('node'):
-        ###     unbound.append(elem)
-        ### for elem in unbound:
-        ###     client_id = elem.getAttribute('client_id')
-        ###     keys = allrdict.keys()
-        ###     if keys:
-        ###         rid = keys[0]
-        ###         resources[client_id] = allrdict[rid]
-        ###         del allrdict[rid]
-        ###     else:
-        ###         return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
+        # Note: This only handles unbound nodes. Any attempt by the client
+        # to specify a node is ignored.
+        resources = dict()
+        unbound = list()
+        for elem in rspec_dom.documentElement.getElementsByTagName('node'):
+            unbound.append(elem)
+        for elem in unbound:
+            client_id = elem.getAttribute('client_id')
+            keys = allrdict.keys()
+            if keys:
+                rid = keys[0]
+                resources[client_id] = allrdict[rid]
+                del allrdict[rid]
+            else:
+                return self.errorResult(6, 'Too Big: insufficient resources to fulfill request')
 
         # determine max expiration time from credentials
         # do not create a sliver that will outlive the slice!
@@ -317,16 +308,14 @@ class ReferenceAggregateManager(object):
                 expiration = credexp
 
         newslice = Slice(slice_urn, expiration)
-        ### self._agg.allocate(slice_urn, resources.values())
-        ### for cid, r in resources.items():
-        ###     newslice.resources[cid] = r.id
-        ###     r.status = Resource.STATUS_READY
+        self._agg.allocate(slice_urn, resources.values())
+        for cid, r in resources.items():
+            newslice.resources[cid] = r.id
+            r.status = Resource.STATUS_READY
         self._slices[slice_urn] = newslice
 
         self.logger.info("Created new slice %s" % slice_urn)
-        ### result = self.manifest_rspec(slice_urn)
-        result = gib_manager.get_manifest()
-
+        result = self.manifest_rspec(slice_urn)
         self.logger.debug('Result = %s', result)
         return dict(code=dict(geni_code=0,
                               am_type="gcf2",
@@ -359,18 +348,15 @@ class ReferenceAggregateManager(object):
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
-            ### sliver = self._slices[slice_urn]
-            ### resources = self._agg.catalog(slice_urn)
-            ### if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
-            ###     self.logger.info("Sliver %s not deleted because it is shutdown",
-            ###                      slice_urn)
-            ###     return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
-            ### self._agg.deallocate(slice_urn, None)
-            ### for r in resources:
-            ###     r.status = Resource.STATUS_UNKNOWN
-
-            gib_manager.deleteSliver()
-
+            sliver = self._slices[slice_urn]
+            resources = self._agg.catalog(slice_urn)
+            if sliver.status(resources) == Resource.STATUS_SHUTDOWN:
+                self.logger.info("Sliver %s not deleted because it is shutdown",
+                                 slice_urn)
+                return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
+            self._agg.deallocate(slice_urn, None)
+            for r in resources:
+                r.status = Resource.STATUS_UNKNOWN
             del self._slices[slice_urn]
             self.logger.info("Sliver %r deleted" % slice_urn)
             return self.successResult(True)
@@ -399,26 +385,24 @@ class ReferenceAggregateManager(object):
         if slice_urn in self._slices:
             theSlice = self._slices[slice_urn]
             # Now calculate the status of the sliver
-
-            ### res_status = list()
-            ### resources = self._agg.catalog(slice_urn)
-            ### for res in resources:
-            ###     self.logger.debug('Resource = %s', str(res))
-            ###     # Gather the status of all the resources
-            ###     # in the sliver. This could be actually
-            ###     # communicating with the resources, or simply
-            ###     # reporting the state of initialized, started, stopped, ...
-            ###     res_status.append(dict(geni_urn=self.resource_urn(res),
-            ###                            geni_status=res.status,
-            ###                            geni_error=''))
-
-            result = gib_manager.sliverStatus(slice_urn)
-
+            res_status = list()
+            resources = self._agg.catalog(slice_urn)
+            for res in resources:
+                self.logger.debug('Resource = %s', str(res))
+                # Gather the status of all the resources
+                # in the sliver. This could be actually
+                # communicating with the resources, or simply
+                # reporting the state of initialized, started, stopped, ...
+                res_status.append(dict(geni_urn=self.resource_urn(res),
+                                       geni_status=res.status,
+                                       geni_error=''))
             self.logger.info("Calculated and returning slice %s status", slice_urn)
-            ### result = dict(geni_urn=slice_urn,
-            ###               geni_status=theSlice.status(resources),
-            ###               geni_resources=res_status)
-            return dict(code=dict(geni_code=0),
+            result = dict(geni_urn=slice_urn,
+                          geni_status=theSlice.status(resources),
+                          geni_resources=res_status)
+            return dict(code=dict(geni_code=0,
+                                  am_type="gcf2",
+                                  am_code=0),
                         value=result,
                         output="")
         else:
