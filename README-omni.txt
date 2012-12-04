@@ -51,6 +51,9 @@ New in v2.2:
  specified this API version. (ticket #213)
  - Support GCF CH list_my_slices (ticket #214)
  - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
+ - Add support for the ProtoGENI / InstaGENI 'createimage' method to
+ snapshot your disk. See
+ http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
@@ -513,6 +516,10 @@ omni.py [options] <command and arguments>
                          deletesliver <slicename> [AM API V1&2 only]                          
                          delete <slicename> [AM API V3 only]                                  
                          shutdown <slicename>                                                 
+ 		Non AM API aggregate functions (supported by some aggregates): 
+ 			 createimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] 
+ 			 snapshotimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] 
+ 				 [alias for 'createimage'] 
                 Clearinghouse / Slice Authority functions:                                    
                          listaggregates                                                       
                          createslice <slicename>                                              
@@ -1638,3 +1645,45 @@ Aggregates queried:
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+==== createimage ====
+Call the ProtoGENI / InstaGENI CreateImage method, to snapshot the
+disk for a single node.
+
+This command is not supported at older ProtoGENI AMs or at non
+ProtoGENI AMs.
+
+See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
+
+Format: omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>
+
+By default, images are public. To make the image private, supply the
+optional 3rd argument 'false'.
+
+Be sure to supply the URN for the sliver that contains the node whose
+disk you want to create an image from.
+
+Image names are alphanumeric.
+
+Note that this method returns quickly; the experimenter gets an email
+later when it is done. In the interval, don't change anything.
+Note that if you re-use the image name, you replace earlier content.
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+ - `--sliver-urn` / `-u` option: Use exactly one. Specifies the sliver URN to snapshot.
+
+Aggregates queried:
+Only one aggregate should be queried.
+ - Single URL given in `-a` argument or URL listed under that given
+ nickname in omni_config, if provided, ELSE
+ - Single URL given in omni_config aggregates option, if provided
+ - You will likely get an error
+
+==== snapshotimage ====
+Alias for createimage

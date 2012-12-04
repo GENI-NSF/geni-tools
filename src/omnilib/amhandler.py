@@ -646,6 +646,7 @@ class AMCallHandler(object):
             raise BadClientException(client, validMsg)
 
         self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s", client.url, op)
+        #self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s with args %r", client.url, op, args)
         return _do_ssl(self.framework, None, msg, getattr(client, op), *args), client
 
     # FIXME: Must still factor dev vs exp
@@ -3387,6 +3388,126 @@ class AMCallHandler(object):
 
     # End of AM API operations
     #######
+
+    # Non AM API operations at aggregates
+
+    def snapshotimage(self, args):
+        '''Call createimage'''
+        return self.createimage(args)
+
+    def createimage(self, args):
+        '''ProtoGENI's createimage function: snapshot the disk for
+        single sliver (node), giving it the given image name.
+        See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo'''
+        # args: sliceURNOrName, sliverURN, imageName, makePublic=True
+        # Plus the AM(s) to invoke this at
+        # sliver urn from the -U argument
+        # So really we just need slice name, imageName, and makePublic
+        # This is a PG function, and only expected to work at recent
+        # PG AMs
+
+#        # imagename is alphanumeric
+#        # note this method returns quick; the experimenter gets an
+#        # email later when it is done. In the interval, don't change
+#        # anything
+#        # Note that if you re-use the name, you replace earlier
+#        # content
+#        # makePublic is whether the image is available to others;
+#        # default is True
+#        # sliverURN is the urn of the sliver from the manifest RSpec
+#        # whose disk image you are snapshotting
+
+        # prints slice expiration. Warns or raises an Omni error on problems
+        (name, sliceURN, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 2, "snapshotImage", 
+                                "and an image name and optionally makePublic")
+
+        # Extract the single sliver URN. More than one, complain
+        urnsarg, slivers = self._build_urns(sliceURN)
+        if len(slivers) != 1:
+            self._raise_omni_error("CreateImage requires example one sliver URN: the sliver containing the node to snapshot.")
+
+        sliverURN = slivers[0]
+
+        # Extract the imageName from args
+        if len(args) >= 2:
+            imageName = args[1]
+        else:
+            imageName = None
+        if not imageName:
+            self._raise_omni_error("CreateImage requires a name for the image (alphanumeric)")
+
+        # FIXME: Check that image name is alphanumeric?
+
+        # Extract makePublic from args, if present
+        makePublic = True
+        if len(args) >= 3:
+            makePublicString = args[2]
+            # 0 or f or false or no, case insensitive, means False
+            makePublic = makePublicString.lower() not in ('0', 'f', 'false', 'no')
+        if makePublic:
+            publicString = "public"
+        else:
+            publicString = "private"
+
+        creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        options = dict()
+        options['global'] = makePublic
+        args = (sliceURN, imageName, sliverURN, creds, options)
+
+        retItem = None
+        retVal = ""
+
+        (clientList, message) = self._getclients()
+        if len(clientList) != 1:
+            self._raise_omni_error("CreateImage snapshots a particular machine: specify exactly 1 AM URL with '-a'")
+        client = clientList[0]
+        msg = "Create %s Image %s of sliver %s on " % (publicString, imageName, sliverURN)
+        op = "CreateImage"
+
+        # FIXME: Confirm that AM is PG, complain if not?
+        # pgeni gives an error 500 (Protocol Error). PLC gives error
+        # 13 (invalid method)
+        try:
+            ((res, message), client) = self._api_call(client, msg + client.url, op, args)
+        except BadClientException, bce:
+            if bce.validMsg and bce.validMsg != '':
+                retVal += bce.validMsg + ". "
+            else:
+                retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+            self._raise_omni_error("\nCreateImage Failed: " + retVal)
+
+#        self.logger.debug("Doing SSL/XMLRPC call to %s invoking %s with args %r", client.url, op, args)
+#        (res, message) = _do_ssl(self.framework, None, msg + client.url, getattr(client, op), *args)
+
+        self.logger.debug("raw result: %r" % res)
+
+        retItem = res
+        (realres, message) = self._retrieve_value(res, message, self.framework)
+
+        if not realres:
+            # fail
+            prStr = "Failed to %s%s" % (msg, client.url)
+            if message is None or message.strip() == "":
+                message = "(no reason given)"
+            if not prStr.endswith('.'):
+                prStr += '.'
+            prStr += " " + message
+            self.logger.warn(prStr)
+            retVal += prStr + "\n"
+        else:
+            # success
+
+            # FIXME: I want the image URN and URL. Is that in the
+            # value? The output? Currently, we just get 'True' in
+            # value, and no output. Waiting on PG to fix this.
+            prStr = "Snapshotting disk on %s at %s, creating %s image %s (%s)" % (sliverURN, client.url, publicString, res['value'], res['output'])
+            self.logger.info(prStr)
+            retVal += prStr
+
+        return retVal, retItem
+
+    #######
+
     # Helper functions follow
 
     def _checkValidClient(self, client):
