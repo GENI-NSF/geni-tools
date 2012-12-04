@@ -326,9 +326,17 @@ class OmniUnittest(unittest.TestCase):
             else:
                 version = "GENI 3"
         if not rspec_util.is_rspec_of_type( rspec, type=type, version=version, typeOnly=typeOnly ):
+            # if typeOnly, then not valid XML or type not as expected
+            # else confirms schema from version is in schemaLocation
+            # tag
             if msg is None:
                 msg =  "RSpec expected to have type '%s' " \
-                    "but schema was not correct. " % (type)
+                    "but XML unparsable or had wrong type" % (type)
+                if not typeOnly:
+                    msg += " or schema for version %s not listed in schemaLocation" % version
+                # This next line is verbose! But it would let you see
+                # what schemaLocation actually had
+                msg += rspec[:350]
             raise WrongRspecType, msg        
 
     # def assertRaisesOnly( self, err, msg, method, *args, **kwargs ):
