@@ -2,6 +2,9 @@
 
 gcf 2.2:
  * Updated SFA library files to tag 2.1-17
+ * GENI-in-a-Box code is now included. See
+ http://groups.geni.net/geni/wiki/GENI-in-a-Box (ticket #215)
+
  * omni
   - If an aggregate does not speak the requested Ad RSpec version,
   print a more helpful message. (ticket #211)
