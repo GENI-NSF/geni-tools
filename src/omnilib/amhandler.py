@@ -106,6 +106,10 @@ class AMCallHandler(object):
         retmsg = "" # Message to put at start of result summary
         for client in clients:
             (thisVer, message) = self._get_this_api_version(client)
+            if thisVer is None:
+                # Not a valid client
+                clientCount = clientCount - 1
+                continue
             thisVer = str(thisVer) # turn int into a string
             liveVers[thisVer]  = liveVers.get(thisVer, 0) + 1 # hash is by strings
             (thisVersions, message) = self._get_api_versions(client)
@@ -117,6 +121,10 @@ class AMCallHandler(object):
             else:
                 #self.logger.debug("Incrementing counter of clients that speak %r somewhere", thisVer)
                 versions[thisVer] = versions.get(thisVer, 0) + 1
+
+        # If we didn't get any AMs, bail early
+        if len(liveVers.keys()) == 0:
+            return retmsg
 
         # If all the AMs talk the desired version here, great
         if liveVers.has_key(configVer) and liveVers[configVer] == clientCount:
