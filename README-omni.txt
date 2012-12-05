@@ -54,6 +54,8 @@ New in v2.2:
  - Add support for the ProtoGENI / InstaGENI 'createimage' method to
  snapshot your disk. See
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
+ - Provision now supplies the `geni_rspec_version` option, to specify
+ the manifest format to use.
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
@@ -547,8 +549,8 @@ Options:
   -a AGGREGATE_URL, --aggregate=AGGREGATE_URL                            
                         Communicate with a specific
 			aggregate. Multiple options allowed.
-  -t AD-RSPEC-TYPE AD-RSPEC-VERSION, --rspectype=AD-RSPEC-TYPE AD-RSPEC-VERSION
-                        Ad RSpec type and version to return, default 'GENI 3'  
+  -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
+                        RSpec type and version to return, default 'GENI 3'
   --debug               Enable debugging output                                
   -o, --output          Write output of many functions (getversion,            
                         listresources, allocate, status, getslicecred,...) ,   
@@ -982,7 +984,7 @@ Other options:
  - `-t <type version>`: Specify a required manifest RSpec type and
  version to return. It skips any AM that doesn't advertise (in
  !GetVersion) that it supports that format. Default is "GENI
- 3". "ProtoGENI 2" is commonly supported as well. 
+ 3". "ProtoGENI 2" is commonly supported as well.
  - `--slicecredfile <path>` says to use the given slice credential file if it exists.
  - --no-compress: Request the returned RSpec not be compressed (default is to compress)
  - `-l <path>` to specify a logging configuration file
@@ -1208,6 +1210,10 @@ Options:
    may not be provisioned, in which case check the geni_error return for that sliver.
    If not supplied, then if any slivers cannot be provisioned, the whole call fails
    and sliver allocation states do not change.
+ - `-t <type version>`: Specify a required manifest RSpec type and
+ version to return. It skips any AM that doesn't advertise (in
+ !GetVersion) that it supports that format. Default is "GENI
+ 3". "ProtoGENI 2" is commonly supported as well. 
 
 Note that some aggregates may require provisioning all slivers in the same state at the same
 time, per the `geni_single_allocation` !GetVersion return.

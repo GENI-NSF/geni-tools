@@ -669,8 +669,8 @@ def getParser():
     parser.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
-    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
-                      help="Ad RSpec type and version to return, default 'GENI 3'")
+    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
+                      help="RSpec type and version to return, default 'GENI 3'")
     parser.add_option("--debug", action="store_true", default=False,
                        help="Enable debugging output")
     parser.add_option("-o", "--output",  default=False, action="store_true",

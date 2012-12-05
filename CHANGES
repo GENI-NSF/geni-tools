@@ -19,10 +19,14 @@ gcf 2.2:
   - Add support for the ProtoGENI / InstaGENI 'createimage' method to
   snapshot your disk. See
   http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
+  - Provision now supplies the `geni_rspec_version` option, to specify
+  the manifest format to use. (ticket #216)
 
  * gcf
   - Implement list_my_slices (ticket #214)
   - Add pgch: gcf CH with a ProtoGENI style CH API
+  - gcf-am v3: Require geni_rspec_version option to Provision (ticket
+ # 216)
 
 gcf 2.1:
  * omni

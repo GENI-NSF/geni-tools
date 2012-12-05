@@ -743,7 +743,7 @@ class AMCallHandler(object):
     # ------- End of GetVersion stuff
 
     def _selectRSpecVersion(self, slicename, client, mymessage, options):
-        '''Helper for Describe and ListResources to set the rspec_version option, based on a single AMs capabilities.
+        '''Helper for Describe and ListResources and Provision to set the rspec_version option, based on a single AMs capabilities.
         Uses -t argument: If user specified an RSpec type and version, then only
         use AMs that support that type/version (default is GENI 3).
         Return dict with API version appropriate key specifying RSpec type/version
@@ -1411,7 +1411,7 @@ class AMCallHandler(object):
                 ((status, message), client) = self._api_call(client,
                                                    msg + str(client.url),
                                                    op, args)
-                if mymessage != "":
+                if mymessage.strip() != "":
                     if message is None or message.strip() == "":
                         message = ""
                     message = mymessage + ". " + message
@@ -1921,6 +1921,10 @@ class AMCallHandler(object):
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
 
+        -t <type version>: Specify a required manifest RSpec type and version to return.
+        It skips any AM that doesn't advertise (in GetVersion)
+        that it supports that format. Default is "GENI 3".
+
         --end-time: Request that new slivers expire at the given time.
         The aggregates may provision the resources, but not be able to grant the requested
         expiration time.
@@ -1999,8 +2003,6 @@ class AMCallHandler(object):
             descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
-        args = [urnsarg, creds, options]
-        self.logger.debug("Doing Provision with urns %s, %d creds, options %s", urnsarg, len(creds), options)
 
         # Get Clients
         successCnt = 0
@@ -2008,6 +2010,8 @@ class AMCallHandler(object):
         (clientList, message) = self._getclients()
         if len(clientList) == 0:
             msg = "No aggregate specified to submit provision request to. Use the -a argument."
+            if message and message.strip() != "":
+                msg += " " + message
             if self.opts.devmode:
                 #  warn
                 self.logger.warn(msg)
@@ -2025,12 +2029,21 @@ class AMCallHandler(object):
 
         # Loop over clients doing operation
         for client in clientList:
+            args = [urnsarg, creds]
             self.logger.info("%s %s at %s", op, descripMsg, client.url)
             try:
+                mymessage = ""
+                (options, mymessage) = self._selectRSpecVersion(slicename, client, mymessage, options)
+                args.append(options)
+                self.logger.debug("Doing Provision at %s with urns %s, %d creds, options %s", client.url, urnsarg, len(creds), options)
                 ((result, message), client) = self._api_call(client,
                                                   ("Provision %s at %s" % (descripMsg, client.url)),
                                                   op,
                                                   args)
+                if mymessage.strip() != "":
+                    if message is None or message.strip() == "":
+                        message = ""
+                    message = mymessage + ". " + message
             except BadClientException, bce:
                 if bce.validMsg and bce.validMsg != '':
                     retVal += bce.validMsg + ". "
@@ -2113,6 +2126,7 @@ class AMCallHandler(object):
                     message = "(no reason given)"
                 retVal = "Provision of %s at %s failed: %s" % (descripMsg, client.url, message)
                 self.logger.warn(retVal)
+                retVal += "\n"
         # Done loop over clients
 
         if len(clientList) == 0:
