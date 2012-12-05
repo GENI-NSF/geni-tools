@@ -75,8 +75,7 @@ class CommandHandler(object):
         """Run the clearinghouse server."""
         # XXX Verify that opts.keyfile exists
         # XXX Verify that opts.directory exists
-        ### ch = GENIClearinghouse()
-        ch = PGClearinghouse(gcf=True)
+        ch = GENIClearinghouse()
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
 
