@@ -1,5 +1,6 @@
-This file outlines the various example RSpec files available.
-It includes the basic layout for each RSpec as well as its purpose.
+This file outlines the various example RSpec files available with
+geni-in-a box. It includes the basic layout for each RSpec as well as
+its purpose.
 
 All containers that are generated are dependent on the host OS despite the
 node type that is specified in the example RSpec, i.e. an Ubuntu host machine
