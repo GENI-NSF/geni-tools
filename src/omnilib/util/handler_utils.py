@@ -171,7 +171,7 @@ def _get_slice_cred(handler, urn):
         handler.logger.error("Got invalid slice credential for slice %s: %s" % (urn, cred))
         cred = None
         message = "Invalid slice credential returned"
-    if handler.opts.api_version >= 3:
+    if cred and handler.opts.api_version >= 3:
         cred = handler.framework.wrap_cred(cred)
     return (cred, message)
 
