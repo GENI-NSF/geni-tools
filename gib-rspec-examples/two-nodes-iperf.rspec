@@ -1,0 +1,41 @@
+<rspec type="request" 
+	xmlns="http://www.geni.net/resources/rspec/3" 
+	xmlns:flack="http://www.protogeni.net/resources/rspec/ext/flack/1" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+        xmlns:planetlab="http://www.planet-lab.org/resources/sfa/ext/planetlab/1" 
+	xsi:schemaLocation="http://www.geni.net/resources/rspec/3 
+	http://www.geni.net/resources/rspec/3/request.xsd">  
+
+  <node client_id="left" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+     <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops:UBUNTU10-STD" os="Linux" version="10"/>  
+    </sliver_type>
+    <services>
+      <execute command="/local/iperf-script.sh" shell="sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw"/>
+    </services>
+    <interface client_id="left:if0">
+    </interface>
+  </node>
+
+  <node client_id="right" component_manager_id="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm" exclusive="true">
+    <sliver_type name="raw-pc">
+     <disk_image name="urn:publicid:IDN+emulab.net+image+emulab-ops:UBUNTU10-STD" os="Linux" version="10"/>                               
+    </sliver_type>
+    <services>
+      <execute command="/local/iperf-script.sh" shell="sh"/>
+      <install install_path="/local" url="http://groups.geni.net/geni/attachment/wiki/GiB-gettingStarted/iperf-script.tar.gz?format=raw"/>
+    </services>
+    <interface client_id="right:if0">
+    </interface>
+  </node>
+
+  <link client_id="left-right-lan">
+    <component_manager name="urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm"/>
+    <interface_ref client_id="left:if0"/>
+    <interface_ref client_id="right:if0"/>
+    <property source_id="left:if0" dest_id="right:if0"/>
+    <property source_id="right:if0" dest_id="left:if0"/>
+    <link_type name="lan"/>
+  </link>
+</rspec>

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=gib-startup
+GenericName=GENI-in-a-Box startup script
+Comment=This script starts up the GENI-in-a-Box CH and AM
+Exec=gib-startup.sh
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true

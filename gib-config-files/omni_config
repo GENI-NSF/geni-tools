@@ -1,0 +1,195 @@
+# This is a sample Omni config file
+# It tells Omni how to talk to various Clearinghouses.
+# And by extension, which Experimenter credentials to use.
+
+# Omni looks for this file in 4 locations, using the first found
+# 1) The location given by the -c command line arg - as a full path
+# 2) The -c command line arg as a file relative to ~/.gcf
+# 3) omni_config in the current directory
+# 4) ~/.gcf/omni_config
+
+# Any given instance of omni makes calls to a framework 
+# (e.g., SFA, ProtoGENI, etc..) to create slices, get slice
+# credentials, and to find a list of authorized aggregates.
+# This file specifies the control frameworks that you are
+# a member of and the users that you want to be able to login
+# to your allocated resources (e.g., virtual machines)
+
+
+[omni]
+# The default control framework for omni to use.
+# Override on the commandline with -f argument.
+# This should be the name of a section that you define below
+# Note you could have multiple instances of the same type
+# configured, EG for different MyPLC instances.
+# default_cf = my_gcf
+default_cf = gib_ch
+
+# The slice_users argument in "CreateSliver".  It uploads
+# names and public ssh keys to allocated resources for login.
+# Details on users should be defined in sections below
+users = Alice
+
+
+# Omni will by default contact every Aggregate Manager listed
+# by your control framework's registry/clearinghouse.  If you would
+# like to provide a specific list of aggregates to contact, do so 
+# here in a comma delimited list of of urls.
+# e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and 
+#  an OpenFlow/Expedient AM in the GPO lab would be: 
+# aggregates = http://www.planet-lab.org:12347/, \
+#  https://www.emulab.net/protogeni/xmlrpc/am, \
+#  http://myplc2.gpolab.bbn.com:8001/, \
+#  https://masada.gpolab.bbn.com:443/openflow/gapi/
+
+
+# You can also tell Omni a single aggregate URL to contact, with the -a
+# argument. In addition, rather than remembering the URL, you can define a
+# nickname for the aggregate here. This is completely optional.
+
+#------AM nicknames
+# Format :
+# Nickname=URN, URL
+# URN is optional
+[aggregate_nicknames]
+gib=,http://geni-in-a-box.net:8001
+
+pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
+pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am
+pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+plc=,https://www.planet-lab.org:12346
+pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am
+pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+
+# Private myplc installations
+plc-gpo=,http://myplc.gpolab.bbn.com:12346/
+plc-clemson=,http://myplc.clemson.edu:12346/
+plc-stanford=,https://myplc.stanford.edu:12346/
+plc-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
+plc-washington=,https://of.cs.washington.edu:12346/
+plc-rutgers=,https://plc.orbit-lab.org:12346/
+plc-indiana=,https://myplc.grnoc.iu.edu:12346/
+plc-gatech=,https://myplc.cip.gatech.edu:12346/
+
+# OpenFlow AMs
+of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
+of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
+of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
+of-wisconsin=,https://foam.wail.wisc.edu:3626/foam/gapi/1
+of-rutgers=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
+of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
+of-gatech=,https://nox.orbit-lab.org:3626/foam/gapi/1
+of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
+of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
+
+# ==================================
+# Configure Control Frameworks here
+
+# At least one framework section (sfa/pg/gcf) needs to be filled out
+# and pointed to by default_cf
+
+
+[my_sfa]
+# Most of these fields can be found in an SFI configuration
+# See: http://svn.planet-lab.org/wiki/SFAConfigurationGuide#ConfiguringSFITools
+
+# The framework type (either sfa, pg, or gcf)
+type=sfa
+
+# HRN of your MyPLC or PLC (e.g., plc.princeton) site
+# Available in the Issuer CN of your user cert in some form
+authority=plc.bbn
+
+# Your planetlab username
+user=plc.bbn.jkarlin
+
+# Your PL certificate (omni will offer to download it here if needed)
+cert=~/.gcf/jkarlin.gid
+
+# Your planetlab private key
+key=~/.gcf/id_rsa_planetlab
+
+# URLs of your PL registry and slice manager					
+# Be sure these are reachable
+registry=http://www.planet-lab.org:12345
+slicemgr=http://www.planet-lab.org:12347
+
+
+
+
+[my_gcf]
+type=gcf
+
+# Authority part of the control frameworks URN
+authority=geni:gpo:gcf
+
+# Where the gcf-ch server is listening
+ch=https://localhost:8000
+
+cert=~/.gcf/alice-cert.pem
+key=~/.gcf/alice-key.pem
+
+[gib_ch]
+# Authority part of the control frameworks URN
+authority=geni:gpo:gcf
+type=pgch
+
+
+# For debugging
+verbose=false
+# The address of the PG clearinghouse. Here we use tha main CH in Utah,
+# with authority name: emulab.net
+ch=https://localhost:8000
+
+# The address of the PG slice authority. Here for comparison we show
+# using a different slice authority for the PG authority
+# pgeni.gpolab.bbn.com
+sa=https://localhost:8000
+
+cert=~/.gcf/alice-cert.pem
+key=~/.gcf/alice-key.pem
+
+
+[my_pg]
+type=pg
+# For debugging
+verbose=false
+# The address of the PG clearinghouse. Here we use tha main CH in Utah,
+# with authority name: emulab.net
+ch=https://www.emulab.net:443/protogeni/xmlrpc/ch
+
+# The address of the PG slice authority. Here for comparison we show
+# using a different slice authority for the PG authority
+# pgeni.gpolab.bbn.com
+sa=https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+
+# When you log in to PG you can download your cert and key in 1 file.
+# That combined .pem file can be used as both cert and key here.
+cert=~/.gcf/encrypted.pem
+key=~/.gcf/pgcert.pem
+
+
+# ===================================
+# Define users here.
+
+# Per above, these are the users of the slices, to tell
+# aggregates who care who will be logging in and how.
+# See the CreateSliver API call.
+
+
+
+[Alice]
+# The URN given to Alice by her control framework
+# EG run openssl x509 -in [user cert file] -text and 
+# look at the Subject Alternative Name URI. 
+# Take the bit after "URI:" and before the comma.
+urn=urn:publicid:IDN+geni.net:gpo:gcf+user+alice
+
+# The SSH public keys to install for Alice to allow
+# Alice to log in to the allocated resource.
+# Comma delimited list of SSH public key file names.
+# Note that these could be keys for a list of collaborators,
+# all of whom will get to log in to the same account.
+keys=~/.gcf/alice.pub 
+
