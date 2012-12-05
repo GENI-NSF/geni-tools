@@ -44,9 +44,15 @@ def _derefAggNick(handler, aggregateNickname):
     urn = "unspecified_AM_URN"
     url = aggregateNickname
 
-    if handler.config['aggregate_nicknames'].has_key(aggregateNickname):
-        url = handler.config['aggregate_nicknames'][aggregateNickname][1]
-        tempurn = handler.config['aggregate_nicknames'][aggregateNickname][0]
+    # ConfigParser.optionxform by default lowercases keys. So aggregate nicknames
+    # are lowercased. Here we lowercase any -a argument before
+    # checking the defined nicknames, to make sure
+    # you can find your nickname
+    amNick = aggregateNickname.lower()
+
+    if handler.config['aggregate_nicknames'].has_key(amNick):
+        url = handler.config['aggregate_nicknames'][amNick][1]
+        tempurn = handler.config['aggregate_nicknames'][amNick][0]
         if tempurn.strip() != "":
             urn = tempurn
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)

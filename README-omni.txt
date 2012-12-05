@@ -56,6 +56,9 @@ New in v2.2:
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
  - Provision now supplies the `geni_rspec_version` option, to specify
  the manifest format to use.
+ - All keys in omni_config are stored lowercase - including aggregate
+ nicknames. This means nicknames are case insensitive, and must be
+ looked up that way. (ticket # 218)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
