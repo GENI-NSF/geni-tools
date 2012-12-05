@@ -67,6 +67,11 @@
        In AM API v3:
        [string dictionary] = omni.py shutdown SLICENAME
 
+       Non-AM API functions exported by aggregates, supported by Omni:
+       From ProtoGENI/InstaGENI:
+       [string dictionary] = omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>
+       [string dictionary] = omni.py snapshotimage SLICENAME IMAGENAME [false] -u <SLIVER URN> ; alias for createimage
+
       Clearinghouse functions:
        [string dictionary urn->url] = omni.py listaggregates
        On success: [string sliceurnstring] = omni.py createslice SLICENAME
@@ -635,6 +640,10 @@ def getParser():
  \t\t\t deletesliver <slicename> [AM API V1&2 only] \n\
  \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
+ \t\tNon AM API aggregate functions (supported by some aggregates): \n\
+ \t\t\t createimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
+ \t\t\t snapshotimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
+ \t\t\t\t [alias for 'createimage'] \n\
  \t\tClearinghouse / Slice Authority functions: \n\
  \t\t\t listaggregates \n\
  \t\t\t createslice <slicename> \n\
@@ -660,8 +669,8 @@ def getParser():
     parser.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
-    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="AD-RSPEC-TYPE AD-RSPEC-VERSION",
-                      help="Ad RSpec type and version to return, default 'GENI 3'")
+    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
+                      help="RSpec type and version to return, default 'GENI 3'")
     parser.add_option("--debug", action="store_true", default=False,
                        help="Enable debugging output")
     parser.add_option("-o", "--output",  default=False, action="store_true",

@@ -39,6 +39,7 @@ import xml.etree.ElementTree as etree
 from geni.util import rspec_util 
 from geni.util.rspec_schema import *
 from geni.util import urn_util
+from geni.util import error_util
 
 import omni
 import omni_unittest as ut
@@ -1399,7 +1400,19 @@ class Test(ut.OmniUnittest):
         for agg, indAgg in allAggs.items():
             err_code, msg = self.assertCodeValueOutput( AMAPI_call, agg, indAgg )
             retVal2 = None
-            self.assertSuccess( err_code )
+            # For poa, err_code 13 (UNSUPPORTED) is valid
+            if ((AMAPI_call is not "PerformOperationalAction") or
+                (command not in ('geni_start', 'geni_stop', 'geni_restart'))):
+                self.assertSuccess( err_code )
+            else:
+                ec = int(err_code)
+                if not (ec in (0, 13)):
+                    msg = "geni_code not 0 (SUCCESS) or 13 (UNSUPPORTED). "
+                    if error_util.err_codes.has_key( err_code ):
+                        label = error_util.err_codes[ err_code ]['label']
+                        description = error_util.err_codes[ item ]['description']
+                        msg = msg+"\nInstead reported geni_code %d (%s): '%s'" % (ec, label, description)
+                    raise NotSuccessError, msg
             if err_code == SUCCESS:
                 # value only required if it is successful
                 slivers = None
@@ -1762,6 +1775,7 @@ class Test(ut.OmniUnittest):
 #                print 'not doing Provision or POA'
 
         return numslivers, manifest, slivers
+
     def subtest_generic_SliverStatus( self, slicename, sliverlist = None ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )

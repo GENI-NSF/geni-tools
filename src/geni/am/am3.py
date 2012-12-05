@@ -504,6 +504,37 @@ class ReferenceAggregateManager(object):
         expiration = self.min_expire(creds, self.max_lease,
                                      ('geni_end_time' in options
                                       and options['geni_end_time']))
+
+        if 'geni_rspec_version' not in options:
+            # This is a required option, so error out with bad arguments.
+            self.logger.error('No geni_rspec_version supplied to Provision.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version was not supplied.')
+        if 'type' not in options['geni_rspec_version']:
+            self.logger.error('Provision: geni_rspec_version does not contain a type field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a type field.')
+        if 'version' not in options['geni_rspec_version']:
+            self.logger.error('Provision: geni_rspec_version does not contain a version field.')
+            return self.errorResult(AM_API.BAD_ARGS,
+                                    'Bad Arguments: option geni_rspec_version does not have a version field.')
+
+        # Look to see what RSpec version the client requested
+        # Error-check that the input value is supported.
+        rspec_type = options['geni_rspec_version']['type']
+        if isinstance(rspec_type, str):
+            rspec_type = rspec_type.lower().strip()
+        rspec_version = options['geni_rspec_version']['version']
+        if rspec_type != 'geni':
+            self.logger.error('Provision: Unknown RSpec type %s requested', rspec_type)
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec type %s is not a valid option.' % (rspec_type))
+        if rspec_version != '3':
+            self.logger.error('Provision: Unknown RSpec version %s requested', rspec_version)
+            return self.errorResult(AM_API.BAD_VERSION,
+                                    'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
+        self.logger.info("Provision requested RSpec %s (%s)", rspec_type, rspec_version)
+
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
             sliver.setExpiration(expiration)
