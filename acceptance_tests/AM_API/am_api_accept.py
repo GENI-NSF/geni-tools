@@ -1775,6 +1775,7 @@ class Test(ut.OmniUnittest):
 #                print 'not doing Provision or POA'
 
         return numslivers, manifest, slivers
+
     def subtest_generic_SliverStatus( self, slicename, sliverlist = None ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )
