@@ -38,8 +38,6 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v2.2:
- - If an aggregate does not speak the requested Ad RSpec version,
- print a more helpful message. (ticket #211)
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
  only 1 RSpec format or specified a default Ad format, then use that
@@ -49,11 +47,13 @@ New in v2.2:
  changes are for the entire Omni invocation, not per
  aggregate. Do not change in dev mode, or if the user explicitly
  specified this API version. (ticket #213)
- - Support GCF CH list_my_slices (ticket #214)
- - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
+ - If an aggregate does not speak the requested Ad RSpec version,
+ print a more helpful message. (ticket #211)
  - Add support for the ProtoGENI / InstaGENI 'createimage' method to
- snapshot your disk. See
+ snapshot your disk. This is only minimally supported by ProtoGENI. See
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
+ - Support GCF CH list_my_slices (ticket #214)
+ - Add a 'gib' framework for geni-in-a-box to talk to the 'pgch' clearinghouse
  - Provision now supplies the `geni_rspec_version` option, to specify
  the manifest format to use.
  - All keys in omni_config are stored lowercase - including aggregate
