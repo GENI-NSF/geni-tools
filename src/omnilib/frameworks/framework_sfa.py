@@ -161,7 +161,7 @@ class Framework(Framework_Base):
         self.logger = logging.getLogger('omni.sfa')
 
         # Download a cert from PLC if necessary
-        if not os.path.exists(config['cert']):
+        if (not os.path.exists(config['cert'])) or (os.path.getsize(config['cert']) < 1):
             res = raw_input("Your certificate file (%s) was not found, would you like me to download it for you to %s? (Y/n)" % (config['cert'],config['cert']))
             if not res.lower().startswith('n'):
                 # Create a self-signed cert to talk to the registry with
@@ -198,6 +198,8 @@ class Framework(Framework_Base):
                 
         if not os.path.exists(config['key']):
             sys.exit('SFA Framework keyfile %s doesnt exist' % config['key'])
+        if not os.path.getsize(config['key']) > 0:
+            sys.exit('SFA Framework keyfile %s is empty' % config['key'])
 
         Framework_Base.__init__(self,config)        
 

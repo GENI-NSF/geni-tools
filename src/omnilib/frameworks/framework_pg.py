@@ -54,9 +54,13 @@ class Framework(Framework_Base):
         config['cert'] = os.path.expanduser(config['cert'])
         if not os.path.exists(config['cert']):
             sys.exit('PG Framework certfile %s doesnt exist' % config['cert'])
+        if not os.path.getsize(config['cert']) > 0:
+            sys.exit('PG Framework certfile %s is empty' % config['cert'])
         config['key'] = os.path.expanduser(config['key'])
         if not os.path.exists(config['key']):
             sys.exit('PG Framework keyfile %s doesnt exist' % config['key'])
+        if not os.path.getsize(config['key']) > 0:
+            sys.exit('PG Framework keyfile %s is empty' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
         else:

@@ -280,18 +280,18 @@ def initialize(opts):
 
     # If framework is pgeni, check that the cert file is in the right place
     if not cmp(opts.framework,'pg'):
-        if not os.path.exists(opts.cert):
+        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
             sys.exit("Geni certificate not in '"+opts.cert+"'. \nMake sure you \
 place the .pem file that you downloaded from the Web UI there,\nor \
 use the '-p' option to specify a custom location of the certificate.\n")
 
     # If framework is planetlab, check that the key are in the right place
     if not cmp(opts.framework,'pl'):
-        if not os.path.exists(opts.cert):
+        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
             sys.exit("\nScript currently does not support automatic download of \
 PlanetLab cert.\nIf you have a copy place it at '"+opts.cert+"', \nor \
 use the '-p' option to specify a custom location of the certificate.\n")
-        if not os.path.exists(opts.plkey) :
+        if not os.path.exists(opts.plkey) or os.path.getsize(opts.cert) < 1:
             sys.exit("\nPlanetLab private key not in '"+opts.plkey+"'. \nMake sure \
 you place the private key registered with PlanetLab there or use\n\
 the '-k' option to specify a custom location for the key.\n")

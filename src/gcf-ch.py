@@ -76,9 +76,13 @@ class CommandHandler(object):
         keyfile = getAbsPath(opts.keyfile)
         if not os.path.exists(certfile):
             sys.exit("Clearinghouse certfile %s doesn't exist" % certfile)
+        if not os.path.getsize(certfile) > 0:
+            sys.exit("Clearinghouse certfile %s is empty" % certfile)
     
         if not os.path.exists(keyfile):
             sys.exit("Clearinghouse keyfile %s doesn't exist" % keyfile)
+        if not os.path.getsize(keyfile) > 0:
+            sys.exit("Clearinghouse keyfile %s is empty" % keyfile)
 
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
         ch.runserver(addr, keyfile, certfile, 

@@ -55,10 +55,14 @@ class Framework_Base():
         self.cert = getAbsPath(config['cert'])
         if not os.path.exists(self.cert):
             sys.exit("Frameworks certfile %s doesn't exist" % self.cert)
+        if not os.path.getsize(self.cert) > 0:
+            sys.exit("Frameworks certfile %s is empty" % self.cert)
 
         self.key = getAbsPath(config['key'])
         if not os.path.exists(self.key):
             sys.exit("Frameworks keyfile %s doesn't exist" % self.key)
+        if not os.path.getsize(self.key) > 0:
+            sys.exit("Frameworks keyfile %s is empty" % self.key)
         self.sslctx = None
 
     def init_user_cred( self, opts ):

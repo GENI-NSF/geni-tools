@@ -131,12 +131,24 @@ def main(argv=None):
     if (hasattr(opts, 'am_url')):
         am_url = getattr(opts, 'am_url');
 
+    certfile = getAbsPath(opts.certfile)
+    keyfile = getAbsPath(opts.keyfile)
+    if not os.path.exists(certfile):
+        sys.exit("Proxy AM certfile %s doesn't exist" % certfile)
+    if not os.path.getsize(certfile) > 0:
+        sys.exit("Proxy AM certfile %s is empty" % certfile)
+
+    if not os.path.exists(keyfile):
+        sys.exit("Proxy AM keyfile %s doesn't exist" % keyfile)
+    if not os.path.getsize(keyfile) > 0:
+        sys.exit("Proxy AM keyfile %s is empty" % keyfile)
+
     logger = logging.getLogger('gcf-am');
     logger.info('Talking to AM ' + am_url);
     pams = geni.am.proxyam.ProxyAggregateManagerServer((opts.host, int(opts.port)),
                                                        am_url,
-                                             keyfile=getAbsPath(opts.keyfile),
-                                             certfile=getAbsPath(opts.certfile),
+                                             keyfile=keyfile,
+                                             certfile=certfile,
                                              trust_roots_dir=getAbsPath(opts.rootcadir),
                                              ca_certs=comboCertsFile,
                                              base_name=config['global']['base_name'])
