@@ -948,6 +948,11 @@ class Test(ut.OmniUnittest):
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
         # v3 allows return with no slivers, so expect no errors.
+        # Currently, PGv3 AM gives some other random error code (not
+        # 0). But that isn't really right.
+        # The GCF AM returns a SEARCHFAILED - a NotSuccessError.
+        # PL returns an empty list
+        # We should support all of those. See ticket #220
         if self.options_copy.api_version >= 3:
             self.subtest_generic_SliverStatus( slicename, expectedNumSlivers=0 )
         else:
