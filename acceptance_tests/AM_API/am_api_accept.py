@@ -947,8 +947,12 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError), 
-                          self.subtest_generic_SliverStatus, slicename )
+        # v3 allows return with no slivers, so expect no errors.
+        if self.options_copy.api_version >= 3:
+            self.subtest_generic_SliverStatus( slicename, expectedNumSlivers=0 )
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError), 
+                          self.subtest_generic_SliverStatus, slicename, expectedNumSlivers=0 )
         
         if not self.options_copy.strict:
             # if --less-strict, then accept a returned error
@@ -1346,12 +1350,13 @@ class Test(ut.OmniUnittest):
                                         AMAPI_call="Provision", 
                                         sliverlist=sliverlist,
                                         expectedExpiration=expectedExpiration)
-    def subtest_Status(self, slice_name, sliverlist = None, expectedExpiration=None):
+    def subtest_Status(self, slice_name, sliverlist = None, expectedExpiration=None, expectedNumSlivers=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
-                                        omni_method='status', 
-                                        AMAPI_call="Status", 
-                                        sliverlist=sliverlist,
-                                        expectedExpiration=expectedExpiration)
+                                                omni_method='status', 
+                                                AMAPI_call="Status", 
+                                                sliverlist=sliverlist,
+                                                expectedExpiration=expectedExpiration,
+                                                expectedNumSlivers=expectedNumSlivers)
 
     def subtest_PerformOperationalAction(self, slice_name, command, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
@@ -1370,7 +1375,8 @@ class Test(ut.OmniUnittest):
                                     omni_method='provision', 
                                     AMAPI_call="Provision",
                                     sliverlist=None, expectedExpiration=None, 
-                                    command=None):
+                                    command=None,
+                                    expectedNumSlivers=None):
         self.assertTrue(omni_method in ['renew', 'provision', 'status',
                                         'performoperationalaction', 'delete'],
                         "omni_method is %s and not one of " \
@@ -1442,11 +1448,19 @@ class Test(ut.OmniUnittest):
                 else:
                     print "Shouldn't get here"
 
-                self.assertTrue( numSlivers > 0,
+                if expectedNumSlivers is None:
+                    self.assertTrue( numSlivers > 0,
                                  "Return from '%s' " \
                                      "expected to list slivers " \
                                      "but did not"
                                  % (AMAPI_call))
+                else:
+                    self.assertTrue( numSlivers == expectedNumSlivers,
+                                 "Return from '%s' " \
+                                     "expected to list %d slivers " \
+                                     "but listed %d instead"
+                                 % (AMAPI_call, expectedNumSlivers, numSlivers))
+
                 if sliverlist:
                     # Check that return slivers is same set as sliverlist!
                     if slivers:
@@ -1776,11 +1790,11 @@ class Test(ut.OmniUnittest):
 
         return numslivers, manifest, slivers
 
-    def subtest_generic_SliverStatus( self, slicename, sliverlist = None ):
+    def subtest_generic_SliverStatus( self, slicename, sliverlist = None, expectedNumSlivers=None ):
         if self.options_copy.api_version <= 2:
             self.subtest_SliverStatus( slicename )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Status( slicename, sliverlist )
+            self.subtest_Status( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
         if self.options_copy.skip_renew:
