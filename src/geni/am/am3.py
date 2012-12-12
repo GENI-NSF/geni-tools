@@ -692,7 +692,18 @@ class ReferenceAggregateManager(object):
         """
         self.logger.info('Describe(%r)' % (urns))
         self.expire_slivers()
-        the_slice, slivers = self.decode_urns(urns)
+        # APIv3 spec says that a slice with nothing local should
+        # give an empty manifest, not an error
+        try:
+            the_slice, slivers = self.decode_urns(urns)
+        except ApiErrorException, ae:
+            if ae.code == AM_API.SEARCH_FAILED and "Unknown slice" in ae.output:
+                # This is ok
+                slivers = []
+                the_slice = Slice(urns[0])
+            else:
+                raise ae
+
         privileges = (SLIVERSTATUSPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
         credentials = [c['geni_value'] for c in filter(isGeniCred, credentials)]
