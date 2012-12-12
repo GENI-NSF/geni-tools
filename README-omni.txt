@@ -60,6 +60,7 @@ New in v2.2:
  nicknames. This means nicknames are case insensitive, and must be
  looked up that way. (ticket # 218)
  - Print error if certificate or key file is empty (ticket #210)
+ - Avoid exception if no live AMs are found (ticket #221)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)
