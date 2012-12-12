@@ -958,7 +958,7 @@ class Test(ut.OmniUnittest):
         self.logger.info("Get Status: should fail (error or 0 slivers)")
         gotRet = False
         if self.options_copy.api_version >= 3:
-            # FIXME: Factor this out
+            # FIXME: Factor this out assertExceptionOrEmptyReturn
             # func, *args, **kwargs, funcname, assertions[]
             # return ret of function and whether that is defined (so
             # we can see None ret)
@@ -979,7 +979,6 @@ class Test(ut.OmniUnittest):
             self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError), 
                           self.subtest_generic_SliverStatus, slicename, expectedNumSlivers=0 )
         
-
         self.logger.info("List slice contents: should fail (error or 0 slivers)")
         gotRet = False
         try:
