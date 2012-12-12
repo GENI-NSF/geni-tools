@@ -377,6 +377,9 @@ def createConfigFile(opts, public_key_file):
             if urn.find('pgeni.gpolab.bbn.com') != -1 :
                 sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
             else : 
+              if urn.find('loni.org') != -1
+                sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
+              else:
                 raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % urn.split('+')[-2]) 
         logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
         cf_section = """

@@ -429,63 +429,68 @@ Host %(client_id)s
       print "\n"
 
 
+def main_no_print(argv=None):
+  global slicename, options, config
+
+  parseArguments(argv=argv)
+
+  # Call omni.initialize so that we get the config structure that
+  # contains the configuration parameters from the omni_config file
+  # We need them to get the ssh keys per user
+  framework, config, args, opts = omni.initialize( [], options )
+
+  keyList = findUsersAndKeys( )
+  if sum(len(val) for val in keyList.itervalues())== 0:
+    output = "ERROR:There are no keys. You can not login to your nodes.\n"
+    sys.exit(-1)
+
+  # Run equivalent of 'omni.py getversion'
+  argv = ['getversion']
+  try:
+    text, getVersion = omni.call( argv, options )
+  except (oe.AMAPIError, oe.OmniError) :
+    print "ERROR: There was an error executing getVersion, review the logs."
+    sys.exit(-1)
+
+  if not getVersion:
+    print "ERROR: Got no GetVersion output; review the logs."
+    sys.exit(-1)
+
+  loginInfoDict = {}
+  for amUrl, amOutput in getVersion.items() :
+    if not amOutput :
+      print "%s returned an error on getVersion, skip!" % amUrl
+      continue
+    amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
+    print amType
+
+    if amType == "foam" :
+      print "No login information for FOAM! Skip %s" %amUrl
+      continue
+    # XXX Although ProtoGENI returns the service tag in the manifest
+    # it does not contain information for all the users, so we will 
+    # stick with the sliverstatus until this is fixed
+    if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
+      amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
+      if len(amLoginInfo) > 0 :
+        loginInfoDict[amUrl] = {'amType' : amType,
+                                'info' : amLoginInfo
+                               }
+      continue
+    if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
+      amLoginInfo = getInfoFromSliceManifest(amUrl)
+      # Get the status only if we care
+      if len(amLoginInfo) > 0 :
+        if options.readyonly:
+          amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
+        loginInfoDict[amUrl] = {'amType':amType,
+                                'info':amLoginInfo
+                               }
+  return loginInfoDict, keyList
+
+
 def main(argv=None):
-    global slicename, options, config
-
-    parseArguments(argv=argv)
-
-    # Call omni.initialize so that we get the config structure that
-    # contains the configuration parameters from the omni_config file
-    # We need them to get the ssh keys per user
-    framework, config, args, opts = omni.initialize( [], options )
-
-    keyList = findUsersAndKeys( )
-    if sum(len(val) for val in keyList.itervalues())== 0:
-      output = "ERROR:There are no keys. You can not login to your nodes.\n"
-      sys.exit(-1)
-
-    # Run equivalent of 'omni.py getversion'
-    argv = ['getversion']
-    try:
-      text, getVersion = omni.call( argv, options )
-    except (oe.AMAPIError, oe.OmniError) :
-      print "ERROR: There was an error executing getVersion, review the logs."
-      sys.exit(-1)
-
-    if not getVersion:
-      print "ERROR: Got no GetVersion output; review the logs."
-      sys.exit(-1)
-
-    loginInfoDict = {}
-    for amUrl, amOutput in getVersion.items() :
-      if not amOutput :
-        print "%s returned an error on getVersion, skip!" % amUrl
-        continue
-      amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
-      print amType
-
-      if amType == "foam" :
-        print "No login information for FOAM! Skip %s" %amUrl
-        continue
-      # XXX Although ProtoGENI returns the service tag in the manifest
-      # it does not contain information for all the users, so we will 
-      # stick with the sliverstatus until this is fixed
-      if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
-        amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
-        if len(amLoginInfo) > 0 :
-          loginInfoDict[amUrl] = {'amType' : amType,
-                                  'info' : amLoginInfo
-                                 }
-        continue
-      if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
-        amLoginInfo = getInfoFromSliceManifest(amUrl)
-        # Get the status only if we care
-        if len(amLoginInfo) > 0 :
-          if options.readyonly:
-            amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
-          loginInfoDict[amUrl] = {'amType':amType,
-                                  'info':amLoginInfo
-                                 }
+    loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
     printLoginInfo(loginInfoDict, keyList) 
     if not loginInfoDict:
