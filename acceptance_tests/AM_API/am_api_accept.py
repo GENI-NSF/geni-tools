@@ -947,49 +947,100 @@ class Test(ut.OmniUnittest):
         self.success = True
 
     def subtest_CreateSliverWorkflow_failure( self, slicename ):
+        # Call Status, List, then Delete
+
         # v3 allows return with no slivers, so expect no errors.
         # Currently, PGv3 AM gives some other random error code (not
         # 0). But that isn't really right.
         # The GCF AM returns a SEARCHFAILED - a NotSuccessError.
         # PL returns an empty list
         # We should support all of those. See ticket #220
+        self.logger.info("Get Status: should fail (error or 0 slivers)")
+        gotRet = False
         if self.options_copy.api_version >= 3:
-            self.subtest_generic_SliverStatus( slicename, expectedNumSlivers=0 )
+            # FIXME: Factor this out
+            # func, *args, **kwargs, funcname, assertions[]
+            # return ret of function and whether that is defined (so
+            # we can see None ret)
+            try:
+                ret = self.subtest_generic_SliverStatus( slicename, expectedNumSlivers=0 )
+                gotRet = True
+            except Exception, e:
+                gotExpected = False
+                for exc in (AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError):
+                    if isinstance(e, exc):
+                        self.logger.debug("Status(non existent slice) got expected error %s %s", type(e), e)
+                        gotExpected = True
+                        break
+                if not gotExpected:
+                    self.logger.error("Got unexpected error from Status on non-existent slice: %s %s", type(e), e)
+                    raise
+            if gotRet:
+                self.assertEqual(ret, 0, "Expected Status() to show 0 slivers in slice %s, but got %s" % (slicename, ret))
         else:
             self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError), 
                           self.subtest_generic_SliverStatus, slicename, expectedNumSlivers=0 )
         
-        if not self.options_copy.strict:
-            # if --less-strict, then accept a returned error
-            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), 
-                              self.subtest_generic_ListResources, slicename )
-        else:
-            # if --more-strict
-            # ListResources should return an RSpec containing no resources
-            manifest = self.subtest_generic_ListResources( slicename )
-            self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                             "expected to be wellformed XML file " \
-                             "but was not. Return was: " \
-                             "\n%s\n" \
-                             "... edited for length ..."
-                         % (slicename, manifest[:1000]))                         
-            self.assertFalse( rspec_util.has_child( manifest ),
-                  "Manifest RSpec returned by 'ListResources' on slice '%s' " \
-                              "expected to be empty " \
-                              "but was not. Return was: " \
-                              "\n%s\n" \
-                              "... edited for length ..."
-                          % (slicename, manifest[:1000]))
-        
-        # Also repeated calls to DeleteSliver should now fail
-        try:
-            self.assertRaises((AMAPIError, AssertionError, NoSliceCredError), 
-                              self.subtest_generic_DeleteSliver, slicename )
-        # Or succeed by returning True
-        except AssertionError:
-            self.subtest_generic_DeleteSliver( slicename )
 
+        self.logger.info("List slice contents: should fail (error or 0 slivers)")
+        gotRet = False
+        try:
+            manifest = self.subtest_generic_ListResources(slicename )
+            gotRet = True
+        except Exception, e:
+            gotExpected = False
+            if not self.options_copy.strict:
+                for exc in (AMAPIError, NotSuccessError, NotDictAssertionError):
+                    if isinstance(e, exc):
+                        self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
+                        gotExpected = True
+                        break
+            if not gotExpected:
+                self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
+                raise
+        if gotRet:
+            self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
+                             "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                                 "expected to be wellformed XML file " \
+                             "but was not. Return was: " \
+                                 "\n%s\n" \
+                                 "... edited for length ..."
+                             % (slicename, manifest[:1000]))
+            self.assertFalse( rspec_util.has_child( manifest ),
+                              "Manifest RSpec returned by 'ListResources' on slice '%s' " \
+                                  "expected to be empty " \
+                                  "but was not. Return was: " \
+                                  "\n%s\n" \
+                                  "... edited for length ..."
+                              % (slicename, manifest[:1000]))
+
+        # Also calls to DeleteSliver should now fail
+#        self.logger.info("Calling DeleteSliver")
+        self.logger.info("Delete Sliver: should fail (error or 0 slivers)")
+        gotRet = False
+        ret = None
+        try:
+            ret = self.subtest_generic_DeleteSliver(slicename, expectedNumSlivers=0)
+            gotRet = True
+        except Exception, e:
+            gotExpected = False
+            for exc in (AMAPIError, NotDictAssertionError, NotSuccessError):
+                if isinstance(e, exc):
+                    self.logger.debug("Delete(non existent slice) got expected error %s %s", type(e), e)
+                    gotExpected = True
+                    break
+            if not gotExpected:
+                self.logger.error("Got unexpected error from Delete on non-existent slice: %s %s", type(e), e)
+                raise
+        finally:
+            try:
+                self.subtest_generic_DeleteSliver(slicename, expectedNumSlivers=0)
+            except:
+                # Make sure everything is cleaned up
+                pass
+
+        if gotRet:
+            self.assertEqual(ret, 0, "Expected Delete() to show 0 slivers in slice %s, but got %s" % (slicename, ret))
 
     def test_CreateSliverWorkflow_multiSlice(self): 
         """test_CreateSliverWorkflow_multiSlice: Do CreateSliver workflow with multiple slices 
@@ -1369,12 +1420,13 @@ class Test(ut.OmniUnittest):
                                         AMAPI_call="PerformOperationalAction", sliverlist=sliverlist,
                                         command=command,
                                         expectedExpiration=expectedExpiration)
-    def subtest_Delete(self, slice_name, sliverlist = None, expectedExpiration=None):
+    def subtest_Delete(self, slice_name, sliverlist = None, expectedExpiration=None,expectedNumSlivers=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='delete', 
                                         AMAPI_call="Delete", 
                                         sliverlist=sliverlist,
-                                        expectedExpiration=expectedExpiration)
+                                        expectedExpiration=expectedExpiration,
+                                                expectedNumSlivers=expectedNumSlivers)
 
     def subtest_AMAPIv3CallNoRspec( self, slicename, 
                                     omni_method='provision', 
@@ -1606,6 +1658,7 @@ class Test(ut.OmniUnittest):
                             "%s\n" \
                             "... edited for length ..." 
                         % (agg))
+        resourceCount = 0
         for aggName, status in agg.items():
             self.assertDict(status, 
                             "Return from 'SliverStatus' for Aggregate %s " \
@@ -1628,6 +1681,8 @@ class Test(ut.OmniUnittest):
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_urn', str )
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_status', str )
                 self.assertKeyValueType( 'SliverStatus', aggName, resource, 'geni_error', str )
+            resourceCount += len(resources)
+        return resourceCount
 
     def subtest_DeleteSliver(self, slice_name):
         omniargs = ["deletesliver", slice_name]
@@ -1641,6 +1696,7 @@ class Test(ut.OmniUnittest):
                          "Sliver deletion expected to work " \
                          "but instead sliver deletion failed for slice: %s"
                          % slice_name )
+        return 0
 
     def subtest_createslice(self, slice_name ):
         """Create a slice. Not an AM API call."""
@@ -1743,11 +1799,11 @@ class Test(ut.OmniUnittest):
         elif self.options_copy.api_version >= 3:
             return self.subtest_Describe( slicename, *args, **kwargs )
 
-    def subtest_generic_DeleteSliver( self, slicename, sliverlist = None ):
+    def subtest_generic_DeleteSliver( self, slicename, sliverlist =  None, expectedNumSlivers=None ):
         if self.options_copy.api_version <= 2:
-            self.subtest_DeleteSliver( slicename )
+            return self.subtest_DeleteSliver( slicename )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Delete( slicename, sliverlist )
+            return self.subtest_Delete( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
 
     def subtest_generic_CreateSliver( self, slicename, doProvision=True, doPOA=True, expectedExpiration=None ):
         """For v1 and v2, call CreateSliver().  For v3, call
@@ -1797,9 +1853,9 @@ class Test(ut.OmniUnittest):
 
     def subtest_generic_SliverStatus( self, slicename, sliverlist = None, expectedNumSlivers=None ):
         if self.options_copy.api_version <= 2:
-            self.subtest_SliverStatus( slicename )
+            return self.subtest_SliverStatus( slicename )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Status( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
+            return self.subtest_Status( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
         if self.options_copy.skip_renew:

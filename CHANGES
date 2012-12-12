@@ -28,6 +28,7 @@ gcf 2.2:
   nicknames. This means nicknames are case insensitive, and must be
   looked up that way. (ticket # 218)
   - Print error if certificate or key file is empty (ticket #210)
+  - Avoid exception if no live AMs are found (ticket #221)
 
  * gcf
   - Implement list_my_slices (ticket #214)
@@ -35,6 +36,12 @@ gcf 2.2:
   - gcf-am v3: Require `geni_rspec_version` option to `Provision` (ticket
  # 216)
   - Print error if certificate or key file is empty (ticket #210)
+  - APIv3 gcf-am Describe now correctly returns an empty manifest for
+ an unknown slice (ticket #222)
+
+ * AM API Acceptance Tests
+  - Allow an empty return or error from some v3 methods, when slice has
+ nothing locally (ticket #220)
 
 gcf 2.1:
  * omni
