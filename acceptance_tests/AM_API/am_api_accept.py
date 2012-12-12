@@ -965,16 +965,14 @@ class Test(ut.OmniUnittest):
             try:
                 ret = self.subtest_generic_SliverStatus( slicename, expectedNumSlivers=0 )
                 gotRet = True
+            except (AMAPIError, NotSuccessError,
+                    NotDictAssertionError, NoSliceCredError), e:
+                self.logger.debug("Status(non existent slice) got expected error %s %s", type(e), e)
+            # Could drop this whole later except clause
             except Exception, e:
-                gotExpected = False
-                for exc in (AMAPIError, NotSuccessError, NotDictAssertionError, NoSliceCredError):
-                    if isinstance(e, exc):
-                        self.logger.debug("Status(non existent slice) got expected error %s %s", type(e), e)
-                        gotExpected = True
-                        break
-                if not gotExpected:
-                    self.logger.error("Got unexpected error from Status on non-existent slice: %s %s", type(e), e)
-                    raise
+                self.logger.error("Got unexpected error from Status on non-existent slice: %s %s", type(e), e)
+                raise
+
             if gotRet:
                 self.assertEqual(ret, 0, "Expected Status() to show 0 slivers in slice %s, but got %s" % (slicename, ret))
         else:
@@ -987,17 +985,16 @@ class Test(ut.OmniUnittest):
         try:
             manifest = self.subtest_generic_ListResources(slicename )
             gotRet = True
-        except Exception, e:
-            gotExpected = False
+        except (AMAPIError, NotSuccessError, NotDictAssertionError), e:
             if not self.options_copy.strict:
-                for exc in (AMAPIError, NotSuccessError, NotDictAssertionError):
-                    if isinstance(e, exc):
-                        self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
-                        gotExpected = True
-                        break
-            if not gotExpected:
+                self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
+            else:
                 self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
                 raise
+        except Exception, e:
+            self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
+            raise
+
         if gotRet:
             self.assertTrue( rspec_util.is_wellformed_xml( manifest ),
                              "Manifest RSpec returned by 'ListResources' on slice '%s' " \
@@ -1022,21 +1019,16 @@ class Test(ut.OmniUnittest):
         try:
             ret = self.subtest_generic_DeleteSliver(slicename, expectedNumSlivers=0)
             gotRet = True
+        except (AMAPIError, NotDictAssertionError, NotSuccessError), e:
+            self.logger.debug("Delete(non existent slice) got expected error %s %s", type(e), e)
         except Exception, e:
-            gotExpected = False
-            for exc in (AMAPIError, NotDictAssertionError, NotSuccessError):
-                if isinstance(e, exc):
-                    self.logger.debug("Delete(non existent slice) got expected error %s %s", type(e), e)
-                    gotExpected = True
-                    break
-            if not gotExpected:
-                self.logger.error("Got unexpected error from Delete on non-existent slice: %s %s", type(e), e)
-                raise
+            self.logger.error("Got unexpected error from Delete on non-existent slice: %s %s", type(e), e)
+            raise
         finally:
+            # Make sure everything is cleaned up
             try:
                 self.subtest_generic_DeleteSliver(slicename, expectedNumSlivers=0)
             except:
-                # Make sure everything is cleaned up
                 pass
 
         if gotRet:
