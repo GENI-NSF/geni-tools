@@ -1024,12 +1024,6 @@ class Test(ut.OmniUnittest):
         except Exception, e:
             self.logger.error("Got unexpected error from Delete on non-existent slice: %s %s", type(e), e)
             raise
-        finally:
-            # Make sure everything is cleaned up
-            try:
-                self.subtest_generic_DeleteSliver(slicename, expectedNumSlivers=0)
-            except:
-                pass
 
         if gotRet:
             self.assertEqual(ret, 0, "Expected Delete() to show 0 slivers in slice %s, but got %s" % (slicename, ret))
