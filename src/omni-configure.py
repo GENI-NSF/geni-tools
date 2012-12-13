@@ -452,6 +452,7 @@ pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 
 #Plublic PlanetLab AM
 plc=,https://www.planet-lab.org:12346
+plc3=,https://sfav3.planet-lab.org:12346 
 
 # Private myplc installations
 pl-gpo=,http://myplc.gpolab.bbn.com:12346/
