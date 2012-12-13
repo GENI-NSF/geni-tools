@@ -56,6 +56,9 @@ default_cf = my_gcf
 pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
 pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 
 pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
 pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
@@ -72,6 +75,7 @@ plc=,https://www.planet-lab.org:12346
 
 # Private myplc installations
 pl-gpo=,http://myplc.gpolab.bbn.com:12346/
+pl-bbn=,http://myplc.gpolab.bbn.com:12346/
 pl-clemson=,http://myplc.clemson.edu:12346/
 pl-stanford=,https://myplc.stanford.edu:12346/
 pl-indiana=,https://myplc.grnoc.iu.edu:12346/
@@ -79,6 +83,7 @@ pl-gatech=,https://myplc.cip.gatech.edu:12346/
 
 # OpenFlow AMs
 of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
+of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
 of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
 of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
 of-rutgers=,https://nox.orbit-lab.org:3626/foam/gapi/1
@@ -89,10 +94,12 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
 #Exogeni AMs include OpenFlow ExoGENI AMs
 eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-
+eg-bbn=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+eg-of-bbn=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1 
+eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 
 # ExoSM
 eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
@@ -110,6 +117,11 @@ ig-gpo2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 ig-gpo3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
 ig-gpo=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 ig-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
+ig-bbn1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-bbn2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-bbn3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-bbn=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
 
 # ==================================
 # Configure Control Frameworks here
