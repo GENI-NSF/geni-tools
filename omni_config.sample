@@ -54,10 +54,17 @@ default_cf = my_gcf
 
 #ProtoGENI AMs
 pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+
 pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
+pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+pg-utah3=,https://www.emulab.net/protogeni/xmlrpc/am/3.0
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+
 pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am/1.0
+pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+pg-ky3=,https://www.uky.emulab.net/protogeni/xmlrpc/am/3.0
 pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 
 #Plublic PlanetLab AM
@@ -67,9 +74,6 @@ plc=,https://www.planet-lab.org:12346
 pl-gpo=,http://myplc.gpolab.bbn.com:12346/
 pl-clemson=,http://myplc.clemson.edu:12346/
 pl-stanford=,https://myplc.stanford.edu:12346/
-pl-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
-pl-washington=,https://of.cs.washington.edu:12346/
-pl-rutgers=,https://plc.orbit-lab.org:12346/
 pl-indiana=,https://myplc.grnoc.iu.edu:12346/
 pl-gatech=,https://myplc.cip.gatech.edu:12346/
 
@@ -77,7 +81,6 @@ pl-gatech=,https://myplc.cip.gatech.edu:12346/
 of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
 of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
 of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
-of-wisconsin=,https://foam.wail.wisc.edu:3626/foam/gapi/1
 of-rutgers=,https://nox.orbit-lab.org:3626/foam/gapi/1
 of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
 of-gatech=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
@@ -87,14 +90,26 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 #Exogeni AMs include OpenFlow ExoGENI AMs
 eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+
 eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1 
 
+# ExoSM
+eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+
+
 #InstaGENI AMs, include OpenFlow InstaGENI AMs
 ig-utah1=,http://utah.geniracks.net/protogeni/xmlrpc/am
+ig-utah2=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah3=,http://utah.geniracks.net/protogeni/xmlrpc/am/3.0
 ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
+
+ig-gpo1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-gpo2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-gpo3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-gpo=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
 
 # ==================================
 # Configure Control Frameworks here
