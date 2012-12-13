@@ -51,6 +51,45 @@ VALID_NS = ['{http://www.geni.net/resources/rspec/3}',
             '{http://www.protogeni.net/resources/rspec/2}'
            ]
 
+def getYNAns(question):
+    valid_ans=['','y', 'n']
+    answer = raw_input("%s [Y,n]?" % question).lower()
+    while answer not in valid_ans:
+        answer = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+    if answer == 'n':
+        return False
+    return True
+
+
+def getFileName(filename):
+    """ This function takes as input a filename and if it already 
+        exists it will ask the user whether to replace it or not 
+        and if the file shouldn't be replaced it comes up with a
+        unique name
+    """
+    # If the file exists ask the # user to replace it or not
+    filename = os.path.expanduser(filename)
+    filename = os.path.abspath(filename)
+    if os.path.exists(filename):
+        (basename, extension) = os.path.splitext(filename)
+        question = "File " + filename + " exists, do you want to replace it "
+        if not getYNAns(question):
+            i = 1
+            if platform.system().lower().find('darwin') != -1 :
+                tmp_pk_file = basename + '(' + str(i) + ')' + extension
+            else :
+                tmp_pk_file = basename + '-' + str(i) + extension
+            
+            while os.path.exists(tmp_pk_file):
+                i = i+1
+                if platform.system().lower().find('darwin') != -1 :
+                    tmp_pk_file = basename + '(' + str(i) + ')' + extension
+                else :
+                    tmp_pk_file = basename + '-' + str(i) + extension
+            filename = tmp_pk_file
+    return filename
+
+
 def setNSPrefix(prefix):
   ''' Helper function for parsing rspecs. It sets the global variabl NSPrefix to
   the currently parsed rspec namespace. 
@@ -350,12 +389,21 @@ def getKeysForUser( amType, username, keyList ):
   return userKeyList
     
 def printLoginInfo( loginInfoDict, keyList ) :
+  global options
   '''Prints the Login Information from all AMs, all Users and all hosts '''
+  
+  # Check if the output option is set
+  if options.output :
+    filename = getFileName("logininfo.txt")
+    f = open(filename, "w")
+  else :
+    f = sys.stdout
+
   for amUrl, amInfo in loginInfoDict.items() :
-    print ""
-    print "="*80
-    print "LOGIN INFO for AM: %s" % amUrl
-    print "="*80
+    f.write("\n")
+    f.write("="*80+"\n")
+    f.write("LOGIN INFO for AM: %s\n" % amUrl)
+    f.write("="*80+"\n")
     for item in amInfo["info"] :
       output = ""
       if options.readyonly :
@@ -363,7 +411,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          print "There is no status information for node %s. Print login info."
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
         output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
@@ -384,11 +432,18 @@ def printLoginInfo( loginInfoDict, keyList ) :
         if options.xterm :
             output += " &"
         output += "\n"
-      print output
+      f.write(output)
 
 
 def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
+
+# Check if the output option is set
+  if options.output :
+    filename = getFileName("sshconfig.txt")
+    f = open(filename, "w")
+  else :
+    f = sys.stdout
 
   sshConfList={}
   for amUrl, amInfo in loginInfoDict.items() :
@@ -399,7 +454,7 @@ def printSSHConfigInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          print "There is no status information for node %s. Print login info."
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
 
       keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
@@ -421,12 +476,12 @@ Host %(client_id)s
         sshConfList[item["username"]].append(output)
   
   for user, conf in sshConfList.items():
-    print "="*80
-    print "SSH CONFIGURATION INFO for User %s" % user
-    print "="*80
+    f.write("#"+"="*40+"\n")
+    f.write("#SSH CONFIGURATION INFO for User %s\n" % user)
+    f.write("#"+"="*40+"\n")
     for c in conf:
-      print c
-      print "\n"
+      f.write(c)
+      f.write("\n")
 
 
 def main_no_print(argv=None):
