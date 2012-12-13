@@ -25,7 +25,7 @@
 
 import copy
 import string
-import sys
+import sys, platform
 import omni
 import os.path
 from optparse import OptionParser
@@ -393,9 +393,13 @@ def printLoginInfo( loginInfoDict, keyList ) :
   '''Prints the Login Information from all AMs, all Users and all hosts '''
   
   # Check if the output option is set
+  prefix = ""
+  if options.prefix and options.prefix.strip() != "":
+    prefix = options.prefix.strip() + "-"
   if options.output :
-    filename = getFileName("logininfo.txt")
+    filename = getFileName(prefix+"logininfo.txt")
     f = open(filename, "w")
+    print "Login info saved at: %s" % filename
   else :
     f = sys.stdout
 
@@ -439,9 +443,14 @@ def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
 
 # Check if the output option is set
+  
+  prefix = ""
+  if options.prefix and options.prefix.strip() != "":
+    prefix = options.prefix.strip() + "-"
   if options.output :
-    filename = getFileName("sshconfig.txt")
+    filename = getFileName(prefix+"sshconfig.txt")
     f = open(filename, "w")
+    print "SSH Config saved at: %s" % filename
   else :
     f = sys.stdout
 
