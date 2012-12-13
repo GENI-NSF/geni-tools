@@ -30,7 +30,7 @@ import unittest
 import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
-from omnilib.util import OmniError, NoSliceCredError
+from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import omni
 import os
 import pprint
@@ -152,16 +152,17 @@ class NagiosTest(accept.Test):
             slicename = self.create_slice_name()
         while have_slept <= MAX_TIME_TO_CREATESLIVER:
             try:
+# check for ready
                 self.subtest_generic_SliverStatus( slicename )        
                 status_ready=True 
                 break
-            except:
+            except Exception, e:
                 self.logger.info("===> Starting to sleep")
                 self.logger.info("=== long_sleep ==="+str(long_sleep))
                 time.sleep( long_sleep )
-                
                 have_slept += long_sleep
-        self.assertTrue( status_ready )
+        self.assertTrue( status_ready, 
+                         "SliverStatus on slice '%s' expected to be ready but was not" % slicename)
 
     @classmethod
     def nagios_parser( cls, parser=omni.getParser(), usage=None):
