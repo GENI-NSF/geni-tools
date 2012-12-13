@@ -61,7 +61,7 @@ def getYNAns(question):
     return True
 
 
-def getFileName(filename):
+def getFileName(filename, defaultAnswer):
     """ This function takes as input a filename and if it already 
         exists it will ask the user whether to replace it or not 
         and if the file shouldn't be replaced it comes up with a
@@ -73,7 +73,10 @@ def getFileName(filename):
     if os.path.exists(filename):
         (basename, extension) = os.path.splitext(filename)
         question = "File " + filename + " exists, do you want to replace it "
-        if not getYNAns(question):
+        ans = defaultAnswer
+        if ans is None:
+          ans = getYNAns(question)
+        if not ans:
             i = 1
             if platform.system().lower().find('darwin') != -1 :
                 tmp_pk_file = basename + '(' + str(i) + ')' + extension
@@ -354,7 +357,12 @@ def parseArguments( argv=None ) :
                     action="store_true", 
                     default=False,
                     help="Only print nodes in ready state")
+  parser.add_option( "--do-not-overwrite", dest="donotoverwrite",
+                    action="store_true", 
+                    default=False,
+                    help="If '-o' is set do not overwrite files")
   (options, args) = parser.parse_args()
+
   
   if len(args) > 0:
       slicename = args[0]
@@ -393,11 +401,12 @@ def printLoginInfo( loginInfoDict, keyList ) :
   '''Prints the Login Information from all AMs, all Users and all hosts '''
   
   # Check if the output option is set
+  defaultAnswer = not options.donotoverwrite
   prefix = ""
   if options.prefix and options.prefix.strip() != "":
     prefix = options.prefix.strip() + "-"
   if options.output :
-    filename = getFileName(prefix+"logininfo.txt")
+    filename = getFileName(prefix+"logininfo.txt", defaultAnswer)
     f = open(filename, "w")
     print "Login info saved at: %s" % filename
   else :
@@ -443,12 +452,12 @@ def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
 
 # Check if the output option is set
-  
+  defaultAnswer = not options.donotoverwrite
   prefix = ""
   if options.prefix and options.prefix.strip() != "":
     prefix = options.prefix.strip() + "-"
   if options.output :
-    filename = getFileName(prefix+"sshconfig.txt")
+    filename = getFileName(prefix+"sshconfig.txt", defaultAnswer)
     f = open(filename, "w")
     print "SSH Config saved at: %s" % filename
   else :
