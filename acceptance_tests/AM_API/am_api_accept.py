@@ -425,7 +425,7 @@ class Test(ut.OmniUnittest):
         self.logger.info("\n=== Test.test_ListResources_slice_with_usercred ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
-        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_ListResources, 
+        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_generic_ListResources, 
                           slicename=slicename,
                           slicecred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
         self.options_copy.devmode = False
