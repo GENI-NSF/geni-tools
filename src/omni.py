@@ -539,6 +539,15 @@ def configure_logging(opts):
 
     level = logging.INFO
     optlevel = 'INFO'
+    if opts.error:
+        level = logging.ERROR
+        optlevel = 'ERROR'
+    if opts.warn:
+        level = logging.WARN
+        optlevel = 'WARNING'
+    if opts.info:
+        level = logging.INFO
+        optlevel = 'INFO'
     if opts.debug:
         level = logging.DEBUG
         optlevel = 'DEBUG'
@@ -556,6 +565,7 @@ def configure_logging(opts):
         logging.basicConfig(level=level)
 
     logger = logging.getLogger("omni")
+    
     return logger
 
 def applyLogConfig(logConfigFilename, defaults={'optlevel': 'INFO'}):
@@ -672,7 +682,13 @@ def getParser():
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
                       help="RSpec type and version to return, default 'GENI 3'")
     parser.add_option("--debug", action="store_true", default=False,
-                       help="Enable debugging output")
+                       help="Enable debugging output. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    parser.add_option("--info", action="store_true", default=False,
+                       help="Set logging to INFO.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    parser.add_option("--warn", action="store_true", default=False,
+                       help="Set log level to WARN. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    parser.add_option("--error", action="store_true", default=False,
+                       help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
     parser.add_option("-o", "--output",  default=False, action="store_true",
                       help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
     parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
