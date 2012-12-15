@@ -14,7 +14,7 @@
 # included in all copies or substantial portions of the Work.
 #
 # THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, IsNCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 # NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
 # HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
@@ -1346,12 +1346,13 @@ class Test(ut.OmniUnittest):
                                         AMAPI_call="Provision", 
                                         sliverlist=sliverlist,
                                         expectedExpiration=expectedExpiration)
-    def subtest_Status(self, slice_name, sliverlist = None, expectedExpiration=None):
+    def subtest_Status(self, slice_name, sliverlist = None, expectedExpiration=None, status_value = None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
                                         omni_method='status', 
                                         AMAPI_call="Status", 
                                         sliverlist=sliverlist,
-                                        expectedExpiration=expectedExpiration)
+                                        expectedExpiration=expectedExpiration,
+                                        status_value=status_value)
 
     def subtest_PerformOperationalAction(self, slice_name, command, sliverlist = None, expectedExpiration=None):
         return self.subtest_AMAPIv3CallNoRspec( slice_name, 
@@ -1369,7 +1370,8 @@ class Test(ut.OmniUnittest):
     def subtest_AMAPIv3CallNoRspec( self, slicename, 
                                     omni_method='provision', 
                                     AMAPI_call="Provision",
-                                    sliverlist=None, expectedExpiration=None, 
+                                    sliverlist=None, 
+                                    expectedExpiration=None, 
                                     command=None):
         self.assertTrue(omni_method in ['renew', 'provision', 'status',
                                         'performoperationalaction', 'delete'],
@@ -1430,7 +1432,8 @@ class Test(ut.OmniUnittest):
                     numSlivers = len(slivers)
                 elif AMAPI_call is "Status":
                     retVal2 = self.assertStatusReturn( agg, retVal, 
-                                              expectedExpiration=expectedExpiration )
+                                      expectedExpiration=expectedExpiration,
+                                      status_value=status_value )
                     numSlivers = retVal2
                 elif AMAPI_call is "PerformOperationalAction":
                     retVal2 = self.assertPerformOperationalActionReturn( agg, retVal, expectedExpiration=expectedExpiration )
@@ -1569,7 +1572,7 @@ class Test(ut.OmniUnittest):
         return retVal2
 
 
-    def subtest_SliverStatus(self, slice_name):
+    def subtest_SliverStatus(self, slice_name, status_value=None):
         # SliverStatus
         omniargs = ["sliverstatus", slice_name] 
         
@@ -1596,7 +1599,15 @@ class Test(ut.OmniUnittest):
                             "... edited for length ..." 
                             % (aggName, status))
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_urn', str )
-            self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_status', str )
+            status_ret = self.assertReturnKeyValueType( 'SliverStatus', aggName, status, 'geni_status', str )
+            if status_value :
+                self.assertTrue( status_ret==status_value,
+                            "Return from 'SliverStatus' for Aggregate %s " \
+                            "expected to have 'geni_status'" \
+                            "='%s', but it was '%s'."
+                            % (aggName, status_value, status_ret))
+
+
             self.assertKeyValueType( 'SliverStatus', aggName, status, 'geni_resources', list )
             resources = status['geni_resources']
             self.assertTrue( len(resources) > 0,
@@ -1776,11 +1787,11 @@ class Test(ut.OmniUnittest):
 
         return numslivers, manifest, slivers
 
-    def subtest_generic_SliverStatus( self, slicename, sliverlist = None ):
+    def subtest_generic_SliverStatus( self, slicename, sliverlist = None, status=None ):
         if self.options_copy.api_version <= 2:
-            self.subtest_SliverStatus( slicename )
+            self.subtest_SliverStatus( slicename, status )
         elif self.options_copy.api_version >= 3:
-            self.subtest_Status( slicename, sliverlist )
+            self.subtest_Status( slicename, sliverlist, status )
 
     def subtest_generic_RenewSliver_many( self, slicename ):
         if self.options_copy.skip_renew:

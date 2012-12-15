@@ -150,19 +150,26 @@ class NagiosTest(accept.Test):
         long_sleep = NUM_SLEEP * self.options_copy.sleep_time
         if slicename==None:
             slicename = self.create_slice_name()
+        # before starting check if this is going to fail for unrecoverable reasons having nothing to do with being ready
+        # maybe get the slice credential
+        # self.subtest_generic_SliverStatus( slicename )        
         while have_slept <= MAX_TIME_TO_CREATESLIVER:
             try:
-# check for ready
-                self.subtest_generic_SliverStatus( slicename )        
+                # checks geni_operational_status to see if ready
+                geni_status = "ready"
+                self.subtest_generic_SliverStatus( slicename, status=geni_status )
                 status_ready=True 
                 break
             except Exception, e:
-                self.logger.info("===> Starting to sleep")
-                self.logger.info("=== long_sleep ==="+str(long_sleep))
+                self.logger.info("Waiting for SliverStatus to succeed and return status of '%s'" % geni_status)
+                self.logger.info("Exception raised: %s" % e)
+                self.logger.debug("===> Starting to sleep")
+                self.logger.debug("=== sleep %s seconds ==="%str(long_sleep))
                 time.sleep( long_sleep )
                 have_slept += long_sleep
+                self.logger.debug("<=== Finished sleeping")
         self.assertTrue( status_ready, 
-                         "SliverStatus on slice '%s' expected to be ready but was not" % slicename)
+                         "SliverStatus on slice '%s' expected to be '%s' but was not" % (slicename, geni_status))
 
     @classmethod
     def nagios_parser( cls, parser=omni.getParser(), usage=None):

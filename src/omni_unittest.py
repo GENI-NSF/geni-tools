@@ -666,7 +666,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
         return len(retVal)
 
-    def assertStatusReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertStatusReturn( self, agg, retVal, expectedExpiration=None, status_value=None ):
         """Checks retVal fits form:
 {
   geni_urn: <slice URN>
@@ -694,7 +694,12 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
             self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
-            self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+            op_status = self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
+            self.assertTrue( op_status == status_value,
+                             "Return from '%s' expected to have " \
+                             "'geni_operational_status' equal to '%s' "\
+                             "but instead had value of '%s'" 
+                             % (AMAPI_call, status_value, op_status) )
             self.assertGeniError(AMAPI_call, agg, sliver)        
         return len(slivers)
 
@@ -776,9 +781,9 @@ geni_rspec: <geni.rspec, RSpec manifest>,
               geni_operational_status
         """
         self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
-        self.assertKeyValueType( AMAPI_call, agg, retVal, 
+        opstatus = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_operational_status', str )
-
+        return opstatus
     def assertGeniSliverUrn( self, AMAPI_call, agg, retVal ):
         """Check that the dictionary retVal has keys: 
               geni_sliver_urn
