@@ -25,7 +25,7 @@
 
 import copy
 import string
-import sys
+import sys, platform
 import omni
 import os.path
 from optparse import OptionParser
@@ -50,6 +50,48 @@ NSPrefix = None
 VALID_NS = ['{http://www.geni.net/resources/rspec/3}',
             '{http://www.protogeni.net/resources/rspec/2}'
            ]
+
+def getYNAns(question):
+    valid_ans=['','y', 'n']
+    answer = raw_input("%s [Y,n]?" % question).lower()
+    while answer not in valid_ans:
+        answer = raw_input("Your input has to be 'y' or <ENTER> for yes, 'n' for no:").lower()
+    if answer == 'n':
+        return False
+    return True
+
+
+def getFileName(filename, defaultAnswer):
+    """ This function takes as input a filename and if it already 
+        exists it will ask the user whether to replace it or not 
+        and if the file shouldn't be replaced it comes up with a
+        unique name
+    """
+    # If the file exists ask the # user to replace it or not
+    filename = os.path.expanduser(filename)
+    filename = os.path.abspath(filename)
+    if os.path.exists(filename):
+        (basename, extension) = os.path.splitext(filename)
+        question = "File " + filename + " exists, do you want to replace it "
+        ans = defaultAnswer
+        if ans is None:
+          ans = getYNAns(question)
+        if not ans:
+            i = 1
+            if platform.system().lower().find('darwin') != -1 :
+                tmp_pk_file = basename + '(' + str(i) + ')' + extension
+            else :
+                tmp_pk_file = basename + '-' + str(i) + extension
+            
+            while os.path.exists(tmp_pk_file):
+                i = i+1
+                if platform.system().lower().find('darwin') != -1 :
+                    tmp_pk_file = basename + '(' + str(i) + ')' + extension
+                else :
+                    tmp_pk_file = basename + '-' + str(i) + extension
+            filename = tmp_pk_file
+    return filename
+
 
 def setNSPrefix(prefix):
   ''' Helper function for parsing rspecs. It sets the global variabl NSPrefix to
@@ -315,7 +357,12 @@ def parseArguments( argv=None ) :
                     action="store_true", 
                     default=False,
                     help="Only print nodes in ready state")
+  parser.add_option( "--do-not-overwrite", dest="donotoverwrite",
+                    action="store_true", 
+                    default=False,
+                    help="If '-o' is set do not overwrite files")
   (options, args) = parser.parse_args()
+
   
   if len(args) > 0:
       slicename = args[0]
@@ -350,12 +397,26 @@ def getKeysForUser( amType, username, keyList ):
   return userKeyList
     
 def printLoginInfo( loginInfoDict, keyList ) :
+  global options
   '''Prints the Login Information from all AMs, all Users and all hosts '''
+  
+  # Check if the output option is set
+  defaultAnswer = not options.donotoverwrite
+  prefix = ""
+  if options.prefix and options.prefix.strip() != "":
+    prefix = options.prefix.strip() + "-"
+  if options.output :
+    filename = getFileName(prefix+"logininfo.txt", defaultAnswer)
+    f = open(filename, "w")
+    print "Login info saved at: %s" % filename
+  else :
+    f = sys.stdout
+
   for amUrl, amInfo in loginInfoDict.items() :
-    print ""
-    print "="*80
-    print "LOGIN INFO for AM: %s" % amUrl
-    print "="*80
+    f.write("\n")
+    f.write("="*80+"\n")
+    f.write("LOGIN INFO for AM: %s\n" % amUrl)
+    f.write("="*80+"\n")
     for item in amInfo["info"] :
       output = ""
       if options.readyonly :
@@ -363,7 +424,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          print "There is no status information for node %s. Print login info."
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
         output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
@@ -384,11 +445,23 @@ def printLoginInfo( loginInfoDict, keyList ) :
         if options.xterm :
             output += " &"
         output += "\n"
-      print output
+      f.write(output)
 
 
 def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
+
+# Check if the output option is set
+  defaultAnswer = not options.donotoverwrite
+  prefix = ""
+  if options.prefix and options.prefix.strip() != "":
+    prefix = options.prefix.strip() + "-"
+  if options.output :
+    filename = getFileName(prefix+"sshconfig.txt", defaultAnswer)
+    f = open(filename, "w")
+    print "SSH Config saved at: %s" % filename
+  else :
+    f = sys.stdout
 
   sshConfList={}
   for amUrl, amInfo in loginInfoDict.items() :
@@ -399,7 +472,7 @@ def printSSHConfigInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          print "There is no status information for node %s. Print login info."
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
 
       keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
@@ -421,71 +494,76 @@ Host %(client_id)s
         sshConfList[item["username"]].append(output)
   
   for user, conf in sshConfList.items():
-    print "="*80
-    print "SSH CONFIGURATION INFO for User %s" % user
-    print "="*80
+    f.write("#"+"="*40+"\n")
+    f.write("#SSH CONFIGURATION INFO for User %s\n" % user)
+    f.write("#"+"="*40+"\n")
     for c in conf:
-      print c
-      print "\n"
+      f.write(c)
+      f.write("\n")
+
+
+def main_no_print(argv=None):
+  global slicename, options, config
+
+  parseArguments(argv=argv)
+
+  # Call omni.initialize so that we get the config structure that
+  # contains the configuration parameters from the omni_config file
+  # We need them to get the ssh keys per user
+  framework, config, args, opts = omni.initialize( [], options )
+
+  keyList = findUsersAndKeys( )
+  if sum(len(val) for val in keyList.itervalues())== 0:
+    output = "ERROR:There are no keys. You can not login to your nodes.\n"
+    sys.exit(-1)
+
+  # Run equivalent of 'omni.py getversion'
+  argv = ['getversion']
+  try:
+    text, getVersion = omni.call( argv, options )
+  except (oe.AMAPIError, oe.OmniError) :
+    print "ERROR: There was an error executing getVersion, review the logs."
+    sys.exit(-1)
+
+  if not getVersion:
+    print "ERROR: Got no GetVersion output; review the logs."
+    sys.exit(-1)
+
+  loginInfoDict = {}
+  for amUrl, amOutput in getVersion.items() :
+    if not amOutput :
+      print "%s returned an error on getVersion, skip!" % amUrl
+      continue
+    amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
+    print amType
+
+    if amType == "foam" :
+      print "No login information for FOAM! Skip %s" %amUrl
+      continue
+    # XXX Although ProtoGENI returns the service tag in the manifest
+    # it does not contain information for all the users, so we will 
+    # stick with the sliverstatus until this is fixed
+    if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
+      amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
+      if len(amLoginInfo) > 0 :
+        loginInfoDict[amUrl] = {'amType' : amType,
+                                'info' : amLoginInfo
+                               }
+      continue
+    if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
+      amLoginInfo = getInfoFromSliceManifest(amUrl)
+      # Get the status only if we care
+      if len(amLoginInfo) > 0 :
+        if options.readyonly:
+          amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
+        loginInfoDict[amUrl] = {'amType':amType,
+                                'info':amLoginInfo
+                               }
+  return loginInfoDict, keyList
 
 
 def main(argv=None):
-    global slicename, options, config
-
-    parseArguments(argv=argv)
-
-    # Call omni.initialize so that we get the config structure that
-    # contains the configuration parameters from the omni_config file
-    # We need them to get the ssh keys per user
-    framework, config, args, opts = omni.initialize( [], options )
-
-    keyList = findUsersAndKeys( )
-    if sum(len(val) for val in keyList.itervalues())== 0:
-      output = "ERROR:There are no keys. You can not login to your nodes.\n"
-      sys.exit(-1)
-
-    # Run equivalent of 'omni.py getversion'
-    argv = ['getversion']
-    try:
-      text, getVersion = omni.call( argv, options )
-    except (oe.AMAPIError, oe.OmniError) :
-      print "ERROR: There was an error executing getVersion, review the logs."
-      sys.exit(-1)
-
-    if not getVersion:
-      print "ERROR: Got no GetVersion output; review the logs."
-      sys.exit(-1)
-
-    loginInfoDict = {}
-    for amUrl, amOutput in getVersion.items() :
-      if not amOutput :
-        print "%s returned an error on getVersion, skip!" % amUrl
-        continue
-      amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
-      print amType
-
-      if amType == "foam" :
-        print "No login information for FOAM! Skip %s" %amUrl
-        continue
-      # XXX Although ProtoGENI returns the service tag in the manifest
-      # it does not contain information for all the users, so we will 
-      # stick with the sliverstatus until this is fixed
-      if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
-        amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
-        if len(amLoginInfo) > 0 :
-          loginInfoDict[amUrl] = {'amType' : amType,
-                                  'info' : amLoginInfo
-                                 }
-        continue
-      if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
-        amLoginInfo = getInfoFromSliceManifest(amUrl)
-        # Get the status only if we care
-        if len(amLoginInfo) > 0 :
-          if options.readyonly:
-            amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
-          loginInfoDict[amUrl] = {'amType':amType,
-                                  'info':amLoginInfo
-                                 }
+    loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
     printLoginInfo(loginInfoDict, keyList) 
     if not loginInfoDict:

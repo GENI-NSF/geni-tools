@@ -7,3 +7,4 @@ semantic.cache
 gcf_config
 omni_config
 syncm
+*.sw*

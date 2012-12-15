@@ -348,9 +348,9 @@ class PGClearinghouse(Clearinghouse):
         self.config = config
         
         # Error check the keyfile, certfile all exist
-        if keyfile is None or not os.path.isfile(os.path.expanduser(keyfile)):
+        if keyfile is None or not os.path.isfile(os.path.expanduser(keyfile)) or os.path.getsize(os.path.expanduser(keyfile)) < 1:
             raise Exception("Missing CH key file %s" % keyfile)
-        if certfile is None or not os.path.isfile(os.path.expanduser(certfile)):
+        if certfile is None or not os.path.isfile(os.path.expanduser(certfile)) or os.path.getsize(os.path.expanduser(certfile)) < 1:
             raise Exception("Missing CH cert file %s" % certfile)
 
         if ca_certs is None:

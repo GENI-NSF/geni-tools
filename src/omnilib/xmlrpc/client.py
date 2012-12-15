@@ -58,9 +58,13 @@ def make_client(url, keyfile, certfile, verbose=False, timeout=None,
     if keyfile and certfile:
         if not os.path.exists(certfile):
             raise Exception("certfile %s doesn't exist" % certfile)
+        if not os.path.getsize(certfile) > 0:
+            raise Exception("certfile %s is empty" % certfile)
 
         if not os.path.exists(keyfile):
             raise Exception("keyfile %s doesn't exist" % keyfile)
+        if not os.path.getsize(keyfile) > 0:
+            raise Exception("keyfile %s is empty" % keyfile)
 
         cert_transport = SafeTransportWithCert(keyfile=keyfile,
                                                certfile=certfile,

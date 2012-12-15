@@ -65,7 +65,7 @@ Details on required packages:
 ========================
 
 The GCF package is intended to be run on a modern Unix distribution
-(circa 2010 or 2009). Python 2.6 is required. This software is not
+(circa 2010 or 2009). Python 2.6 or better is required. This software is not
 Python 3 compatible.
 
 This software requires a number of readily available software

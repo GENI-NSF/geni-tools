@@ -114,9 +114,13 @@ def main(argv=None):
     keyfile = getAbsPath(opts.keyfile)
     if not os.path.exists(certfile):
         sys.exit("Aggregate certfile %s doesn't exist" % certfile)
+    if not os.path.getsize(certfile) > 0:
+        sys.exit("Aggregate certfile %s is empty" % certfile)
     
     if not os.path.exists(keyfile):
         sys.exit("Aggregate keyfile %s doesn't exist" % keyfile)
+    if not os.path.getsize(keyfile) > 0:
+        sys.exit("Aggregate keyfile %s is empty" % keyfile)
 
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))

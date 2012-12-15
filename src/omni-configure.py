@@ -280,18 +280,18 @@ def initialize(opts):
 
     # If framework is pgeni, check that the cert file is in the right place
     if not cmp(opts.framework,'pg'):
-        if not os.path.exists(opts.cert):
+        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
             sys.exit("Geni certificate not in '"+opts.cert+"'. \nMake sure you \
 place the .pem file that you downloaded from the Web UI there,\nor \
 use the '-p' option to specify a custom location of the certificate.\n")
 
     # If framework is planetlab, check that the key are in the right place
     if not cmp(opts.framework,'pl'):
-        if not os.path.exists(opts.cert):
+        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
             sys.exit("\nScript currently does not support automatic download of \
 PlanetLab cert.\nIf you have a copy place it at '"+opts.cert+"', \nor \
 use the '-p' option to specify a custom location of the certificate.\n")
-        if not os.path.exists(opts.plkey) :
+        if not os.path.exists(opts.plkey) or os.path.getsize(opts.cert) < 1:
             sys.exit("\nPlanetLab private key not in '"+opts.plkey+"'. \nMake sure \
 you place the private key registered with PlanetLab there or use\n\
 the '-k' option to specify a custom location for the key.\n")
@@ -377,6 +377,9 @@ def createConfigFile(opts, public_key_file):
             if urn.find('pgeni.gpolab.bbn.com') != -1 :
                 sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
             else : 
+              if urn.find('loni.org') != -1 :
+                sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
+              else:
                 raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % urn.split('+')[-2]) 
         logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
         cf_section = """
@@ -428,32 +431,42 @@ keys = %(pkey)s
 # Nickname=URN, URL
 # URN is optional
 [aggregate_nicknames]
+
 #ProtoGENI AMs
 pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+
 pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
+pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+pg-utah3=,https://www.emulab.net/protogeni/xmlrpc/am/3.0
 pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+
 pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am/1.0
+pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+pg-ky3=,https://www.uky.emulab.net/protogeni/xmlrpc/am/3.0
 pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
 
-#PlanetLab Central AM
+#Plublic PlanetLab AM
 plc=,https://www.planet-lab.org:12346
+plc3=,https://sfav3.planet-lab.org:12346 
 
 # Private myplc installations
 pl-gpo=,http://myplc.gpolab.bbn.com:12346/
+pl-bbn=,http://myplc.gpolab.bbn.com:12346/
 pl-clemson=,http://myplc.clemson.edu:12346/
 pl-stanford=,https://myplc.stanford.edu:12346/
-pl-wisconsin=,https://wings-openflow-1.wail.wisc.edu:12346/
-pl-washington=,https://of.cs.washington.edu:12346/
-pl-rutgers=,https://plc.orbit-lab.org:12346/ 
 pl-indiana=,https://myplc.grnoc.iu.edu:12346/
 pl-gatech=,https://myplc.cip.gatech.edu:12346/
- 
+
 # OpenFlow AMs
 of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
+of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
 of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
 of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
-of-wisconsin=,https://foam.wail.wisc.edu:3626/foam/gapi/1
 of-rutgers=,https://nox.orbit-lab.org:3626/foam/gapi/1
 of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
 of-gatech=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
@@ -462,16 +475,34 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 
 #Exogeni AMs include OpenFlow ExoGENI AMs
 eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+eg-bbn=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+eg-of-bbn=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1 
+eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+
+# ExoSM
+eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+
 
 #InstaGENI AMs, include OpenFlow InstaGENI AMs
 ig-utah1=,http://utah.geniracks.net/protogeni/xmlrpc/am
+ig-utah2=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah3=,http://utah.geniracks.net/protogeni/xmlrpc/am/3.0
 ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
+ig-gpo1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-gpo2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-gpo3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-gpo=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
+ig-bbn1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-bbn2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-bbn3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-bbn=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
 
 """ % omni_config_dict
 

@@ -536,9 +536,13 @@ def main(argv=None):
     certf = getAbsPath(opts.certfile)
     if not os.path.exists(certf):
         sys.exit("Client certfile %s doesn't exist" % certf)
+    if not os.path.getsize(certf) > 0:
+        sys.exit("Client certfile %s is empty" % certf)
     
     if not os.path.exists(keyf):
         sys.exit("Client keyfile %s doesn't exist" % keyf)
+    if not os.path.getsize(keyf) > 0:
+        sys.exit("Client keyfile %s is empty" % keyf)
 #    print 'a_v: %d' % opts.api_version
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)

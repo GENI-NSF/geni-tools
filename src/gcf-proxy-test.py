@@ -393,6 +393,17 @@ def main(argv=None):
 
     keyf = getAbsPath(opts.keyfile)
     certf = getAbsPath(opts.certfile)
+
+    if not os.path.exists(certf):
+        sys.exit("Proxy certfile %s doesn't exist" % certf)
+    if not os.path.getsize(certf) > 0:
+        sys.exit("Proxy certfile %s is empty" % certf)
+
+    if not os.path.exists(keyf):
+        sys.exit("Proxy keyfile %s doesn't exist" % keyf)
+    if not os.path.getsize(keyf) > 0:
+        sys.exit("Proxy keyfile %s is empty" % keyf)
+
     logger.info('CH Server is %s. Using keyfile %s, certfile %s', opts.ch, keyf, certf)
     logger.info('AM Server is %s. Using keyfile %s, certfile %s', opts.am, keyf, certf)
     ch_server = make_client(opts.ch, keyf, certf, opts.debug_rpc)
