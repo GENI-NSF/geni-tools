@@ -510,6 +510,8 @@ def main_no_print(argv=None):
   # Call omni.initialize so that we get the config structure that
   # contains the configuration parameters from the omni_config file
   # We need them to get the ssh keys per user
+  # Set loglevel to WARN to supress any normal printout
+  options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
   keyList = findUsersAndKeys( )
@@ -535,7 +537,6 @@ def main_no_print(argv=None):
       print "%s returned an error on getVersion, skip!" % amUrl
       continue
     amType = getAMTypeFromGetVersionOut(amUrl, amOutput) 
-    print amType
 
     if amType == "foam" :
       print "No login information for FOAM! Skip %s" %amUrl

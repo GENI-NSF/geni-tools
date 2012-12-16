@@ -551,7 +551,7 @@ def configure_logging(opts):
     if opts.debug:
         level = logging.DEBUG
         optlevel = 'DEBUG'
-
+    
     deft = {}
 
     # Add the ability to use %(logfilename)s in the logging config
