@@ -341,14 +341,13 @@ def getAMTypeFromGetVersionOut(amUrl, amOutput) :
     return "orca"
   return None
   
-def parseArguments( argv=None ) :
-  global slicename, options, config
-
+def getParser() : 
   parser = omni.getParser()
-  # Parse Options
-  usage = "\n\tTypically: \treadyToLogin.py slicename"
-  parser.set_usage(usage)
 
+  usage = "\n\tTypically: \t%s slicename" % os.path.basename(sys.argv[0])
+  parser.set_usage(usage)
+  
+  # Parse Options
   parser.add_option("-x", "--xterm", dest="xterm",
                     action="store_false", 
                     default=True,
@@ -361,12 +360,29 @@ def parseArguments( argv=None ) :
                     action="store_true", 
                     default=False,
                     help="If '-o' is set do not overwrite files")
-  (options, args) = parser.parse_args()
+
+  return parser
+
+
+def parseArguments( argv=None, opts=None ) :
+  global slicename, options, config
+
+  if opts is not None:
+        # The caller, presumably a script, gave us an optparse.Values storage object.
+        # Passing this object to parser.parse_args replaces the storage - it is pass
+        # by reference. Callers may not expect that. In particular, multiple calls in
+        # separate threads will conflict.
+        # Make a deep copy
+        options = copy.deepcopy(opts)
+        argv = []
+
+  parser = getParser()
+  (options, args) = parser.parse_args(argv, options)
 
   
   if len(args) > 0:
       slicename = args[0]
-  else:
+  elif slicename == None:
       sys.exit("Must pass in slicename as argument of script.\nRun '%s -h' for more information."%sys.argv[0])
 
 
@@ -502,10 +518,11 @@ Host %(client_id)s
       f.write("\n")
 
 
-def main_no_print(argv=None):
+def main_no_print(argv=None, opts=None, slicen=None):
   global slicename, options, config
 
-  parseArguments(argv=argv)
+  slicename = slicen
+  parseArguments(argv=argv, opts=opts)
 
   # Call omni.initialize so that we get the config structure that
   # contains the configuration parameters from the omni_config file
