@@ -31,6 +31,11 @@ import os.path
 import time
 import readyToLogin
 
+#Global variables
+options = None
+slicename = None
+config = None
+
 def getLoginCommands( loginInfoDict, keyList ):
   loginCommands = {}
   for amUrl, amInfo in loginInfoDict.items() :
@@ -69,33 +74,70 @@ def executeCommand( loginCommands, host, command) :
   print "Done with command %s to %s" % (command, host)
   time.sleep(5)
 
-def runtransfers(loginCommands) :
-  command = "/local/get_udt_file.sh med.100M"
-  executeCommand(loginCommands, 'PC2', command)
-  command = "/local/get_ftp_file.sh med.100M"
-  executeCommand(loginCommands, 'PC2', command)
-  #command = "/local/get_both_file.sh med.100M"
-  #executeCommand(loginCommands, 'PC2', command)
+def getParser() : 
+  parser = readyToLogin.getParser()
+  # Parse Options
+  usage = "\n\tTypically: \t%s slicename -m '<COMMAND>'" % os.path.basename(sys.argv[0])
+  parser.set_usage(usage)
+
+  parser.add_option("-m", "--command", dest="command",
+                    default="",
+                    help="[REQUIRED]Command to execute in all remote hosts.")
+
+  parser.add_option("--host", dest="host",
+                    default="",
+                    help="Specify in which host you would like the command to be executed. This has to be the clientId. If omitted the command will be ran in all hosts.")
+
+  return parser
 
 
-def setLinkParams(loginCommands, bandwidth, delay, loss) :
-  command = "sudo ipfw pipe 60111 config bw %s delay %d plr %f; " % (bandwidth, delay, loss)
-  command += "sudo ipfw pipe 60121 config bw %s delay %d plr %f" % (bandwidth, delay, loss)
-  executeCommand(loginCommands, 'delay', command)
+def parseArguments( argv=None ) :
+  global  slicename, options, config
+
+  if options is not None:
+        # The caller, presumably a script, gave us an optparse.Values storage object.
+        # Passing this object to parser.parse_args replaces the storage - it is pass
+        # by reference. Callers may not expect that. In particular, multiple calls in
+        # separate threads will conflict.
+        # Make a deep copy
+        options = copy.deepcopy(options)
+        argv = []
+
+  parser = getParser()
+  (options, args) = parser.parse_args(argv, options)
+
+  
+  if len(args) > 0:
+      slicename = args[0]
+  else:
+      sys.exit("Must pass in slicename as argument of script.\nRun '%s -h' for more information."%os.path.basename(sys.argv[0]))
+
+  # Check if a command was given
+  if options.command == '':
+      sys.exit("Must use the -m parameter to pass the command to be executed.\nRun '%s -h' for more information."%os.path.basename(sys.argv[0]))
+   
 
 def main(argv=None):
   
-  loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv)
+  parseArguments(argv=argv)
+  print "Find login Info for hosts in slice %s" % slicename
+  loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)
   loginCommands = getLoginCommands(loginInfoDict, keyList)
   modifyToIgnoreHostChecking(loginCommands)
-  #for b in ["0M", "500M", "100M", "50M", "10M"] :
-  for b in ["0M"] :
-    #for l in [0, 0.0001, 0.001, 0.005] :
-    for l in [0] :
-      for d in [0, 25, 50, 100, 150, 200] :
-      #for d in [0]:
-        setLinkParams(loginCommands, b, d, l)
-        runtransfers(loginCommands)
+  # If the user explicitely passed a host then use only that to execute the
+  # command
+  # First check if the specified host exists
+  if options.host != '' and not loginCommands.has_key(options.host):
+    sys.exit("No host with clientId '%s' in slice %s and AMs %s" %(options.host,
+                                            slicename, str(loginInfoDict.keys())))
+  if options.host != '':
+    hosts = [options.host]
+  else :
+    hosts = loginCommands.keys()
+
+  for h in hosts : 
+    executeCommand( loginCommands, h, options.command) 
+    
 
 if __name__ == "__main__":
     sys.exit(main())
