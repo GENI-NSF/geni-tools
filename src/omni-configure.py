@@ -455,9 +455,9 @@ plc=,https://www.planet-lab.org:12346
 plc3=,https://sfav3.planet-lab.org:12346 
 
 # Private myplc installations
-pl-gpo=,http://myplc.gpolab.bbn.com:12346/
-pl-bbn=,http://myplc.gpolab.bbn.com:12346/
-pl-clemson=,http://myplc.clemson.edu:12346/
+pl-gpo=,https://myplc.gpolab.bbn.com:12346/
+pl-bbn=,https://myplc.gpolab.bbn.com:12346/
+pl-clemson=,https://myplc.clemson.edu:12346/
 pl-stanford=,https://myplc.stanford.edu:12346/
 pl-indiana=,https://myplc.grnoc.iu.edu:12346/
 pl-gatech=,https://myplc.cip.gatech.edu:12346/
@@ -487,22 +487,22 @@ eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
 
 
 #InstaGENI AMs, include OpenFlow InstaGENI AMs
-ig-utah1=,http://utah.geniracks.net/protogeni/xmlrpc/am
-ig-utah2=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
-ig-utah3=,http://utah.geniracks.net/protogeni/xmlrpc/am/3.0
-ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah1=,https://utah.geniracks.net/protogeni/xmlrpc/am
+ig-utah2=,https://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah3=,https://utah.geniracks.net/protogeni/xmlrpc/am/3.0
+ig-utah=,https://utah.geniracks.net/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
-ig-gpo1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-ig-gpo2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-gpo3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
-ig-gpo=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
-ig-bbn1=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-ig-bbn2=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-bbn3=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
-ig-bbn=,http://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1 
+ig-gpo1=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-gpo2=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-gpo3=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-gpo=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-gpo=,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1 
+ig-bbn1=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
+ig-bbn2=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-bbn3=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
+ig-bbn=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-of-bbn=,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1 
 
 """ % omni_config_dict
 
