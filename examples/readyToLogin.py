@@ -316,8 +316,13 @@ def getInfoFromSliverStatus( amUrl, amType ) :
       sys.exit(-1)
 
     if not sliverStatus.has_key(amUrl):
-      print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
-      sys.exit(-1)
+      if len(sliverStatus.keys()) == 1 :
+        newAmUrl = sliverStatus.keys()[0]
+        print "WARN: Got result for AM URL %s instead of %s - did Omni redirect you?" % (newAmUrl, amUrl)
+        amUrl = newAmUrl
+      else:
+        print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
+        sys.exit(-1)
 
     if amType == 'sfa' : 
       loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
