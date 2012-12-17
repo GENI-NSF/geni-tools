@@ -533,12 +533,15 @@ def configure_logging(opts):
     see the applyLogConfig documentation.
 
     Otherwise, use a basic config, with INFO level by default,
-    DEBUG level if opts.debug.
+    DEBUG level if opts.debug, INFO if opts.info, etc.
 
     Return a logger for 'omni'."""
 
     level = logging.INFO
     optlevel = 'INFO'
+    # If log level was specified in options, use it. Most verbose
+    # level is used. Note that at ERROR and WARN levels, command
+    # outputs (like manifests) are not printed: use -o.
     if opts.error:
         level = logging.ERROR
         optlevel = 'ERROR'

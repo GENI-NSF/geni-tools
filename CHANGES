@@ -15,6 +15,11 @@ gcf 2.2:
   changes are for the entire Omni invocation, not per
   aggregate. Do not change in dev mode, or if the user explicitly
   specified this API version. (ticket #213)
+  - Add new options to set log level: `--error`, `--warn`,
+  `--info`. This allows scripts using Omni to suppress output. Note
+  that at WARN and ERROR levels, command results (like the manifest
+  RSpec) are not printed: use `-o`. If multiple log levels are
+  specified, the more verbose log level is used. (ticket #209)
   - If an aggregate does not speak the requested Ad RSpec version,
   print a more helpful message. (ticket #211)
   - Add support for the ProtoGENI / InstaGENI 'createimage' method to
