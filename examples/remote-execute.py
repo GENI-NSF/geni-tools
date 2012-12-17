@@ -31,6 +31,23 @@ import os.path
 import time
 import readyToLogin
 
+################################################################################
+# Requires that you have omni installed and add the paths to gcf/src and
+# gcf/examples in your PYTHONPATH.
+#
+# For example put the following in your bashrc:
+#     export PYTHONPATH=${PYTHONPATH}:path/to/gcf/src:path/to/gcf/exmples
+#
+# USE: This script is to help you execute commands in your GENI compute
+# resources from your local computer using ssh. The script uses readyToLogin.py
+# and omni.py as a library to figure out the login commands for your hosts. It
+# takes the same command line arguments as omni.py and readyToLogin.py. It also
+# takes two additional arguments (--command (-m) and --host). The typical
+# execution of the script is :
+# remote-execute.py <slicename> -a <AMURL1> -a <AMURL2> -m '<command>'
+#
+################################################################################
+
 #Global variables
 options = None
 slicename = None
