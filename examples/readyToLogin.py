@@ -34,7 +34,7 @@ import xml.etree.ElementTree as etree
 import re
 
 ################################################################################
-# Requires that you have omni installed or the path to gcf/src in your
+# Requires that you have omni installed and add the path to gcf/src in your
 # PYTHONPATH.
 #
 # For example put the following in your bashrc:
