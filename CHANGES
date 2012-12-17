@@ -34,6 +34,17 @@ gcf 2.2:
   looked up that way. (ticket # 218)
   - Print error if certificate or key file is empty (ticket #210)
   - Avoid exception if no live AMs are found (ticket #221)
+  - Added command line options to set the log level, --info, --warn, --error
+  (ticket #223)
+  - readyToLogin.py saves loginInfo and ssh config in files if '-o' option is
+  present. It will also use the '--prefix' option for adding a prefix in the
+  default filenames (logininfo.txt, sshconfig.txt). By default it will overwrite
+  files; use --do-not-overwrite options to avoid this. (ticket #172)
+  - readyToLogin.py will set the loglevel of omni to WARN to avoid noisy output,
+  use --debug, --info to override (ticket #209)
+  - readyToLogin.py handles correctly changes in AM URLs (ticket #206)
+  - new remote-execute.py script that enables the user to execute commands in
+  his/her GENI hosts from any host using ssh (ticket #224)
 
  * gcf
   - Implement list_my_slices (ticket #214)
