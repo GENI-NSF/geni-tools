@@ -44,7 +44,7 @@ from geni.util import error_util
 import omni
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
-from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
+from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, WrongRspecType
 from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import omnilib.util.json_encoding as json_encoding
 import omnilib.util.credparsing as credparsing
@@ -620,6 +620,10 @@ class Test(ut.OmniUnittest):
 
         for urn in sliverurns:
             omniargs = omniargs + ['-u', urn]
+
+        # Force actual omni output to a file? Then to debug things
+        # we'd need to save those files, and they might step on each other...
+#        omniargs = omniargs + ['-o']
         
         if usercred and slicecred:
             with tempfile.NamedTemporaryFile() as f:
@@ -800,8 +804,12 @@ class Test(ut.OmniUnittest):
 
             if self.options_copy.api_version >= 3:
                 self.options_copy.devmode = True   
-                # Seems like we should be checking for something more here?
-                self.assertRaises(NotSuccessError, 
+                # Seems like we should be checking for something more
+                # here?
+                # NotSuccess would be if teh AM
+                # refused. WrongRspecType would be if the AM ignored
+                # the slice_urn option and treated this as an Ad request.
+                self.assertRaises((NotSuccessError, WrongRspecType), 
                                   self.subtest_ListResources,
                                   slicename=slicename )
                 self.assertRaises(NotSuccessError, 
