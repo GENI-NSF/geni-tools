@@ -47,6 +47,11 @@ New in v2.2:
  changes are for the entire Omni invocation, not per
  aggregate. Do not change in dev mode, or if the user explicitly
  specified this API version. (ticket #213)
+ - Add new options to set log level: `--error`, `--warn`,
+ `--info`. This allows scripts using Omni to suppress output. Note
+ that at WARN and ERROR levels, command results (like the manifest
+ RSpec) are not printed: use `-o`. If multiple log levels are
+ specified, the more verbose log level is used. (ticket #209)
  - If an aggregate does not speak the requested Ad RSpec version,
  print a more helpful message. (ticket #211)
  - Add support for the ProtoGENI / InstaGENI 'createimage' method to
@@ -301,8 +306,12 @@ config file, see
 http://docs.python.org/library/logging.config.html#configuration-file-format
 and see the sample `omni_log_conf_sample.conf`. Note that if present
 in your configuration file, Omni will use the special variable
-'optlevel' to set logging to INFO by default, and DEBUG if you
-specify the `--debug` option to Omni.
+'optlevel' to set logging to INFO by default, DEBUG if you
+specify the `--debug` option to Omni, INFO if you specify `--info`,
+etc. If multiple log level options are supplied, Omni uses the most
+verbose setting specified. Note that at WARN and ERROR levels, command
+outputs are not printed: use the `-o` option to save command results
+to files, or --tostdout to print results to STDOUT.
 
 For further control of Omni output, use Omni as a library from your
 own python script (see [#OmniasaLibrary below] for details). 
@@ -556,7 +565,22 @@ Options:
 			aggregate. Multiple options allowed.
   -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
                         RSpec type and version to return, default 'GENI 3'
-  --debug               Enable debugging output                                
+  --debug               Enable debugging output. If multiple loglevel are set
+                        from commandline (e.g. --debug, --info) the more
+                        verbose one will be preferred.
+  --info                Set logging to INFO.If multiple loglevel are set from
+                        commandline (e.g. --debug, --info) the more verbose
+                        one will be preferred.
+  --warn                Set log level to WARN. This won't print the command
+                        outputs, e.g. manifest rspec, so use the -o or the
+                        --outputfile options to save it to a file. If multiple
+                        loglevel are set from commandline (e.g. --debug,
+                        --info) the more verbose one will be preferred.
+  --error               Set log level to ERROR. This won't print the command
+                        outputs, e.g. manifest rspec, so use the -o or the
+                        --outputfile options to save it to a file.If multiple
+                        loglevel are set from commandline (e.g. --debug,
+                        --info) the more verbose one will be preferred.
   -o, --output          Write output of many functions (getversion,            
                         listresources, allocate, status, getslicecred,...) ,   
                         to a file (Omni picks the name)                        
