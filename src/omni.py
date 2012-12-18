@@ -781,7 +781,7 @@ def parse_args(argv, options=None):
 
     # Set an option indicating if the user explicitly requested the RSpec version
     options.ensure_value('explicitRSpecVersion', False)
-    options.explicitRSpecVersion = ('-t' in argv or '--rspec-type' in argv)
+    options.explicitRSpecVersion = ('-t' in argv or '--rspectype' in argv)
 
     # Set an option indicating if the user explicitly requested the API version
     options.ensure_value('explicitAPIVersion', False)
