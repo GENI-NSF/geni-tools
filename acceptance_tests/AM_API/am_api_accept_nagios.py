@@ -89,7 +89,7 @@ class NagiosTest(accept.Test):
         self.subtest_CreateSliver_nagios( self.slicename )
         self.success = True
 
-    def subtest_CreateSliver_nagios(self, slicename=None, doProvision=True, doPOA=True):
+    def subtest_CreateSliver_nagios(self, slicename=None, doProvision=True, doPOA=False):
         # Check to see if 'rspeclint' can be found before doing the hard (and
         # slow) work of calling ListResources at the aggregate
         if self.options_copy.rspeclint:
@@ -132,6 +132,8 @@ class NagiosTest(accept.Test):
                                                self.RSpecVersion(),
                                                self.options_copy.bound,
                                                "Created sliver")
+            if self.options_copy.api_version >= 3:
+                self.subtest_PerformOperationalAction( slicename, 'geni_start')
         except:
             raise
         finally:
@@ -156,7 +158,10 @@ class NagiosTest(accept.Test):
         while have_slept <= MAX_TIME_TO_CREATESLIVER:
             try:
                 # checks geni_operational_status to see if ready
-                geni_status = "ready"
+                if self.options_copy.api_version >= 3:
+                    geni_status = "geni_ready"
+                else:
+                    geni_status = "ready"
                 self.subtest_generic_SliverStatus( slicename, status=geni_status )
                 status_ready=True 
                 break
@@ -182,10 +187,7 @@ if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \
             "\n      Also try --vv" % sys.argv[0]
     NagiosTest.accept_parser(usage=usage)
-
-    suite = unittest.TestLoader().loadTestsFromNames(["am_api_accept_nagios.NagiosTest.test_CreateSliver_nagios", "am_api_accept_nagios.NagiosTest.test_SliverStatus_nagios"])
-
-    unittest.TextTestRunner().run(suite)
+    unittest.main()
 
 
 

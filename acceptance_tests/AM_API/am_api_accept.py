@@ -1427,10 +1427,11 @@ class Test(ut.OmniUnittest):
     def subtest_AMAPIv3CallNoRspec( self, slicename, 
                                     omni_method='provision', 
                                     AMAPI_call="Provision",
-                                    sliverlist=None, expectedExpiration=None, 
-                                    command=None,
-                                    expectedNumSlivers=None):
-
+                                    sliverlist=None, 
+                                    expectedExpiration=None, 
+                                    command=None,                                     
+                                    expectedNumSlivers=None,
+                                    status_value=None):
         self.assertTrue(omni_method in ['renew', 'provision', 'status',
                                         'performoperationalaction', 'delete'],
                         "omni_method is %s and not one of " \

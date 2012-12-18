@@ -695,7 +695,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
             self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             op_status = self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
-            self.assertTrue( op_status == status_value,
+            if status_value is not None:
+                self.assertTrue( op_status == status_value,
                              "Return from '%s' expected to have " \
                              "'geni_operational_status' equal to '%s' "\
                              "but instead had value of '%s'" 
