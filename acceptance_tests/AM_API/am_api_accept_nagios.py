@@ -60,6 +60,8 @@ SLEEP_TIME=3
 # To run test:
 # ./am_api_accept_nagios.py -a TEST_AM -V 2 --reuse-slice SLICE_NAME NagiosTest.test_CreateSliver_nagios
 # ./am_api_accept_nagios.py -a TEST_AM -V 2 --reuse-slice SLICE_NAME NagiosTest.test_SliverStatus_nagios
+# 
+# The above also works with -V 3.
 #
 #
 ################################################################################
