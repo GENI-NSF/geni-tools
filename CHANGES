@@ -58,7 +58,8 @@ gcf 2.2:
  * AM API Acceptance Tests
   - Allow an empty return or error from some v3 methods, when slice has
  nothing locally (ticket #220)
-
+  - Added tests for use in monitoring with nagios.  Test CreateSliver and SliverStatus in 
+  v2 and v3 (ticket #225).
 gcf 2.1:
  * omni
   - Fix ugly error on createslice error (ticket #192)
