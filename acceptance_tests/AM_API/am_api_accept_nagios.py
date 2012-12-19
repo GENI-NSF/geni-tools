@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2012 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -22,7 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-""" Acceptance tests for AM API v1."""
 
 import datetime
 from geni.util import rspec_util 
@@ -51,18 +50,17 @@ TMP_DIR="."
 REQ_RSPEC_FILE="request.xml"
 BAD_RSPEC_FILE="bad.xml"
 SLEEP_TIME=3
+
 ################################################################################
 #
-# Test AM API v1 calls for accurate and complete functionality.
+# Tests for use with nagios.
 #
-# This script relies on the unittest module.
+# This script relies on the code in am_api_accept.py.
 #
 # To run test:
-# ./am_api_accept.py -a <AM to test> 
+# ./am_api_accept_nagios.py -a TEST_AM -V 2 --reuse-slice SLICE_NAME NagiosTest.test_CreateSliver_nagios
+# ./am_api_accept_nagios.py -a TEST_AM -V 2 --reuse-slice SLICE_NAME NagiosTest.test_SliverStatus_nagios
 #
-# To add a new test:
-# Create a new method with a name starting with 'test_".  It will
-# automatically be run when am_api_accept.py is called.
 #
 ################################################################################
 
