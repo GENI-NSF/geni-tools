@@ -372,7 +372,7 @@ def createConfigFile(opts, public_key_file):
 
     if not cmp(opts.framework,'pg'):
         if urn.find('emulab.net') != -1 :
-            sa = 'https://www.emulab.net:443/protogeni/xmlrpc/sa'
+            sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
         else :
             if urn.find('pgeni.gpolab.bbn.com') != -1 :
                 sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
@@ -385,7 +385,7 @@ def createConfigFile(opts, public_key_file):
         cf_section = """
 [%s]
 type = pg
-ch = https://www.emulab.net:443/protogeni/xmlrpc/ch
+ch = https://www.emulab.net:12369/protogeni/xmlrpc/ch
 sa = %s
 cert = %s
 key = %s
@@ -440,15 +440,15 @@ pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
 pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 
-pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
-pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
-pg-utah3=,https://www.emulab.net/protogeni/xmlrpc/am/3.0
-pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-utah2=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-utah3=,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-utah=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
-pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am/1.0
-pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
-pg-ky3=,https://www.uky.emulab.net/protogeni/xmlrpc/am/3.0
-pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+pg-ky1=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-ky2=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-ky3=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-ky=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
 #Plublic PlanetLab AM
 plc=,https://www.planet-lab.org:12346
