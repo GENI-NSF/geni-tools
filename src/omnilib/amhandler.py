@@ -152,7 +152,7 @@ class AMCallHandler(object):
                 retmsg += msg + "\n"
                 self.logger.warn(msg)
             else:
-                retmsg = "Your AMs do not all speak requested API v%d. " + msg
+                retmsg = ("Your AMs do not all speak requested API v%s. " % configVer) + msg
                 msg = "Switching to AM API v%d. Next time call Omni with '-V%d'." % (newVer, newVer)
                 retmsg += msg + "\n"
                 self.logger.warn(msg)
