@@ -61,8 +61,8 @@ eg-of-gpo=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1
 
 # InstaGENI AMs, include OpenFlow InstaGENI AMs
-ig-utah1=,http://utah.geniracks.net/protogeni/xmlrpc/am
-ig-utah=,http://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah1=,http://utah.geniracks.net:12369/protogeni/xmlrpc/am
+ig-utah=,http://utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
 [pg-gpo]
