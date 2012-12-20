@@ -37,7 +37,7 @@ default_cf = my_gcf
 # e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and 
 #  an OpenFlow/Expedient AM in the GPO lab would be: 
 # aggregates = http://www.planet-lab.org:12347/, \
-#  https://www.emulab.net/protogeni/xmlrpc/am, \
+#  https://www.emulab.net:12369/protogeni/xmlrpc/am, \
 #  http://myplc2.gpolab.bbn.com:8001/, \
 #  https://masada.gpolab.bbn.com:443/openflow/gapi/
 
@@ -60,15 +60,15 @@ pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
 pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
 
-pg-utah1=,https://www.emulab.net/protogeni/xmlrpc/am/1.0
-pg-utah2=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
-pg-utah3=,https://www.emulab.net/protogeni/xmlrpc/am/3.0
-pg-utah=,https://www.emulab.net/protogeni/xmlrpc/am/2.0
+pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-utah2=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-utah3=,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-utah=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
-pg-ky1=,https://www.uky.emulab.net/protogeni/xmlrpc/am/1.0
-pg-ky2=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
-pg-ky3=,https://www.uky.emulab.net/protogeni/xmlrpc/am/3.0
-pg-ky=,https://www.uky.emulab.net/protogeni/xmlrpc/am/2.0
+pg-ky1=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-ky2=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-ky3=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-ky=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
 #Plublic PlanetLab AM
 plc=,https://www.planet-lab.org:12346
@@ -179,7 +179,7 @@ type=pg
 verbose=false
 # The address of the PG clearinghouse. Here we use tha main CH in Utah,
 # with authority name: emulab.net
-ch=https://www.emulab.net:443/protogeni/xmlrpc/ch
+ch=https://www.emulab.net:12369/protogeni/xmlrpc/ch
 
 # The address of the PG slice authority. Here for comparison we show
 # using a different slice authority for the PG authority

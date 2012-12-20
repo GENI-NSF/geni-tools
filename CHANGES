@@ -19,7 +19,7 @@ gcf 2.2:
   `--info`. This allows scripts using Omni to suppress output. Note
   that at WARN and ERROR levels, command results (like the manifest
   RSpec) are not printed: use `-o`. If multiple log levels are
-  specified, the more verbose log level is used. (ticket #209)
+  specified, the more verbose log level is used. (tickets #209,#223)
   - If an aggregate does not speak the requested Ad RSpec version,
   print a more helpful message. (ticket #211)
   - Add support for the ProtoGENI / InstaGENI 'createimage' method to
@@ -33,9 +33,8 @@ gcf 2.2:
   nicknames. This means nicknames are case insensitive, and must be
   looked up that way. (ticket # 218)
   - Print error if certificate or key file is empty (ticket #210)
+  - Change ProtoGENI Utah and Kentucky URLs to use port 12369 (ticket #227)
   - Avoid exception if no live AMs are found (ticket #221)
-  - Added command line options to set the log level, --info, --warn, --error
-  (ticket #223)
   - readyToLogin.py saves loginInfo and ssh config in files if '-o' option is
   present. It will also use the '--prefix' option for adding a prefix in the
   default filenames (logininfo.txt, sshconfig.txt). By default it will overwrite
@@ -60,6 +59,8 @@ gcf 2.2:
  nothing locally (ticket #220)
   - Added tests for use in monitoring with nagios.  Test CreateSliver and SliverStatus in 
   v2 and v3 (ticket #225).
+  - Change ProtoGENI Utah and Kentucky URLs to use port 12369 (ticket #227)
+
 gcf 2.1:
  * omni
   - Fix ugly error on createslice error (ticket #192)
