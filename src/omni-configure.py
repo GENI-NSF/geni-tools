@@ -375,7 +375,7 @@ def createConfigFile(opts, public_key_file):
             sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
         else :
             if urn.find('pgeni.gpolab.bbn.com') != -1 :
-                sa = 'https://www.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa'
+                sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
             else : 
               if urn.find('loni.org') != -1 :
                 sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
@@ -433,12 +433,12 @@ keys = %(pkey)s
 [aggregate_nicknames]
 
 #ProtoGENI AMs
-pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-gpo1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-gpo2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-gpo=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-bbn2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 
 pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-utah2=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0

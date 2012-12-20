@@ -66,7 +66,7 @@ New in v2.2:
  looked up that way. (ticket # 218)
  - Print error if certificate or key file is empty (ticket #210)
  - Avoid exception if no live AMs are found (ticket #221)
- - Change ProtoGENI Utah and Kentucky URLs to use port 12369 (ticket #227)
+ - Change ProtoGENI Utah, GPO and Kentucky URLs to use port 12369 (ticket #227)
 
 New in v2.1:
  - Fix ugly error on createslice error (ticket #192)

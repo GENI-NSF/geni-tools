@@ -22,8 +22,8 @@ keys=~/.ssh/id_rsa.pg.pub
 am-undertest=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 
 # ProtoGENI AMs
-pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am
-pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-gpo1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am
+pg-gpo=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am
 pg-utah=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-ky1=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am
@@ -69,7 +69,7 @@ ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 type=pg
 verbose=false
 ch=https://www.emulab.net:12369/protogeni/xmlrpc/ch
-sa=https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+sa=https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa
 
 # CONFIGURATION: If necessary, replace the next two lines with the
 #  location of your combined cert/key file you downloaded from

@@ -33,7 +33,7 @@ gcf 2.2:
   nicknames. This means nicknames are case insensitive, and must be
   looked up that way. (ticket # 218)
   - Print error if certificate or key file is empty (ticket #210)
-  - Change ProtoGENI Utah and Kentucky URLs to use port 12369 (ticket #227)
+  - Change ProtoGENI Utah, GPO and Kentucky URLs to use port 12369 (ticket #227)
   - Avoid exception if no live AMs are found (ticket #221)
   - readyToLogin.py saves loginInfo and ssh config in files if '-o' option is
   present. It will also use the '--prefix' option for adding a prefix in the
@@ -59,7 +59,7 @@ gcf 2.2:
  nothing locally (ticket #220)
   - Added tests for use in monitoring with nagios.  Test CreateSliver and SliverStatus in 
   v2 and v3 (ticket #225).
-  - Change ProtoGENI Utah and Kentucky URLs to use port 12369 (ticket #227)
+  - Change ProtoGENI Utah, GPO and Kentucky URLs to use port 12369 (ticket #227)
 
 gcf 2.1:
  * omni
