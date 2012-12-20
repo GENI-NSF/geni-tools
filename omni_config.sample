@@ -53,12 +53,12 @@ default_cf = my_gcf
 [aggregate_nicknames]
 
 #ProtoGENI AMs
-pg-gpo1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-pg-gpo2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-gpo=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-bbn1=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-pg-bbn2=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-pg-bbn=,https://pgeni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+pg-gpo1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-gpo2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-gpo=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-bbn2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 
 pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-utah2=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
@@ -184,7 +184,7 @@ ch=https://www.emulab.net:12369/protogeni/xmlrpc/ch
 # The address of the PG slice authority. Here for comparison we show
 # using a different slice authority for the PG authority
 # pgeni.gpolab.bbn.com
-sa=https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa
+sa=https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa
 
 # When you log in to PG you can download your cert and key in 1 file.
 # That combined .pem file can be used as both cert and key here.
