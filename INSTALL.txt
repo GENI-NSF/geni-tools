@@ -1,3 +1,4 @@
+
 This file documents how to install and run the gcf package, including
 the Omni command-line tool.
 
@@ -93,6 +94,34 @@ Please see INSTALL.centos
 
 MAC OS X
 --------
+
+Using homebrew
+==============
+These instructions use homebrew: http://mxcl.github.com/homebrew/
+
+To install:
+  * `brew install python`
+  * This will install python at `/usr/local/bin` but the python that comes with Mac OS is at `/usr/bin` which takes precedent in the path, so modify your `~/.profile` file and add this line:
+      export PATH=/usr/local/bin:$PATH
+      and then run `source ~/.profile`
+  * Type `which python` to ensure that you are using the right one.
+  * `brew install swig`
+  * `pip install M2Crypto`
+  * `brew install libxmlsec1`
+  * `pip install python-dateutil`
+  * `brew install xmlsec1`
+  * `pip install pyopenssl`
+  * `omni-configure.py` and `omni.py` assume that your python is at `/usr/bin/python` so you have two options:
+    - always invoke them using python, e.g. `python src/omni-configure.py` and `python src/omni.py`
+    - modify the first line in each of the files to be `#!/usr/local/bin/python`
+
+If you want to test if your python can access the libraries you want, just start python
+in interactive mode and try to import the module (e.g. `import M2Crypto`).
+
+MacPorts Instructions
+=====================
+These instructions have not recently been tested. You may need to edit your `PATH` or `PYTHONPATH` to ensure all installed modules are properly found.
+
 You must have macports already installed.
 
   % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
