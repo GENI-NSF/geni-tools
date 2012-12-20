@@ -487,21 +487,21 @@ eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
 
 
 #InstaGENI AMs, include OpenFlow InstaGENI AMs
-ig-utah1=,https://utah.geniracks.net/protogeni/xmlrpc/am
-ig-utah2=,https://utah.geniracks.net/protogeni/xmlrpc/am/2.0
-ig-utah3=,https://utah.geniracks.net/protogeni/xmlrpc/am/3.0
-ig-utah=,https://utah.geniracks.net/protogeni/xmlrpc/am/2.0
+ig-utah1=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am
+ig-utah2=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+ig-utah3=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+ig-utah=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 ig-of-utah=,https://foam.utah.geniracks.net:3626/foam/gapi/1
 
-ig-gpo1=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-ig-gpo2=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-gpo3=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
-ig-gpo=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-gpo1=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+ig-gpo2=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+ig-gpo3=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
+ig-gpo=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-of-gpo=,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1 
-ig-bbn1=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/1.0
-ig-bbn2=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
-ig-bbn3=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/3.0
-ig-bbn=,https://instageni.gpolab.bbn.com/protogeni/xmlrpc/am/2.0
+ig-bbn1=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+ig-bbn2=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+ig-bbn3=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
+ig-bbn=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-of-bbn=,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1 
 
 """ % omni_config_dict
