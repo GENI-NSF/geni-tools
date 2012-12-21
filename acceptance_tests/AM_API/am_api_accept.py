@@ -425,9 +425,10 @@ class Test(ut.OmniUnittest):
         self.logger.info("\n=== Test.test_ListResources_slice_with_usercred ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
-        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_generic_ListResources, 
+        user_cred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder)
+        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError, NotNoneAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicename,
-                          slicecred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
+                          slicecred=user_cred)
         self.options_copy.devmode = False
 
     def removeFirstChar( self, usercred ):
@@ -479,7 +480,7 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
         self.options_copy.devmode = True           
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
                           usercred=broken_usercred)
         self.options_copy.devmode = False
 
@@ -575,7 +576,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # with slicename left to the default
         self.logger.info("\n=== Test.test_ListResources_untrustedCredential - should FAIL ===")
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
                           usercredfile=self.options_copy.untrusted_usercredfile)
         self.success = True
 
