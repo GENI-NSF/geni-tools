@@ -786,6 +786,9 @@ class AMCallHandler(object):
                 if not self.opts.devmode:
                     # Skip this AM/client
                     raise BadClientException(client, mymessage)
+                else:
+                    self.logger.debug("... but continuing")
+                    ad_rspec_version = ()
 
             self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
             # foreach item in the list that is the val
