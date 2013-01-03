@@ -56,8 +56,7 @@ class CredentialVerifier(object):
 
     CATEDCERTSFNAME = 'CATedCACerts.pem'
 
-
-    # root_cert_file is a trusted root file file or directory of 
+    # root_cert_fileordir is a trusted root cert file or directory of
     # trusted roots for verifying credentials
     def __init__(self, root_cert_fileordir):
         self.logger = logging.getLogger('cred-verifier')
@@ -67,7 +66,7 @@ class CredentialVerifier(object):
             files = os.listdir(root_cert_fileordir)
             self.root_cert_files = []
             for file in files:
-                # FIXME: exclude files that aren't cert files? The combo cert file?
+                # FIXME: exclude files that aren't cert files?
                 if file == CredentialVerifier.CATEDCERTSFNAME:
                     continue
                 self.root_cert_files.append(os.path.expanduser(os.path.join(root_cert_fileordir, file)))
@@ -223,8 +222,6 @@ class CredentialVerifier(object):
                 failure = "Cred for %s over %s doesn't provide sufficient privileges" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
                 continue
 
-
-            print 
             try:
                 if not cred.verify(self.root_cert_files):
                     failure = "Couldn't validate credential for caller %s with target %s with any of %d known root certs" % (cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn(), len(self.root_cert_files))
