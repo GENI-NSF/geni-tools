@@ -283,8 +283,11 @@ class PGSAnCHServer(object):
         output = None
         value = None
         try:
+            self.logger.debug("Calling ListComponents(%r)", args)
             value = self._delegate.ListComponents(args)
+            self.logger.debug("ListComponents result: %r", value)
         except Exception, e:
+            self.logger.error("ListComponents exception: %s", str(e))
             output = str(e)
             code = 1 # FIXME: Better codes
             value = ''
@@ -308,6 +311,9 @@ class PGSAnCHServer(object):
         if code is None:
             code = 0
 
+        self.logger.debug("ListComponents final code: %r", code)
+        self.logger.debug("ListComponents final value: %r", value)
+        self.logger.debug("ListComponents final output: %r", output)
         return dict(code=code, value=value, output=output)
 
 # Skipping PostCRL, List, GetVersion
