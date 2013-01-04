@@ -34,7 +34,7 @@ import uuid as uuidModule
 import os
 
 import dateutil.parser
-from SecureXMLRPCServer import SecureXMLRPCServer
+from SecureXMLRPCServer import SecureXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
@@ -318,6 +318,20 @@ class PGSAnCHServer(object):
 
 # Skipping PostCRL, List, GetVersion
 
+# Flack wants to communicate to its Clearinghouse via the HTTP path
+# "/ch".  By default our XML-RPC server only handles requests to "/"
+# (and "/RPC2" according to the documentation). This class modifies
+# the acceptable RPC paths to include "/". I chose to eliminate
+# "/RPC2" from the list because we don't use it.
+#
+# This class is used when the XML-RPC server is instantiated. After
+# instantiation, the server object is modified to use this request
+# handler instead of our default handler (SecureXMLRPCRequestHandler).
+#
+# See http://docs.python.org/2/library/simplexmlrpcserver.html
+class PgChRequestHandler(SecureXMLRPCRequestHandler):
+    rpc_paths = ('/', '/ch',)
+
 class PGClearinghouse(Clearinghouse):
 
     def __init__(self, gcf=False):
@@ -405,6 +419,10 @@ class PGClearinghouse(Clearinghouse):
         # Create the xmlrpc server, load the rootkeys and do the ssl thing.
         self._server = self._make_server(addr, keyfile, certfile,
                                          ca_certs_onefname)
+        # Override the default RequestHandlerClass to allow
+        # Flack to communicate to our PGCH using either "/"
+        # or "/ch" for SA or CH respectively.
+        self._server.RequestHandlerClass = PgChRequestHandler
         self._server.register_instance(PGSAnCHServer(self, self.logger))
         self.logger.info('GENI PGCH Listening on port %d...' % (addr[1]))
         self._server.serve_forever()
