@@ -426,9 +426,15 @@ class Test(ut.OmniUnittest):
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
         user_cred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder)
-        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError, NotNoneAssertionError), self.subtest_generic_ListResources, 
+        if self.options_copy.api_version == 1:
+            self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError, NotNoneAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicename,
                           slicecred=user_cred)
+        else:
+            self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_generic_ListResources, 
+                          slicename=slicename,
+                          slicecred=user_cred)
+            
         self.options_copy.devmode = False
 
     def removeFirstChar( self, usercred ):
@@ -480,8 +486,12 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
         self.options_copy.devmode = True           
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
                           usercred=broken_usercred)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                          usercred=broken_usercred)            
         self.options_copy.devmode = False
 
     def subtest_ListResources_wrongSlice(self, slicelist):
@@ -517,7 +527,11 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(slice) 
         self.options_copy.devmode = True   
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_generic_ListResources, 
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_generic_ListResources, 
+                          slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
 
@@ -576,8 +590,12 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # with slicename left to the default
         self.logger.info("\n=== Test.test_ListResources_untrustedCredential - should FAIL ===")
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
-                          usercredfile=self.options_copy.untrusted_usercredfile)
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
+                              usercredfile=self.options_copy.untrusted_usercredfile)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                              usercredfile=self.options_copy.untrusted_usercredfile)            
         self.success = True
 
     def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, 
@@ -996,9 +1014,15 @@ class Test(ut.OmniUnittest):
         try:
             manifest = self.subtest_generic_ListResources(slicename )
             gotRet = True
-        except (AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), e:
+        except (AMAPIError, NotSuccessError, NotDictAssertionError), e:
             if not self.options_copy.strict:
                 self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
+            else:
+                self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
+                raise
+        except NotNoneAssertionError, e:
+            if self.options_copy.api_version == 1 and not self.options_copy.strict:
+                    self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
             else:
                 self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
                 raise
