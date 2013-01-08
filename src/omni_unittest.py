@@ -119,6 +119,9 @@ class OmniUnittest(unittest.TestCase):
 #        self.options = None
 #        self.args = ()
 
+    @classmethod
+    def now_in_seconds( cls ):
+        return datetime.datetime.utcnow().replace(microsecond=0)
     def section_break( self ):
         """Text to separate individual tests"""
         testname = inspect.stack()[1][3]

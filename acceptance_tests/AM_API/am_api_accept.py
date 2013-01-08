@@ -876,7 +876,7 @@ class Test(ut.OmniUnittest):
                     else:
 #                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
                         sliverurns = [sliver_urn]
-                    now = datetime.datetime.utcnow()
+                    now = ut.OmniUnittest.now_in_seconds()
                     fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
                     self.subtest_Renew(slicename, newtime=fivemin, sliverlist=sliverurns)
 
@@ -1378,7 +1378,7 @@ class Test(ut.OmniUnittest):
             print "Skipping renew tests"
             return
 
-        now = datetime.datetime.utcnow()
+        now = ut.OmniUnittest.now_in_seconds()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
@@ -1396,7 +1396,7 @@ class Test(ut.OmniUnittest):
             print "Skipping renew tests"
             return
 
-        now = datetime.datetime.utcnow()
+        now = ut.OmniUnittest.now_in_seconds()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
