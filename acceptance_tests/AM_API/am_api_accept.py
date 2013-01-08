@@ -517,7 +517,7 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(slice) 
         self.options_copy.devmode = True   
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
+        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
 
