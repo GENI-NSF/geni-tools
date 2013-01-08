@@ -64,6 +64,10 @@ gcf 2.2:
   - Added tests for use in monitoring with nagios.  Test CreateSliver and SliverStatus in 
   v2 and v3 (ticket #225).
   - Change ProtoGENI Utah, GPO and Kentucky URLs to use port 12369 (ticket #227)
+  - Truncate milliseconds off times used in acceptance tests.  When checking if two times 
+  are equal, only check that they are within a second of each other.  (ticket #231)
+  - Allow v1 aggregates to return None in cases of failure.  This fixes a bug introduced 
+  in gcf-2.0. (ticket #229)
 
 gcf 2.1:
  * omni
