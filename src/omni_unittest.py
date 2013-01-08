@@ -925,8 +925,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         interim2 = dateutil.parser.parse( timestamp2 )
         datetimeStruct2 = naiveUTC( interim2 ) 
 
-        self.assertEqual( datetimeStruct1, datetimeStruct2,
-                         "assertTimestampsEqual expected to compare two equal " \
+        self.assertTrue( ((datetimeStruct1 - datetimeStruct2) <= datetime.timedelta(seconds=1)) and (datetimeStruct2 - datetimeStruct1) <= datetime.timedelta(seconds=1),
+                         "assertTimestampsEqual expected to compare two approx. equal " \
                          "timestamps but instead timestamps are: \n" \
                          "%s\n" \
                          "%s\n" 
