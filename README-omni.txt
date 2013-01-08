@@ -56,7 +56,8 @@ New in v2.2:
  print a more helpful message. (ticket #211)
  - Add support for the ProtoGENI / InstaGENI 'createimage' method to
  snapshot your disk. This is only minimally supported by ProtoGENI.
- On success, you will see `True` and the image file will be
+ On success, you should see the URN and URL for the new
+ image, and later an email will tell you the image is ready, and the image file will be
  available under `/proj/<project>/images/<imagename>.ndz` on the node
  which was associated with the sliver urn used with the Omni command. See
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)

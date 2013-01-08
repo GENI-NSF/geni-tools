@@ -25,9 +25,10 @@ gcf 2.2:
   print a more helpful message. (ticket #211)
   - Added support for the ProtoGENI / InstaGENI 'createimage' method to
   snapshot your disk. This is only minimally supported by
- ProtoGENI. On success, you will see `True` and the image file will be
- available under `/proj/<project>/images/<imagename>.ndz` on the node
- which was associated with the sliver urn used with the Omni command. See
+  ProtoGENI. On success, you should see the URN and URL for the new
+  image, and later an email will tell you the image is ready, and the image file will be
+  available under `/proj/<project>/images/<imagename>.ndz` on the node
+  which was associated with the sliver urn used with the Omni command. See
   http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
   - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
   - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
