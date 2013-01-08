@@ -904,7 +904,10 @@ class Test(ut.OmniUnittest):
             raise
         finally:
             time.sleep(self.options_copy.sleep_time)
-            self.subtest_generic_DeleteSliver( slicename )
+            try:
+                self.subtest_generic_DeleteSliver( slicename )
+            except:
+                pass
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
