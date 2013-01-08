@@ -1692,15 +1692,19 @@ class Test(ut.OmniUnittest):
             resourceCount += len(resources)
         return resourceCount
 
-    def subtest_DeleteSliver(self, slice_name):
+    def subtest_DeleteSliver(self, slice_name, expectedNumSlivers=None):
         omniargs = ["deletesliver", slice_name]
         self.logger.info("\n=== Test.subtest_DeleteSliver ===")
         text, (successList, failList) = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( successList, failList )
         _ = possNum # Appease eclipse
-        # ASSUMES we have reserved resources on exactly one aggregate
-        self.assertTrue( int(succNum) == 1, 
+
+        if expectedNumSlivers==0:
+            # Either an Exception or Boolean is valid here, so don't test
+            pass
+        else:
+            self.assertTrue( succNum == 1,
                          "Sliver deletion expected to work " \
                          "but instead sliver deletion failed for slice: %s"
                          % slice_name )
@@ -1809,7 +1813,7 @@ class Test(ut.OmniUnittest):
 
     def subtest_generic_DeleteSliver( self, slicename, sliverlist =  None, expectedNumSlivers=None ):
         if self.options_copy.api_version <= 2:
-            return self.subtest_DeleteSliver( slicename )
+            return self.subtest_DeleteSliver( slicename, expectedNumSlivers=expectedNumSlivers )
         elif self.options_copy.api_version >= 3:
             return self.subtest_Delete( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
 
