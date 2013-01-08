@@ -996,7 +996,7 @@ class Test(ut.OmniUnittest):
         try:
             manifest = self.subtest_generic_ListResources(slicename )
             gotRet = True
-        except (AMAPIError, NotSuccessError, NotDictAssertionError), e:
+        except (AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), e:
             if not self.options_copy.strict:
                 self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
             else:
