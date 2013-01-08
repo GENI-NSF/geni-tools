@@ -786,6 +786,9 @@ class AMCallHandler(object):
                 if not self.opts.devmode:
                     # Skip this AM/client
                     raise BadClientException(client, mymessage)
+                else:
+                    self.logger.debug("... but continuing")
+                    ad_rspec_version = ()
 
             self.logger.debug("Got %d supported RSpec versions", len(ad_rspec_version))
             # foreach item in the list that is the val
@@ -3418,7 +3421,7 @@ class AMCallHandler(object):
         return self.createimage(args)
 
     def createimage(self, args):
-        '''ProtoGENI's createimage function: snapshot the disk for
+        '''ProtoGENI's createimage function: snapshot the disk for a
         single sliver (node), giving it the given image name.
         See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo'''
         # args: sliceURNOrName, sliverURN, imageName, makePublic=True
@@ -3518,11 +3521,7 @@ class AMCallHandler(object):
             retVal += prStr + "\n"
         else:
             # success
-
-            # FIXME: I want the image URN and URL. Is that in the
-            # value? The output? Currently, we just get 'True' in
-            # value, and no output. Waiting on PG to fix this.
-            prStr = "Snapshotting disk on %s at %s, creating %s image %s (%s)" % (sliverURN, client.url, publicString, res['value'], res['output'])
+            prStr = "Snapshotting disk on %s at %s, creating %s image %s" % (sliverURN, client.url, publicString, res['value'])
             self.logger.info(prStr)
             retVal += prStr
 

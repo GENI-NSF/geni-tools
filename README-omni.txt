@@ -55,9 +55,12 @@ New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version,
  print a more helpful message. (ticket #211)
  - Add support for the ProtoGENI / InstaGENI 'createimage' method to
- snapshot your disk. This is only minimally supported by ProtoGENI. See
+ snapshot your disk. This is only minimally supported by ProtoGENI.
+ On success, you will see `True` and the image file will be
+ available under `/proj/<project>/images/<imagename>.ndz` on the node
+ which was associated with the sliver urn used with the Omni command. See
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
- - Support GCF CH list_my_slices (ticket #214)
+ - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
  - Add a 'gib' framework for geni-in-a-box to talk to the 'pgch' clearinghouse
  - Provision now supplies the `geni_rspec_version` option, to specify
  the manifest format to use.
