@@ -92,6 +92,7 @@ of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
 of-gatech=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
 of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
 of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
+of-uen=,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
 
 #Exogeni AMs include OpenFlow ExoGENI AMs
 eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc

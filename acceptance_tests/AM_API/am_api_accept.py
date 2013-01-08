@@ -425,9 +425,16 @@ class Test(ut.OmniUnittest):
         self.logger.info("\n=== Test.test_ListResources_slice_with_usercred ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
-        self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_generic_ListResources, 
+        user_cred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder)
+        if self.options_copy.api_version == 1:
+            self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError, NotNoneAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicename,
-                          slicecred=json.dumps(usercredstruct, cls=json_encoding.DateTimeAwareJSONEncoder))
+                          slicecred=user_cred)
+        else:
+            self.assertRaises((NotSuccessError, NotDictAssertionError, AMAPIError), self.subtest_generic_ListResources, 
+                          slicename=slicename,
+                          slicecred=user_cred)
+            
         self.options_copy.devmode = False
 
     def removeFirstChar( self, usercred ):
@@ -479,8 +486,12 @@ class Test(ut.OmniUnittest):
         # self.subtest_ListResources(usercred=broken_usercred) 
         # with slicename left to the default
         self.options_copy.devmode = True           
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
                           usercred=broken_usercred)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                          usercred=broken_usercred)            
         self.options_copy.devmode = False
 
     def subtest_ListResources_wrongSlice(self, slicelist):
@@ -516,7 +527,11 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # self.subtest_ListResources(slice) 
         self.options_copy.devmode = True   
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_generic_ListResources, 
+                          slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_generic_ListResources, 
                           slicename=slicelist[(i+1)%num_slices], slicecred=slicecred)
         self.options_copy.devmode = False
 
@@ -575,8 +590,12 @@ class Test(ut.OmniUnittest):
         # We expect this to fail
         # with slicename left to the default
         self.logger.info("\n=== Test.test_ListResources_untrustedCredential - should FAIL ===")
-        self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
-                          usercredfile=self.options_copy.untrusted_usercredfile)
+        if self.options_copy.api_version == 1:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError, NotNoneAssertionError), self.subtest_ListResources, 
+                              usercredfile=self.options_copy.untrusted_usercredfile)
+        else:
+            self.assertRaises((AMAPIError, NotSuccessError, NotDictAssertionError), self.subtest_ListResources, 
+                              usercredfile=self.options_copy.untrusted_usercredfile)            
         self.success = True
 
     def subtest_Describe( self,  slicename=None, slicecred=None, usercred=None, 
@@ -857,7 +876,7 @@ class Test(ut.OmniUnittest):
                     else:
 #                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
                         sliverurns = [sliver_urn]
-                    now = datetime.datetime.utcnow()
+                    now = ut.OmniUnittest.now_in_seconds()
                     fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
                     self.subtest_Renew(slicename, newtime=fivemin, sliverlist=sliverurns)
 
@@ -903,7 +922,10 @@ class Test(ut.OmniUnittest):
             raise
         finally:
             time.sleep(self.options_copy.sleep_time)
-            self.subtest_generic_DeleteSliver( slicename )
+            try:
+                self.subtest_generic_DeleteSliver( slicename )
+            except:
+                pass
 
         # Test SliverStatus, ListResources and DeleteSliver on a deleted sliver
         self.subtest_CreateSliverWorkflow_failure( slicename )
@@ -995,6 +1017,12 @@ class Test(ut.OmniUnittest):
         except (AMAPIError, NotSuccessError, NotDictAssertionError), e:
             if not self.options_copy.strict:
                 self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
+            else:
+                self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
+                raise
+        except NotNoneAssertionError, e:
+            if self.options_copy.api_version == 1 and not self.options_copy.strict:
+                    self.logger.debug("ListResources(non existent slice) got expected error %s %s", type(e), e)
             else:
                 self.logger.error("Got unexpected error from ListResources on non-existent slice: %s %s", type(e), e)
                 raise
@@ -1350,7 +1378,7 @@ class Test(ut.OmniUnittest):
             print "Skipping renew tests"
             return
 
-        now = datetime.datetime.utcnow()
+        now = ut.OmniUnittest.now_in_seconds()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
@@ -1368,7 +1396,7 @@ class Test(ut.OmniUnittest):
             print "Skipping renew tests"
             return
 
-        now = datetime.datetime.utcnow()
+        now = ut.OmniUnittest.now_in_seconds()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
@@ -1691,15 +1719,19 @@ class Test(ut.OmniUnittest):
             resourceCount += len(resources)
         return resourceCount
 
-    def subtest_DeleteSliver(self, slice_name):
+    def subtest_DeleteSliver(self, slice_name, expectedNumSlivers=None):
         omniargs = ["deletesliver", slice_name]
         self.logger.info("\n=== Test.subtest_DeleteSliver ===")
         text, (successList, failList) = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
         succNum, possNum = omni.countSuccess( successList, failList )
         _ = possNum # Appease eclipse
-        # ASSUMES we have reserved resources on exactly one aggregate
-        self.assertTrue( int(succNum) == 1, 
+
+        if expectedNumSlivers==0:
+            # Either an Exception or Boolean is valid here, so don't test
+            pass
+        else:
+            self.assertTrue( succNum == 1,
                          "Sliver deletion expected to work " \
                          "but instead sliver deletion failed for slice: %s"
                          % slice_name )
@@ -1808,7 +1840,7 @@ class Test(ut.OmniUnittest):
 
     def subtest_generic_DeleteSliver( self, slicename, sliverlist =  None, expectedNumSlivers=None ):
         if self.options_copy.api_version <= 2:
-            return self.subtest_DeleteSliver( slicename )
+            return self.subtest_DeleteSliver( slicename, expectedNumSlivers=expectedNumSlivers )
         elif self.options_copy.api_version >= 3:
             return self.subtest_Delete( slicename, sliverlist, expectedNumSlivers=expectedNumSlivers )
 
