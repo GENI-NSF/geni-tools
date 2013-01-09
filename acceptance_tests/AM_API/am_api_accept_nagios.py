@@ -69,10 +69,8 @@ SLEEP_TIME=3
 # This is the acceptance test for AM API version 1
 API_VERSION = 2
 
-#NUM_SLEEP = 15*60 # 15 minutes
-NUM_SLEEP = 15 
-#MAX_TIME_TO_CREATESLIVER = 15*60 # 15 minutes
-MAX_TIME_TO_CREATESLIVER = 15
+NUM_SLEEP = 12
+MAX_TIME_TO_CREATESLIVER = 3*60 # 3 minutes
 
 class NagiosTest(accept.Test):
     """Test to be used by nagios."""
@@ -149,7 +147,7 @@ class NagiosTest(accept.Test):
     def subtest_SliverStatus_nagios(self, slicename):
         have_slept = 0
         status_ready = False
-        long_sleep = NUM_SLEEP * self.options_copy.sleep_time
+        long_sleep = max( 5, MAX_TIME_TO_CREATESLIVER / NUM_SLEEP )
         if slicename==None:
             slicename = self.create_slice_name()
         # before starting check if this is going to fail for unrecoverable reasons having nothing to do with being ready
