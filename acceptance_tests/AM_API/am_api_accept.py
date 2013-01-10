@@ -1134,7 +1134,8 @@ class Test(ut.OmniUnittest):
                 time.sleep(self.options_copy.sleep_time)
 #                # False args mean in v3+, don't do Provision or POA
 #                createReturn = self.subtest_generic_CreateSliver( slicenames[i], False, False )
-                createReturn = self.subtest_generic_CreateSliver( slicenames[i] )
+                sliceExpiration = self.getSliceExpiration( slicenames[i] )
+                createReturn = self.subtest_generic_CreateSliver( slicenames[i], expectedExpiration=sliceExpiration )
                 numslivers[i], tmpManifest, slivers[i] = createReturn
                 manifest[i] = "".join(tmpManifest)
 
