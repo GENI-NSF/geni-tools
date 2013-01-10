@@ -797,7 +797,8 @@ class Test(ut.OmniUnittest):
         except:
             pass
 
-        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename, doProvision, doPOA )
+        sliceExpiration = self.getSliceExpiration( slicename )
+        numslivers, manifest, slivers = self.subtest_generic_CreateSliver( slicename, doProvision, doPOA, expectedExpiration=sliceExpiration )
         with open(self.options_copy.rspec_file) as f:
             req = f.readlines()
             request = "".join(req)
@@ -880,6 +881,7 @@ class Test(ut.OmniUnittest):
                     else:
 #                        print "AM does NOT do geni_single_allocation: testing Renew/Describe with one sliver URN"
                         sliverurns = [sliver_urn]
+
                     now = ut.OmniUnittest.now_in_seconds()
                     fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
                     self.subtest_Renew(slicename, newtime=fivemin, sliverlist=sliverurns)
@@ -1282,14 +1284,10 @@ class Test(ut.OmniUnittest):
                     pass
         self.success = True
 
-    def subtest_RenewPastSliceExpiration(self, slicename):
-        if self.options_copy.skip_renew:
-            print "Skipping renew tests"
-            return
 
+    def getSliceExpiration( self, slicename ):
         # (1) Get the slicecredential
         omniargs = ["getslicecred", slicename]
-        self.logger.info("\n=== Test.subtest_RenewPastSliceExpiration ===")
         (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
         if self.options_copy.api_version >= 3:
@@ -1299,7 +1297,7 @@ class Test(ut.OmniUnittest):
         else:
             slicecred = slicecredstruct
             self.assertStr( slicecred,
-                            "Return from 'getslicered' " \
+                            "Return from 'getslicecred' " \
                             "expected to be string " \
                             "but instead returned: %r" 
                             % (slicecred))
@@ -1314,6 +1312,18 @@ class Test(ut.OmniUnittest):
 
         # Get slice expiration from slicecred
         slice_exp = credparsing.get_cred_exp(None, slicecred)
+        # Need next line to get this to work as desired.
+        slice_exp = str(slice_exp)
+        return slice_exp
+
+    def subtest_RenewPastSliceExpiration(self, slicename):
+        if self.options_copy.skip_renew:
+            print "Skipping renew tests"
+            return
+
+        self.logger.info("\n=== Test.subtest_RenewPastSliceExpiration ===")
+        slice_exp = self.getSliceExpiration( slicename )
+
         # Try to renew to 2 days late
         twodayslate = (slice_exp + datetime.timedelta(days=2)).isoformat()
 #        print "Will try to renew slice %s that expires at %s until %s" % (slicename, slice_exp, twodayslate)
