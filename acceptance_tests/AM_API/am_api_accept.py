@@ -861,15 +861,22 @@ class Test(ut.OmniUnittest):
                     self.assertTrue(len(ret_dict.keys()) > 0,
                                     "GetVersion returned nothing")
                     aggName = ret_dict.keys()[0]
-                    self.assertTrue((isinstance(ret_dict[aggName], dict) and 
-                                     ret_dict[aggName].has_key('value') and 
-                                     isinstance(ret_dict[aggName]['value'], dict)),
-                                    "GetVersion return malformed")
+
+                    self.assertDict( ret_dict[aggName], "GetVersion return malformed" )
+                    aggVersion = self.assertReturnKeyValueType( "GetVersion", aggName, 
+                                                                ret_dict[aggName], 'value', dict )
 
                     # 2: Pull geni_single_allocation value
-                    if ret_dict[aggName]['value'].has_key('geni_single_allocation'):
-                        geni_single_allocation = self.assertReturnKeyValueType("GetVersion", aggName, ret_dict[aggName], "geni_single_allocation", bool)
-
+                    if aggVersion.has_key('geni_single_allocation'):
+                        geni_single_allocation = self.assertReturnKeyValueType("GetVersion", aggName, aggVersion, "geni_single_allocation", int)
+                        # Check value is boolean (0 or 1)
+                        self.assertTrue( geni_single_allocation in set( [0, 1] ),
+                                         "Return from '%s' %s" \
+                                             "expected to have entry '%s' " \
+                                             "with a boolean value (0, 1) " \
+                                             "but instead returned: \n" \
+                                             "%s\n" \
+                                             "... edited for length ..." % ("GetVersion", aggName, "geni_single_allocation", str(geni_single_allocation)))
                     if geni_single_allocation:
 #                        print "AM does geni_single_allocation: testing Renew/Describe with all sliver URNs at once"
                         sliverurns = allsliverurns
