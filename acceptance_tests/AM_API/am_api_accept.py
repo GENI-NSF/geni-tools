@@ -223,6 +223,11 @@ class Test(ut.OmniUnittest):
                                          str(self.options_copy.api_version), 
                                          str )
 
+            # Check v3+ AM optional geni_single_allocation and geni_allocate
+            if self.options_copy.api_version >= 3:
+                self.assertGeniSingleAllocationIfExists( "GetVersion", agg, value )
+                self.assertGeniAllocateIfExists( "GetVersion", agg, value )
+
             if self.options_copy.api_version >= 2:
                 request_rspec_versions = self.assertReturnKeyValueType( 
                     'GetVersion', agg, value, 
@@ -339,6 +344,7 @@ class Test(ut.OmniUnittest):
                         "'geni_type'='sfa' and 'geni_version'= 3 (or 2) " \
                         "but did not." 
                         % (agg) )
+
 
         self.success = True
 
@@ -867,16 +873,7 @@ class Test(ut.OmniUnittest):
                                                                 ret_dict[aggName], 'value', dict )
 
                     # 2: Pull geni_single_allocation value
-                    if aggVersion.has_key('geni_single_allocation'):
-                        geni_single_allocation = self.assertReturnKeyValueType("GetVersion", aggName, aggVersion, "geni_single_allocation", int)
-                        # Check value is boolean (0 or 1)
-                        self.assertTrue( geni_single_allocation in set( [0, 1] ),
-                                         "Return from '%s' %s" \
-                                             "expected to have entry '%s' " \
-                                             "with a boolean value (0, 1) " \
-                                             "but instead returned: \n" \
-                                             "%s\n" \
-                                             "... edited for length ..." % ("GetVersion", aggName, "geni_single_allocation", str(geni_single_allocation)))
+                    geni_single_allocation = self.assertGeniSingleAllocationIfExists( "GetVersion", aggName, aggVersion )
                     if geni_single_allocation:
 #                        print "AM does geni_single_allocation: testing Renew/Describe with all sliver URNs at once"
                         sliverurns = allsliverurns

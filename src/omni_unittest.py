@@ -419,6 +419,22 @@ class OmniUnittest(unittest.TestCase):
                                 "but instead returned: %s" 
                             % (method, aggName, key, str(valueType), str(dictionary[key])))
 
+    def assertReturnKeyValueTypeIfExists( self, method, aggName, dictionary, key, valueType ):
+        """Check that if dictionary has key that it is of type valueType.  Allow values to be None as well.
+        """
+        self.assertDict( dictionary )
+        if dictionary.has_key(key):
+            retVal = dictionary[key]
+            self.assertTrue((type(retVal)==valueType) or (retVal is None),
+                            "Return from '%s' at %s " \
+                                "expected to have entry '%s' of type '%s' " \
+                                "but instead returned: %s" 
+                            % (method, aggName, key, str(valueType), str(dictionary[key])))
+        else:
+            retVal = None
+        return retVal
+            
+
     def assertPairKeyValue( self, method, aggName, dictionary, keyA, keyB, valueType=str):
         """Check whether dictionary returned by method at aggName has at least one of keyA or keyB of type valueType.  If both keyA and keyB exist, the type of keyA will be tested."""
         self.assertDict( dictionary,
@@ -771,6 +787,42 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         key='geni_error'
         valueType=str
         self.assertKeyValueTypeIfExists(AMAPI_call, agg, retVal, key, valueType)
+
+    def assertGeniSingleAllocationIfExists( self, AMAPI_call, agg, retVal ):
+        """Check that if the dictionary retVal has key geni_single_allocation that
+        it is boolean (0 or 1).
+        """
+        key='geni_single_allocation'
+        valueType=int
+        values = [0, 1]
+        geni_single_allocation = self.assertReturnKeyValueTypeIfExists(AMAPI_call, agg, retVal, key, valueType)
+        # Check value is boolean (0 or 1)
+        self.assertTrue( geni_single_allocation in set( values ),
+                         "Return from '%s' %s" \
+                             "expected to have entry '%s' " \
+                             "with a boolean value %s " \
+                             "but instead returned: \n" \
+                             "%s\n" \
+                             "... edited for length ..." % ("GetVersion", agg, "geni_single_allocation", values, str(geni_single_allocation)))
+        return geni_single_allocation
+
+    def assertGeniAllocateIfExists( self, AMAPI_call, agg, retVal ):
+        """Check that if the dictionary retVal has key geni_allocate that
+        it is a str with one of three values (geni_single, geni_disjoint, geni_many).
+        """
+        key='geni_allocate'
+        valueType=str
+        values = ['geni_single', 'geni_disjoint', 'geni_many']
+        geni_allocate = self.assertReturnKeyValueTypeIfExists(AMAPI_call, agg, retVal, key, valueType)
+        # Check value is boolean (0 or 1)
+        self.assertTrue( geni_allocate in set( values ),
+                         "Return from '%s' %s" \
+                             "expected to have entry '%s' " \
+                             "with a boolean value %s " \
+                             "but instead returned: \n" \
+                             "%s\n" \
+                             "... edited for length ..." % ("GetVersion", agg, "geni_single_allocation", values, str(geni_allocate)))
+        return geni_allocate
 
     def assertGeniResourceStatusIfExists( self, AMAPI_call, agg, retVal ):
         """Check that if the dictionary retVal has key geni_resource_status that
