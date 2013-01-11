@@ -971,10 +971,16 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          "two timestamps but instead timestamp2 is: \n" \
                          "%s\n" 
                          % (timestamp2))
-        interim1 = dateutil.parser.parse( timestamp1 )
+        if type(timestamp1) == datetime.datetime:
+            interim1 = timestamp1
+        else:
+            interim1 = dateutil.parser.parse( timestamp1 )
         datetimeStruct1 = naiveUTC( interim1 )
 
-        interim2 = dateutil.parser.parse( timestamp2 )
+        if type(timestamp2) == datetime.datetime:
+            interim2 = timestamp2
+        else: 
+            interim2 = dateutil.parser.parse( timestamp2 )
         datetimeStruct2 = naiveUTC( interim2 ) 
 
         self.assertTrue( ((datetimeStruct1 - datetimeStruct2) <= datetime.timedelta(seconds=1)) and (datetimeStruct2 - datetimeStruct1) <= datetime.timedelta(seconds=1),
@@ -1004,6 +1010,10 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         Otherwise returns false
         """
         retVal = False
+
+        if type(timestamp) == datetime.datetime:
+            return True
+
         try:
             datetimeStruct = dateutil.parser.parse( timestamp )
             if type(datetimeStruct) is datetime.datetime:
