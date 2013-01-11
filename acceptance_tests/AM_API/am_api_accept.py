@@ -1313,8 +1313,6 @@ class Test(ut.OmniUnittest):
 
         # Get slice expiration from slicecred
         slice_exp = credparsing.get_cred_exp(None, slicecred)
-        # Need next line to get this to work as desired.
-        slice_exp = str(slice_exp)
         return slice_exp
 
     def subtest_RenewPastSliceExpiration(self, slicename):
