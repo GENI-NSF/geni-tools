@@ -37,6 +37,10 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.3:
+ - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
+ the URN of your image to delete it.
+
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
@@ -1687,7 +1691,7 @@ Aggregates queried:
  - List of URNs and URLs provided by the selected clearinghouse
 
 ==== createimage ====
-Call the ProtoGENI / InstaGENI CreateImage method, to snapshot the
+Call the ProtoGENI / InstaGENI !CreateImage method, to snapshot the
 disk for a single node.
 
 This command is not supported at older ProtoGENI AMs or at non
@@ -1727,3 +1731,30 @@ Only one aggregate should be queried.
 
 ==== snapshotimage ====
 Alias for createimage
+
+==== deleteimage ====
+Call the ProtoGENI / InstaGENI !DeleteImage method, to delete a disk
+snapshot (image) previously created at a given aggregate.
+
+This command is not supported at older ProtoGENI AMs or at non
+ProtoGENI AMs.
+
+See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
+
+Format: omni.py deleteimage IMAGEURN [CREATORURN]
+
+Deletes the image with the given URN. Use the image URN from the
+return of createimage, or the email ProtoGENI sends when the image
+creation is done. If you did not create the image, then you must
+supply the URN of the user who did create the image as a 2nd
+(optional) argument.
+
+Note that you cannot delete an image that is in use. Note also that
+only 1 aggregate will have your image; queries to other aggregates
+will return a `SEARCHFAILED` error.
+
+Aggregates queried:
+ - Each URL given in an `-a` argument or URL listed under that given
+   nickname in `omni_config`, if provided, ELSE
+ - List of URLs given in `omni_config` aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
