@@ -37,10 +37,6 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.3:
- - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
- the URN of your image to delete it.
-
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
@@ -65,6 +61,8 @@ New in v2.2:
  available under `/proj/<project>/images/<imagename>.ndz` on the node
  which was associated with the sliver urn used with the Omni command. See
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
+ - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
+ the URN of your image to delete it.
  - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
  - Add a 'gib' framework for geni-in-a-box to talk to the 'pgch' clearinghouse
  - Provision now supplies the `geni_rspec_version` option, to specify

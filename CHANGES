@@ -1,10 +1,5 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
-gcf 2.3:
- * omni
-  - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
-  the URN of your image to delete it.
-
 gcf 2.2:
  * GENI-in-a-Box code is now included, though it is not runnable from
  this source distribution. To learn more, see
@@ -35,6 +30,8 @@ gcf 2.2:
   available under `/proj/<project>/images/<imagename>.ndz` on the node
   which was associated with the sliver urn used with the Omni command. See
   http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
+  - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
+  the URN of your image to delete it.
   - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
   - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
   - Provision now supplies the `geni_rspec_version` option, to specify
