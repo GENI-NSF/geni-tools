@@ -854,14 +854,20 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                            expectedExpiration=None ):
         """Check that the dictionary retVal has keys: 
               geni_expires
+           Check that 'geni_expires' is approximately equal to "expectedExpiration".
+           Otherise, check that 'geni_expires' is less than or equal to "expectedExpiration".
         """
         self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         expires = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_expires', str ) # RFC3339 dateTime
         self.assertTimestamp( expires )
         if (expectedExpiration is not None) and (self.options_copy.geni_best_effort is False):
-            self.assertTimestampsEqual( expectedExpiration, expires )
-
+            try:
+                # Most of the time the 'geni_expires' field 
+                self.assertTimestampsEqual( expires, expectedExpiration )
+            except:
+                self.assertTimestampALessThanB( expires, expectedExpiration )
+                self.logger.warn("\n'In assertGeniExpires(), confirmed 'geni_expires'=%s is no later than expected expiration time of %s.  WARNING: Did NOT CHECK whether 'geni_expires' changed at all!!!"%(str(expires), str(expectedExpiration)))
     def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal, value=None ):
         """Check that the dictionary retVal has keys: 
               geni_allocation_status
@@ -989,6 +995,36 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          "%s\n" \
                          "%s\n" 
                          % (str(timestamp1), str(timestamp2)))
+
+    def assertTimestampALessThanB( self, timestampA, timestampB ):
+        self.assertTrue( self.validate_timestamp(timestampA),
+                         "assertTimestampALessThanB expected to compare " \
+                         "two timestamps but instead timestampA is: \n" \
+                         "%s\n" 
+                         % (timestampA))
+        self.assertTrue( self.validate_timestamp(timestampB),
+                         "assertTimestampALessThanB expected to compare " \
+                         "two timestamps but instead timestampB is: \n" \
+                         "%s\n" 
+                         % (timestampB))
+        if type(timestampA) == datetime.datetime:
+            interim1 = timestampA
+        else:
+            interim1 = dateutil.parser.parse( timestampA )
+        datetimeStruct1 = naiveUTC( interim1 )
+
+        if type(timestampB) == datetime.datetime:
+            interim2 = timestampB
+        else: 
+            interim2 = dateutil.parser.parse( timestampB )
+        datetimeStruct2 = naiveUTC( interim2 ) 
+
+        self.assertTrue( (datetimeStruct1 - datetimeStruct2) <= datetime.timedelta(seconds=1),
+                         "assertTimestampALessThanB expected timestampA to be less than timestampB " \
+                         "but instead timestamps are: \n" \
+                         "timestampA = %s\n" \
+                         "timestampB = %s\n" 
+                         % (str(timestampA), str(timestampB)))
 
     def assertURN( self, urn ):
         self.assertTrue( self.validate_URN(urn),
