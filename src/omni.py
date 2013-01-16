@@ -71,6 +71,7 @@
        From ProtoGENI/InstaGENI:
        [string dictionary] = omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>
        [string dictionary] = omni.py snapshotimage SLICENAME IMAGENAME [false] -u <SLIVER URN> ; alias for createimage
+       [string dictionary] = omni.py deleteimage IMAGEURN [CREATORURN]
 
       Clearinghouse functions:
        [string dictionary urn->url] = omni.py listaggregates
@@ -657,6 +658,7 @@ def getParser():
  \t\t\t createimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t snapshotimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t\t [alias for 'createimage'] \n\
+ \t\t\t deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
  \t\tClearinghouse / Slice Authority functions: \n\
  \t\t\t listaggregates \n\
  \t\t\t createslice <slicename> \n\

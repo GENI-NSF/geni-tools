@@ -163,7 +163,7 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
     urntype = urntype.lower()
     if not urnObj.getType().lower() == urntype:
         if logger:
-            logger.warn("URN %s not of right type: %s", inurn, urntype)
+            logger.warn("URN %s not of right type: %s, not %s", inurn, urnObj.getType().lower(), urntype)
         return False
     name = urnObj.getName()
     if urntype == 'slice':

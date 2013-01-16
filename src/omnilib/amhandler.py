@@ -3449,9 +3449,16 @@ class AMCallHandler(object):
         # Extract the single sliver URN. More than one, complain
         urnsarg, slivers = self._build_urns(sliceURN)
         if len(slivers) != 1:
-            self._raise_omni_error("CreateImage requires example one sliver URN: the sliver containing the node to snapshot.")
+            self._raise_omni_error("CreateImage requires exactly one sliver URN: the sliver containing the node to snapshot.")
 
         sliverURN = slivers[0]
+        if sliverURN:
+            sliverURN = sliverURN.strip()
+        if not urn_util.is_valid_urn_bytype(sliverURN, 'sliver', self.logger):
+            if not self.opts.devmode:
+                self._raise_omni_error("Sliver URN invalid: %s" % sliverURN)
+            else:
+                self.logger.warn("Sliver URN invalid but continuing: %s", sliverURN)
 
         # Extract the imageName from args
         if len(args) >= 2:
@@ -3462,6 +3469,12 @@ class AMCallHandler(object):
             self._raise_omni_error("CreateImage requires a name for the image (alphanumeric)")
 
         # FIXME: Check that image name is alphanumeric?
+        import re
+        if not re.match("^[a-zA-Z0-9]+$", imageName):
+            if not self.opts.devmode:
+                self._raise_omni_error("Image name must be alphanumeric: %s" % imageName)
+            else:
+                self.logger.warning("Image name must be alphanumeric, but continuing: %s" % imageName)
 
         # Extract makePublic from args, if present
         makePublic = True
@@ -3525,6 +3538,141 @@ class AMCallHandler(object):
             self.logger.info(prStr)
             retVal += prStr
 
+        return retVal, retItem
+
+    def deleteimage(self, args):
+        '''ProtoGENI's deleteimage function: Delete the named disk image. 
+        Takes an image urn. Optionally supply the URN of the image creator, if that is not you,
+        as a second argument.
+        Note that you should invoke this at the AM where you created the image - other AMs will return
+        a SEARCHFAILED error.
+        See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo'''
+
+        image_urn = None
+        creator_urn = None
+
+        # Ensure we got a disk image URN
+        if len(args) < 1:
+            if not self.opts.devmode:
+                self._raise_omni_error("Missing image URN argument to deleteimage")
+            else:
+                self.logger.warn("Missing image URN argument to deleteimage but continuing")
+
+        if len(args) >= 1:
+            image_urn = args[0]
+        self.logger.info("DeleteImage using image_urn %r", image_urn)
+
+        # Validate that this looks like an image URN
+        if image_urn and not urn_util.is_valid_urn_bytype(image_urn, 'image', self.logger):
+            if not self.opts.devmode:
+                self._raise_omni_error("Image URN invalid: %s" % image_urn)
+            else:
+                self.logger.warn("Image URN invalid but continuing: %s", image_urn)
+
+        if len(args) > 1:
+            creator_urn = args[1]
+            if creator_urn:
+                creator_urn = creator_urn.strip()
+            if creator_urn == "":
+                creator_urn = None
+        if creator_urn:
+            self.logger.info("Deleteimage using creator_urn %s", creator_urn)
+            # If we got a creator urn option
+            # Validate it looks like a user urn
+            if not urn_util.is_valid_urn_bytype(creator_urn, 'user', self.logger):
+                if not self.opts.devmode:
+                    self._raise_omni_error("Creator URN invalid: %s" % creator_urn)
+                else:
+                    self.logger.warn("Creator URN invalid but continuing: %s", image_urn)
+
+        # get the user credential
+        cred = None
+        if self.opts.api_version >= 3:
+            (cred, message) = self.framework.get_user_cred_struct()
+        else:
+            (cred, message) = self.framework.get_user_cred()
+        if cred is None:
+            # Dev mode allow doing the call anyhow
+            self.logger.error('Cannot deleteimage: Could not get user credential')
+            if not self.opts.devmode:
+                return (None, "Could not get user credential: %s" % message)
+            else:
+                self.logger.info('... but continuing')
+                cred = ""
+
+        creds = _maybe_add_abac_creds(self.framework, cred)
+
+        options = dict()
+
+        # put creator_urn in the options list if we got one
+        if creator_urn:
+            options['creator_urn'] = creator_urn
+
+        args = (image_urn, creds, options)
+
+        retItem = dict()
+        retVal = ""
+
+        # Return value is an XML-RPC boolean 1 (True) on success. Else it uses the AM API to return an error code.
+        # EG a SEARCHFAILED "No such image" if the local AM does not have this image.
+
+        (clientList, message) = self._getclients()
+        # FIXME: Insist on only 1 AM (user has to know which AM has this image)? Or let user try a bunch of AMs 
+        # and just see where it works?
+        msg = "Delete Image %s" % (image_urn)
+        if creator_urn:
+            msg += " created by %s" % (creator_urn)
+        msg += " on "
+        op = "DeleteImage"
+
+        self.logger.debug("Doing deleteimage with image_urn %s, %d creds, options %r",
+                          image_urn, len(creds), options)
+        prStr = None
+        success = False
+        for client in clientList:
+            # FIXME: Confirm that AM is PG, complain if not?
+            # pgeni gives an error 500 (Protocol Error). PLC gives error
+            # 13 (invalid method)
+            try:
+                ((res, message), client) = self._api_call(client, msg + client.url, op, args)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error("\nDeleteImage Failed: " + retVal)
+                continue
+
+            self.logger.debug("deleteimage raw result: %r" % res)
+
+            retItem[client.url] = res
+            (realres, message) = self._retrieve_value(res, message, self.framework)
+
+            if not realres:
+                # fail
+                prStr = "Failed to %s%s" % (msg, client.url)
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
+                self.logger.warn(prStr)
+                #retVal += prStr + "\n"
+            else:
+                # success
+                success = True
+                prStr = "Deleted image %s at %s" % (image_urn, client.url)
+                self.logger.info(prStr)
+                retVal += prStr
+                if not self.opts.devmode:
+                    # Only expect 1 AM to have this, so quit once we find it
+                    break
+
+        if len(clientList) == 0:
+            retVal = "Specify at least one aggregate at which to try to delete image %s. %s" % (image_urn, message)
+        elif not success:
+            retVal = "Failed to delete image %s at any of %d aggregates. Last error: %s" % (image_urn, len(clientList), prStr)
         return retVal, retItem
 
     #######
@@ -4577,8 +4725,13 @@ def _append_geni_error_output(retStruct, message):
             message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
         if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
-        if amType == 'protogeni' and retStruct['code'].has_key('protogeni_error_log'):
-            message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
+        if amType == 'protogeni':
+            if retStruct['code'].has_key('protogeni_error_log'):
+                message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
+            if retStruct['code'].has_key('protogeni_error_urn'):
+                message2 += " (PG error log urn: %s)" % retStruct['code']['protogeni_error_urn']
+            if retStruct['code'].has_key('protogeni_error_url'):
+                message2 += " (PG error log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
         if message2 != "":
             if not message2.endswith('.'):
                 message2 += '.'

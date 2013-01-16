@@ -889,6 +889,7 @@ class Test(ut.OmniUnittest):
                     # FIXME: Try Provision or POA on an individual sliver?
 
                     sliver_urn2 = re.sub('\+sliver\+', '+node+', sliver_urn)
+                    self.logger.info("\n===Describe on a node urn where sliver expected - should fail")
                     self.subtest_Describe(slicename=slicename, sliverurns=sliverurns )
                     badurnslist = sliverurns.append(sliver_urn2)
                     self.assertRaises(NotSuccessError, 
