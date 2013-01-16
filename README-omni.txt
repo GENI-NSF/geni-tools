@@ -63,6 +63,7 @@ New in v2.2:
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
  - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
  the URN of your image to delete it.
+ - Ticket #237: Print PG error log URL if available
  - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
  - Add a 'gib' framework for geni-in-a-box to talk to the 'pgch' clearinghouse
  - Provision now supplies the `geni_rspec_version` option, to specify
