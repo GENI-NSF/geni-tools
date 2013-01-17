@@ -4024,6 +4024,20 @@ class AMCallHandler(object):
                             if result['code'].has_key('am_type'):
                                 amtype = result['code']['am_type']
                             message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])
+
+                    # If this is pg then include the pg log urn/url in
+                    # the message even on success when in debug mode
+                    # But problem: callers swallow the message if it
+                    # looks like success. So log this at info.
+                    # The result here is that this is logged only on
+                    # success, not on error.
+                    msg = _get_pg_log(result)
+                    if not message and msg != "":
+                        message = ""
+                    if msg != "":
+                        self.logger.info(msg)
+                        message += msg
+
                 # FIXME: More complete error code handling!
                 elif self.opts.raiseErrorOnV2AMAPIError and result['code']['geni_code'] != 0 and self.opts.api_version == 2:
                     # Allow scripts to get an Error raised if any
@@ -4725,13 +4739,11 @@ def _append_geni_error_output(retStruct, message):
             message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
         if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
-        if amType == 'protogeni':
-            if retStruct['code'].has_key('protogeni_error_log'):
-                message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
-            if retStruct['code'].has_key('protogeni_error_urn'):
-                message2 += " (PG error log urn: %s)" % retStruct['code']['protogeni_error_urn']
-            if retStruct['code'].has_key('protogeni_error_url'):
-                message2 += " (PG error log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
+
+        # Append any PG log urn/url - this shows up in Result Summary
+        # on errors
+        message2 += _get_pg_log(retStruct)
+
         if message2 != "":
             if not message2.endswith('.'):
                 message2 += '.'
@@ -4743,3 +4755,12 @@ def _append_geni_error_output(retStruct, message):
             message = message2
     return message
 
+def _get_pg_log(retStruct):
+    '''Pull out the PG log URN and URL, if present'''
+    msg = ""
+    if retStruct.has_key('code') and retStruct['code'].has_key('am_type') and retStruct['code']['am_type'] == 'protogeni':
+        if retStruct['code'].has_key('protogeni_error_url'):
+            msg += " (PG log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
+        elif retStruct['code'].has_key('protogeni_error_log'):
+            msg = " (PG log urn: %s)" % retStruct['code']['protogeni_error_log']
+    return msg
