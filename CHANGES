@@ -33,6 +33,8 @@ gcf 2.2:
   - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
   the URN of your image to delete it.
   - Ticket #237: Print PG error log URL if available
+  - Ticket #238: Print the PG log URL in INFO logs on success, in
+  result summary on error
   - Support GCF CH `list_my_slices` in the Omni `listmyslices` command (ticket #214)
   - Add a 'gib' framework for geni-in-a-box to talk to the pgch clearinghouse
   - Provision now supplies the `geni_rspec_version` option, to specify
