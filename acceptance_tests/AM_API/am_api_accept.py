@@ -712,7 +712,7 @@ class Test(ut.OmniUnittest):
                 self.assertSuccess( err_code )
                 # value only required if it is successful
                 retVal = indAgg['value']
-                slivers, rspec = self.assertDescribeReturn( agg, retVal )
+                slivers, rspec = self.assertDescribeReturn( agg, retVal)
                 numslivers = len(slivers)
                 self.assertRspec( AMAPI_call, rspec, 
                                   rspec_namespace, rspec_schema, 
@@ -1498,6 +1498,8 @@ class Test(ut.OmniUnittest):
                 omniargs.append('-u')
                 omniargs.append(sliver)
 
+        sliceExpiration = self.getSliceExpiration( slicename )
+
         self.logger.info("\n=== Test.subtest_AMAPIv3CallNoRspec ===")
         text, allAggs = self.call(omniargs, self.options_copy)
         for agg, indAgg in allAggs.items():
@@ -1524,24 +1526,24 @@ class Test(ut.OmniUnittest):
                     # if not --best-effort, also checks that the new
                     # sliver expiration matches the requested time
                     retVal2 = self.assertRenewReturn( agg, retVal, 
-                                              expectedExpiration=expectedExpiration )
+                                              expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration )
                     numSlivers = retVal2
                 elif AMAPI_call is "Provision":
                     retVal2 = self.assertProvisionReturn( agg, retVal,
-                                         expectedExpiration=expectedExpiration )
+                                         expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration  )
                     slivers, manifest = retVal2
                     numSlivers = len(slivers)
                 elif AMAPI_call is "Status":
                     retVal2 = self.assertStatusReturn( agg, retVal, 
                                       expectedExpiration=expectedExpiration,
-                                      status_value=status_value )
+                                      status_value=status_value, sliceExpiration=sliceExpiration  )
                     numSlivers = retVal2
                 elif AMAPI_call is "PerformOperationalAction":
-                    retVal2 = self.assertPerformOperationalActionReturn( agg, retVal, expectedExpiration=expectedExpiration )
+                    retVal2 = self.assertPerformOperationalActionReturn( agg, retVal, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration  )
                     numSlivers = retVal2
                 elif AMAPI_call is "Delete":
                     retVal2 = self.assertDeleteReturn( agg, retVal,
-                                              expectedExpiration=expectedExpiration )
+                                              expectedExpiration=expectedExpiration)
                     numSlivers = retVal2
                 else:
                     print "Shouldn't get here"
@@ -1656,9 +1658,11 @@ class Test(ut.OmniUnittest):
                 retVal2 = manifest 
             elif AMAPI_call is "Allocate":
                 retVal = indAgg['value']
+                sliceExpiration = self.getSliceExpiration( slice_name )
                 numSlivers, manifest, slivers = self.assertAllocateReturn( agg, 
                                                                            retVal,
-                                                                           expectedExpiration=expectedExpiration)
+                                                                           expectedExpiration=expectedExpiration,
+                                                                           sliceExpiration=sliceExpiration)
                 self.assertTrue( numSlivers > 0,
                                  "Return from '%s' " \
                                      "expected to list allocated slivers " \

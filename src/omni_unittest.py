@@ -551,7 +551,7 @@ Check that the value of 'code' is as follows:
         return output
         
        
-    def assertDescribeReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertDescribeReturn( self, agg, retVal, expectedExpiration=None, sliceExpiration=None ):
         """Checks retVal fits form:
 {
    geni_rspec: <geni.rspec, a Manifest RSpec>
@@ -576,15 +576,15 @@ Check that the value of 'code' is as follows:
         self.assertGeniUrn(AMAPI_call, agg, retVal)        
         slivers = self.assertGeniSlivers(AMAPI_call, agg, retVal)        
         for sliver in slivers:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
         return slivers, manifest
 
 
-    def assertAllocateReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertAllocateReturn( self, agg, retVal, expectedExpiration=None, sliceExpiration=None):
         """Returns:
 {
  geni_rspec: <geni.rspec manifest of newly allocated slivers>,
@@ -604,13 +604,13 @@ Check that the value of 'code' is as follows:
                                          retVal, type='manifest')        
         slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)        
         for sliver in slivers:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_allocated')     
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)           
         return len(slivers), manifest, slivers
 
-    def assertRenewReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertRenewReturn( self, agg, retVal, expectedExpiration=None, sliceExpiration=None ):
         """Returns:
         [
   {
@@ -627,14 +627,14 @@ Check that the value of 'code' is as follows:
         
         self.assertList( retVal )
         for sliver in retVal:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
         return len(retVal)
 
-    def assertProvisionReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertProvisionReturn( self, agg, retVal, expectedExpiration=None, sliceExpiration=None ):
         """Returns:
 geni_rspec: <geni.rspec, RSpec manifest>,
   geni_slivers: 
@@ -655,14 +655,14 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                                          retVal, type='manifest')        
         slivers = self.assertGeniSlivers( AMAPI_call, agg, retVal)  
         for sliver in slivers:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_provisioned')        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
         return slivers, manifest
 
-    def assertPerformOperationalActionReturn( self, agg, retVal, expectedExpiration=None ):
+    def assertPerformOperationalActionReturn( self, agg, retVal, expectedExpiration=None, sliceExpiration=None ):
         """Returns:
 [ {
         geni_sliver_urn : <string>,
@@ -677,15 +677,15 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         AMAPI_call = "PerformOperationalAction"
         self.assertList( retVal )
         for sliver in retVal:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)    
             self.assertGeniResourceStatusIfExists(AMAPI_call, agg, sliver)
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)            
         return len(retVal)
 
-    def assertStatusReturn( self, agg, retVal, expectedExpiration=None, status_value=None ):
+    def assertStatusReturn( self, agg, retVal, expectedExpiration=None, status_value=None, sliceExpiration=None ):
         """Checks retVal fits form:
 {
   geni_urn: <slice URN>
@@ -710,8 +710,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         self.assertGeniUrn(AMAPI_call, agg, retVal)        
         slivers = self.assertGeniSlivers(AMAPI_call, agg, retVal)        
         for sliver in slivers:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliceExpiration=sliceExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver)        
             op_status = self.assertGeniOperationalStatus(AMAPI_call, agg, sliver)        
             if status_value is not None:
@@ -738,8 +738,8 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         AMAPI_call = "Delete"
         self.assertList( retVal )
         for sliver in retVal:
-            self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
-            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration)        
+            sliver_urn = self.assertGeniSliverUrn(AMAPI_call, agg, sliver)        
+            self.assertGeniExpires(AMAPI_call, agg, sliver, expectedExpiration=expectedExpiration, sliver_urn=sliver_urn)        
             self.assertGeniAllocationStatus(AMAPI_call, agg, sliver, value='geni_unallocated')        
             self.assertGeniErrorIfExists(AMAPI_call, agg, sliver)        
         return len(retVal)
@@ -848,19 +848,29 @@ geni_rspec: <geni.rspec, RSpec manifest>,
         sliver_urn = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_sliver_urn', str )
         self.assertURNandType( sliver_urn, 'sliver' )
-
+        return sliver_urn
 
     def assertGeniExpires( self, AMAPI_call, agg, retVal, 
-                           expectedExpiration=None ):
+                           expectedExpiration=None, sliceExpiration=None, sliver_urn=None):
         """Check that the dictionary retVal has keys: 
               geni_expires
+           Check that 'geni_expires' is approximately equal to "expectedExpiration".
+           Otherise, check that 'geni_expires' is less than or equal to "expectedExpiration".
         """
         self.assertDict( retVal, "Code, value, output tuple returned from %s is  of type '%s' not '%s' as expected." %(AMAPI_call, type(retVal), str(dict)))
         expires = self.assertReturnKeyValueType( AMAPI_call, agg, retVal, 
                                  'geni_expires', str ) # RFC3339 dateTime
         self.assertTimestamp( expires )
-        if (expectedExpiration is not None) and (self.options_copy.geni_best_effort is False):
-            self.assertTimestampsEqual( expectedExpiration, expires )
+        if (expectedExpiration is not None) and (sliceExpiration is not None ) and (sliver_urn is not None) and (self.options_copy.geni_best_effort is False):
+            try:
+                # Most of the time the 'geni_expires' field 
+                self.assertTimestampsEqual( expires, expectedExpiration )
+            except:
+                self.assertTimestampALessThanB( expires, sliceExpiration )
+                self.logger.warn("WARNING: In %s call, sliver %s expiration time %s is not the desired renewal time %s. Check that either the new sliver expiration is different than the old sliver expiration, or geni_error is non empty for this sliver"%(AMAPI_call, sliver_urn, str(expires), str(expectedExpiration)) )
+        else:
+            if AMAPI_call == "Renew":
+                self.logger.warn("WARNING: In %s call, sliver %s expiration time %s not checked because didn't have one of expectedExpiration or sliceExpiration"%(AMAPI_call, sliver_urn, str(expires)) )
 
     def assertGeniAllocationStatus( self, AMAPI_call, agg, retVal, value=None ):
         """Check that the dictionary retVal has keys: 
@@ -989,6 +999,36 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                          "%s\n" \
                          "%s\n" 
                          % (str(timestamp1), str(timestamp2)))
+
+    def assertTimestampALessThanB( self, timestampA, timestampB ):
+        self.assertTrue( self.validate_timestamp(timestampA),
+                         "assertTimestampALessThanB expected to compare " \
+                         "two timestamps but instead timestampA is: \n" \
+                         "%s\n" 
+                         % (timestampA))
+        self.assertTrue( self.validate_timestamp(timestampB),
+                         "assertTimestampALessThanB expected to compare " \
+                         "two timestamps but instead timestampB is: \n" \
+                         "%s\n" 
+                         % (timestampB))
+        if type(timestampA) == datetime.datetime:
+            interim1 = timestampA
+        else:
+            interim1 = dateutil.parser.parse( timestampA )
+        datetimeStruct1 = naiveUTC( interim1 )
+
+        if type(timestampB) == datetime.datetime:
+            interim2 = timestampB
+        else: 
+            interim2 = dateutil.parser.parse( timestampB )
+        datetimeStruct2 = naiveUTC( interim2 ) 
+
+        self.assertTrue( (datetimeStruct1 - datetimeStruct2) <= datetime.timedelta(seconds=1),
+                         "assertTimestampALessThanB expected timestampA to be less than timestampB " \
+                         "but instead timestamps are: \n" \
+                         "timestampA = %s\n" \
+                         "timestampB = %s\n" 
+                         % (str(timestampA), str(timestampB)))
 
     def assertURN( self, urn ):
         self.assertTrue( self.validate_URN(urn),

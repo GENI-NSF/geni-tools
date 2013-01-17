@@ -72,6 +72,9 @@ gcf 2.2:
   are equal, only check that they are within a second of each other.  (ticket #231)
   - Allow v1 aggregates to return None in cases of failure.  This fixes a bug introduced 
   in gcf-2.0. (ticket #229)
+  - Check for type for optional `geni_allocate` and `geni_single_allocation` fields in return 
+  from AM API v3 version of `GetVersion`. (#233)
+  - Improve checking of sliver expiration time (#234)
 
 gcf 2.1:
  * omni
