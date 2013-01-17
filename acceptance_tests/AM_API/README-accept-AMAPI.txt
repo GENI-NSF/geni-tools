@@ -382,72 +382,89 @@ OK
 
 Acceptance Tests output of help message:
 {{{
- ./am_api_accept.py -h                   
-Usage:                                                                        
-      ./am_api_accept.py -a am-undertest                                      
-      Also try --vv                                                           
+$ ./am_api_accept.py -h
+Usage: 
+      ./am_api_accept.py -a am-undertest 
+      Also try --vv
 
      Run an individual test using the following form...
      ./am_api_accept.py -a am-undertest Test.test_GetVersion
 
 Options:
   --version             show program's version number and exit
-  -h, --help            show this help message and exit       
-  -c FILE, --configfile=FILE                                  
-                        Config file name                      
-  -f FRAMEWORK, --framework=FRAMEWORK                         
+  -h, --help            show this help message and exit
+  -c FILE, --configfile=FILE
+                        Config file name
+  -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework to use for creation/deletion of
-                        slices                                           
-  -V API_VERSION, --api-version=API_VERSION                              
-                        Specify version of AM API to use (default 2)     
-  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL                            
-                        Communicate with a specific aggregate            
-  --debug               Enable debugging output                          
-  -o, --output          Write output of many functions (getversion,      
+                        slices
+  -V API_VERSION, --api-version=API_VERSION
+                        Specify version of AM API to use (default 2)
+  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
+                        Communicate with a specific aggregate
+  -r PROJECT, --project=PROJECT
+                        Name of project. (For use with pgch framework.)
+  --debug               Enable debugging output. If multiple loglevel are set
+                        from commandline (e.g. --debug, --info) the more
+                        verbose one will be preferred.
+  --info                Set logging to INFO.If multiple loglevel are set from
+                        commandline (e.g. --debug, --info) the more verbose
+                        one will be preferred.
+  --warn                Set log level to WARN. This won't print the command
+                        outputs, e.g. manifest rspec, so use the -o or the
+                        --outputfile options to save it to a file. If multiple
+                        loglevel are set from commandline (e.g. --debug,
+                        --info) the more verbose one will be preferred.
+  --error               Set log level to ERROR. This won't print the command
+                        outputs, e.g. manifest rspec, so use the -o or the
+                        --outputfile options to save it to a file.If multiple
+                        loglevel are set from commandline (e.g. --debug,
+                        --info) the more verbose one will be preferred.
+  -o, --output          Write output of many functions (getversion,
                         listresources, allocate, status, getslicecred,...) ,
-                        to a file (Omni picks the name)                     
-  --outputfile=OUTPUT_FILENAME                                              
-                        Name of file to write output to (instead of Omni    
-                        picked name). '%a' will be replaced by servername,  
-                        '%s' by slicename if any. Implies -o. Note that for 
+                        to a file (Omni picks the name)
+  --outputfile=OUTPUT_FILENAME
+                        Name of file to write output to (instead of Omni
+                        picked name). '%a' will be replaced by servername,
+                        '%s' by slicename if any. Implies -o. Note that for
                         multiple aggregates, without a '%a' in the name, only
-                        the last aggregate output will remain in the file.   
-                        Will ignore -p.                                      
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                               
+                        the last aggregate output will remain in the file.
+                        Will ignore -p.
+  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
                         Filename prefix when saving results (used with -o, not
-                        --usercredfile, --slicecredfile, or --outputfile)     
-  --usercredfile=USER_CRED_FILENAME                                           
-                        Name of user credential file to read from if it       
-                        exists, or save to when running like '--usercredfile  
-                        myUserCred.xml -o getusercred'                        
-  --slicecredfile=SLICE_CRED_FILENAME                                         
-                        Name of slice credential file to read from if it      
-                        exists, or save to when running like '--slicecredfile 
-                        mySliceCred.xml -o getslicecred mySliceName'          
-  --tostdout            Print results like rspecs to STDOUT instead of to log 
-                        stream                                                
-  --no-compress         Do not compress returned values                       
-  --available           Only return available resources                       
-  --best-effort         Should AMs attempt to complete the operation on only  
-                        some slivers, if others fail                          
-  -u SLIVERS, --sliver-urn=SLIVERS                                            
-                        Sliver URN (not name) on which to act. Supply this    
-                        option multiple times for multiple slivers, or not at 
-                        all to apply to the entire slice                      
-  --end-time=GENI_END_TIME                                                    
-                        Requested end time for any newly allocated or         
-                        provisioned slivers - may be ignored by the AM        
-  -v, --verbose         Turn on verbose command summary for omni commandline  
-                        tool                                                  
+                        --usercredfile, --slicecredfile, or --outputfile)
+  --usercredfile=USER_CRED_FILENAME
+                        Name of user credential file to read from if it
+                        exists, or save to when running like '--usercredfile
+                        myUserCred.xml -o getusercred'
+  --slicecredfile=SLICE_CRED_FILENAME
+                        Name of slice credential file to read from if it
+                        exists, or save to when running like '--slicecredfile
+                        mySliceCred.xml -o getslicecred mySliceName'
+  --tostdout            Print results like rspecs to STDOUT instead of to log
+                        stream
+  --no-compress         Do not compress returned values
+  --available           Only return available resources
+  --best-effort         Should AMs attempt to complete the operation on only
+                        some slivers, if others fail
+  -u SLIVERS, --sliver-urn=SLIVERS
+                        Sliver URN (not name) on which to act. Supply this
+                        option multiple times for multiple slivers, or not at
+                        all to apply to the entire slice
+  --end-time=GENI_END_TIME
+                        Requested end time for any newly allocated or
+                        provisioned slivers - may be ignored by the AM
+  -v, --verbose         Turn on verbose command summary for omni commandline
+                        tool
   --verbosessl          Turn on verbose SSL / XMLRPC logging
-  -q, --quiet           Turn off verbose command summary for omni commandline 
-                        tool                                                  
-  -l LOGCONFIG, --logconfig=LOGCONFIG                                         
-                        Python logging config file                            
-  --logoutput=LOGOUTPUT                                                       
-                        Python logging output file [use %(logfilename)s in    
-                        logging config file]                                  
-  --NoGetVersionCache   Disable using cached GetVersion results (forces       
+  -q, --quiet           Turn off verbose command summary for omni commandline
+                        tool
+  -l LOGCONFIG, --logconfig=LOGCONFIG
+                        Python logging config file
+  --logoutput=LOGOUTPUT
+                        Python logging output file [use %(logfilename)s in
+                        logging config file]
+  --NoGetVersionCache   Disable using cached GetVersion results (forces
                         refresh of cache)
   --ForceUseGetVersionCache
                         Require using the GetVersion cache if possible
@@ -462,6 +479,10 @@ Options:
                         checking of inputs
   --arbitrary-option    Add an arbitrary option to ListResources (for testing
                         purposes)
+  --raise-error-on-v2-amapi-error
+                        In AM API v2, if an AM returns a non-0 (failure)
+                        result code, raise an AMAPIError. Default False. For
+                        use by scripts.
   --no-tz               Do not send timezone on RenewSliver
   --no-ssl              do not use ssl
   --orca-slice-id=ORCA_SLICE_ID
@@ -504,6 +525,7 @@ Options:
   --skip-renew          Skip all Renew or RenewSliver tests (default False)
   --vv                  Give -v to unittest
   --qq                  Give -q to unittest
+
 
 
 $ ./am_api_accept_delegate.py -h      
