@@ -655,8 +655,8 @@ def getParser():
  \t\t\t delete <slicename> [AM API V3 only] \n\
  \t\t\t shutdown <slicename> \n\
  \t\tNon AM API aggregate functions (supported by some aggregates): \n\
- \t\t\t createimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
- \t\t\t snapshotimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
+ \t\t\t createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
+ \t\t\t snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t\t [alias for 'createimage'] \n\
  \t\t\t deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
  \t\tClearinghouse / Slice Authority functions: \n\
