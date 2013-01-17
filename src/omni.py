@@ -628,7 +628,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
-    version +="\nCopyright (c) 2012 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2013 Raytheon BBN Technologies"
     return version
 
 def getParser():

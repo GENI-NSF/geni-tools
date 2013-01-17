@@ -518,7 +518,7 @@ Omni supports the following command-line options.
 $ ~/gcf/src/omni.py -h                            
 Usage:                                                                                        
 GENI Omni Command Line Aggregate Manager Tool Version 2.0                                     
-Copyright (c) 2012 Raytheon BBN Technologies                                                  
+Copyright (c) 2013 Raytheon BBN Technologies
 
 omni.py [options] <command and arguments> 
 
@@ -541,9 +541,10 @@ omni.py [options] <command and arguments>
                          delete <slicename> [AM API V3 only]                                  
                          shutdown <slicename>                                                 
  		Non AM API aggregate functions (supported by some aggregates): 
- 			 createimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] 
- 			 snapshotimage <slicename> <imagename> [optional: false] -u <sliver urn> [ProtoGENI/InstaGENI only] 
+ 			 createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
+ 			 snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  				 [alias for 'createimage'] 
+			 deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only]
                 Clearinghouse / Slice Authority functions:                                    
                          listaggregates                                                       
                          createslice <slicename>                                              
