@@ -4029,19 +4029,12 @@ class AMCallHandler(object):
                     # the message even on success when in debug mode
                     # But problem: callers swallow the message if it
                     # looks like success.
-                    if self.opts.debug and result['code'].has_key('am_type') and result['code']['am_type'] == 'protogeni':
-                        if not message:
+                    if self.opts.debug:
+                        # Append any PG log urn/url
+                        msg = _get_pg_log(result)
+                        if not message and msg != "":
                             message = ""
-                        if result['code'].has_key('protogeni_error_log'):
-                            msg = " (PG log: %s)" % result['code']['protogeni_error_log']
-                            self.logger.debug(msg)
-                            message += msg
-                        if result['code'].has_key('protogeni_error_urn'):
-                            msg = " (PG log urn: %s)" % result['code']['protogeni_error_urn']
-                            self.logger.debug(msg)
-                            message += msg
-                        if result['code'].has_key('protogeni_error_url'):
-                            msg = " (PG log url - look here for details on any failures: %s)" % result['code']['protogeni_error_url']
+                        if msg != ""
                             self.logger.debug(msg)
                             message += msg
 
@@ -4746,13 +4739,10 @@ def _append_geni_error_output(retStruct, message):
             message2 += "%s AM code: %s" % (amType, str(retStruct['code']['am_code']))
         if retStruct.has_key('output') and retStruct['output'] is not None and str(retStruct['output']).strip() != "":
             message2 += ": %s" % retStruct['output']
-        if amType == 'protogeni':
-            if retStruct['code'].has_key('protogeni_error_log'):
-                message2 += " (PG error log: %s)" % retStruct['code']['protogeni_error_log']
-            if retStruct['code'].has_key('protogeni_error_urn'):
-                message2 += " (PG error log urn: %s)" % retStruct['code']['protogeni_error_urn']
-            if retStruct['code'].has_key('protogeni_error_url'):
-                message2 += " (PG error log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
+
+        # Append any PG log urn/url
+        message2 += _get_pg_log(retStruct)
+
         if message2 != "":
             if not message2.endswith('.'):
                 message2 += '.'
@@ -4764,3 +4754,12 @@ def _append_geni_error_output(retStruct, message):
             message = message2
     return message
 
+def _get_pg_log(retStruct):
+    '''Pull out the PG log URN and URL, if present'''
+    msg = ""
+    if retStruct.has_key('code') and retStruct['code'].has_key('am_type') and retStruct['code']['am_type'] == 'protogeni':
+        if retStruct['code'].has_key('protogeni_error_log'):
+            msg = " (PG log urn: %s)" % retStruct['code']['protogeni_error_log']
+        if retStruct['code'].has_key('protogeni_error_url'):
+            msg += " (PG log url - look here for details on any failures: %s)" % retStruct['code']['protogeni_error_url']
+    return msg
