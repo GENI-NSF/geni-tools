@@ -4024,6 +4024,27 @@ class AMCallHandler(object):
                             if result['code'].has_key('am_type'):
                                 amtype = result['code']['am_type']
                             message += " (AM return code %s:%d)" % (amtype, result['code']['am_code'])
+
+                    # If this is pg then include the pg log urn/url in
+                    # the message even on success when in debug mode
+                    # But problem: callers swallow the message if it
+                    # looks like success.
+                    if self.opts.debug and result['code'].has_key('am_type') and result['code']['am_type'] == 'protogeni':
+                        if not message:
+                            message = ""
+                        if result['code'].has_key('protogeni_error_log'):
+                            msg = " (PG log: %s)" % result['code']['protogeni_error_log']
+                            self.logger.debug(msg)
+                            message += msg
+                        if result['code'].has_key('protogeni_error_urn'):
+                            msg = " (PG log urn: %s)" % result['code']['protogeni_error_urn']
+                            self.logger.debug(msg)
+                            message += msg
+                        if result['code'].has_key('protogeni_error_url'):
+                            msg = " (PG log url - look here for details on any failures: %s)" % result['code']['protogeni_error_url']
+                            self.logger.debug(msg)
+                            message += msg
+
                 # FIXME: More complete error code handling!
                 elif self.opts.raiseErrorOnV2AMAPIError and result['code']['geni_code'] != 0 and self.opts.api_version == 2:
                     # Allow scripts to get an Error raised if any
