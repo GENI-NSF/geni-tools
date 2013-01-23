@@ -526,6 +526,7 @@ def API_call( framework, config, args, opts, verbose=False ):
 #        logger.info( " " + "="*60 )
 #        print retItem
         logger.info( " " + "="*60 )
+    # end of if verbose
     
     return retVal, retItem
 
