@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #----------------------------------------------------------------------
 # Copyright (c) 2012 Raytheon BBN Technologies
@@ -3673,6 +3673,148 @@ class AMCallHandler(object):
             retVal = "Specify at least one aggregate at which to try to delete image %s. %s" % (image_urn, message)
         elif not success:
             retVal = "Failed to delete image %s at any of %d aggregates. Last error: %s" % (image_urn, len(clientList), prStr)
+        return retVal, retItem
+
+    def listimages(self, args):
+        '''ProtoGENI's ListImages function: List the disk images created by the given user. 
+        Takes a user urn or name. If no user is supplied, uses the caller's urn. 
+        Gives a list of all images created by that user, including the URN 
+        for deleting the image. Return is a list of structs containing the url and urn of the iamge.
+        Note that you should invoke this at the AM where the images were created.
+        See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo'''
+
+        creator_urn = None
+
+        # If we got a creator argument, use it
+        if len(args) >= 1:
+            creator_urn = args[0]
+            self.logger.info("ListImages got creator_urn %r", creator_urn)
+
+        # get the user credential
+        cred = None
+        if self.opts.api_version >= 3:
+            (cred, message) = self.framework.get_user_cred_struct()
+        else:
+            (cred, message) = self.framework.get_user_cred()
+        if cred is None:
+            # Dev mode allow doing the call anyhow
+            self.logger.error('Cannot listimages: Could not get user credential')
+            if not self.opts.devmode:
+                return (None, "Could not get user credential: %s" % message)
+            else:
+                self.logger.info('... but continuing')
+                cred = ""
+
+        creds = _maybe_add_abac_creds(self.framework, cred)
+
+        invoker_authority = None
+        if cred:
+            invoker_urn = credutils.get_cred_owner_urn(self.logger, cred)
+            if invoker_urn and urn_util.is_valid_urn(invoker_urn):
+                iURN = urn_util.URN(None, None, None, invoker_urn)
+                invoker_authority = urn_util.string_to_urn_format(iURN.getAuthority())
+                self.logger.debug("Got invoker %s with authority %s", invoker_urn, invoker_authority)
+
+        if not creator_urn:
+            creator_urn = invoker_urn
+
+        # Validate that this looks like an user URN
+        if creator_urn and not urn_util.is_valid_urn_bytype(creator_urn, 'user', self.logger):
+            self.logger.debug("Creator_urn %s not valid", creator_urn)
+            if invoker_authority:
+                test_urn = urn_util.URN(invoker_authority, "user", creator_urn, None)
+                if urn_util.is_valid_urn_bytype(test_urn.urn, 'user', self.logger):
+                    self.logger.info("Inferred creator urn %s from name %s", test_urn, creator_urn)
+                    creator_urn = test_urn.urn
+                else:
+                    self.logger.debug("test urn using invoker_authority was invalid")
+                    if not self.opts.devmode:
+                        self._raise_omni_error("Creator URN invalid: %s" % creator_urn)
+                    else:
+                        self.logger.warn("Creator URN invalid but continuing: %s", creator_urn)
+            else:
+                self.logger.debug("Had no invoker authority")
+                if not self.opts.devmode:
+                    self._raise_omni_error("Creator URN invalid: %s" % creator_urn)
+                else:
+                    self.logger.warn("Creator URN invalid but continuing: %s", creator_urn)
+
+        if creator_urn and urn_util.is_valid_urn(creator_urn) and cred:
+            urn = urn_util.URN(None, None, None, creator_urn)
+            # Compare creator_urn with invoker urn: must be same SA
+            creator_authority = urn_util.string_to_urn_format(urn.getAuthority())
+            if creator_authority != invoker_authority:
+                if not self.opts.devmode:
+                    return (None, "Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
+                else:
+                    self.logger.warn("Cannot listimages but continuing: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
+
+        self.logger.info("ListImages using creator_urn %r", creator_urn)
+
+        options = dict()
+
+        args = (creator_urn, creds, options)
+
+        retItem = dict()
+        retVal = ""
+
+        # Return value is a list of structs on success. Else it uses the AM API to return an error code.
+        # EG a SEARCHFAILED "No such image" if the local AM does not have this image.
+
+        (clientList, message) = self._getclients()
+        msg = "List Images created by %s on " % (creator_urn)
+        op = "ListImages"
+
+        self.logger.debug("Doing listimages with creator_urn %s, %d creds, options %r",
+                          creator_urn, len(creds), options)
+        prStr = None
+        success = False
+        for client in clientList:
+            # FIXME: Confirm that AM is PG, complain if not?
+            # pgeni gives an error 500 (Protocol Error). PLC gives error
+            # 13 (invalid method)
+            try:
+                ((res, message), client) = self._api_call(client, msg + client.url, op, args)
+            except BadClientException, bce:
+                if bce.validMsg and bce.validMsg != '':
+                    retVal += bce.validMsg + ". "
+                else:
+                    retVal += "Skipped aggregate %s. (Unreachable? Doesn't speak AM API v%d? Check the log messages, and try calling 'getversion' to check AM status and API versions supported.).\n" % (client.url, self.opts.api_version)
+                if len(clientList) == 1:
+                    self._raise_omni_error("\nListImages Failed: " + retVal)
+                continue
+
+            self.logger.debug("listimages raw result: %r" % res)
+
+            retItem[client.url] = res
+            (realres, message) = self._retrieve_value(res, message, self.framework)
+
+            if realres is None or realres == 0:
+                # fail
+                prStr = "Failed to %s%s" % (msg, client.url)
+                if message is None or message.strip() == "":
+                    message = "(no reason given)"
+                if not prStr.endswith('.'):
+                    prStr += '.'
+                prStr += " " + message
+                self.logger.warn(prStr)
+                #retVal += prStr + "\n"
+            else:
+                # success
+                success = True
+                prettyResult = json.dumps(realres, ensure_ascii=True, indent=2)
+                if len(clientList) == 1:
+                    prStr = "Images created by %s at %s:\n%s" % (creator_urn, client.url, prettyResult)
+                else:
+                    imgCnt = len(realres)
+                    prStr = "Found %d images created by %s at %s" % (imgCnt, creator_urn, client.url)
+                self.logger.info(prettyResult)
+                retVal += prStr
+
+        if len(clientList) == 0:
+            retVal = "Specify at least one aggregate at which to try to list images created by %s. %s" % (creator_urn, message)
+        elif not success:
+            retVal = "Failed to list images created by %s at any of %d aggregates. Last error: %s" % (creator_urn, len(clientList), prStr)
         return retVal, retItem
 
     #######

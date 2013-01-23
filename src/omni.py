@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #----------------------------------------------------------------------
 # Copyright (c) 2011-12 Raytheon BBN Technologies
@@ -72,6 +72,7 @@
        [string dictionary] = omni.py createimage SLICENAME IMAGENAME [false] -u <SLIVER URN>
        [string dictionary] = omni.py snapshotimage SLICENAME IMAGENAME [false] -u <SLIVER URN> ; alias for createimage
        [string dictionary] = omni.py deleteimage IMAGEURN [CREATORURN]
+       [string dictionary] = omni.py listimages [CREATORURN]
 
       Clearinghouse functions:
        [string dictionary urn->url] = omni.py listaggregates
@@ -659,6 +660,7 @@ def getParser():
  \t\t\t snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] \n\
  \t\t\t\t [alias for 'createimage'] \n\
  \t\t\t deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
+ \t\t\t listimages [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
  \t\tClearinghouse / Slice Authority functions: \n\
  \t\t\t listaggregates \n\
  \t\t\t createslice <slicename> \n\
