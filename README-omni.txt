@@ -37,6 +37,10 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.3:
+ - Support ProtoGENI/InstaGENI `ListImages`: list the disk images
+ created by the given user, or by you if no name given. (ticket #239)
+
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
@@ -547,6 +551,7 @@ omni.py [options] <command and arguments>
  			 snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  				 [alias for 'createimage'] 
 			 deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only]
+			 listimages [optional: creatorurn] [ProtoGENI/InstaGENI only]
                 Clearinghouse / Slice Authority functions:                                    
                          listaggregates                                                       
                          createslice <slicename>                                              
@@ -1754,6 +1759,30 @@ supply the URN of the user who did create the image as a 2nd
 Note that you cannot delete an image that is in use. Note also that
 only 1 aggregate will have your image; queries to other aggregates
 will return a `SEARCHFAILED` error.
+
+Aggregates queried:
+ - Each URL given in an `-a` argument or URL listed under that given
+   nickname in `omni_config`, if provided, ELSE
+ - List of URLs given in `omni_config` aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+
+==== listimages ====
+Call the ProtoGENI / InstaGENI !ListImages method, to list all disk
+snapshots (images) previously created at a given aggregate by a
+particular user.
+
+This command is not supported at older ProtoGENI AMs or at non
+ProtoGENI AMs.
+
+See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
+
+Format: omni.py listimages [CREATORURN]
+
+List the disk images created by the given user. 
+Takes a user urn or name. If no user is supplied, uses the caller's urn. 
+Returns a list of all images created by that user, including the URN 
+for deleting the image. Return is a list of structs containing the url and urn of the iamge.
+Note that you should invoke this at the AM where the images were created.
 
 Aggregates queried:
  - Each URL given in an `-a` argument or URL listed under that given

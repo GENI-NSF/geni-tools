@@ -159,6 +159,56 @@ def get_cred_target_urn(logger, cred):
 
     return urn
 
+def get_cred_owner_urn(logger, cred):
+    '''Parse the given credential to get its owner URN'''
+    credString = get_cred_xml(cred)
+    urn = ""
+
+    if credString is None:
+        return urn
+
+    # If credString is not a string then complain and return
+    if type(credString) != type('abc'):
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
+        logger.error("Cannot parse owner URN: Credential is not a string: %s", str(credString))
+        return credexp
+
+    try:
+        doc = md.parseString(credString)
+        signed_cred = doc.getElementsByTagName("signed-credential")
+
+        # Is this a signed-cred or just a cred?
+        if len(signed_cred) > 0:
+            cred = signed_cred[0].getElementsByTagName("credential")[0]
+        else:
+            cred = doc.getElementsByTagName("credential")[0]
+
+        ownernode = cred.getElementsByTagName("owner_urn")[0]
+        if len(ownernode.childNodes) > 0:
+            urn = str(ownernode.childNodes[0].nodeValue)
+        else:
+            if logger is None:
+                level = logging.INFO
+                logging.basicConfig(level=level)
+                logger = logging.getLogger("omni.credparsing")
+                logger.setLevel(level)
+            logger.warn("Found no ownernode to get owner_urn?")
+    except Exception, exc:
+        if logger is None:
+            level = logging.INFO
+            logging.basicConfig(level=level)
+            logger = logging.getLogger("omni.credparsing")
+            logger.setLevel(level)
+        logger.error("Failed to parse credential for owner URN: %s", exc)
+        logger.info("Unparsable credential: %s", credString)
+        logger.debug(traceback.format_exc())
+
+    return urn
+
 def get_cred_exp(logger, cred):
     '''Parse the given credential in GENI AM API XML format to get its expiration time and return that'''
 
