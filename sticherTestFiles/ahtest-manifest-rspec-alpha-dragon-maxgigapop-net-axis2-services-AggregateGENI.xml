@@ -12,13 +12,6 @@
 			   http://www.geni.net/resources/rspec/3/manifest.xsd"
        type="manifest">
 
-  <link client_id="link-ig-utah1-ig-gpo1"  sliver_id="urn:publicid:IDN+instageni.gpolab.bbn.com+sliver+760" vlantag="3747">
-    <component_manager name="urn:publicid:IDN+utah.geniracks.net+authority+cm"/>
-    <interface_ref client_id="ig-utah1:if0"/>
-    <component_manager name="urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm"/>
-    <interface_ref client_id="ig-gpo1:if0" component_id="urn:publicid:IDN+instageni.gpolab.bbn.com+interface+pc5:eth1" sliver_id="urn:publicid:IDN+instageni.gpolab.bbn.com+sliver+761"/>
-  </link>
-
   <stitching lastUpdateTime="20130118:07:21:00">
     <path id="link-ig-utah1-ig-gpo1">
       <hop id="1">
@@ -85,7 +78,8 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>750-1000</vlanRangeAvailability>
+		<!-- 2-4094 is Ad amt. Should this be constrained by hop3 in the manifest to 750-1000? -->
+		<vlanRangeAvailability>2-4094</vlanRangeAvailability>
 		<suggestedVLANRange>1000</suggestedVLANRange>
 		<vlanTranslation>true</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
@@ -107,7 +101,8 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>3747-3749</vlanRangeAvailability>
+		<!-- As above, values here are from ad - maybe need the constrained list from hop6? -->
+		<vlanRangeAvailability>670,3726-3750</vlanRangeAvailability>
 		<suggestedVLANRange>3747</suggestedVLANRange>
 		<vlanTranslation>true</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>

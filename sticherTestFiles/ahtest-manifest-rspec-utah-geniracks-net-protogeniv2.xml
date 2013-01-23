@@ -69,7 +69,7 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>any</vlanRangeAvailability>
+		<vlanRangeAvailability>750-1000</vlanRangeAvailability>
 		<suggestedVLANRange>1000</suggestedVLANRange>
 		<vlanTranslation>false</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
@@ -87,7 +87,7 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>any</vlanRangeAvailability>
+		<vlanRangeAvailability>750-1000</vlanRangeAvailability>
 		<suggestedVLANRange>1000</suggestedVLANRange>
 		<vlanTranslation>false</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
@@ -105,7 +105,7 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>any</vlanRangeAvailability>
+		<vlanRangeAvailability>2-4094</vlanRangeAvailability>
 		<suggestedVLANRange>1000</suggestedVLANRange>
 		<vlanTranslation>true</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
@@ -127,7 +127,7 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>any</vlanRangeAvailability>
+		<vlanRangeAvailability>670,3726-3750</vlanRangeAvailability>
 		<suggestedVLANRange>3747</suggestedVLANRange>
 		<vlanTranslation>true</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
@@ -149,7 +149,7 @@
 	    <switchingCapabilitySpecificInfo>
 	      <switchingCapabilitySpecificInfo_L2sc>
 		<interfaceMTU>9000</interfaceMTU>
-		<vlanRangeAvailability>any</vlanRangeAvailability>
+		<vlanRangeAvailability>3747-3749</vlanRangeAvailability>
 		<suggestedVLANRange>3747</suggestedVLANRange>
 		<vlanTranslation>false</vlanTranslation>
 	      </switchingCapabilitySpecificInfo_L2sc>
