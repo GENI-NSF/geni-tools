@@ -37,10 +37,6 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.3:
- - Support ProtoGENI/InstaGENI `ListImages`: list the disk images
- created by the given user, or by you if no name given. (ticket #239)
-
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
@@ -67,6 +63,8 @@ New in v2.2:
  http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo (ticket #186)
  - Ticket #232: Implemented ProtoGENI/InstaGENI !DeleteImage: supply
  the URN of your image to delete it.
+ - Support ProtoGENI/InstaGENI `ListImages`: list the disk images
+ created by the given user, or by you if no name given. (ticket #239)
  - Ticket #237: Print PG error log URL if available
  - Ticket #238: Print the PG log URL in INFO logs on success, in
  result summary on error
