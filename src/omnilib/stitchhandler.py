@@ -46,8 +46,6 @@ class StitchingHandler(object):
 #        self.GetVersionCache = None # The cache of GetVersion info in memory
 
     def doStitching(self, args):
-        #[whatever my algorithm is from below]
-
         # Get request RSpec
         request = None
         command = None
@@ -58,13 +56,7 @@ class StitchingHandler(object):
             command = args[0]
         elif len(args) == 2:
             command = args[0]
-            request = args[1]
-            # FIXME: Create a slice
-            omniargs = ["createslice", "stitcher"]
-            try:
-                (slicename, message) = omni.call(omniargs, self.opts)
-            except:
-                pass
+            slicename = args[1]
         else:
             command = args[0]
             slicename = args[1]
@@ -183,6 +175,8 @@ class StitchingHandler(object):
         # >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
         if request:
             return True
+        else:
+            return False
 
     def confirmSliceOK(self, slicename):
         # FIXME: I need to get the framework and use it to do getslicecred, etc.
@@ -199,6 +193,14 @@ class StitchingHandler(object):
         # handler_utils._print_slice_expiration(sliceurn, slicecred)
         # amhandler._has_slice_expired(slice_cred) (which uses credutils.get_cred_exp)
         # return error on error
+
+        # Maybe if the slice doesn't exist, create it?
+        # omniargs = ["createslice", slicename]
+        # try:
+        #     (slicename, message) = omni.call(omniargs, self.opts)
+        # except:
+        #     pass
+
         
         # return the slice urn
         return sliceurn
