@@ -29,48 +29,20 @@ from GENIObject import *
 
 class Path(GENIObjectWithURN):
     '''Path'''
-    __metaclass__ = GMOCMeta
-#    __ID__ = validateHopID
 #    __simpleProps__ = [ ['id', int] ]
 
-#    def __init__(self, id, urn=None):
-#        super(GENIObjectWithURN, self).__init__(id, urn=urn)
+    def __init__(self, id, urn=None, index=None):
+        super(Path, self).__init__(id, urn=urn)
+#        self.index = index
+
             
-class Hop2(GENIObjectWithURN):
+class Hop(GENIObjectWithURN):
     '''Path'''
-    __metaclass__ = GMOCMeta
-#    __ID__ = validateHopID
-#    __simpleProps__ = [ ['id', int] ]
+    __simpleProps__ = [ ['index', int] ]
 
-    def __init__(self, id, urn=None):
-        super(GENIObjectWithURN, self).__init__(id, urn=urn)
+    def __init__(self, id, urn=None, index=None):
+        super(Hop, self).__init__(id, urn=urn)
+        self.index = index
+
             
-
-class Hop(GENIObject):
-    '''Hop'''
-    __metaclass__ = GMOCMeta
-#    __ID__ = validateHopID
-    __simpleProps__ = [ ['id', int], ['index', int]]
-
-    def __init__(self, id, urn=None):
-        self.id = id
-#        self.index = 
-#        self.path =
-        self._urn = urn
-
-    @property
-    def urn(self):
-        return self.urn
-
-    @urn.setter
-    def urn(self, value):
-        if value != None:
-            if type(value) == URN:
-                self._urn = value
-            elif isinstance(value, str):
-                self._urn = URN( value )
-            else:
-                raise TypeError("urn must be a valid URN")
-        else:
-            self._urn = None
 

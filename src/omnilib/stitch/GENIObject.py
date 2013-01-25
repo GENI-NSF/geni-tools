@@ -25,16 +25,25 @@ from gmoc import * #GMOCObject
 
 class GENIObject(GMOCObject):
     def __init__(self, id ):
-        return super(GMOCObject, self).__init__(id)
-
+        # Could do this but really don't want anything but id
+        # return super(GENIObject, self).__init__(id)
+        self.id = id
     def __str__(self):
-#        retVal = "-> "+str(self.__class__.__name__)+"( "+str(self.__dict__['__id'])+" ) <- \n"
         retVal = ""+str(self.__class__.__name__)+"( "+str(self.__dict__['__id'])+" )"
         for key, value in self.__dict__.items():
             if key == "__id":
                 continue
             retVal += "\n  "+str(key)+" : "+str(value)+""
         return retVal
+
+def validateInt( integer ):
+    if type(integer) == int:
+        return integer
+    else:
+        try:
+            return int( integer )
+        except:
+            return None
 
 class URN(GENIObject):
     '''URN'''
@@ -45,11 +54,10 @@ class URN(GENIObject):
 
 class GENIObjectWithURN(GENIObject):
     __metaclass__ = GMOCMeta
-#    __ID__ = validateID
-    __simpleProps__ = [ ['id', int] ]
+    __ID__ = validateInt
 
     def __init__(self, id, urn=None):
-        self.id = id
+        super(GENIObjectWithURN, self).__init__(id)
         self._urn = urn
 
     @property
