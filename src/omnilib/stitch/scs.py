@@ -80,6 +80,29 @@ class PathInfo(object):
         return self.raw[self.SERVICE_RSPEC]
     def workflow_data(self):
         return self.links
+    def dump_workflow_data(self):
+        """Print out the raw workflow data for debugging."""
+        wd = self.raw[self.WORKFLOW_DATA]
+        for link_name in wd:
+            print "Link %r:" % (link_name)
+            self.dump_link_data(wd[link_name], "  ")
+    def dump_link_data(self, link_data, indent=""):
+        print "%sDepends on:" % (indent)
+        for d in link_data[self.DEPS]:
+            self.dump_dependency(d, indent + "  ")
+    def dump_dependency(self, dep_data, indent=""):
+        keys = sorted(dep_data.keys())
+        deps = []
+        if self.DEPS in keys:
+            deps = dep_data[self.DEPS]
+            keys.remove(self.DEPS)
+        for k in keys:
+            print "%s%r: %r" % (indent, k, dep_data[k])
+        if deps:
+            print "%sDepends on:" % (indent)
+            for d in deps:
+                self.dump_dependency(d, indent + "  ")
+
 
 class Dependency(object):
     AGG_URN = 'aggregate_urn'
