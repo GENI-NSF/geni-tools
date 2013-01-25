@@ -33,11 +33,19 @@ class Path(GENIObjectWithURN):
 
     def __init__(self, id, urn=None, index=None):
         super(Path, self).__init__(id, urn=urn)
-#        self.index = index
+        self._hops = []
 
+    @property
+    def hops(self):
+        return self._hops
             
+    @hops.setter
+    def hops(self, hopList):
+#DELETE        self._setListProp('hops', hopList, Hop, '_path')
+        self._setListProp('hops', hopList, Hop)
+
 class Hop(GENIObjectWithURN):
-    '''Path'''
+    '''Hop'''
     __simpleProps__ = [ ['index', int] ]
 
     def __init__(self, id, urn=None, index=None):
