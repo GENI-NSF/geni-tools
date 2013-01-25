@@ -96,11 +96,31 @@ class Path(GENIObjectWithURN):
 
 class Hop(GENIObjectWithURN):
     '''Hop'''
-    __simpleProps__ = [ ['index', int] ]
+    __simpleProps__ = [ ['index', int], ['aggregate', Aggregate], ['path', Path], ['inProcess', bool], ['completed', bool], ['userRequested', bool] ]
 
-    def __init__(self, id, urn=None, index=None):
+    def __init__(self, id, urn=None, index=None, aggregate=None, path=None, inProcess=None, completed=None, userRequested=None):
         super(Hop, self).__init__(id, urn=urn)
         self.index = index
-
+        self.aggregate = aggregate
+        self.path = path
+        self.inProcess = inProcess
+        self.completed = completed
+        self.userRequested = userRequested
+        self._dependsOn = []
+        self._copiesVlansTo = []
             
+    @property
+    def dependsOn(self):
+        return self._dependsOn
 
+    @property
+    def copiesVlansTo(self):
+        return self._copiesVlansTo
+
+    @dependsOn.setter
+    def dependsOn(self, hopList):
+        self._setListProp('dependsOn', hopList, Hop)
+
+    @copiesVlansTo.setter
+    def copiesVlansTo(self, hopList):
+        self._setListProp('copiesVlansTo', hopList, Hop)
