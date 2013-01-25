@@ -79,7 +79,7 @@ class PathInfo(object):
     def rspec(self):
         return self.raw[self.SERVICE_RSPEC]
     def workflow_data(self):
-        return self.links
+        return self.raw[self.WORKFLOW_DATA]
     def dump_workflow_data(self):
         """Print out the raw workflow data for debugging."""
         wd = self.raw[self.WORKFLOW_DATA]
