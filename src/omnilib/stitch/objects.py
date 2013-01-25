@@ -30,30 +30,42 @@ from GENIObject import *
 class Aggregate(GENIObjectWithURN):
     '''Aggregate'''
     ## FIX ME check url is actually a url
-    __simpleProps__ = [ ['url', str] ]
+    __simpleProps__ = [ ['url', str], ['inProcess', bool], ['completed', bool], ['userRequested', bool]]
 
-    def __init__(self, id, urn=None, url=None):
+    def __init__(self, id, urn=None, url=None, inProcess=None, completed=None, userRequested=None):
         super(Aggregate, self).__init__(id, urn=urn)
         self.url = url
+        self.inProcess = inProcess
+        self.completed = completed
+        self.userRequested = userRequested
         self._hops = []
-        self._dependencies = []
+        self._dependedOnBy = []
+        self._dependsOn = []
         
     @property
     def hops(self):
         return self._hops
 
     @property
-    def dependencies(self):
-        return self._dependencies
+    def dependsOn(self):
+        return self._dependsOn
+
+    @property
+    def dependedOnBy(self):
+        return self._dependedOnBy
             
     @hops.setter
     def hops(self, hopList):
 #DELETE        self._setListProp('hops', hopList, Hop, '_path')
         self._setListProp('hops', hopList, Hop)
 
-    @dependencies.setter
-    def dependencies(self, aggList):
-        self._setListProp('dependencies', aggList, Aggregate)
+    @dependsOn.setter
+    def dependsOn(self, aggList):
+        self._setListProp('dependsOn', aggList, Aggregate)
+
+    @dependedOnBy.setter
+    def dependedOnBy(self, aggList):
+        self._setListProp('dependedOnBy', aggList, Aggregate)
 
 
 class Path(GENIObjectWithURN):
