@@ -27,22 +27,60 @@
 from GENIObject import *
 
 
-class Path(GENIObjectWithURN):
-    '''Path'''
-#    __simpleProps__ = [ ['id', int] ]
+class Aggregate(GENIObjectWithURN):
+    '''Aggregate'''
+    ## FIX ME check url is actually a url
+    __simpleProps__ = [ ['url', str] ]
 
-    def __init__(self, id, urn=None, index=None):
-        super(Path, self).__init__(id, urn=urn)
+    def __init__(self, id, urn=None, url=None):
+        super(Aggregate, self).__init__(id, urn=urn)
+        self.url = url
         self._hops = []
-
+        self._dependencies = []
+        
     @property
     def hops(self):
         return self._hops
+
+    @property
+    def dependencies(self):
+        return self._dependencies
             
     @hops.setter
     def hops(self, hopList):
 #DELETE        self._setListProp('hops', hopList, Hop, '_path')
         self._setListProp('hops', hopList, Hop)
+
+    @dependencies.setter
+    def dependencies(self, aggList):
+        self._setListProp('dependencies', aggList, Aggregate)
+
+
+class Path(GENIObjectWithURN):
+    '''Path'''
+#    __simpleProps__ = [ ['id', int] ]
+
+    def __init__(self, id, urn=None):
+        super(Path, self).__init__(id, urn=urn)
+        self._hops = []
+        self._aggregates = []
+
+    @property
+    def hops(self):
+        return self._hops
+
+    @property
+    def aggregates(self):
+        return self._aggregates
+
+    @hops.setter
+    def hops(self, hopList):
+#DELETE        self._setListProp('hops', hopList, Hop, '_path')
+        self._setListProp('hops', hopList, Hop)
+
+    @aggregates.setter
+    def aggregates(self, aggList):
+        self._setListProp('aggregates', aggList, Aggregate)
 
 class Hop(GENIObjectWithURN):
     '''Hop'''
