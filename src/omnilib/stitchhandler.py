@@ -27,6 +27,7 @@ import omni
 
 from omnilib.util import OmniError
 from omnilib.util.files import readFile
+import omnilib.stitch.scs as scs
 
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
@@ -86,7 +87,7 @@ class StitchingHandler(object):
             # parseRequest
             # -- FIXME: As elementTree stuff?
             #    requestStruct = parseRequest(requestString, logger)
-        requestStruct = None
+        requestStruct = True
             
         # If this is not a real stitching thing, just let Omni handle this.
         if not self.mustCallSCS(requestStruct):
@@ -95,14 +96,19 @@ class StitchingHandler(object):
 
         sliceurn = self.confirmSliceOK(slicename)
     
-        # constructSCSArgs: slice_urn, rspec, options
-        # options wil eventually include a geni_routing_profile struct that inside has the hop_exclusion_list
-        scsArgs = self.constructSCSArgs(sliceurn, requestString)
+        scsService = scs.Service(self.opts.scsURL)
+        options = {} # No options for now.
+        try:
+            scsResponse = scsService.ComputePath(sliceurn, requestString,
+                                                 options)
+        except Exception as e:
+            self.logger.error("Error from slice cmoputation service:", e)
+            # What to return to signal error?
+            return
 
-        # callSCS (which method will make the call, or read result if fakeMode)
-        scsRespone = self.callSCS(scsArgs)
+        self.logger.info("SCS successfully returned.");
+        scsResponse.dump_workflow_data()
 
-        # Check scsResponse: should be a struct (Code, value, output) where code geni_code should be 0 
 
         # If error, return
         # save expanded RSpec
@@ -205,11 +211,6 @@ class StitchingHandler(object):
         # return the slice urn
         return sliceurn
 
-    def constructSCSArgs(self, sliceurn, requestRSpec, options=None):
-        # FIXME FIXME
-        args = [sliceurn, requestRSpec, options]
-        return args
-    
     def _raise_omni_error( self, msg, err=OmniError, triple=None ):
         msg2 = msg
         if triple is not None:
