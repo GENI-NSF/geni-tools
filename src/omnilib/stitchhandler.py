@@ -109,11 +109,14 @@ class StitchingHandler(object):
         self.logger.info("SCS successfully returned.");
         scsResponse.dump_workflow_data()
 
-
         # If error, return
         # save expanded RSpec
+        expandedRSpec = scsResponse.rspec()
+        #print "%r" % (expandedRSpec)
         # parseRequest
         # parseWorkflow
+        workflow = scsResponse.workflow_data()
+        #print "%r" % (workflow)
           # parse list of AMs, URNs, URLs - creating structs for AMs and hops
           # check each AM reachable, and we know the URL/API version to use
           # parse hop dependency tree, giving each hop an explicit hop#
