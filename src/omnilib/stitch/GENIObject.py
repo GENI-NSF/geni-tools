@@ -20,16 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-from gmoc import * #GMOCObject
+#from gmoc import * #GMOCObject
+from gmoc import GMOCMeta, GMOCObject, validateText, validateURN
 
 
+#class GENIObject(GMOCObject):
 class GENIObject(GMOCObject):
-    def __init__(self, id ):
+#    __metaclass__ = GMOCMeta
+#    def __init__(self, id ):
+    def __init__(self):
+        pass
         # Could do this but really don't want anything but id
         # return super(GENIObject, self).__init__(id)
-        self.id = id
+#        self.id = id
     def __str__(self):
-        retVal = ""+str(self.__class__.__name__)+"( "+str(self.__dict__['__id'])+" )"
+#        retVal = ""+str(self.__class__.__name__)+"( "+str(self.__dict__['__id'])+" )"
+        retVal = ""+str(self.__class__.__name__)
+        if self.__dict__.has_key('__id'):
+            retVal +="( "+str(self.__dict__['__id'])+" )"
         for key, value in self.__dict__.items():
             if key == "__id":
                 continue
@@ -45,19 +53,57 @@ def validateInt( integer ):
         except:
             return None
 
+def validateTrueFalse( boolean ):
+    if type(boolean) == bool:
+        return boolean
+    else:
+        try:
+            boolean = str(boolean).lower()
+            if boolean.strip().lower() in ("true", "t"):
+                return True
+            elif boolean.strip().lower() in ("false", "f"):
+                return False
+            else:
+                return None
+        except:
+            return None
+
+# overwriting
+def validateTextLike(urn):
+    return str(urn)
+
 class URN(GENIObject):
     '''URN'''
     __metaclass__ = GMOCMeta
     __ID__ = validateURN
     def __init__(self, urn):
         self.id = urn
+    def __str__(self):
+        print self.id
 
-class GENIObjectWithURN(GENIObject):
+class TrueFalse(GENIObject):
+    '''boolean'''
+    __metaclass__ = GMOCMeta
+    __ID__ = validateTrueFalse
+    def __init__(self, boolean):
+        self.id = boolean
+    def __str__(self):
+        print self.id
+
+class TextLike(unicode):
+    '''TextLike'''
+    __ID__ = validateText
+    def __init__(self, text):
+        self.id = text
+
+
+class GENIObjectWithIDURN(GENIObject):
     __metaclass__ = GMOCMeta
     __ID__ = validateInt
 
     def __init__(self, id, urn=None):
-        super(GENIObjectWithURN, self).__init__(id)
+        super(GENIObjectWithIDURN, self).__init__()
+        self.id = id
         self._urn = urn
 
     @property

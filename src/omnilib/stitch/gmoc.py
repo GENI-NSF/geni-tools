@@ -176,8 +176,8 @@ def validateText(urn):
     return urn
    
 def validateURN(urn):
-    if isValidURN(urn):
-        return urn
+    if isValidURN(str(urn)):
+        return str(urn)
 
     return None
 
@@ -316,7 +316,7 @@ def _setProp(propName, propType):
         oldVal = getattr(self, '__' + propName)
         if not value is None:
             if not isinstance(value, propType):
-                raise TypeError(propName + " must be of type " + propType.__name__)
+                raise TypeError(propName + " (" + str(value) +") must be of type '" + propType.__name__ + "' instead it is of type '" + str(type(value).__name__) +"'")
         
         setattr(self, '__' + propName, value)
     

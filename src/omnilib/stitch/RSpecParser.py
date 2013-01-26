@@ -26,8 +26,9 @@
 import sys
 import pdb
 from xml.dom.minidom import parseString, Node
+from objects import *
 
-TEXT_NODE = Node.TEXT_NODE
+TEXT_NODE = 3 #Node.TEXT_NODE
 
 # Node tags
 RSPEC_TAG = 'rspec'
@@ -59,6 +60,7 @@ EXCLUSIVE_TAG = 'exclusive'
 LAST_UPDATE_TIME_TAG = "lastUpdateTime"
 ID_TAG = 'id'
 NAME_TAG = 'name'
+COMPONENT_MANAGER_ID_TAG = 'component_manager_id'
 
 class RSpecParser:
 
@@ -96,19 +98,22 @@ class RSpecParser:
                 pass
             else:
                 print "UNKNOWN TAG FOR RSPEC: " + str(child)
-        rspec = RSpec(nodes, links, stitching)
+        rspec = RSpec(stitching)
+        rspec.nodes = nodes
+        rspec.links = links
         return rspec
         
 
     def parseNode(self, node_element):
         client_id = node_element.getAttribute(CLIENT_ID_TAG)
-        component_manager = node_element.getAttribute(COMPONENT_MANAGER_TAG)
+        component_manager = node_element.getAttribute(COMPONENT_MANAGER_ID_TAG)
         exclusive = node_element.getAttribute(EXCLUSIVE_TAG)
         if self._verbose:
             attribs = {CLIENT_ID_TAG:client_id, \
                            COMPONENT_MANAGER_TAG:component_manager, \
                            EXCLUSIVE_TAG: exclusive}
             print "      NODE: " + str(attribs)
+
         interfaces = []
         for child in node_element.childNodes:
             if child.nodeName == INTERFACE_TAG:
@@ -116,7 +121,10 @@ class RSpecParser:
                     print "      " + str(child)
                 interface = self.parseInterface(child)
                 interfaces.append(interface)
-        node = Node(client_id, component_manager, exclusive, interfaces)
+        node = Node(client_id, component_manager, exclusive)
+        node.interfaces = interfaces
+        return node
+
 
     def parseLink(self, link_element):
         client_id = link_element.getAttribute(CLIENT_ID_TAG)
@@ -141,7 +149,9 @@ class RSpecParser:
             else:
                 if self._verbose:
                     print "UNKNOWN TAG FOR LINK: " + str(child)
-        link = Link(client_id, component_managers, interface_refs)
+        link = Link(client_id)
+        link.aggregates = component_managers
+        link.interfaces = interface_refs
         return link
 
     def parseInterface(self, if_element):
@@ -149,7 +159,7 @@ class RSpecParser:
         if self._verbose:
             attribs = {CLIENT_ID_TAG : client_id}
             print "         INTERFACE: " + str(attribs)
-        interface = Interface(client_id)
+        interface = Interface(str(client_id))
         return interface
 
     def parseComponentManager(self, cm_element):
@@ -198,7 +208,8 @@ class RSpecParser:
         if self._verbose:
             attribs = {ID_TAG:id}
             print "      PATH: " + str(attribs)
-        path = Path(id, hops)
+        path = Path(id) #URN?
+        path.hops = hops
         return path
 
     def parseHop(self, hop_element):
@@ -321,61 +332,6 @@ class RSpecParser:
 
 # To be replaced by real classes
 
-class RSpec:
-    def __init__(self, nodes, links, stitching): 
-        pass
-
-class Node:
-    def __init__(self, client_id, component_manager, exclusive, interfaces):
-        pass
-
-class Link:
-    def __init__(self, client_id, component_managers,interface_refs):
-        pass
-
-class Interface:
-    def __init__(self, client_id):
-        pass
-
-class InterfaceRef:
-    def __init__(self, client_id):
-        pass
-
-class ComponentManager:
-    def __init__(self, name):
-        pass
-
-class Stitching:
-    def __init__(self, last_update_time, path):
-        pass
-
-class Path:
-    def __init__(self, id, hops):
-        pass
-
-class Hop:
-    def __init__(self, id, hop_link, next_hop):
-        pass
-
-class HopLink:
-    def __init__(self, id, traffic_engineering_metric, capacity, \
-                     switching_capability_descriptor):
-        pass
-
-class SwitchingCapabilityDescriptor:
-    def __init__(self, switching_cap_type, coding_type, \
-                     switching_capability_specific_info):
-        pass
-
-class SwitchingCapabilitySpecificInfo:
-    def __init__(self, switching_capability_specific_info_l2sc):
-        pass
-
-class SwitchingCapabilitySpecificInfo_l2sc:
-    def __init__(self, interface_mtu, vlan_range_avaiaiblity, \
-                     suggested_vlan_range, vlan_translation):
-        pass
-
 
 
 if __name__ == "__main__":
@@ -390,4 +346,30 @@ if __name__ == "__main__":
     file.close()
     parser = RSpecParser(verbose=True)
     rspec = parser.parse(data)
-    print rspec
+    print "== RSPEC =="
+    print "\t== NODES =="
+    print rspec.nodes
+    print "\t== LINKS =="
+    print rspec.links
+    cnt = 1
+    for node in rspec.nodes:
+        print "\t\t== NODE %s ==" % (str(cnt))
+        cnt +=1
+        print node
+        cnt2 = 1
+        for interface in node.interfaces:
+            print "\t\t\t== INTERFACE %s ==" % (str(cnt2))
+            cnt2 +=1
+            print interface
+    cnt = 1
+    for link in rspec.links:
+        print "\t\t== LINK %s ==" % (str(cnt))
+        cnt +=1
+        print link
+    print "\t== STITCHING == " 
+    print rspec.stitching
+    cnt = 1
+    for hop in rspec.stitching.path.hops:
+        print "\t\t== HOP %s ==" % (str(cnt))
+        cnt +=1
+        print hop
