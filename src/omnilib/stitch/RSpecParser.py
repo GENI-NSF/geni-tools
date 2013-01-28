@@ -25,7 +25,7 @@
 
 import sys
 import pdb
-from xml.dom.minidom import parseString, Node
+from xml.dom.minidom import parseString, Node, getDOMImplementation
 from objects import *
 
 TEXT_NODE = 3 #Node.TEXT_NODE
@@ -244,7 +244,7 @@ class RSpecParser:
             elif child.nodeName == CAPACITY_TAG:
                 capacity = int(child.firstChild.nodeValue)
             elif child.nodeName == SWITCHING_CAPABILITY_DESCRIPTOR_TAG:
-                switching_capabilty_descriptor = \
+                switching_capability_descriptor = \
                     self.parseSwitchingCapabilityDescriptor(child)
             elif child.nodeType == TEXT_NODE:
                 pass
@@ -276,8 +276,8 @@ class RSpecParser:
                 pass
             else:
                 print "UNKNOWN CHILD FOR SCD: " + str(child)
-            scd = \
-                SwitchingCapabilityDescriptor(switching_cap_type,
+        scd = \
+            SwitchingCapabilityDescriptor(switching_cap_type, \
                                               encoding_type, \
                                               switching_capability_specific_info)
         return scd
@@ -336,7 +336,7 @@ class RSpecParser:
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
-        print "Usage RspecParser <file.xml>"
+        print "Usage RspecParser <file.xml> [<out.xml>]"
         sys.exit()
 
     filename = sys.argv[1]
@@ -373,3 +373,15 @@ if __name__ == "__main__":
         print "\t\t== HOP %s ==" % (str(cnt))
         cnt +=1
         print hop
+
+# Now convert back to XML and print out
+    impl = getDOMImplementation()
+    doc = impl.createDocument(None, 'rspec', None)
+    root = doc.documentElement
+    rspec.toXML(doc, root)
+    if len(sys.argv) > 2:
+        outf = open(sys.argv[2], "w")
+        doc.writexml(outf)
+        outf.close()
+    else:
+        print doc.toprettyxml()
