@@ -38,6 +38,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v2.2:
+
+New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
  only 1 RSpec format or specified a default Ad format, then use that

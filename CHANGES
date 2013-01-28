@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.3:
+
 gcf 2.2:
  * GENI-in-a-Box code is now included, though it is not runnable from
  this source distribution. To learn more, see
