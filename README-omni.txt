@@ -38,6 +38,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v2.2:
+ - Ticket #240: don't print ProtoGENI log URL in result summary on success
 
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and

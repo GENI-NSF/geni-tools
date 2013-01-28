@@ -4178,7 +4178,8 @@ class AMCallHandler(object):
                         message = ""
                     if msg != "":
                         self.logger.info(msg)
-                        message += msg
+                        # FIXME: This may cause pg_log to be included in result summary even in success
+#                        message += msg
 
                 # FIXME: More complete error code handling!
                 elif self.opts.raiseErrorOnV2AMAPIError and result['code']['geni_code'] != 0 and self.opts.api_version == 2:
