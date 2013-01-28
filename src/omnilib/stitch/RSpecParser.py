@@ -53,6 +53,8 @@ VLAN_RANGE_AVAILABILITY_TAG = 'vlanRangeAvailability'
 SUGGESTED_VLAN_RANGE_TAG = 'suggestedVLANRange'
 VLAN_TRANSLATION_TAG = 'vlanTranslation'
 NEXT_HOP_TAG = 'nextHop'
+CAPABILITIES_TAG = 'capabilities'
+CAPABILITY_TAG = 'capability'
 
 # Attribute tags
 CLIENT_ID_TAG = 'client_id'
@@ -238,6 +240,7 @@ class RSpecParser:
         traffic_engineering_metric = None
         capacity = None
         switching_capability_descriptor = None
+        capabilities = None
         for child in hop_link_element.childNodes:
             if child.nodeName == TRAFFIC_ENGINEERING_METRIC_TAG:
                 traffic_engineering_metric = int(child.firstChild.nodeValue)
@@ -246,6 +249,8 @@ class RSpecParser:
             elif child.nodeName == SWITCHING_CAPABILITY_DESCRIPTOR_TAG:
                 switching_capability_descriptor = \
                     self.parseSwitchingCapabilityDescriptor(child)
+            elif child.nodeName == CAPABILITIES_TAG:
+                capabilities = self.parseCapabilities(child)
             elif child.nodeType == TEXT_NODE:
                 pass
             else:
@@ -257,7 +262,7 @@ class RSpecParser:
                            CAPACITY_TAG:capacity}
             print "      HOP_LINK: " + str(attribs)
         hop_link = HopLink(id, traffic_engineering_metric, capacity, \
-                               switching_capability_descriptor)
+                               switching_capability_descriptor, capabilities)
         return hop_link
 
     def parseSwitchingCapabilityDescriptor(self, scd_element):
@@ -329,6 +334,24 @@ class RSpecParser:
                                                      vlan_translation)
         return scsi_l2sc
         
+
+    def parseCapability(self, element):
+        for child in element.childNodes:
+            if child.nodeType == TEXT_NODE:
+                return child.data
+            else:
+                print "UNKNOWN CHILD FOR CAPABILITY: " + str(child)
+
+    def parseCapabilities(self, element):
+        capabilities = []
+        for child in element.childNodes:
+            if child.nodeName == CAPABILITY_TAG:
+                capabilities.append(self.parseCapability(child))
+            elif child.nodeType == TEXT_NODE:
+                pass
+            else:
+                print "UNKNOWN CHILD FOR CAPABILITIES: " + str(child)
+        return capabilities
 
 # To be replaced by real classes
 

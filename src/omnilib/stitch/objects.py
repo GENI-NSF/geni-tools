@@ -349,12 +349,13 @@ class ComponentManager(Aggregate):
 
 class HopLink(GENIObject):
     def __init__(self, id, traffic_engineering_metric, capacity, \
-                     switching_capability_descriptor):
+                     switching_capability_descriptor, capabilities):
         super(HopLink, self).__init__()
         self._id = id
         self._traffic_engineering_metric = traffic_engineering_metric
         self._capacity = capacity
         self._switching_capability_descriptor = switching_capability_descriptor
+        self._capabilities = capabilities
 
     def toXML(self, doc, parent):
         link_node = doc.createElement('link')
@@ -368,6 +369,12 @@ class HopLink(GENIObject):
                                                    self._capacity))
         if self._switching_capability_descriptor:
             self._switching_capability_descriptor.toXML(doc, link_node)
+        if self._capabilities:
+            cs_node = doc.createElement('capabilities')
+            for c in self._capabilities:
+                cs_node.appendChild(createElementAndText(doc, 'capability', c))
+            link_node.appendChild(cs_node)
+
 
 class SwitchingCapabilityDescriptor(GENIObject):
     def __init__(self, switching_cap_type, coding_type, \
