@@ -41,7 +41,7 @@
     <interface_ref client_id="ig-gpo1:if0"/>
   </link>
 
-  <stitching lastUpdateTime="20130118:07:21:00">
+  <stitching lastUpdateTime="20130118:07:21:00" xmlns="http://hpn.east.isi.edu/rspec/ext/stitch/0.1/">
     <path id="link-ig-utah1-ig-gpo1">
       <hop id="1">
 	<link id="urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19">

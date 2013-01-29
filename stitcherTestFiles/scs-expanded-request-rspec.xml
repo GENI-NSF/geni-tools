@@ -14,7 +14,7 @@
     <component_manager name="urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm"/>
     <interface_ref client_id="ig-gpo1:if0"/>
   </link>
-  <stitching lastUpdateTime="20130128:09:49:46">
+  <stitching lastUpdateTime="20130128:09:49:46" xmlns="http://hpn.east.isi.edu/rspec/ext/stitch/0.1/">
     <path id="link-ig-utah1-ig-gpo1">
       <hop id="1">
         <link id="urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19">
