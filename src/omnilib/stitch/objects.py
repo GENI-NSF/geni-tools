@@ -69,6 +69,13 @@ class Path(GENIObjectWithIDURN):
     def aggregates(self, aggList):
         self._setListProp('aggregates', aggList, Aggregate)
 
+    def find_hop(self, hop_urn):
+        for hop in self.hops:
+            if hop.urn == hop_urn:
+                return hop
+        # Fail -- no hop matched the given URN
+        return None
+
 
 class Stitching(GENIObject):
     __simpleProps__ = [ ['last_update_time', str], ['path', Path]]
@@ -84,6 +91,12 @@ class Stitching(GENIObject):
         stitch_node.setAttribute('lastUpdateTime', self.last_update_time)
         if self.path:
             self.path.toXML(doc, stitch_node)
+
+    def find_path(self, link_id):
+        if self.path and self.path.id == link_id:
+            return self.path
+        else:
+            return None
 
 
 class Aggregate(GENIObjectWithIDURN):
@@ -134,12 +147,15 @@ class Aggregate(GENIObjectWithIDURN):
         self._setListProp('dependedOnBy', aggList, Aggregate)
 
 
-class Hop:
+class Hop(object):
 
     def __init__(self, id, hop_link, next_hop):
         self._id = id
         self._hop_link = hop_link
         self._next_hop = next_hop
+        self._aggregate = None
+        self._import_vlans = False
+        self._dependencies = []
 
     def toXML(self, doc, parent):
         hop_node = doc.createElement('hop')
@@ -149,6 +165,34 @@ class Hop:
             self._hop_link.toXML(doc, hop_node)
         next_hop = self._next_hop or "null"
         hop_node.appendChild(createElementAndText(doc, 'nextHop', next_hop))
+
+    @property
+    def urn(self):
+        return self._hop_link and self._hop_link.urn
+
+    @property
+    def aggregate(self):
+        return self._aggregate
+
+    @aggregate.setter
+    def aggregate(self, agg):
+        self._aggregate = agg
+
+    @property
+    def import_vlans(self):
+        return self._import_vlans
+
+    @import_vlans.setter
+    def import_vlans(self, value):
+        self._import_vlans = value
+
+    @property
+    def dependsOn(self):
+        return self._dependencies
+
+    def add_dependency(self, hop):
+        self._dependencies.append(hop)
+
 
 class Hop_Orig(GENIObjectWithIDURN):
     '''Hop'''
@@ -231,6 +275,21 @@ class RSpec(GENIObject):
     @links.setter
     def links(self, linkList):
         self._setListProp('links', linkList, Link)
+
+    def find_path(self, link_id):
+        """Find the link with the given id and return it. If no link
+        matches the given id, return None.
+        """
+        return self.stitching and self.stitching.find_path(link_id)
+
+    def find_hop(self, hop_urn):
+        """Find the link with the given id and return it. If no link
+        matches the given id, return None.
+        """
+        for link in self._links:
+            if link.id == link_id:
+                return link
+        return None
 
 
 class Node(GENIObject):
@@ -374,6 +433,10 @@ class HopLink(GENIObject):
             for c in self._capabilities:
                 cs_node.appendChild(createElementAndText(doc, 'capability', c))
             link_node.appendChild(cs_node)
+
+    @property
+    def urn(self):
+        return self._id
 
 
 class SwitchingCapabilityDescriptor(GENIObject):
