@@ -102,17 +102,23 @@ class StitchingHandler(object):
             scsResponse = scsService.ComputePath(sliceurn, requestString,
                                                  options)
         except Exception as e:
-            self.logger.error("Error from slice cmoputation service:", e)
+            self.logger.error("Error from slice computation service:", e)
             # What to return to signal error?
-            return
+            raise StitchingError("SCS gave error: " + e)
 
         self.logger.info("SCS successfully returned.");
+
+#        with open ("scs-result.json", 'w') as file:
+#            file.write(str(scsService.result))
+
         scsResponse.dump_workflow_data()
 
         # If error, return
         # save expanded RSpec
         expandedRSpec = scsResponse.rspec()
-        #print "%r" % (expandedRSpec)
+ #       with open("expanded.xml", 'w') as file:
+ #           file.write(expandedRSpec)
+ #       print "%r" % (expandedRSpec)
         # parseRequest
         # parseWorkflow
         workflow = scsResponse.workflow_data()
