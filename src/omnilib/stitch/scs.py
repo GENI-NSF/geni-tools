@@ -55,6 +55,7 @@ class Service(object):
                    request_options=options)
         try:
             result = server.ComputePath(arg)
+#            self.result = result
             geni_result = Result(result)
             if geni_result.isSuccess():
                 return PathInfo(geni_result.value())
