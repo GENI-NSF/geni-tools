@@ -25,7 +25,7 @@
 
 import sys
 import pdb
-from xml.dom.minidom import parseString, Node
+from xml.dom.minidom import parseString, Node, getDOMImplementation
 from objects import *
 
 TEXT_NODE = 3 #Node.TEXT_NODE
@@ -53,6 +53,8 @@ VLAN_RANGE_AVAILABILITY_TAG = 'vlanRangeAvailability'
 SUGGESTED_VLAN_RANGE_TAG = 'suggestedVLANRange'
 VLAN_TRANSLATION_TAG = 'vlanTranslation'
 NEXT_HOP_TAG = 'nextHop'
+CAPABILITIES_TAG = 'capabilities'
+CAPABILITY_TAG = 'capability'
 
 # Attribute tags
 CLIENT_ID_TAG = 'client_id'
@@ -238,14 +240,17 @@ class RSpecParser:
         traffic_engineering_metric = None
         capacity = None
         switching_capability_descriptor = None
+        capabilities = None
         for child in hop_link_element.childNodes:
             if child.nodeName == TRAFFIC_ENGINEERING_METRIC_TAG:
                 traffic_engineering_metric = int(child.firstChild.nodeValue)
             elif child.nodeName == CAPACITY_TAG:
                 capacity = int(child.firstChild.nodeValue)
             elif child.nodeName == SWITCHING_CAPABILITY_DESCRIPTOR_TAG:
-                switching_capabilty_descriptor = \
+                switching_capability_descriptor = \
                     self.parseSwitchingCapabilityDescriptor(child)
+            elif child.nodeName == CAPABILITIES_TAG:
+                capabilities = self.parseCapabilities(child)
             elif child.nodeType == TEXT_NODE:
                 pass
             else:
@@ -257,7 +262,7 @@ class RSpecParser:
                            CAPACITY_TAG:capacity}
             print "      HOP_LINK: " + str(attribs)
         hop_link = HopLink(id, traffic_engineering_metric, capacity, \
-                               switching_capability_descriptor)
+                               switching_capability_descriptor, capabilities)
         return hop_link
 
     def parseSwitchingCapabilityDescriptor(self, scd_element):
@@ -276,8 +281,8 @@ class RSpecParser:
                 pass
             else:
                 print "UNKNOWN CHILD FOR SCD: " + str(child)
-            scd = \
-                SwitchingCapabilityDescriptor(switching_cap_type,
+        scd = \
+            SwitchingCapabilityDescriptor(switching_cap_type, \
                                               encoding_type, \
                                               switching_capability_specific_info)
         return scd
@@ -330,13 +335,31 @@ class RSpecParser:
         return scsi_l2sc
         
 
+    def parseCapability(self, element):
+        for child in element.childNodes:
+            if child.nodeType == TEXT_NODE:
+                return child.data
+            else:
+                print "UNKNOWN CHILD FOR CAPABILITY: " + str(child)
+
+    def parseCapabilities(self, element):
+        capabilities = []
+        for child in element.childNodes:
+            if child.nodeName == CAPABILITY_TAG:
+                capabilities.append(self.parseCapability(child))
+            elif child.nodeType == TEXT_NODE:
+                pass
+            else:
+                print "UNKNOWN CHILD FOR CAPABILITIES: " + str(child)
+        return capabilities
+
 # To be replaced by real classes
 
 
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
-        print "Usage RspecParser <file.xml>"
+        print "Usage RspecParser <file.xml> [<out.xml>]"
         sys.exit()
 
     filename = sys.argv[1]
@@ -373,3 +396,15 @@ if __name__ == "__main__":
         print "\t\t== HOP %s ==" % (str(cnt))
         cnt +=1
         print hop
+
+# Now convert back to XML and print out
+    impl = getDOMImplementation()
+    doc = impl.createDocument(None, 'rspec', None)
+    root = doc.documentElement
+    rspec.toXML(doc, root)
+    if len(sys.argv) > 2:
+        outf = open(sys.argv[2], "w")
+        doc.writexml(outf)
+        outf.close()
+    else:
+        print doc.toprettyxml()
