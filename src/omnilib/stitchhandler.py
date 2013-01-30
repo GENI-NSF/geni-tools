@@ -127,11 +127,12 @@ class StitchingHandler(object):
 
         # If error, return
         # save expanded RSpec
-        expandedRSpec = scsResponse.rspec()
- #       with open("expanded.xml", 'w') as file:
- #           file.write(expandedRSpec)
+#        expandedRSpec = scsResponse.rspec()
+#        with open("expanded.xml", 'w') as file:
+#            file.write(expandedRSpec)
 #        print "%r" % (expandedRSpec)
-        exit
+#        exit
+
        # parseRequest
         parser = omnilib.stitch.RSpecParser.RSpecParser(verbose=True)
         parsed_rspec = parser.parse(expandedRSpec)
