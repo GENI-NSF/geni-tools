@@ -127,7 +127,7 @@ class StitchingHandler(object):
 
         # If error, return
         # save expanded RSpec
-#        expandedRSpec = scsResponse.rspec()
+        expandedRSpec = scsResponse.rspec()
 #        with open("expanded.xml", 'w') as file:
 #            file.write(expandedRSpec)
 #        print "%r" % (expandedRSpec)
