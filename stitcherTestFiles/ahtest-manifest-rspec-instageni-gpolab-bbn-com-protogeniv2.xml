@@ -39,8 +39,8 @@
     <component_manager name="urn:publicid:IDN+ion.internet2.edu+authority+cm"/>
     <component_manager name="urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm"/>
     <interface_ref client_id="ig-gpo1:if0" component_id="urn:publicid:IDN+instageni.gpolab.bbn.com+interface+pc5:eth1" sliver_id="urn:publicid:IDN+instageni.gpolab.bbn.com+sliver+761"/>
-    <property capacity="100000" dest_id="ig-gpo1:if0" latency="0" packet_loss="0" source_id="ig-utah1:if0"/>
-    <property capacity="100000" dest_id="ig-utah1:if0" latency="0" packet_loss="0" source_id="ig-gpo1:if0"/>
+    <property capacity="1000000" dest_id="ig-gpo1:if0" latency="0" packet_loss="0" source_id="ig-utah1:if0"/>
+    <property capacity="1000000" dest_id="ig-utah1:if0" latency="0" packet_loss="0" source_id="ig-gpo1:if0"/>
   </link>
 
   <stitching lastUpdateTime="20130118:07:21:00" xmlns="http://hpn.east.isi.edu/rspec/ext/stitch/0.1/">
