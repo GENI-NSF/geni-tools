@@ -107,7 +107,7 @@ class Aggregate(GENIObjectWithIDURN):
 
     # id IS URN?????
     def __init__(self, urn, url=None, inProcess=None, completed=None, userRequested=None):
-        super(Aggregate, self).__init__(urn)
+        super(Aggregate, self).__init__(urn, urn)
         self.url = url
         self.inProcess = inProcess
         self.completed = completed
@@ -115,6 +115,9 @@ class Aggregate(GENIObjectWithIDURN):
         self._hops = []
         self._dependedOnBy = []
         self._dependsOn = []
+
+    def __str__(self):
+        return "<Aggregate %r>" % (self.urn)
 
     def toXML(self, doc, parent):
         agg_node = doc.createElement('component_manager')
@@ -146,6 +149,18 @@ class Aggregate(GENIObjectWithIDURN):
     def dependedOnBy(self, aggList):
         self._setListProp('dependedOnBy', aggList, Aggregate)
 
+    def add_hop(self, hop):
+        if hop in self.hops:
+            raise Exception("adding hop %s twice to aggregate %s"
+                            % (hop.urn, self.urn))
+        print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
+        self.hops.append(hop)
+
+    def add_dependency(self, agg):
+        # FIXME use a set instead of a list
+        if not agg in self._dependsOn:
+            self._dependsOn.append(agg)
+
 
 class Hop(object):
 
@@ -156,6 +171,9 @@ class Hop(object):
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
+
+    def __str__(self):
+        return "<Hop %r>" % (self.urn)
 
     def toXML(self, doc, parent):
         hop_node = doc.createElement('hop')

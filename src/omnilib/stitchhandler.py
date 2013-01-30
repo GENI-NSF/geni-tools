@@ -48,9 +48,10 @@ class StitchingHandler(object):
         self.opts = opts # command line options as parsed
 #        self.GetVersionCache = None # The cache of GetVersion info in memory
 
-    def dump_objects(self, rspec):
+    def dump_objects(self, rspec, aggs):
         stitching = rspec.stitching
         path = stitching.path
+        print "\n===== Hops ====="
         print "Path %s" % (path.id)
         for hop in path.hops:
             print "  Hop %s" % (hop.urn)
@@ -59,6 +60,13 @@ class StitchingHandler(object):
                 print "    Dependencies:"
                 for h in deps:
                     print "      Hop %s" % (h.urn)
+        print "\n===== Aggregates ====="
+        for agg in aggs:
+            print "\nAggregate %s" % (agg)
+            for h in agg.hops:
+                print "  Hop %s" % (h)
+            for ad in agg.dependsOn:
+                print "  Dep %s" % (ad)
 
     def doStitching(self, args):
         # Get request RSpec
@@ -146,7 +154,7 @@ class StitchingHandler(object):
         pp.pprint(workflow)
         workflow_parser = WorkflowParser()
         workflow_parser.parse(workflow, parsed_rspec)
-        self.dump_objects(parsed_rspec)
+        self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
           # parse list of AMs, URNs, URLs - creating structs for AMs and hops
           # check each AM reachable, and we know the URL/API version to use
