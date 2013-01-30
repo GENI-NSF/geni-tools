@@ -58,6 +58,8 @@ class WorkflowParser(object):
                 raise Exception(msg)
             deps = workflow[link_id][self.DEPENDENCIES_KEY]
             self._parse_deps(deps, path)
+            # Post processing steps:
+            self._add_agg_deps(path)
 
     def _add_hop_info(self, hop, info_dict):
         """Add the aggregate and import_vlans info to the hop if it
@@ -73,6 +75,8 @@ class WorkflowParser(object):
             # Add the info to the hop
             hop.aggregate = agg
             hop.import_vlans = import_vlans
+            # Tell the aggregate about the hop
+            agg.add_hop(hop)
 
     def _parse_deps(self, deps, path):
         # Cache aggregate objects
@@ -104,3 +108,14 @@ class WorkflowParser(object):
             print "Hop %r adding dependency on hop %r" % (hop, dep_hop)
             hop.add_dependency(dep_hop)
             # TODO: Add a reverse pointer?
+
+    def _add_agg_deps(self, path):
+        """Follow the hop dependencies and generate aggregate to
+        aggregate dependencies from them.
+        """
+        for hop in path.hops:
+            hop_agg = hop.aggregate
+            print "AAD: hop.aggregate: %s" % (hop_agg)
+            for hd in hop.dependsOn:
+                print "AAD:   dep.aggregate: %s" % (hd.aggregate)
+                hop_agg.add_dependency(hd.aggregate)
