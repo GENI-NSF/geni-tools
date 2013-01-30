@@ -32,17 +32,21 @@ class WorkflowParser(object):
     IMP_VLANS_KEY = 'import_vlans'
 
     def __init__(self):
-        self.aggs = dict()
+        self._aggs = dict()
+
+    @property
+    def aggs(self):
+        return self._aggs.values()
 
     def _get_agg(self, agg_url, agg_urn):
         cache_key = (agg_url, agg_urn)
-        if cache_key in self.aggs:
+        if cache_key in self._aggs:
             print "cache hit"
-            agg = self.aggs[cache_key]
+            agg = self._aggs[cache_key]
         else:
             print "cache miss"
             agg = Aggregate(agg_urn, agg_url)
-            self.aggs[cache_key] = agg
+            self._aggs[cache_key] = agg
         return agg
 
     def parse(self, workflow, rspec):
