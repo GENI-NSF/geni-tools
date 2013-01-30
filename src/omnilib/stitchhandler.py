@@ -28,6 +28,8 @@ import omni
 from omnilib.util import OmniError
 from omnilib.util.files import readFile
 import omnilib.stitch.scs as scs
+import omnilib.stitch.RSpecParser
+from omnilib.stitch.workflow import WorkflowParser
 
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
@@ -45,6 +47,18 @@ class StitchingHandler(object):
         # FIXME: Duplicate the options like am_api_accept does?
         self.opts = opts # command line options as parsed
 #        self.GetVersionCache = None # The cache of GetVersion info in memory
+
+    def dump_objects(self, rspec):
+        stitching = rspec.stitching
+        path = stitching.path
+        print "Path %s" % (path.id)
+        for hop in path.hops:
+            print "  Hop %s" % (hop.urn)
+            deps = hop.dependsOn
+            if deps:
+                print "    Dependencies:"
+                for h in deps:
+                    print "      Hop %s" % (h.urn)
 
     def doStitching(self, args):
         # Get request RSpec
@@ -104,25 +118,35 @@ class StitchingHandler(object):
         except Exception as e:
             self.logger.error("Error from slice computation service:", e)
             # What to return to signal error?
-            raise StitchingError("SCS gave error: " + e)
+            raise StitchingError("SCS gave error: %s", e)
 
         self.logger.info("SCS successfully returned.");
 
 #        with open ("scs-result.json", 'w') as file:
 #            file.write(str(scsService.result))
 
-        scsResponse.dump_workflow_data()
-
         # If error, return
         # save expanded RSpec
         expandedRSpec = scsResponse.rspec()
  #       with open("expanded.xml", 'w') as file:
  #           file.write(expandedRSpec)
- #       print "%r" % (expandedRSpec)
-        # parseRequest
+#        print "%r" % (expandedRSpec)
+        exit
+       # parseRequest
+        parser = omnilib.stitch.RSpecParser.RSpecParser(verbose=True)
+        parsed_rspec = parser.parse(expandedRSpec)
+        print "Parsed_rspec %r of type %r" % (parsed_rspec, type(parsed_rspec))
+
         # parseWorkflow
         workflow = scsResponse.workflow_data()
         #print "%r" % (workflow)
+        import pprint
+        pp = pprint.PrettyPrinter(indent=2)
+        pp.pprint(workflow)
+        workflow_parser = WorkflowParser()
+        workflow_parser.parse(workflow, parsed_rspec)
+        self.dump_objects(parsed_rspec)
+
           # parse list of AMs, URNs, URLs - creating structs for AMs and hops
           # check each AM reachable, and we know the URL/API version to use
           # parse hop dependency tree, giving each hop an explicit hop#

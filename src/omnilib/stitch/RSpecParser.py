@@ -75,8 +75,10 @@ class RSpecParser:
         return self.parseRSpec(rspec_element)
 
     def parseRSpec(self, rspec_element):
+        if rspec_element.nodeType == rspec_element.COMMENT_NODE:
+            return self.parseRSpec(rspec_element.nextSibling)
         if rspec_element.nodeName != RSPEC_TAG: 
-            print "Illegal head element: " + rspec_element
+            print "Illegal head element: %r" % (rspec_element)
             return None
         nodes = []
         links = []
