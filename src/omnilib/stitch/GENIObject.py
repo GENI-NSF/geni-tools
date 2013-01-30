@@ -108,7 +108,7 @@ class GENIObjectWithIDURN(GENIObject):
 
     @property
     def urn(self):
-        return self.urn
+        return self._urn
 
     @urn.setter
     def urn(self, value):
