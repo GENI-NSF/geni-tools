@@ -61,15 +61,17 @@ class Service(object):
         server = xmlrpclib.ServerProxy(self.url)
         arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                    request_options=options)
-#        import json
-#        print "Calling SCS with arg: %s" % json.dumps(arg, ensure_ascii=True, indent=2)
+        import json
+        print "Calling SCS with arg: %s" % json.dumps(arg, ensure_ascii=True, indent=2)
         try:
             result = server.ComputePath(arg)
-#            self.result = result
+            self.result = result
             geni_result = Result(result)
             if geni_result.isSuccess():
                 return PathInfo(geni_result.value())
             else:
+                # when there is no route I seem to get:
+#{'geni_code': 3} MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.
                 raise Exception("ComputePath invocation failed: %s" % geni_result.errorString())
         except xmlrpclib.Error as v:
             print "ERROR", v

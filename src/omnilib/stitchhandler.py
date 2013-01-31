@@ -50,16 +50,16 @@ class StitchingHandler(object):
 
     def dump_objects(self, rspec, aggs):
         stitching = rspec.stitching
-        path = stitching.path
         print "\n===== Hops ====="
-        print "Path %s" % (path.id)
-        for hop in path.hops:
-            print "  Hop %s" % (hop.urn)
-            deps = hop.dependsOn
-            if deps:
-                print "    Dependencies:"
-                for h in deps:
-                    print "      Hop %s" % (h.urn)
+        for path in stitching.paths:
+            print "Path %s" % (path.id)
+            for hop in path.hops:
+                print "  Hop %s" % (hop.urn)
+                deps = hop.dependsOn
+                if deps:
+                    print "    Dependencies:"
+                    for h in deps:
+                        print "      Hop %s" % (h.urn)
         print "\n===== Aggregates ====="
         for agg in aggs:
             print "\nAggregate %s" % (agg)
@@ -126,15 +126,25 @@ class StitchingHandler(object):
         # Each shuld have a hop_exclusion_list array, containing the names of hops
 #        exclude = "urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19"
 #        path = "link-utah-utah-ig"
+
 #        path = "link-pg-utah1-ig-gpo1"
 #        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.atla:ge-7/1/6:protogeni"
 #        excludes = []
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.hous:ge-9/1/4:protogeni"
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.losa:ge-7/1/3:protogeni"
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.salt:ge-7/1/2:*"
+##        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.wash:ge-7/1/3:protogeni"
 #        excludes.append(exclude)
 #        profile = {}
 #        pathStruct = {}
 #        pathStruct["hop_exclusion_list"]=excludes
 #        profile[path] = pathStruct
 #        options["geni_routing_profile"]=profile
+
         try:
             scsResponse = scsService.ComputePath(sliceurn, requestString,
                                                  options)

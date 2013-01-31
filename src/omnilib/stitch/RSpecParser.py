@@ -184,10 +184,11 @@ class RSpecParser:
 
     def parseStitching(self, stitching_element):
         last_update_time = stitching_element.getAttribute(LAST_UPDATE_TIME_TAG)
-        path = None
+        paths = []
         for child in stitching_element.childNodes:
             if child.nodeName == PATH_TAG:
                 path = self.parsePath(child)
+                paths.append(path)
             elif child.nodeType == TEXT_NODE:
                 pass
             else:
@@ -195,7 +196,7 @@ class RSpecParser:
         if self._verbose:
             attribs = {LAST_UPDATE_TIME_TAG:last_update_time}
             print "      STITCHING: " + str(attribs)
-        stitching = Stitching(last_update_time, path)
+        stitching = Stitching(last_update_time, paths)
         return stitching
 
     def parsePath(self, path_element):

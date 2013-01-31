@@ -78,23 +78,26 @@ class Path(GENIObjectWithIDURN):
 
 
 class Stitching(GENIObject):
-    __simpleProps__ = [ ['last_update_time', str], ['path', Path]]
+    __simpleProps__ = [ ['last_update_time', str] ] #, ['path', Path[]]]
 
-    def __init__(self, last_update_time=None, path=None):
+    def __init__(self, last_update_time=None, paths=None):
         super(Stitching, self).__init__()
         self.last_update_time = str(last_update_time)
-        self.path = path
+        self.paths = paths
 
     def toXML(self, doc, parent):
         stitch_node = doc.createElement('stitching')
         parent.appendChild(stitch_node)
         stitch_node.setAttribute('lastUpdateTime', self.last_update_time)
-        if self.path:
-            self.path.toXML(doc, stitch_node)
+        if self.paths:
+            for path in self.paths:
+                path.toXML(doc, stitch_node)
 
     def find_path(self, link_id):
-        if self.path and self.path.id == link_id:
-            return self.path
+        if self.paths:
+            for path in self.paths:
+                if path.id == link_id:
+                    return path
         else:
             return None
 
