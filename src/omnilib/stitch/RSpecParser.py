@@ -24,7 +24,7 @@
 #----------------------------------------------------------------------
 
 import sys
-import pdb
+import logging
 from xml.dom.minidom import parseString, Node, getDOMImplementation
 from objects import *
 
@@ -67,120 +67,41 @@ COMPONENT_MANAGER_ID_TAG = 'component_manager_id'
 class RSpecParser:
 
     def __init__(self, verbose=False):
+        self.logger = logging.getLogger('RSpecParser')
+        if verbose:
+            self.logger.setLevel(logging.DEBUG)
         self._verbose = verbose
 
     def parse(self, data):
-        dom = parseString(data)
-        rspec_element = dom.childNodes[0]
-        return self.parseRSpec(rspec_element)
+        self.dom = parseString(data)
+        import code
+        code.interact(local=locals())
+        rspecs = self.dom.getElementsByTagName(RSPEC_TAG)
+        if len(rspecs) != 1:
+            raise Exception("Expected 1 rspec tag, got %d" % (len(rpsecs)))
+        return self.parseRSpec(rspecs[0])
 
     def parseRSpec(self, rspec_element):
-        if rspec_element.nodeType == rspec_element.COMMENT_NODE:
-            return self.parseRSpec(rspec_element.nextSibling)
         if rspec_element.nodeName != RSPEC_TAG: 
             print "Illegal head element: %r" % (rspec_element)
             return None
-        nodes = []
         links = []
         stitching = None
         for child in rspec_element.childNodes:
-            if child.nodeName == NODE_TAG:
-                if self._verbose:
-                    print "   " + str(child)
-                node = self.parseNode(child)
-                nodes.append(node)
-            elif child.nodeName == LINK_TAG:
-                if self._verbose:
-                    print "   " + str(child)
+            if child.nodeName == LINK_TAG:
+                self.logger.debug("Parsing Link")
                 link = self.parseLink(child)
                 links.append(link)
             elif child.nodeName == STITCHING_TAG:
-                if self._verbose:
-                    print "   " + str(child)
+                self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
-            elif child.nodeType == TEXT_NODE:
-                pass
-            else:
-                print "UNKNOWN TAG FOR RSPEC: " + str(child)
         rspec = RSpec(stitching)
-        rspec.nodes = nodes
         rspec.links = links
         return rspec
-        
-
-    def parseNode(self, node_element):
-        client_id = node_element.getAttribute(CLIENT_ID_TAG)
-        component_manager = node_element.getAttribute(COMPONENT_MANAGER_ID_TAG)
-        exclusive = node_element.getAttribute(EXCLUSIVE_TAG)
-        if self._verbose:
-            attribs = {CLIENT_ID_TAG:client_id, \
-                           COMPONENT_MANAGER_TAG:component_manager, \
-                           EXCLUSIVE_TAG: exclusive}
-            print "      NODE: " + str(attribs)
-
-        interfaces = []
-        for child in node_element.childNodes:
-            if child.nodeName == INTERFACE_TAG:
-                if self._verbose:
-                    print "      " + str(child)
-                interface = self.parseInterface(child)
-                interfaces.append(interface)
-        node = Node(client_id, component_manager, exclusive)
-        node.interfaces = interfaces
-        return node
-
 
     def parseLink(self, link_element):
-        client_id = link_element.getAttribute(CLIENT_ID_TAG)
-        interface_refs = []
-        component_managers = []
-        if self._verbose:
-            attribs = {CLIENT_ID_TAG : client_id}
-            print "         LINK: " + str(attribs)
-        for child in link_element.childNodes:
-            if child.nodeName == COMPONENT_MANAGER_TAG:
-                if self._verbose:
-                    print "      " + str(child)
-                component_manager = self.parseComponentManager(child)
-                component_managers.append(component_manager)
-            elif child.nodeName == INTERFACE_REF_TAG:
-                if self._verbose:
-                    print "      " + str(child)
-                interface_ref = self.parseInterfaceRef(child)
-                interface_refs.append(interface_ref)
-            elif child.nodeType == TEXT_NODE:
-                pass
-            else:
-                if self._verbose:
-                    print "UNKNOWN TAG FOR LINK: " + str(child)
-        link = Link(client_id)
-        link.aggregates = component_managers
-        link.interfaces = interface_refs
+        link = Link.fromDOM(link_element)
         return link
-
-    def parseInterface(self, if_element):
-        client_id = if_element.getAttribute(CLIENT_ID_TAG)
-        if self._verbose:
-            attribs = {CLIENT_ID_TAG : client_id}
-            print "         INTERFACE: " + str(attribs)
-        interface = Interface(str(client_id))
-        return interface
-
-    def parseComponentManager(self, cm_element):
-        name = cm_element.getAttribute(NAME_TAG)
-        if self._verbose:
-            attribs = {NAME_TAG : name}
-            print "         COMPONENT_MANAGER: " + str(attribs)
-        component_manager = ComponentManager(name)
-        return component_manager
-
-    def parseInterfaceRef(self, ifr_element):
-        client_id = ifr_element.getAttribute(CLIENT_ID_TAG)
-        if self._verbose:
-            attribs = {CLIENT_ID_TAG : client_id}
-            print "         INTERFACE_REF: " + str(attribs)
-        interface_ref = InterfaceRef(client_id)
-        return interface_ref
 
     def parseStitching(self, stitching_element):
         last_update_time = stitching_element.getAttribute(LAST_UPDATE_TIME_TAG)

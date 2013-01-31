@@ -379,7 +379,31 @@ class Link(GENIObject):
     __ID__ = validateTextLike
     __simpleProps__ = [ ['client_id', str]]
 
-#    def __init__(self, client_id, component_managers,interface_refs):
+    CLIENT_ID_TAG = 'client_id'
+    COMPONENT_MANAGER_TAG = 'component_manager'
+    INTERFACE_REF_TAG = 'interface_ref'
+    NAME_TAG = 'name'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a Link from a DOM element."""
+        client_id = element.getAttribute(cls.CLIENT_ID_TAG)
+        refs = []
+        aggs = []
+        for child in element.childNodes:
+            if child.nodeName == cls.COMPONENT_MANAGER_TAG:
+                name = child.getAttribute(cls.NAME_TAG)
+                agg = Aggregate(name)
+                aggs.append(agg)
+            elif child.nodeName == cls.INTERFACE_REF_TAG:
+                c_id = child.getAttribute(cls.CLIENT_ID_TAG)
+                ir = Interface(c_id)
+                refs.append(ir)
+        link = Link(client_id)
+        link.aggregates = aggs
+        link.interfaces = refs
+        return link
+
     def __init__(self, client_id):
         super(Link, self).__init__()
         self.id = client_id
