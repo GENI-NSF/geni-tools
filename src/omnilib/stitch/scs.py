@@ -29,6 +29,7 @@ class Result(object):
     CODE = 'code'
     VALUE = 'value'
     GENI_CODE = 'geni_code'
+    OUTPUT = 'output'
 
     def __init__(self, xmlrpc_result):
         self.result = xmlrpc_result
@@ -41,6 +42,13 @@ class Result(object):
             return self.result[self.VALUE]
         else:
             raise Exception("No value in result")
+    def errorString(self):
+        ret = ""
+        if self.CODE in self.result:
+            ret = str(self.result[self.CODE])
+        if self.OUTPUT in self.result:
+            ret +=" %s" % self.result[self.OUTPUT]
+        return ret
 
 class Service(object):
     def __init__(self, url):
@@ -53,6 +61,8 @@ class Service(object):
         server = xmlrpclib.ServerProxy(self.url)
         arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                    request_options=options)
+#        import json
+#        print "Calling SCS with arg: %s" % json.dumps(arg, ensure_ascii=True, indent=2)
         try:
             result = server.ComputePath(arg)
 #            self.result = result
@@ -60,7 +70,7 @@ class Service(object):
             if geni_result.isSuccess():
                 return PathInfo(geni_result.value())
             else:
-                raise Exception("ComputePath invocation failed")
+                raise Exception("ComputePath invocation failed: %s" % geni_result.errorString())
         except xmlrpclib.Error as v:
             print "ERROR", v
             raise

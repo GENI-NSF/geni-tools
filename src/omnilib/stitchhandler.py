@@ -120,13 +120,28 @@ class StitchingHandler(object):
     
         scsService = scs.Service(self.opts.scsURL)
         options = {} # No options for now.
+        # options is a struct
+        # To exclude a hop, add a geni_routing_profile struct
+        # This in turn should have a struct per path whose name is the path name
+        # Each shuld have a hop_exclusion_list array, containing the names of hops
+#        exclude = "urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19"
+#        path = "link-utah-utah-ig"
+#        path = "link-pg-utah1-ig-gpo1"
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.atla:ge-7/1/6:protogeni"
+#        excludes = []
+#        excludes.append(exclude)
+#        profile = {}
+#        pathStruct = {}
+#        pathStruct["hop_exclusion_list"]=excludes
+#        profile[path] = pathStruct
+#        options["geni_routing_profile"]=profile
         try:
             scsResponse = scsService.ComputePath(sliceurn, requestString,
                                                  options)
         except Exception as e:
-            self.logger.error("Error from slice computation service:", e)
+            self.logger.error("Error from slice computation service: %s", e)
             # What to return to signal error?
-            raise StitchingError("SCS gave error: %s", e)
+            raise StitchingError("SCS gave error: %s" % e)
 
         self.logger.info("SCS successfully returned.");
 
