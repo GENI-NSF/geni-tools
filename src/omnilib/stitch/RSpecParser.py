@@ -39,11 +39,8 @@ LAST_UPDATE_TIME_TAG = "lastUpdateTime"
 
 class RSpecParser:
 
-    def __init__(self, verbose=False):
-        self.logger = logging.getLogger('RSpecParser')
-        if verbose:
-            self.logger.setLevel(logging.DEBUG)
-        self._verbose = verbose
+    def __init__(self, logger=None):
+        self.logger = logger if logger else logging.getLogger('stitch')
         # The dom tree after parsing
         self.dom = None
 
