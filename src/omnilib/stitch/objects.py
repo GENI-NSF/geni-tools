@@ -118,6 +118,7 @@ class Aggregate(GENIObjectWithIDURN):
         self._hops = []
         self._dependedOnBy = []
         self._dependsOn = []
+        self.paths = []
 
     def __str__(self):
         return "<Aggregate %r>" % (self.urn)
@@ -159,6 +160,14 @@ class Aggregate(GENIObjectWithIDURN):
         print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
         self.hops.append(hop)
 
+    def add_path(self, path):
+        if path in self.paths:
+            raise Exception("adding path %s twice to aggregate %s"
+                            % (path.id, self.urn))
+        print "Aggregate %s adding path %s" % (self.urn, path.id)
+        path.add_aggregate(self)
+        self.paths.append(path)
+
     def add_dependency(self, agg):
         # FIXME use a set instead of a list
         if not agg in self._dependsOn:
@@ -167,16 +176,17 @@ class Aggregate(GENIObjectWithIDURN):
 
 class Hop(object):
 
-    def __init__(self, id, hop_link, next_hop):
+    def __init__(self, id, hop_link, next_hop, path):
         self._id = id
         self._hop_link = hop_link
         self._next_hop = next_hop
+        self._path = path
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
 
     def __str__(self):
-        return "<Hop %r>" % (self.urn)
+        return "<Hop %r on path %r>" % (self.urn, self._path.id)
 
     def toXML(self, doc, parent):
         hop_node = doc.createElement('hop')
@@ -194,6 +204,14 @@ class Hop(object):
     @property
     def aggregate(self):
         return self._aggregate
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        self._path = path
 
     @aggregate.setter
     def aggregate(self, agg):

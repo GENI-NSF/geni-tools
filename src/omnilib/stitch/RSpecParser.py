@@ -201,23 +201,23 @@ class RSpecParser:
 
     def parsePath(self, path_element):
         id = path_element.getAttribute(ID_TAG)
+        path = Path(id) #URN?
         hops = []
         for child in path_element.childNodes:
             if child.nodeName == HOP_TAG:
-                hop = self.parseHop(child)
+                hop = self.parseHop(child, path)
                 hops.append(hop)
             elif child.nodeType == TEXT_NODE:
                 pass
             else:
-                print "UNKNOWN TAG FOR PATH: " + str(child)
+                print "UNKNOWN TAG FOR PATH %r: " % id + str(child)
         if self._verbose:
             attribs = {ID_TAG:id}
             print "      PATH: " + str(attribs)
-        path = Path(id) #URN?
         path.hops = hops
         return path
 
-    def parseHop(self, hop_element):
+    def parseHop(self, hop_element, path):
         id = hop_element.getAttribute(ID_TAG)
         hop_link = None
         next_hop = None
@@ -231,11 +231,11 @@ class RSpecParser:
             elif child.nodeType == TEXT_NODE:
                 pass
             else:
-                print "UNKNOWN CHILD FOR HOP: " + str(child)
+                print "UNKNOWN CHILD FOR HOP %r: " % id + str(child)
         if self._verbose:
             attribs = {ID_TAG:id, NEXT_HOP_TAG: next_hop}
             print "      HOP: " + str(attribs)
-        hop = Hop(id, hop_link, next_hop)
+        hop = Hop(id, hop_link, next_hop, path)
         return hop
 
     def parseHopLink(self, hop_link_element):

@@ -54,19 +54,19 @@ class StitchingHandler(object):
         for path in stitching.paths:
             print "Path %s" % (path.id)
             for hop in path.hops:
-                print "  Hop %s" % (hop.urn)
+                print "  Hop %s" % (hop)
                 deps = hop.dependsOn
                 if deps:
                     print "    Dependencies:"
                     for h in deps:
-                        print "      Hop %s" % (h.urn)
+                        print "      Hop %s" % (h)
         print "\n===== Aggregates ====="
         for agg in aggs:
             print "\nAggregate %s" % (agg)
             for h in agg.hops:
                 print "  Hop %s" % (h)
             for ad in agg.dependsOn:
-                print "  Dep %s" % (ad)
+                print "  Depends on %s" % (ad)
 
     def doStitching(self, args):
         # Get request RSpec
