@@ -170,16 +170,16 @@ class StitchingHandler(object):
 #        exit
 
        # parseRequest
-        parser = omnilib.stitch.RSpecParser.RSpecParser(verbose=True)
+        parser = omnilib.stitch.RSpecParser.RSpecParser()
         parsed_rspec = parser.parse(expandedRSpec)
-        print "Parsed_rspec %r of type %r" % (parsed_rspec, type(parsed_rspec))
+        #print "Parsed_rspec %r of type %r" % (parsed_rspec, type(parsed_rspec))
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()
         #print "%r" % (workflow)
-        import pprint
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(workflow)
+        #import pprint
+        #pp = pprint.PrettyPrinter(indent=2)
+        #pp.pprint(workflow)
         workflow_parser = WorkflowParser()
         workflow_parser.parse(workflow, parsed_rspec)
         self.dump_objects(parsed_rspec, workflow_parser.aggs)

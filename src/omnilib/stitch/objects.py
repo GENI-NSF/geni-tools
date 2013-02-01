@@ -22,9 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-#import GENIObject
-#from GENIObject import GENIObject
-import pdb
+
+import logging
 from GENIObject import *
 
 def createElementAndText(doc, element_name, child_text):
@@ -33,13 +32,30 @@ def createElementAndText(doc, element_name, child_text):
     child_node.appendChild(txt_node)
     return child_node
 
-class Path(GENIObjectWithIDURN):
+class Path(GENIObject):
     '''Path'''
     __ID__ = validateText
 #    __simpleProps__ = [ ['id', int] ]
 
-    def __init__(self, id, urn=None):
-        super(Path, self).__init__(id, urn=urn)
+    # XML tag constants
+    ID_TAG = 'id'
+    HOP_TAG = 'hop'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching path from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        path = Path(id)
+        for child in element.childNodes:
+            if child.nodeName == cls.HOP_TAG:
+                hop = Hop.fromDOM(child)
+                hop.path = path
+                path.hops.append(hop)
+        return path
+
+    def __init__(self, id):
+        super(Path, self).__init__()
+        self.id = id
         self._hops = []
         self._aggregates = []
 
@@ -157,14 +173,14 @@ class Aggregate(GENIObjectWithIDURN):
         if hop in self.hops:
             raise Exception("adding hop %s twice to aggregate %s"
                             % (hop.urn, self.urn))
-        print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
+        #print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
         self.hops.append(hop)
 
     def add_path(self, path):
         if path in self.paths:
             raise Exception("adding path %s twice to aggregate %s"
                             % (path.id, self.urn))
-        print "Aggregate %s adding path %s" % (self.urn, path.id)
+        #print "Aggregate %s adding path %s" % (self.urn, path.id)
         path.add_aggregate(self)
         self.paths.append(path)
 
@@ -176,11 +192,32 @@ class Aggregate(GENIObjectWithIDURN):
 
 class Hop(object):
 
-    def __init__(self, id, hop_link, next_hop, path):
+    # XML tag constants
+    ID_TAG = 'id'
+    LINK_TAG = 'link'
+    NEXT_HOP_TAG = 'nextHop'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching hop from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        hop_link = None
+        next_hop = None
+        for child in element.childNodes:
+            if child.nodeName == cls.LINK_TAG:
+                hop_link = HopLink.fromDOM(child)
+            elif child.nodeName == cls.NEXT_HOP_TAG:
+                next_hop_text = child.firstChild.nodeValue
+                if next_hop_text != 'null':
+                    next_hop = int(next_hop_text)
+        hop = Hop(id, hop_link, next_hop)
+        return hop
+
+    def __init__(self, id, hop_link, next_hop):
         self._id = id
         self._hop_link = hop_link
         self._next_hop = next_hop
-        self._path = path
+        self._path = None
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
@@ -379,7 +416,32 @@ class Link(GENIObject):
     __ID__ = validateTextLike
     __simpleProps__ = [ ['client_id', str]]
 
-#    def __init__(self, client_id, component_managers,interface_refs):
+    # XML tag constants
+    CLIENT_ID_TAG = 'client_id'
+    COMPONENT_MANAGER_TAG = 'component_manager'
+    INTERFACE_REF_TAG = 'interface_ref'
+    NAME_TAG = 'name'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a Link from a DOM element."""
+        client_id = element.getAttribute(cls.CLIENT_ID_TAG)
+        refs = []
+        aggs = []
+        for child in element.childNodes:
+            if child.nodeName == cls.COMPONENT_MANAGER_TAG:
+                name = child.getAttribute(cls.NAME_TAG)
+                agg = Aggregate(name)
+                aggs.append(agg)
+            elif child.nodeName == cls.INTERFACE_REF_TAG:
+                c_id = child.getAttribute(cls.CLIENT_ID_TAG)
+                ir = Interface(c_id)
+                refs.append(ir)
+        link = Link(client_id)
+        link.aggregates = aggs
+        link.interfaces = refs
+        return link
+
     def __init__(self, client_id):
         super(Link, self).__init__()
         self.id = client_id
@@ -446,14 +508,20 @@ class ComponentManager(Aggregate):
         
 
 class HopLink(GENIObject):
-    def __init__(self, id, traffic_engineering_metric, capacity, \
-                     switching_capability_descriptor, capabilities):
+
+    # XML tag constants
+    ID_TAG = 'id'
+    HOP_TAG = 'hop'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching path from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        return HopLink(id)
+
+    def __init__(self, id):
         super(HopLink, self).__init__()
         self._id = id
-        self._traffic_engineering_metric = traffic_engineering_metric
-        self._capacity = capacity
-        self._switching_capability_descriptor = switching_capability_descriptor
-        self._capabilities = capabilities
 
     def toXML(self, doc, parent):
         link_node = doc.createElement('link')

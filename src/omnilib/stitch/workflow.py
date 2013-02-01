@@ -41,10 +41,8 @@ class WorkflowParser(object):
     def _get_agg(self, agg_url, agg_urn):
         cache_key = (agg_url, agg_urn)
         if cache_key in self._aggs:
-            print "cache hit"
             agg = self._aggs[cache_key]
         else:
-            print "cache miss"
             agg = Aggregate(agg_urn, agg_url)
             self._aggs[cache_key] = agg
         return agg
@@ -84,13 +82,11 @@ class WorkflowParser(object):
             # Each dependency has a hop URN. Use that to
             # find the relevant hop.
             hop_urn = d[self.HOP_URN_KEY]
-            print "Hop URN = %r" % (hop_urn)
             hop = path.find_hop(hop_urn)
             if not hop:
                 msg = "No hop found with id %r on path %r" % (hop_urn,
                                                               path.id)
                 raise Exception(msg)
-            print "Got hop %r (%r)" % (hop, hop.urn)
             self._add_hop_info(hop, d)
             hop_deps = d[self.DEPENDENCIES_KEY]
             self._parse_hop_deps(hop_deps, hop, path)
@@ -105,7 +101,6 @@ class WorkflowParser(object):
                 msg = msg % (hop_urn, path.id)
                 raise Exception(msg)
             self._add_hop_info(dep_hop, d)
-            print "Hop %r adding dependency on hop %r" % (hop, dep_hop)
             hop.add_dependency(dep_hop)
             # TODO: Add a reverse pointer?
 
@@ -115,7 +110,5 @@ class WorkflowParser(object):
         """
         for hop in path.hops:
             hop_agg = hop.aggregate
-            print "AAD: hop.aggregate: %s" % (hop_agg)
             for hd in hop.dependsOn:
-                print "AAD:   dep.aggregate: %s" % (hd.aggregate)
                 hop_agg.add_dependency(hd.aggregate)

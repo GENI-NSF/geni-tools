@@ -61,8 +61,10 @@ class Service(object):
         server = xmlrpclib.ServerProxy(self.url)
         arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                    request_options=options)
-        import json
-        print "Calling SCS with arg: %s" % json.dumps(arg, ensure_ascii=True, indent=2)
+#        import json
+#        print "Calling SCS with arg: %s" % (json.dumps(arg,
+#                                                       ensure_ascii=True,
+#                                                       indent=2))
         try:
             result = server.ComputePath(arg)
             self.result = result
