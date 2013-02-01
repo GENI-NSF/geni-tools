@@ -41,15 +41,15 @@ class RSpecParser:
 
     def __init__(self, logger=None):
         self.logger = logger if logger else logging.getLogger('stitch')
-        # The dom tree after parsing
-        self.dom = None
 
     def parse(self, data):
-        self.dom = parseString(data)
-        rspecs = self.dom.getElementsByTagName(RSPEC_TAG)
+        dom = parseString(data)
+        rspecs = dom.getElementsByTagName(RSPEC_TAG)
         if len(rspecs) != 1:
             raise Exception("Expected 1 rspec tag, got %d" % (len(rpsecs)))
-        return self.parseRSpec(rspecs[0])
+        rspec = self.parseRSpec(rspecs[0])
+        rspec.dom = dom
+        return rspec
 
     def parseRSpec(self, rspec_element):
         if rspec_element.nodeName != RSPEC_TAG:

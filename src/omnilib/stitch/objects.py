@@ -318,6 +318,7 @@ class RSpec(GENIObject):
         self.stitching = stitching
         self._nodes = []
         self._links = []
+        self.dom = None
 
     def toXML(self, doc, parent):
         parent.setAttribute('xmlns', 'http://www.geni.net/resources/rspec/3')
