@@ -22,6 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Stitching client: Call the Stitching Computation Service to expand a single request RSpec. 
+Then use Omni to allocate / createsliver reservations at all necessary aggregates. Return 
+the combined manifest RSpec.'''
 
 import json
 import logging

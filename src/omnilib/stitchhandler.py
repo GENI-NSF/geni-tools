@@ -23,10 +23,11 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 import logging
-import omni
 
+import omni
 from omnilib.util import OmniError
 from omnilib.util.files import readFile
+
 import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
@@ -37,6 +38,8 @@ class StitchingError(OmniError):
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
+    '''Workhorse class to do stitching'''
+
     def __init__(self, opts, config, logger):
         # FIXME: Do I need / want a framework here? Should main get it?
 #        self.framework = framework
