@@ -516,16 +516,36 @@ class HopLink(GENIObject):
     # XML tag constants
     ID_TAG = 'id'
     HOP_TAG = 'hop'
+    VLAN_TRANSLATION_TAG = 'vlanTranslation'
+    VLAN_RANGE_TAG = 'vlanRangeAvailability'
+    VLAN_SUGGESTED_TAG = 'suggestedVLANRange'
 
     @classmethod
     def fromDOM(cls, element):
         """Parse a stitching path from a DOM element."""
         id = element.getAttribute(cls.ID_TAG)
-        return HopLink(id)
+        vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
+        if vlan_xlate:
+            x = vlan_xlate[0].firstChild.nodeValue
+            vlan_translate = x.lower() in ('true')
+        vlan_range = element.getElementsByTagName(cls.VLAN_RANGE_TAG)
+        if vlan_range:
+            vlan_range = vlan_range[0].firstChild.nodeValue
+        vlan_suggested = element.getElementsByTagName(cls.VLAN_SUGGESTED_TAG)
+        if vlan_suggested:
+            vlan_suggested = vlan_suggested[0].firstChild.nodeValue
+        hoplink = HopLink(id)
+        hoplink.vlan_xlate = vlan_translate
+        hoplink.vlan_range = vlan_range
+        hoplink.vlan_suggested = vlan_suggested
+        return hoplink
 
     def __init__(self, id):
         super(HopLink, self).__init__()
         self._id = id
+        self.vlan_xlate = False
+        self.vlan_range = ""
+        self.vlan_suggested = None
 
     def toXML(self, doc, parent):
         link_node = doc.createElement('link')
