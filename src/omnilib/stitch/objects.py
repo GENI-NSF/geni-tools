@@ -26,12 +26,6 @@
 import logging
 from GENIObject import *
 
-def createElementAndText(doc, element_name, child_text):
-    child_node = doc.createElement(element_name)
-    txt_node = doc.createTextNode(str(child_text))
-    child_node.appendChild(txt_node)
-    return child_node
-
 class Path(GENIObject):
     '''Path'''
     __ID__ = validateText
