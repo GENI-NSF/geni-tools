@@ -22,15 +22,20 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+import datetime
 import logging
 
 import omni
-from omnilib.util import OmniError
+from omnilib.util import OmniError, naiveUTC
+import omnilib.util.handler_utils as handler_utils
 from omnilib.util.files import readFile
+import omnilib.util.credparsing as credutils
 
 import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
+
+from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
@@ -50,26 +55,6 @@ class StitchingHandler(object):
         # FIXME: Duplicate the options like am_api_accept does?
         self.opts = opts # command line options as parsed
 #        self.GetVersionCache = None # The cache of GetVersion info in memory
-
-    def dump_objects(self, rspec, aggs):
-        stitching = rspec.stitching
-        print "\n===== Hops ====="
-        for path in stitching.paths:
-            print "Path %s" % (path.id)
-            for hop in path.hops:
-                print "  Hop %s" % (hop)
-                deps = hop.dependsOn
-                if deps:
-                    print "    Dependencies:"
-                    for h in deps:
-                        print "      Hop %s" % (h)
-        print "\n===== Aggregates ====="
-        for agg in aggs:
-            print "\nAggregate %s" % (agg)
-            for h in agg.hops:
-                print "  Hop %s" % (h)
-            for ad in agg.dependsOn:
-                print "  Depends on %s" % (ad)
 
     def doStitching(self, args):
         # Get request RSpec
@@ -91,10 +76,9 @@ class StitchingHandler(object):
                 self.logger.warn("Arguments %s ignored", args[3:])
         self.logger.info("Command=%s, slice=%s, rspec=%s", command, slicename, request)
 
-        # Read in the rspec as a string
-        # FIXME
         requestString = ""
-
+        self.rspecParser = omnilib.stitch.RSpecParser.RSpecParser(self.logger)
+        self.parsedUserRequest = None
         if request:
             try:
                 # read the rspec into a string, and add it to the rspecs dict
@@ -107,105 +91,25 @@ class StitchingHandler(object):
             #    requestString = amhandler.self._maybeGetRSpecFromStruct(requestString)
 
             # confirmGoodRequest
-            # -- FIXME: this should be a function in rspec_util: is a request (schema, type), is parsable xml, passes rspeclint?
+            self.confirmGoodRequest(requestString)
+            self.logger.debug("Valid GENI v3 request RSpec")
             
             # parseRequest
-            # -- FIXME: As elementTree stuff?
-            #    requestStruct = parseRequest(requestString, logger)
-        requestStruct = True
+            self.parsedUserRequest = self.rspecParser.parse(requestString)
             
         # If this is not a real stitching thing, just let Omni handle this.
-        if not self.mustCallSCS(requestStruct):
+        if not self.mustCallSCS(self.parsedUserRequest):
             return omni.call(args, self.opts)
-        # return omni.call
 
         sliceurn = self.confirmSliceOK(slicename)
     
-        scsService = scs.Service(self.opts.scsURL)
-        options = {} # No options for now.
-        # options is a struct
-        # To exclude a hop, add a geni_routing_profile struct
-        # This in turn should have a struct per path whose name is the path name
-        # Each shuld have a hop_exclusion_list array, containing the names of hops
-#        exclude = "urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19"
-#        path = "link-utah-utah-ig"
+        self.scsService = scs.Service(self.opts.scsURL)
 
-#        path = "link-pg-utah1-ig-gpo1"
-#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.atla:ge-7/1/6:protogeni"
-#        excludes = []
-#        excludes.append(exclude)
-#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.hous:ge-9/1/4:protogeni"
-#        excludes.append(exclude)
-#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.losa:ge-7/1/3:protogeni"
-#        excludes.append(exclude)
-#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.salt:ge-7/1/2:*"
-##        excludes.append(exclude)
-#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.wash:ge-7/1/3:protogeni"
-#        excludes.append(exclude)
-#        profile = {}
-#        pathStruct = {}
-#        pathStruct["hop_exclusion_list"]=excludes
-#        profile[path] = pathStruct
-#        options["geni_routing_profile"]=profile
+        scsResponse = self.callSCS(sliceurn, requestString)
+#        scsResponse = self.callSCS(sliceurn, self.parsedUserRequest)
 
-        try:
-            scsResponse = scsService.ComputePath(sliceurn, requestString,
-                                                 options)
-        except Exception as e:
-            self.logger.error("Error from slice computation service: %s", e)
-            # What to return to signal error?
-            raise StitchingError("SCS gave error: %s" % e)
-
-        self.logger.info("SCS successfully returned.");
-
-#        with open ("scs-result.json", 'w') as file:
-#            file.write(str(scsService.result))
-
-        # If error, return
-        # save expanded RSpec
-        expandedRSpec = scsResponse.rspec()
-#        with open("expanded.xml", 'w') as file:
-#            file.write(expandedRSpec)
-#        print "%r" % (expandedRSpec)
-#        exit
-
-       # parseRequest
-        parser = omnilib.stitch.RSpecParser.RSpecParser()
-        parsed_rspec = parser.parse(expandedRSpec)
-        #print "Parsed_rspec %r of type %r" % (parsed_rspec, type(parsed_rspec))
-
-        # parseWorkflow
-        workflow = scsResponse.workflow_data()
-        #print "%r" % (workflow)
-        #import pprint
-        #pp = pprint.PrettyPrinter(indent=2)
-        #pp.pprint(workflow)
-        workflow_parser = WorkflowParser()
-        workflow_parser.parse(workflow, parsed_rspec)
-        self.dump_objects(parsed_rspec, workflow_parser.aggs)
-
-          # parse list of AMs, URNs, URLs - creating structs for AMs and hops
-          # check each AM reachable, and we know the URL/API version to use
-          # parse hop dependency tree, giving each hop an explicit hop#
-          # Construct AM dependency tree
-            # If hop1 depends on hop2 and hop1 AM != hop2 AM then hop1 AM depends on hop2 AM
-              # Also hop1 AM depends on all AMs that hop2 AM depends on
-            # Do that for all paths, for all hops
-
-        # Mark on each hop which hop# it imports VLANs from, if any. For each hop
-          # set min_distance = MAX_INTEGER
-          # set import_vlans_from_hop#=None
-          # if import_vlans=0, done
-          # for each hop it depends on:
-            # if on same domain, skip
-            # If this diff-domain hop has # whose distance from orig hop is less than previous saved #, then set min_distance and import_vlans_from_hop#
-          # If this hop has 0 dependencies but there are other hops at this AM in same path and AM does not do translation, then
-            # set this hop import_vlans_from_hop# to the value from the other hop if it has a value
-
-        # Check for AM dependency loops
-        # Check SCS output consistency in a subroutine:
-          # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
-          # All AMs must be listed in workflow data at least once per path they are in
+        # Parse SCS Response, constructing objects and dependencies, validating return
+        parsed_rspec, workflow_parser = self.parseSCSResponse(scsResponse)
 
         # Construct list of AMs with no unsatisfied dependencies
         # if notScript, print AM dependency tree
@@ -247,39 +151,207 @@ class StitchingHandler(object):
             # Go to end state section
         pass
 
-    def mustCallSCS(self, request):
-        # >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
-        if request:
-            return True
-        else:
-            return False
+    def confirmGoodRequest(self, requestString):
+        if requestString is None or str(requestString).strip() == '':
+            raise OmniError("Empty request rspec")
+        if not is_rspec_string(requestString, self.logger):
+            raise OmniError("Request RSpec file did not contain an RSpec")
+        if not is_rspec_of_type(requestString):
+            raise OmniError("Request RSpec file did not contain a request RSpec (wrong type or schema)")
+        try:
+            rspeclint_exists()
+        except:
+            self.logger.debug("No rspeclint found")
+            return
+        if not validate_rspec(requestString):
+            raise OmniError("Request RSpec does not validate against its schemas")
 
     def confirmSliceOK(self, slicename):
-        # FIXME: I need to get the framework and use it to do getslicecred, etc.
-        fw = omni.load_framework(self.config, self.opts)
+        self.framework = omni.load_framework(self.config, self.opts)
         
         # Get slice URN from name
-        sliceurn = fw.slice_name_to_urn(slicename)
-        # return error on error
+        try:
+            sliceurn = self.framework.slice_name_to_urn(slicename)
+        except Exception, e:
+            self.logger.error("Could not determine slice URN from name: %s", e)
+            raise StitchingError(e)
+
         # Get slice cred
-        # FIXME: Maybe use handler_utils._get_slice_cred
-        #    slice_cred = fw.get_slice_cred(sliceurn)
-        # return error on error
+        (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
+        if not slicecred:
+            # Maybe if the slice doesn't exist, create it?
+            # omniargs = ["createslice", slicename]
+            # try:
+            #     (slicename, message) = omni.call(omniargs, self.opts)
+            # except:
+            #     pass
+            raise StitchingError("Could not get a slice credential for slice %s" % sliceurn)
+
         # Ensure slice not expired
-        # handler_utils._print_slice_expiration(sliceurn, slicecred)
-        # amhandler._has_slice_expired(slice_cred) (which uses credutils.get_cred_exp)
-        # return error on error
-
-        # Maybe if the slice doesn't exist, create it?
-        # omniargs = ["createslice", slicename]
-        # try:
-        #     (slicename, message) = omni.call(omniargs, self.opts)
-        # except:
-        #     pass
-
+        sliceexp = credutils.get_cred_exp(self.logger, slicecred)
+        sliceexp = naiveUTC(sliceexp)
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            # Maybe if the slice doesn't exist, create it?
+            # omniargs = ["createslice", slicename]
+            # try:
+            #     (slicename, message) = omni.call(omniargs, self.opts)
+            # except:
+            #     pass
+            raise StitchingError("Slice %s expired at %s" % (sliceurn, sliceexp))
         
         # return the slice urn
         return sliceurn
+
+    def mustCallSCS(self, requestRSpecObject):
+        # >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                if len(link.aggregates) > 1 and not link.hasSharedVlan:
+                    return True
+        return False
+
+#    def callSCS(self, sliceurn, requestRSpecObject):
+    def callSCS(self, sliceurn, requestString):
+        try:
+ #           request, scsOptions = self.constructSCSArgs(requestRSpecObject)
+            request, scsOptions = self.constructSCSArgs(requestString)
+            scsResponse = self.scsService.ComputePath(sliceurn, request, scsOptions)
+        except Exception as e:
+            self.logger.error("Error from slice computation service: %s", e)
+            raise StitchingError("SCS gave error: %s" % e)
+
+        self.logger.info("SCS successfully returned.");
+
+        if self.opts.debug:
+            self.logger.debug("Writing SCS result JSON to scs-result.json")
+            with open ("scs-result.json", 'w') as file:
+                file.write(str(self.scsService.result))
+
+        return scsResponse
+
+    def constructSCSArgs(self, request, hopObjectsToExclude=None):
+        # Eventually take vlans to exclude as well
+        # return requestString and options
+
+        options = {} # No options for now.
+        # options is a struct
+        # To exclude a hop, add a geni_routing_profile struct
+        # This in turn should have a struct per path whose name is the path name
+        # Each shuld have a hop_exclusion_list array, containing the names of hops
+#        exclude = "urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19"
+#        path = "link-utah-utah-ig"
+
+#        path = "link-pg-utah1-ig-gpo1"
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.atla:ge-7/1/6:protogeni"
+#        excludes = []
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.hous:ge-9/1/4:protogeni"
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.losa:ge-7/1/3:protogeni"
+#        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.salt:ge-7/1/2:*"
+##        excludes.append(exclude)
+#        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.wash:ge-7/1/3:protogeni"
+#        excludes.append(exclude)
+#        profile = {}
+#        pathStruct = {}
+#        pathStruct["hop_exclusion_list"]=excludes
+#        profile[path] = pathStruct
+#        options["geni_routing_profile"]=profile
+
+        if hopObjectsToExclude:
+            profile = {}
+            for hop in hopObjectsToExclude:
+                # get path
+                path = hop._path.id
+                if profile.has_key(path):
+                    pathStruct = profile[path]
+                else:
+                    pathStruct = {}
+
+                # get hop URN
+                urn = hop.urn
+                if pathStruct.has_key("hop_exclusion_list"):
+                    excludes = pathStruct["hop_exclusion_list"]
+                else:
+                    excludes = []
+                excludes.append(urn)
+                pathStruct["hop_exclusion_list"] = excludes
+                profile[path] = pathStruct
+            options["geni_routing_profile"] = profile
+
+#        return request.toXML(), options
+        return request, options
+        
+    def parseSCSResponse(self, scsResponse):
+        # save expanded RSpec
+        expandedRSpec = scsResponse.rspec()
+        if self.opts.debug:
+            self.logger.debug("Writing SCS expanded RSpec to expanded.xml")
+            with open("expanded.xml", 'w') as file:
+                file.write(expandedRSpec)
+
+       # parseRequest
+        parsed_rspec = self.rspecParser.parse(expandedRSpec)
+        self.logger.debug("Parsed SCS expanded RSpec of type %r" % type(parsed_rspec))
+
+        # parseWorkflow
+        workflow = scsResponse.workflow_data()
+        if self.opts.debug:
+            import pprint
+            pp = pprint.PrettyPrinter(indent=2)
+            pp.pprint(workflow)
+
+        workflow_parser = WorkflowParser()
+        workflow_parser.parse(workflow, parsed_rspec)
+        if self.opts.debug:
+            self.dump_objects(parsed_rspec, workflow_parser.aggs)
+
+          # parse list of AMs, URNs, URLs - creating structs for AMs and hops
+          # check each AM reachable, and we know the URL/API version to use
+          # parse hop dependency tree, giving each hop an explicit hop#
+          # Construct AM dependency tree
+            # If hop1 depends on hop2 and hop1 AM != hop2 AM then hop1 AM depends on hop2 AM
+              # Also hop1 AM depends on all AMs that hop2 AM depends on
+            # Do that for all paths, for all hops
+
+        # Mark on each hop which hop# it imports VLANs from, if any. For each hop
+          # set min_distance = MAX_INTEGER
+          # set import_vlans_from_hop#=None
+          # if import_vlans=0, done
+          # for each hop it depends on:
+            # if on same domain, skip
+            # If this diff-domain hop has # whose distance from orig hop is less than previous saved #, then set min_distance and import_vlans_from_hop#
+          # If this hop has 0 dependencies but there are other hops at this AM in same path and AM does not do translation, then
+            # set this hop import_vlans_from_hop# to the value from the other hop if it has a value
+
+        # Check for AM dependency loops
+        # Check SCS output consistency in a subroutine:
+          # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
+          # All AMs must be listed in workflow data at least once per path they are in
+        return parsed_rspec, workflow_parser
+
+    def dump_objects(self, rspec, aggs):
+        '''Print out the hops, aggregates, dependencies'''
+        stitching = rspec.stitching
+        self.logger.debug( "\n===== Hops =====")
+        for path in stitching.paths:
+            self.logger.debug( "Path %s" % (path.id))
+            for hop in path.hops:
+                self.logger.debug( "  Hop %s" % (hop))
+                deps = hop.dependsOn
+                if deps:
+                    self.logger.debug( "    Dependencies:")
+                    for h in deps:
+                        self.logger.debug( "      Hop %s" % (h))
+        self.logger.debug( "\n===== Aggregates =====")
+        for agg in aggs:
+            self.logger.debug( "\nAggregate %s" % (agg))
+            for h in agg.hops:
+                self.logger.debug( "  Hop %s" % (h))
+            for ad in agg.dependsOn:
+                self.logger.debug( "  Depends on %s" % (ad))
 
     def _raise_omni_error( self, msg, err=OmniError, triple=None ):
         msg2 = msg

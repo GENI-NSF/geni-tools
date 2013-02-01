@@ -428,6 +428,7 @@ class Link(GENIObject):
         client_id = element.getAttribute(cls.CLIENT_ID_TAG)
         refs = []
         aggs = []
+        hasSharedVlan = False
         for child in element.childNodes:
             if child.nodeName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
@@ -437,9 +438,11 @@ class Link(GENIObject):
                 c_id = child.getAttribute(cls.CLIENT_ID_TAG)
                 ir = Interface(c_id)
                 refs.append(ir)
+            # FIXME: If the link has the shared_vlan extension, note this
         link = Link(client_id)
         link.aggregates = aggs
         link.interfaces = refs
+        link.hasSharedVlan = hasSharedVlan
         return link
 
     def __init__(self, client_id):
@@ -447,6 +450,7 @@ class Link(GENIObject):
         self.id = client_id
         self._aggregates = []
         self._interfaces = []
+        self.hasSharedVlan = False
 
     def toXML(self, doc, parent):
         link_node = doc.createElement('link')
