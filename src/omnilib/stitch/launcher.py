@@ -35,13 +35,14 @@ class Launcher(object):
             ready = self._ready_aggregates()
             self.logger.debug("There are %d ready aggregates: %s",
                               len(ready), ready)
-            time.sleep(5)
             for a in ready:
+                self.logger.info("Should allocate resources from %s", a)
                 a.completed = True
+            time.sleep(5)
         self.logger.info("All aggregates are complete.")
 
     def _ready_aggregates(self):
-        return [a for a in self.aggs if a.ready and not a.completed]
+        return [a for a in self.aggs if a.ready]
 
     def _complete(self):
         """Determine if the launch is complete. The launch is

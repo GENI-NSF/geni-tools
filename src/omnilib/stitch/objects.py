@@ -150,14 +150,17 @@ class Aggregate(object):
         self._dependsOn.add(agg)
 
     @property
+    def dependencies_complete(self):
+        """Dependencies are complete if there are no dependencies
+        or if all dependencies are completed.
+        """
+        return (not self._dependsOn
+                or reduce(lambda a, b: a and b,
+                          [agg.completed for agg in self._dependsOn]))
+
+    @property
     def ready(self):
-        if not self._dependsOn:
-            # If there are no dependencies, we're ready
-            return True
-        else:
-            # Otherwise we're ready iff our dependencies are completed
-            return reduce(lambda a, b: a and b,
-                          [agg.completed for agg in self._dependsOn])
+        return not self.completed and self.dependencies_complete
 
 
 class Hop(object):
