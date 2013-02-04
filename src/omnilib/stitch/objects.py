@@ -339,7 +339,7 @@ class InterfaceRef(object):
          self.client_id = client_id
 
 
-class HopLink(GENIObject):
+class HopLink(object):
 
     # XML tag constants
     ID_TAG = 'id'
@@ -368,13 +368,8 @@ class HopLink(GENIObject):
         hoplink.vlan_suggested = vlan_suggested
         return hoplink
 
-    def __init__(self, id):
-        super(HopLink, self).__init__()
-        self._id = id
+    def __init__(self, urn):
+        self.urn = urn
         self.vlan_xlate = False
         self.vlan_range = ""
         self.vlan_suggested = None
-
-    @property
-    def urn(self):
-        return self._id
