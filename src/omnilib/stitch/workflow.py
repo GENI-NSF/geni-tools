@@ -21,7 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from omnilib.stitch.objects import Aggregate
+from objects import Aggregate
 
 class WorkflowParser(object):
 
@@ -43,7 +43,9 @@ class WorkflowParser(object):
         if cache_key in self._aggs:
             agg = self._aggs[cache_key]
         else:
-            agg = Aggregate(agg_urn, agg_url)
+            agg = Aggregate.find(agg_urn)
+            if not agg.url:
+                agg.url = agg_url
             self._aggs[cache_key] = agg
         return agg
 

@@ -98,6 +98,20 @@ class Stitching(GENIObject):
 class Aggregate(object):
     '''Aggregate'''
 
+    # Hold all instances. One instance per URN.
+    aggs = dict()
+
+    @classmethod
+    def find(cls, urn):
+        if not urn in cls.aggs:
+            m = cls(urn)
+            cls.aggs[urn] = m
+        return cls.aggs[urn]
+
+    @classmethod
+    def all_aggregates(cls):
+        return cls.aggs.values()
+
     def __init__(self, urn, url=None):
         self.urn = urn
         self.url = url
@@ -109,7 +123,7 @@ class Aggregate(object):
         self._dependsOn = set()
 
     def __str__(self):
-        return "<Aggregate %r>" % (self.urn)
+        return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
         return "Aggregate(%r)" % (self.urn)
@@ -280,7 +294,7 @@ class Link(GENIObject):
         for child in element.childNodes:
             if child.nodeName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
-                agg = Aggregate(name)
+                agg = Aggregate.find(name)
                 aggs.append(agg)
             elif child.nodeName == cls.INTERFACE_REF_TAG:
                 c_id = child.getAttribute(cls.CLIENT_ID_TAG)
