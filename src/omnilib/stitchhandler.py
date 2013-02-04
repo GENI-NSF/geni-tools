@@ -34,6 +34,7 @@ import omnilib.util.credparsing as credutils
 import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
+import omnilib.stitch as stitch
 
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
@@ -114,6 +115,7 @@ class StitchingHandler(object):
         # Construct list of AMs with no unsatisfied dependencies
         # if notScript, print AM dependency tree
         # Do Main loop (below)
+        self.mainStitchingLoop(workflow_parser.aggs)
           # Are all AMs marked reserved/done? Exit main loop
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
@@ -125,7 +127,7 @@ class StitchingHandler(object):
           #   Or if particular AM had errors, ID the AMe and errors
         return ""
 
-    def mainStichingLoop(self):
+    def mainStitchingLoop(self, aggs):
         # FIXME: Need to put this in an object where I can get to a bunch of data objects?
 
         # Check if done? (see elsewhere)
@@ -149,6 +151,8 @@ class StitchingHandler(object):
           # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
             # Confirm no deletes pending, redoes, or AMs not reserved
             # Go to end state section
+        launcher = stitch.Launcher(aggs)
+        launcher.launch()
         pass
 
     def confirmGoodRequest(self, requestString):
@@ -294,7 +298,10 @@ class StitchingHandler(object):
 
        # parseRequest
         parsed_rspec = self.rspecParser.parse(expandedRSpec)
-        self.logger.debug("Parsed SCS expanded RSpec of type %r" % type(parsed_rspec))
+        self.logger.debug("Parsed SCS expanded RSpec of type %r",
+                          type(parsed_rspec))
+        #with open('gen-rspec.xml', 'w') as f:
+        #    f.write(parsed_rspec.dom.toxml())
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()

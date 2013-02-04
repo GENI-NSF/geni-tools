@@ -99,10 +99,12 @@ class Aggregate(GENIObjectWithIDURN):
     '''Aggregate'''
     __ID__ = validateURN
     ## FIX ME check url is actually a url
-    __simpleProps__ = [ ['url', str], ['inProcess', bool], ['completed', bool], ['userRequested', bool]]
+    __simpleProps__ = [ ['url', str], ['inProcess', bool], ['completed', bool],
+                        ['userRequested', bool]]
 
     # id IS URN?????
-    def __init__(self, urn, url=None, inProcess=None, completed=None, userRequested=None):
+    def __init__(self, urn, url=None, inProcess=False, completed=False,
+                 userRequested=False):
         super(Aggregate, self).__init__(urn, urn)
         self.url = url
         self.inProcess = inProcess
@@ -115,6 +117,9 @@ class Aggregate(GENIObjectWithIDURN):
 
     def __str__(self):
         return "<Aggregate %r>" % (self.urn)
+
+    def __repr__(self):
+        return "Aggregate(%r)" % (self.urn)
 
     @property
     def hops(self):
@@ -160,6 +165,16 @@ class Aggregate(GENIObjectWithIDURN):
         # FIXME use a set instead of a list
         if not agg in self._dependsOn:
             self._dependsOn.append(agg)
+
+    @property
+    def ready(self):
+        if not self._dependsOn:
+            # If there are no dependencies, we're ready
+            return True
+        else:
+            # Otherwise we're ready iff our dependencies are completed
+            return reduce(lambda a, b: a and b,
+                          [agg.completed for agg in self._dependsOn])
 
 
 class Hop(object):
