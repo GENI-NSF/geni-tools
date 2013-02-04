@@ -95,25 +95,18 @@ class Stitching(GENIObject):
             return None
 
 
-class Aggregate(GENIObjectWithIDURN):
+class Aggregate(object):
     '''Aggregate'''
-    __ID__ = validateURN
-    ## FIX ME check url is actually a url
-    __simpleProps__ = [ ['url', str], ['inProcess', bool], ['completed', bool],
-                        ['userRequested', bool]]
 
-    # id IS URN?????
-    def __init__(self, urn, url=None, inProcess=False, completed=False,
-                 userRequested=False):
-        super(Aggregate, self).__init__(urn, urn)
+    def __init__(self, urn, url=None):
+        self.urn = urn
         self.url = url
-        self.inProcess = inProcess
-        self.completed = completed
-        self.userRequested = userRequested
-        self._hops = []
-        self._dependedOnBy = []
-        self._dependsOn = []
-        self.paths = []
+        self.inProcess = False
+        self.completed = False
+        self.userRequested = False
+        self._hops = set()
+        self._paths = set()
+        self._dependsOn = set()
 
     def __str__(self):
         return "<Aggregate %r>" % (self.urn)
@@ -123,48 +116,24 @@ class Aggregate(GENIObjectWithIDURN):
 
     @property
     def hops(self):
-        return self._hops
+        return list(self._hops)
+
+    @property
+    def paths(self):
+        return list(self._paths)
 
     @property
     def dependsOn(self):
-        return self._dependsOn
-
-    @property
-    def dependedOnBy(self):
-        return self._dependedOnBy
-            
-    @hops.setter
-    def hops(self, hopList):
-#DELETE        self._setListProp('hops', hopList, Hop, '_path')
-        self._setListProp('hops', hopList, Hop)
-
-    @dependsOn.setter
-    def dependsOn(self, aggList):
-        self._setListProp('dependsOn', aggList, Aggregate)
-
-    @dependedOnBy.setter
-    def dependedOnBy(self, aggList):
-        self._setListProp('dependedOnBy', aggList, Aggregate)
+        return list(self._dependsOn)
 
     def add_hop(self, hop):
-        if hop in self.hops:
-            raise Exception("adding hop %s twice to aggregate %s"
-                            % (hop.urn, self.urn))
-        #print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
-        self.hops.append(hop)
+        self._hops.add(hop)
 
     def add_path(self, path):
-        if path in self.paths:
-            raise Exception("adding path %s twice to aggregate %s"
-                            % (path.id, self.urn))
-        #print "Aggregate %s adding path %s" % (self.urn, path.id)
-        path.add_aggregate(self)
-        self.paths.append(path)
+        self._paths.add(path)
 
     def add_dependency(self, agg):
-        # FIXME use a set instead of a list
-        if not agg in self._dependsOn:
-            self._dependsOn.append(agg)
+        self._dependsOn.add(agg)
 
     @property
     def ready(self):
