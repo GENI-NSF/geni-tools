@@ -24,6 +24,8 @@
 #----------------------------------------------------------------------
 
 import logging
+import random
+import time
 from GENIObject import *
 
 class Path(GENIObject):
@@ -121,6 +123,7 @@ class Aggregate(object):
         self._hops = set()
         self._paths = set()
         self._dependsOn = set()
+        self.logger = logging.getLogger('stitch.Aggregate')
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -161,6 +164,18 @@ class Aggregate(object):
     @property
     def ready(self):
         return not self.completed and self.dependencies_complete
+
+    def allocate(self, rspec):
+        # for now, sleep a little while, then assume complete.
+        # N.B. the rspec is an instance of class RSpec.
+        #      if there are dependencies on the allocated VLANs of
+        #      other aggregates, copy those VLAN tags into my
+        #      section, then convert to XML via "toxml()"
+        self.logger.info("NOT allocating resources from %s", self)
+        time.sleep(random.randrange(1, 6))
+        # rspec_str = rspec.dom.toxml()
+        self.logger.info("Allocation at %s complete (NOT)", self)
+        self.completed = True
 
 
 class Hop(object):

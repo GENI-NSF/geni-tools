@@ -30,23 +30,23 @@ class Launcher(object):
         self.aggs = aggs
         self.logger = logger or logging.getLogger('stitch.launcher')
 
-    def launch(self):
+    def launch(self, rspec):
         while not self._complete():
-            ready = self._ready_aggregates()
+            ready_aggs = self._ready_aggregates()
             self.logger.debug("There are %d ready aggregates: %s",
-                              len(ready), ready)
-            for a in ready:
-                self.logger.info("Should allocate resources from %s", a)
-                a.completed = True
-            time.sleep(5)
+                              len(ready_aggs), ready_aggs)
+            for agg in ready_aggs:
+                agg.allocate(rspec.dom.toxml())
         self.logger.info("All aggregates are complete.")
 
     def _ready_aggregates(self):
         return [a for a in self.aggs if a.ready]
 
-    def _complete(self):
+    def _complete(self, aggs=None):
         """Determine if the launch is complete. The launch is
         complete if all aggregates are complete.
         """
-        return self.aggs and reduce(lambda a, b: a and b,
-                                    [agg.completed for agg in self.aggs])
+        if not aggs:
+            aggs = self.aggs
+        return aggs and reduce(lambda a, b: a and b,
+                               [agg.completed for agg in aggs])

@@ -115,7 +115,7 @@ class StitchingHandler(object):
         # Construct list of AMs with no unsatisfied dependencies
         # if notScript, print AM dependency tree
         # Do Main loop (below)
-        self.mainStitchingLoop(workflow_parser.aggs)
+        self.mainStitchingLoop(workflow_parser.aggs, parsed_rspec)
           # Are all AMs marked reserved/done? Exit main loop
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
@@ -127,7 +127,7 @@ class StitchingHandler(object):
           #   Or if particular AM had errors, ID the AMe and errors
         return ""
 
-    def mainStitchingLoop(self, aggs):
+    def mainStitchingLoop(self, aggs, rspec):
         # FIXME: Need to put this in an object where I can get to a bunch of data objects?
 
         # Check if done? (see elsewhere)
@@ -152,7 +152,7 @@ class StitchingHandler(object):
             # Confirm no deletes pending, redoes, or AMs not reserved
             # Go to end state section
         launcher = stitch.Launcher(aggs)
-        launcher.launch()
+        launcher.launch(rspec)
         pass
 
     def confirmGoodRequest(self, requestString):
