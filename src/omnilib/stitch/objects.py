@@ -46,6 +46,7 @@ class Path(GENIObject):
             if child.nodeName == cls.HOP_TAG:
                 hop = Hop.fromDOM(child)
                 hop.path = path
+                hop.idx = len(path.hops)
                 path.hops.append(hop)
         return path
 
@@ -198,9 +199,9 @@ class Hop(object):
             if child.nodeName == cls.LINK_TAG:
                 hop_link = HopLink.fromDOM(child)
             elif child.nodeName == cls.NEXT_HOP_TAG:
-                next_hop_text = child.firstChild.nodeValue
-                if next_hop_text != 'null':
-                    next_hop = int(next_hop_text)
+                next_hop = child.firstChild.nodeValue
+                if next_hop == 'null':
+                    next_hop = None
         hop = Hop(id, hop_link, next_hop)
         return hop
 
@@ -212,6 +213,7 @@ class Hop(object):
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
+        self.idx = None
         # FIXME: import_vlans_from and export_vlans_to
         # FIXME: depended_on_by?
 
@@ -374,15 +376,19 @@ class HopLink(object):
         id = element.getAttribute(cls.ID_TAG)
         vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
         if vlan_xlate:
+            # FIXME: If no firstChild or no nodeValue, assume false
             x = vlan_xlate[0].firstChild.nodeValue
             vlan_translate = x.lower() in ('true')
         vlan_range = element.getElementsByTagName(cls.VLAN_RANGE_TAG)
         if vlan_range:
+            # FIXME: vlan_range may have no child or no nodeValue. Meaning would then be 'any'
             vlan_range = vlan_range[0].firstChild.nodeValue
         vlan_suggested = element.getElementsByTagName(cls.VLAN_SUGGESTED_TAG)
         if vlan_suggested:
+            # FIXME: vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
             vlan_suggested = vlan_suggested[0].firstChild.nodeValue
         hoplink = HopLink(id)
+        # FIXME: Get a vlan range object for vlan_range and vlan_suggested
         hoplink.vlan_xlate = vlan_translate
         hoplink.vlan_range = vlan_range
         hoplink.vlan_suggested = vlan_suggested
