@@ -1,5 +1,3 @@
-# Parse a stitching enhanced rspec
-
 #----------------------------------------------------------------------
 # Copyright (c) 2013 Raytheon BBN Technologies
 #
@@ -23,9 +21,12 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-import sys
+# Parse a stitching enhanced rspec
+
 import logging
+import sys
 from xml.dom.minidom import parseString, getDOMImplementation
+
 from objects import *
 
 # XML tag constants

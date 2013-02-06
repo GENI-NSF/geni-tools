@@ -163,6 +163,7 @@ class Aggregate(object):
 
     @property
     def ready(self):
+        # FIXME: Avoid 'busy' AMs
         return not self.completed and self.dependencies_complete
 
     def allocate(self, rspec):
@@ -172,8 +173,10 @@ class Aggregate(object):
         #      other aggregates, copy those VLAN tags into my
         #      section, then convert to XML via "toxml()"
         self.logger.info("NOT allocating resources from %s", self)
+        # FIXME: Mark AM is busy
         time.sleep(random.randrange(1, 6))
         # rspec_str = rspec.dom.toxml()
+        # FIXME: Mark AM not busy
         self.logger.info("Allocation at %s complete (NOT)", self)
         self.completed = True
 
@@ -209,6 +212,8 @@ class Hop(object):
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
+        # FIXME: import_vlans_from and export_vlans_to
+        # FIXME: depended_on_by?
 
     def __str__(self):
         return "<Hop %r on path %r>" % (self.urn, self._path.id)
