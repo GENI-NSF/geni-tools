@@ -40,6 +40,7 @@ class Launcher(object):
             self.logger.debug("There are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
+                # FIXME: Need a timeout mechanism on AM calls
                 agg.allocate(rspec.dom.toxml())
 
             # Do we need to sleep?

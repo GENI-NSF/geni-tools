@@ -62,7 +62,7 @@ class WorkflowParser(object):
 
             # Compute AM dependencies
             self._add_agg_deps(path)
-            # FIXME: Check for AM dependency loops
+            # FIXME: Check for AM dependency loops - or is this in _add_agg_deps?
             # FIXME: Compute hop import_from / export_to
 
     def _add_hop_info(self, hop, info_dict):
