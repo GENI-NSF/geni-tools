@@ -54,12 +54,16 @@ class WorkflowParser(object):
         for link_id in workflow:
             path = rspec.find_path(link_id)
             if not path:
-                msg = "No path found with id = %r" % (link_id)
+                msg = "No path found in rspec with id = %r" % (link_id)
                 raise Exception(msg)
             deps = workflow[link_id][self.DEPENDENCIES_KEY]
             self._parse_deps(deps, path)
             # Post processing steps:
+
+            # Compute AM dependencies
             self._add_agg_deps(path)
+            # FIXME: Check for AM dependency loops
+            # FIXME: Compute hop import_from / export_to
 
     def _add_hop_info(self, hop, info_dict):
         """Add the aggregate and import_vlans info to the hop if it
@@ -86,7 +90,7 @@ class WorkflowParser(object):
             hop_urn = d[self.HOP_URN_KEY]
             hop = path.find_hop(hop_urn)
             if not hop:
-                msg = "No hop found with id %r on path %r" % (hop_urn,
+                msg = "No hop found with id %r on rspec path element %r" % (hop_urn,
                                                               path.id)
                 raise Exception(msg)
             self._add_hop_info(hop, d)
@@ -99,7 +103,7 @@ class WorkflowParser(object):
             hop_urn = d[self.HOP_URN_KEY]
             dep_hop = path.find_hop(hop_urn)
             if not dep_hop:
-                msg = "No dependent hop found with id %r on path %r"
+                msg = "No dependent hop found with id %r on rspec path element %r"
                 msg = msg % (hop_urn, path.id)
                 raise Exception(msg)
             self._add_hop_info(dep_hop, d)
@@ -113,4 +117,7 @@ class WorkflowParser(object):
         for hop in path.hops:
             hop_agg = hop.aggregate
             for hd in hop.dependsOn:
+                # FIXME: If hd.aggregate depends on hop_agg then we have a loop - error out
                 hop_agg.add_dependency(hd.aggregate)
+                # FIXME: Only add this dependency if hop_agg != hd.aggregate
+                # FIXME: hop_agg also depends on all AMs that hd.aggregate depends on
