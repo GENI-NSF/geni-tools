@@ -47,36 +47,35 @@ class StitchingHandler(object):
     '''Workhorse class to do stitching'''
 
     def __init__(self, opts, config, logger):
-        # FIXME: Do I need / want a framework here? Should main get it?
-#        self.framework = framework
         self.logger = logger
         config['logger'] = logger
         self.omni_config = config['omni']
         self.config = config
-        # FIXME: Duplicate the options like am_api_accept does?
         self.opts = opts # command line options as parsed
-#        self.GetVersionCache = None # The cache of GetVersion info in memory
+        self.framework = omni.load_framework(self.config, self.opts)
 
     def doStitching(self, args):
         # Get request RSpec
         request = None
         command = None
         slicename = None
-        if len(args) == 0:
-            self._raise_omni_error("Expected 3 args: <command = createsliver or allocate> <slice name> <rspec file path/url>")
-        elif len(args) == 1:
+        if len(args) > 0:
             command = args[0]
-        elif len(args) == 2:
-            command = args[0]
+        if not command or command.strip().lower() not in ('createsliver', 'allocate'):
+            # Stitcher only handles createsliver or allocate
+            self.logger.info("Passing call to Omni")
+            return omni.call(args, self.opts)
+
+        if len(args) > 1:
             slicename = args[1]
-        else:
-            command = args[0]
-            slicename = args[1]
+        if len(args) > 2:
             request = args[2]
-            if len(args) > 3:
-                self.logger.warn("Arguments %s ignored", args[3:])
+
+        if len(args) > 3:
+            self.logger.warn("Arguments %s ignored", args[3:])
         self.logger.info("Command=%s, slice=%s, rspec=%s", command, slicename, request)
 
+        # Parse the RSpec
         requestString = ""
         self.rspecParser = omnilib.stitch.RSpecParser.RSpecParser(self.logger)
         self.parsedUserRequest = None
@@ -102,6 +101,7 @@ class StitchingHandler(object):
         if not self.mustCallSCS(self.parsedUserRequest):
             return omni.call(args, self.opts)
 
+        # Ensure the slice is valid before all those Omni calls use it
         sliceurn = self.confirmSliceOK(slicename)
     
         self.scsService = scs.Service(self.opts.scsURL)
@@ -112,23 +112,24 @@ class StitchingHandler(object):
         # Parse SCS Response, constructing objects and dependencies, validating return
         parsed_rspec, workflow_parser = self.parseSCSResponse(scsResponse)
 
-        # Construct list of AMs with no unsatisfied dependencies
-        # if notScript, print AM dependency tree
+        # FIXME: if notScript, print AM dependency tree?
+
         # Do Main loop (below)
         self.mainStitchingLoop(workflow_parser.aggs, parsed_rspec)
           # Are all AMs marked reserved/done? Exit main loop
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
-        # Do cleanup if any, construct return, return to stitcher.main (see above)
+
+        # FIXME: Do cleanup if any, construct return, return to stitcher.main (see above)
           # Construct a unified manifest
           # include AMs, URLs, API versions
           # use code/value/output struct
           # If error and have an expanded rquest from SCS, include that in output.
           #   Or if particular AM had errors, ID the AMe and errors
+
         return ""
 
     def mainStitchingLoop(self, aggs, rspec):
-        # FIXME: Need to put this in an object where I can get to a bunch of data objects?
 
         # Check if done? (see elsewhere)
         # Check threads exited
@@ -156,6 +157,7 @@ class StitchingHandler(object):
         pass
 
     def confirmGoodRequest(self, requestString):
+        # Confirm the string is a request rspec, valid
         if requestString is None or str(requestString).strip() == '':
             raise OmniError("Empty request rspec")
         if not is_rspec_string(requestString, self.logger):
@@ -171,8 +173,8 @@ class StitchingHandler(object):
             raise OmniError("Request RSpec does not validate against its schemas")
 
     def confirmSliceOK(self, slicename):
-        self.framework = omni.load_framework(self.config, self.opts)
-        
+        # Ensure the given slice name corresponds to a current valid slice
+
         # Get slice URN from name
         try:
             sliceurn = self.framework.slice_name_to_urn(slicename)
@@ -183,20 +185,20 @@ class StitchingHandler(object):
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
         if not slicecred:
-            # Maybe if the slice doesn't exist, create it?
+            # FIXME: Maybe if the slice doesn't exist, create it?
             # omniargs = ["createslice", slicename]
             # try:
             #     (slicename, message) = omni.call(omniargs, self.opts)
             # except:
             #     pass
-            raise StitchingError("Could not get a slice credential for slice %s" % sliceurn)
+            raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
 
         # Ensure slice not expired
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)
         sliceexp = naiveUTC(sliceexp)
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
-            # Maybe if the slice doesn't exist, create it?
+            # FIXME: Maybe if the slice doesn't exist, create it?
             # omniargs = ["createslice", slicename]
             # try:
             #     (slicename, message) = omni.call(omniargs, self.opts)
@@ -208,9 +210,11 @@ class StitchingHandler(object):
         return sliceurn
 
     def mustCallSCS(self, requestRSpecObject):
-        # >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
+        # Does this request actually require stitching?
+        # Check: >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
         if requestRSpecObject:
             for link in requestRSpecObject.links:
+                # FIXME: hasSharedVlan is not correctly set yet
                 if len(link.aggregates) > 1 and not link.hasSharedVlan:
                     return True
         return False
