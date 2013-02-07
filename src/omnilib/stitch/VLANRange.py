@@ -152,4 +152,10 @@ if __name__ == "__main__":
     print a - b
     print "Type of new object is: "+ str(type(a - b).__name__)
 
+    # d = VLANRange()
+    # d.fromString("any")
+    # print "d is: "+str(d)
 
+    # print "\nIntersection of a and d? ( VLANRange([8]) )"
+    # print a.intersection(d)
+    
