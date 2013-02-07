@@ -77,11 +77,14 @@ class VLANRange( set ):
         newRange = VLANRange( other )
         super( VLANRange, self).__add__(newRange)                    
 
-    def fromString( self, stringIn ):
+    @classmethod
+    def fromString( cls, stringIn ):
         # Valid inputs are like:
         #   any
         #   1-20
         #   1-20, 454, 700-801
+        newObj = VLANRange()
+
         inputs = stringIn.strip()
         items = inputs.split(",")
         for item in items:
@@ -112,20 +115,19 @@ class VLANRange( set ):
                 raise ValueError("Range should contain at most 2 values instead received %s " % str(item))
 #            print minValue, maxValue
             for newVLAN in xrange(minValue,maxValue+1):
-                self.add( newVLAN )
-
-    def toString( self ):
-        print str(self)
+                newObj.add( newVLAN )
+        return newObj
 
     def __str__( self ):
+        # FIXME: This should do something intelligent and not just list every possible VLAN
         return super(VLANRange,self).__str__()
     
 
 if __name__ == "__main__":
     print "\nSome operations on VLANRanges...\n"
 
-    a = VLANRange( 3 )
-    a.fromString("4-6,8")
+#    a = VLANRange( 3 )
+    a = VLANRange.fromString("3,4-6,8")
     print "a is: "+str(a)
     b = VLANRange( 8 )
     print "b is: "+str(b)
@@ -153,7 +155,7 @@ if __name__ == "__main__":
     print "Type of new object is: "+ str(type(a - b).__name__)
 
     # d = VLANRange()
-    # d.fromString("any")
+    # d = VLANRange.fromString("any")
     # print "d is: "+str(d)
 
     # print "\nIntersection of a and d? ( VLANRange([8]) )"
