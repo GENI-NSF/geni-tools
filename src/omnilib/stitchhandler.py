@@ -101,6 +101,10 @@ class StitchingHandler(object):
         if not self.mustCallSCS(self.parsedUserRequest):
             return omni.call(args, self.opts)
 
+        # Remove any -a arguments from the opts so that when we later call omni
+        # the right thing happens
+        self.opts.aggregate = []
+
         # Ensure the slice is valid before all those Omni calls use it
         sliceurn = self.confirmSliceOK(slicename)
     
