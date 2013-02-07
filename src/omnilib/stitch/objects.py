@@ -22,35 +22,39 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-#import GENIObject
-#from GENIObject import GENIObject
-import pdb
+
+import logging
+import random
+import time
 from GENIObject import *
 
-def createElementAndText(doc, element_name, child_text):
-    child_node = doc.createElement(element_name)
-    txt_node = doc.createTextNode(str(child_text))
-    child_node.appendChild(txt_node)
-    return child_node
-
-class Path(GENIObjectWithIDURN):
+class Path(GENIObject):
     '''Path'''
     __ID__ = validateText
 #    __simpleProps__ = [ ['id', int] ]
 
-    def __init__(self, id, urn=None):
-        super(Path, self).__init__(id, urn=urn)
+    # XML tag constants
+    ID_TAG = 'id'
+    HOP_TAG = 'hop'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching path from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        path = Path(id)
+        for child in element.childNodes:
+            if child.nodeName == cls.HOP_TAG:
+                hop = Hop.fromDOM(child)
+                hop.path = path
+                hop.idx = len(path.hops)
+                path.hops.append(hop)
+        return path
+
+    def __init__(self, id):
+        super(Path, self).__init__()
+        self.id = id
         self._hops = []
         self._aggregates = []
-
-    def toXML(self, doc, parent):
-        path_node = doc.createElement('path')
-        parent.appendChild(path_node)
-        path_node.setAttribute('id', self.id)
-        for hop in self._hops:
-            hop.toXML(doc, path_node)
-        for agg in self._aggregates:
-            agg.toXML(doc, path_node)
 
     @property
     def hops(self):
@@ -85,14 +89,6 @@ class Stitching(GENIObject):
         self.last_update_time = str(last_update_time)
         self.paths = paths
 
-    def toXML(self, doc, parent):
-        stitch_node = doc.createElement('stitching')
-        parent.appendChild(stitch_node)
-        stitch_node.setAttribute('lastUpdateTime', self.last_update_time)
-        if self.paths:
-            for path in self.paths:
-                path.toXML(doc, stitch_node)
-
     def find_path(self, link_id):
         if self.paths:
             for path in self.paths:
@@ -102,90 +98,127 @@ class Stitching(GENIObject):
             return None
 
 
-class Aggregate(GENIObjectWithIDURN):
+class Aggregate(object):
     '''Aggregate'''
-    __ID__ = validateURN
-    ## FIX ME check url is actually a url
-    __simpleProps__ = [ ['url', str], ['inProcess', bool], ['completed', bool], ['userRequested', bool]]
 
-    # id IS URN?????
-    def __init__(self, urn, url=None, inProcess=None, completed=None, userRequested=None):
-        super(Aggregate, self).__init__(urn, urn)
+    # Hold all instances. One instance per URN.
+    aggs = dict()
+
+    @classmethod
+    def find(cls, urn):
+        if not urn in cls.aggs:
+            m = cls(urn)
+            cls.aggs[urn] = m
+        return cls.aggs[urn]
+
+    @classmethod
+    def all_aggregates(cls):
+        return cls.aggs.values()
+
+    def __init__(self, urn, url=None):
+        self.urn = urn
         self.url = url
-        self.inProcess = inProcess
-        self.completed = completed
-        self.userRequested = userRequested
-        self._hops = []
-        self._dependedOnBy = []
-        self._dependsOn = []
+        self.inProcess = False
+        self.completed = False
+        self.userRequested = False
+        self._hops = set()
+        self._paths = set()
+        self._dependsOn = set()
+        self.logger = logging.getLogger('stitch.Aggregate')
 
     def __str__(self):
-        return "<Aggregate %r>" % (self.urn)
+        return "<Aggregate %s>" % (self.urn)
 
-    def toXML(self, doc, parent):
-        agg_node = doc.createElement('component_manager')
-        parent.appendChild(agg_node)
-        agg_node.setAttribute('name', self.id)
-        
+    def __repr__(self):
+        return "Aggregate(%r)" % (self.urn)
+
     @property
     def hops(self):
-        return self._hops
+        return list(self._hops)
+
+    @property
+    def paths(self):
+        return list(self._paths)
 
     @property
     def dependsOn(self):
-        return self._dependsOn
-
-    @property
-    def dependedOnBy(self):
-        return self._dependedOnBy
-            
-    @hops.setter
-    def hops(self, hopList):
-#DELETE        self._setListProp('hops', hopList, Hop, '_path')
-        self._setListProp('hops', hopList, Hop)
-
-    @dependsOn.setter
-    def dependsOn(self, aggList):
-        self._setListProp('dependsOn', aggList, Aggregate)
-
-    @dependedOnBy.setter
-    def dependedOnBy(self, aggList):
-        self._setListProp('dependedOnBy', aggList, Aggregate)
+        return list(self._dependsOn)
 
     def add_hop(self, hop):
-        if hop in self.hops:
-            raise Exception("adding hop %s twice to aggregate %s"
-                            % (hop.urn, self.urn))
-        print "Aggregate %s adding hop %s" % (self.urn, hop.urn)
-        self.hops.append(hop)
+        self._hops.add(hop)
+
+    def add_path(self, path):
+        self._paths.add(path)
 
     def add_dependency(self, agg):
-        # FIXME use a set instead of a list
-        if not agg in self._dependsOn:
-            self._dependsOn.append(agg)
+        self._dependsOn.add(agg)
+
+    @property
+    def dependencies_complete(self):
+        """Dependencies are complete if there are no dependencies
+        or if all dependencies are completed.
+        """
+        return (not self._dependsOn
+                or reduce(lambda a, b: a and b,
+                          [agg.completed for agg in self._dependsOn]))
+
+    @property
+    def ready(self):
+        # FIXME: Avoid 'busy' AMs
+        return not self.completed and self.dependencies_complete
+
+    def allocate(self, rspec):
+        # for now, sleep a little while, then assume complete.
+        # N.B. the rspec is an instance of class RSpec.
+        #      if there are dependencies on the allocated VLANs of
+        #      other aggregates, copy those VLAN tags into my
+        #      section, then convert to XML via "toxml()"
+        self.logger.info("NOT allocating resources from %s", self)
+        # FIXME: Mark AM is busy
+        time.sleep(random.randrange(1, 6))
+        # rspec_str = rspec.dom.toxml()
+        # FIXME: Mark AM not busy
+        self.logger.info("Allocation at %s complete (NOT)", self)
+        self.completed = True
 
 
 class Hop(object):
+
+    # XML tag constants
+    ID_TAG = 'id'
+    LINK_TAG = 'link'
+    NEXT_HOP_TAG = 'nextHop'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching hop from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        hop_link = None
+        next_hop = None
+        for child in element.childNodes:
+            if child.nodeName == cls.LINK_TAG:
+                hop_link = HopLink.fromDOM(child)
+            elif child.nodeName == cls.NEXT_HOP_TAG:
+                next_hop = child.firstChild.nodeValue
+                if next_hop == 'null':
+                    next_hop = None
+        hop = Hop(id, hop_link, next_hop)
+        return hop
 
     def __init__(self, id, hop_link, next_hop):
         self._id = id
         self._hop_link = hop_link
         self._next_hop = next_hop
+        self._path = None
         self._aggregate = None
         self._import_vlans = False
         self._dependencies = []
+        self.idx = None
+        # FIXME: import_vlans_from and export_vlans_to
+        # FIXME: depended_on_by?
 
     def __str__(self):
-        return "<Hop %r>" % (self.urn)
-
-    def toXML(self, doc, parent):
-        hop_node = doc.createElement('hop')
-        parent.appendChild(hop_node)
-        hop_node.setAttribute('id', self._id)
-        if self._hop_link:
-            self._hop_link.toXML(doc, hop_node)
-        next_hop = self._next_hop or "null"
-        hop_node.appendChild(createElementAndText(doc, 'nextHop', next_hop))
+        return "<Hop %r on path %r>" % (self.urn, self._path.id)
 
     @property
     def urn(self):
@@ -194,6 +227,14 @@ class Hop(object):
     @property
     def aggregate(self):
         return self._aggregate
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        self._path = path
 
     @aggregate.setter
     def aggregate(self, agg):
@@ -215,45 +256,6 @@ class Hop(object):
         self._dependencies.append(hop)
 
 
-class Hop_Orig(GENIObjectWithIDURN):
-    '''Hop'''
-    __simpleProps__ = [ ['index', int], ['aggregate', Aggregate], ['path', Path], ['inProcess', bool], ['completed', bool], ['userRequested', bool] ]
-
-    def __init__(self, id, urn=None, index=None, aggregate=None, path=None, inProcess=None, completed=None, userRequested=None):
-        super(Hop, self).__init__(id, urn=urn)
-        self.index = index
-        self.aggregate = aggregate
-        self.path = path
-        self.inProcess = inProcess
-        self.completed = completed
-        self.userRequested = userRequested
-        self._dependsOn = []
-        self._copiesVlansTo = []
-
-    def toXML(self, doc, parent):
-        hop_node = doc.createElement('hop')
-        parent.appendChild(hop_node)
-        hop_node.setAttribute('id', self.id)
-        if path:
-            path.toXML(doc, hop_node)
-            
-    @property
-    def dependsOn(self):
-        return self._dependsOn
-
-    @property
-    def copiesVlansTo(self):
-        return self._copiesVlansTo
-
-    @dependsOn.setter
-    def dependsOn(self, hopList):
-        self._setListProp('dependsOn', hopList, Hop)
-
-    @copiesVlansTo.setter
-    def copiesVlansTo(self, hopList):
-        self._setListProp('copiesVlansTo', hopList, Hop)
-
-
 class RSpec(GENIObject):
     '''RSpec'''
     __simpleProps__ = [ ['stitching', Stitching] ]
@@ -263,23 +265,7 @@ class RSpec(GENIObject):
         self.stitching = stitching
         self._nodes = []
         self._links = []
-
-    def toXML(self, doc, parent):
-        parent.setAttribute('xmlns', 'http://www.geni.net/resources/rspec/3')
-        parent.setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
-        schema_locations = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1/ " + \
-            "http://hpn.east.isi.edu/rspec/ext/stitch/0.1/stitch-schema.xsd " + \
-            "http://www.geni.net/resources/rspec/3 " + \
-            "http://www.geni.net/resources/rspec/3/request.xsd "
-        parent.setAttribute('xsi:schemaLocation', schema_locations)
-        parent.setAttribute('type', 'request')
-
-        for node in self._nodes:
-            node.toXML(doc, parent)
-        for link in self._links:
-            link.toXML(doc, parent)
-        if self.stitching:
-            self.stitching.toXML(doc, parent)
+        self.dom = None
 
     @property
     def nodes(self):
@@ -313,69 +299,45 @@ class RSpec(GENIObject):
         return None
 
 
-class Node(GENIObject):
-    __ID__ = validateTextLike
-    __simpleProps__ = [ ['client_id', str], ['exclusive', TrueFalse]]
-
-    def __init__(self, client_id, aggregate=None, exclusive=None, interfaces=None):
-        super(Node, self).__init__()
-        self.id = str(client_id)
-        self.aggregate = aggregate
-        self.exclusive =  validateTrueFalse(exclusive)
-        self._interfaces = []
-        if interfaces: self._interfaces = interfaces
-
-    def toXML(self, doc, parent):
-        node_node = doc.createElement('node')
-        parent.appendChild(node_node)
-        node_node.setAttribute('client_id', self.id)
-        node_node.setAttribute('component_manager_id', self.aggregate)
-        node_node.setAttribute('exclusive', str(self.exclusive).lower())
-        for interface in self._interfaces:
-            interface.toXML(doc, node_node)
-
-    @property
-    def interfaces(self):
-        return self._interfaces
-
-    @interfaces.setter
-    def interfaces(self, interfaceList):
-        self._setListProp('interfaces', interfaceList, Interface)
-
-    @property
-    def aggregate(self):
-        return self._aggregate
-
-    @aggregate.setter
-    def aggregate(self, agg):
-        if agg is None:
-            return None
-        if type(agg) == Aggregate:
-            self._aggregate = agg
-        elif type(agg) == URN or type(agg) == str or  type(agg) == unicode:
-            self._aggregate = validateURN(agg)
-        else:
-            raise TypeError("aggregate must be a valid Aggregate or a valid URN")
-
 class Link(GENIObject):
     __ID__ = validateTextLike
     __simpleProps__ = [ ['client_id', str]]
 
-#    def __init__(self, client_id, component_managers,interface_refs):
+    # XML tag constants
+    CLIENT_ID_TAG = 'client_id'
+    COMPONENT_MANAGER_TAG = 'component_manager'
+    INTERFACE_REF_TAG = 'interface_ref'
+    NAME_TAG = 'name'
+
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a Link from a DOM element."""
+        client_id = element.getAttribute(cls.CLIENT_ID_TAG)
+        refs = []
+        aggs = []
+        hasSharedVlan = False
+        for child in element.childNodes:
+            if child.nodeName == cls.COMPONENT_MANAGER_TAG:
+                name = child.getAttribute(cls.NAME_TAG)
+                agg = Aggregate.find(name)
+                aggs.append(agg)
+            elif child.nodeName == cls.INTERFACE_REF_TAG:
+                c_id = child.getAttribute(cls.CLIENT_ID_TAG)
+                ir = InterfaceRef(c_id)
+                refs.append(ir)
+            # FIXME: If the link has the shared_vlan extension, note this
+        link = Link(client_id)
+        link.aggregates = aggs
+        link.interfaces = refs
+        link.hasSharedVlan = hasSharedVlan
+        return link
+
     def __init__(self, client_id):
         super(Link, self).__init__()
         self.id = client_id
         self._aggregates = []
         self._interfaces = []
-
-    def toXML(self, doc, parent):
-        link_node = doc.createElement('link')
-        parent.appendChild(link_node)
-        link_node.setAttribute('client_id', self.id)
-        for agg in self._aggregates:
-            agg.toXML(doc, link_node)
-        for interface in self._interfaces:
-            interface.toXML(doc, link_node)
+        self.hasSharedVlan = False
 
     @property
     def interfaces(self):
@@ -383,7 +345,7 @@ class Link(GENIObject):
 
     @interfaces.setter
     def interfaces(self, interfaceList):
-        self._setListProp('interfaces', interfaceList, Interface)
+        self._setListProp('interfaces', interfaceList, InterfaceRef)
 
     @property
     def aggregates(self):
@@ -393,128 +355,47 @@ class Link(GENIObject):
     def aggregates(self, aggregateList):
         self._setListProp('aggregates', aggregateList, Aggregate)
 
-class Interface(GENIObject):
-#    __simpleProps__ = [ ['client_id', str]]
-#    __simpleProps__ = [ ['client_id', TextLike]]
-    __ID__ = validateTextLike
-    def __init__(self, client_id):
-        super(Interface, self).__init__()
-        self.id = client_id
 
-    def toXML(self, doc, parent):
-        interface_node = doc.createElement('interface')
-        parent.appendChild(interface_node)
-        interface_node.setAttribute('client_id', self.id)
-
-class InterfaceRef(Interface):
-
-     __ID__ = validateURN
+class InterfaceRef(object):
      def __init__(self, client_id):
-         super(InterfaceRef, self).__init__(client_id)
-
-     def toXML(self, doc, parent):
-        interface_ref_node = doc.createElement('interface_ref')
-        parent.appendChild(interface_ref_node)
-        interface_ref_node.setAttribute('client_id', self.id)
-
-# DELETE
-class ComponentManager(Aggregate):
-    pass
-#     __ID__ = validateText
-# #    __simpleProps__ = [ ['name', str]]
-#     def __init__(self, name):
-#         super(ComponentManager, self).__init__(name)
-# #        self.name = name
-        
-
-class HopLink(GENIObject):
-    def __init__(self, id, traffic_engineering_metric, capacity, \
-                     switching_capability_descriptor, capabilities):
-        super(HopLink, self).__init__()
-        self._id = id
-        self._traffic_engineering_metric = traffic_engineering_metric
-        self._capacity = capacity
-        self._switching_capability_descriptor = switching_capability_descriptor
-        self._capabilities = capabilities
-
-    def toXML(self, doc, parent):
-        link_node = doc.createElement('link')
-        link_node.setAttribute('id', self._id)
-        parent.appendChild(link_node)
-        link_node.appendChild(createElementAndText(doc,
-                                                   'trafficEngineeringMetric',
-                                                   self._traffic_engineering_metric))
-        link_node.appendChild(createElementAndText(doc,
-                                                   'capacity',
-                                                   self._capacity))
-        if self._switching_capability_descriptor:
-            self._switching_capability_descriptor.toXML(doc, link_node)
-        if self._capabilities:
-            cs_node = doc.createElement('capabilities')
-            for c in self._capabilities:
-                cs_node.appendChild(createElementAndText(doc, 'capability', c))
-            link_node.appendChild(cs_node)
-
-    @property
-    def urn(self):
-        return self._id
+         self.client_id = client_id
 
 
-class SwitchingCapabilityDescriptor(GENIObject):
-    def __init__(self, switching_cap_type, coding_type, \
-                     switching_capability_specific_info):
-        super(SwitchingCapabilityDescriptor, self).__init__()
-        self._switching_cap_type = switching_cap_type
-        self._coding_type = coding_type
-        self._switching_capability_specific_info = switching_capability_specific_info
+class HopLink(object):
 
-    def toXML(self, doc, parent):
-        scd_node = doc.createElement('switchingCapabilityDescriptor')
-        parent.appendChild(scd_node)
-        scd_node.appendChild(createElementAndText(doc,
-                                                  'switchingcapType',
-                                                  self._switching_cap_type))
-        scd_node.appendChild(createElementAndText(doc,
-                                                  'encodingType',
-                                                  self._coding_type))
-        if self._switching_capability_specific_info:
-           self._switching_capability_specific_info.toXML(doc, scd_node)
+    # XML tag constants
+    ID_TAG = 'id'
+    HOP_TAG = 'hop'
+    VLAN_TRANSLATION_TAG = 'vlanTranslation'
+    VLAN_RANGE_TAG = 'vlanRangeAvailability'
+    VLAN_SUGGESTED_TAG = 'suggestedVLANRange'
 
-class SwitchingCapabilitySpecificInfo(GENIObject):
-    def __init__(self, switching_capability_specific_info_l2sc):
-        super(SwitchingCapabilitySpecificInfo, self).__init__()
-        self._switching_capability_specific_info_l2sc = switching_capability_specific_info_l2sc
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a stitching path from a DOM element."""
+        id = element.getAttribute(cls.ID_TAG)
+        vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
+        if vlan_xlate:
+            # FIXME: If no firstChild or no nodeValue, assume false
+            x = vlan_xlate[0].firstChild.nodeValue
+            vlan_translate = x.lower() in ('true')
+        vlan_range = element.getElementsByTagName(cls.VLAN_RANGE_TAG)
+        if vlan_range:
+            # FIXME: vlan_range may have no child or no nodeValue. Meaning would then be 'any'
+            vlan_range = vlan_range[0].firstChild.nodeValue
+        vlan_suggested = element.getElementsByTagName(cls.VLAN_SUGGESTED_TAG)
+        if vlan_suggested:
+            # FIXME: vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
+            vlan_suggested = vlan_suggested[0].firstChild.nodeValue
+        hoplink = HopLink(id)
+        # FIXME: Get a vlan range object for vlan_range and vlan_suggested
+        hoplink.vlan_xlate = vlan_translate
+        hoplink.vlan_range = vlan_range
+        hoplink.vlan_suggested = vlan_suggested
+        return hoplink
 
-    def toXML(self, doc, parent):
-        scsi_node = doc.createElement('switchingCapabilitySpecificInfo')
-        parent.appendChild(scsi_node)
-        if self._switching_capability_specific_info_l2sc:
-            self._switching_capability_specific_info_l2sc.toXML(doc, scsi_node)
-
-class SwitchingCapabilitySpecificInfo_l2sc(GENIObject):
-    def __init__(self, interface_mtu, vlan_range_availability, \
-                     suggested_vlan_range, vlan_translation):
-        super(SwitchingCapabilitySpecificInfo_l2sc, self).__init__()
-        self._interface_mtu = interface_mtu
-        self._vlan_range_availability = vlan_range_availability
-        self._suggested_vlan_range = suggested_vlan_range
-        self._vlan_translation = vlan_translation
-
-    def toXML(self, doc, parent):
-        scsi_l2sc_node = doc.createElement('switchingCapabilitySpecificInfo_L2sc')
-        parent.appendChild(scsi_l2sc_node)
-        scsi_l2sc_node.appendChild(createElementAndText(doc,
-                                                        'interfaceMTU',
-                                                        self._interface_mtu))
-
-        scsi_l2sc_node.appendChild(createElementAndText(doc,
-                                                        'vlanRangeAvailability',
-                                                        self._vlan_range_availability))
-        scsi_l2sc_node.appendChild(createElementAndText(doc,
-                                                        'suggestedVLANRange',
-                                                        self._suggested_vlan_range))
-        # Convert bool string to lowercase
-        vlan_translation = str(self._vlan_translation).lower()
-        scsi_l2sc_node.appendChild(createElementAndText(doc,
-                                                        'vlanTranslation',
-                                                        vlan_translation))
+    def __init__(self, urn):
+        self.urn = urn
+        self.vlan_xlate = False
+        self.vlan_range = ""
+        self.vlan_suggested = None

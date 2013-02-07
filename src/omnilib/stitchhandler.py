@@ -22,14 +22,21 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+import datetime
 import logging
-import omni
 
-from omnilib.util import OmniError
+import omni
+from omnilib.util import OmniError, naiveUTC
+import omnilib.util.handler_utils as handler_utils
 from omnilib.util.files import readFile
+import omnilib.util.credparsing as credutils
+
 import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
+import omnilib.stitch as stitch
+
+from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
@@ -37,61 +44,41 @@ class StitchingError(OmniError):
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
+    '''Workhorse class to do stitching'''
+
     def __init__(self, opts, config, logger):
-        # FIXME: Do I need / want a framework here? Should main get it?
-#        self.framework = framework
         self.logger = logger
         config['logger'] = logger
         self.omni_config = config['omni']
         self.config = config
-        # FIXME: Duplicate the options like am_api_accept does?
         self.opts = opts # command line options as parsed
-#        self.GetVersionCache = None # The cache of GetVersion info in memory
-
-    def dump_objects(self, rspec, aggs):
-        stitching = rspec.stitching
-        print "\n===== Hops ====="
-        for path in stitching.paths:
-            print "Path %s" % (path.id)
-            for hop in path.hops:
-                print "  Hop %s" % (hop.urn)
-                deps = hop.dependsOn
-                if deps:
-                    print "    Dependencies:"
-                    for h in deps:
-                        print "      Hop %s" % (h.urn)
-        print "\n===== Aggregates ====="
-        for agg in aggs:
-            print "\nAggregate %s" % (agg)
-            for h in agg.hops:
-                print "  Hop %s" % (h)
-            for ad in agg.dependsOn:
-                print "  Dep %s" % (ad)
+        self.framework = omni.load_framework(self.config, self.opts)
 
     def doStitching(self, args):
         # Get request RSpec
         request = None
         command = None
         slicename = None
-        if len(args) == 0:
-            self._raise_omni_error("Expected 3 args: <command = createsliver or allocate> <slice name> <rspec file path/url>")
-        elif len(args) == 1:
+        if len(args) > 0:
             command = args[0]
-        elif len(args) == 2:
-            command = args[0]
+        if not command or command.strip().lower() not in ('createsliver', 'allocate'):
+            # Stitcher only handles createsliver or allocate
+            self.logger.info("Passing call to Omni")
+            return omni.call(args, self.opts)
+
+        if len(args) > 1:
             slicename = args[1]
-        else:
-            command = args[0]
-            slicename = args[1]
+        if len(args) > 2:
             request = args[2]
-            if len(args) > 3:
-                self.logger.warn("Arguments %s ignored", args[3:])
+
+        if len(args) > 3:
+            self.logger.warn("Arguments %s ignored", args[3:])
         self.logger.info("Command=%s, slice=%s, rspec=%s", command, slicename, request)
 
-        # Read in the rspec as a string
-        # FIXME
+        # Parse the RSpec
         requestString = ""
-
+        self.rspecParser = omnilib.stitch.RSpecParser.RSpecParser(self.logger)
+        self.parsedUserRequest = None
         if request:
             try:
                 # read the rspec into a string, and add it to the rspecs dict
@@ -104,21 +91,157 @@ class StitchingHandler(object):
             #    requestString = amhandler.self._maybeGetRSpecFromStruct(requestString)
 
             # confirmGoodRequest
-            # -- FIXME: this should be a function in rspec_util: is a request (schema, type), is parsable xml, passes rspeclint?
+            self.confirmGoodRequest(requestString)
+            self.logger.debug("Valid GENI v3 request RSpec")
             
             # parseRequest
-            # -- FIXME: As elementTree stuff?
-            #    requestStruct = parseRequest(requestString, logger)
-        requestStruct = True
+            self.parsedUserRequest = self.rspecParser.parse(requestString)
             
         # If this is not a real stitching thing, just let Omni handle this.
-        if not self.mustCallSCS(requestStruct):
+        if not self.mustCallSCS(self.parsedUserRequest):
             return omni.call(args, self.opts)
-        # return omni.call
 
+        # Ensure the slice is valid before all those Omni calls use it
         sliceurn = self.confirmSliceOK(slicename)
     
-        scsService = scs.Service(self.opts.scsURL)
+        self.scsService = scs.Service(self.opts.scsURL)
+
+        scsResponse = self.callSCS(sliceurn, requestString)
+#        scsResponse = self.callSCS(sliceurn, self.parsedUserRequest)
+
+        # Parse SCS Response, constructing objects and dependencies, validating return
+        parsed_rspec, workflow_parser = self.parseSCSResponse(scsResponse)
+
+        # FIXME: if notScript, print AM dependency tree?
+
+        # Do Main loop (below)
+        self.mainStitchingLoop(workflow_parser.aggs, parsed_rspec)
+          # Are all AMs marked reserved/done? Exit main loop
+          # Any AMs marked should-delete? Do Delete 1 AM
+          # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
+
+        # FIXME: Do cleanup if any, construct return, return to stitcher.main (see above)
+          # Construct a unified manifest
+          # include AMs, URLs, API versions
+          # use code/value/output struct
+          # If error and have an expanded rquest from SCS, include that in output.
+          #   Or if particular AM had errors, ID the AMe and errors
+
+        return ""
+
+    def mainStitchingLoop(self, aggs, rspec):
+
+        # Check if done? (see elsewhere)
+        # Check threads exited
+        # Check for AMs with delete pending
+          # Construct omni args
+          # Mark delete in process
+          # omni.newthread_call
+        # Check for threads exited
+        # Check for AMs with redo pending
+          # FIXME: Is this a thing? Or is this same as reserve?
+        # Construct omni args
+        # Mark redo in process
+        # omni.newthread_call
+        # Check for threads exited
+        # Check for AMs to reserve, no remaining dependencies
+          # Construct omni args
+          # Mark reserve in process
+          # Omni.newthread_call
+        # Any ops in process?
+          # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
+            # Confirm no deletes pending, redoes, or AMs not reserved
+            # Go to end state section
+        launcher = stitch.Launcher(aggs)
+        launcher.launch(rspec)
+        pass
+
+    def confirmGoodRequest(self, requestString):
+        # Confirm the string is a request rspec, valid
+        if requestString is None or str(requestString).strip() == '':
+            raise OmniError("Empty request rspec")
+        if not is_rspec_string(requestString, self.logger):
+            raise OmniError("Request RSpec file did not contain an RSpec")
+        if not is_rspec_of_type(requestString):
+            raise OmniError("Request RSpec file did not contain a request RSpec (wrong type or schema)")
+        try:
+            rspeclint_exists()
+        except:
+            self.logger.debug("No rspeclint found")
+            return
+        if not validate_rspec(requestString):
+            raise OmniError("Request RSpec does not validate against its schemas")
+
+    def confirmSliceOK(self, slicename):
+        # Ensure the given slice name corresponds to a current valid slice
+
+        # Get slice URN from name
+        try:
+            sliceurn = self.framework.slice_name_to_urn(slicename)
+        except Exception, e:
+            self.logger.error("Could not determine slice URN from name: %s", e)
+            raise StitchingError(e)
+
+        # Get slice cred
+        (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
+        if not slicecred:
+            # FIXME: Maybe if the slice doesn't exist, create it?
+            # omniargs = ["createslice", slicename]
+            # try:
+            #     (slicename, message) = omni.call(omniargs, self.opts)
+            # except:
+            #     pass
+            raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
+
+        # Ensure slice not expired
+        sliceexp = credutils.get_cred_exp(self.logger, slicecred)
+        sliceexp = naiveUTC(sliceexp)
+        now = datetime.datetime.utcnow()
+        if sliceexp <= now:
+            # FIXME: Maybe if the slice doesn't exist, create it?
+            # omniargs = ["createslice", slicename]
+            # try:
+            #     (slicename, message) = omni.call(omniargs, self.opts)
+            # except:
+            #     pass
+            raise StitchingError("Slice %s expired at %s" % (sliceurn, sliceexp))
+        
+        # return the slice urn
+        return sliceurn
+
+    def mustCallSCS(self, requestRSpecObject):
+        # Does this request actually require stitching?
+        # Check: >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                # FIXME: hasSharedVlan is not correctly set yet
+                if len(link.aggregates) > 1 and not link.hasSharedVlan:
+                    return True
+        return False
+
+#    def callSCS(self, sliceurn, requestRSpecObject):
+    def callSCS(self, sliceurn, requestString):
+        try:
+ #           request, scsOptions = self.constructSCSArgs(requestRSpecObject)
+            request, scsOptions = self.constructSCSArgs(requestString)
+            scsResponse = self.scsService.ComputePath(sliceurn, request, scsOptions)
+        except Exception as e:
+            self.logger.error("Error from slice computation service: %s", e)
+            raise StitchingError("SCS gave error: %s" % e)
+
+        self.logger.info("SCS successfully returned.");
+
+        if self.opts.debug:
+            self.logger.debug("Writing SCS result JSON to scs-result.json")
+            with open ("scs-result.json", 'w') as file:
+                file.write(str(self.scsService.result))
+
+        return scsResponse
+
+    def constructSCSArgs(self, request, hopObjectsToExclude=None):
+        # Eventually take vlans to exclude as well
+        # return requestString and options
+
         options = {} # No options for now.
         # options is a struct
         # To exclude a hop, add a geni_routing_profile struct
@@ -145,41 +268,56 @@ class StitchingHandler(object):
 #        profile[path] = pathStruct
 #        options["geni_routing_profile"]=profile
 
-        try:
-            scsResponse = scsService.ComputePath(sliceurn, requestString,
-                                                 options)
-        except Exception as e:
-            self.logger.error("Error from slice computation service: %s", e)
-            # What to return to signal error?
-            raise StitchingError("SCS gave error: %s" % e)
+        if hopObjectsToExclude:
+            profile = {}
+            for hop in hopObjectsToExclude:
+                # get path
+                path = hop._path.id
+                if profile.has_key(path):
+                    pathStruct = profile[path]
+                else:
+                    pathStruct = {}
 
-        self.logger.info("SCS successfully returned.");
+                # get hop URN
+                urn = hop.urn
+                if pathStruct.has_key("hop_exclusion_list"):
+                    excludes = pathStruct["hop_exclusion_list"]
+                else:
+                    excludes = []
+                excludes.append(urn)
+                pathStruct["hop_exclusion_list"] = excludes
+                profile[path] = pathStruct
+            options["geni_routing_profile"] = profile
 
-#        with open ("scs-result.json", 'w') as file:
-#            file.write(str(scsService.result))
-
-        # If error, return
+#        return request.toXML(), options
+        return request, options
+        
+    def parseSCSResponse(self, scsResponse):
         # save expanded RSpec
         expandedRSpec = scsResponse.rspec()
-#        with open("expanded.xml", 'w') as file:
-#            file.write(expandedRSpec)
-#        print "%r" % (expandedRSpec)
-#        exit
+        if self.opts.debug:
+            self.logger.debug("Writing SCS expanded RSpec to expanded.xml")
+            with open("expanded.xml", 'w') as file:
+                file.write(expandedRSpec)
 
        # parseRequest
-        parser = omnilib.stitch.RSpecParser.RSpecParser(verbose=True)
-        parsed_rspec = parser.parse(expandedRSpec)
-        print "Parsed_rspec %r of type %r" % (parsed_rspec, type(parsed_rspec))
+        parsed_rspec = self.rspecParser.parse(expandedRSpec)
+        self.logger.debug("Parsed SCS expanded RSpec of type %r",
+                          type(parsed_rspec))
+        #with open('gen-rspec.xml', 'w') as f:
+        #    f.write(parsed_rspec.dom.toxml())
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()
-        #print "%r" % (workflow)
-        import pprint
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(workflow)
+        if self.opts.debug:
+            import pprint
+            pp = pprint.PrettyPrinter(indent=2)
+            pp.pprint(workflow)
+
         workflow_parser = WorkflowParser()
         workflow_parser.parse(workflow, parsed_rspec)
-        self.dump_objects(parsed_rspec, workflow_parser.aggs)
+        if self.opts.debug:
+            self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
           # parse list of AMs, URNs, URLs - creating structs for AMs and hops
           # check each AM reachable, and we know the URL/API version to use
@@ -203,80 +341,28 @@ class StitchingHandler(object):
         # Check SCS output consistency in a subroutine:
           # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
           # All AMs must be listed in workflow data at least once per path they are in
+        return parsed_rspec, workflow_parser
 
-        # Construct list of AMs with no unsatisfied dependencies
-        # if notScript, print AM dependency tree
-        # Do Main loop (below)
-          # Are all AMs marked reserved/done? Exit main loop
-          # Any AMs marked should-delete? Do Delete 1 AM
-          # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
-        # Do cleanup if any, construct return, return to stitcher.main (see above)
-          # Construct a unified manifest
-          # include AMs, URLs, API versions
-          # use code/value/output struct
-          # If error and have an expanded rquest from SCS, include that in output.
-          #   Or if particular AM had errors, ID the AMe and errors
-        return ""
-
-    def mainStichingLoop(self):
-        # FIXME: Need to put this in an object where I can get to a bunch of data objects?
-
-        # Check if done? (see elsewhere)
-        # Check threads exited
-        # Check for AMs with delete pending
-          # Construct omni args
-          # Mark delete in process
-          # omni.newthread_call
-        # Check for threads exited
-        # Check for AMs with redo pending
-          # FIXME: Is this a thing? Or is this same as reserve?
-        # Construct omni args
-        # Mark redo in process
-        # omni.newthread_call
-        # Check for threads exited
-        # Check for AMs to reserve, no remaining dependencies
-          # Construct omni args
-          # Mark reserve in process
-          # Omni.newthread_call
-        # Any ops in process?
-          # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
-            # Confirm no deletes pending, redoes, or AMs not reserved
-            # Go to end state section
-        pass
-
-    def mustCallSCS(self, request):
-        # >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension
-        if request:
-            return True
-        else:
-            return False
-
-    def confirmSliceOK(self, slicename):
-        # FIXME: I need to get the framework and use it to do getslicecred, etc.
-        fw = omni.load_framework(self.config, self.opts)
-        
-        # Get slice URN from name
-        sliceurn = fw.slice_name_to_urn(slicename)
-        # return error on error
-        # Get slice cred
-        # FIXME: Maybe use handler_utils._get_slice_cred
-        #    slice_cred = fw.get_slice_cred(sliceurn)
-        # return error on error
-        # Ensure slice not expired
-        # handler_utils._print_slice_expiration(sliceurn, slicecred)
-        # amhandler._has_slice_expired(slice_cred) (which uses credutils.get_cred_exp)
-        # return error on error
-
-        # Maybe if the slice doesn't exist, create it?
-        # omniargs = ["createslice", slicename]
-        # try:
-        #     (slicename, message) = omni.call(omniargs, self.opts)
-        # except:
-        #     pass
-
-        
-        # return the slice urn
-        return sliceurn
+    def dump_objects(self, rspec, aggs):
+        '''Print out the hops, aggregates, dependencies'''
+        stitching = rspec.stitching
+        self.logger.debug( "\n===== Hops =====")
+        for path in stitching.paths:
+            self.logger.debug( "Path %s" % (path.id))
+            for hop in path.hops:
+                self.logger.debug( "  Hop %s" % (hop))
+                deps = hop.dependsOn
+                if deps:
+                    self.logger.debug( "    Dependencies:")
+                    for h in deps:
+                        self.logger.debug( "      Hop %s" % (h))
+        self.logger.debug( "\n===== Aggregates =====")
+        for agg in aggs:
+            self.logger.debug( "\nAggregate %s" % (agg))
+            for h in agg.hops:
+                self.logger.debug( "  Hop %s" % (h))
+            for ad in agg.dependsOn:
+                self.logger.debug( "  Depends on %s" % (ad))
 
     def _raise_omni_error( self, msg, err=OmniError, triple=None ):
         msg2 = msg

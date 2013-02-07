@@ -21,7 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from omnilib.stitch.objects import Aggregate
+from objects import Aggregate
 
 class WorkflowParser(object):
 
@@ -41,11 +41,11 @@ class WorkflowParser(object):
     def _get_agg(self, agg_url, agg_urn):
         cache_key = (agg_url, agg_urn)
         if cache_key in self._aggs:
-            print "cache hit"
             agg = self._aggs[cache_key]
         else:
-            print "cache miss"
-            agg = Aggregate(agg_urn, agg_url)
+            agg = Aggregate.find(agg_urn)
+            if not agg.url:
+                agg.url = agg_url
             self._aggs[cache_key] = agg
         return agg
 
@@ -54,12 +54,16 @@ class WorkflowParser(object):
         for link_id in workflow:
             path = rspec.find_path(link_id)
             if not path:
-                msg = "No path found with id = %r" % (link_id)
+                msg = "No path found in rspec with id = %r" % (link_id)
                 raise Exception(msg)
             deps = workflow[link_id][self.DEPENDENCIES_KEY]
             self._parse_deps(deps, path)
             # Post processing steps:
+
+            # Compute AM dependencies
             self._add_agg_deps(path)
+            # FIXME: Check for AM dependency loops - or is this in _add_agg_deps?
+            # FIXME: Compute hop import_from / export_to
 
     def _add_hop_info(self, hop, info_dict):
         """Add the aggregate and import_vlans info to the hop if it
@@ -84,13 +88,11 @@ class WorkflowParser(object):
             # Each dependency has a hop URN. Use that to
             # find the relevant hop.
             hop_urn = d[self.HOP_URN_KEY]
-            print "Hop URN = %r" % (hop_urn)
             hop = path.find_hop(hop_urn)
             if not hop:
-                msg = "No hop found with id %r on path %r" % (hop_urn,
+                msg = "No hop found with id %r on rspec path element %r" % (hop_urn,
                                                               path.id)
                 raise Exception(msg)
-            print "Got hop %r (%r)" % (hop, hop.urn)
             self._add_hop_info(hop, d)
             hop_deps = d[self.DEPENDENCIES_KEY]
             self._parse_hop_deps(hop_deps, hop, path)
@@ -101,11 +103,10 @@ class WorkflowParser(object):
             hop_urn = d[self.HOP_URN_KEY]
             dep_hop = path.find_hop(hop_urn)
             if not dep_hop:
-                msg = "No dependent hop found with id %r on path %r"
+                msg = "No dependent hop found with id %r on rspec path element %r"
                 msg = msg % (hop_urn, path.id)
                 raise Exception(msg)
             self._add_hop_info(dep_hop, d)
-            print "Hop %r adding dependency on hop %r" % (hop, dep_hop)
             hop.add_dependency(dep_hop)
             # TODO: Add a reverse pointer?
 
@@ -115,7 +116,8 @@ class WorkflowParser(object):
         """
         for hop in path.hops:
             hop_agg = hop.aggregate
-            print "AAD: hop.aggregate: %s" % (hop_agg)
             for hd in hop.dependsOn:
-                print "AAD:   dep.aggregate: %s" % (hd.aggregate)
+                # FIXME: If hd.aggregate depends on hop_agg then we have a loop - error out
                 hop_agg.add_dependency(hd.aggregate)
+                # FIXME: Only add this dependency if hop_agg != hd.aggregate
+                # FIXME: hop_agg also depends on all AMs that hd.aggregate depends on
