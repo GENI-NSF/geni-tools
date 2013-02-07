@@ -99,7 +99,7 @@ class VLANRange( set ):
                     minValue = int(first)
                     maxValue = minValue
                 except:
-                    if (type(first) is str) and (first == "any"):
+                    if (type(first) is str) and ((first == "any") or (first == "")):
                             minValue = VLAN.minvlan() 
                             maxValue = VLAN.maxvlan() 
                     else:
@@ -153,6 +153,10 @@ if __name__ == "__main__":
     print "\nNew range with an int removed from it"
     print a - b
     print "Type of new object is: "+ str(type(a - b).__name__)
+
+
+    # e = VLANRange.fromString("")
+    # print "\ne is: "+str(e)
 
     # d = VLANRange()
     # d = VLANRange.fromString("any")
