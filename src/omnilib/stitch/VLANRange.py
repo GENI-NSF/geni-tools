@@ -38,8 +38,16 @@ class VLAN( int ):
             raise TypeError("Int must be <= %s instead is %s" % (self.__maxvlan, value))
         super(VLAN, self).__init__(value)        
 
+    @classmethod
+    def minvlan(cls):
+        return cls.__minvlan
+
+    @classmethod
+    def maxvlan(cls):
+        return cls.__maxvlan
+
 class VLANRange( set ):
-    def __init__( self, vlan=None ):
+    def __init__( self, vlan=None, stringIn=None ):
         if vlan is None:
             super( VLANRange, self).__init__()                    
         elif type(vlan) in (VLAN, int):
@@ -69,32 +77,79 @@ class VLANRange( set ):
         newRange = VLANRange( other )
         super( VLANRange, self).__add__(newRange)                    
 
-    def fromString( self, string ):
+    def fromString( self, stringIn ):
         # Valid inputs are like:
         #   any
         #   1-20
         #   1-20, 454, 700-801
-        pass
+        inputs = stringIn.strip()
+        items = inputs.split(",")
+        for item in items:
+            splitItem = item.split("-")
+            parsedItems = [parse.strip().lower() for parse in splitItem]
+#            print parsedItems
+            minValue = -1
+            maxValue = -1
+            if len(parsedItems) == 1:                
+                first = parsedItems[0]
+                try:
+                    minValue = int(first)
+                    maxValue = minValue
+                except:
+                    if (type(first) is str) and (first == "any"):
+                            minValue = VLAN.minvlan() 
+                            maxValue = VLAN.maxvlan() 
+                    else:
+                        raise ValueError("String value must be 'any', a integer, or a range of integers instead is %s " % str(parsedItems))
+            elif len(parsedItems) == 2:
+                intItems = [int(integer) for integer in parsedItems]
+                first, second = intItems
+                if (type(first) is int) and (type(second) is int):
+                    minValue, maxValue = first, second
+                else:
+                    raise ValueError("Both values must be integers instead received %s " % str(item))
+            else:
+                raise ValueError("Range should contain at most 2 values instead received %s " % str(item))
+#            print minValue, maxValue
+            for newVLAN in xrange(minValue,maxValue+1):
+                self.add( newVLAN )
 
     def toString( self ):
-        pass
+        print str(self)
+
+    def __str__( self ):
+        return super(VLANRange,self).__str__()
     
 
 if __name__ == "__main__":
-#    a = VLAN( -1000 )
-#    b = VLAN( -1 )
-    c = VLAN( 0 )
-    d = VLAN( 1 )
-    e = VLAN( 2 )
-    f = VLAN( 500 )
-    g = VLAN( 4095 )
-#    h = VLAN( 4096 )
-#    i = VLAN( 10000 )
-#    j = VLAN( "abc" )
-#    k = VLAN( {} )
-#    l = VLAN( VLAN(100) )
+    print "\nSome operations on VLANRanges...\n"
 
-    VLANRange()
-    VLANRange( 3 )
-    VLANRange( VLAN(3) )
-    VLANRange( VLANRange(3) )
+    a = VLANRange( 3 )
+    a.fromString("4-6,8")
+    print "a is: "+str(a)
+    b = VLANRange( 8 )
+    print "b is: "+str(b)
+    c = VLANRange( 8 )
+    print "c is: "+str(c)
+
+    print "\nIs VLAN 3 in the range of a? (True)"
+    print VLAN(3) in a
+    print 3 in a
+    print "\nIs VLAN 2 in the range of a? (False)"
+    print VLAN(2) in a
+    print 2 in a
+
+    print "\nIntersection of a and b? ( VLANRange([8]) )"
+    print a & b
+    print a.intersection(b)
+
+    print "\nIs a == b? (False)"
+    print a == b
+    print "\nIs c == b? (True)"
+    print c == b
+
+    print "\nNew range with an int removed from it"
+    print a - b
+    print "Type of new object is: "+ str(type(a - b).__name__)
+
+
