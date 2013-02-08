@@ -26,33 +26,32 @@ import logging
 
 class Launcher(object):
 
-    def __init__(self, aggs=[], logger=None):
+    def __init__(self, options, aggs=[], logger=None):
         self.aggs = aggs
+        self.opts = options
         self.logger = logger or logging.getLogger('stitch.launcher')
 
     def launch(self, rspec):
         while not self._complete():
-            # Are there AMs to Delete? Or did that already happen?
-
-            # Are there AMs to redo? Or does that fall intio the ready_aggregates bundle?
+            # FIXME: Are there AMs to Delete? Or did that already happen?
 
             ready_aggs = self._ready_aggregates()
             self.logger.debug("There are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
                 # FIXME: Need a timeout mechanism on AM calls
-                agg.allocate(rspec.dom.toxml())
+                agg.allocate(self.opts, rspec.dom.toxml())
 
-            # Do we need to sleep?
+            # FIXME: Do we need to sleep?
 
         self.logger.info("All aggregates are complete.")
 
 
-    # FIXME: Ensure ready implies not in process and not completed
+    # ready implies not in process and not completed
     def _ready_aggregates(self):
         return [a for a in self.aggs if a.ready]
 
-    # FIXME: Ensure agg.completed implies not in process and not ready
+    # agg.completed implies not in process and not ready
     def _complete(self, aggs=None):
         """Determine if the launch is complete. The launch is
         complete if all aggregates are complete.

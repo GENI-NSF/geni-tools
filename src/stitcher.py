@@ -28,6 +28,7 @@ the combined manifest RSpec.'''
 
 import json
 import logging
+import os
 import sys
 
 import omni
@@ -87,9 +88,11 @@ def call(argv, options=None):
 
     if options.fakeModeDir:
         logger.info("Got Fake Mode Dir %s", options.fakeModeDir)
-        if not os.path.isDir(options.fakeModeDir):
+        if not os.path.isdir(options.fakeModeDir):
             logger.error("But that is not a directory!")
             raise StitchingError("Fake Mod path not a directory: %s" % options.fakeModeDir)
+        else:
+            logger.info("Running in fake mode")
 
     if options.debug:
         logger.info(omni.getSystemInfo())

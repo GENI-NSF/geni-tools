@@ -126,6 +126,8 @@ class Aggregate(object):
         self._paths = set()
         self._dependsOn = set()
         self.logger = logging.getLogger('stitch.Aggregate')
+        self.requestDom = None # the DOM as constructed to submit in request to this AM
+        self.manifestDom = None # the DOM as we got back from the AM
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -165,23 +167,67 @@ class Aggregate(object):
 
     @property
     def ready(self):
-        # FIXME: Avoid 'busy' AMs
-        return not self.completed and self.dependencies_complete
+        return not self.completed and not self.inProcess and self.dependencies_complete
 
-    def allocate(self, rspec):
+    def allocate(self, opts, rspec):
+        if self.inProcess:
+            self.logger.warn("Called allocate on AM already in process: %s", self)
+            return
+        # Confirm all dependencies still done
+        if not self.dependencies_complete:
+            self.logger.warn("Cannot allocate AM %s: dependencies not read", self)
+            return
+
+        # FIXME: Check: have  previous manifest?
+          # if manifest == request then go to Done
+          # Else call self.delete()
+
+        self.completed = False
+
         # for now, sleep a little while, then assume complete.
         # N.B. the rspec is an instance of class RSpec.
         #      if there are dependencies on the allocated VLANs of
         #      other aggregates, copy those VLAN tags into my
         #      section, then convert to XML via "toxml()"
         self.logger.info("NOT allocating resources from %s", self)
-        # FIXME: Mark AM is busy
+        # Mark AM is busy
+        self.inProcess = True
         time.sleep(random.randrange(1, 6))
-        # rspec_str = rspec.dom.toxml()
-        # FIXME: Mark AM not busy
-        self.logger.info("Allocation at %s complete (NOT)", self)
-        self.completed = True
 
+        # FIXME: If fakeMode do a fake thing
+#        if opts.fakeModeDir:
+#            self.logger.info("Doing fake allocation")
+#        else:
+        # FIXME: Else, do a real thing
+        # try:
+        #     (text, retitem) = omni.call(omniargs, self.opts)
+        # except:
+        #     call self.handleAllocateError
+
+        # Mark AM not busy
+        self.inProcess = False
+
+        self.logger.info("Allocation at %s complete (NOT)", self)
+
+        # FIXME: implement all this....
+        # if omni returned error code  
+            # call self.handleAllocateError
+             # this should include noticing AM busy
+        # parse manifest (includes saving vlan ranges away)
+        # if APIv2 and manifest missing specific suggested tags on this AMs hops
+          # call sliverStatus. Wait till ready - with some timeout
+          # call listResources
+          # parse manifest
+        # for each hop
+          # if suggested in request not any and suggested manfiest != suggested in request
+            # call self.suggestedDifferent(hop)
+        # :DONE
+        # for each hop
+          # mark complete
+
+        # mark self complete
+        self.completed = True
+        
 
 class Hop(object):
 
@@ -409,5 +455,7 @@ class HopLink(object):
     def __init__(self, urn):
         self.urn = urn
         self.vlan_xlate = False
-        self.vlan_range = ""
-        self.vlan_suggested = None
+        self.vlan_range_request = ""
+        self.vlan_suggested_request = None
+        self.vlan_range_manifest = ""
+        self.vlan_suggested_manifest = None

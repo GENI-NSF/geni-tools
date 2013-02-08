@@ -99,7 +99,13 @@ class StitchingHandler(object):
             
         # If this is not a real stitching thing, just let Omni handle this.
         if not self.mustCallSCS(self.parsedUserRequest):
+            # Warning: If this is createsliver and you specified multiple aggregates,
+            # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
+
+        # Remove any -a arguments from the opts so that when we later call omni
+        # the right thing happens
+        self.opts.aggregate = []
 
         # Ensure the slice is valid before all those Omni calls use it
         sliceurn = self.confirmSliceOK(slicename)
@@ -152,7 +158,7 @@ class StitchingHandler(object):
           # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
             # Confirm no deletes pending, redoes, or AMs not reserved
             # Go to end state section
-        launcher = stitch.Launcher(aggs)
+        launcher = stitch.Launcher(self.opts, aggs)
         launcher.launch(rspec)
         pass
 
@@ -181,6 +187,10 @@ class StitchingHandler(object):
         except Exception, e:
             self.logger.error("Could not determine slice URN from name: %s", e)
             raise StitchingError(e)
+
+        if self.opts.fakeModeDir:
+            self.logger.info("Fake mode: not checking slice credential")
+            return sliceurn
 
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
