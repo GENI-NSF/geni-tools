@@ -351,11 +351,16 @@ class StitchingHandler(object):
             self.logger.debug( "Path %s" % (path.id))
             for hop in path.hops:
                 self.logger.debug( "  Hop %s" % (hop))
+                # FIXME: don't use the private variable
+                self.logger.debug( "    VLAN Suggested %s" % (hop._hop_link.vlan_suggested))
+                self.logger.debug( "    VLAN Range %s" % (hop._hop_link.vlan_range))
                 deps = hop.dependsOn
                 if deps:
                     self.logger.debug( "    Dependencies:")
                     for h in deps:
                         self.logger.debug( "      Hop %s" % (h))
+
+
         self.logger.debug( "\n===== Aggregates =====")
         for agg in aggs:
             self.logger.debug( "\nAggregate %s" % (agg))

@@ -27,6 +27,7 @@ import logging
 import random
 import time
 from GENIObject import *
+from VLANRange import *
 
 class Path(GENIObject):
     '''Path'''
@@ -382,16 +383,27 @@ class HopLink(object):
         vlan_range = element.getElementsByTagName(cls.VLAN_RANGE_TAG)
         if vlan_range:
             # FIXME: vlan_range may have no child or no nodeValue. Meaning would then be 'any'
-            vlan_range = vlan_range[0].firstChild.nodeValue
+            if vlan_range[0].firstChild:
+                vlan_range_value = vlan_range[0].firstChild.nodeValue
+            else:
+                vlan_range_value = "any"
+            vlan_range_obj = VLANRange.fromString(vlan_range_value)
+        else:
+            vlan_range_obj = VLANRange()            
         vlan_suggested = element.getElementsByTagName(cls.VLAN_SUGGESTED_TAG)
         if vlan_suggested:
             # FIXME: vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
-            vlan_suggested = vlan_suggested[0].firstChild.nodeValue
+            if vlan_suggested[0].firstChild:
+                vlan_suggested_value = vlan_suggested[0].firstChild.nodeValue
+            else:
+                vlan_suggested_value = "any"                
+            vlan_suggested_obj = VLANRange.fromString(vlan_suggested_value)
+        else:
+            vlan_suggested_obj = VLANRange()            
         hoplink = HopLink(id)
-        # FIXME: Get a vlan range object for vlan_range and vlan_suggested
         hoplink.vlan_xlate = vlan_translate
-        hoplink.vlan_range = vlan_range
-        hoplink.vlan_suggested = vlan_suggested
+        hoplink.vlan_range = vlan_range_obj
+        hoplink.vlan_suggested = vlan_suggested_obj
         return hoplink
 
     def __init__(self, urn):
