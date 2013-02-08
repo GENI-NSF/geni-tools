@@ -26,8 +26,9 @@ import logging
 
 class Launcher(object):
 
-    def __init__(self, aggs=[], logger=None):
+    def __init__(self, options, aggs=[], logger=None):
         self.aggs = aggs
+        self.opts = options
         self.logger = logger or logging.getLogger('stitch.launcher')
 
     def launch(self, rspec):
@@ -39,8 +40,7 @@ class Launcher(object):
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
                 # FIXME: Need a timeout mechanism on AM calls
-                # FIXME: Should agg.allocate handle return? Or should we handle returns here? Currently agg handles it
-                agg.allocate(rspec.dom.toxml())
+                agg.allocate(self.opts, rspec.dom.toxml())
 
             # FIXME: Do we need to sleep?
 

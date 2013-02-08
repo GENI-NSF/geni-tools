@@ -125,6 +125,8 @@ class Aggregate(object):
         self._paths = set()
         self._dependsOn = set()
         self.logger = logging.getLogger('stitch.Aggregate')
+        self.requestDom = None # the DOM as constructed to submit in request to this AM
+        self.manifestDom = None # the DOM as we got back from the AM
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -166,12 +168,12 @@ class Aggregate(object):
     def ready(self):
         return not self.completed and not self.inProcess and self.dependencies_complete
 
-    def allocate(self, rspec):
+    def allocate(self, opts, rspec):
         if self.inProcess:
             self.logger.warn("Called allocate on AM already in process: %s", self)
             return
         # Confirm all dependencies still done
-        if not self.dependencies_complete():
+        if not self.dependencies_complete:
             self.logger.warn("Cannot allocate AM %s: dependencies not read", self)
             return
 
@@ -192,6 +194,9 @@ class Aggregate(object):
         time.sleep(random.randrange(1, 6))
 
         # FIXME: If fakeMode do a fake thing
+#        if opts.fakeModeDir:
+#            self.logger.info("Doing fake allocation")
+#        else:
         # FIXME: Else, do a real thing
         # try:
         #     (text, retitem) = omni.call(omniargs, self.opts)
@@ -206,6 +211,7 @@ class Aggregate(object):
         # FIXME: implement all this....
         # if omni returned error code  
             # call self.handleAllocateError
+             # this should include noticing AM busy
         # parse manifest (includes saving vlan ranges away)
         # if APIv2 and manifest missing specific suggested tags on this AMs hops
           # call sliverStatus. Wait till ready - with some timeout
@@ -430,12 +436,14 @@ class HopLink(object):
         hoplink = HopLink(id)
         # FIXME: Get a vlan range object for vlan_range and vlan_suggested
         hoplink.vlan_xlate = vlan_translate
-        hoplink.vlan_range = vlan_range
-        hoplink.vlan_suggested = vlan_suggested
+        hoplink.vlan_range_request = vlan_range
+        hoplink.vlan_suggested_request = vlan_suggested
         return hoplink
 
     def __init__(self, urn):
         self.urn = urn
         self.vlan_xlate = False
-        self.vlan_range = ""
-        self.vlan_suggested = None
+        self.vlan_range_request = ""
+        self.vlan_suggested_request = None
+        self.vlan_range_manifest = ""
+        self.vlan_suggested_manifest = None
