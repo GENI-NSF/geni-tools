@@ -90,6 +90,7 @@ class Stitching(GENIObject):
         self.last_update_time = str(last_update_time)
         self.paths = paths
 
+    # Arg of link_id: this is the client_id of the main body link, or the path ID
     def find_path(self, link_id):
         if self.paths:
             for path in self.paths:
@@ -230,6 +231,8 @@ class Aggregate(object):
         
 
 class Hop(object):
+    # A hop on a path in the stitching element
+    # Note this is path specific (and has a path reference)
 
     # XML tag constants
     ID_TAG = 'id'
@@ -311,7 +314,7 @@ class RSpec(GENIObject):
         super(RSpec, self).__init__()
         self.stitching = stitching
         self._nodes = []
-        self._links = []
+        self._links = [] # Main body links
         self.dom = None
 
     @property
@@ -324,6 +327,7 @@ class RSpec(GENIObject):
 
     @property
     def links(self):
+        # Gets main body link elements
         return self._links
 
     @links.setter
@@ -331,13 +335,13 @@ class RSpec(GENIObject):
         self._setListProp('links', linkList, Link)
 
     def find_path(self, link_id):
-        """Find the link with the given id and return it. If no link
+        """Find the stitching path with the given id and return it. If no path
         matches the given id, return None.
         """
         return self.stitching and self.stitching.find_path(link_id)
 
-    def find_hop(self, hop_urn):
-        """Find the link with the given id and return it. If no link
+    def find_link(self, hop_urn):
+        """Find the main body link with the given id and return it. If no link
         matches the given id, return None.
         """
         for link in self._links:
@@ -347,6 +351,9 @@ class RSpec(GENIObject):
 
 
 class Link(GENIObject):
+    # A link from the main body of the rspec
+    # Note the link client_id matches the hop_urn from the workflow matches the HopLink ID
+
     __ID__ = validateTextLike
     __simpleProps__ = [ ['client_id', str]]
 
@@ -409,6 +416,8 @@ class InterfaceRef(object):
 
 
 class HopLink(object):
+    # From the stitching element, the link on the hop on a path
+    # Note this is Path specific
 
     # XML tag constants
     ID_TAG = 'id'
@@ -448,8 +457,8 @@ class HopLink(object):
             vlan_suggested_obj = VLANRange()            
         hoplink = HopLink(id)
         hoplink.vlan_xlate = vlan_translate
-        hoplink.vlan_range = vlan_range_obj
-        hoplink.vlan_suggested = vlan_suggested_obj
+        hoplink.vlan_range_request = vlan_range_obj
+        hoplink.vlan_suggested_request = vlan_suggested_obj
         return hoplink
 
     def __init__(self, urn):
