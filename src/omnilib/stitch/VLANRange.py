@@ -119,8 +119,42 @@ class VLANRange( set ):
         return newObj
 
     def __str__( self ):
-        # FIXME: This should do something intelligent and not just list every possible VLAN
-        return super(VLANRange,self).__str__()
+        out = ""
+        hasNum = False
+        min = 4096
+        max = 0
+        for num in sorted(self):
+            if min < 4096 and (max+1) == num:
+                max = num
+                continue
+            elif min < 4096 and num > max+1:
+                if hasNum:
+                    out += ','
+                if max > min+1:
+                    out += str(min)+'-'+str(max)
+                    hasNum = True
+                else:
+                    out += str(min)
+                    hasNum = True
+                    if max > min:
+                        out += ',' + str(max)
+                min = num
+                max = num
+                continue
+            else:
+                min = num
+                max = num
+
+        if hasNum:
+            out += ','
+        if max > min+1:
+            out += str(min)+'-'+str(max)
+        else:
+            out += str(min)
+            if max > min:
+                out += ',' + str(max)
+        return out
+#        return super(VLANRange,self).__str__()
     
 
 if __name__ == "__main__":
