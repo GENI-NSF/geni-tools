@@ -68,7 +68,7 @@ class RSpecParser:
                 self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
             else:
-                self.logger.debug("Skipping %s node", child.nodeName)
+                self.logger.debug("Skipping '%s' node", child.nodeName)
         rspec = RSpec(stitching)
         rspec.links = links
         return rspec
