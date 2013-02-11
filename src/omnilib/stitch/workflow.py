@@ -20,8 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Parse and hold the workflow struct returned by the SCS'''
 
 from objects import Aggregate
+from utils import StitchingError
 
 class WorkflowParser(object):
 
@@ -55,13 +57,14 @@ class WorkflowParser(object):
             path = rspec.find_path(link_id)
             if not path:
                 msg = "No path found in rspec with id = %r" % (link_id)
-                raise Exception(msg)
+                raise StitchingError(msg)
             deps = workflow[link_id][self.DEPENDENCIES_KEY]
             self._parse_deps(deps, path)
             # Post processing steps:
 
             # Compute AM dependencies
             self._add_agg_deps(path)
+
             # FIXME: Check for AM dependency loops - or is this in _add_agg_deps?
             # FIXME: Compute hop import_from / export_to
 
@@ -92,7 +95,7 @@ class WorkflowParser(object):
             if not hop:
                 msg = "No hop found with id %r on rspec path element %r" % (hop_urn,
                                                               path.id)
-                raise Exception(msg)
+                raise StitchingError(msg)
             self._add_hop_info(hop, d)
             hop_deps = d[self.DEPENDENCIES_KEY]
             self._parse_hop_deps(hop_deps, hop, path)
@@ -105,7 +108,7 @@ class WorkflowParser(object):
             if not dep_hop:
                 msg = "No dependent hop found with id %r on rspec path element %r"
                 msg = msg % (hop_urn, path.id)
-                raise Exception(msg)
+                raise StitchingError(msg)
             self._add_hop_info(dep_hop, d)
             hop.add_dependency(dep_hop)
             # TODO: Add a reverse pointer?

@@ -24,8 +24,10 @@
 "Tools and utilities for talking to the stitching computation service."
 
 import xmlrpclib
+from utils import StitchingError
 
 class Result(object):
+    '''Hold and parse the raw result from the SCS'''
     CODE = 'code'
     VALUE = 'value'
     GENI_CODE = 'geni_code'
@@ -41,7 +43,7 @@ class Result(object):
         if self.VALUE in self.result:
             return self.result[self.VALUE]
         else:
-            raise Exception("No value in result")
+            raise StitchingError("No value in result")
     def errorString(self):
         ret = ""
         if self.CODE in self.result:
@@ -74,12 +76,13 @@ class Service(object):
             else:
                 # when there is no route I seem to get:
 #{'geni_code': 3} MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.
-                raise Exception("ComputePath invocation failed: %s" % geni_result.errorString())
+                raise StitchingError("ComputePath invocation failed: %s" % geni_result.errorString())
         except xmlrpclib.Error as v:
             print "ERROR", v
             raise
 
 class PathInfo(object):
+    '''Hold the SCS expanded RSpec and workflow data'''
     SERVICE_RSPEC = 'service_rspec'
     WORKFLOW_DATA = 'workflow_data'
     DEPS = 'dependencies'
@@ -120,6 +123,7 @@ class PathInfo(object):
 
 
 class Dependency(object):
+    '''A dependency of a stitching path (aka Link) from the workflow_data'''
     AGG_URN = 'aggregate_urn'
     AGG_URL = 'aggregate_url'
     DEPS = 'dependencies'
@@ -134,6 +138,7 @@ class Dependency(object):
                 self.dependencies.append(Dependency(d))
 
 class Link(object):
+    '''A stitching path's entry in the workflow_data'''
     def __init__(self, name):
         self.name = name
         self.dependencies = list()

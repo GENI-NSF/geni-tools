@@ -432,13 +432,16 @@ class HopLink(object):
         id = element.getAttribute(cls.ID_TAG)
         vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
         if vlan_xlate:
-            # FIXME: If no firstChild or no nodeValue, assume false
-            x = vlan_xlate[0].firstChild.nodeValue
+            # If no firstChild or no nodeValue, assume false
+            if len(vlan_xlate) > 0 and vlan_xlate[0].firstChild:
+                x = vlan_xlate[0].firstChild.nodeValue
+            else:
+                x = 'False'
             vlan_translate = x.lower() in ('true')
         vlan_range = element.getElementsByTagName(cls.VLAN_RANGE_TAG)
         if vlan_range:
-            # FIXME: vlan_range may have no child or no nodeValue. Meaning would then be 'any'
-            if vlan_range[0].firstChild:
+            # vlan_range may have no child or no nodeValue. Meaning would then be 'any'
+            if len(vlan_range) > 0 and vlan_range[0].firstChild:
                 vlan_range_value = vlan_range[0].firstChild.nodeValue
             else:
                 vlan_range_value = "any"
@@ -447,8 +450,8 @@ class HopLink(object):
             vlan_range_obj = VLANRange()            
         vlan_suggested = element.getElementsByTagName(cls.VLAN_SUGGESTED_TAG)
         if vlan_suggested:
-            # FIXME: vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
-            if vlan_suggested[0].firstChild:
+            # vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
+            if len(vlan_suggested) > 0 and vlan_suggested[0].firstChild:
                 vlan_suggested_value = vlan_suggested[0].firstChild.nodeValue
             else:
                 vlan_suggested_value = "any"                

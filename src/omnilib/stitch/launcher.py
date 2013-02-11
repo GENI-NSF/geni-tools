@@ -32,6 +32,8 @@ class Launcher(object):
         self.logger = logger or logging.getLogger('stitch.launcher')
 
     def launch(self, rspec):
+        '''The main loop for stitching: keep looking for AMs that are not complete, then 
+        make a reservation there.'''
         while not self._complete():
             # FIXME: Are there AMs to Delete? Or did that already happen?
 

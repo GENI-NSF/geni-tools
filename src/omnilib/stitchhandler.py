@@ -35,12 +35,9 @@ import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
+from omnilib.stitch.utils import StitchingError
 
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
-
-class StitchingError(OmniError):
-    '''Errors due to stitching problems'''
-    pass
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
@@ -63,8 +60,12 @@ class StitchingHandler(object):
             command = args[0]
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
             # Stitcher only handles createsliver or allocate
-            self.logger.info("Passing call to Omni")
-            return omni.call(args, self.opts)
+            if self.opts.fakeModeDir:
+                self.logger.info("In fake mode. Otherwise would call Omni with args %r", args)
+                return
+            else:
+                self.logger.info("Passing call to Omni")
+                return omni.call(args, self.opts)
 
         if len(args) > 1:
             slicename = args[1]

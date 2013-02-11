@@ -20,14 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-
-# Parse a stitching enhanced rspec
+'''Parse an RSpec that might have a stitching extension, 
+for use in driving stitchign reservations and selecting VLANs'''
 
 import logging
 import sys
 from xml.dom.minidom import parseString, getDOMImplementation
 
 from objects import *
+from utils import StitchingError
 
 # XML tag constants
 RSPEC_TAG = 'rspec'
@@ -47,7 +48,7 @@ class RSpecParser:
         dom = parseString(data)
         rspecs = dom.getElementsByTagName(RSPEC_TAG)
         if len(rspecs) != 1:
-            raise Exception("Expected 1 rspec tag, got %d" % (len(rpsecs)))
+            raise StitchingError("Expected 1 rspec tag, got %d" % (len(rpsecs)))
         rspec = self.parseRSpec(rspecs[0])
         rspec.dom = dom
         return rspec
@@ -55,7 +56,7 @@ class RSpecParser:
     def parseRSpec(self, rspec_element):
         if rspec_element.nodeName != RSPEC_TAG:
             msg = "parseRSpec got unexpected tag %s" % (rspec_element.tagName)
-            raise Exception(msg)
+            raise StitchingError(msg)
         links = []
         stitching = None
         for child in rspec_element.childNodes:
@@ -66,11 +67,14 @@ class RSpecParser:
             elif child.nodeName == STITCHING_TAG:
                 self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
+            else:
+                self.logger.debug("Skipping %s node", child.nodeName)
         rspec = RSpec(stitching)
         rspec.links = links
         return rspec
 
     def parseStitching(self, stitching_element):
+        '''Parse the stitching element of an RSpec'''
         last_update_time = stitching_element.getAttribute(LAST_UPDATE_TIME_TAG)
         paths = []
         for child in stitching_element.childNodes:
