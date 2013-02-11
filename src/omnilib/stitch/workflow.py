@@ -128,11 +128,12 @@ class WorkflowParser(object):
                 self._add_dependency(hop_agg, hd.aggregate)
 
     def _add_dependency(self, agg, dependencyAgg):
+        # recursive function to add agg2 as a dependency on agg1, plus all the AMs that agg2 depends on become dependencies of agg1
         self.logger.debug("Agg %s depends on Agg %s", agg, dependencyAgg)
         if agg in dependencyAgg.dependsOn:
             # error: hd.aggregate depends on hop_agg, so making hop_agg depend on hd.aggregate creates a loop
             self.logger.warn("Agg %s depends on %s but that depends on the first - loop", agg, dependencyAgg)
-            raise StitchingError("AM dependency loop!")
+            raise StitchingError("AM dependency loop! AM %s depends on %s which depends on the first.", agg, dependencyAgg)
         elif dependencyAgg in agg.dependsOn:
             # already have this dependency
             self.logger.debug("Already knew Agg %s depends on %s", agg, dependencyAgg)
