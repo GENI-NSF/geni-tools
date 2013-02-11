@@ -22,6 +22,8 @@
 #----------------------------------------------------------------------
 '''Parse and hold the workflow struct returned by the SCS'''
 
+import logging
+
 from objects import Aggregate
 from utils import StitchingError
 
@@ -33,7 +35,8 @@ class WorkflowParser(object):
     AGG_URN_KEY = 'aggregate_urn'
     IMP_VLANS_KEY = 'import_vlans'
 
-    def __init__(self):
+    def __init__(self, logger=None):
+        self.logger = logger if logger else logging.getLogger('stitch')
         self._aggs = dict()
 
     @property
@@ -117,10 +120,31 @@ class WorkflowParser(object):
         """Follow the hop dependencies and generate aggregate to
         aggregate dependencies from them.
         """
+        # this is called for each path/link we find in the workflow in turn - so
+        # more links/paths may be yet to come
         for hop in path.hops:
             hop_agg = hop.aggregate
             for hd in hop.dependsOn:
-                # FIXME: If hd.aggregate depends on hop_agg then we have a loop - error out
-                hop_agg.add_dependency(hd.aggregate)
-                # FIXME: Only add this dependency if hop_agg != hd.aggregate
-                # FIXME: hop_agg also depends on all AMs that hd.aggregate depends on
+                self._add_dependency(hop_agg, hd.aggregate)
+
+    def _add_dependency(self, agg, dependencyAgg):
+        self.logger.debug("Agg %s depends on Agg %s", agg, dependencyAgg)
+        if agg in dependencyAgg.dependsOn:
+            # error: hd.aggregate depends on hop_agg, so making hop_agg depend on hd.aggregate creates a loop
+            self.logger.warn("Agg %s depends on %s but that depends on the first - loop", agg, dependencyAgg)
+            raise StitchingError("AM dependency loop!")
+        elif dependencyAgg in agg.dependsOn:
+            # already have this dependency
+            self.logger.debug("Already knew Agg %s depends on %s", agg, dependencyAgg)
+            return
+        elif agg == dependencyAgg:
+            # agg doesn't depend on self.
+            # Should this be an error?
+            self.logger.debug("Agg %s same as %s", agg, dependencyAgg)
+            return
+        else:
+            agg.add_dependency(dependencyAgg)
+            # Include all the dependency Aggs dependencies as dependencies for this AM as well
+            for agg2 in dependencyAgg.dependsOn:
+                self._add_dependency(agg, agg2)
+                #agg.add_dependency(agg2)
