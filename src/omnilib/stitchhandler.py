@@ -325,7 +325,7 @@ class StitchingHandler(object):
             pp = pprint.PrettyPrinter(indent=2)
             pp.pprint(workflow)
 
-        workflow_parser = WorkflowParser()
+        workflow_parser = WorkflowParser(self.logger)
         workflow_parser.parse(workflow, parsed_rspec)
         if self.opts.debug:
             self.dump_objects(parsed_rspec, workflow_parser.aggs)
@@ -363,8 +363,8 @@ class StitchingHandler(object):
             for hop in path.hops:
                 self.logger.debug( "  Hop %s" % (hop))
                 # FIXME: don't use the private variable
-                self.logger.debug( "    VLAN Suggested %s" % (hop._hop_link.vlan_suggested))
-                self.logger.debug( "    VLAN Range %s" % (hop._hop_link.vlan_range))
+                self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
+                self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
                 deps = hop.dependsOn
                 if deps:
                     self.logger.debug( "    Dependencies:")
