@@ -23,6 +23,7 @@
 '''Parse and hold the workflow struct returned by the SCS'''
 
 import logging
+import sys
 
 from objects import Aggregate
 from utils import StitchingError
@@ -65,11 +66,53 @@ class WorkflowParser(object):
             self._parse_deps(deps, path)
             # Post processing steps:
 
-            # Compute AM dependencies
+            # Compute AM dependencies, checking for AM dependency loops
             self._add_agg_deps(path)
 
-            # FIXME: Check for AM dependency loops - or is this in _add_agg_deps?
-            # FIXME: Compute hop import_from / export_to
+            # Compute hop import_from
+            for hop in path.hops:
+                self._set_hop_import_vlans_from(hop)
+
+    def _set_hop_import_vlans_from(self, hop):
+        '''Set the hop that the given hop will import VLANs from, when its AM is ready to run'''
+        if not hop.import_vlans:
+            self.logger.debug("Hop %s does not import_vlans so has no import_from", hop)
+            # We could check that the hop has no dependencies....
+            return
+
+        min_distance = sys.maxint
+        import_from_hop = None
+        for dependency in hop.dependsOn:
+            # Look for a dependency on a different AM
+            if hop.aggregate == dependency.aggregate:
+                continue
+
+            # Then look for the closest hop
+            distance = abs(hop.idx - dependency.idx)
+            if distance < min_distance:
+                min_distance = distance
+                import_from_hop = dependency
+
+        if len(hop.dependsOn) == 0:
+            self.logger.warn("Hop %s says it imports vlans but has no dependencies!", hop)
+            # FIXME: Is this a bug?
+            # if this hop does VLAN translation then there is nowhere to import form I think
+            if hop._hop_link.vlan_xlate:
+                # we're doomed I think. print something and exit
+                self.logger.warn("Hop %s does VLAN translation and imports vlans and has no dependencies. Huh?", hop)
+                return
+            # Otherwise....
+            # FIXME: Look for another hop in the same AM in this path
+#            import_from_hop = other_hop.import_vlans_from
+            # FIXME: What if the other hop hasn't had its import_from done yet? Do I need logic
+            # where hops that find an import_from check for other hops that fall into this case
+            # and set them?
+
+        # At this point, we should have the import stuff setup
+        if import_from_hop is None:
+            self.logger.warn("Hop %s says it imports vlans, but we haven't found the source", hop)
+        hop.import_vlans_from = import_from_hop
+        self.logger.debug("Hop %s will import vlan tags from %s", hop, hop.import_vlans_from)
 
     def _add_hop_info(self, hop, info_dict):
         """Add the aggregate and import_vlans info to the hop if it
@@ -129,7 +172,6 @@ class WorkflowParser(object):
 
     def _add_dependency(self, agg, dependencyAgg):
         # recursive function to add agg2 as a dependency on agg1, plus all the AMs that agg2 depends on become dependencies of agg1
-        self.logger.debug("Agg %s depends on Agg %s", agg, dependencyAgg)
         if agg in dependencyAgg.dependsOn:
             # error: hd.aggregate depends on hop_agg, so making hop_agg depend on hd.aggregate creates a loop
             self.logger.warn("Agg %s depends on %s but that depends on the first - loop", agg, dependencyAgg)
@@ -144,6 +186,7 @@ class WorkflowParser(object):
             self.logger.debug("Agg %s same as %s", agg, dependencyAgg)
             return
         else:
+            self.logger.debug("Agg %s depends on Agg %s", agg, dependencyAgg)
             agg.add_dependency(dependencyAgg)
             # Include all the dependency Aggs dependencies as dependencies for this AM as well
             for agg2 in dependencyAgg.dependsOn:

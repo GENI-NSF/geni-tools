@@ -365,6 +365,7 @@ class StitchingHandler(object):
                 # FIXME: don't use the private variable
                 self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                 self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
+                self.logger.debug( "    Import VLANs From: %s" % (hop.import_vlans_from))
                 deps = hop.dependsOn
                 if deps:
                     self.logger.debug( "    Dependencies:")

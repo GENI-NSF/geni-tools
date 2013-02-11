@@ -264,7 +264,8 @@ class Hop(object):
         self._import_vlans = False
         self._dependencies = []
         self.idx = None
-        # FIXME: import_vlans_from and export_vlans_to
+        # FIXME: export_vlans_to too?
+        self.import_vlans_from = None # a pointer to another hop
         # FIXME: depended_on_by?
 
     def __str__(self):
@@ -304,7 +305,6 @@ class Hop(object):
 
     def add_dependency(self, hop):
         self._dependencies.append(hop)
-
 
 class RSpec(GENIObject):
     '''RSpec'''
