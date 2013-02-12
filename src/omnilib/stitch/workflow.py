@@ -72,12 +72,18 @@ class WorkflowParser(object):
             # Compute hop import_from
             for hop in path.hops:
                 self._set_hop_import_vlans_from(hop)
+            # Doing it again ensures that peer interfaces with no dependencies get filled in OK
+            for hop in path.hops:
+                self._set_hop_import_vlans_from(hop)
 
     def _set_hop_import_vlans_from(self, hop):
         '''Set the hop that the given hop will import VLANs from, when its AM is ready to run'''
         if not hop.import_vlans:
             self.logger.debug("Hop %s does not import_vlans so has no import_from", hop)
             # We could check that the hop has no dependencies....
+            return
+        if hop.import_vlans_from:
+            # already set
             return
 
         min_distance = sys.maxint
@@ -101,12 +107,32 @@ class WorkflowParser(object):
                 # we're doomed I think. print something and exit
                 self.logger.warn("Hop %s does VLAN translation and imports vlans and has no dependencies. Huh?", hop)
                 return
-            # Otherwise....
-            # FIXME: Look for another hop in the same AM in this path
-#            import_from_hop = other_hop.import_vlans_from
-            # FIXME: What if the other hop hasn't had its import_from done yet? Do I need logic
-            # where hops that find an import_from check for other hops that fall into this case
-            # and set them?
+            # Otherwise Look for another hop in the same AM in this path - idx 1 higher or 1 lower
+            prevHop = hop.path.find_hop_idx(hop.idx - 1)
+            if prevHop and prevHop.aggregate.urn == hop.aggregate.urn:
+                if not prevHop.import_vlans:
+                    self.logger.warn("Hop %s imports vlans, has no dependencies. Previous hop is on same AM, but it does not import_vlans. So got nowhere to import from!", hop)
+                    return
+                elif not prevHop.import_vlans_from:
+                    self.logger.warn("Hop %s imports vlans, has no dependencies. Previous hop is on same AM, imports vlans, but we have not yet found where it imports vlans from!", hop)
+                    # a good place to import from, but it hasn't been set yet. Ack!?
+                    return
+                else:
+                    self.logger.debug("Hop %s imports vlans, has no dependencies, so copying import_from from previous peer hop on same AM %s", hop, prevHop)
+                    import_from_hop = prevHop.import_vlans_from
+            else:
+                nextHop = hop.path.find_hop_idex(hop.idx + 1)
+                if nextHop and nextHop.aggregate.urn == hop.aggregate.urn:
+                    if not nextHop.import_vlans:
+                        self.logger.warn("Hop %s imports vlans, has no dependencies. Next hop is on same AM, but it does not import_vlans. So got nowhere to import from!", hop)
+                        return
+                    elif not nextHop.import_vlans_from:
+                        self.logger.warn("Hop %s imports vlans, has no dependencies. Next hop is on same AM, imports vlans, but we have not yet found where it imports vlans from!", hop)
+                        # a good place to import from, but it hasn't been set yet. Ack!?
+                        return
+                    else:
+                        self.logger.debug("Hop %s imports vlans, has no dependencies, so copying import_from from next peer hop on same AM %s", hop, nextHop)
+                        import_from_hop = nextHop.import_vlans_from
 
         # At this point, we should have the import stuff setup
         if import_from_hop is None:
@@ -188,7 +214,7 @@ class WorkflowParser(object):
         else:
             self.logger.debug("Agg %s depends on Agg %s", agg, dependencyAgg)
             agg.add_dependency(dependencyAgg)
+            dependencyAgg.add_agg_that_dependsOnThis(agg)
             # Include all the dependency Aggs dependencies as dependencies for this AM as well
             for agg2 in dependencyAgg.dependsOn:
                 self._add_dependency(agg, agg2)
-                #agg.add_dependency(agg2)
