@@ -54,17 +54,18 @@ class RSpecParser:
         return rspec
 
     def parseRSpec(self, rspec_element):
-        if rspec_element.nodeName != RSPEC_TAG:
+        # FIXME: Here we use localName, ignoring the namespace. What's the right thing?
+        if rspec_element.localName != RSPEC_TAG:
             msg = "parseRSpec got unexpected tag %s" % (rspec_element.tagName)
             raise StitchingError(msg)
         links = []
         stitching = None
         for child in rspec_element.childNodes:
-            if child.nodeName == LINK_TAG:
+            if child.localName == LINK_TAG:
                 self.logger.debug("Parsing Link")
                 link = Link.fromDOM(child)
                 links.append(link)
-            elif child.nodeName == STITCHING_TAG:
+            elif child.localName == STITCHING_TAG:
                 self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
             else:
@@ -75,10 +76,11 @@ class RSpecParser:
 
     def parseStitching(self, stitching_element):
         '''Parse the stitching element of an RSpec'''
+        # FIXME: Do we need getAttributeNS?
         last_update_time = stitching_element.getAttribute(LAST_UPDATE_TIME_TAG)
         paths = []
         for child in stitching_element.childNodes:
-            if child.nodeName == PATH_TAG:
+            if child.localName == PATH_TAG:
                 path = Path.fromDOM(child)
                 paths.append(path)
         stitching = Stitching(last_update_time, paths)
