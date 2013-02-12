@@ -29,6 +29,8 @@ import time
 from GENIObject import *
 from VLANRange import *
 
+# FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
+
 class Path(GENIObject):
     '''Path'''
     __ID__ = validateText
@@ -41,14 +43,19 @@ class Path(GENIObject):
     @classmethod
     def fromDOM(cls, element):
         """Parse a stitching path from a DOM element."""
+        # FIXME: Do we need getAttributeNS?
         id = element.getAttribute(cls.ID_TAG)
         path = Path(id)
         for child in element.childNodes:
-            if child.nodeName == cls.HOP_TAG:
+            if child.localName == cls.HOP_TAG:
                 hop = Hop.fromDOM(child)
                 hop.path = path
                 hop.idx = len(path.hops)
                 path.hops.append(hop)
+        for hop in path.hops:
+            next_hop = path.find_hop(hop._next_hop)
+            if next_hop:
+                hop._next_hop = next_hop
         return path
 
     def __init__(self, id):
@@ -79,6 +86,14 @@ class Path(GENIObject):
             if hop.urn == hop_urn:
                 return hop
         # Fail -- no hop matched the given URN
+        return None
+
+    def find_hop_idx(self, hop_idx):
+        '''Find a hop in this path by its index, or None'''
+        for hop in self.hops:
+            if hop.idx == hop_idx:
+                return hop
+        # Fail -- no hop matched the given index
         return None
 
 
@@ -126,6 +141,7 @@ class Aggregate(object):
         self._hops = set()
         self._paths = set()
         self._dependsOn = set()
+        self.isDependencyFor = set() # AMs that depend on this: for ripple down deletes
         self.logger = logging.getLogger('stitch.Aggregate')
         self.requestDom = None # the DOM as constructed to submit in request to this AM
         self.manifestDom = None # the DOM as we got back from the AM
@@ -157,6 +173,9 @@ class Aggregate(object):
     def add_dependency(self, agg):
         self._dependsOn.add(agg)
 
+    def add_agg_that_dependsOnThis(self, agg):
+        self.isDependencyFor.add(agg)
+
     @property
     def dependencies_complete(self):
         """Dependencies are complete if there are no dependencies
@@ -176,12 +195,28 @@ class Aggregate(object):
             return
         # Confirm all dependencies still done
         if not self.dependencies_complete:
-            self.logger.warn("Cannot allocate AM %s: dependencies not read", self)
+            self.logger.warn("Cannot allocate AM %s: dependencies not ready", self)
+            return
+        if self.completed:
+            self.logger.warn("Called allocate on AM already maked complete", self)
             return
 
-        # FIXME: Check: have  previous manifest?
-          # if manifest == request then go to Done
-          # Else call self.delete()
+        # Import VLANs, noting if we need to delete an old reservation at this AM first
+        mustDelete, alreadyDone = self.copyVLANsAndDetectRedo()
+
+        if mustDelete:
+            self.logger.warn("Must delete previous reservation for AM %s", self)
+            alreadyDone = False
+            self.deleteReservation(opts)
+        # end of block to delete a previous reservation
+
+        if alreadyDone:
+            # we did a previous upstream delete and worked our way down to here, but this AM is OK
+            self.completed = True
+            self.logger.info("AM %s had previous result we didn't need to redo. Done", self)
+            return
+
+        # FIXME: Check for all hops have reasonable vlan inputs?
 
         self.completed = False
 
@@ -196,14 +231,24 @@ class Aggregate(object):
         time.sleep(random.randrange(1, 6))
 
         # FIXME: If fakeMode do a fake thing
-#        if opts.fakeModeDir:
-#            self.logger.info("Doing fake allocation")
+        if opts.fakeModeDir:
+            self.logger.info("Doing fake allocation")
+            for hop in self.hops:
+                hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
+                hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
+
 #        else:
         # FIXME: Else, do a real thing
+        # omniargs must be input args but copied, add -a self.url
+        # FIXME: Do we do something with log level or log format or file for omni calls?
+        # FIXME: Ensure we have the right URL / API version / command combo
+        # IF this AM does APIv3, I'd like to use it
+        # But the caller needs to know if we used APIv3 so they know whether to call provision later
         # try:
         #     (text, retitem) = omni.call(omniargs, self.opts)
         # except:
         #     call self.handleAllocateError
+
 
         # Mark AM not busy
         self.inProcess = False
@@ -228,7 +273,136 @@ class Aggregate(object):
 
         # mark self complete
         self.completed = True
+
+    def copyVLANsAndDetectRedo(self):
+        '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
+        If so, but the inputs are incompatible, then mark this to be deleted. If so, but the
+        inputs are compatible, then an AM upstream was redone, but this is alreadydone.'''
+
+        hadPreviousManifest = self.manifestDom != None
+        mustDelete = False # Do we have old reservation to delete?
+        alreadyDone = hadPreviousManifest # Did we already complete this AM? (and this is just a recheck)
+        for hop in self.hops:
+            if not hop.import_vlans:
+                if not hop._hop_link.vlan_suggested_manifest:
+                    alreadyDone = False
+                continue
+
+            # Calculate the new suggested/avail for this hop
+            if not hop.import_vlans_from:
+                self.logger.warn("Hop %s imports vlans but has no import from?", hop)
+                continue
+
+            new_suggested = hop._hop_link.vlan_suggested_request or VLANRange.fromString("any")
+            if hop.import_vlans_from._hop_link.vlan_suggested_manifest:
+                # FIXME: Need deep copy?
+                new_suggested = hop.import_vlans_from._hop_link.vlan_suggested_manifest.copy()
+            else:
+                self.logger.warn("Hop %s's import_from %s had no suggestedVLAN manifest", hop, hop.import_vlans_from)
+            int1 = VLANRange.fromString("any")
+            int2 = VLANRange.fromString("any")
+            if hop.import_vlans_from._hop_link.vlan_range_manifest:
+                int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
+            else:
+                self.logger.warn("Hop %s's import_from %s had no avail VLAN manifest", hop, hop.import_vlans_from)
+            if hop._hop_link.vlan_range_request:
+                int2 = hop._hop_link.vlan_range_request
+            else:
+                self.logger.warn("Hop %s had no avail VLAN request", hop, hop.import_vlans_from)
+            new_avail = int1 & int2
+
+            # If we have a previous manifest, we might be done or might need to delete a previous reservation
+            if hop._hop_link.vlan_suggested_manifest:
+                if not hadPreviousManifest:
+                    raise StitchingError("AM %s had no previous manifest, but its hop %s did", self, hop)
+                if hop._hop_link.vlan_suggested_request != new_suggested:
+                    # If we already have a result but used different input, then this result is suspect. Redo.
+                    self.logger.warn("AM %s had previous manifest and used different suggested VLAN for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                    hop._hop_link.vlan_suggested_request = new_suggested
+                    # if however the previous suggested_manifest == new_suggested, then maybe this is OK?
+                    if hop._hop_link.vlan_suggested_manifest == new_suggested:
+                        self.logger.info("But hop %s VLAN suggested manifest is the new request, so leave it alone", hop)
+                    else:
+                        mustDelete = True
+                        alreadyDone = False
+                else:
+                    self.logger.info("AM %s had previous manifest and used same suggested VLAN for hop %s (%s)", self, hop, hop._hop_link.vlan_suggested_request)
+                    # So for this hop at least, we don't need to redo this AM
+            else:
+                alreadyDone = False
+                # No previous result
+                if hadPreviousManifest:
+                    raise StitchingError("AM %s had a previous manifest but hop %s did not", self, hop)
+                if hop._hop_link.vlan_suggested_request != new_suggested:
+                    self.logger.debug("Hop %s changing VLAN suggested from %s to %s", hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                    hop._hop_link.vlan_suggested_request = new_suggested
+                else:
+                    self.logger.debug("Hop %s already had VLAN suggested %s", hop, hop._hop_link.vlan_suggested_request)
+
+            # Now check the avail range as we did for suggested
+            if hop._hop_link.vlan_range_manifest:
+                if not hadPreviousManifest:
+                    self.logger.error("AM %s had no previous manifest, but its hop %s did", self, hop)
+                if hop._hop_link.vlan_range_request != new_avail:
+                    # If we already have a result but used different input, then this result is suspect. Redo?
+                    self.logger.warn("AM %s had previous manifest and used different avail VLAN range for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_range_request, new_avail)
+                    if hop._hop_link.vlan_suggested_manifest and hop._hop_link.vlan_suggested_manifest not in new_avail:
+                        # new avail doesn't contain the previous manifest suggested. So new avail would have precluded
+                        # using the suggested we picked before. So we have to redo
+                        mustDelete = True
+                        alreadyDone = False
+                        self.logger.warn("Hop %s previous manifest suggested %s not in new avail %s - redo this AM", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
+                    else:
+                        # what we picked before still works, so leave it alone
+                        self.logger.debug("Hop %s had avail range manifest %s, and previous avail range request (%s) != new (%s), but previous suggested manifest %s is in the new avail range, so it is still good", hop, hop._hop_link.vlan_range_manifest, hop._hop_link.vlan_range_request, new_avail, hop._hop_link.vlan_suggested_manifest)
+
+                    # Either way, record what we want the new request to be, so later if we redo we use the right thing
+                    hop._hop_link.vlan_range_request = new_avail
+                else:
+                    self.logger.info("AM %s had previous manifest and used same avail VLAN range for hop %s (%s)", self, hop, hop._hop_link.vlan_range_request)
+            else:
+                alreadydone = False
+                # No previous result
+                if hadPreviousManifest:
+                    raise StitchingError("AM %s had a previous manifest but hop %s did not", self, hop)
+                if hop._hop_link.vlan_range_request != new_avail:
+                    self.logger.debug("Hop %s changing avail VLAN from %s to %s", hop, hop._hop_link.vlan_range_request, new_avail)
+                    hop._hop_link.vlan_range_request = new_avail
+                else:
+                    self.logger.debug("Hop %s already had avail VLAN %s", hop, hop._hop_link.vlan_range_request)
+        # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
+        return mustDelete, alreadyDone
+
+    def deleteReservation(self, opts):
+        '''Delete any previous reservation/manifest at this AM'''
+        self.completed = False
         
+        # Clear old manifests
+        self.manifestDom = None
+        for hop in self.hops:
+            hop._hop_link.vlan_suggested_manifest = None
+            hop._hop_link.vlan_range_manifest = None
+
+        # Now mark all AMs that depend on this AM as incomplete, so we'll try them again
+        # FIXME: This makes everything in chain get redone. Could we mark only the immediate
+        # children, so only if those get deleted do their children get marked? Note the cost
+        # isn't so high - it means falling into this code block and doing the above logic
+        # that discovers existing manifests
+        for agg in self.isDependencyFor:
+            agg.completed = False
+
+        # FIXME: Set a flag marking it is being deleted? Set inProcess?
+
+        # Delete the previous reservation
+        # omni.call() # FIXME FIXME FIXME
+        # note omniargs is wrong: need to do delete or deletesliver as appropriate
+        # if command was allocate, command now is delete
+        # else if command was createsliver, command now is deletesliver
+        # FIXME: Do we do something with log level or log format or file for omni calls?
+        # add the needed -a AM.url
+
+        # FIXME: Set a flag marking this AM was deleted?
+        return
 
 class Hop(object):
     # A hop on a path in the stitching element
@@ -242,13 +416,14 @@ class Hop(object):
     @classmethod
     def fromDOM(cls, element):
         """Parse a stitching hop from a DOM element."""
+        # FIXME: getAttributeNS?
         id = element.getAttribute(cls.ID_TAG)
         hop_link = None
         next_hop = None
         for child in element.childNodes:
-            if child.nodeName == cls.LINK_TAG:
+            if child.localName == cls.LINK_TAG:
                 hop_link = HopLink.fromDOM(child)
-            elif child.nodeName == cls.NEXT_HOP_TAG:
+            elif child.localName == cls.NEXT_HOP_TAG:
                 next_hop = child.firstChild.nodeValue
                 if next_hop == 'null':
                     next_hop = None
@@ -362,24 +537,30 @@ class Link(GENIObject):
     COMPONENT_MANAGER_TAG = 'component_manager'
     INTERFACE_REF_TAG = 'interface_ref'
     NAME_TAG = 'name'
+    SHARED_VLAN_TAG = 'link_shared_vlan'
 
     @classmethod
     def fromDOM(cls, element):
         """Parse a Link from a DOM element."""
+        # FIXME: getAttributeNS?
         client_id = element.getAttribute(cls.CLIENT_ID_TAG)
         refs = []
         aggs = []
         hasSharedVlan = False
         for child in element.childNodes:
-            if child.nodeName == cls.COMPONENT_MANAGER_TAG:
+            if child.localName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
                 agg = Aggregate.find(name)
                 aggs.append(agg)
-            elif child.nodeName == cls.INTERFACE_REF_TAG:
+            elif child.localName == cls.INTERFACE_REF_TAG:
+                # FIXME: getAttributeNS?
                 c_id = child.getAttribute(cls.CLIENT_ID_TAG)
                 ir = InterfaceRef(c_id)
                 refs.append(ir)
-            # FIXME: If the link has the shared_vlan extension, note this
+            # If the link has the shared_vlan extension, note this - not a stitching reason
+            elif child.localName == cls.SHARED_VLAN_TAG:
+#                print 'got shared vlan'
+                hasSharedVlan = True
         link = Link(client_id)
         link.aggregates = aggs
         link.interfaces = refs
@@ -429,7 +610,9 @@ class HopLink(object):
     @classmethod
     def fromDOM(cls, element):
         """Parse a stitching path from a DOM element."""
+        # FIXME: getAttributeNS?
         id = element.getAttribute(cls.ID_TAG)
+        # FIXME: getElementsByTagNameNS?
         vlan_xlate = element.getElementsByTagName(cls.VLAN_TRANSLATION_TAG)
         if vlan_xlate:
             # If no firstChild or no nodeValue, assume false
