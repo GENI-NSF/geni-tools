@@ -47,19 +47,19 @@ class VLAN( int ):
         return cls.__maxvlan
 
 class VLANRange( set ):
-    def __init__( self, vlan=None, stringIn=None ):
+    def __init__( self, vlan=None ):
         if vlan is None:
-            super( VLANRange, self).__init__()                    
+            super( VLANRange, self).__init__()
         elif type(vlan) in (VLAN, int):
-            super( VLANRange, self).__init__([vlan])                    
+            super( VLANRange, self).__init__([vlan])
         elif type(vlan) in (list, tuple):
             retRange = VLANRange()
             for item in vlan:
                 newItem = VLAN(item)
                 retRange.add( newItem )
-            super( VLANRange, self).__init__(vlan)                    
+            super( VLANRange, self).__init__(vlan)
         elif type(vlan) in (VLANRange):
-            super( VLANRange, self).__init__(vlan)                    
+            super( VLANRange, self).__init__(vlan)
         else:
             raise TypeError("Value must be one of 'int', 'VLAN', or 'VLANRange' instead is '%s'" % type(vlan))
 
