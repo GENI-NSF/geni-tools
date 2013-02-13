@@ -62,7 +62,7 @@ class Path(GENIObject):
         super(Path, self).__init__()
         self.id = id
         self._hops = []
-        self._aggregates = []
+        self._aggregates = set()
 
     @property
     def hops(self):
@@ -76,10 +76,6 @@ class Path(GENIObject):
     def hops(self, hopList):
 #DELETE        self._setListProp('hops', hopList, Hop, '_path')
         self._setListProp('hops', hopList, Hop)
-
-    @aggregates.setter
-    def aggregates(self, aggList):
-        self._setListProp('aggregates', aggList, Aggregate)
 
     def find_hop(self, hop_urn):
         for hop in self.hops:
@@ -189,7 +185,7 @@ class Aggregate(object):
     def ready(self):
         return not self.completed and not self.inProcess and self.dependencies_complete
 
-    def allocate(self, opts, rspec):
+    def allocate(self, opts, slicename, rspec):
         if self.inProcess:
             self.logger.warn("Called allocate on AM already in process: %s", self)
             return
@@ -201,13 +197,15 @@ class Aggregate(object):
             self.logger.warn("Called allocate on AM already maked complete", self)
             return
 
+        # FIXME: If we are quitting, return (important when threaded)
+
         # Import VLANs, noting if we need to delete an old reservation at this AM first
         mustDelete, alreadyDone = self.copyVLANsAndDetectRedo()
 
         if mustDelete:
             self.logger.warn("Must delete previous reservation for AM %s", self)
             alreadyDone = False
-            self.deleteReservation(opts)
+            self.deleteReservation(opts, slicename)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -220,35 +218,34 @@ class Aggregate(object):
 
         self.completed = False
 
-        # for now, sleep a little while, then assume complete.
-        # N.B. the rspec is an instance of class RSpec.
-        #      if there are dependencies on the allocated VLANs of
-        #      other aggregates, copy those VLAN tags into my
-        #      section, then convert to XML via "toxml()"
-        self.logger.info("NOT allocating resources from %s", self)
         # Mark AM is busy
         self.inProcess = True
-        time.sleep(random.randrange(1, 6))
 
-        # FIXME: If fakeMode do a fake thing
-        if opts.fakeModeDir:
-            self.logger.info("Doing fake allocation")
-            for hop in self.hops:
-                hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
-                hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
+        # Save out the rspec to a temp file
+        rspecfileName = None
+        # FIXME FIXME
 
-#        else:
-        # FIXME: Else, do a real thing
-        # omniargs must be input args but copied, add -a self.url
         # FIXME: Do we do something with log level or log format or file for omni calls?
         # FIXME: Ensure we have the right URL / API version / command combo
         # IF this AM does APIv3, I'd like to use it
         # But the caller needs to know if we used APIv3 so they know whether to call provision later
-        # try:
-        #     (text, retitem) = omni.call(omniargs, self.opts)
-        # except:
-        #     call self.handleAllocateError
+        omniargs = ['a', self.url, 'createsliver', slicename, rspecfileName]
+        self.logger.info("\nDoing CreateSliver at %s", self.url)
 
+        # FIXME: If fakeMode do a fake thing
+        if opts.fakeModeDir:
+            self.logger.info("Doing fake allocation")
+            time.sleep(random.randrange(1, 6))
+            for hop in self.hops:
+                hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
+                hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
+        else:
+            try:
+                (test, result) = omni.call(omniargs, opts)
+            except OmniError, e:
+                self.logger.error("Failed to reserve at %s: %s", self.url, e)
+                # FIXME: call self.handleAllocateError
+                raise StitchingError(e)
 
         # Mark AM not busy
         self.inProcess = False
@@ -373,7 +370,7 @@ class Aggregate(object):
         # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
         return mustDelete, alreadyDone
 
-    def deleteReservation(self, opts):
+    def deleteReservation(self, opts, slicename):
         '''Delete any previous reservation/manifest at this AM'''
         self.completed = False
         
@@ -393,13 +390,25 @@ class Aggregate(object):
 
         # FIXME: Set a flag marking it is being deleted? Set inProcess?
 
-        # Delete the previous reservation
-        # omni.call() # FIXME FIXME FIXME
-        # note omniargs is wrong: need to do delete or deletesliver as appropriate
-        # if command was allocate, command now is delete
-        # else if command was createsliver, command now is deletesliver
-        # FIXME: Do we do something with log level or log format or file for omni calls?
-        # add the needed -a AM.url
+        if not opts.fakeModeDir:
+            # Delete the previous reservation
+            # omni.call() # FIXME FIXME FIXME
+            # note omniargs is wrong: need to do delete or deletesliver as appropriate
+            # if command was allocate, command now is delete
+            # else if command was createsliver, command now is deletesliver
+            # FIXME: Do we do something with log level or log format or file for omni calls?
+            # add the needed -a AM.url
+            omniargs = ['-a', self.url, 'deletesliver', slicename]
+            self.logger.info("Doing DeleteSliver at %s", self.url)
+            try:
+                (text, (successList, fail)) = omni.call(omniargs, opts)
+                if not self.url in successList:
+                    raise StitchingError("Failed to delete prior reservation at %s: %s", self.url, text)
+                else:
+                    self.logger.debug("Result: %s", text)
+            except OmniError, e:
+                self.logger.error("Failed to deletesliver: %s", e)
+                raise StitchingError(e)
 
         # FIXME: Set a flag marking this AM was deleted?
         return
@@ -491,6 +500,7 @@ class RSpec(GENIObject):
         self._nodes = []
         self._links = [] # Main body links
         self.dom = None
+        self.amURNs = set() # AMs mentioned in the RSpec
 
     @property
     def nodes(self):
@@ -524,6 +534,22 @@ class RSpec(GENIObject):
                 return link
         return None
 
+
+class Node(GENIObject):
+    CLIENT_ID_TAG = 'client_id'
+    COMPONENT_MANAGER_ID_TAG = 'component_manager_id'
+    @classmethod
+    def fromDOM(cls, element):
+        """Parse a Node from a DOM element."""
+        # FIXME: getAttributeNS?
+        client_id = element.getAttribute(cls.CLIENT_ID_TAG)
+        amID = element.getAttribute(cls.COMPONENT_MANAGER_ID_TAG)
+        return Node(client_id, amID)
+
+    def __init__(self, client_id, amID):
+        super(Node, self).__init__()
+        self.id = client_id
+        self.amURN = amID
 
 class Link(GENIObject):
     # A link from the main body of the rspec

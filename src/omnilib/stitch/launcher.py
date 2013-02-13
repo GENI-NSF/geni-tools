@@ -26,9 +26,10 @@ import logging
 
 class Launcher(object):
 
-    def __init__(self, options, aggs=[], logger=None):
+    def __init__(self, options, slicename, aggs=[], logger=None):
         self.aggs = aggs
         self.opts = options
+        self.slicename = slicename
         self.logger = logger or logging.getLogger('stitch.launcher')
 
     def launch(self, rspec):
@@ -38,11 +39,12 @@ class Launcher(object):
             # FIXME: Are there AMs to Delete? Or did that already happen?
 
             ready_aggs = self._ready_aggregates()
-            self.logger.debug("There are %d ready aggregates: %s",
+            self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
                 # FIXME: Need a timeout mechanism on AM calls
-                agg.allocate(self.opts, rspec.dom.toxml())
+                # FIXME: dom.toxml gives me the original XML, but I want the edited one
+                agg.allocate(self.opts, self.slicename, rspec.dom.toxml())
 
             # FIXME: Do we need to sleep?
 

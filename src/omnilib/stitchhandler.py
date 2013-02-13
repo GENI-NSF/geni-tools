@@ -55,7 +55,7 @@ class StitchingHandler(object):
         # Get request RSpec
         request = None
         command = None
-        slicename = None
+        self.slicename = None
         if len(args) > 0:
             command = args[0]
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
@@ -68,13 +68,13 @@ class StitchingHandler(object):
                 return omni.call(args, self.opts)
 
         if len(args) > 1:
-            slicename = args[1]
+            self.slicename = args[1]
         if len(args) > 2:
             request = args[2]
 
         if len(args) > 3:
             self.logger.warn("Arguments %s ignored", args[3:])
-        self.logger.info("Command=%s, slice=%s, rspec=%s", command, slicename, request)
+        self.logger.info("Command=%s, slice=%s, rspec=%s", command, self.slicename, request)
 
         # Parse the RSpec
         requestString = ""
@@ -109,7 +109,7 @@ class StitchingHandler(object):
         self.opts.aggregate = []
 
         # Ensure the slice is valid before all those Omni calls use it
-        sliceurn = self.confirmSliceOK(slicename)
+        sliceurn = self.confirmSliceOK()
     
         self.scsService = scs.Service(self.opts.scsURL)
 
@@ -159,9 +159,20 @@ class StitchingHandler(object):
           # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
             # Confirm no deletes pending, redoes, or AMs not reserved
             # Go to end state section
-        launcher = stitch.Launcher(self.opts, aggs)
-        launcher.launch(rspec)
-        pass
+        launcher = stitch.Launcher(self.opts, self.slicename, aggs)
+        try:
+            launcher.launch(rspec)
+        except StitchingError, se:
+            self.logger.warn("Stitching failed with an error")
+            for am in launcher.aggs:
+                if am.manifestDom:
+                    self.logger.warn("Had reservation at %s", am.url)
+                    try:
+                        am.deleteReservation(self.opts, self.slicename)
+                        self.logger.warn(".... deleted it")
+                    except StitchingError, se2:
+                        self.logger.warn("Failed to delete reservation at %s: %s", am.url, se2)
+            raise se
 
     def confirmGoodRequest(self, requestString):
         # Confirm the string is a request rspec, valid
@@ -179,12 +190,12 @@ class StitchingHandler(object):
         if not validate_rspec(requestString):
             raise OmniError("Request RSpec does not validate against its schemas")
 
-    def confirmSliceOK(self, slicename):
+    def confirmSliceOK(self):
         # Ensure the given slice name corresponds to a current valid slice
 
         # Get slice URN from name
         try:
-            sliceurn = self.framework.slice_name_to_urn(slicename)
+            sliceurn = self.framework.slice_name_to_urn(self.slicename)
         except Exception, e:
             self.logger.error("Could not determine slice URN from name: %s", e)
             raise StitchingError(e)
@@ -197,7 +208,7 @@ class StitchingHandler(object):
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
         if not slicecred:
             # FIXME: Maybe if the slice doesn't exist, create it?
-            # omniargs = ["createslice", slicename]
+            # omniargs = ["createslice", self.slicename]
             # try:
             #     (slicename, message) = omni.call(omniargs, self.opts)
             # except:
@@ -210,7 +221,7 @@ class StitchingHandler(object):
         now = datetime.datetime.utcnow()
         if sliceexp <= now:
             # FIXME: Maybe if the slice doesn't exist, create it?
-            # omniargs = ["createslice", slicename]
+            # omniargs = ["createslice", self.slicename]
             # try:
             #     (slicename, message) = omni.call(omniargs, self.opts)
             # except:
@@ -326,32 +337,28 @@ class StitchingHandler(object):
             pp.pprint(workflow)
 
         workflow_parser = WorkflowParser(self.logger)
+
+        # Parse the workflow, creating Path/Hop/etc objects
+        # In the process, fill in a tree of which hops depend on which,
+        # and which AMs depend on which
+        # Also mark each hop with what hop it imports VLANs from,
+        # And check for AM dependency loops
         workflow_parser.parse(workflow, parsed_rspec)
+
+        # FIXME: check each AM reachable, and we know the URL/API version to use
+
+        # FIXME: Check SCS output consistency in a subroutine:
+          # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
+          # All AMs must be listed in workflow data at least once per path they are in
+
+        # Note which AMs were user requested
+        for agg in workflow_parser.aggs:
+            if agg.urn in self.parsedUserRequest.amURNs:
+                agg.userRequested = True
+
         if self.opts.debug:
             self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
-          # parse list of AMs, URNs, URLs - creating structs for AMs and hops
-          # check each AM reachable, and we know the URL/API version to use
-          # parse hop dependency tree, giving each hop an explicit hop#
-          # Construct AM dependency tree
-            # If hop1 depends on hop2 and hop1 AM != hop2 AM then hop1 AM depends on hop2 AM
-              # Also hop1 AM depends on all AMs that hop2 AM depends on
-            # Do that for all paths, for all hops
-
-        # Mark on each hop which hop# it imports VLANs from, if any. For each hop
-          # set min_distance = MAX_INTEGER
-          # set import_vlans_from_hop#=None
-          # if import_vlans=0, done
-          # for each hop it depends on:
-            # if on same domain, skip
-            # If this diff-domain hop has # whose distance from orig hop is less than previous saved #, then set min_distance and import_vlans_from_hop#
-          # If this hop has 0 dependencies but there are other hops at this AM in same path and AM does not do translation, then
-            # set this hop import_vlans_from_hop# to the value from the other hop if it has a value
-
-        # Check for AM dependency loops
-        # Check SCS output consistency in a subroutine:
-          # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
-          # All AMs must be listed in workflow data at least once per path they are in
         return parsed_rspec, workflow_parser
 
     def dump_objects(self, rspec, aggs):
@@ -376,6 +383,10 @@ class StitchingHandler(object):
         self.logger.debug( "\n===== Aggregates =====")
         for agg in aggs:
             self.logger.debug( "\nAggregate %s" % (agg))
+            if agg.userRequested:
+                self.logger.debug("   (User requested)")
+            else:
+                self.logger.debug("   (SCS added)")
             for h in agg.hops:
                 self.logger.debug( "  Hop %s" % (h))
             for ad in agg.dependsOn:

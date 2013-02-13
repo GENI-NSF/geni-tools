@@ -76,6 +76,10 @@ class WorkflowParser(object):
             for hop in path.hops:
                 self._set_hop_import_vlans_from(hop)
 
+            # Note on path the aggregates included
+            for agg in self.aggs:
+                path.aggregates.add(agg)
+
     def _set_hop_import_vlans_from(self, hop):
         '''Set the hop that the given hop will import VLANs from, when its AM is ready to run'''
         if not hop.import_vlans:
@@ -153,6 +157,7 @@ class WorkflowParser(object):
             agg = self._get_agg(agg_url, agg_urn)
             # Add the info to the hop
             hop.aggregate = agg
+            hop.path.aggregates.add(agg)
             hop.import_vlans = import_vlans
             # Tell the aggregate about the hop
             agg.add_hop(hop)

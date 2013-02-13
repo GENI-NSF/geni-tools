@@ -33,6 +33,7 @@ from utils import StitchingError
 # XML tag constants
 RSPEC_TAG = 'rspec'
 LINK_TAG = 'link'
+NODE_TAG = 'node'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
 
@@ -59,12 +60,16 @@ class RSpecParser:
             msg = "parseRSpec got unexpected tag %s" % (rspec_element.tagName)
             raise StitchingError(msg)
         links = []
+        nodes = []
         stitching = None
         for child in rspec_element.childNodes:
             if child.localName == LINK_TAG:
                 self.logger.debug("Parsing Link")
                 link = Link.fromDOM(child)
                 links.append(link)
+            elif child.localName == NODE_TAG:
+                self.logger.debug("Parsing Node")
+                nodes.append(Node.fromDOM(child))
             elif child.localName == STITCHING_TAG:
                 self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
@@ -72,6 +77,16 @@ class RSpecParser:
                 self.logger.debug("Skipping '%s' node", child.nodeName)
         rspec = RSpec(stitching)
         rspec.links = links
+        rspec.nodes = nodes
+
+        # Fill in a list of distinct AM URNs in this RSpec
+        for node in nodes:
+            rspec.amURNs.add(node.amURN)
+        for link in links:
+            for am in link.aggregates:
+                rspec.amURNs.add(am.urn)
+        # Workflow parser ensures Aggs implied by the stitching extension are included
+
         return rspec
 
     def parseStitching(self, stitching_element):
