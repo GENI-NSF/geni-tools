@@ -255,3 +255,105 @@ def validate_url(url):
 
     return None
 
+def _filename_part_from_am_url(url):
+    """Strip uninteresting parts from an AM URL 
+    to help construct part of a filename.
+    """
+    # see listresources and createsliver
+
+    if url is None or url.strip() == "":
+        return url
+
+    # remove all punctuation and use url
+    server = url
+    # strip leading protocol bit
+    if url.find('://') > -1:
+        server = url[(url.find('://') + 3):]
+
+    # protogeni often runs on port 12369 - pull that out if possible
+    if ":12369/protogeni/" in server:
+        server = server[:(server.index(":12369/"))] + server[(server.index(":12369/")+6):]
+
+    if server.startswith("boss."):
+        server = server[server.index("boss.")+len("boss."):]
+
+    # strip standard url endings that dont tell us anything
+    if server.endswith("/xmlrpc/am"):
+        server = server[:(server.index("/xmlrpc/am"))]
+    elif server.endswith("/xmlrpc"):
+        server = server[:(server.index("/xmlrpc"))]
+    elif server.endswith("/xmlrpc/am/1.0"):
+        server = server[:(server.index("/xmlrpc/am/1.0"))] + "v1"
+    elif server.endswith("/xmlrpc/am/2.0"):
+        server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
+    elif server.endswith("/xmlrpc/am/3.0"):
+        server = server[:(server.index("/xmlrpc/am/3.0"))] + "v3"
+    elif server.endswith("/openflow/gapi/"):
+        server = server[:(server.index("/openflow/gapi/"))]
+    elif server.endswith(":3626/foam/gapi/1"):
+        server = server[:(server.index(":3626/foam/gapi/1"))]
+    elif server.endswith("/gapi"):
+        server = server[:(server.index("/gapi"))]
+    elif server.endswith(":12346"):
+        server = server[:(server.index(":12346"))]
+
+    # remove punctuation. Handle both unicode and ascii gracefully
+    bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+    if isinstance(server, unicode):
+        table = dict((ord(char), unicode('-')) for char in bad)
+    else:
+        assert isinstance(server, str)
+        table = string.maketrans(bad, '-' * len(bad))
+    server = server.translate(table)
+    if server.endswith('-'):
+        server = server[:-1]
+    return server
+
+def _get_server_name(clienturl, clienturn):
+    '''Construct a short server name from the AM URL and URN'''
+    if clienturn and not clienturn.startswith("unspecified_AM_URN") and (not clienturn.startswith("http")):
+        # construct hrn
+        # strip off any leading urn:publicid:IDN
+        if clienturn.find("IDN+") > -1:
+            clienturn = clienturn[(clienturn.find("IDN+") + 4):]
+        urnParts = clienturn.split("+")
+        server = urnParts.pop(0)
+        server = server.translate(string.maketrans(' .:', '---'))
+    else:
+        # remove all punctuation and use url
+        server = _filename_part_from_am_url(clienturl)
+    return server
+
+def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname, filetype, clientcount):
+    '''Construct a file name for omni command outputs; return that name.
+    If --outputfile specified, use that.
+    Else, overall form is [prefix-][slicename-]methodname-server.filetype
+    filetype should be .xml or .json'''
+
+    # Construct server bit. Get HRN from URN, else use url
+    # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
+    server = _get_server_name(clienturl, clienturn)
+    if opts and opts.outputfile:
+        filename = opts.outputfile
+        if "%a" in opts.outputfile:
+            # replace %a with server
+            filename = string.replace(filename, "%a", server)
+        elif clientcount > 1:
+            # FIXME: How do we distinguish? Let's just prefix server
+            filename = server + "-" + filename
+        if "%s" in opts.outputfile:
+            # replace %s with slicename
+            if not slicename:
+                slicename = 'noslice'
+            filename = string.replace(filename, "%s", slicename)
+        return filename
+
+    filename = methodname + "-" + server + filetype
+#--- AM API specific
+    if slicename:
+        filename = slicename+"-" + filename
+#--- 
+    if opts and opts.prefix and opts.prefix.strip() != "":
+        filename  = opts.prefix.strip() + "-" + filename
+    return filename
+

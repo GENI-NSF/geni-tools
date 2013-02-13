@@ -44,7 +44,7 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
-    _print_slice_expiration
+    _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 from omnilib.util.files import *
@@ -335,7 +335,7 @@ class AMCallHandler(object):
         filename = None
         if self.opts.output:
             # Create filename
-            filename = self._construct_output_filename(None, client.url, client.urn, "getversion", ".json", 1)
+            filename = _construct_output_filename(self.opts, None, client.url, client.urn, "getversion", ".json", 1)
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
         # This logs or prints, depending on whether filename is None
@@ -1493,7 +1493,7 @@ class AMCallHandler(object):
             filename = None
 
             if self.opts.output:
-                filename = self._construct_output_filename(name, client.url, client.urn, "describe", ".json", len(clientList))
+                filename = _construct_output_filename(self.opts, name, client.url, client.urn, "describe", ".json", len(clientList))
                 #self.logger.info("Writing result of describe for slice: %s at AM: %s to file %s", name, client.url, filename)
             self._printResults(header, prettyResult, filename)
             if filename:
@@ -1862,7 +1862,7 @@ class AMCallHandler(object):
                 filename = None
 
                 if self.opts.output:
-                    filename = self._construct_output_filename(slicename, client.url, client.urn, "allocate", ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "allocate", ".json", len(clientList))
                     #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", slicename, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
@@ -2102,7 +2102,7 @@ class AMCallHandler(object):
                 filename = None
 
                 if self.opts.output:
-                    filename = self._construct_output_filename(slicename, client.url, client.urn, "provision", ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "provision", ".json", len(clientList))
                     #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
@@ -2323,7 +2323,7 @@ class AMCallHandler(object):
                 header="PerformOperationalAction result for %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
-                    filename = self._construct_output_filename(slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
                     #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 retVal += "PerformOperationalAction %s was successful." % descripMsg
@@ -2649,7 +2649,7 @@ class AMCallHandler(object):
                 header="Renewed %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "renewal", ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, name, client.url, client.urn, "renewal", ".json", len(clientList))
                 #self.logger.info("Writing result of renew for slice: %s at AM: %s to file %s", name, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
@@ -2779,7 +2779,7 @@ class AMCallHandler(object):
                 header="Sliver status for Slice %s at AM URL %s" % (urn, client.url)
                 filename = None
                 if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
 
                 self._printResults(header, prettyResult, filename)
@@ -3010,7 +3010,7 @@ class AMCallHandler(object):
             header="Status for %s at AM URL %s" % (descripMsg, client.url)
             filename = None
             if self.opts.output:
-                filename = self._construct_output_filename(name, client.url, client.urn, "status", ".json", len(clientList))
+                filename = _construct_output_filename(self.opts, name, client.url, client.urn, "status", ".json", len(clientList))
                 #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
             self._printResults(header, prettyResult, filename)
             if filename:
@@ -3300,7 +3300,7 @@ class AMCallHandler(object):
                 header="Deletion of %s at AM URL %s" % (descripMsg, client.url)
                 filename = None
                 if self.opts.output:
-                    filename = self._construct_output_filename(name, client.url, client.urn, "delete", ".json", len(clientList))
+                    filename = _construct_output_filename(self.opts, name, client.url, client.urn, "delete", ".json", len(clientList))
                 #self.logger.info("Writing result of delete for slice: %s at AM: %s to file %s", name, client.url, filename)
                 self._printResults(header, prettyResult, filename)
                 if filename:
@@ -3948,7 +3948,7 @@ class AMCallHandler(object):
             header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
         header = "<!-- "+header+" -->"
 
-        server = self._get_server_name(url, urn)
+        server = _get_server_name(url, urn)
 
         # Create BODY
         if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
@@ -4004,7 +4004,7 @@ class AMCallHandler(object):
             mname = "rspec"
             if slicename:
                 mname = "manifest-rspec"
-            filename = self._construct_output_filename(slicename, url, urn, mname, ".xml", clientcount)
+            filename = _construct_output_filename(self.opts, slicename, url, urn, mname, ".xml", clientcount)
             # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
 
         # Create FILE
@@ -4063,54 +4063,6 @@ class AMCallHandler(object):
 #            self.logger.warn("No user keys found to be uploaded")
         return slice_users
     # End of _get_users_arg
-
-    def _get_server_name(self, clienturl, clienturn):
-        '''Construct a short server name from the AM URL and URN'''
-        if clienturn and not clienturn.startswith("unspecified_AM_URN") and (not clienturn.startswith("http")):
-            # construct hrn
-            # strip off any leading urn:publicid:IDN
-            if clienturn.find("IDN+") > -1:
-                clienturn = clienturn[(clienturn.find("IDN+") + 4):]
-            urnParts = clienturn.split("+")
-            server = urnParts.pop(0)
-            server = server.translate(string.maketrans(' .:', '---'))
-        else:
-            # remove all punctuation and use url
-            server = self._filename_part_from_am_url(clienturl)
-        return server
-
-    def _construct_output_filename(self, slicename, clienturl, clienturn, methodname, filetype, clientcount):
-        '''Construct a file name for omni command outputs; return that name.
-        If --outputfile specified, use that.
-        Else, overall form is [prefix-][slicename-]methodname-server.filetype
-        filetype should be .xml or .json'''
-
-        # Construct server bit. Get HRN from URN, else use url
-        # FIXME: Use sfa.util.xrn.get_authority or urn_to_hrn?
-        server = self._get_server_name(clienturl, clienturn)
-        if self.opts.outputfile:
-            filename = self.opts.outputfile
-            if "%a" in self.opts.outputfile:
-                # replace %a with server
-                filename = string.replace(filename, "%a", server)
-            elif clientcount > 1:
-                # FIXME: How do we distinguish? Let's just prefix server
-                filename = server + "-" + filename
-            if "%s" in self.opts.outputfile:
-                # replace %s with slicename
-                if not slicename:
-                    slicename = 'noslice'
-                filename = string.replace(filename, "%s", slicename)
-            return filename
-
-        filename = methodname + "-" + server + filetype
-#--- AM API specific
-        if slicename:
-            filename = slicename+"-" + filename
-#--- 
-        if self.opts.prefix and self.opts.prefix.strip() != "":
-            filename  = self.opts.prefix.strip() + "-" + filename
-        return filename
 
     def _retrieve_value(self, result, message, framework):
         '''Extract ABAC proof and creds from the result if any.
@@ -4361,60 +4313,6 @@ class AMCallHandler(object):
                     file.write( pre + content[cstart:] )
                     file.write( "\n" )
     # End of _printResults
-
-    def _filename_part_from_am_url(self, url):
-        """Strip uninteresting parts from an AM URL 
-        to help construct part of a filename.
-        """
-        # see listresources and createsliver
-
-        if url is None or url.strip() == "":
-            return url
-
-        # remove all punctuation and use url
-        server = url
-        # strip leading protocol bit
-        if url.find('://') > -1:
-            server = url[(url.find('://') + 3):]
-
-        # protogeni often runs on port 12369 - pull that out if possible
-        if ":12369/protogeni/" in server:
-            server = server[:(server.index(":12369/"))] + server[(server.index(":12369/")+6):]
-
-        if server.startswith("boss."):
-            server = server[server.index("boss.")+len("boss."):]
-
-        # strip standard url endings that dont tell us anything
-        if server.endswith("/xmlrpc/am"):
-            server = server[:(server.index("/xmlrpc/am"))]
-        elif server.endswith("/xmlrpc"):
-            server = server[:(server.index("/xmlrpc"))]
-        elif server.endswith("/xmlrpc/am/1.0"):
-            server = server[:(server.index("/xmlrpc/am/1.0"))] + "v1"
-        elif server.endswith("/xmlrpc/am/2.0"):
-            server = server[:(server.index("/xmlrpc/am/2.0"))] + "v2"
-        elif server.endswith("/xmlrpc/am/3.0"):
-            server = server[:(server.index("/xmlrpc/am/3.0"))] + "v3"
-        elif server.endswith("/openflow/gapi/"):
-            server = server[:(server.index("/openflow/gapi/"))]
-        elif server.endswith(":3626/foam/gapi/1"):
-            server = server[:(server.index(":3626/foam/gapi/1"))]
-        elif server.endswith("/gapi"):
-            server = server[:(server.index("/gapi"))]
-        elif server.endswith(":12346"):
-            server = server[:(server.index(":12346"))]
-
-        # remove punctuation. Handle both unicode and ascii gracefully
-        bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
-        if isinstance(server, unicode):
-            table = dict((ord(char), unicode('-')) for char in bad)
-        else:
-            assert isinstance(server, str)
-            table = string.maketrans(bad, '-' * len(bad))
-        server = server.translate(table)
-        if server.endswith('-'):
-            server = server[:-1]
-        return server
 
     def _has_slice_expired(self, sliceCred):
         """Return (boolean, expiration datetime) whether given slicecred (string) has expired)"""
