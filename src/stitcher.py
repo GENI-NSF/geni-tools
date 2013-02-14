@@ -34,6 +34,7 @@ import sys
 import omni
 from omnilib.util import OmniError
 from omnilib.stitchhandler import StitchingError, StitchingHandler
+import optparse 
 
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
