@@ -103,6 +103,12 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         # Also check the schema
         # location can contain many items
         location = root.get( "{"+XSI+"}"+"schemaLocation" )
+        if location is None:
+            print "Failed to get schemaLocation from RSpec: %s" % xml[:100]
+            # Note that rspeclint might still pass for this RSpec if you supply the schema location
+            # info manually to rspeclint. So is this OK or not? FIXME FIXME!
+            return False
+
         ns, ad_schema, req_schema, man_schema = get_expected_schema_info( version=version )
         if type == REQUEST:
             schema = req_schema
