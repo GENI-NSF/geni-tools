@@ -318,7 +318,11 @@ def _get_server_name(clienturl, clienturn):
             clienturn = clienturn[(clienturn.find("IDN+") + 4):]
         urnParts = clienturn.split("+")
         server = urnParts.pop(0)
-        server = server.translate(string.maketrans(' .:', '---'))
+        if isinstance(server, unicode):
+            table = dict((ord(char), unicode('-')) for char in ' .:')
+        else:
+            table = string.maketrans(' .:', '---')
+        server = server.translate(table)
     else:
         # remove all punctuation and use url
         server = _filename_part_from_am_url(clienturl)
