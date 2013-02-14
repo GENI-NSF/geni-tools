@@ -355,6 +355,8 @@ class StitchingHandler(object):
         for agg in workflow_parser.aggs:
             if agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
+            # FIXME: Query AM API versions supported, then set the max as property on the aggregate
+                # then use that to pick allocate vs createsliver
 
         if self.opts.debug:
             self.dump_objects(parsed_rspec, workflow_parser.aggs)
