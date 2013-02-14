@@ -161,6 +161,8 @@ class WorkflowParser(object):
             hop.import_vlans = import_vlans
             # Tell the aggregate about the hop
             agg.add_hop(hop)
+            # Tell the aggregate about the path
+            agg.add_path(hop.path)
 
     def _parse_deps(self, deps, path):
         # Cache aggregate objects
