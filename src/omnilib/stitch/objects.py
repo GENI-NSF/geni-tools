@@ -23,11 +23,17 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import json
 import logging
+import os
 import random
 import time
+
 from GENIObject import *
 from VLANRange import *
+import RSpecParser
+
+from omnilib.util.handler_utils import _construct_output_filename
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 
@@ -92,6 +98,33 @@ class Path(GENIObject):
         # Fail -- no hop matched the given index
         return None
 
+    def editChangesIntoDom(self, pathDomNode):
+        '''Edit any changes made in this element into the given DomNode'''
+        # Note the parent RSpec element's dom is not touched, unless the given node is from that document
+        # Here we just find all the Hops and let them do stuff
+
+        # Incoming node should be the node for this path
+        nodeId = pathDomNode.getAttribute(self.ID_TAG)
+        if nodeId != self.id:
+            raise StitchingError("Path %s given Dom node with different Id: %s" % (self, nodeId))
+
+        # For each of this path's hops, find the appropriate Dom element, and let Hop edit itself in
+        domHops = pathDomNode.getElementsByTagName(self.HOP_TAG)
+        for hop in self.hops:
+            domHopNode = None
+            if domHops:
+                for hopNode in domHops:
+                    hopNodeId = hopNode.getAttribute(self.ID_TAG)
+                    if hopNodeId == hop._id:
+                        domHopNode = hopNode
+                        break
+            if domHopNode is None:
+                # Couldn't find this Hop in the dom
+                # FIXME: Create it?
+                raise StitchingError("Couldn't find Hop %s in given Dom node to edit in changes" % hop)
+            hop.editChangesIntoDom(domHopNode)
+        # End of loop over hops
+        return
 
 class Stitching(GENIObject):
     __simpleProps__ = [ ['last_update_time', str] ] #, ['path', Path[]]]
@@ -139,8 +172,10 @@ class Aggregate(object):
         self._dependsOn = set()
         self.isDependencyFor = set() # AMs that depend on this: for ripple down deletes
         self.logger = logging.getLogger('stitch.Aggregate')
+        # Note these are sort of RSpecs but not RSpec objects, to avoid a loop
         self.requestDom = None # the DOM as constructed to submit in request to this AM
         self.manifestDom = None # the DOM as we got back from the AM
+        self.api_version = 2 # FIXME: Set this from stitchhandler.parseSCSResponse
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -185,7 +220,7 @@ class Aggregate(object):
     def ready(self):
         return not self.completed and not self.inProcess and self.dependencies_complete
 
-    def allocate(self, opts, slicename, rspec):
+    def allocate(self, opts, slicename, rspecDom):
         if self.inProcess:
             self.logger.warn("Called allocate on AM already in process: %s", self)
             return
@@ -221,55 +256,135 @@ class Aggregate(object):
         # Mark AM is busy
         self.inProcess = True
 
-        # Save out the rspec to a temp file
-        rspecfileName = None
-        # FIXME FIXME
-
-        # FIXME: Do we do something with log level or log format or file for omni calls?
         # FIXME: Ensure we have the right URL / API version / command combo
         # IF this AM does APIv3, I'd like to use it
         # But the caller needs to know if we used APIv3 so they know whether to call provision later
-        omniargs = ['a', self.url, 'createsliver', slicename, rspecfileName]
-        self.logger.info("\nDoing CreateSliver at %s", self.url)
+        opName = 'createsliver'
+        if self.api_version > 2:
+            opName = 'allocate'
 
-        # FIXME: If fakeMode do a fake thing
+        # Save out the rspec to a temp file
+        self.requestDom = self.getEditedRSpecDom(rspecDom)
+
+        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request', '.xml', 1)
+        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
+        with open (rspecfileName, 'w') as file:
+            file.write(self.requestDom.toprettyxml())
+
+        # FIXME: Do we do something with log level or log format or file for omni calls?
+        # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
+        omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename, rspecfileName]
+        self.logger.info("\nDoing %s at %s", opName, self.url)
+        self.logger.debug("omniargs %r", omniargs)
+
+        result = None
+        success = False
+
+        # If fakeMode read results from a file
         if opts.fakeModeDir:
-            self.logger.info("Doing fake allocation")
-            time.sleep(random.randrange(1, 6))
-            for hop in self.hops:
-                hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
-                hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
+            self.logger.info("Doing FAKE allocation")
+            # For now, results file only has a manifest. No JSON
+            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.json', 1)
+            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
+            resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+            if not os.path.exists(resultPath):
+                resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
+                resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+                if not os.path.exists(resultPath):
+                    self.logger.error("Fake results file %s doesn't exist", resultPath)
+                    resultPath = None
+
+            if resultPath:
+                self.logger.info("Reading reserve results from %s", resultPath)
+                try:
+                    with open(resultPath, 'r') as file:
+                        resultsString = file.read()
+                    try:
+                        result = json.loads(resultsString, encoding='ascii')
+                    except Exception, e2:
+                        self.logger.debug("Failed to read fake results as json: %s", e2)
+                        result = resultsString
+                        success = True
+                except Exception, e:
+                    self.logger.error("Failed to read result string from %s: %s", resultPath, e)
+
+            if not result:
+                # Fallback fake mode behavior
+                success = True
+                time.sleep(random.randrange(1, 6))
+                for hop in self.hops:
+                    hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
+                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
         else:
             try:
-                (test, result) = omni.call(omniargs, opts)
-            except OmniError, e:
+                # FIXME: Threading!
+                # FIXME: AM API call timeout!
+                (text, result) = omni.call(omniargs, opts)
+                success = True
+            except AMAPIError, e:
+                self.logger.error("Failed with AMAPI Error trying to reserve at %s: %s", self.url, e)
+                result = e.returnStruct
+            except Exception, e:
                 self.logger.error("Failed to reserve at %s: %s", self.url, e)
                 # FIXME: call self.handleAllocateError
                 raise StitchingError(e)
 
+
+        if success and result:
+            # FIXME: Handle ION needing me to do sliverstatus first?
+            #  only when sliverstatus says ready, then do listresources and get that manifest
+            #  and if sliverstatatus fails or timeout, treat as whole thing failed
+
+            # AH: Do this next
+            # parse manifest, saving new vlan ranges away
+
+            # for each hop
+              # if suggested in request not any and suggested manifest != suggested in request
+                # call self.suggestedDifferent(hop)
+            pass
+        else:
+            # Handle got a struct with an error code. If that code is VLAN_UNAVAILABLE, do one thing.
+            # else, do another
+
+            # FIXME: See amhandler._retrieve_value
+
+            pass
+
         # Mark AM not busy
         self.inProcess = False
 
-        self.logger.info("Allocation at %s complete (NOT)", self)
-
-        # FIXME: implement all this....
-        # if omni returned error code  
-            # call self.handleAllocateError
-             # this should include noticing AM busy
-        # parse manifest (includes saving vlan ranges away)
-        # if APIv2 and manifest missing specific suggested tags on this AMs hops
-          # call sliverStatus. Wait till ready - with some timeout
-          # call listResources
-          # parse manifest
-        # for each hop
-          # if suggested in request not any and suggested manfiest != suggested in request
-            # call self.suggestedDifferent(hop)
-        # :DONE
-        # for each hop
-          # mark complete
+        self.logger.info("Allocation at %s complete", self)
 
         # mark self complete
         self.completed = True
+
+    def getEditedRSpecDom(self, originalRSpec):
+        # For each path on this AM, get that Path to write whatever it thinks necessary into a
+        # deep clone of the incoming RSpec Dom
+        requestRSpecDom = originalRSpec.cloneNode(True)
+        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        if stitchNodes and len(stitchNodes) > 0:
+            stitchNode = stitchNodes[0]
+        else:
+            raise StitchingError("Couldn't find stitching element in rspec")
+
+        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(RSpecParser.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
+        for path in self.paths:
+            self.logger.debug("Looking for node for path %s", path)
+            domNode = None
+            if domPaths:
+                for pathNode in domPaths:
+                    pathNodeId = pathNode.getAttribute(Path.ID_TAG)
+                    if pathNodeId == path.id:
+                        domNode = pathNode
+                        self.logger.debug("Found node for path %s", path.id)
+                        break
+            if domNode is None:
+                raise StitchingError("Couldn't find Path %s in stitching element of RSpec" % path)
+            self.logger.debug("Doing path.editChanges for path %s", path.id)
+            path.editChangesIntoDom(domNode)
+        return requestRSpecDom
 
     def copyVLANsAndDetectRedo(self):
         '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
@@ -390,16 +505,15 @@ class Aggregate(object):
 
         # FIXME: Set a flag marking it is being deleted? Set inProcess?
 
+        # Delete the previous reservation
+        # FIXME: Do we do something with log level or log format or file for omni calls?
+        # FIXME: Supply --raiseErrorOnAMAPIV2Error?
+        opName = 'deletesliver'
+        if self.api_version > 2:
+            opName = 'delete'
+        omniargs = ['-a', self.url, opName+'sliver', slicename]
+        self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
-            # Delete the previous reservation
-            # omni.call() # FIXME FIXME FIXME
-            # note omniargs is wrong: need to do delete or deletesliver as appropriate
-            # if command was allocate, command now is delete
-            # else if command was createsliver, command now is deletesliver
-            # FIXME: Do we do something with log level or log format or file for omni calls?
-            # add the needed -a AM.url
-            omniargs = ['-a', self.url, 'deletesliver', slicename]
-            self.logger.info("Doing DeleteSliver at %s", self.url)
             try:
                 (text, (successList, fail)) = omni.call(omniargs, opts)
                 if not self.url in successList:
@@ -407,8 +521,9 @@ class Aggregate(object):
                 else:
                     self.logger.debug("Result: %s", text)
             except OmniError, e:
-                self.logger.error("Failed to deletesliver: %s", e)
+                self.logger.error("Failed to %s: %s", opName, e)
                 raise StitchingError(e)
+        # FIXME: Fake mode delete results from a file?
 
         # FIXME: Set a flag marking this AM was deleted?
         return
@@ -448,6 +563,7 @@ class Hop(object):
         self._import_vlans = False
         self._dependencies = []
         self.idx = None
+        self.logger = logging.getLogger('stitch.Hop')
         # FIXME: export_vlans_to too?
         self.import_vlans_from = None # a pointer to another hop
         # FIXME: depended_on_by?
@@ -490,6 +606,20 @@ class Hop(object):
     def add_dependency(self, hop):
         self._dependencies.append(hop)
 
+    def editChangesIntoDom(self, domHopNode):
+        '''Edit any changes made in this element into the given DomNode'''
+        # Note the parent RSpec object's dom is not touched, unless the given node is from that document
+        # Here we just like the HopLink do its thing
+
+        # Incoming node should be the node for this hop
+        nodeId = domHopNode.getAttribute(self.ID_TAG)
+        if nodeId != self._id:
+            raise StitchingError("Hop %s given Dom node with different Id: %s" % (self, nodeId))
+        for child in domHopNode.childNodes:
+            if child.localName == self.LINK_TAG:
+                self.logger.debug("Hop %s editChanges calling _hop_link with node %r", self, child)
+                self._hop_link.editChangesIntoDom(child)
+
 class RSpec(GENIObject):
     '''RSpec'''
     __simpleProps__ = [ ['stitching', Stitching] ]
@@ -499,7 +629,9 @@ class RSpec(GENIObject):
         self.stitching = stitching
         self._nodes = []
         self._links = [] # Main body links
+        # DOM used to construct this: edits to objects are not reflected here
         self.dom = None
+        # Note these are not Aggregate objects to avoid any loops
         self.amURNs = set() # AMs mentioned in the RSpec
 
     @property
@@ -680,3 +812,56 @@ class HopLink(object):
         self.vlan_suggested_request = None
         self.vlan_range_manifest = ""
         self.vlan_suggested_manifest = None
+        self.logger = logging.getLogger('stitch.HopLink')
+
+    def editChangesIntoDom(self, domNode, request=True):
+        '''Edit any changes made in this element into the given DomNode'''
+        # Note that the parent RSpec object's dom is not touched, unless this domNode is from that
+        # Here we edit in the new vlan_range and vlan_available
+        # If request is False, use the manifest values. Otherwise, use requested.
+
+        # Incoming node should be the node for this hop
+        nodeId = domNode.getAttribute(self.ID_TAG)
+        if nodeId != self.urn:
+            raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
+
+        if request:
+            newVlanRangeString = str(self.vlan_range_request)
+            newVlanSuggestedString = str(self.vlan_suggested_request)
+        else:
+            newVlanRangeString = str(self.vlan_range_manifest)
+            newVlanSuggestedString = str(self.vlan_suggested_manifest)
+
+        vlan_range = domNode.getElementsByTagName(self.VLAN_RANGE_TAG)
+        if vlan_range and len(vlan_range) > 0:
+            # vlan_range may have no child or no nodeValue. Meaning would then be 'any'
+            if vlan_range[0].firstChild:
+                # Set the value
+                vlan_range[0].firstChild.nodeValue = newVlanRangeString
+                self.logger.debug("Set vlan range on node %r: %s", vlan_range[0], vlan_range[0].firstChild.nodeValue)
+            else:
+                vlan_range[0].appendChild(Document.createTextNode(newVlanRangeString))
+        else:
+            vlanRangeNode = Document.createElement(self.VLAN_RANGE_TAG)
+            vlanRangeNode.appendChild(Document.createTextNode(newVlanRangeString))
+            # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
+            l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
+            if l2scNodes and len(l2scNodes) > 0:
+                l2scNodes[0].appendChild(vlanRangeNode)
+
+        vlan_suggested = domNode.getElementsByTagName(self.VLAN_SUGGESTED_TAG)
+        if vlan_suggested and len(vlan_suggested) > 0:
+            # vlan_suggested may have no child or no nodeValue. Meaning would then be 'any'
+            if vlan_suggested[0].firstChild:
+                # Set the value
+                vlan_suggested[0].firstChild.nodeValue = newVlanSuggestedString
+                self.logger.debug("Set vlan suggested on node %r: %s", vlan_suggested[0], vlan_suggested[0].firstChild.nodeValue)
+            else:
+                vlan_suggested[0].appendChild(Document.createTextNode(newVlanSuggestedString))
+        else:
+            vlanSuggestedNode = Document.createElement(self.VLAN_RANGE_TAG)
+            vlanSuggestedNode.appendChild(Document.createTextNode(newVlanSuggestedString))
+            # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
+            l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
+            if l2scNodes and len(l2scNodes) > 0:
+                l2scNodes[0].appendChild(vlanSuggestedNode)
