@@ -100,8 +100,8 @@ class VLANRange( set ):
                     maxValue = minValue
                 except:
                     if (type(first) is str) and ((first == "any") or (first == "")):
-                            minValue = VLAN.minvlan() 
-                            maxValue = VLAN.maxvlan() 
+                            minValue = VLAN.minvlan()
+                            maxValue = VLAN.maxvlan()
                     else:
                         raise ValueError("String value must be 'any', a integer, or a range of integers instead is %s " % str(parsedItems))
             elif len(parsedItems) == 2:
@@ -121,13 +121,13 @@ class VLANRange( set ):
     def __str__( self ):
         out = ""
         hasNum = False
-        min = 4096
-        max = 0
+        min = VLAN.maxvlan()+1
+        max = VLAN.minvlan()-1
         for num in sorted(self):
-            if min < 4096 and (max+1) == num:
+            if min <= VLAN.maxvlan() and (max+1) == num:
                 max = num
                 continue
-            elif min < 4096 and num > max+1:
+            elif min <= VLAN.maxvlan() and num > max+1:
                 if hasNum:
                     out += ','
                 if max > min+1:
@@ -144,18 +144,18 @@ class VLANRange( set ):
             else:
                 min = num
                 max = num
-
         if hasNum:
             out += ','
-        if max > min+1:
+        if min == VLAN.minvlan() and max == VLAN.maxvlan():
+            out = 'any'
+        elif max > min+1:
             out += str(min)+'-'+str(max)
         else:
             out += str(min)
             if max > min:
                 out += ',' + str(max)
         return out
-#        return super(VLANRange,self).__str__()
-    
+
 
 if __name__ == "__main__":
     print "\nSome operations on VLANRanges...\n"
