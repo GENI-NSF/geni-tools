@@ -43,8 +43,7 @@ class Launcher(object):
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
                 # FIXME: Need a timeout mechanism on AM calls
-                # FIXME: dom.toxml gives me the original XML, but I want the edited one
-                agg.allocate(self.opts, self.slicename, rspec.dom.toxml())
+                agg.allocate(self.opts, self.slicename, rspec.dom)
 
             # FIXME: Do we need to sleep?
 
