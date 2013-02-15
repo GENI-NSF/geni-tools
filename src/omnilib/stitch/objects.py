@@ -28,10 +28,12 @@ import logging
 import os
 import random
 import time
+from xml.dom.minidom import parseString
 
 from GENIObject import *
 from VLANRange import *
 import RSpecParser
+#from RSpecParser import STITCH_SCHEMA_V1, GENI_SCHEMA_V3
 
 from omnilib.util.handler_utils import _construct_output_filename
 
@@ -176,6 +178,7 @@ class Aggregate(object):
         self.requestDom = None # the DOM as constructed to submit in request to this AM
         self.manifestDom = None # the DOM as we got back from the AM
         self.api_version = 2 # FIXME: Set this from stitchhandler.parseSCSResponse
+        self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -283,16 +286,20 @@ class Aggregate(object):
         # If fakeMode read results from a file
         if opts.fakeModeDir:
             self.logger.info("Doing FAKE allocation")
-            # For now, results file only has a manifest. No JSON
-            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.json', 1)
-            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
-            resultPath = os.path.join(opts.fakeModeDir, resultFileName)
-            if not os.path.exists(resultPath):
-                resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
-                resultPath = os.path.join(opts.fakeModeDir, resultFileName)
-                if not os.path.exists(resultPath):
-                    self.logger.error("Fake results file %s doesn't exist", resultPath)
-                    resultPath = None
+
+            # FIXME: Take the expanded request from the SCS and pretend it is the manifest
+            # That way, we get the VLAN we asked for
+            resultPath = "./expanded.xml"
+
+#            # For now, results file only has a manifest. No JSON
+#            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.json', 1)
+#            resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+#            if not os.path.exists(resultPath):
+#                resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
+#                resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+#                if not os.path.exists(resultPath):
+#                    self.logger.error("Fake results file %s doesn't exist", resultPath)
+#                    resultPath = None
 
             if resultPath:
                 self.logger.info("Reading reserve results from %s", resultPath)
@@ -331,20 +338,79 @@ class Aggregate(object):
 
 
         if success and result:
-            # FIXME: Handle ION needing me to do sliverstatus first?
-            #  only when sliverstatus says ready, then do listresources and get that manifest
-            #  and if sliverstatatus fails or timeout, treat as whole thing failed
+            # FIXME: Handle ION needing me to do sliverstatus first
+            #  Do we special case the ION & ? AMs that require this? How ID those?
+            #  Do we wait a # of tries on sliverstatus? # of minutes?
+            if self.dcn:
+                self.logger.warn("Need to poll sliverstatus for this DCN AM")
+            #  if ION:
+            #   while (keep checking):
+            #     call sliverStatus
+            #     If failed or ready, break
+            #     If error doing the call, break?
+            #   If failed:
+            #     success = False
+            #     result = ??
+            #     get to the else somehow?
+            #   else:
+            #     call ListResources
+            #     get the result per above
 
-            # AH: Do this next
-            # parse manifest, saving new vlan ranges away
+            # Now we have a manifest
 
-            # for each hop
-              # if suggested in request not any and suggested manifest != suggested in request
-                # call self.suggestedDifferent(hop)
-            pass
+            # Save it on the Agg
+            try:
+                self.manifestDom = parseString(result)
+            except Exception, e:
+                self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
+                # FIXME: Handle error
+
+            # Parse out the VLANs we got, saving them away on the HopLinks
+            # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
+            from xml.etree.ElementTree import fromstring
+            try:
+                manETree = fromstring(result)
+            except Exception, e:
+                self.logger.error("FAiled to parse result as ElementTree XML RSpec: %s", e)
+            schema = RSpecParser.STITCH_SCHEMA_V1
+            for hop in self.hops:
+                xpathBase = (".//{%s}path[@id='" % schema) + hop.path.id + ("']/{%s}hop[@id='" % schema) + hop._id + ("']/{%s}link[@id='" % schema) + hop.urn + ("']/{%s}switchingCapabilityDescriptor/{%s}switchingCapabilitySpecificInfo/{%s}switchingCapabilitySpecificInfo_L2sc/" % (schema, schema, schema))
+                xpathRange = xpathBase + '{%s}vlanRangeAvailability' % schema
+                xpathSuggested = xpathBase + '{%s}suggestedVLANRange' % schema
+                suggestedValue = manETree.find(xpathSuggested)
+                if suggestedValue is None:
+                    self.logger.warn("Didn't find suggested value using xpath %s", xpathSuggested)
+                    # FIXME: Handle error here
+#                    suggestedValue = str(hop._hop_link.vlan_suggested_request)
+                else:
+                    suggestedValue = suggestedValue.text
+                    if suggestedValue in ('null', 'None', 'any'):
+                        self.logger.error("Hop %s Suggested invald: %s", hop, suggestedValue)
+                        # FIXME: Handle error here
+                    suggestedObject = VLANRange.fromString(suggestedValue)
+                rangeValue = manETree.find(xpathRange)
+                if rangeValue is None:
+                    self.logger.warn("Didn't find range value using xpath %s", xpathRange)
+                    # FIXME: Handle error here
+#                    rangeValue = str(hop._hop_link.vlan_range_request)
+                else:
+                    rangeValue = rangeValue.text
+                    rangeObject = VLANRange.fromString(rangeValue)
+                self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
+                if not suggestedObject <= hop._hop_link.vlan_suggested_request:
+                    self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
+                    # FIXME: Handle error here
+                    # This is sug != requested case
+                hop._hop_link.vlan_suggested_manifest = suggestedObject
+                hop._hop_link.vlan_range_manifest = rangeObject
+
         else:
             # Handle got a struct with an error code. If that code is VLAN_UNAVAILABLE, do one thing.
+            # else if got BUSY, retry (after a pause)
             # else, do another
+
+            # FIXME FIXME
+            self.logger.error("Got error from %s: %s %s", self, text, result)
 
             # FIXME: See amhandler._retrieve_value
 
