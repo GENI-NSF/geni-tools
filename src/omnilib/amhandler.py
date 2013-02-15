@@ -303,10 +303,16 @@ class AMCallHandler(object):
         Then cache the result.
         If we got the result from the cache, set the message to say so.
         '''
-        cachedVersion = self._get_cached_getversion(client)
+        cachedVersion = None
+        if not self.opts.noGetVersionCache:
+            cachedVersion = self._get_cached_getversion(client)
         # FIXME: What if cached entry had an error? Should I retry then?
         if self.opts.noGetVersionCache or cachedVersion is None or (self.opts.GetVersionCacheOldestDate and cachedVersion['timestamp'] < self.opts.GetVersionCacheOldestDate):
             self.logger.debug("Actually calling GetVersion")
+            if self.opts.noGetVersionCache:
+                self.logger.debug(" ... opts.noGetVersionCache set")
+            elif cachedVersion is None:
+                self.logger.debug(" ... cachedVersion was None")
             (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
 
             # This next line is experimenter-only maybe?
@@ -4773,7 +4779,7 @@ def _append_geni_error_output(retStruct, message):
         amType = ""
         if retStruct['code'].has_key('am_type'):
             amType = retStruct['code']['am_type']
-        if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0:
+        if retStruct['code'].has_key('am_code') and retStruct['code']['am_code'] != 0 and retStruct['code']['am_code'] is not None and str(retStruct['code']['am_code']).strip() != "":
             if message2 != "":
                 if not message2.endswith('.'):
                     message2 += '.'
