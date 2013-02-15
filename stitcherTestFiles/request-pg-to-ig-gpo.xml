@@ -23,7 +23,7 @@
     </interface>
   </node>
   <link client_id="link-pg-utah1-ig-gpo1">
-    <component_manager name="urn:publicid:IDN+utah.geniracks.net+authority+cm"/>
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
     <interface_ref client_id="pg-utah1:if0" />
     <component_manager name="urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm"/>
     <interface_ref client_id="ig-gpo1:if0" />
