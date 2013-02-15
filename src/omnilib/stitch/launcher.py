@@ -35,6 +35,7 @@ class Launcher(object):
     def launch(self, rspec):
         '''The main loop for stitching: keep looking for AMs that are not complete, then 
         make a reservation there.'''
+        lastAM = None
         while not self._complete():
             # FIXME: Are there AMs to Delete? Or did that already happen?
 
@@ -42,13 +43,14 @@ class Launcher(object):
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
             for agg in ready_aggs:
+                lastAM = agg
                 # FIXME: Need a timeout mechanism on AM calls
                 agg.allocate(self.opts, self.slicename, rspec.dom)
 
             # FIXME: Do we need to sleep?
 
         self.logger.info("All aggregates are complete.")
-
+        return lastAM
 
     # ready implies not in process and not completed
     def _ready_aggregates(self):

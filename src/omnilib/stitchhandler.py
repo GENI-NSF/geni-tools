@@ -141,7 +141,7 @@ class StitchingHandler(object):
                     ams_to_process.add(am)
 
         # Do Main loop (below)
-        self.mainStitchingLoop(ams_to_process, parsed_rspec)
+        lastAM = self.mainStitchingLoop(ams_to_process, parsed_rspec)
           # Are all AMs marked reserved/done? Exit main loop
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
@@ -155,7 +155,14 @@ class StitchingHandler(object):
           # use code/value/output struct
           # If error and have an expanded rquest from SCS, include that in output.
           #   Or if particular AM had errors, ID the AMe and errors
+        combinedManifest = self.combineManifests(ams_to_process, lastAM)
 
+        # FIXME: obey -o et al?
+        outFile = 'combined-manifest.xml'
+        with open(outFile, 'w') as file:
+            file.write(combinedManifest)
+        self.logger.info("Wrote combined manifest RSpec to %s", outFile)
+ 
         return ""
 
     def mainStitchingLoop(self, aggs, rspec):
@@ -183,7 +190,7 @@ class StitchingHandler(object):
             # Go to end state section
         launcher = stitch.Launcher(self.opts, self.slicename, aggs)
         try:
-            launcher.launch(rspec)
+            lastAM = launcher.launch(rspec)
         except StitchingError, se:
             self.logger.warn("Stitching failed with an error")
             for am in launcher.aggs:
@@ -195,6 +202,7 @@ class StitchingHandler(object):
                     except StitchingError, se2:
                         self.logger.warn("Failed to delete reservation at %s: %s", am.url, se2)
             raise se
+        return lastAM
 
     def confirmGoodRequest(self, requestString):
         # Confirm the string is a request rspec, valid
@@ -456,7 +464,7 @@ class StitchingHandler(object):
                 self.logger.debug("   A DCN Aggregate")
             self.logger.debug("   Using AM API version %d", agg.api_version)
             if agg.manifestDom:
-                self.logger.debug("   Have a reservation here!")
+                self.logger.debug("   Have a reservation here (%s)!", agg.url)
             for h in agg.hops:
                 self.logger.debug( "  Hop %s" % (h))
             for ad in agg.dependsOn:
@@ -473,3 +481,15 @@ class StitchingHandler(object):
         else: 
             raise err, (msg, triple)
 
+    def combineManifests(self, ams, lastAM):
+        # Marshall is writing a function that takes a list of pairs am.urn and am.manifestDom, plus
+        # the last manifest Dom
+        # Return from this should be a combined manifest string
+        mansList = list()
+        for am in ams:
+            amList = (am.urn, am.manifestDom)
+            mansList.append(amList)
+        lastDom = lastAM.manifestDom
+#        combinedManifestDom = marshallsFunction(mansList, lastDom)
+        combinedManifestDom = lastDom
+        return combinedManifestDom.toprettyxml()
