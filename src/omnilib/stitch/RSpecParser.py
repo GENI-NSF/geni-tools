@@ -36,7 +36,8 @@ LINK_TAG = 'link'
 NODE_TAG = 'node'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
-#STITCH_SCHEMA_V1 = 'http://hpn.east.isi.edu/rspec/ext/stitch/0.1/'
+STITCH_SCHEMA_V1 = 'http://hpn.east.isi.edu/rspec/ext/stitch/0.1/'
+GENI_SCHEMA_V3 = 'http://www.geni.net/resources/rspec/3'
 
 # This should go away, its value is no longer used
 LAST_UPDATE_TIME_TAG = "lastUpdateTime"
@@ -47,10 +48,14 @@ class RSpecParser:
         self.logger = logger if logger else logging.getLogger('stitch')
 
     def parse(self, data):
-        dom = parseString(data)
+        try:
+            dom = parseString(data)
+        except Exception, e:
+            self.logger.error("Failed to parse rspec: %s", e)
+            raise StitchingError("Failed to parse rspec: %s" % e)
         rspecs = dom.getElementsByTagName(RSPEC_TAG)
         if len(rspecs) != 1:
-            raise StitchingError("Expected 1 rspec tag, got %d" % (len(rpsecs)))
+            raise StitchingError("Expected 1 rspec tag, got %d" % (len(rspecs)))
         rspec = self.parseRSpec(rspecs[0])
         rspec.dom = dom
         return rspec
