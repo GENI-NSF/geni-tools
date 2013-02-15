@@ -540,6 +540,11 @@ def configure_logging(opts):
 
     Return a logger for 'omni'."""
 
+    # Warning: If Omni is used as a library, and the caller did some logging configuration,
+    # then the call here to logging.basicConfig(level) will do nothing. In particular, it will not reset
+    # the log level based on the options supplied to Omni. The caller should supply a separate logging config
+    # file, or use e.g. logging.disable(logging.INFO) before calling omni. and logging.disable(logging.NOTSET) after
+
     level = logging.INFO
     optlevel = 'INFO'
     # If log level was specified in options, use it. Most verbose
