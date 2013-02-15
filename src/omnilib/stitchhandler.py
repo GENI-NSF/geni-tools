@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+import copy
 import datetime
 import logging
 
@@ -36,6 +37,7 @@ import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
 from omnilib.stitch.utils import StitchingError
+from omnilib.stitch.objects import Aggregate
 
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
@@ -121,8 +123,25 @@ class StitchingHandler(object):
 
         # FIXME: if notScript, print AM dependency tree?
 
+        ams_to_process = copy.copy(workflow_parser.aggs)
+        for amURN in parsed_rspec.amURNs:
+            found = False
+            for agg in ams_to_process:
+                if agg.urn == amURN:
+                    found = True
+                    break
+            if found:
+                continue
+            else:
+                self.logger.error("RSpec requires AM %s which is not in workflow", amURN)
+                am = Aggregate.find(amURN)
+                if not am.url:
+                    self.logger.error("And stitcher does not know the URL for that AM!")
+                else:
+                    ams_to_process.add(am)
+
         # Do Main loop (below)
-        self.mainStitchingLoop(workflow_parser.aggs, parsed_rspec)
+        self.mainStitchingLoop(ams_to_process, parsed_rspec)
           # Are all AMs marked reserved/done? Exit main loop
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
@@ -351,17 +370,54 @@ class StitchingHandler(object):
           # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
           # All AMs must be listed in workflow data at least once per path they are in
 
-        # Note which AMs were user requested
-        for agg in workflow_parser.aggs:
-            if agg.urn in self.parsedUserRequest.amURNs:
-                agg.userRequested = True
-            # FIXME: Query AM API versions supported, then set the max as property on the aggregate
-                # then use that to pick allocate vs createsliver
+        # Add extra info about the aggregates to the AM objects
+        self.add_am_info(workflow_parser.aggs)
 
         if self.opts.debug:
             self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
         return parsed_rspec, workflow_parser
+
+    def add_am_info(self, aggs):
+        options_copy = copy.deepcopy(self.opts)
+        options_copy.debug = False
+        options_copy.info = False
+
+        # Note which AMs were user requested
+        for agg in aggs:
+            if agg.urn in self.parsedUserRequest.amURNs:
+                agg.userRequested = True
+
+# For using the test ION AM
+#            if 'alpha.dragon' in agg.url:
+#                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
+
+            # Query AM API versions supported, then set the max as property on the aggregate
+                # then use that to pick allocate vs createsliver
+            # Check GetVersion geni_am_type contains 'dcn'. If so, set flag on the agg
+            omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+            try:
+                self.logger.info("Getting extra AM info from Omni for AM %s", agg)
+                logging.disable(logging.INFO)
+                (text, version) = omni.call(omniargs, options_copy)
+                logging.disable(logging.NOTSET)
+                if isinstance (version, dict) and version.has_key(agg.url) and isinstance(version[agg.url], dict) \
+                        and version[agg.url].has_key('value') and isinstance(version[agg.url]['value'], dict):
+                    if version[agg.url]['value'].has_key('geni_am_type') and isinstance(version[agg.url]['value']['geni_am_type'], list):
+                        if 'dcn' in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is DCN", agg)
+                            agg.dcn = True
+                    if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
+                        maxVer = 1
+                        for key in version[agg.url]['value']['geni_api_versions'].keys():
+                            if int(key) > maxVer:
+                                maxVer = int(key)
+                        # Hack alert: v3 AM implementations don't work even if they exist
+                        if maxVer != 2:
+                            self.logger.info("AM %s speaks API %d, but sticking with v2", agg, maxVer)
+#                        agg.api_version = maxVer
+            except OmniError, oe:
+                logging.disable(logging.NOTSET)
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, dependencies'''
@@ -389,6 +445,9 @@ class StitchingHandler(object):
                 self.logger.debug("   (User requested)")
             else:
                 self.logger.debug("   (SCS added)")
+            if agg.dcn:
+                self.logger.debug("   A DCN Aggregate")
+            self.logger.debug("   Using AM API version %d", agg.api_version)
             for h in agg.hops:
                 self.logger.debug( "  Hop %s" % (h))
             for ad in agg.dependsOn:
