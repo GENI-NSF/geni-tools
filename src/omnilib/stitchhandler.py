@@ -146,6 +146,9 @@ class StitchingHandler(object):
           # Any AMs marked should-delete? Do Delete 1 AM
           # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
 
+        if self.opts.debug:
+            self.dump_objects(parsed_rspec, ams_to_process)
+
         # FIXME: Do cleanup if any, construct return, return to stitcher.main (see above)
           # Construct a unified manifest
           # include AMs, URLs, API versions
@@ -430,6 +433,10 @@ class StitchingHandler(object):
                 # FIXME: don't use the private variable
                 self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                 self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
+                if hop._hop_link.vlan_suggested_manifest:
+                    self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
+                if hop._hop_link.vlan_range_manifest:
+                    self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
                 self.logger.debug( "    Import VLANs From: %s" % (hop.import_vlans_from))
                 deps = hop.dependsOn
                 if deps:
@@ -448,6 +455,8 @@ class StitchingHandler(object):
             if agg.dcn:
                 self.logger.debug("   A DCN Aggregate")
             self.logger.debug("   Using AM API version %d", agg.api_version)
+            if agg.manifestDom:
+                self.logger.debug("   Have a reservation here!")
             for h in agg.hops:
                 self.logger.debug( "  Hop %s" % (h))
             for ad in agg.dependsOn:
