@@ -33,9 +33,9 @@ from xml.dom.minidom import parseString
 from GENIObject import *
 from VLANRange import *
 import RSpecParser
-#from RSpecParser import STITCH_SCHEMA_V1, GENI_SCHEMA_V3
 
 from omnilib.util.handler_utils import _construct_output_filename
+from geni.util import rspec_schema
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 
@@ -274,7 +274,6 @@ class Aggregate(object):
         with open (rspecfileName, 'w') as file:
             file.write(self.requestDom.toprettyxml())
 
-        # FIXME: Do we do something with log level or log format or file for omni calls?
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
         omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename, rspecfileName]
         self.logger.info("\nDoing %s at %s", opName, self.url)
@@ -326,6 +325,8 @@ class Aggregate(object):
             try:
                 # FIXME: Threading!
                 # FIXME: AM API call timeout!
+                # FIXME: Turn down omni logging using logging.disable?
+                # FIXME: Do we do something with log level or log format or file for omni calls?
                 (text, result) = omni.call(omniargs, opts)
                 success = True
             except AMAPIError, e:
@@ -372,7 +373,7 @@ class Aggregate(object):
                 manETree = fromstring(result)
             except Exception, e:
                 self.logger.error("FAiled to parse result as ElementTree XML RSpec: %s", e)
-            schema = RSpecParser.STITCH_SCHEMA_V1
+            schema = rspec_schema.STITCH_SCHEMA_V1
             for hop in self.hops:
                 xpathBase = (".//{%s}path[@id='" % schema) + hop.path.id + ("']/{%s}hop[@id='" % schema) + hop._id + ("']/{%s}link[@id='" % schema) + hop.urn + ("']/{%s}switchingCapabilityDescriptor/{%s}switchingCapabilitySpecificInfo/{%s}switchingCapabilitySpecificInfo_L2sc/" % (schema, schema, schema))
                 xpathRange = xpathBase + '{%s}vlanRangeAvailability' % schema
@@ -435,7 +436,7 @@ class Aggregate(object):
             raise StitchingError("Couldn't find stitching element in rspec")
 
         domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(RSpecParser.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
         for path in self.paths:
             self.logger.debug("Looking for node for path %s", path)
             domNode = None
