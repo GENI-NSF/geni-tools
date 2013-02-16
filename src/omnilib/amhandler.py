@@ -920,16 +920,16 @@ class AMCallHandler(object):
             try:
                 rspec = zlib.decompress(rspec.decode('base64'))
             except Exception, e:
-                if rspec and rspec_util.is_rspec_string(rspec, self.logger):
+                if rspec and rspec_util.is_rspec_string(rspec, None, None, logger=self.logger):
                     self.logger.debug("AM returned uncompressed RSpec when compressed was requested")
                 else:
                     self.logger.error("Failed to decompress RSpec: %s", e);
                 self.logger.debug("RSpec begins: '%s'", rspec[:min(40, len(rspec))])
         # In experimenter mode, maybe notice if the rspec appears compressed anyhow and try to decompress?
-        elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, self.logger):
+        elif not self.opts.devmode and rspec and not rspec_util.is_rspec_string(rspec, None, None, logger=self.logger):
             try:
                 rspec2 = zlib.decompress(rspec.decode('base64'))
-                if rspec2 and rspec_util.is_rspec_string(rspec2, self.logger):
+                if rspec2 and rspec_util.is_rspec_string(rspec2, None, None, logger=self.logger):
                     rspec = rspec2
             except Exception, e:
                 pass
@@ -1129,7 +1129,7 @@ class AMCallHandler(object):
                 rspec = self._maybeDecompressRSpec(options, origRSpec)
                 if rspec and rspec != origRSpec:
                     self.logger.debug("Decompressed RSpec")
-                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     successCnt += 1
                     rspec = rspec_util.getPrettyRSpec(rspec)
                 else:
@@ -1449,7 +1449,7 @@ class AMCallHandler(object):
                 rspec = self._maybeDecompressRSpec(options, status['value']['geni_rspec'])
                 if rspec and rspec != status['value']['geni_rspec']:
                     self.logger.debug("Decompressed RSpec")
-                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                 else:
                     self.logger.warn("Didn't get a valid RSpec!")
@@ -1833,7 +1833,7 @@ class AMCallHandler(object):
             rspec = None
             if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
                 rspec = result['value']['geni_rspec']
-                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
                 else:
@@ -2074,7 +2074,7 @@ class AMCallHandler(object):
             # Make the RSpec more pretty-printed
             if result and isinstance(result, dict) and result.has_key('value') and isinstance(result['value'], dict) and result['value'].has_key('geni_rspec'):
                 rspec = result['value']['geni_rspec']
-                if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+                if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     rspec = rspec_util.getPrettyRSpec(rspec)
                     result['value']['geni_rspec'] = rspec
 
@@ -3957,7 +3957,7 @@ class AMCallHandler(object):
         server = _get_server_name(url, urn)
 
         # Create BODY
-        if rspec and rspec_util.is_rspec_string( rspec, self.logger ):
+        if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
 #            content = rspec_util.getPrettyRSpec(rspec)
             content = string.replace(rspec, "\\n", '\n')
