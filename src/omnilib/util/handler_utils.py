@@ -32,6 +32,7 @@ from dossl import _do_ssl
 import credparsing as credutils
 from dates import naiveUTC
 import json_encoding
+from geni.util import rspec_util
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -360,4 +361,157 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
     if opts and opts.prefix and opts.prefix.strip() != "":
         filename  = opts.prefix.strip() + "-" + filename
     return filename
+
+def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
+    '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
+    # Create HEADER
+    if slicename:
+        if slivers and len(slivers) > 0:
+            header = "Reserved resources for:\n\tSlice: %s\n\tSlivers: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, slivers, urn, url)
+        else:
+            header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
+    else:
+        header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
+    header = "<!-- "+header+" -->"
+
+    server = _get_server_name(url, urn)
+
+    # Create BODY
+    if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=logger ):
+        # This line seems to insert extra \ns - GCF ticket #202
+#        content = rspec_util.getPrettyRSpec(rspec)
+        content = string.replace(rspec, "\\n", '\n')
+#        content = rspec
+        if slicename:
+            retVal = "Got Reserved resources RSpec from %s" % server
+        else:
+            retVal = "Got RSpec from %s" % server
+    else:
+        content = "<!-- No valid RSpec returned. -->"
+        if rspec is not None:
+            # FIXME: Diff for dev here?
+            logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
+            content += "\n<!-- \n" + rspec + "\n -->"
+            if slicename:
+                retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
+            else:
+                retVal = "Invalid RSpec returned from %s that starts: %s..." % (server, str(rspec)[:min(40, len(rspec))])
+            if message:
+                logger.warn("Server said: %s", message)
+                retVal += "; Server said: %s" % message
+
+        else:
+            forslice = ""
+            if slicename:
+                forslice = "for slice %s " % slicename
+            serversaid = ""
+            if message:
+                serversaid = ": %s" % message
+
+            retVal = "No RSpec returned %sfrom %s%s" % (forslice, server, serversaid)
+            logger.warn(retVal)
+    return header, content, retVal
+
+def _writeRSpec(opts, logger, rspec, slicename, urn, url, message=None, clientcount=1):
+    '''Write the given RSpec using _printResults.
+    If given a slicename, label the output as a manifest.
+    Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
+    Do much of this using _getRSpecOutput
+    Use _construct_output_filename to build the output filename.
+    '''
+    # return just filename? retVal?
+    # Does this do logging? Or return what it would log? I think it logs, but....
+
+    (header, content, retVal) = _getRSpecOutput(logger, rspec, slicename, urn, url, message)
+
+    filename=None
+    # Create FILENAME
+    if opts.output:
+        mname = "rspec"
+        if slicename:
+            mname = "manifest-rspec"
+        filename = _construct_output_filename(opts, slicename, url, urn, mname, ".xml", clientcount)
+        # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
+
+    # Create FILE
+    # This prints or logs results, depending on whether filename is None
+    _printResults(opts, logger, header, content, filename)
+    return retVal, filename
+# End of _writeRSpec
+
+def _printResults(opts, logger, header, content, filename=None):
+    """Print header string and content string to file of given
+    name. If filename is none, then log to info.
+    If --tostdout option, then instead of logging, print to STDOUT.
+    """
+    cstart = 0
+    # if content starts with <?xml ..... ?> then put the header after that bit
+    if content is not None and content.find("<?xml") > -1:
+        cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
+        # push past any trailing \n
+        if content[cstart:cstart+2] == "\\n":
+            cstart += 2
+    # used by listresources
+    if filename is None:
+        if header is not None:
+            if cstart > 0:
+                if not opts.tostdout:
+                    logger.info(content[:cstart])
+                else:
+                    print content[:cstart] + "\n"
+            if not opts.tostdout:
+                # indent header a bit if there was something first
+                pre = ""
+                if cstart > 0:
+                    pre = "  "
+                logger.info(pre + header)
+            else:
+                # If cstart is 0 maybe still log the header so it
+                # isn't written to STDOUT and non-machine-parsable
+                if cstart == 0:
+                    logger.info(header)
+                else:
+                    print header + "\n"
+        elif content is not None:
+            if not opts.tostdout:
+                logger.info(content[:cstart])
+            else:
+                print content[:cstart] + "\n"
+        if content is not None:
+            if not opts.tostdout:
+                # indent a bit if there was something first
+                pre = ""
+                if cstart > 0:
+                    pre += "  "
+                logger.info(pre + content[cstart:])
+            else:
+                print content[cstart:] + "\n"
+    else:
+        fdir = os.path.dirname(filename)
+        if fdir and fdir != "":
+            if not os.path.exists(fdir):
+                os.makedirs(fdir)
+        with open(filename,'w') as file:
+            logger.info( "Writing to '%s'"%(filename))
+            if header is not None:
+                if cstart > 0:
+                    file.write (content[:cstart] + '\n')
+                # this will fail for JSON output. 
+                # only write header to file if have xml like
+                # above, else do log thing per above
+                # FIXME: XML file without the <?xml also ends up logging the header this way
+                if cstart > 0:
+                    file.write("  " + header )
+                    file.write( "\n" )
+                else:
+                    logger.info(header)
+            elif cstart > 0:
+                file.write(content[:cstart] + '\n')
+            if content is not None:
+                pre = ""
+                if cstart > 0:
+                    pre += "  "
+                file.write( pre + content[cstart:] )
+                file.write( "\n" )
+# End of _printResults
 

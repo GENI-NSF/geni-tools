@@ -44,7 +44,8 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
-    _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename
+    _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
+    _getRSpecOutput, _writeRSpec, _printResults
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 from omnilib.util.files import *
@@ -345,7 +346,7 @@ class AMCallHandler(object):
             self.logger.info("Writing result of getversion at AM %s (%s) to file '%s'", client.urn, client.url, filename)
         # Create File
         # This logs or prints, depending on whether filename is None
-        self._printResults( header, prettyVersion, filename)
+        _printResults(self.opts, self.logger, header, prettyVersion, filename)
 
         # FIXME: include filename in summary: always? only if 1 aggregate?
         if filename:
@@ -1278,7 +1279,7 @@ class AMCallHandler(object):
             if rspecOnly and rspecOnly != "":
                 rspecCtr += 1
 
-            retVal, filename = self._writeRSpec(rspecOnly, slicename, urn, url, None, len(rspecs))
+            retVal, filename = _writeRSpec(self.opts, self.logger, rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
                 savedFileDesc += "Saved listresources RSpec at '%s' (url '%s') to file %s; " % (urn, url, filename)
         # End of loop over rspecs
@@ -1479,7 +1480,7 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, name, client.urn, client.url, message, slivers)
+            (header, rspeccontent, rVal) = _getRSpecOutput(logger, rspec, name, client.urn, client.url, message, slivers)
             self.logger.debug(rVal)
             if status and isinstance(status, dict) and status.has_key('geni_rspec') and rspec and rspeccontent:
                 status['geni_rspec'] = rspeccontent
@@ -1501,7 +1502,7 @@ class AMCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, name, client.url, client.urn, "describe", ".json", len(clientList))
                 #self.logger.info("Writing result of describe for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
+            _printResults(self.opts, self.logger, header, prettyResult, filename)
             if filename:
                 retVal += "Saved description of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
             # Only count it as success if no slivers were missing
@@ -1666,7 +1667,7 @@ class AMCallHandler(object):
         if result:
             self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, url)
 
-            (retVal, filename) = self._writeRSpec(result, slicename, clienturn, url, message)
+            (retVal, filename) = _writeRSpec(self.opts, self.logger, result, slicename, clienturn, url, message)
             if filename:
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
@@ -1851,7 +1852,7 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success (maybe partial?)
-                (header, rspeccontent, rVal) = self._getRSpecOutput(rspec, slicename, client.urn, client.url, message)
+                (header, rspeccontent, rVal) = _getRSpecOutput(logger, rspec, slicename, client.urn, client.url, message)
                 self.logger.debug(rVal)
                 if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
                     realresult['geni_rspec'] = rspeccontent
@@ -1870,7 +1871,7 @@ class AMCallHandler(object):
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "allocate", ".json", len(clientList))
                     #self.logger.info("Writing result of allocate for slice: %s at AM: %s to file %s", slicename, client.url, filename)
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 if filename:
                     retVal += "Saved allocation of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 else:
@@ -2110,7 +2111,7 @@ class AMCallHandler(object):
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "provision", ".json", len(clientList))
                     #self.logger.info("Writing result of provision for slice: %s at AM: %s to file %s", name, client.url, filename)
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 if filename:
                     retVal += "Saved provision of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 else:
@@ -2331,7 +2332,7 @@ class AMCallHandler(object):
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ".json", len(clientList))
                     #self.logger.info("Writing result of poa %s at AM: %s to file %s", descripMsg, client.url, filename)
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 retVal += "PerformOperationalAction %s was successful." % descripMsg
                 if len(missingSlivers) > 0:
                     retVal += " - with %d missing slivers?!" % len(missingSlivers)
@@ -2657,7 +2658,7 @@ class AMCallHandler(object):
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, name, client.url, client.urn, "renewal", ".json", len(clientList))
                 #self.logger.info("Writing result of renew for slice: %s at AM: %s to file %s", name, client.url, filename)
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 if filename:
                     retVal += "Saved renewal on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
                 if len(clientList) == 1:
@@ -2788,7 +2789,7 @@ class AMCallHandler(object):
                     filename = _construct_output_filename(self.opts, name, client.url, client.urn, "sliverstatus", ".json", len(clientList))
                     #self.logger.info("Writing result of sliverstatus for slice: %s at AM: %s to file %s", name, client.url, filename)
 
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 if filename:
                     retVal += "Saved sliverstatus on %s at AM %s to file %s. \n" % (name, client.url, filename)
                 retItem[ client.url ] = status
@@ -3018,7 +3019,7 @@ class AMCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, name, client.url, client.urn, "status", ".json", len(clientList))
                 #self.logger.info("Writing result of status for slice: %s at AM: %s to file %s", name, client.url, filename)
-            self._printResults(header, prettyResult, filename)
+            _printResults(self.opts, self.logger, header, prettyResult, filename)
             if filename:
                 retVal += "Saved status on %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
             if len(missingSlivers) > 0:
@@ -3308,7 +3309,7 @@ class AMCallHandler(object):
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, name, client.url, client.urn, "delete", ".json", len(clientList))
                 #self.logger.info("Writing result of delete for slice: %s at AM: %s to file %s", name, client.url, filename)
-                self._printResults(header, prettyResult, filename)
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
                 if filename:
                     retVal += "Saved deletion of %s at AM %s to file %s. \n" % (descripMsg, client.url, filename)
 
@@ -3942,83 +3943,6 @@ class AMCallHandler(object):
 #        rspec = string.replace(rspec, '\n', ' ')
         return rspec
 
-    def _getRSpecOutput(self, rspec, slicename, urn, url, message, slivers=None):
-        '''Get the header, rspec content, and retVal for writing the given RSpec to a file'''
-        # Create HEADER
-        if slicename:
-            if slivers and len(slivers) > 0:
-                header = "Reserved resources for:\n\tSlice: %s\n\tSlivers: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, slivers, urn, url)
-            else:
-                header = "Reserved resources for:\n\tSlice: %s\n\tat AM:\n\tURN: %s\n\tURL: %s\n" % (slicename, urn, url)
-        else:
-            header = "Resources at AM:\n\tURN: %s\n\tURL: %s\n" % (urn, url)
-        header = "<!-- "+header+" -->"
-
-        server = _get_server_name(url, urn)
-
-        # Create BODY
-        if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
-            # This line seems to insert extra \ns - GCF ticket #202
-#            content = rspec_util.getPrettyRSpec(rspec)
-            content = string.replace(rspec, "\\n", '\n')
-#            content = rspec
-            if slicename:
-                retVal = "Got Reserved resources RSpec from %s" % server
-            else:
-                retVal = "Got RSpec from %s" % server
-        else:
-            content = "<!-- No valid RSpec returned. -->"
-            if rspec is not None:
-                # FIXME: Diff for dev here?
-                self.logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
-                content += "\n<!-- \n" + rspec + "\n -->"
-                if slicename:
-                    retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
-                else:
-                    retVal = "Invalid RSpec returned from %s that starts: %s..." % (server, str(rspec)[:min(40, len(rspec))])
-                if message:
-                    self.logger.warn("Server said: %s", message)
-                    retVal += "; Server said: %s" % message
-
-            else:
-                forslice = ""
-                if slicename:
-                    forslice = "for slice %s " % slicename
-                serversaid = ""
-                if message:
-                    serversaid = ": %s" % message
-
-                retVal = "No RSpec returned %sfrom %s%s" % (forslice, server, serversaid)
-                self.logger.warn(retVal)
-        return header, content, retVal
-
-    def _writeRSpec(self, rspec, slicename, urn, url, message=None, clientcount=1):
-        '''Write the given RSpec using _printResults.
-        If given a slicename, label the output as a manifest.
-        Use rspec_util to check if this is a valid RSpec, and to format the RSpec nicely if so.
-        Do much of this using _getRSpecOutput
-        Use _construct_output_filename to build the output filename.
-        '''
-        # return just filename? retVal?
-        # Does this do logging? Or return what it would log? I think it logs, but....
-
-        (header, content, retVal) = self._getRSpecOutput(rspec, slicename, urn, url, message)
-
-        filename=None
-        # Create FILENAME
-        if self.opts.output:
-            mname = "rspec"
-            if slicename:
-                mname = "manifest-rspec"
-            filename = _construct_output_filename(self.opts, slicename, url, urn, mname, ".xml", clientcount)
-            # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
-
-        # Create FILE
-        # This prints or logs results, depending on whether filename is None
-        self._printResults( header, content, filename)
-        return retVal, filename
-    # End of _writeRSpec
-
     def _get_users_arg(self):
         '''Get the users argument for SSH public keys to install from omni_config 'users' section.'''
         # Copy the user config and read the keys from the files into the structure
@@ -4244,81 +4168,6 @@ class AMCallHandler(object):
             raise err, msg
         else: 
             raise err, (msg, triple)
-
-    def _printResults(self, header, content, filename=None):
-        """Print header string and content string to file of given
-        name. If filename is none, then log to info.
-        If --tostdout option, then instead of logging, print to STDOUT.
-        """
-        cstart = 0
-        # if content starts with <?xml ..... ?> then put the header after that bit
-        if content is not None and content.find("<?xml") > -1:
-            cstart = content.find("?>", content.find("<?xml") + len("<?xml"))+2
-            # push past any trailing \n
-            if content[cstart:cstart+2] == "\\n":
-                cstart += 2
-        # used by listresources
-        if filename is None:
-            if header is not None:
-                if cstart > 0:
-                    if not self.opts.tostdout:
-                        self.logger.info(content[:cstart])
-                    else:
-                        print content[:cstart] + "\n"
-                if not self.opts.tostdout:
-                    # indent header a bit if there was something first
-                    pre = ""
-                    if cstart > 0:
-                        pre = "  "
-                    self.logger.info(pre + header)
-                else:
-                    # If cstart is 0 maybe still log the header so it
-                    # isn't written to STDOUT and non-machine-parsable
-                    if cstart == 0:
-                        self.logger.info(header)
-                    else:
-                        print header + "\n"
-            elif content is not None:
-                if not self.opts.tostdout:
-                    self.logger.info(content[:cstart])
-                else:
-                    print content[:cstart] + "\n"
-            if content is not None:
-                if not self.opts.tostdout:
-                    # indent a bit if there was something first
-                    pre = ""
-                    if cstart > 0:
-                        pre += "  "
-                    self.logger.info(pre + content[cstart:])
-                else:
-                    print content[cstart:] + "\n"
-        else:
-            fdir = os.path.dirname(filename)
-            if fdir and fdir != "":
-                if not os.path.exists(fdir):
-                    os.makedirs(fdir)
-            with open(filename,'w') as file:
-                self.logger.info( "Writing to '%s'"%(filename))
-                if header is not None:
-                    if cstart > 0:
-                        file.write (content[:cstart] + '\n')
-                    # this will fail for JSON output. 
-                    # only write header to file if have xml like
-                    # above, else do log thing per above
-                    if cstart > 0:
-                        file.write("  " + header )
-                        file.write( "\n" )
-                    else:
-                        self.logger.info(header)
-                elif cstart > 0:
-                    file.write(content[:cstart] + '\n')
-                if content is not None:
-                    pre = ""
-                    if cstart > 0:
-                        pre += "  "
-                    file.write( pre + content[cstart:] )
-                    file.write( "\n" )
-    # End of _printResults
 
     def _has_slice_expired(self, sliceCred):
         """Return (boolean, expiration datetime) whether given slicecred (string) has expired)"""
