@@ -40,6 +40,7 @@ from omnilib.stitch.utils import StitchingError
 from omnilib.stitch.objects import Aggregate
 
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
+from geni.util import rspec_schema
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
@@ -94,7 +95,7 @@ class StitchingHandler(object):
             #    requestString = amhandler.self._maybeGetRSpecFromStruct(requestString)
 
             # confirmGoodRequest
-            self.confirmGoodRequest(requestString)
+            self.confirmGoodRSpec(requestString)
             self.logger.debug("Valid GENI v3 request RSpec")
             
             # parseRequest
@@ -204,21 +205,30 @@ class StitchingHandler(object):
             raise se
         return lastAM
 
-    def confirmGoodRequest(self, requestString):
+    def confirmGoodRSpec(self, requestString, rspecType=rspec_schema.REQUEST, doRSpecLint=True):
+        typeStr = 'Request'
+        if rspecType == rspec_schema.MANIFEST:
+            typeStr = 'Manifest'
         # Confirm the string is a request rspec, valid
         if requestString is None or str(requestString).strip() == '':
-            raise OmniError("Empty request rspec")
-        if not is_rspec_string(requestString, self.logger):
-            raise OmniError("Request RSpec file did not contain an RSpec")
-        if not is_rspec_of_type(requestString):
-            raise OmniError("Request RSpec file did not contain a request RSpec (wrong type or schema)")
-        try:
-            rspeclint_exists()
-        except:
-            self.logger.debug("No rspeclint found")
-            return
-        if not validate_rspec(requestString):
-            raise OmniError("Request RSpec does not validate against its schemas")
+            raise OmniError("Empty %s rspec" % typeStr)
+        if not is_rspec_string(requestString, None, None, logger=self.logger):
+            raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
+        if not is_rspec_of_type(requestString, rspecType):
+            raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
+
+        # Run rspeclint
+        if doRSpecLint:
+            try:
+                rspeclint_exists()
+            except:
+                self.logger.debug("No rspeclint found")
+                return
+            schema = rspec_schema.GENI_3_REQ_SCHEMA
+            if rspecType == rspec_schema.MANIFEST:
+                schema = rspec_schema.GENI_3_MAN_SCHEMA
+            if not validate_rspec(requestString, rspec_schema.GENI_3_NAMESPACE, schema):
+                raise OmniError("%s RSpec does not validate against its schemas" % typeStr)
 
     def confirmSliceOK(self):
         # Ensure the given slice name corresponds to a current valid slice
@@ -492,4 +502,15 @@ class StitchingHandler(object):
         lastDom = lastAM.manifestDom
 #        combinedManifestDom = marshallsFunction(mansList, lastDom)
         combinedManifestDom = lastDom
-        return combinedManifestDom.toprettyxml()
+        manString = combinedManifestDom.toprettyxml()
+
+        # set rspec to be UTF-8
+        if isinstance(manString, unicode):
+            manString = manString.encode('utf-8')
+            self.logger.debug("Combined manifest RSpec was unicode")
+
+        # For now this is really a request, but should be treating it as a manifest
+#        self.confirmGoodRSpec(manString, rspec_schema.MANIFEST)
+        # For now, SCS gives us stitchSchemaV2 stuff, so rspeclint fails
+        self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
+        return manString
