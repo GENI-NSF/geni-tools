@@ -48,8 +48,8 @@ def is_wellformed_xml( string, logger=None ):
         # Parsing failed, so not well formed XML
         if logger is not None:
             logger.debug("Not wellformed XML: %s", e)
-        else:
-            print "Not wellformed XML: ", e
+        #else:
+        #    print "Not wellformed XML: ", e
         retVal= False
     return retVal
 
@@ -89,11 +89,12 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
     try:
         root = etree.fromstring(xml)
     except:
-        print "Failed to make an XML doc"
+        #print "Failed to make an XML doc"
         return False
 
     actual_type = root.get('type')
     if actual_type is None or actual_type.lower() != type.lower():
+       # print "RSpec claimed type %s doesn't match expected %s" % (actual_type, type)
         return False
     elif typeOnly:
         # only checking the type in the RSpec
@@ -104,7 +105,7 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         # location can contain many items
         location = root.get( "{"+XSI+"}"+"schemaLocation" )
         if location is None:
-            print "Failed to get schemaLocation from RSpec: %s" % xml[:100]
+            #print "Failed to get schemaLocation from RSpec: %s" % xml[:100]
             # Note that rspeclint might still pass for this RSpec if you supply the schema location
             # info manually to rspeclint. So is this OK or not? FIXME FIXME!
             return False
@@ -121,6 +122,7 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         if schema.lower() in location.lower():
             return True
         else:
+            #print "RSpec did not list expected schema %s in schemaLocation %s" % (schema, location)
             return False
 
 def get_comp_ids_from_rspec( xml, version="GENI 3" ):
@@ -259,6 +261,7 @@ def validate_rspec( ad, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA ):
             return True
         else:
             # FIXME: Log rspeclint output?
+            #print output
             return False
 
 def rspec_available_only( rspec, namespace=GENI_3_NAMESPACE, schema=GENI_3_REQ_SCHEMA, version="GENI 3" ):
@@ -290,8 +293,13 @@ def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None,
     '''Could this string be part of an XML-based rspec?
     Returns: True/False'''
 
-    if rspec is None or not(isinstance(rspec, str)):
+    if rspec is None or not(isinstance(rspec, str) or isinstance(rspec, unicode)):
+        if logger:
+            logger.debug("rspec is none or not a string")
         return False
+
+    if isinstance(rspec, unicode):
+        rspec = rspec.encode('utf-8')
 
     # do all comparisons as lowercase
     rspec = rspec.lower()
@@ -303,20 +311,23 @@ def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None,
     # (2) Check if rspec is a valid XML document
     #   (a) a snippet of XML starting with <rspec>, or
     #   (b) a snippet of XML starting with <resv_rspec>
-    if (('<rspec' in rspec) or
-        ('<resv_rspec' in rspec)): 
-        return True
+    if ('<rspec' not in rspec) and \
+        ('<resv_rspec' not in rspec):
+        if logger:
+            logger.debug("RSpec string invalid: no rspec element")
+        return False
 
     # (3) Validate rspec against schema
     if rspec_namespace and rspec_schema:
+        if logger:
+            logger.debug("Doing validate_rspec")
         if validate_rspec(rspec, 
                           namespace=rspec_namespace, 
                           schema=rspec_schema ):
             return True
         else:
             return False
-    return False
-
+    return True
 
 def getPrettyRSpec(rspec):
     '''Produce a pretty print string for an XML RSpec'''
