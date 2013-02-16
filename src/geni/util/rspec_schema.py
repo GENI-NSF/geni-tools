@@ -44,3 +44,5 @@ XSI="http://www.w3.org/2001/XMLSchema-instance"
 
 PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
 PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
+
+STITCH_SCHEMA_V1 = 'http://hpn.east.isi.edu/rspec/ext/stitch/0.1/'
