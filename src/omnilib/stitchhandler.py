@@ -25,6 +25,7 @@
 import copy
 import datetime
 import logging
+import string
 
 import omni
 from omnilib.util import OmniError, naiveUTC
@@ -39,7 +40,7 @@ import omnilib.stitch as stitch
 from omnilib.stitch.utils import StitchingError
 from omnilib.stitch.objects import Aggregate
 
-from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
+from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
 from geni.util import rspec_schema
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
@@ -378,9 +379,9 @@ class StitchingHandler(object):
 
             scsFilename = 'stitching-scs-expanded-request.xml'
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
-            if expandedRSpec and rspec_util.is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
+            if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
                 # This line seems to insert extra \ns - GCF ticket #202
-                #        content = rspec_util.getPrettyRSpec(rspec)
+#                content = getPrettyRSpec(expandedRSpec)
                 content = string.replace(expandedRSpec, "\\n", '\n')
             else:
                 content = "<!-- No valid RSpec returned. -->"

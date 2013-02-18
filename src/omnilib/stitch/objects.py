@@ -23,10 +23,12 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import copy
 import json
 import logging
 import os
 import random
+import string
 import time
 from xml.dom.minidom import parseString
 
@@ -35,7 +37,7 @@ from VLANRange import *
 import RSpecParser
 
 from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
-from geni.util import rspec_schema
+from geni.util import rspec_schema, rspec_util
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 
@@ -278,7 +280,7 @@ class Aggregate(object):
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
-            #        content = rspec_util.getPrettyRSpec(rspec)
+#            content = rspec_util.getPrettyRSpec(requestString)
             content = string.replace(requestString, "\\n", '\n')
         else:
             content = "<!-- No valid RSpec returned. -->"
