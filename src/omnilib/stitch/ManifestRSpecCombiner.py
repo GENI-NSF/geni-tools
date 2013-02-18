@@ -141,11 +141,10 @@ class ManifestRSpecCombiner:
     #   URL - URL of aggregate
     #   API_VERSION - Version of AM API supported by AM
     #   USER_REQUESTED - Boolean whether this agg was in the origin request RSPEC (or SCS added it)
-    #   HOP_URNs - List of HOP URN's for that aggregate
-    #   VLAN_TAGs - VLAN tags for this aggregate
+    #   HOP_INFOs - List of HOP URN's and VLAN tags and HOP IDs for that aggregate
     # Format is JSON
     # {
-    #   {'urn':urn, 'url':url, 'api_version':api_version, 'user_requested':user_requested, 'hop_urns':hop_urns, 'vlan_tags':vlan_tags}, ...
+    #   {'urn':urn, 'url':url, 'api_version':api_version, 'user_requested':user_requested, 'hop_info':[{'urn':urn, 'vlan_tag':vlan_tag}]}
     # }           
     def addAggregateDetails(self, ams_list, dom_template):
         doc_element = dom_template.documentElement
@@ -168,9 +167,8 @@ class ManifestRSpecCombiner:
         url = am.url
         api_version = am.api_version
         user_requested = am.userRequested
-        hop_urns = [hop._hop_link.urn for hop in am._hops]
-        vlan_tags = [str(hop._hop_link.vlan_suggested_manifest) for hop in am._hops]
-        return {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hop_urns':hop_urns, 'vlan_tags':vlan_tags}
+        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'id':hop._id}  for hop in am._hops]
+        return {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hops_info':hops_info}
 
     # Replace the hop element in the template DOM with the hop element 
     # from the aggregate DOM that has the given HOP ID
