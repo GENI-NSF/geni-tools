@@ -181,6 +181,7 @@ class Aggregate(object):
         self.manifestDom = None # the DOM as we got back from the AM
         self.api_version = 2 # FIXME: Set this from stitchhandler.parseSCSResponse
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
+        # FIXME: # reservation tries since last call to SCS?
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -261,16 +262,207 @@ class Aggregate(object):
         # Mark AM is busy
         self.inProcess = True
 
-        # FIXME: Ensure we have the right URL / API version / command combo
-        # IF this AM does APIv3, I'd like to use it
+        # Generate the new request Dom
+        self.requestDom = self.getEditedRSpecDom(rspecDom)
+
+        # Get the manifest for this AM
+        # result is a manifest RSpec string or a dict with the error if any
+        # success is a boolean
+        # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs
+        (result, success) = self.doReservation(opts, slicename)
+
+        if success and result:
+            # FIXME: Handle ION needing me to do sliverstatus first
+            #  Do we special case the ION & ? AMs that require this? How ID those?
+            #  Do we wait a # of tries on sliverstatus? # of minutes?
+            if self.dcn:
+                self.logger.warn("Need to poll sliverstatus for this DCN AM")
+            #  if ION:
+            #   while (keep checking):
+            #     call sliverStatus
+            #     If failed or ready, break
+            #     If error doing the call, break?
+            #   If failed:
+            #     success = False
+            #     result = ??
+            #     get to the else somehow?
+            #   else:
+            #     call ListResources
+            #     get the result per above
+
+            # Now we have a manifest
+
+            # Save it on the Agg
+            try:
+                self.manifestDom = parseString(result)
+            except Exception, e:
+                self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
+                # FIXME: Handle error
+
+            # Parse out the VLANs we got, saving them away on the HopLinks
+            # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
+            for hop in self.hops:
+                # FIXME: Hop ID is not specific enough. Need a path ID as well
+                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
+                rangeValue = range_suggested[0]
+                suggestedValue = range_suggested[1]
+                if not suggestedValue:
+                    self.logger.warn("Didn't find suggested value for hop %s", hop)
+                    raise StitchingError("%s didn't have a suggestedVlanRange in manifest" % hop)
+                elif suggestedValue in ('null', 'None', 'any'):
+                    self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
+                    raise StitchingError("%s had invalidsuggestedVlanRange in manifest: %s" % (hop, suggestedValue))
+                else:
+                    suggestedObject = VLANRange.fromString(suggestedValue)
+                if not rangeValue:
+                    self.logger.warn("Didn't find vlanAvailRange element for hop %s", hop)
+                    raise StitchingError("%s didn't have a vlanAvailRange in manifest" % hop)
+                else:
+                    rangeObject = VLANRange.fromString(rangeValue)
+
+                self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
+                if not suggestedObject <= hop._hop_link.vlan_suggested_request:
+                    self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
+                    # FIXME: Handle error here
+                    # This is sug != requested case
+                hop._hop_link.vlan_suggested_manifest = suggestedObject
+                hop._hop_link.vlan_range_manifest = rangeObject
+
+        else:
+            # Handle got a struct with an error code. If that code is VLAN_UNAVAILABLE, do one thing.
+            # else if got BUSY, retry (after a pause)
+            # else, do another
+
+            # FIXME FIXME
+            self.logger.error("Got error from %s: %s %s", self, text, result)
+
+            # FIXME: See amhandler._retrieve_value
+
+            pass
+
+        # Mark AM not busy
+        self.inProcess = False
+
+        self.logger.info("Allocation at %s complete", self)
+
+        # mark self complete
+        self.completed = True
+
+    # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
+    # FIXME: Hop ID is not enough. Need a path ID as well.
+    def getVLANRangeSuggested(self, manifest, hop_id):
+        vlan_range_availability = None
+        suggested_vlan_range = None
+
+        rspec_node = None
+        stitching_node = None
+        hop_node = None
+        scd_node = None
+        scsi_node = None
+
+        # FIXME: Use constants for these strings used here to find the proper elements
+
+        for child in manifest.childNodes:
+            if child.nodeType == XMLNode.ELEMENT_NODE and \
+                    child.nodeName == 'rspec':
+                rspec_node = child
+                break
+
+        if rspec_node:
+            for child in rspec_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'stitching':
+                    stitching_node = child
+                    break
+        else:
+            raise StitchingError("No rspec element in manifest")
+
+        if stitching_node:
+            # FIXME: There can be multiple <path> elements for a single rspec.
+            # Distinguish by path ID
+            path_node = stitching_node.childNodes[0]
+            for child in path_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'hop':
+                    this_hop_id = child.getAttribute('id')
+                    if this_hop_id == hop_id:
+                        hop_node = child
+                        break
+        else:
+            raise StitchingError("No stitching element in manifest")
+                
+        if hop_node:
+            link_node = hop_node.childNodes[0]
+            for child in link_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'switchingCapabilityDescriptor':
+                    scd_node = child
+                    break;
+        else:
+            raise StitchingError("Couldn't find hop %s in rspec", hop_id)
+
+        if scd_node:
+            for child in scd_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'switchingCapabilitySpecificInfo':
+                    scsi_node = child;
+                    break
+        else:
+            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in rspec", hop_id)
+
+        if scsi_node:
+            # FIXME: There will shortly be other kinds of sub-tags here. Need to look for this explicitly
+            scsil2_node = scsi_node.childNodes[0]
+            for child in scsil2_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE:
+                    child_text = child.childNodes[0].nodeValue
+                    if child.nodeName == 'vlanRangeAvailability':
+                        vlan_range_availability = child_text
+                    elif child.nodeName == 'suggestedVLANRange':
+                        suggested_vlan_range = child_text
+        else:
+            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec", hop_id)
+
+        return (vlan_range_availability, suggested_vlan_range)
+
+
+    def getEditedRSpecDom(self, originalRSpec):
+        # For each path on this AM, get that Path to write whatever it thinks necessary into a
+        # deep clone of the incoming RSpec Dom
+        requestRSpecDom = originalRSpec.cloneNode(True)
+        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        if stitchNodes and len(stitchNodes) > 0:
+            stitchNode = stitchNodes[0]
+        else:
+            raise StitchingError("Couldn't find stitching element in rspec")
+
+        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
+        for path in self.paths:
+            self.logger.debug("Looking for node for path %s", path)
+            domNode = None
+            if domPaths:
+                for pathNode in domPaths:
+                    pathNodeId = pathNode.getAttribute(Path.ID_TAG)
+                    if pathNodeId == path.id:
+                        domNode = pathNode
+                        self.logger.debug("Found node for path %s", path.id)
+                        break
+            if domNode is None:
+                raise StitchingError("Couldn't find Path %s in stitching element of RSpec" % path)
+            self.logger.debug("Doing path.editChanges for path %s", path.id)
+            path.editChangesIntoDom(domNode)
+        return requestRSpecDom
+
+    def doReservation(self, opts, slicename):
+        # Ensure we have the right URL / API version / command combo
+        # If this AM does APIv3, I'd like to use it
         # But the caller needs to know if we used APIv3 so they know whether to call provision later
         opName = 'createsliver'
         if self.api_version > 2:
             opName = 'allocate'
 
-        # Save out the rspec to a temp file
-        self.requestDom = self.getEditedRSpecDom(rspecDom)
-
+        # Write the request rspec to a string that we save to a file
 #        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
         # Careful - this is a request. Don't make it look like a manifest
 #        retVal, rspecfileName = _writeRSpec(opts, self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url)
@@ -352,202 +544,14 @@ class Aggregate(object):
                 success = True
             except AMAPIError, e:
                 self.logger.error("Failed with AMAPI Error trying to reserve at %s: %s", self.url, e)
+
+                # FIXME: handle BUSY
                 result = e.returnStruct
             except Exception, e:
                 self.logger.error("Failed to reserve at %s: %s", self.url, e)
                 # FIXME: call self.handleAllocateError
                 raise StitchingError(e)
-
-
-        if success and result:
-            # FIXME: Handle ION needing me to do sliverstatus first
-            #  Do we special case the ION & ? AMs that require this? How ID those?
-            #  Do we wait a # of tries on sliverstatus? # of minutes?
-            if self.dcn:
-                self.logger.warn("Need to poll sliverstatus for this DCN AM")
-            #  if ION:
-            #   while (keep checking):
-            #     call sliverStatus
-            #     If failed or ready, break
-            #     If error doing the call, break?
-            #   If failed:
-            #     success = False
-            #     result = ??
-            #     get to the else somehow?
-            #   else:
-            #     call ListResources
-            #     get the result per above
-
-            # Now we have a manifest
-
-            # Save it on the Agg
-            try:
-                self.manifestDom = parseString(result)
-            except Exception, e:
-                self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
-                # FIXME: Handle error
-
-            # Parse out the VLANs we got, saving them away on the HopLinks
-            # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
-            from xml.etree.ElementTree import fromstring
-            try:
-                manETree = fromstring(result)
-            except Exception, e:
-                self.logger.error("FAiled to parse result as ElementTree XML RSpec: %s", e)
-            schema = rspec_schema.STITCH_SCHEMA_V1
-            for hop in self.hops:
-#                 xpathBase = (".//{%s}path[@id='" % schema) + hop.path.id + ("']/{%s}hop[@id='" % schema) + hop._id + ("']/{%s}link[@id='" % schema) + hop.urn + ("']/{%s}switchingCapabilityDescriptor/{%s}switchingCapabilitySpecificInfo/{%s}switchingCapabilitySpecificInfo_L2sc/" % (schema, schema, schema))
-#                 xpathRange = xpathBase + '{%s}vlanRangeAvailability' % schema
-#                 xpathSuggested = xpathBase + '{%s}suggestedVLANRange' % schema
-#                 suggestedValue = manETree.find(xpathSuggested)
-#                 if suggestedValue is None:
-#                     self.logger.warn("Didn't find suggested value using xpath %s", xpathSuggested)
-#                     # FIXME: Handle error here
-# #                    suggestedValue = str(hop._hop_link.vlan_suggested_request)
-#                 else:
-#                     suggestedValue = suggestedValue.text
-#                     if suggestedValue in ('null', 'None', 'any'):
-#                         self.logger.error("Hop %s Suggested invald: %s", hop, suggestedValue)
-#                         # FIXME: Handle error here
-#                     suggestedObject = VLANRange.fromString(suggestedValue)
-#                 rangeValue = manETree.find(xpathRange)
-
-                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
-                rangeValue = range_suggested[0]
-                suggestedValue = range_suggested[1]
-                if not suggestedValue:
-                    self.logger.warn("Didn't find suggested value for hop " + str(hop._id))
-                if not rangeValue:
-                    self.logger.warn("Didn't find range value for hop " + str(hop._id))
-                if suggestedValue in ('null', 'None', 'any'):
-                    self.logger.error("Hop %s Suggested invalud: %s", hop, suggestedValue)
-
-                suggestedObject = VLANRange.fromString(suggestedValue)
-                rangeObject = VLANRange.fromString(rangeValue)
-#                 if rangeValue is None:
-# #                    self.logger.warn("Didn't find range value using xpath %s", xpathRange)
-#                     self.logger.warn("Couldn't find range value for hop : " + str(hop._id))
-#                     # FIXME: Handle error here
-# #                    rangeValue = str(hop._hop_link.vlan_range_request)
-#                 else:
-#                     rangeObject = VLANRange.fromString(rangeValue)
-                self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
-                if not suggestedObject <= hop._hop_link.vlan_suggested_request:
-                    self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
-                    # FIXME: Handle error here
-                    # This is sug != requested case
-                hop._hop_link.vlan_suggested_manifest = suggestedObject
-                hop._hop_link.vlan_range_manifest = rangeObject
-
-        else:
-            # Handle got a struct with an error code. If that code is VLAN_UNAVAILABLE, do one thing.
-            # else if got BUSY, retry (after a pause)
-            # else, do another
-
-            # FIXME FIXME
-            self.logger.error("Got error from %s: %s %s", self, text, result)
-
-            # FIXME: See amhandler._retrieve_value
-
-            pass
-
-        # Mark AM not busy
-        self.inProcess = False
-
-        self.logger.info("Allocation at %s complete", self)
-
-        # mark self complete
-        self.completed = True
-
-    # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
-    def getVLANRangeSuggested(self, manifest, hop_id):
-        vlan_range_availability = None
-        suggested_vlan_range = None
-
-        rspec_node = None
-        stitching_node = None
-        hop_node = None
-        scd_node = None
-        scsi_node = None
-
-        for child in manifest.childNodes:
-            if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.nodeName == 'rspec':
-                rspec_node = child
-                break
-
-        if rspec_node:
-            for child in rspec_node.childNodes:
-                if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'stitching':
-                    stitching_node = child
-                    break
-
-        if stitching_node:
-            path_node = stitching_node.childNodes[0]
-            for child in path_node.childNodes:
-                if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'hop':
-                    this_hop_id = child.getAttribute('id')
-                    if this_hop_id == hop_id:
-                        hop_node = child
-                        break
-                
-        if hop_node:
-            link_node = hop_node.childNodes[0]
-            for child in link_node.childNodes:
-                if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'switchingCapabilityDescriptor':
-                    scd_node = child
-                    break;
-
-        if scd_node:
-            for child in scd_node.childNodes:
-                if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'switchingCapabilitySpecificInfo':
-                    scsi_node = child;
-                    break
-
-        if scsi_node:
-            scsil2_node = scsi_node.childNodes[0]
-            for child in scsil2_node.childNodes:
-                if child.nodeType == XMLNode.ELEMENT_NODE:
-                    child_text = child.childNodes[0].nodeValue
-                    if child.nodeName == 'vlanRangeAvailability':
-                        vlan_range_availability = child_text
-                    elif child.nodeName == 'suggestedVLANRange':
-                        suggested_vlan_range = child_text
-
-        return (vlan_range_availability, suggested_vlan_range)
-
-
-    def getEditedRSpecDom(self, originalRSpec):
-        # For each path on this AM, get that Path to write whatever it thinks necessary into a
-        # deep clone of the incoming RSpec Dom
-        requestRSpecDom = originalRSpec.cloneNode(True)
-        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
-        if stitchNodes and len(stitchNodes) > 0:
-            stitchNode = stitchNodes[0]
-        else:
-            raise StitchingError("Couldn't find stitching element in rspec")
-
-        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
-        for path in self.paths:
-            self.logger.debug("Looking for node for path %s", path)
-            domNode = None
-            if domPaths:
-                for pathNode in domPaths:
-                    pathNodeId = pathNode.getAttribute(Path.ID_TAG)
-                    if pathNodeId == path.id:
-                        domNode = pathNode
-                        self.logger.debug("Found node for path %s", path.id)
-                        break
-            if domNode is None:
-                raise StitchingError("Couldn't find Path %s in stitching element of RSpec" % path)
-            self.logger.debug("Doing path.editChanges for path %s", path.id)
-            path.editChangesIntoDom(domNode)
-        return requestRSpecDom
+        return result, success
 
     def copyVLANsAndDetectRedo(self):
         '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
@@ -574,6 +578,15 @@ class Aggregate(object):
                 new_suggested = hop.import_vlans_from._hop_link.vlan_suggested_manifest.copy()
             else:
                 self.logger.warn("Hop %s's import_from %s had no suggestedVLAN manifest", hop, hop.import_vlans_from)
+
+            # If we've noted VLANs we already tried that failed (cause of later failures
+            # or cause the AM wouldn't give the tag), then be sure to exclude those
+            # from new_suggested - that is, if new_suggested would be in that set, then we have
+            # an error - gracefully exit, either to SCS excluding this hop or to user
+            if new_suggested <= hop.vlans_unavailable:
+                # FIXME
+                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s", hop, new_suggested, hop.vlans_unavailable)
+
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
             if hop.import_vlans_from._hop_link.vlan_range_manifest:
@@ -585,6 +598,24 @@ class Aggregate(object):
             else:
                 self.logger.warn("Hop %s had no avail VLAN request", hop, hop.import_vlans_from)
             new_avail = int1 & int2
+
+            # If we've noted VLANs we already tried that failed (cause of later failures
+            # or cause the AM wouldn't give the tag), then be sure to exclude those
+            # from new_avail. And if new_avail is now empty, that is
+            # an error - gracefully exit, either to SCS excluding this hop or to user
+            new_avail2 = new_avail - hop.vlans_unavailable
+            if new_avail2 != new_avail:
+                self.logger.debug("%s computed vlanRange %s smaller due to excluding known unavailable VLANs. Was otherwise %s", hop, new_avail2, new_avail)
+                new_avail = new_avail2
+            if len(new_avail) == 0:
+                # FIXME
+                raise StitchingError("%s computed vlanRange is empty", hop)
+
+            if not new_suggested <= new_avail:
+                # We're somehow asking for something not in the avail range we're asking for.
+                # An error
+                self.logger.warn("Hop %s Calculated suggested %s not in available range %s", hop, new_suggested, new_avail)
+                raise StitchingError("Hop %s could not be processed: calculated a suggested VLAN of %s that is not in the calculated availabel range %s", hop, new_suggested, new_avail)
 
             # If we have a previous manifest, we might be done or might need to delete a previous reservation
             if hop._hop_link.vlan_suggested_manifest:
@@ -697,6 +728,7 @@ class Hop(object):
 
     # XML tag constants
     ID_TAG = 'id'
+    TYPE_TAG = 'type'
     LINK_TAG = 'link'
     NEXT_HOP_TAG = 'nextHop'
 
@@ -705,6 +737,11 @@ class Hop(object):
         """Parse a stitching hop from a DOM element."""
         # FIXME: getAttributeNS?
         id = element.getAttribute(cls.ID_TAG)
+        isLoose = False
+        if element.hasAttribute(cls.TYPE_TAG):
+            hopType = element.getAttribute(cls.TYPE_TAG)
+            if hopType.lower().strip() == 'loose':
+                isLoose = True
         hop_link = None
         next_hop = None
         for child in element.childNodes:
@@ -715,6 +752,8 @@ class Hop(object):
                 if next_hop == 'null':
                     next_hop = None
         hop = Hop(id, hop_link, next_hop)
+        if isLoose:
+            hop.loose = True
         return hop
 
     def __init__(self, id, hop_link, next_hop):
@@ -727,9 +766,18 @@ class Hop(object):
         self._dependencies = []
         self.idx = None
         self.logger = logging.getLogger('stitch.Hop')
-        # FIXME: export_vlans_to too?
         self.import_vlans_from = None # a pointer to another hop
-        # FIXME: depended_on_by?
+
+        # If True, then next request to SCS should explicitly
+        # mark this hop as loose
+        self.loose = False
+        # Set to true so later call to SCS will explicitly exclude this Hop
+        self.excludeFromSCS = False
+
+        # VLANs we know are not possible here - cause of VLAN_UNAVAILABLE
+        # or cause a suggested was not picked.
+        # Use this to avoid picking these later
+        self.vlans_unavailable = VLANRange()
 
     def __str__(self):
         return "<Hop %r on path %r>" % (self.urn, self._path.id)
@@ -778,6 +826,11 @@ class Hop(object):
         nodeId = domHopNode.getAttribute(self.ID_TAG)
         if nodeId != self._id:
             raise StitchingError("Hop %s given Dom node with different Id: %s" % (self, nodeId))
+
+        # Mark hop explicitly loose if necessary
+        if self.loose:
+            domHopNode.setAttribute(self.TYPE_TAG, 'loose')
+
         for child in domHopNode.childNodes:
             if child.localName == self.LINK_TAG:
                 self.logger.debug("Hop %s editChanges calling _hop_link with node %r", self, child)
