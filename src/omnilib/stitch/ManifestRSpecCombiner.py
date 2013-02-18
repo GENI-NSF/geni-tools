@@ -26,6 +26,7 @@
  manifest for the whole stitching operation
 '''
 
+import json
 import logging
 import sys
 from xml.dom.minidom import getDOMImplementation, parseString, Node
@@ -48,6 +49,7 @@ class ManifestRSpecCombiner:
         self.combineNodes(ams_list, dom_template)
         self.combineLinks(ams_list, dom_template)
         self.combineHops(ams_list, dom_template)
+        self.addAggregateDetails(ams_list, dom_template)
         return dom_template
 
     # Replace the 'node' section of the dom_template with 
@@ -131,6 +133,44 @@ class ManifestRSpecCombiner:
                 hop_id = int(hop._id)
 #                print "AGG " + str(am) + " HID " + str(hop_id)
                 self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id)
+
+    # Add details about allocations to each aggregate in a 
+    # structured comment at root of DOM
+    # Content for each component: 
+    #   URN - URN of aggregate
+    #   URL - URL of aggregate
+    #   API_VERSION - Version of AM API supported by AM
+    #   USER_REQUESTED - Boolean whether this agg was in the origin request RSPEC (or SCS added it)
+    #   HOP_URNs - List of HOP URN's for that aggregate
+    #   VLAN_TAGs - VLAN tags for this aggregate
+    # Format is JSON
+    # {
+    #   {'urn':urn, 'url':url, 'api_version':api_version, 'user_requested':user_requested, 'hop_urns':hop_urns, 'vlan_tags':vlan_tags}, ...
+    # }           
+    def addAggregateDetails(self, ams_list, dom_template):
+        doc_element = dom_template.documentElement
+        comment_text = "\n" + "Aggregate Details" + "\n"
+        for am in ams_list:
+            am_details = self.computeAMDetails(am)
+            am_details_text = json.dumps(am_details)
+            comment_text = comment_text + am_details_text + "\n"
+        comment_element = dom_template.createComment(comment_text)
+        first_non_comment_element = None
+        for elt in dom_template.childNodes:
+            if elt.nodeType != Node.COMMENT_NODE:
+                first_non_comment_element = elt;
+                break
+        dom_template.insertBefore(comment_element, first_non_comment_element)
+
+    # Compute dictionary containing details about a particular aggregate 
+    def computeAMDetails(self, am):
+        urn = am.urn
+        url = am.url
+        api_version = am.api_version
+        user_requested = am.userRequested
+        hop_urns = [hop._hop_link.urn for hop in am._hops]
+        vlan_tags = [str(hop._hop_link.vlan_suggested_manifest) for hop in am._hops]
+        return {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hop_urns':hop_urns, 'vlan_tags':vlan_tags}
 
     # Replace the hop element in the template DOM with the hop element 
     # from the aggregate DOM that has the given HOP ID
