@@ -36,7 +36,7 @@ class ManifestRSpecCombiner:
 
     # Constructor
     def __init__(self):
-        pass
+        self.logger = logging.getLogger('stitch.ManifestRSpecCombiner')
 
     # Combine the manifest, replacing elements in the dom_template
     # with the approapriate pieces from the manifests
@@ -45,15 +45,15 @@ class ManifestRSpecCombiner:
     #    dom_template is a dom object into which to replace selected
     #      components from the aggregate doms
     def combine(self, ams_list, dom_template):
-        mans_list = [am.manifestDom for am in ams_list]
-        self.combineNodes(mans_list, dom_template)
-        self.combineLinks(mans_list, dom_template)
+        self.combineNodes(ams_list, dom_template)
+        self.combineLinks(ams_list, dom_template)
         self.combineHops(ams_list, dom_template)
         return dom_template
 
     # Replace the 'node' section of the dom_template with 
     # a list of all node sections from the manifests
-    def combineNodes(self, mans_list, dom_template):
+    def combineNodes(self, ams_list, dom_template):
+
 
         # Remove the 'node' element from template
         doc_root = dom_template.documentElement
@@ -65,20 +65,26 @@ class ManifestRSpecCombiner:
                 doc_root.removeChild(child)
 #                print "Removing " + str(child) + " " + client_id
 
-        for man in mans_list:
-            urn = man[0]
-            dom = man[1]
+        unique_clients = {}
+
+        for am in ams_list:
+            urn = am.urn
+            dom = am.manifestDom
             dom_doc_root = dom.documentElement
             children = dom_doc_root.childNodes
             for child in children:
                 if child.nodeType == Node.ELEMENT_NODE and \
                         child.nodeName == 'node':
                     client_id = child.getAttribute('client_id')
-                    doc_root.appendChild(child)
-#                    print "Adding " + str(child) + " " + client_id
+                    if not unique_clients.has_key(client_id):
+                        unique_clients[client_id] = True
+                        doc_root.appendChild(child)
+#                        print "Adding " + str(child) + " " + client_id
+
+
 
     # Add a unique copy of each link from each file (only one per urn)
-    def combineLinks(self, mans_list, dom_template):
+    def combineLinks(self, ams_list, dom_template):
 
         # Remove the 'link' elements from template
         doc_root = dom_template.documentElement
@@ -86,25 +92,28 @@ class ManifestRSpecCombiner:
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'link':
-                sliver_id = child.getAttribute('sliver_id')
+                client_id = child.getAttribute('client_id')
                 doc_root.removeChild(child)
-#                print "Removing " + str(child) + " " + sliver_id
+#                print "Removing " + str(child) + " " + client_id
 
-        unique_slivers = {}
-        for man in mans_list:
-            urn = man[0]
-            dom = man[1]
+        unique_clients = {}
+        for am in ams_list:
+            urn = am.urn
+            dom = am.manifestDom
             dom_doc_root = dom.documentElement
             children = dom_doc_root.childNodes
             for child in children:
                 if child.nodeType == Node.ELEMENT_NODE and \
                         child.nodeName == 'link':
-                    sliver_id = child.getAttribute('sliver_id')
-                    # Add only one copy of the link per sliver_id
-                    if not unique_slivers.has_key(sliver_id):
-#                        print "Adding " + str(child) + " " + sliver_id
+                    client_id = child.getAttribute('client_id')
+                    # Add only one copy of the link per client_id
+                    if not unique_clients.has_key(client_id):
+#                        print "Adding " + str(child) + " " + client_id
                         doc_root.appendChild(child)
-                    unique_slivers[sliver_id] = True
+                        unique_clients[client_id] = True
+
+
+
                         
 
     # Take a list of ams 
@@ -114,78 +123,57 @@ class ManifestRSpecCombiner:
     # A hop has a hop_link which has an ID which matches the ID of the
     # hop in the template dom
     def combineHops(self, ams_list, dom_template):
+        template_stitching = self.getStitchingElement(dom_template)
+        template_path = template_stitching.childNodes[0]
 
-        doc_root = dom_template.document_element
-        children = doc_root.childNodes
-        for child in children:
+        for am in ams_list:
+            for hop in am.hops:
+                hop_id = int(hop._id)
+#                print "AGG " + str(am) + " HID " + str(hop_id)
+                self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id)
+
+    # Replace the hop element in the template DOM with the hop element 
+    # from the aggregate DOM that has the given HOP ID
+    def replaceHopElement(self, template_path, am_stitching, hop_id):
+        template_hop = None
+        for child in template_path.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'stitching':
-                stitching_node = child
-                path_node = stitching_node.childNodes[0]
-                print "SN = " + str(stitching_node)
-                print "PN = " + str(path_node)
+                    child.nodeName == 'hop' and \
+                    int(child.getAttribute('id')) == hop_id:
+                template_hop = child
+                break
 
-def createAggregateFromDom(manifest_dom, agg_urn):
-    doc_root = manifest_dom.documentElement
-    children = doc_root.childNodes
-    agg = Aggregate(urn)
-    agg.manifestDom = manifest_dom
-    for child in children:
-        if child.nodeType == Node.ELEMENT_NODE and \
-                child.nodeName == 'stitching':
-            stitching_node = child
-            path_node = child.childNodes[0]
-            hops = [Hop.fromDOM(hop_node) for hop_node in path_node.childNodes]
-            agg._hops = hops
-    return agg
+        am_path = am_stitching.childNodes[0]
+        am_hop = None
+        for child in am_path.childNodes:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.nodeName == 'hop' and \
+                    int(child.getAttribute('id')) == hop_id:
+                am_hop = child
+                break
+
+        if am_hop and template_hop:
+#            print "T_HOP = " + str(template_hop) + " HID = " + str(hop_id) + " AM_HOP = " + str(am_hop)
+            template_path.replaceChild(am_hop, template_hop)
+        else:
+            self.logger.error ("Can't replace hop in template: AM HOP %s TEMPLATE HOP %s" % (am_hop, template_hop))
+                
+
+    def getStitchingElement(self, manifest_dom):
+        rspec_node = None
+        for child in manifest_dom.childNodes:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.nodeName == 'rspec':
+                rspec_node = child
+                break
+        if rspec_node:
+            for child in rspec_node.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.nodeName == 'stitching':
+                    return child
+        return None
 
 def combineManifestRSpecs(ams_list, dom_template):
     mrc = ManifestRSpecCombiner()
     return mrc.combine(ams_list, dom_template)
 
-if __name__ == "__main__":
-
-
-    prefix = "/Users/mbrinn/geni/gcf/stitcherTestFiles/"
-    filenames_by_urn = {
-        "urn:publicid:IDN+emulab.net+authority+cm": 
-        prefix+"ahtest-manifest-rspec-emulab-net-protogeniv2.xml",
-        "urn:publicid:IDN+ion.internet2.edu+authority+cm": 
-        prefix+"ahtest-manifest-rspec-geni-am-net-internet2-edu.xml",
-        "urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm": 
-        prefix+"ahtest-manifest-rspec-instageni-gpolab-bbn-com-protogeniv2.xml", 
-        "urn:publicid:IDN+utah.geniracks.net+authority+cm":
-            prefix+"ahtest-manifest-rspec-utah-geniracks-net-protogeniv2.xml"
-        }
-
-
-    ams_list = list()
-    dom_template = None
-    for urn in filenames_by_urn.keys():
-        filename = filenames_by_urn[urn]
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        try:
-            dom = parseString(data)
-            am = createAggregateFromDom(dom, urn)
-            ams_list.append(am)
-            # Arbitrarily pick the first one as the 'template'
-            if not dom_template:
-                dom_template = parseString(data)
-        except Exception, e:
-            msg = "Failed to parse rspec: %s %s" % (filename, e)
-            self.logger.error(msg)
-            raise StitchingError(msg)
-
-
-#     for mans in mans_list:
-#         urn = mans[0]
-#         dom = mans[1]
-#         print urn + " " + str(dom)
-#     print "TEMPLATE = " + str(dom_template)
-
-    mrc = ManifestRSpecCombiner()
-    revised_dom_template = mrc.combine(ams_list, dom_template)
-
-#    print "RESULT: " + revised_dom_template.toprettyxml()

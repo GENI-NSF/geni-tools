@@ -39,6 +39,7 @@ from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
 from omnilib.stitch.utils import StitchingError
 from omnilib.stitch.objects import Aggregate
+from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
 
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
 from geni.util import rspec_schema
@@ -523,13 +524,11 @@ class StitchingHandler(object):
         else: 
             raise err, (msg, triple)
 
+    # Combine manifests from set of AM's into a single manifest, usign the given manifest as a template
+    # Combine unique entries for nodes and links, and use the hop elements from the aggregate assocatied with that hop
     def combineManifests(self, ams, lastAM):
-        # Marshall is writing a function that takes a list AMs (which have urn, manifestDom, and hops), plus
-        # the last manifest Dom
-        # Return from this should be a combined manifest string
         lastDom = lastAM.manifestDom
-#        combinedManifestDom = marshallsFunction(ams, lastDom)
-        combinedManifestDom = lastDom
+        combinedManifestDom = combineManifestRSpecs(ams, lastDom)
         manString = combinedManifestDom.toprettyxml()
 
         # set rspec to be UTF-8

@@ -30,7 +30,7 @@ import os
 import random
 import string
 import time
-from xml.dom.minidom import parseString
+from xml.dom.minidom import parseString, Node as XMLNode
 
 from GENIObject import *
 from VLANRange import *
@@ -396,28 +396,41 @@ class Aggregate(object):
                 self.logger.error("FAiled to parse result as ElementTree XML RSpec: %s", e)
             schema = rspec_schema.STITCH_SCHEMA_V1
             for hop in self.hops:
-                xpathBase = (".//{%s}path[@id='" % schema) + hop.path.id + ("']/{%s}hop[@id='" % schema) + hop._id + ("']/{%s}link[@id='" % schema) + hop.urn + ("']/{%s}switchingCapabilityDescriptor/{%s}switchingCapabilitySpecificInfo/{%s}switchingCapabilitySpecificInfo_L2sc/" % (schema, schema, schema))
-                xpathRange = xpathBase + '{%s}vlanRangeAvailability' % schema
-                xpathSuggested = xpathBase + '{%s}suggestedVLANRange' % schema
-                suggestedValue = manETree.find(xpathSuggested)
-                if suggestedValue is None:
-                    self.logger.warn("Didn't find suggested value using xpath %s", xpathSuggested)
-                    # FIXME: Handle error here
-#                    suggestedValue = str(hop._hop_link.vlan_suggested_request)
-                else:
-                    suggestedValue = suggestedValue.text
-                    if suggestedValue in ('null', 'None', 'any'):
-                        self.logger.error("Hop %s Suggested invald: %s", hop, suggestedValue)
-                        # FIXME: Handle error here
-                    suggestedObject = VLANRange.fromString(suggestedValue)
-                rangeValue = manETree.find(xpathRange)
-                if rangeValue is None:
-                    self.logger.warn("Didn't find range value using xpath %s", xpathRange)
-                    # FIXME: Handle error here
-#                    rangeValue = str(hop._hop_link.vlan_range_request)
-                else:
-                    rangeValue = rangeValue.text
-                    rangeObject = VLANRange.fromString(rangeValue)
+#                 xpathBase = (".//{%s}path[@id='" % schema) + hop.path.id + ("']/{%s}hop[@id='" % schema) + hop._id + ("']/{%s}link[@id='" % schema) + hop.urn + ("']/{%s}switchingCapabilityDescriptor/{%s}switchingCapabilitySpecificInfo/{%s}switchingCapabilitySpecificInfo_L2sc/" % (schema, schema, schema))
+#                 xpathRange = xpathBase + '{%s}vlanRangeAvailability' % schema
+#                 xpathSuggested = xpathBase + '{%s}suggestedVLANRange' % schema
+#                 suggestedValue = manETree.find(xpathSuggested)
+#                 if suggestedValue is None:
+#                     self.logger.warn("Didn't find suggested value using xpath %s", xpathSuggested)
+#                     # FIXME: Handle error here
+# #                    suggestedValue = str(hop._hop_link.vlan_suggested_request)
+#                 else:
+#                     suggestedValue = suggestedValue.text
+#                     if suggestedValue in ('null', 'None', 'any'):
+#                         self.logger.error("Hop %s Suggested invald: %s", hop, suggestedValue)
+#                         # FIXME: Handle error here
+#                     suggestedObject = VLANRange.fromString(suggestedValue)
+#                 rangeValue = manETree.find(xpathRange)
+
+                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
+                rangeValue = range_suggested[0]
+                suggestedValue = range_suggested[1]
+                if not suggestedValue:
+                    self.logger.warn("Didn't find suggested value for hop " + str(hop._id))
+                if not rangeValue:
+                    self.logger.warn("Didn't find range value for hop " + str(hop._id))
+                if suggestedValue in ('null', 'None', 'any'):
+                    self.logger.error("Hop %s Suggested invalud: %s", hop, suggestedValue)
+
+                suggestedObject = VLANRange.fromString(suggestedValue)
+                rangeObject = VLANRange.fromString(rangeValue)
+#                 if rangeValue is None:
+# #                    self.logger.warn("Didn't find range value using xpath %s", xpathRange)
+#                     self.logger.warn("Couldn't find range value for hop : " + str(hop._id))
+#                     # FIXME: Handle error here
+# #                    rangeValue = str(hop._hop_link.vlan_range_request)
+#                 else:
+#                     rangeObject = VLANRange.fromString(rangeValue)
                 self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
                 if not suggestedObject <= hop._hop_link.vlan_suggested_request:
                     self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
@@ -445,6 +458,68 @@ class Aggregate(object):
 
         # mark self complete
         self.completed = True
+
+    # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
+    def getVLANRangeSuggested(self, manifest, hop_id):
+        vlan_range_availability = None
+        suggested_vlan_range = None
+
+        rspec_node = None
+        stitching_node = None
+        hop_node = None
+        scd_node = None
+        scsi_node = None
+
+        for child in manifest.childNodes:
+            if child.nodeType == XMLNode.ELEMENT_NODE and \
+                    child.nodeName == 'rspec':
+                rspec_node = child
+                break
+
+        if rspec_node:
+            for child in rspec_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'stitching':
+                    stitching_node = child
+                    break
+
+        if stitching_node:
+            path_node = stitching_node.childNodes[0]
+            for child in path_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'hop':
+                    this_hop_id = child.getAttribute('id')
+                    if this_hop_id == hop_id:
+                        hop_node = child
+                        break
+                
+        if hop_node:
+            link_node = hop_node.childNodes[0]
+            for child in link_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'switchingCapabilityDescriptor':
+                    scd_node = child
+                    break;
+
+        if scd_node:
+            for child in scd_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.nodeName == 'switchingCapabilitySpecificInfo':
+                    scsi_node = child;
+                    break
+
+        if scsi_node:
+            scsil2_node = scsi_node.childNodes[0]
+            for child in scsil2_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE:
+                    child_text = child.childNodes[0].nodeValue
+                    if child.nodeName == 'vlanRangeAvailability':
+                        vlan_range_availability = child_text
+                    elif child.nodeName == 'suggestedVLANRange':
+                        suggested_vlan_range = child_text
+
+        return (vlan_range_availability, suggested_vlan_range)
+
 
     def getEditedRSpecDom(self, originalRSpec):
         # For each path on this AM, get that Path to write whatever it thinks necessary into a
