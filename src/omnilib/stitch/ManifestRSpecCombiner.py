@@ -30,6 +30,8 @@ import logging
 import sys
 from xml.dom.minidom import getDOMImplementation, parseString, Node
 
+import objects
+
 class ManifestRSpecCombiner:
 
     # Constructor
@@ -39,11 +41,14 @@ class ManifestRSpecCombiner:
     # Combine the manifest, replacing elements in the dom_template
     # with the approapriate pieces from the manifests
     # Arguments:
-    #    mans_list is a list of (am_urn, am_manifest_dom)
-    def combine(self, mans_list, dom_template):
+    #    ams_list is a list of Aggregate objects
+    #    dom_template is a dom object into which to replace selected
+    #      components from the aggregate doms
+    def combine(self, ams_list, dom_template):
+        mans_list = [am.manifestDom for am in ams_list]
         self.combineNodes(mans_list, dom_template)
         self.combineLinks(mans_list, dom_template)
-        self.combineHops(mans_list, dom_template)
+        self.combineHops(ams_list, dom_template)
         return dom_template
 
     # Replace the 'node' section of the dom_template with 
@@ -102,11 +107,41 @@ class ManifestRSpecCombiner:
                     unique_slivers[sliver_id] = True
                         
 
-    def combineHops(self, mans_list, dom_template):
-        pass
+    # Take a list of ams 
+    # and replace the hop in the dom_template with the appropriate
+    # hop from the list of hops of the matching am
+    # An aggregate has a list of hops and a manifestDom
+    # A hop has a hop_link which has an ID which matches the ID of the
+    # hop in the template dom
+    def combineHops(self, ams_list, dom_template):
 
+        doc_root = dom_template.document_element
+        children = doc_root.childNodes
+        for child in children:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.nodeName == 'stitching':
+                stitching_node = child
+                path_node = stitching_node.childNodes[0]
+                print "SN = " + str(stitching_node)
+                print "PN = " + str(path_node)
 
+def createAggregateFromDom(manifest_dom, agg_urn):
+    doc_root = manifest_dom.documentElement
+    children = doc_root.childNodes
+    agg = Aggregate(urn)
+    agg.manifestDom = manifest_dom
+    for child in children:
+        if child.nodeType == Node.ELEMENT_NODE and \
+                child.nodeName == 'stitching':
+            stitching_node = child
+            path_node = child.childNodes[0]
+            hops = [Hop.fromDOM(hop_node) for hop_node in path_node.childNodes]
+            agg._hops = hops
+    return agg
 
+def combineManifestRSpecs(ams_list, dom_template):
+    mrc = ManifestRSpecCombiner()
+    return mrc.combine(ams_list, dom_template)
 
 if __name__ == "__main__":
 
@@ -124,7 +159,7 @@ if __name__ == "__main__":
         }
 
 
-    mans_list = list()
+    ams_list = list()
     dom_template = None
     for urn in filenames_by_urn.keys():
         filename = filenames_by_urn[urn]
@@ -133,7 +168,8 @@ if __name__ == "__main__":
         file.close()
         try:
             dom = parseString(data)
-            mans_list.append((urn, dom))
+            am = createAggregateFromDom(dom, urn)
+            ams_list.append(am)
             # Arbitrarily pick the first one as the 'template'
             if not dom_template:
                 dom_template = parseString(data)
@@ -150,6 +186,6 @@ if __name__ == "__main__":
 #     print "TEMPLATE = " + str(dom_template)
 
     mrc = ManifestRSpecCombiner()
-    revised_dom_template = mrc.combine(mans_list, dom_template)
+    revised_dom_template = mrc.combine(ams_list, dom_template)
 
 #    print "RESULT: " + revised_dom_template.toprettyxml()
