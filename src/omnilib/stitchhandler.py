@@ -538,7 +538,7 @@ class StitchingHandler(object):
 
         # FIXME
         # For now this is really a request, but should be treating it as a manifest
-#        self.confirmGoodRSpec(manString, rspec_schema.MANIFEST)
         # For now, SCS gives us stitchSchemaV2 stuff, so rspeclint fails
+#        self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
         self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
         return manString
