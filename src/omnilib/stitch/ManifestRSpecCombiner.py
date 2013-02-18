@@ -32,6 +32,8 @@ from xml.dom.minidom import getDOMImplementation, parseString, Node
 
 import objects
 
+# FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
+
 class ManifestRSpecCombiner:
 
     # Constructor
@@ -54,6 +56,9 @@ class ManifestRSpecCombiner:
     # a list of all node sections from the manifests
     def combineNodes(self, ams_list, dom_template):
 
+        # FIXME: Only remove a node when we find the matching manifest
+        # Only add the manifest from a given AMs manifest if that AM's urn is the 
+        # component_manager_id attribute on that node
 
         # Remove the 'node' element from template
         doc_root = dom_template.documentElement
@@ -61,7 +66,7 @@ class ManifestRSpecCombiner:
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'node':
-                client_id = child.getAttribute('client_id')
+#                client_id = child.getAttribute('client_id')
                 doc_root.removeChild(child)
 #                print "Removing " + str(child) + " " + client_id
 
@@ -82,9 +87,16 @@ class ManifestRSpecCombiner:
 #                        print "Adding " + str(child) + " " + client_id
 
 
-
     # Add a unique copy of each link from each file (only one per urn)
     def combineLinks(self, ams_list, dom_template):
+
+        # FIXME: As for nodes:
+        # For each link
+        # Find the first <component_manager> child element
+        # Go to the am with that am.urn.
+        # Find the <link> element from that AMs manifest
+        # Replace link element here with that link element
+        # Move on to next <link> element from dom_template
 
         # Remove the 'link' elements from template
         doc_root = dom_template.documentElement
@@ -111,9 +123,6 @@ class ManifestRSpecCombiner:
 #                        print "Adding " + str(child) + " " + client_id
                         doc_root.appendChild(child)
                         unique_clients[client_id] = True
-
-
-
                         
 
     # Take a list of ams 
@@ -124,6 +133,9 @@ class ManifestRSpecCombiner:
     # hop in the template dom
     def combineHops(self, ams_list, dom_template):
         template_stitching = self.getStitchingElement(dom_template)
+        # FIXME: A given stitching element may have multiple <path> child elements
+        # (a given hop urn may appear in multiple <path> elements)
+        # FIXME: A given hop has a path. Use that to find the proper <path> element. Not just the first
         template_path = template_stitching.childNodes[0]
 
         for am in ams_list:
@@ -136,6 +148,9 @@ class ManifestRSpecCombiner:
     # from the aggregate DOM that has the given HOP ID
     def replaceHopElement(self, template_path, am_stitching, hop_id):
         template_hop = None
+
+        # FIXME: hop 'id' attribute is not always an int. Treat as a string
+
         for child in template_path.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'hop' and \
@@ -143,6 +158,7 @@ class ManifestRSpecCombiner:
                 template_hop = child
                 break
 
+        # FIXME: A given hop has a path. Use that to find the proper <path> element. Not just the first
         am_path = am_stitching.childNodes[0]
         am_hop = None
         for child in am_path.childNodes:
