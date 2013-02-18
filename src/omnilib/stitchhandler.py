@@ -158,11 +158,20 @@ class StitchingHandler(object):
           #   Or if particular AM had errors, ID the AMe and errors
         combinedManifest = self.combineManifests(ams_to_process, lastAM)
 
-        # FIXME: obey -o et al?
-        outFile = 'combined-manifest.xml'
-        with open(outFile, 'w') as file:
-            file.write(combinedManifest)
-        self.logger.info("Wrote combined manifest RSpec to %s", outFile)
+        # FIXME: Do I want all URNs and URLs as comments in the resulting manifest? Then make urn and url
+        # be a string that is comma separated list. But then filename will be funny.
+        # -- maybe use a list of URNs and call the member functions directly?
+        # FIXME: This prepends a header on an RSpec that might already have a header
+        # -- maybe replace any existing header
+        # FIXME: Also, without the -o option this is really verbose! Maybe set -o?
+        retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+        if filename:
+            self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(ams_to_process), filename)
+
+#        outFile = 'combined-manifest.xml'
+#        with open(outFile, 'w') as file:
+#            file.write(combinedManifest)
+#        self.logger.info("Wrote combined manifest RSpec to %s", outFile)
  
         return ""
 
@@ -358,16 +367,38 @@ class StitchingHandler(object):
         # save expanded RSpec
         expandedRSpec = scsResponse.rspec()
         if self.opts.debug:
-            self.logger.debug("Writing SCS expanded RSpec to expanded.xml")
-            with open("expanded.xml", 'w') as file:
-                file.write(expandedRSpec)
+            # Write the RSpec the SCS gave us to a file
+            # I'd like to re-use existing methods. But these aren't quite right
+
+#            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, expandedRSpec, self.slicename, 'stitching-scs-expanded', '', None)
+#            if filename:
+#                self.logger.debug("Saved SCS expanded request RSpec to file %s", filename)
+            # And this isn't quite right either - the headers look like a manifest
+#            (header, content, retVal) = handler_utils._getRSpecOutput(self.logger, expandedRSpec, self.slicename, 'stitching-scs-expanded', '', None)
+
+            scsFilename = 'stitching-scs-expanded-request.xml'
+            header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
+            if expandedRSpec and rspec_util.is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
+                # This line seems to insert extra \ns - GCF ticket #202
+                #        content = rspec_util.getPrettyRSpec(rspec)
+                content = string.replace(expandedRSpec, "\\n", '\n')
+            else:
+                content = "<!-- No valid RSpec returned. -->"
+                if expandedRSpec is not None:
+                    content += "\n<!-- \n" + expandedRSpec + "\n -->"
+
+            # Set -o to ensure this goes to a file, not logger or stdout
+            opts_copy = copy.deepcopy(self.opts)
+            opts_copy.output = True
+            handler_utils._printResults(opts_copy, self.logger, header, content, scsFilename)
+            self.logger.debug("Wrote SCS expanded RSpec to %s", scsFilename)
+#            with open(scsFilename, 'w') as file:
+#                file.write(expandedRSpec)
 
        # parseRequest
         parsed_rspec = self.rspecParser.parse(expandedRSpec)
         self.logger.debug("Parsed SCS expanded RSpec of type %r",
                           type(parsed_rspec))
-        #with open('gen-rspec.xml', 'w') as f:
-        #    f.write(parsed_rspec.dom.toxml())
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()
@@ -492,15 +523,11 @@ class StitchingHandler(object):
             raise err, (msg, triple)
 
     def combineManifests(self, ams, lastAM):
-        # Marshall is writing a function that takes a list of pairs am.urn and am.manifestDom, plus
+        # Marshall is writing a function that takes a list AMs (which have urn, manifestDom, and hops), plus
         # the last manifest Dom
         # Return from this should be a combined manifest string
-        mansList = list()
-        for am in ams:
-            amList = (am.urn, am.manifestDom)
-            mansList.append(amList)
         lastDom = lastAM.manifestDom
-#        combinedManifestDom = marshallsFunction(mansList, lastDom)
+#        combinedManifestDom = marshallsFunction(ams, lastDom)
         combinedManifestDom = lastDom
         manString = combinedManifestDom.toprettyxml()
 
@@ -509,6 +536,7 @@ class StitchingHandler(object):
             manString = manString.encode('utf-8')
             self.logger.debug("Combined manifest RSpec was unicode")
 
+        # FIXME
         # For now this is really a request, but should be treating it as a manifest
 #        self.confirmGoodRSpec(manString, rspec_schema.MANIFEST)
         # For now, SCS gives us stitchSchemaV2 stuff, so rspeclint fails

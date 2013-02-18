@@ -34,7 +34,7 @@ from GENIObject import *
 from VLANRange import *
 import RSpecParser
 
-from omnilib.util.handler_utils import _construct_output_filename
+from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
 from geni.util import rspec_schema
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
@@ -269,10 +269,29 @@ class Aggregate(object):
         # Save out the rspec to a temp file
         self.requestDom = self.getEditedRSpecDom(rspecDom)
 
+#        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
+        # Careful - this is a request. Don't make it look like a manifest
+#        retVal, rspecfileName = _writeRSpec(opts, self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url)
+        # FIXME: the header says it is reserved resources. Is this worse? Make my own header instead?
+#        (header, content, retVal) = _getRSpecOutput(self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url, None)
+        requestString = self.requestDom.toprettyxml()
+        header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
+        if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
+            # This line seems to insert extra \ns - GCF ticket #202
+            #        content = rspec_util.getPrettyRSpec(rspec)
+            content = string.replace(requestString, "\\n", '\n')
+        else:
+            content = "<!-- No valid RSpec returned. -->"
+            if requestString is not None:
+                content += "\n<!-- \n" + requestString + "\n -->"
         rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request', '.xml', 1)
-        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
-        with open (rspecfileName, 'w') as file:
-            file.write(self.requestDom.toprettyxml())
+        # Set -o to ensure this goes to a file, not logger or stdout
+        opts_copy = copy.deepcopy(opts)
+        opts_copy.output = True
+        _printResults(opts_copy, self.logger, header, content, rspecfileName)
+        self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, rspecfileName)
+#        with open (rspecfileName, 'w') as file:
+#            file.write(self.requestDom.toprettyxml())
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
         omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename, rspecfileName]
@@ -288,7 +307,7 @@ class Aggregate(object):
 
             # FIXME: Take the expanded request from the SCS and pretend it is the manifest
             # That way, we get the VLAN we asked for
-            resultPath = "./expanded.xml"
+            resultPath = "./stitching-scs-expanded-request.xml"
 
 #            # For now, results file only has a manifest. No JSON
 #            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.json', 1)
