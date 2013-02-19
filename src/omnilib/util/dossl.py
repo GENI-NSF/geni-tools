@@ -46,10 +46,9 @@ def is_busy_reply(result):
     """
     return (type(result) == dict
             and result.has_key('code')
-            and result.has_key('value')
-            and result.has_key('output')
-            and result['code'] == 14)
-
+            and (((isinstance(result['code'], str) or isinstance(result['code'], unicode)) and result['code'] == 14) or \
+                     (isinstance(result["code"], dict) and result["code"].has_key("geni_code") \
+                          and isinstance(result["code"]["geni_code"], int) and result["code"]["geni_code"] == 14)))
 
 def _do_ssl(framework, suppresserrors, reason, fn, *args):
     """ Attempts to make an xmlrpc call, and will repeat the attempt
