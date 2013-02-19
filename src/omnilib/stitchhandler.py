@@ -170,6 +170,9 @@ class StitchingHandler(object):
     def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
         # ExistingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
+        if self.scsCalls > 1:
+            self.logger.warn("Calling SCS for the %dth time", self.scsCalls)
+
         scsResponse = self.callSCS(sliceurn, requestString, existingAggs)
 #        scsResponse = self.callSCS(sliceurn, self.parsedUserRequest)
 
@@ -209,6 +212,10 @@ class StitchingHandler(object):
                 raise se
             self.logger.warn("Stitching failed but will retry")
             self.deleteAllReservations(launcher)
+
+            # Flush the cache of aggregates. Loses all state. Avoids
+            # double adding hops to aggregates, etc
+            Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
             time.sleep(Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)

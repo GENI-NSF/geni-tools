@@ -175,6 +175,10 @@ class Aggregate(object):
     def all_aggregates(cls):
         return cls.aggs.values()
 
+    @classmethod
+    def clearCache(clse):
+        cls.aggs = dict()
+
     def __init__(self, urn, url=None):
         self.urn = urn
         self.url = url
