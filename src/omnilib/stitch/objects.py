@@ -637,10 +637,18 @@ class Aggregate(object):
             content = "<!-- No valid RSpec returned. -->"
             if requestString is not None:
                 content += "\n<!-- \n" + requestString + "\n -->"
-        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request'+str(self.allocateTries), '.xml', 1)
+        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
+                                                       opName + '-request'+str(self.allocateTries), '.xml', 1)
+        rspecfileName = "/tmp/" + rspecfileName
+
+
         # Set -o to ensure this goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
+
+        _printResults(opts_copy, self.logger, header, content, rspecfileName)
+        self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, rspecfileName)
+
 #        with open (rspecfileName, 'w') as file:
 #            file.write(self.requestDom.toprettyxml())
 
@@ -649,8 +657,6 @@ class Aggregate(object):
             omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
         else:
             omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
-            _printResults(opts_copy, self.logger, header, content, rspecfileName)
-            self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, rspecfileName)
             
         self.logger.info("\nDoing %s at %s", opName, self.url)
         self.logger.debug("omniargs %r", omniargs)
