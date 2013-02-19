@@ -214,7 +214,7 @@ class StitchingHandler(object):
             self.deleteAllReservations(launcher)
 
             # Flush the cache of aggregates. Loses all state. Avoids
-            # double adding hops to aggregates, etc
+            # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
             Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
