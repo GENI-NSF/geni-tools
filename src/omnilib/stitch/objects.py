@@ -698,6 +698,8 @@ class Aggregate(object):
         # DCN based AMs cannot really tell you if they succeeded until sliverstatus is ready or not
         # So wait for that, then get the listresources manifest and use that as the manifest
 
+        self.logger.info("DCN AM %s: wait for status ready....", self)
+
         # FIXME: Add a maxtime to wait as well
         tries = 0
         status = 'unknown'
@@ -788,6 +790,7 @@ class Aggregate(object):
             # FIXME: Big hack!!!
             if opts.fakeModeDir:
                 opName = 'createsliver'
+                self.logger.info("Will look like createsliver, but pretending to do listresources")
             omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
             try:
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
