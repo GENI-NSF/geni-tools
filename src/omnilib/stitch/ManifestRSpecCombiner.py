@@ -32,6 +32,7 @@ import sys
 from xml.dom.minidom import getDOMImplementation, parseString, Node
 
 import objects
+import RSpecParser
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 
@@ -68,81 +69,68 @@ class ManifestRSpecCombiner:
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'node':
+                    child.localName == RSpecParser.NODE_TAG:
                 cmid = child.getAttribute('component_manager_id')
                 # FIXME: This allows only one node per cmid. There can be multiple
-                template_nodes_by_cmid[cmid] = child
+                if not template_nodes_by_cmid.has_key(cmid):
+                    template_nodes_by_cmid[cmid] = []
+                template_nodes_by_cmid[cmid].append(child)
 
 #        print "DICT = " + str(template_nodes_by_cmid)
         
         # Replace a node when we find the matching manifest
         # Match the manifest from a given AMs manifest if that AM's urn is the 
-        # component_manager_id attribute on that node
-        # But only add a node once for a given component_manager_id
-        unique_cmids = {}
+        # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
             urn = am.urn
-            am_manifest_dom = am.manifestDom
             if template_nodes_by_cmid.has_key(urn):
-                template_node = template_nodes_by_cmid[urn]
+                am_manifest_dom = am.manifestDom
                 am_doc_root = am_manifest_dom.documentElement
-                for child in am_doc_root.childNodes:
-                    if child.nodeType == Node.ELEMENT_NODE and \
-                            child.nodeName == 'node':
-                        child_cmid = child.getAttribute('component_manager_id')
-                        if child_cmid == urn and not unique_cmids.has_key(child_cmid):
-                            self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
-                            doc_root.replaceChild(child, template_node)
-                            unique_cmids[child_cmid] = True
-                
+                for template_node in template_nodes_by_cmid[urn]:
+                    template_client_id = template_node.getAttribute('client_id')
+                    for child in am_doc_root.childNodes:
+                        if child.nodeType == Node.ELEMENT_NODE and \
+                                child.localName == RSpecParser.NODE_TAG:
+                            child_cmid = child.getAttribute('component_manager_id')
+                            child_client_id = child.getAttribute('client_id')
+                            if child_cmid == urn and child_client_id == template_client_id:
+                                self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
+                                doc_root.replaceChild(child, template_node)
 
-
-    # Replace each link in dom_template with matching link from AM with same URN
-    # 
-    # For each link in dom_template
-    # Find the first <component_manager> child element
-    # Go to the am with that am.urn
-    # Find the <link> element from that AM's manifest
-    # Replace link element in template with that link element
+    # Replace each link in dom_template with matching link from (an) AM with same URN
     def combineLinks(self, ams_list, dom_template):
-
-# FIXME: This allows 1 link per cmid. The restriction we want is 1 cmid per link.
-# a list of unique_links by client_id would work
-
-        template_links_by_cmid = {}
-
-        # Gather each link in template by component_manager_id
+        # For each link in template by component_manager_id
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'link':
+                    child.localName == RSpecParser.LINK_TAG:
                 link = child
                 # Get first 'component_manager' child element
+#                print "LINK = " + str(link) + " " + cmid
+                client_id = link.getAttribute('client_id')
+                if link.hasAttribute('sliver_id'):
+                    # This one is already OK
+                    continue
                 component_manager_elements = link.getElementsByTagName('component_manager')
 #                for cm in component_manager_elements: print "     " + str(cm) + " " + str(cm.getAttribute('name'))
+                # Here we just grab the first AM - could look for one that has a node I suppose
                 component_manager_element = link.getElementsByTagName('component_manager')[0]
                 cmid = component_manager_element.getAttribute('name')
-#                print "LINK = " + str(link) + " " + cmid
-                template_links_by_cmid[cmid] = child
-
-#        print "DICT = " + str(template_links_by_cmid)
-
-        # Replace the link with the link from the manifest of the AM with the link's first component_manager
-        for am in ams_list:
-            urn = am.urn
-            am_manifest_dom = am.manifestDom
-            if template_links_by_cmid.has_key(urn):
-                template_link = template_links_by_cmid[urn]
-                am_doc_root = am_manifest_dom.documentElement
-                for child in am_doc_root.childNodes:
-                    if child.nodeType == Node.ELEMENT_NODE and \
-                            child.nodeName == 'link':
-                        doc_root.replaceChild(child, template_link)
-                        child_cmid = link.getElementsByTagName('component_manager')[0].getAttribute('name')
-                        self.logger.debug("Replacing " + str(template_link) + " with " + str(child) + " " + child_cmid)
+                didSwap = False
+                for am in ams_list:
+                    if am.urn == cmid:
+                        am_doc_root = am_manifest_dom.documentElement
+                        for child in am_doc_root.childNodes:
+                            if child.nodeType == Node.ELEMENT_NODE and \
+                                    child.localName == RSpecParser.LINK_TAG:
+                                if child.getAttribute('client_id') == client_id and \
+                                        child.has_attribute('sliver_id'):
+                                    doc_root.replaceChild(child, link)
+                                    didSwap = True
+                                    break
+                    if didSwap:
                         break
-                        
 
     # Take a list of ams 
     # and replace the hop in the dom_template with the appropriate
@@ -203,7 +191,7 @@ class ManifestRSpecCombiner:
 
         for child in template_path.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'hop' and \
+                    child.localName == 'hop' and \
                     child.getAttribute('id') == hop_id:
                 template_hop = child
                 break
@@ -215,7 +203,7 @@ class ManifestRSpecCombiner:
         if am_path:
             for child in am_path.childNodes:
                 if child.nodeType == Node.ELEMENT_NODE and \
-                        child.nodeName == 'hop' and \
+                        child.localName == 'hop' and \
                         child.getAttribute('id') == hop_id:
                     am_hop = child
                     break
@@ -230,7 +218,7 @@ class ManifestRSpecCombiner:
         path = None
         for child in stitching.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'path' and \
+                    child.localName == RSpecParser.PATH_TAG and \
                     child.getAttribute('id') == path_id:
                 path = child
                 break
@@ -240,13 +228,13 @@ class ManifestRSpecCombiner:
         rspec_node = None
         for child in manifest_dom.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'rspec':
+                    child.localName == RSpecParser.RSPEC_TAG:
                 rspec_node = child
                 break
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == Node.ELEMENT_NODE and \
-                        child.nodeName == 'stitching':
+                        child.localName == RSpecParser.STITCHING_TAG:
                     return child
         return None
 
