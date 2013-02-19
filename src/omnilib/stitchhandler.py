@@ -152,6 +152,18 @@ class StitchingHandler(object):
                 self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
  
         # FIXME: What do we want to return?
+#Make it something like createsliver / allocate, with the code/value/output triple plus a string
+#On success
+#  Request from SCS that worked? Merged request as I modified?
+#  Merged manifest
+#  List of AMs, the URLs, and their API versions?
+#  Some indication of the slivers and their status and expiration at each AM?
+#    In particular, which AMs need a provision and poa geni_start
+#  ?? Stuff parsed from manifest?? EG some representation of each path with node list/count at each AM and VLAN tag for each link?, maybe list of the AMs added by the SCS?
+#On error
+#  Error code / message (standard GENI triple)
+#  If the error was after SCS, include the expanded request from the SCS
+#  If particular AMs had errors, ID those AMs and the errors
         return ""
 
     def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
@@ -196,9 +208,13 @@ class StitchingHandler(object):
                 raise se
             self.logger.warn("Stitching failed but will retry")
             self.deleteAllReservations(launcher)
+            # Note that the above does agg.delete which has a time.sleep in it currently
+
             # construct new SCS args
             # redo SCS call et al
             # FIXME: aggs.hops have loose tag: mark the hops in the request as explicitly loose
+            # FIXME: If/when SCS supports it, mark each hop with a vlanRangeAvailability that excludes tags
+            # We've collected and marked as vlan_unavailable
             # FIXME: Here we pass in the request to give to the SCS. I'd like this
             # to be modified (different VLAN range? Some hops marked loose?) in future
             lastAM = self.mainStitchingLoop(sliceurn, requestString, self.ams_to_process)
