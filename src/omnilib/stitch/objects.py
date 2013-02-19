@@ -641,17 +641,27 @@ class Aggregate(object):
             content = "<!-- No valid RSpec returned. -->"
             if requestString is not None:
                 content += "\n<!-- \n" + requestString + "\n -->"
-        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request'+str(self.allocateTries), '.xml', 1)
+        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
+                                                       opName + '-request'+str(self.allocateTries), '.xml', 1)
+        rspecfileName = "/tmp/" + rspecfileName
+
+
         # Set -o to ensure this goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
+
         _printResults(opts_copy, self.logger, header, content, rspecfileName)
         self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, rspecfileName)
+
 #        with open (rspecfileName, 'w') as file:
 #            file.write(self.requestDom.toprettyxml())
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
-        omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
+        if opts.warn:
+            omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
+        else:
+            omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
+            
         self.logger.info("\nDoing %s at %s", opName, self.url)
         self.logger.debug("omniargs %r", omniargs)
 
@@ -749,7 +759,10 @@ class Aggregate(object):
                 opName = 'sliverstatus'
             else:
                 opName = 'status'
-            omniargs = ['-o', '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+            if opts.warn:
+                omniargs = [ '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+            else:
+                omniargs = ['-o', '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
             result = None
             try:
                 tries = tries + 1
@@ -809,7 +822,10 @@ class Aggregate(object):
             opName = 'deletesliver'
             if self.api_version > 2:
                 opName = 'delete'
-            omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+            if opts.warn:
+                omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+            else:
+                omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 # FIXME: right counter?
                 (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
@@ -834,7 +850,10 @@ class Aggregate(object):
                 else:
                     opName = 'allocate'
                 self.logger.info("Will look like %s, but pretending to do listresources", opName)
-            omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+            if opts.warn:
+                omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+            else:
+                omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
@@ -961,7 +980,11 @@ class Aggregate(object):
         opName = 'deletesliver'
         if self.api_version > 2:
             opName = 'delete'
-        omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
+        if opts.warn:
+            omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
+        else:
+            omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
+
         self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
             try:
@@ -1041,7 +1064,7 @@ class Aggregate(object):
         # derive filename
         # FIXME: Take the expanded request from the SCS and pretend it is the manifest
         # That way, we get the VLAN we asked for
-        resultPath = "./stitching-scs-expanded-request.xml"
+        resultPath = "/tmp/stitching-scs-expanded-request.xml"
 
 #        # For now, results file only has a manifest. No JSON
 #        resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.json', 1)
