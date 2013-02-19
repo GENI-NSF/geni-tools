@@ -37,6 +37,7 @@ from VLANRange import *
 import RSpecParser
 from utils import *
 
+import omni
 from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
 from omnilib.util.dossl import is_busy_reply
 from omnilib.util.omnierror import OmniError, AMAPIError
@@ -613,7 +614,7 @@ class Aggregate(object):
 #            file.write(self.requestDom.toprettyxml())
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
-        omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename, rspecfileName]
+        omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
         self.logger.info("\nDoing %s at %s", opName, self.url)
         self.logger.debug("omniargs %r", omniargs)
 
@@ -677,7 +678,7 @@ class Aggregate(object):
             try:
                 result = result[self.url]['value']['geni_rspec']
             except Exception, e:
-                if isinstance(result, str) and opts.fakeModeDir:
+                if (isinstance(result, str) or isinstance(result, unicode)) and opts.fakeModeDir:
                     # Well OK then
                     pass
                 else:
@@ -709,7 +710,7 @@ class Aggregate(object):
                 opName = 'sliverstatus'
             else:
                 opName = 'status'
-            omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
+            omniargs = ['-o', '-V%d' % self.api_version, '--raise-error-on-v2-amapi-error', '-a', self.url, opName, slicename]
             result = None
             try:
                 tries = tries + 1
@@ -769,7 +770,7 @@ class Aggregate(object):
             opName = 'deletesliver'
             if self.api_version > 2:
                 opName = 'delete'
-            omniargs = ['-a','--raiseErrorOnAMAPIV2Error',  self.url, opName+'sliver', slicename]
+            omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 # FIXME: right counter?
                 (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
@@ -789,9 +790,12 @@ class Aggregate(object):
                 opName = 'describe'
             # FIXME: Big hack!!!
             if opts.fakeModeDir:
-                opName = 'createsliver'
-                self.logger.info("Will look like createsliver, but pretending to do listresources")
-            omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
+                if self.api_version == 2:
+                    opName = 'createsliver'
+                else:
+                    opName = 'allocate'
+                self.logger.info("Will look like %s, but pretending to do listresources", opName)
+            omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
@@ -806,7 +810,7 @@ class Aggregate(object):
                 else:
                     oneResult = result[self.url]["value"]["geni_rspec"]
             except Exception, e:
-                if isinstance(result, str) and opts.fakeModeDir:
+                if (isinstance(result, str) or isinstance(result, unicode)) and opts.fakeModeDir:
                     oneResult = result
                 else:
                     raise StitchingError("Malformed return from %s at %s: %s" % (opName, self, e))
@@ -917,7 +921,7 @@ class Aggregate(object):
         opName = 'deletesliver'
         if self.api_version > 2:
             opName = 'delete'
-        omniargs = ['-a','--raiseErrorOnAMAPIV2Error',  self.url, opName+'sliver', slicename]
+        omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
         self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
             try:
