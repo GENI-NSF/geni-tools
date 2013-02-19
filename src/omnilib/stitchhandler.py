@@ -37,7 +37,7 @@ import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
-from omnilib.stitch.utils import StitchingError
+from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError
 from omnilib.stitch.objects import Aggregate
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
 
@@ -55,6 +55,8 @@ class StitchingHandler(object):
         self.config = config
         self.opts = opts # command line options as parsed
         self.framework = omni.load_framework(self.config, self.opts)
+        # FIXME: How many times is right to go back to the SCS
+        self.maxSCSCalls = 5
 
     def doStitching(self, args):
         # Get request RSpec
@@ -117,19 +119,60 @@ class StitchingHandler(object):
         sliceurn = self.confirmSliceOK()
     
         self.scsService = scs.Service(self.opts.scsURL)
+        self.scsCalls = 0
 
-        scsResponse = self.callSCS(sliceurn, requestString)
+        # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
+        try:
+            # FIXME: Passing in the request as a string. Want an object in future?
+            lastAM = self.mainStitchingLoop(sliceurn, requestString)
+
+            # FIXME: 
+            # Construct a unified manifest
+            # include AMs, URLs, API versions
+            # use code/value/output struct
+            # If error and have an expanded rquest from SCS, include that in output.
+            #   Or if particular AM had errors, ID the AMs and errors
+            combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
+
+            # FIXME: Do I want all URNs and URLs as comments in the resulting manifest? Then make urn and url
+            # be a string that is comma separated list. But then filename will be funny.
+            # -- maybe use a list of URNs and call the member functions directly?
+            # FIXME: This prepends a header on an RSpec that might already have a header
+            # -- maybe replace any existing header
+            # FIXME: Also, without the -o option this is really verbose! Maybe set -o?
+            retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+            if filename:
+                self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
+
+        except StitchingError, se:
+            # Return anything different for stitching error?
+            raise
+        finally:
+            if self.opts.debug:
+                self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
+ 
+        # FIXME: What do we want to return?
+        return ""
+
+    def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
+        # ExistingAggs are Aggregate objects
+        self.scsCalls = self.scsCalls + 1
+        scsResponse = self.callSCS(sliceurn, requestString, existingAggs)
 #        scsResponse = self.callSCS(sliceurn, self.parsedUserRequest)
 
         # Parse SCS Response, constructing objects and dependencies, validating return
-        parsed_rspec, workflow_parser = self.parseSCSResponse(scsResponse)
+        self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
 
         # FIXME: if notScript, print AM dependency tree?
 
-        ams_to_process = copy.copy(workflow_parser.aggs)
-        for amURN in parsed_rspec.amURNs:
+        # Ensure we are processing all the workflow aggs plus any aggs in the RSpec not in
+        # the workflow
+
+        # FIXME: I'd like to re-use some Agg objects to keep state, but for now this should work
+        self.ams_to_process = copy.copy(workflow_parser.aggs)
+        for amURN in self.parsedSCSRSpec.amURNs:
             found = False
-            for agg in ams_to_process:
+            for agg in self.ams_to_process:
                 if agg.urn == amURN:
                     found = True
                     break
@@ -141,80 +184,39 @@ class StitchingHandler(object):
                 if not am.url:
                     self.logger.error("And stitcher does not know the URL for that AM!")
                 else:
-                    ams_to_process.add(am)
+                    self.ams_to_process.add(am)
 
-        # Do Main loop (below)
-        lastAM = self.mainStitchingLoop(ams_to_process, parsed_rspec)
-          # Are all AMs marked reserved/done? Exit main loop
-          # Any AMs marked should-delete? Do Delete 1 AM
-          # Any AMs have all dependencies satisfied? For each, do Reserve 1 AM
-
-        if self.opts.debug:
-            self.dump_objects(parsed_rspec, ams_to_process)
-
-        # FIXME: Do cleanup if any, construct return, return to stitcher.main (see above)
-          # Construct a unified manifest
-          # include AMs, URLs, API versions
-          # use code/value/output struct
-          # If error and have an expanded rquest from SCS, include that in output.
-          #   Or if particular AM had errors, ID the AMe and errors
-        combinedManifest = self.combineManifests(ams_to_process, lastAM)
-
-        # FIXME: Do I want all URNs and URLs as comments in the resulting manifest? Then make urn and url
-        # be a string that is comma separated list. But then filename will be funny.
-        # -- maybe use a list of URNs and call the member functions directly?
-        # FIXME: This prepends a header on an RSpec that might already have a header
-        # -- maybe replace any existing header
-        # FIXME: Also, without the -o option this is really verbose! Maybe set -o?
-        retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
-        if filename:
-            self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(ams_to_process), filename)
-
-#        outFile = 'combined-manifest.xml'
-#        with open(outFile, 'w') as file:
-#            file.write(combinedManifest)
-#        self.logger.info("Wrote combined manifest RSpec to %s", outFile)
- 
-        return ""
-
-    def mainStitchingLoop(self, aggs, rspec):
-
-        # Check if done? (see elsewhere)
-        # Check threads exited
-        # Check for AMs with delete pending
-          # Construct omni args
-          # Mark delete in process
-          # omni.newthread_call
-        # Check for threads exited
-        # Check for AMs with redo pending
-          # FIXME: Is this a thing? Or is this same as reserve?
-        # Construct omni args
-        # Mark redo in process
-        # omni.newthread_call
-        # Check for threads exited
-        # Check for AMs to reserve, no remaining dependencies
-          # Construct omni args
-          # Mark reserve in process
-          # Omni.newthread_call
-        # Any ops in process?
-          # Since when op finishes we go to top of loop, and loop spawns things, then if not we must be done
-            # Confirm no deletes pending, redoes, or AMs not reserved
-            # Go to end state section
-        launcher = stitch.Launcher(self.opts, self.slicename, aggs)
+        launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
         try:
-            lastAM = launcher.launch(rspec)
+            lastAM = launcher.launch(self.parsedSCSRSpec)
+        except StitchingCircuitFailedError, se:
+            if self.scsCalls == self.maxSCSCalls:
+                self.logger.warn("Stitching max circuit failures reached")
+                self.deleteAllReservations(launcher)
+                raise se
+            self.logger.warn("Stitching failed but will retry")
+            self.deleteAllReservations(launcher)
+            # construct new SCS args
+            # redo SCS call et al
+            # FIXME: aggs.hops have loose tag: mark the hops in the request as explicitly loose
+            # FIXME: Here we pass in the request to give to the SCS. I'd like this
+            # to be modified (different VLAN range? Some hops marked loose?) in future
+            lastAM = self.mainStitchingLoop(sliceurn, requestString, self.ams_to_process)
         except StitchingError, se:
             self.logger.warn("Stitching failed with an error")
-            for am in launcher.aggs:
-                if am.manifestDom:
-                    self.logger.warn("Had reservation at %s", am.url)
-                    try:
-                        am.deleteReservation(self.opts, self.slicename)
-                        self.logger.warn(".... deleted it")
-                    except StitchingError, se2:
-                        self.logger.warn("Failed to delete reservation at %s: %s", am.url, se2)
+            self.deleteAllReservations(launcher)
             raise se
         return lastAM
+
+    def deleteAllReservations(self, launcher):
+        for am in launcher.aggs:
+            if am.manifestDom:
+                self.logger.warn("Had reservation at %s", am.url)
+                try:
+                    am.deleteReservation(self.opts, self.slicename)
+                    self.logger.warn(".... deleted it")
+                except StitchingError, se2:
+                    self.logger.warn("Failed to delete reservation at %s: %s", am.url, se2)
 
     def confirmGoodRSpec(self, requestString, rspecType=rspec_schema.REQUEST, doRSpecLint=True):
         typeStr = 'Request'
@@ -293,10 +295,10 @@ class StitchingHandler(object):
         return False
 
 #    def callSCS(self, sliceurn, requestRSpecObject):
-    def callSCS(self, sliceurn, requestString):
+    def callSCS(self, sliceurn, requestString, existingAggs):
         try:
  #           request, scsOptions = self.constructSCSArgs(requestRSpecObject)
-            request, scsOptions = self.constructSCSArgs(requestString)
+            request, scsOptions = self.constructSCSArgs(requestString, existingAggs)
             scsResponse = self.scsService.ComputePath(sliceurn, request, scsOptions)
         except Exception as e:
             self.logger.error("Error from slice computation service: %s", e)
@@ -311,8 +313,8 @@ class StitchingHandler(object):
 
         return scsResponse
 
-    def constructSCSArgs(self, request, hopObjectsToExclude=None):
-        # Eventually take vlans to exclude as well
+    def constructSCSArgs(self, request, existingAggs=None):
+        # Eventually look at existingAggs' hops for VLANs to exclude as well
         # return requestString and options
 
         options = {} # No options for now.
@@ -341,25 +343,28 @@ class StitchingHandler(object):
 #        profile[path] = pathStruct
 #        options["geni_routing_profile"]=profile
 
-        if hopObjectsToExclude:
+        if existingAggs:
             profile = {}
-            for hop in hopObjectsToExclude:
-                # get path
-                path = hop._path.id
-                if profile.has_key(path):
-                    pathStruct = profile[path]
-                else:
-                    pathStruct = {}
+            for agg in existingAggs:
+                for hop in agg.hops:
+                    if hop.excludeFromSCS:
 
-                # get hop URN
-                urn = hop.urn
-                if pathStruct.has_key("hop_exclusion_list"):
-                    excludes = pathStruct["hop_exclusion_list"]
-                else:
-                    excludes = []
-                excludes.append(urn)
-                pathStruct["hop_exclusion_list"] = excludes
-                profile[path] = pathStruct
+                        # get path
+                        path = hop._path.id
+                        if profile.has_key(path):
+                            pathStruct = profile[path]
+                        else:
+                            pathStruct = {}
+
+                        # get hop URN
+                        urn = hop.urn
+                        if pathStruct.has_key("hop_exclusion_list"):
+                            excludes = pathStruct["hop_exclusion_list"]
+                        else:
+                            excludes = []
+                        excludes.append(urn)
+                        pathStruct["hop_exclusion_list"] = excludes
+                        profile[path] = pathStruct
             options["geni_routing_profile"] = profile
 
 #        return request.toXML(), options
