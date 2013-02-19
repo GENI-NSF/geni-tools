@@ -683,6 +683,7 @@ class Aggregate(object):
                     # This is dangerous - we could thrash
                     # FIXME: go back a limited # of times
                     # FIXME: Uncomment below code so only errors at SCS AMs cause us to go back to SCS?
+                    self.inProcess = False
                     raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
 
 #                    if not self.userRequested:
@@ -692,6 +693,7 @@ class Aggregate(object):
 #                            self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
 #                            for hop in self.hops:
 #                                hop.excludeFromSCS = True
+#                        self.inProcess = False
 #                        raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
 #                    else:
 #                        # Exit to User
@@ -923,6 +925,7 @@ class Aggregate(object):
                 for hop in self.hops:
                     self.logger.debug
                     hop.excludeFromSCS = True
+            self.inProcess = False
             raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
         else:
             # Exit to User
@@ -958,8 +961,10 @@ class Aggregate(object):
         self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
             try:
+                self.inProcess = True
 #                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
                 (text, result) = self.doOmniCall(omniargs, opts)
+                self.inProcess = False
                 if self.api_version == 2:
                     (successList, fail) = result
                     if not self.url in successList:
@@ -989,8 +994,11 @@ class Aggregate(object):
                         raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self.url, text))
 
             except OmniError, e:
+                self.inProcess = False
                 self.logger.error("Failed to %s at %s: %s", opName, self, e)
                 raise StitchingError(e) # FIXME: Right way to re-raise?
+
+        self.inProcess = False
         # FIXME: Fake mode delete results from a file?
 
         # FIXME: Set a flag marking this AM was deleted?
