@@ -493,6 +493,9 @@ class StitchingHandler(object):
                         # Hack alert: v3 AM implementations don't work even if they exist
                         if maxVer != 2:
                             self.logger.info("AM %s speaks API %d, but sticking with v2", agg, maxVer)
+#                        if self.opts.fakeModeDir:
+#                            self.logger.warn("Testing v3 support")
+#                            agg.api_version = 3
 #                        agg.api_version = maxVer
             except OmniError, oe:
                 logging.disable(logging.NOTSET)
