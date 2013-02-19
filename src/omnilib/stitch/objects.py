@@ -551,7 +551,7 @@ class Aggregate(object):
             self.logger.debug("Found path %s (id %s)" % (path_node, this_path_id))
             for child in path_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == PATH.HOP_TAG:
+                        child.localName == Path.HOP_TAG:
                     this_hop_id = child.getAttribute(Hop.ID_TAG)
                     if this_hop_id == hop_id:
                         hop_node = child
@@ -563,7 +563,7 @@ class Aggregate(object):
             self.logger.debug("Found hop %s (id %s)" % (hop_node, this_hop_id))
             for child in hop_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == HOP.LINK_TAG:
+                        child.localName == Hop.LINK_TAG:
                     link_node = child
                     break
         else:
