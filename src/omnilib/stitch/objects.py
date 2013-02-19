@@ -539,7 +539,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParse.PATH_TAG:
+                        child.localName == RSpecParser.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
