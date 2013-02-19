@@ -26,6 +26,7 @@ import copy
 import datetime
 import logging
 import string
+import time
 
 import omni
 from omnilib.util import OmniError, naiveUTC
@@ -208,7 +209,9 @@ class StitchingHandler(object):
                 raise se
             self.logger.warn("Stitching failed but will retry")
             self.deleteAllReservations(launcher)
-            # Note that the above does agg.delete which has a time.sleep in it currently
+
+            # Let AMs recover. Is this long enough?
+            time.sleep(Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
 
             # construct new SCS args
             # redo SCS call et al
@@ -389,7 +392,7 @@ class StitchingHandler(object):
     def parseSCSResponse(self, scsResponse):
         # save expanded RSpec
         expandedRSpec = scsResponse.rspec()
-        if self.opts.debug:
+        if self.opts.debug or self.opts.fakeModeDir:
             # Write the RSpec the SCS gave us to a file
             # I'd like to re-use existing methods. But these aren't quite right
 
