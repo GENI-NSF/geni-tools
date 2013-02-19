@@ -58,73 +58,82 @@ class ManifestRSpecCombiner:
     # a list of all node sections from the manifests
     def combineNodes(self, ams_list, dom_template):
 
-        # FIXME: Only remove a node when we find the matching manifest
-        # Only add the manifest from a given AMs manifest if that AM's urn is the 
-        # component_manager_id attribute on that node
-
-        # Remove the 'node' element from template
+        # Set up a dictionary mapping node by component_manager_id
+        template_nodes_by_cmid={}
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'node':
-#                client_id = child.getAttribute('client_id')
-                doc_root.removeChild(child)
-#                print "Removing " + str(child) + " " + client_id
+                cmid = child.getAttribute('component_manager_id')
+                template_nodes_by_cmid[cmid] = child
 
-        unique_clients = {}
-
+#        print "DICT = " + str(template_nodes_by_cmid)
+        
+        # Replace a node when we find the matching manifest
+        # Match the manifest from a given AMs manifest if that AM's urn is the 
+        # component_manager_id attribute on that node
+        # But only add a node once for a given component_manager_id
+        unique_cmids = {}
         for am in ams_list:
             urn = am.urn
-            dom = am.manifestDom
-            dom_doc_root = dom.documentElement
-            children = dom_doc_root.childNodes
-            for child in children:
-                if child.nodeType == Node.ELEMENT_NODE and \
-                        child.nodeName == 'node':
-                    client_id = child.getAttribute('client_id')
-                    if not unique_clients.has_key(client_id):
-                        unique_clients[client_id] = True
-                        doc_root.appendChild(child)
-#                        print "Adding " + str(child) + " " + client_id
+            am_manifest_dom = am.manifestDom
+            if template_nodes_by_cmid.has_key(urn):
+                template_node = template_nodes_by_cmid[urn]
+                am_doc_root = am_manifest_dom.documentElement
+                for child in am_doc_root.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                            child.nodeName == 'node':
+                        child_cmid = child.getAttribute('component_manager_id')
+                        if child_cmid == urn and not unique_cmids.has_key(child_cmid):
+                            self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
+                            doc_root.replaceChild(child, template_node)
+                            unique_cmids[child_cmid] = True
+                
 
 
-    # Add a unique copy of each link from each file (only one per urn)
+    # Replace each link in dom_template with matching link from AM with same URN
+    # 
+    # For each link in dom_template
+    # Find the first <component_manager> child element
+    # Go to the am with that am.urn
+    # Find the <link> element from that AM's manifest
+    # Replace link element in template with that link element
     def combineLinks(self, ams_list, dom_template):
 
-        # FIXME: As for nodes:
-        # For each link
-        # Find the first <component_manager> child element
-        # Go to the am with that am.urn.
-        # Find the <link> element from that AMs manifest
-        # Replace link element here with that link element
-        # Move on to next <link> element from dom_template
+        template_links_by_cmid = {}
 
-        # Remove the 'link' elements from template
+        # Gather each link in template by component_manager_id
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'link':
-                client_id = child.getAttribute('client_id')
-                doc_root.removeChild(child)
-#                print "Removing " + str(child) + " " + client_id
+                link = child
+                # Get first 'component_manager' child element
+                component_manager_elements = link.getElementsByTagName('component_manager')
+#                for cm in component_manager_elements: print "     " + str(cm) + " " + str(cm.getAttribute('name'))
+                component_manager_element = link.getElementsByTagName('component_manager')[0]
+                cmid = component_manager_element.getAttribute('name')
+#                print "LINK = " + str(link) + " " + cmid
+                template_links_by_cmid[cmid] = child
 
-        unique_clients = {}
+#        print "DICT = " + str(template_links_by_cmid)
+
+        # Replace the link with the link from the manifest of the AM with the link's first component_manager
         for am in ams_list:
             urn = am.urn
-            dom = am.manifestDom
-            dom_doc_root = dom.documentElement
-            children = dom_doc_root.childNodes
-            for child in children:
-                if child.nodeType == Node.ELEMENT_NODE and \
-                        child.nodeName == 'link':
-                    client_id = child.getAttribute('client_id')
-                    # Add only one copy of the link per client_id
-                    if not unique_clients.has_key(client_id):
-#                        print "Adding " + str(child) + " " + client_id
-                        doc_root.appendChild(child)
-                        unique_clients[client_id] = True
+            am_manifest_dom = am.manifestDom
+            if template_links_by_cmid.has_key(urn):
+                template_link = template_links_by_cmid[urn]
+                am_doc_root = am_manifest_dom.documentElement
+                for child in am_doc_root.childNodes:
+                    if child.nodeType == Node.ELEMENT_NODE and \
+                            child.nodeName == 'link':
+                        doc_root.replaceChild(child, template_link)
+                        child_cmid = link.getElementsByTagName('component_manager')[0].getAttribute('name')
+                        self.logger.debug("Replacing " + str(template_link) + " with " + str(child) + " " + child_cmid)
+                        break
                         
 
     # Take a list of ams 
@@ -135,16 +144,13 @@ class ManifestRSpecCombiner:
     # hop in the template dom
     def combineHops(self, ams_list, dom_template):
         template_stitching = self.getStitchingElement(dom_template)
-        # FIXME: A given stitching element may have multiple <path> child elements
-        # (a given hop urn may appear in multiple <path> elements)
-        # FIXME: A given hop has a path. Use that to find the proper <path> element. Not just the first
-        template_path = template_stitching.childNodes[0]
-
         for am in ams_list:
             for hop in am.hops:
-                hop_id = int(hop._id)
+                hop_id = hop._id
+                path_id = hop.path.id
+                template_path = self.findPathByID(template_stitching, path_id)
 #                print "AGG " + str(am) + " HID " + str(hop_id)
-                self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id)
+                self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
 
     # Add details about allocations to each aggregate in a 
     # structured comment at root of DOM
@@ -153,10 +159,10 @@ class ManifestRSpecCombiner:
     #   URL - URL of aggregate
     #   API_VERSION - Version of AM API supported by AM
     #   USER_REQUESTED - Boolean whether this agg was in the origin request RSPEC (or SCS added it)
-    #   HOP_INFOs - List of HOP URN's and VLAN tags and HOP IDs for that aggregate
+    #   HOP_INFOs - List of HOP URN's and VLAN tags and HOP IDs and PATH ID's for that aggregate
     # Format is JSON
     # {
-    #   {'urn':urn, 'url':url, 'api_version':api_version, 'user_requested':user_requested, 'hop_info':[{'urn':urn, 'vlan_tag':vlan_tag}]}
+    #   {'urn':urn, 'url':url, 'api_version':api_version, 'user_requested':user_requested, 'hop_info':[{'urn':urn, 'id':hop_id, 'path_id':path_id, 'vlan_tag':vlan_tag}]}
     # }           
     def addAggregateDetails(self, ams_list, dom_template):
         doc_element = dom_template.documentElement
@@ -179,39 +185,48 @@ class ManifestRSpecCombiner:
         url = am.url
         api_version = am.api_version
         user_requested = am.userRequested
-        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'id':hop._id}  for hop in am._hops]
+        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}  for hop in am._hops]
         return {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hops_info':hops_info}
 
     # Replace the hop element in the template DOM with the hop element 
     # from the aggregate DOM that has the given HOP ID
-    def replaceHopElement(self, template_path, am_stitching, hop_id):
+    def replaceHopElement(self, template_path, am_stitching, hop_id, path_id):
         template_hop = None
-
-        # FIXME: hop 'id' attribute is not always an int. Treat as a string
 
         for child in template_path.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'hop' and \
-                    int(child.getAttribute('id')) == hop_id:
+                    child.getAttribute('id') == hop_id:
                 template_hop = child
                 break
 
-        # FIXME: A given hop has a path. Use that to find the proper <path> element. Not just the first
-        am_path = am_stitching.childNodes[0]
+        # Find the path for the given path_id (there may be more than one)
+        am_path = self.findPathByID(am_stitching, path_id)
+
         am_hop = None
-        for child in am_path.childNodes:
-            if child.nodeType == Node.ELEMENT_NODE and \
-                    child.nodeName == 'hop' and \
-                    int(child.getAttribute('id')) == hop_id:
-                am_hop = child
-                break
+        if am_path:
+            for child in am_path.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.nodeName == 'hop' and \
+                        child.getAttribute('id') == hop_id:
+                    am_hop = child
+                    break
 
         if am_hop and template_hop:
-#            print "T_HOP = " + str(template_hop) + " HID = " + str(hop_id) + " AM_HOP = " + str(am_hop)
+            self.logger.debug("Replacing " + str(template_hop) + " with " + str(am_hop))
             template_path.replaceChild(am_hop, template_hop)
         else:
             self.logger.error ("Can't replace hop in template: AM HOP %s TEMPLATE HOP %s" % (am_hop, template_hop))
-                
+
+    def findPathByID(self, stitching, path_id):
+        path = None
+        for child in stitching.childNodes:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.nodeName == 'path' and \
+                    child.getAttribute('id') == path_id:
+                path = child
+                break
+        return path
 
     def getStitchingElement(self, manifest_dom):
         rspec_node = None
