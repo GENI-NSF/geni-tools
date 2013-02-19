@@ -35,8 +35,11 @@ from xml.dom.minidom import parseString, Node as XMLNode
 from GENIObject import *
 from VLANRange import *
 import RSpecParser
+from utils import *
 
 from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
+from omnilib.util.dossl import is_busy_reply
+from omnilib.util.omnierror import OmniError, AMAPIError
 from geni.util import rspec_schema, rspec_util
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
@@ -153,6 +156,11 @@ class Aggregate(object):
 
     # Hold all instances. One instance per URN.
     aggs = dict()
+    MAX_TRIES = 10
+    BUSY_MAX_TRIES = 5 # dossl does 3
+    BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
+    SLIVERSTATUS_MAX_TRIES = 10
+    SLIVERSTATUS_POLL_INTERVAL_SEC = 10
 
     @classmethod
     def find(cls, urn):
@@ -182,6 +190,7 @@ class Aggregate(object):
         self.api_version = 2 # FIXME: Set this from stitchhandler.parseSCSResponse
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
         # FIXME: # reservation tries since last call to SCS?
+        self.allocateTries = 0
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -255,6 +264,9 @@ class Aggregate(object):
             self.logger.info("AM %s had previous result we didn't need to redo. Done", self)
             return
 
+        if self.allocateTries > self.MAX_TRIES:
+            sel.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
+
         # FIXME: Check for all hops have reasonable vlan inputs?
 
         self.completed = False
@@ -266,79 +278,57 @@ class Aggregate(object):
         self.requestDom = self.getEditedRSpecDom(rspecDom)
 
         # Get the manifest for this AM
-        # result is a manifest RSpec string or a dict with the error if any
-        # success is a boolean
-        # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs
-        (result, success) = self.doReservation(opts, slicename)
+        # result is a manifest RSpec string. Errors wouuld be raised
+        # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs,
+        # VLAN_UNAVAILABLE errors, other errors
+        manifestString = self.doReservation(opts, slicename)
 
-        if success and result:
-            # FIXME: Handle ION needing me to do sliverstatus first
-            #  Do we special case the ION & ? AMs that require this? How ID those?
-            #  Do we wait a # of tries on sliverstatus? # of minutes?
-            if self.dcn:
-                self.logger.warn("Need to poll sliverstatus for this DCN AM")
-            #  if ION:
-            #   while (keep checking):
-            #     call sliverStatus
-            #     If failed or ready, break
-            #     If error doing the call, break?
-            #   If failed:
-            #     success = False
-            #     result = ??
-            #     get to the else somehow?
-            #   else:
-            #     call ListResources
-            #     get the result per above
+        # Save it on the Agg
+        try:
+            self.manifestDom = parseString(manifestString)
+        except Exception, e:
+            self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
+            # FIXME: Handle error
+            raise StitchingError("%s manifest rspec not parsable: %s" % (hop, e))
 
-            # Now we have a manifest
+        # Parse out the VLANs we got, saving them away on the HopLinks
+        # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
+        for hop in self.hops:
+            # FIXME: Hop ID is not specific enough. Need a path ID as well
+            range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
+            rangeValue = range_suggested[0]
+            suggestedValue = range_suggested[1]
+            if not suggestedValue:
+                self.logger.warn("Didn't find suggested value for hop %s", hop)
+                # FIXME: put suggested on the vlans_unavailable?
+                raise StitchingCircuitFailedError("%s didn't have a suggestedVlanRange in manifest" % hop)
+            elif suggestedValue in ('null', 'None', 'any'):
+                # FIXME: put suggested on the vlans_unavailable?
+                self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
+                raise StitchingCircuitFailedError("%s had invalid suggestedVlanRange in manifest: %s" % (hop, suggestedValue))
+            else:
+                suggestedObject = VLANRange.fromString(suggestedValue)
+            if not rangeValue:
+                # FIXME: put avail on the vlans_unavailable?
+                self.logger.warn("Didn't find vlanAvailRange element for hop %s", hop)
+                raise StitchingCircuitFailedError("%s didn't have a vlanAvailRange in manifest" % hop)
+            elif rangeValue in ('null', 'None', 'any'):
+                # FIXME: put avail on the vlans_unavailable?
+                self.logger.error("Hop %s availRange invalid: %s", hop, rangeValue)
+                raise StitchingCircuitFailedError("%s had invalid availVlanRange in manifest: %s" % (hop, rangeValue))
+            else:
+                rangeObject = VLANRange.fromString(rangeValue)
 
-            # Save it on the Agg
-            try:
-                self.manifestDom = parseString(result)
-            except Exception, e:
-                self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
-                # FIXME: Handle error
+            self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
+            if not suggestedObject <= hop._hop_link.vlan_suggested_request:
+                self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
+                # FIXME: Handle error here
+                # This is sug != requested case
+                self.handleSuggestedVLANNotRequest()
 
-            # Parse out the VLANs we got, saving them away on the HopLinks
-            # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
-            for hop in self.hops:
-                # FIXME: Hop ID is not specific enough. Need a path ID as well
-                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
-                rangeValue = range_suggested[0]
-                suggestedValue = range_suggested[1]
-                if not suggestedValue:
-                    self.logger.warn("Didn't find suggested value for hop %s", hop)
-                    raise StitchingError("%s didn't have a suggestedVlanRange in manifest" % hop)
-                elif suggestedValue in ('null', 'None', 'any'):
-                    self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
-                    raise StitchingError("%s had invalidsuggestedVlanRange in manifest: %s" % (hop, suggestedValue))
-                else:
-                    suggestedObject = VLANRange.fromString(suggestedValue)
-                if not rangeValue:
-                    self.logger.warn("Didn't find vlanAvailRange element for hop %s", hop)
-                    raise StitchingError("%s didn't have a vlanAvailRange in manifest" % hop)
-                else:
-                    rangeObject = VLANRange.fromString(rangeValue)
-
-                self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
-                if not suggestedObject <= hop._hop_link.vlan_suggested_request:
-                    self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
-                    # FIXME: Handle error here
-                    # This is sug != requested case
-                hop._hop_link.vlan_suggested_manifest = suggestedObject
-                hop._hop_link.vlan_range_manifest = rangeObject
-
-        else:
-            # Handle got a struct with an error code. If that code is VLAN_UNAVAILABLE, do one thing.
-            # else if got BUSY, retry (after a pause)
-            # else, do another
-
-            # FIXME FIXME
-            self.logger.error("Got error from %s: %s %s", self, text, result)
-
-            # FIXME: See amhandler._retrieve_value
-
-            pass
+            # If got here the manifest values are OK - save them away
+            hop._hop_link.vlan_suggested_manifest = suggestedObject
+            hop._hop_link.vlan_range_manifest = rangeObject
 
         # Mark AM not busy
         self.inProcess = False
@@ -347,6 +337,160 @@ class Aggregate(object):
 
         # mark self complete
         self.completed = True
+
+    def copyVLANsAndDetectRedo(self):
+        '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
+        If so, but the inputs are incompatible, then mark this to be deleted. If so, but the
+        inputs are compatible, then an AM upstream was redone, but this is alreadydone.'''
+
+        hadPreviousManifest = self.manifestDom != None
+        mustDelete = False # Do we have old reservation to delete?
+        alreadyDone = hadPreviousManifest # Did we already complete this AM? (and this is just a recheck)
+        for hop in self.hops:
+            if not hop.import_vlans:
+                if not hop._hop_link.vlan_suggested_manifest:
+                    alreadyDone = False
+                continue
+
+            # Calculate the new suggested/avail for this hop
+            if not hop.import_vlans_from:
+                self.logger.warn("Hop %s imports vlans but has no import from?", hop)
+                continue
+
+            new_suggested = hop._hop_link.vlan_suggested_request or VLANRange.fromString("any")
+            if hop.import_vlans_from._hop_link.vlan_suggested_manifest:
+                # FIXME: Need deep copy?
+                new_suggested = hop.import_vlans_from._hop_link.vlan_suggested_manifest.copy()
+            else:
+                self.logger.warn("Hop %s's import_from %s had no suggestedVLAN manifest", hop, hop.import_vlans_from)
+
+            # If we've noted VLANs we already tried that failed (cause of later failures
+            # or cause the AM wouldn't give the tag), then be sure to exclude those
+            # from new_suggested - that is, if new_suggested would be in that set, then we have
+            # an error - gracefully exit, either to SCS excluding this hop or to user
+            if new_suggested <= hop.vlans_unavailable:
+                # FIXME
+                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s" % (hop, new_suggested, hop.vlans_unavailable))
+
+            int1 = VLANRange.fromString("any")
+            int2 = VLANRange.fromString("any")
+            if hop.import_vlans_from._hop_link.vlan_range_manifest:
+                int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
+            else:
+                self.logger.warn("Hop %s's import_from %s had no avail VLAN manifest", hop, hop.import_vlans_from)
+            if hop._hop_link.vlan_range_request:
+                int2 = hop._hop_link.vlan_range_request
+            else:
+                self.logger.warn("Hop %s had no avail VLAN request", hop, hop.import_vlans_from)
+            new_avail = int1 & int2
+
+            # If we've noted VLANs we already tried that failed (cause of later failures
+            # or cause the AM wouldn't give the tag), then be sure to exclude those
+            # from new_avail. And if new_avail is now empty, that is
+            # an error - gracefully exit, either to SCS excluding this hop or to user
+            new_avail2 = new_avail - hop.vlans_unavailable
+            if new_avail2 != new_avail:
+                self.logger.debug("%s computed vlanRange %s smaller due to excluding known unavailable VLANs. Was otherwise %s", hop, new_avail2, new_avail)
+                new_avail = new_avail2
+            if len(new_avail) == 0:
+                # FIXME
+                raise StitchingError("%s computed vlanRange is empty" % hop)
+
+            if not new_suggested <= new_avail:
+                # We're somehow asking for something not in the avail range we're asking for.
+                # An error
+                self.logger.warn("Hop %s Calculated suggested %s not in available range %s", hop, new_suggested, new_avail)
+                raise StitchingError("Hop %s could not be processed: calculated a suggested VLAN of %s that is not in the calculated availabel range %s" % (hop, new_suggested, new_avail))
+
+            # If we have a previous manifest, we might be done or might need to delete a previous reservation
+            if hop._hop_link.vlan_suggested_manifest:
+                if not hadPreviousManifest:
+                    raise StitchingError("AM %s had no previous manifest, but its hop %s did" % (self, hop))
+                if hop._hop_link.vlan_suggested_request != new_suggested:
+                    # If we already have a result but used different input, then this result is suspect. Redo.
+                    self.logger.warn("AM %s had previous manifest and used different suggested VLAN for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                    hop._hop_link.vlan_suggested_request = new_suggested
+                    # if however the previous suggested_manifest == new_suggested, then maybe this is OK?
+                    if hop._hop_link.vlan_suggested_manifest == new_suggested:
+                        self.logger.info("But hop %s VLAN suggested manifest is the new request, so leave it alone", hop)
+                    else:
+                        mustDelete = True
+                        alreadyDone = False
+                else:
+                    self.logger.info("AM %s had previous manifest and used same suggested VLAN for hop %s (%s)", self, hop, hop._hop_link.vlan_suggested_request)
+                    # So for this hop at least, we don't need to redo this AM
+            else:
+                alreadyDone = False
+                # No previous result
+                if hadPreviousManifest:
+                    raise StitchingError("AM %s had a previous manifest but hop %s did not" % (self, hop))
+                if hop._hop_link.vlan_suggested_request != new_suggested:
+                    self.logger.debug("Hop %s changing VLAN suggested from %s to %s", hop, hop._hop_link.vlan_suggested_request, new_suggested)
+                    hop._hop_link.vlan_suggested_request = new_suggested
+                else:
+                    self.logger.debug("Hop %s already had VLAN suggested %s", hop, hop._hop_link.vlan_suggested_request)
+
+            # Now check the avail range as we did for suggested
+            if hop._hop_link.vlan_range_manifest:
+                if not hadPreviousManifest:
+                    self.logger.error("AM %s had no previous manifest, but its hop %s did", self, hop)
+                if hop._hop_link.vlan_range_request != new_avail:
+                    # If we already have a result but used different input, then this result is suspect. Redo?
+                    self.logger.warn("AM %s had previous manifest and used different avail VLAN range for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_range_request, new_avail)
+                    if hop._hop_link.vlan_suggested_manifest and hop._hop_link.vlan_suggested_manifest not in new_avail:
+                        # new avail doesn't contain the previous manifest suggested. So new avail would have precluded
+                        # using the suggested we picked before. So we have to redo
+                        mustDelete = True
+                        alreadyDone = False
+                        self.logger.warn("Hop %s previous manifest suggested %s not in new avail %s - redo this AM", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
+                    else:
+                        # what we picked before still works, so leave it alone
+                        self.logger.debug("Hop %s had avail range manifest %s, and previous avail range request (%s) != new (%s), but previous suggested manifest %s is in the new avail range, so it is still good", hop, hop._hop_link.vlan_range_manifest, hop._hop_link.vlan_range_request, new_avail, hop._hop_link.vlan_suggested_manifest)
+
+                    # Either way, record what we want the new request to be, so later if we redo we use the right thing
+                    hop._hop_link.vlan_range_request = new_avail
+                else:
+                    self.logger.info("AM %s had previous manifest and used same avail VLAN range for hop %s (%s)", self, hop, hop._hop_link.vlan_range_request)
+            else:
+                alreadydone = False
+                # No previous result
+                if hadPreviousManifest:
+                    raise StitchingError("AM %s had a previous manifest but hop %s did not" % (self, hop))
+                if hop._hop_link.vlan_range_request != new_avail:
+                    self.logger.debug("Hop %s changing avail VLAN from %s to %s", hop, hop._hop_link.vlan_range_request, new_avail)
+                    hop._hop_link.vlan_range_request = new_avail
+                else:
+                    self.logger.debug("Hop %s already had avail VLAN %s", hop, hop._hop_link.vlan_range_request)
+        # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
+        return mustDelete, alreadyDone
+
+    def getEditedRSpecDom(self, originalRSpec):
+        # For each path on this AM, get that Path to write whatever it thinks necessary into a
+        # deep clone of the incoming RSpec Dom
+        requestRSpecDom = originalRSpec.cloneNode(True)
+        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        if stitchNodes and len(stitchNodes) > 0:
+            stitchNode = stitchNodes[0]
+        else:
+            raise StitchingError("Couldn't find stitching element in rspec")
+
+        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
+        for path in self.paths:
+            self.logger.debug("Looking for node for path %s", path)
+            domNode = None
+            if domPaths:
+                for pathNode in domPaths:
+                    pathNodeId = pathNode.getAttribute(Path.ID_TAG)
+                    if pathNodeId == path.id:
+                        domNode = pathNode
+                        self.logger.debug("Found node for path %s", path.id)
+                        break
+            if domNode is None:
+                raise StitchingError("Couldn't find Path %s in stitching element of RSpec" % path)
+            self.logger.debug("Doing path.editChanges for path %s", path.id)
+            path.editChangesIntoDom(domNode)
+        return requestRSpecDom
 
     # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
     # FIXME: Hop ID is not enough. Need a path ID as well.
@@ -390,7 +534,7 @@ class Aggregate(object):
                         break
         else:
             raise StitchingError("No stitching element in manifest")
-                
+
         if hop_node:
             link_node = hop_node.childNodes[0]
             for child in link_node.childNodes:
@@ -399,7 +543,7 @@ class Aggregate(object):
                     scd_node = child
                     break;
         else:
-            raise StitchingError("Couldn't find hop %s in rspec", hop_id)
+            raise StitchingError("Couldn't find hop %s in rspec" % hop_id)
 
         if scd_node:
             for child in scd_node.childNodes:
@@ -408,7 +552,7 @@ class Aggregate(object):
                     scsi_node = child;
                     break
         else:
-            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in rspec", hop_id)
+            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in rspec" % hop_id)
 
         if scsi_node:
             # FIXME: There will shortly be other kinds of sub-tags here. Need to look for this explicitly
@@ -421,38 +565,9 @@ class Aggregate(object):
                     elif child.nodeName == 'suggestedVLANRange':
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec", hop_id)
+            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec" % hop_id)
 
         return (vlan_range_availability, suggested_vlan_range)
-
-
-    def getEditedRSpecDom(self, originalRSpec):
-        # For each path on this AM, get that Path to write whatever it thinks necessary into a
-        # deep clone of the incoming RSpec Dom
-        requestRSpecDom = originalRSpec.cloneNode(True)
-        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
-        if stitchNodes and len(stitchNodes) > 0:
-            stitchNode = stitchNodes[0]
-        else:
-            raise StitchingError("Couldn't find stitching element in rspec")
-
-        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
-        for path in self.paths:
-            self.logger.debug("Looking for node for path %s", path)
-            domNode = None
-            if domPaths:
-                for pathNode in domPaths:
-                    pathNodeId = pathNode.getAttribute(Path.ID_TAG)
-                    if pathNodeId == path.id:
-                        domNode = pathNode
-                        self.logger.debug("Found node for path %s", path.id)
-                        break
-            if domNode is None:
-                raise StitchingError("Couldn't find Path %s in stitching element of RSpec" % path)
-            self.logger.debug("Doing path.editChanges for path %s", path.id)
-            path.editChangesIntoDom(domNode)
-        return requestRSpecDom
 
     def doReservation(self, opts, slicename):
         # Ensure we have the right URL / API version / command combo
@@ -461,6 +576,8 @@ class Aggregate(object):
         opName = 'createsliver'
         if self.api_version > 2:
             opName = 'allocate'
+
+        self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
 #        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
@@ -478,7 +595,7 @@ class Aggregate(object):
             content = "<!-- No valid RSpec returned. -->"
             if requestString is not None:
                 content += "\n<!-- \n" + requestString + "\n -->"
-        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request', '.xml', 1)
+        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName + '-request'+str(self.allocateTries), '.xml', 1)
         # Set -o to ensure this goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
@@ -493,191 +610,176 @@ class Aggregate(object):
         self.logger.debug("omniargs %r", omniargs)
 
         result = None
-        success = False
 
-        # If fakeMode read results from a file
-        if opts.fakeModeDir:
-            self.logger.info("Doing FAKE allocation")
+        try:
+            # FIXME: Is that the right counter there?
+            (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries)
+        except AMAPIError, ae:
+            self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+            if ae.returnStruct and isinstance(ae.returnStruct, dict) and ae.returnStruct.has_key("code") and \
+                    isinstance(ae.returnStruct["code"], dict) and ae.returnStruct["code"].has_key("geni_code"):
+                if ae.returnStruct["code"]["geni_code"] == 24:
+                    # VLAN_UNAVAILABLE
+                    self.logger.warn("FIXME: Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
+                    # FIXME FIXME FIXME
+                    # self.handleVlanUnavailable()
+  #              else:
+                if True:
+                    # some other AMAPI error code
+                    if not self.userRequested:
+                        # Exit to SCS
+                        # If we've tried this AM a few times, set its hops to be excluded
+                        if self.allocateTries > self.MAX_TRIES:
+                            for hop in self.hops:
+                                hop.excludeFromSCS = True
+                        raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
+                    else:
+                        # Exit to User
+                        raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, ae))
+            else:
+                # Malformed AMAPI return struct
+                # Exit to User
+                raise StitchingError("Stitching failed: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
+        except Exception, e:
+            # Some other error (OmniError, StitchingError)
+            # Exit to user
+            raise StitchingError(e) # FIXME: right way to re-raise?
 
-            # FIXME: Take the expanded request from the SCS and pretend it is the manifest
-            # That way, we get the VLAN we asked for
-            resultPath = "./stitching-scs-expanded-request.xml"
+        # Handle DCN AMs
+        if self.dcn:
+            # FIXME: right counter?
+            (text, result) = self.handleDcnAM(opts, slicename, self.allocateTries)
 
-#            # For now, results file only has a manifest. No JSON
-#            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.json', 1)
-#            resultPath = os.path.join(opts.fakeModeDir, resultFileName)
-#            if not os.path.exists(resultPath):
-#                resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result', '.xml', 1)
-#                resultPath = os.path.join(opts.fakeModeDir, resultFileName)
-#                if not os.path.exists(resultPath):
-#                    self.logger.error("Fake results file %s doesn't exist", resultPath)
-#                    resultPath = None
+        # FIXME FIXME: Caller handles saving the manifest, comparing man sug with request, etc?
+        # FIXME: Not returning text here. Correct?
+        return result
 
-            if resultPath:
-                self.logger.info("Reading reserve results from %s", resultPath)
-                try:
-                    with open(resultPath, 'r') as file:
-                        resultsString = file.read()
-                    try:
-                        result = json.loads(resultsString, encoding='ascii')
-                    except Exception, e2:
-                        self.logger.debug("Failed to read fake results as json: %s", e2)
-                        result = resultsString
-                        success = True
-                except Exception, e:
-                    self.logger.error("Failed to read result string from %s: %s", resultPath, e)
+    def handleDcnAM(self, opts, slicename, ctr):
+        # DCN based AMs cannot really tell you if they succeeded until sliverstatus is ready or not
+        # So wait for that, then get the listresources manifest and use that as the manifest
 
-            if not result:
-                # Fallback fake mode behavior
-                success = True
-                time.sleep(random.randrange(1, 6))
-                for hop in self.hops:
-                    hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
-                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
-        else:
+        # FIXME: Add a maxtime to wait as well
+        tries = 0
+        status = 'unknown'
+        while tries < self.SLIVERSTATUS_MAX_TRIES:
+            # generate args for sliverstatus
+            if self.api_version == 2:
+                opName = 'sliverstatus'
+            else:
+                opName = 'status'
+            omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
+            result = None
             try:
-                # FIXME: Threading!
-                # FIXME: AM API call timeout!
-                # FIXME: Turn down omni logging using logging.disable?
-                # FIXME: Do we do something with log level or log format or file for omni calls?
-                (text, result) = omni.call(omniargs, opts)
-                success = True
-            except AMAPIError, e:
-                self.logger.error("Failed with AMAPI Error trying to reserve at %s: %s", self.url, e)
-
-                # FIXME: handle BUSY
-                result = e.returnStruct
+                tries = tries + 1
+                # FIXME: shouldn't ctr be based on tries here?
+                # FIXME: Big hack!!!
+                if not opts.fakeModeDir:
+                    (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
             except Exception, e:
-                self.logger.error("Failed to reserve at %s: %s", self.url, e)
-                # FIXME: call self.handleAllocateError
-                raise StitchingError(e)
-        return result, success
+                # exit gracefully
+                # FIXME: to SCS excluding this hop? to user?
+                raise StitchingError("%s %s failed at %s: %s" % (opName, slicename, self, e))
 
-    def copyVLANsAndDetectRedo(self):
-        '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
-        If so, but the inputs are incompatible, then mark this to be deleted. If so, but the
-        inputs are compatible, then an AM upstream was redone, but this is alreadydone.'''
-
-        hadPreviousManifest = self.manifestDom != None
-        mustDelete = False # Do we have old reservation to delete?
-        alreadyDone = hadPreviousManifest # Did we already complete this AM? (and this is just a recheck)
-        for hop in self.hops:
-            if not hop.import_vlans:
-                if not hop._hop_link.vlan_suggested_manifest:
-                    alreadyDone = False
-                continue
-
-            # Calculate the new suggested/avail for this hop
-            if not hop.import_vlans_from:
-                self.logger.warn("Hop %s imports vlans but has no import from?", hop)
-                continue
-
-            new_suggested = hop._hop_link.vlan_suggested_request or VLANRange.fromString("any")
-            if hop.import_vlans_from._hop_link.vlan_suggested_manifest:
-                # FIXME: Need deep copy?
-                new_suggested = hop.import_vlans_from._hop_link.vlan_suggested_manifest.copy()
-            else:
-                self.logger.warn("Hop %s's import_from %s had no suggestedVLAN manifest", hop, hop.import_vlans_from)
-
-            # If we've noted VLANs we already tried that failed (cause of later failures
-            # or cause the AM wouldn't give the tag), then be sure to exclude those
-            # from new_suggested - that is, if new_suggested would be in that set, then we have
-            # an error - gracefully exit, either to SCS excluding this hop or to user
-            if new_suggested <= hop.vlans_unavailable:
-                # FIXME
-                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s", hop, new_suggested, hop.vlans_unavailable)
-
-            int1 = VLANRange.fromString("any")
-            int2 = VLANRange.fromString("any")
-            if hop.import_vlans_from._hop_link.vlan_range_manifest:
-                int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
-            else:
-                self.logger.warn("Hop %s's import_from %s had no avail VLAN manifest", hop, hop.import_vlans_from)
-            if hop._hop_link.vlan_range_request:
-                int2 = hop._hop_link.vlan_range_request
-            else:
-                self.logger.warn("Hop %s had no avail VLAN request", hop, hop.import_vlans_from)
-            new_avail = int1 & int2
-
-            # If we've noted VLANs we already tried that failed (cause of later failures
-            # or cause the AM wouldn't give the tag), then be sure to exclude those
-            # from new_avail. And if new_avail is now empty, that is
-            # an error - gracefully exit, either to SCS excluding this hop or to user
-            new_avail2 = new_avail - hop.vlans_unavailable
-            if new_avail2 != new_avail:
-                self.logger.debug("%s computed vlanRange %s smaller due to excluding known unavailable VLANs. Was otherwise %s", hop, new_avail2, new_avail)
-                new_avail = new_avail2
-            if len(new_avail) == 0:
-                # FIXME
-                raise StitchingError("%s computed vlanRange is empty", hop)
-
-            if not new_suggested <= new_avail:
-                # We're somehow asking for something not in the avail range we're asking for.
-                # An error
-                self.logger.warn("Hop %s Calculated suggested %s not in available range %s", hop, new_suggested, new_avail)
-                raise StitchingError("Hop %s could not be processed: calculated a suggested VLAN of %s that is not in the calculated availabel range %s", hop, new_suggested, new_avail)
-
-            # If we have a previous manifest, we might be done or might need to delete a previous reservation
-            if hop._hop_link.vlan_suggested_manifest:
-                if not hadPreviousManifest:
-                    raise StitchingError("AM %s had no previous manifest, but its hop %s did", self, hop)
-                if hop._hop_link.vlan_suggested_request != new_suggested:
-                    # If we already have a result but used different input, then this result is suspect. Redo.
-                    self.logger.warn("AM %s had previous manifest and used different suggested VLAN for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_suggested_request, new_suggested)
-                    hop._hop_link.vlan_suggested_request = new_suggested
-                    # if however the previous suggested_manifest == new_suggested, then maybe this is OK?
-                    if hop._hop_link.vlan_suggested_manifest == new_suggested:
-                        self.logger.info("But hop %s VLAN suggested manifest is the new request, so leave it alone", hop)
-                    else:
-                        mustDelete = True
-                        alreadyDone = False
+            # FIXME: Parse out sliver status / status
+            # FIXME FIXME
+            if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
+                    isinstance(result[self.url], dict):
+                if self.api_version == 2:
+                    if result[self.url].has_key("geni_status"):
+                        status = result[self.url]["geni_status"]
                 else:
-                    self.logger.info("AM %s had previous manifest and used same suggested VLAN for hop %s (%s)", self, hop, hop._hop_link.vlan_suggested_request)
-                    # So for this hop at least, we don't need to redo this AM
-            else:
-                alreadyDone = False
-                # No previous result
-                if hadPreviousManifest:
-                    raise StitchingError("AM %s had a previous manifest but hop %s did not", self, hop)
-                if hop._hop_link.vlan_suggested_request != new_suggested:
-                    self.logger.debug("Hop %s changing VLAN suggested from %s to %s", hop, hop._hop_link.vlan_suggested_request, new_suggested)
-                    hop._hop_link.vlan_suggested_request = new_suggested
-                else:
-                    self.logger.debug("Hop %s already had VLAN suggested %s", hop, hop._hop_link.vlan_suggested_request)
+                    if result[self.url].has_key("value") and isinstance(result[self.url]["value"], dict) and \
+                            result[self.url]["value"].has_key("geni_slivers") and isinstance(result[self.url]["value"]["geni_slivers"], list):
+                        for sliver in result[self.url]["value"]["geni_slivers"]:
+                            if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
+                                status = sliver["geni_allocation_status"]
+                                break
+                        # FIXME: Which sliver(s) do I look at?
+                        # 1st? look for any not ready and take that?
+                        # FIXME FIXME
 
-            # Now check the avail range as we did for suggested
-            if hop._hop_link.vlan_range_manifest:
-                if not hadPreviousManifest:
-                    self.logger.error("AM %s had no previous manifest, but its hop %s did", self, hop)
-                if hop._hop_link.vlan_range_request != new_avail:
-                    # If we already have a result but used different input, then this result is suspect. Redo?
-                    self.logger.warn("AM %s had previous manifest and used different avail VLAN range for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_range_request, new_avail)
-                    if hop._hop_link.vlan_suggested_manifest and hop._hop_link.vlan_suggested_manifest not in new_avail:
-                        # new avail doesn't contain the previous manifest suggested. So new avail would have precluded
-                        # using the suggested we picked before. So we have to redo
-                        mustDelete = True
-                        alreadyDone = False
-                        self.logger.warn("Hop %s previous manifest suggested %s not in new avail %s - redo this AM", hop, hop._hop_link.vlan_suggested_manifest, new_avail)
-                    else:
-                        # what we picked before still works, so leave it alone
-                        self.logger.debug("Hop %s had avail range manifest %s, and previous avail range request (%s) != new (%s), but previous suggested manifest %s is in the new avail range, so it is still good", hop, hop._hop_link.vlan_range_manifest, hop._hop_link.vlan_range_request, new_avail, hop._hop_link.vlan_suggested_manifest)
+            # FIXME: Big hack!!!
+            if opts.fakeModeDir:
+                status = 'ready'
+            # On parse failure, exit gracefully
+            status = str(status).lower().strip()
+            if status in ('failed', 'ready', 'geni_allocated', 'geni_provisioned', 'geni_failed', 'geni_notready', 'geni_ready'):
+                break
+        # End of while loop getting sliverstatus
 
-                    # Either way, record what we want the new request to be, so later if we redo we use the right thing
-                    hop._hop_link.vlan_range_request = new_avail
-                else:
-                    self.logger.info("AM %s had previous manifest and used same avail VLAN range for hop %s (%s)", self, hop, hop._hop_link.vlan_range_request)
+        if status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready'):
+            self.logger.warn("%s is %s at %s. Treat as VLAN unavailable.", opName, status, self)
+            # treat as VLAN_UNAVAILABLE
+            # deleteReservation FIXME FIXME FIXM
+            opName = 'deletesliver'
+            if self.api_version > 2:
+                opName = 'delete'
+            omniargs = ['-a','--raiseErrorOnAMAPIV2Error',  self.url, opName+'sliver', slicename]
+            try:
+                # FIXME: right counter?
+                (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+            except Exception, e:
+                # Exit to user
+                raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
+            self.handleVlanUnavailable() # FIXME FIXME
+            if not self.userRequested:
+                # Exit to SCS
+                # If we've tried this AM a few times, set its hops to be excluded
+                if self.allocateTries > self.MAX_TRIES:
+                    for hop in self.hops:
+                        hop.excludeFromSCS = True
+                raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
             else:
-                alreadydone = False
-                # No previous result
-                if hadPreviousManifest:
-                    raise StitchingError("AM %s had a previous manifest but hop %s did not", self, hop)
-                if hop._hop_link.vlan_range_request != new_avail:
-                    self.logger.debug("Hop %s changing avail VLAN from %s to %s", hop, hop._hop_link.vlan_range_request, new_avail)
-                    hop._hop_link.vlan_range_request = new_avail
-                else:
-                    self.logger.debug("Hop %s already had avail VLAN %s", hop, hop._hop_link.vlan_range_request)
-        # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
-        return mustDelete, alreadyDone
+                # Exit to User
+                raise StitchingError("Stitching failed trying %s at %s" % (opName, self))
+        else:
+            # Status is ready
+            # generate args for listresources
+            if self.api_version == 2:
+                opName = 'listresources'
+            else:
+                opName = 'describe'
+            # FIXME: Big hack!!!
+            if opts.fakeModeDir:
+                opName = 'createsliver'
+            omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
+            try:
+                return self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+            except Exception, e:
+                # Exit gracefully
+                raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, e))
+
+    def handleSuggestedVLANNotRequest(self):
+        # FIXME FIXME FIXME
+#      note what we tried that failed (ie what was requested but not given at this hop)
+#      find an AM to redo
+#        note VLAN tags in manifest that don't work later as vlan_unavailable
+#           FIXME: Or separate that into vlan_unavailable and vlan_tried?
+#        FIXME: AMs need a redo or reservation counter maybe, to avoid thrashing?
+#        FIXME: mark that we are redoing?
+#            idea: do we need this in allocate() on the AM we are redoing?
+#        delete that AM
+#        set request VLAN tags on that AM
+#         be sure not to include VLANs we already had once that clearly failed
+#        exit from this AM without setting complete, so we recheck VLAN tag consistency later
+#      else gracefully exit
+        pass
+
+    def handleVlanUnavailable(self):
+#        FIXME: See logic on wiki
+#        remember unavailable vlanRangeAvailability on the hop
+#        may need to mark hop explicity loose or add to hop_exclusion list for next SCS request
+#        may need to go back to SCS or go back to user
+#        if negotiate:
+#           don't mark this AM complete, so dependencies don't start going
+#           find AM to redo from
+#            note VLAN tags in manifest that don't work later as vlan_unavailable
+#              FIXME: Or separate that into vlan_unavailable and vlan_tried?
+#            FIXME: AMs need a redo or reservation counter maybe, to avoid thrashing?
+#            FIXME: mark that we are redoing?
+#                idea: do we need this in allocate() on the AM we are redoing?
+#            delete reservation at that AM, and exit out from this AM in a graceful way (not setting .complete)
+        pass
 
     def deleteReservation(self, opts, slicename):
         '''Delete any previous reservation/manifest at this AM'''
@@ -705,13 +807,13 @@ class Aggregate(object):
         opName = 'deletesliver'
         if self.api_version > 2:
             opName = 'delete'
-        omniargs = ['-a', self.url, opName+'sliver', slicename]
+        omniargs = ['-a','--raiseErrorOnAMAPIV2Error',  self.url, opName+'sliver', slicename]
         self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
             try:
-                (text, (successList, fail)) = omni.call(omniargs, opts)
+                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
                 if not self.url in successList:
-                    raise StitchingError("Failed to delete prior reservation at %s: %s", self.url, text)
+                    raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
                 else:
                     self.logger.debug("Result: %s", text)
             except OmniError, e:
@@ -721,6 +823,96 @@ class Aggregate(object):
 
         # FIXME: Set a flag marking this AM was deleted?
         return
+
+    # This needs to handle createsliver, allocate, sliverstatus, listresources at least
+    def doAMAPICall(self, args, opts, opName, slicename, ctr):
+        gotBusy = False
+        busyCtr = 0
+        while busyCtr < self.BUSY_MAX_TRIES:
+            try:
+                ctr = ctr + 1
+                if opts.fakeModeDir:
+                    (text, result) = self.fakeAMAPICall(args, opts, opName, slicename, ctr)
+                else:
+                    (text, result) = self.doOmniCall(args, opts)
+                break # Not an error - breakout of loop
+            except AMAPIError, ae:
+                if is_busy_reply(ae.returnstruct):
+                    self.logger.info("%s got BUSY doing %s", self, opName)
+                    time.sleep(self.BUSY_POLL_INTERVAL_SEC)
+                    busyCtr = busyCtr + 1
+                else:
+                    raise ae
+        return (text, result)
+
+    def doOmniCall(self, args, opts):
+        # spawn a thread if threading
+        return omni.call(args, opts)
+
+    # This needs to handle createsliver, allocate, sliverstatus, listresources at least
+    def fakeAMAPICall(self, args, opts, opName, slicename, ctr):
+        self.logger.info("Doing FAKE %s", opName)
+
+        # derive filename
+        # FIXME: Take the expanded request from the SCS and pretend it is the manifest
+        # That way, we get the VLAN we asked for
+        resultPath = "./stitching-scs-expanded-request.xml"
+
+#        # For now, results file only has a manifest. No JSON
+#        resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.json', 1)
+#        resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+#        if not os.path.exists(resultPath):
+#            resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.xml', 1)
+#            resultPath = os.path.join(opts.fakeModeDir, resultFileName)
+        if not resultPath or not os.path.exists(resultPath):
+            if opName in ("allocate", "createsliver"):
+                # Fallback fake mode behavior
+                time.sleep(random.randrange(1, 6))
+                for hop in self.hops:
+                    hop._hop_link.vlan_suggested_manifest = hop._hop_link.vlan_suggested_request
+                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_request
+                self.logger.warn("Did fallback fake mode allocate")
+                msg = "Did fallback fake %s" % opName
+                return (msg, msg)
+            else:
+                raise StitchingError("Failed to find fake results file using %s" % resultFileName)
+
+        self.logger.info("Reading FAKE %s results from %s", opName, resultPath)
+        resultJSON = None
+        result = None
+        # Read in the file, trying as JSON
+        try:
+            with open(resultPath, 'r') as file:
+                resultsString = file.read()
+            try:
+                resultJSON = json.loads(resultsString, encoding='ascii')
+            except Exception, e2:
+                self.logger.debug("Failed to read fake results as json: %s", e2)
+                result = resultsString
+        except Exception, e:
+            self.logger.error("Failed to read result string from %s: %s", resultPath, e)
+            # FIXME
+            raise e
+        if resultJSON:
+            # Got JSON - check for normal return struct
+            if isinstance(resultJSON, dict) and resultJSON.has_key("code") and isinstance(resultJSON["code"], dict) and \
+                    resultJSON["code"].has_key("geni_code"):
+                # If success, return the value as the result
+                if resultJSON["code"]["geni_code"] == 0:
+                    if resultJSON["code"].has_key("value"):
+                        result = resultJSON["code"]["value"]
+                    else:
+                        raise StitchingError("Malformed result struct from %s claimed success but had no value" % resultPath)
+                else:
+                    # Not success - raise it as an AMAPIError
+                    raise AMAPIError("Fake failure doing %s at %s from file %s" % (opName, self.url, resultPath), resultJSON)
+            else:
+                # Malformed struct - maybe this is a real result as is
+                result = resultJSON
+        else:
+            # Not JSON - return as real result
+            result = resultsString
+        return ("Fake %s at %s from file %s" % (opName, self.url, resultPath), result)
 
 class Hop(object):
     # A hop on a path in the stitching element
@@ -771,6 +963,7 @@ class Hop(object):
         # If True, then next request to SCS should explicitly
         # mark this hop as loose
         self.loose = False
+
         # Set to true so later call to SCS will explicitly exclude this Hop
         self.excludeFromSCS = False
 

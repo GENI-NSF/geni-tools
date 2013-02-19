@@ -25,3 +25,7 @@ from omnilib.util import OmniError
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
     pass
+
+class StitchingCircuitFailedError(StitchingError):
+    '''A given stitching attempt failed, but a different circuit from the SCS might work.'''
+    pass
