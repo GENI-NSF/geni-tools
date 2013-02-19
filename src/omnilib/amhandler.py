@@ -400,7 +400,7 @@ class AMCallHandler(object):
         '''
         # url, urn, timestamp, apiversion, rspecversions (type version, type version, ..), credtypes (type version, ..), single_alloc, allocate, last error and message
         res = {}
-        if error and error.startswith("(PG log ur"):
+        if error and error.startswith(" (PG log ur"):
             # If the only error string is the pointer to the PG log url, treat this as no error
             error = None
         if error:
