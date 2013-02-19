@@ -165,7 +165,7 @@ class StitchingHandler(object):
 #  Error code / message (standard GENI triple)
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
-        return ""
+        return ("Stitching Success", combinedManifest)
 
     def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
         # ExistingAggs are Aggregate objects
@@ -220,6 +220,7 @@ class StitchingHandler(object):
             # We've collected and marked as vlan_unavailable
             # FIXME: Here we pass in the request to give to the SCS. I'd like this
             # to be modified (different VLAN range? Some hops marked loose?) in future
+
             lastAM = self.mainStitchingLoop(sliceurn, requestString, self.ams_to_process)
         except StitchingError, se:
             self.logger.warn("Stitching failed with an error")
@@ -402,7 +403,7 @@ class StitchingHandler(object):
             # And this isn't quite right either - the headers look like a manifest
 #            (header, content, retVal) = handler_utils._getRSpecOutput(self.logger, expandedRSpec, self.slicename, 'stitching-scs-expanded', '', None)
 
-            scsFilename = 'stitching-scs-expanded-request.xml'
+            scsFilename = '/tmp/stitching-scs-expanded-request.xml'
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
                 # This line seems to insert extra \ns - GCF ticket #202
@@ -473,7 +474,11 @@ class StitchingHandler(object):
             # Query AM API versions supported, then set the max as property on the aggregate
                 # then use that to pick allocate vs createsliver
             # Check GetVersion geni_am_type contains 'dcn'. If so, set flag on the agg
-            omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+            if options_copy.warn:
+                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+            else:
+                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+                
             try:
                 self.logger.info("Getting extra AM info from Omni for AM %s", agg)
                 logging.disable(logging.INFO)
