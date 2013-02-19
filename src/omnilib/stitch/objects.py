@@ -302,7 +302,7 @@ class Aggregate(object):
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
         for hop in self.hops:
             # FIXME: Hop ID is not specific enough. Need a path ID as well
-            range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id)
+            range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
             rangeValue = range_suggested[0]
             suggestedValue = range_suggested[1]
             if not suggestedValue:
@@ -502,79 +502,112 @@ class Aggregate(object):
         return requestRSpecDom
 
     # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
-    # FIXME: Hop ID is not enough. Need a path ID as well.
-    def getVLANRangeSuggested(self, manifest, hop_id):
+    def getVLANRangeSuggested(self, manifest, hop_id, path_id):
         vlan_range_availability = None
         suggested_vlan_range = None
 
         rspec_node = None
         stitching_node = None
+        path_node = None
+        this_path_id = ""
         hop_node = None
+        link_node = None
+        link_id = ""
+        this_hop_id = ""
         scd_node = None
         scsi_node = None
+        scsil2_node = None
 
-        # FIXME: Use constants for these strings used here to find the proper elements
+        # FIXME: Call once for all hops
+        # FIXME: better error messages
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.nodeName == 'rspec':
+                    child.localName == RSpecParser.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'stitching':
+                        child.localName == RSpecParser.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
             raise StitchingError("No rspec element in manifest")
 
         if stitching_node:
-            # FIXME: There can be multiple <path> elements for a single rspec.
-            # Distinguish by path ID
-            path_node = stitching_node.childNodes[0]
-            for child in path_node.childNodes:
+            for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'hop':
-                    this_hop_id = child.getAttribute('id')
-                    if this_hop_id == hop_id:
-                        hop_node = child
+                        child.localName == RSpecParser.PATH_TAG:
+                    this_path_id = child.getAttribute(Path.ID_TAG)
+                    if this_path_id == path_id:
+                        path_node = child
                         break
         else:
             raise StitchingError("No stitching element in manifest")
 
+        if path_node:
+            self.logger.debug("Found path %s (id %s)" % (path_node, this_path_id))
+            for child in path_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == Path.HOP_TAG:
+                    this_hop_id = child.getAttribute(Hop.ID_TAG)
+                    if this_hop_id == hop_id:
+                        hop_node = child
+                        break
+        else:
+            raise StitchingError("No path %s element in manifest" % path_id)
+
         if hop_node:
-            link_node = hop_node.childNodes[0]
+            self.logger.debug("Found hop %s (id %s)" % (hop_node, this_hop_id))
+            for child in hop_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == Hop.LINK_TAG:
+                    link_node = child
+                    break
+        else:
+            raise StitchingError("Couldn't find hop %s in rspec. Looking in path %s (id %s)" % (hop_id, path_node, this_path_id))
+
+        if link_node:
+            link_id = link_node.getAttribute(HopLink.ID_TAG)
+            self.logger.debug("Hop had link %s", link_id)
             for child in link_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'switchingCapabilityDescriptor':
+                        child.localName == 'switchingCapabilityDescriptor':
                     scd_node = child
-                    break;
+                    break
         else:
-            raise StitchingError("Couldn't find hop %s in rspec" % hop_id)
+            raise StitchingError("Couldn't find link in hop %s in rspec" % (hop_id))
 
         if scd_node:
             for child in scd_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.nodeName == 'switchingCapabilitySpecificInfo':
-                    scsi_node = child;
+                        child.localName == 'switchingCapabilitySpecificInfo':
+                    scsi_node = child
                     break
         else:
-            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in rspec" % hop_id)
+            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in link %s in rspec" % (hop_id, link_id))
 
         if scsi_node:
-            # FIXME: There will shortly be other kinds of sub-tags here. Need to look for this explicitly
-            scsil2_node = scsi_node.childNodes[0]
+            for child in scsi_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == 'switchingCapabilitySpecificInfo_L2sc':
+                    scsil2_node = child
+                    break
+        else:
+            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec" % hop_id)
+
+        if scsil2_node:
             for child in scsil2_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE:
                     child_text = child.childNodes[0].nodeValue
-                    if child.nodeName == 'vlanRangeAvailability':
+                    if child.localName == HopLink.VLAN_RANGE_TAG:
                         vlan_range_availability = child_text
-                    elif child.nodeName == 'suggestedVLANRange':
+                    elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec" % hop_id)
+            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo_L2sc in hop %s in rspec" % hop_id)
 
         return (vlan_range_availability, suggested_vlan_range)
 
@@ -630,9 +663,9 @@ class Aggregate(object):
             self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
         except AMAPIError, ae:
             self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
-            if ae.returnStruct and isinstance(ae.returnStruct, dict) and ae.returnStruct.has_key("code") and \
-                    isinstance(ae.returnStruct["code"], dict) and ae.returnStruct["code"].has_key("geni_code"):
-                if ae.returnStruct["code"]["geni_code"] == 24:
+            if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
+                    isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
+                if ae.returnstruct["code"]["geni_code"] == 24:
                     # VLAN_UNAVAILABLE
                     self.logger.warn("FIXME: Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
                     # FIXME FIXME FIXME
