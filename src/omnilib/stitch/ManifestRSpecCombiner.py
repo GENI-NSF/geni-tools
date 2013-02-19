@@ -58,6 +58,10 @@ class ManifestRSpecCombiner:
     # a list of all node sections from the manifests
     def combineNodes(self, ams_list, dom_template):
 
+# FIXME: Support >1 node with same cmid
+# Make template_nodes_by_cmid be a list
+# Then in loop over AMs, match nodes in tmeplate_nodes by client_id
+
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
         doc_root = dom_template.documentElement
@@ -66,6 +70,7 @@ class ManifestRSpecCombiner:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.nodeName == 'node':
                 cmid = child.getAttribute('component_manager_id')
+                # FIXME: This allows only one node per cmid. There can be multiple
                 template_nodes_by_cmid[cmid] = child
 
 #        print "DICT = " + str(template_nodes_by_cmid)
@@ -100,6 +105,9 @@ class ManifestRSpecCombiner:
     # Find the <link> element from that AM's manifest
     # Replace link element in template with that link element
     def combineLinks(self, ams_list, dom_template):
+
+# FIXME: This allows 1 link per cmid. The restriction we want is 1 cmid per link.
+# a list of unique_links by client_id would work
 
         template_links_by_cmid = {}
 
