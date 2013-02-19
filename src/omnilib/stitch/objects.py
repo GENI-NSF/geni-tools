@@ -161,6 +161,7 @@ class Aggregate(object):
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 10
+    PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
 
     @classmethod
     def find(cls, urn):
@@ -256,6 +257,10 @@ class Aggregate(object):
             self.logger.warn("Must delete previous reservation for AM %s", self)
             alreadyDone = False
             self.deleteReservation(opts, slicename)
+
+            # FIXME: Need to sleep so AM has time to put those resources back in the pool
+            # But really should do this on the AMs own thread to avoid blocking everything else
+            time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -640,7 +645,10 @@ class Aggregate(object):
                             self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
                             for hop in self.hops:
                                 hop.excludeFromSCS = True
+                    # This says always go back to the SCS
                     # This is dangerous - we could thrash
+                    # FIXME: go back a limited # of times
+                    # FIXME: Uncomment below code so only errors at SCS AMs cause us to go back to SCS?
                     raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
 
 #                    if not self.userRequested:
@@ -821,6 +829,26 @@ class Aggregate(object):
 #         In avail, be sure not to include VLANs we already had once that clearly failed (see vlans_unavailable)
 #        exit from this AM without setting complete, so we recheck VLAN tag consistency later
 #      else (no AM to redo) gracefully exit: raiseStitchingCircuitFailedError
+
+# From wiki
+# This is where suggested was single and man != request. Find the AM that picked the regjected tag if any, and redo that AM: delete
+# the existing reservation, set its requested = this manifest, excluding from its avail the requested suggested here that we didn't pick
+
+# Also add to hop.vlan_unavailable the suggested we didnt pick
+
+# If not hop.import_vlans: no prior AMs need to agree, so return as though this succeeded
+# Set flag for in process stuff to pause
+# go to the hop.import_Vlans_from hop. Call that hop2
+# if hop2 requested == manifest, recurse to its import_from
+# (possible extraneous else: hop2 is same AM as hop1 and hop2 request = hop1 request and hop2 man == hop1 man, then recurse)
+# else if hop2 same AM as hop1 - huh? raise StitchingError to go to user
+# else if requested == 'any', then this AM picked the offending tag
+#  thatAM.deleteReservation
+#  set hop2.suggested_request = hop1.suggested_manifest
+#  set hop2.range_request -= hop1.suggested_request
+#  return
+# else: huh? raise StitchingError
+# else can't find an AM to start over from: raise StitchingCircuitFailedError
         pass
 
     def handleVlanUnavailable(self, opName, exception):
@@ -837,6 +865,16 @@ class Aggregate(object):
 #            FIXME: mark that we are redoing?
 #                idea: do we need this in allocate() on the AM we are redoing?
 #            delete reservation at that AM, and exit out from this AM in a graceful way (not setting .complete)
+
+# Wiki logic
+# REmember which tag was unavailable in hop.vlans_unavailable if I can tell. Plan to exclude that from SCS vlanRangeAvailability,
+# if SCS supports that.
+# If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
+  # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
+# Set some kind of flag so in process stuff pauses (for threading)
+# If APIv2 (and AM fails request if suggested unavail)
+  # If suggested ANY then find AM where vlanRange was narrowed and redo there
+  # Else suggested was single and vlanRange was a range --- FIXME
         if not self.userRequested:
             # Exit to SCS
             # If we've tried this AM a few times, set its hops to be excluded
