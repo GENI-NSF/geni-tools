@@ -264,8 +264,8 @@ class Aggregate(object):
             self.logger.info("AM %s had previous result we didn't need to redo. Done", self)
             return
 
-        if self.allocateTries > self.MAX_TRIES:
-            sel.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
+        if self.allocateTries == self.MAX_TRIES:
+            self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
 
         # FIXME: Check for all hops have reasonable vlan inputs?
 
@@ -288,8 +288,9 @@ class Aggregate(object):
             self.manifestDom = parseString(manifestString)
         except Exception, e:
             self.logger.error("Failed to parse result as DOM XML RSpec: %s", e)
-            # FIXME: Handle error
-            raise StitchingError("%s manifest rspec not parsable: %s" % (hop, e))
+            raise StitchingError("%s manifest rspec not parsable: %s" % (self, e))
+
+        hadSuggestedNotRequest = False
 
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
@@ -300,31 +301,30 @@ class Aggregate(object):
             suggestedValue = range_suggested[1]
             if not suggestedValue:
                 self.logger.warn("Didn't find suggested value for hop %s", hop)
-                # FIXME: put suggested on the vlans_unavailable?
-                raise StitchingCircuitFailedError("%s didn't have a suggestedVlanRange in manifest" % hop)
+                # Treat as error? Or as vlan unavailable? FIXME
+                self.handleVlanUnavailable("reservation", ("No suggested value element on hop" % hop))
             elif suggestedValue in ('null', 'None', 'any'):
-                # FIXME: put suggested on the vlans_unavailable?
                 self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
-                raise StitchingCircuitFailedError("%s had invalid suggestedVlanRange in manifest: %s" % (hop, suggestedValue))
+                # Treat as error? Or as vlan unavailable? FIXME
+                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop" % (suggestedValue, hop)))
             else:
                 suggestedObject = VLANRange.fromString(suggestedValue)
+            # If these fail and others worked, this is malformed
             if not rangeValue:
-                # FIXME: put avail on the vlans_unavailable?
                 self.logger.warn("Didn't find vlanAvailRange element for hop %s", hop)
-                raise StitchingCircuitFailedError("%s didn't have a vlanAvailRange in manifest" % hop)
+                raise StitchingError("%s didn't have a vlanAvailRange in manifest" % hop)
             elif rangeValue in ('null', 'None', 'any'):
-                # FIXME: put avail on the vlans_unavailable?
                 self.logger.error("Hop %s availRange invalid: %s", hop, rangeValue)
-                raise StitchingCircuitFailedError("%s had invalid availVlanRange in manifest: %s" % (hop, rangeValue))
+                raise StitchingError("%s had invalid availVlanRange in manifest: %s" % (hop, rangeValue))
             else:
                 rangeObject = VLANRange.fromString(rangeValue)
 
             self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
             if not suggestedObject <= hop._hop_link.vlan_suggested_request:
                 self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
-                # FIXME: Handle error here
                 # This is sug != requested case
-                self.handleSuggestedVLANNotRequest()
+                self.handleSuggestedVLANNotRequest(opts, slicename)
+                hadSuggestedNotRequest = True
 
             # If got here the manifest values are OK - save them away
             hop._hop_link.vlan_suggested_manifest = suggestedObject
@@ -335,8 +335,9 @@ class Aggregate(object):
 
         self.logger.info("Allocation at %s complete", self)
 
-        # mark self complete
-        self.completed = True
+        if not hadSuggestedNotRequest:
+            # mark self complete
+            self.completed = True
 
     def copyVLANsAndDetectRedo(self):
         '''Copy VLANs to this AMs hops from previous manifests. Check if we already had manifests.
@@ -369,8 +370,9 @@ class Aggregate(object):
             # from new_suggested - that is, if new_suggested would be in that set, then we have
             # an error - gracefully exit, either to SCS excluding this hop or to user
             if new_suggested <= hop.vlans_unavailable:
-                # FIXME
-                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s" % (hop, new_suggested, hop.vlans_unavailable))
+                # FIXME: use handleVlanUnavailable? Is that right?
+                self.handleVlanUnavailable("reserve", "Calculated new_suggested for %s of %s is in set of VLANs we know won't work" % (hop, new_suggested))
+#                raise StitchingError("%s picked new_suggested %s that is in the set of VLANs that we know won't work: %s" % (hop, new_suggested, hop.vlans_unavailable))
 
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
@@ -393,7 +395,8 @@ class Aggregate(object):
                 self.logger.debug("%s computed vlanRange %s smaller due to excluding known unavailable VLANs. Was otherwise %s", hop, new_avail2, new_avail)
                 new_avail = new_avail2
             if len(new_avail) == 0:
-                # FIXME
+                # FIXME: Do I go to SCS? treat as VLAN Unavailable? I don't think this should happen.
+                # But if it does, it probably means I need to exclude this AM at least?
                 raise StitchingError("%s computed vlanRange is empty" % hop)
 
             if not new_suggested <= new_avail:
@@ -614,6 +617,7 @@ class Aggregate(object):
         try:
             # FIXME: Is that the right counter there?
             (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries)
+            self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
         except AMAPIError, ae:
             self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
             if ae.returnStruct and isinstance(ae.returnStruct, dict) and ae.returnStruct.has_key("code") and \
@@ -622,20 +626,34 @@ class Aggregate(object):
                     # VLAN_UNAVAILABLE
                     self.logger.warn("FIXME: Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
                     # FIXME FIXME FIXME
-                    # self.handleVlanUnavailable()
-  #              else:
-                if True:
+                    self.handleVlanUnavailable(opName, ae)
+                else:
                     # some other AMAPI error code
+                    # FIXME: Try to parse the am_code or the output message to decide if this is 
+                    # a stitching error (go to SCS) vs will never work (go to user)?
+                    # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
+
+                    # Exit to SCS
                     if not self.userRequested:
-                        # Exit to SCS
                         # If we've tried this AM a few times, set its hops to be excluded
                         if self.allocateTries > self.MAX_TRIES:
+                            self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
                             for hop in self.hops:
                                 hop.excludeFromSCS = True
-                        raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
-                    else:
-                        # Exit to User
-                        raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, ae))
+                    # This is dangerous - we could thrash
+                    raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
+
+#                    if not self.userRequested:
+#                        # Exit to SCS
+#                        # If we've tried this AM a few times, set its hops to be excluded
+#                        if self.allocateTries > self.MAX_TRIES:
+#                            self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+#                            for hop in self.hops:
+#                                hop.excludeFromSCS = True
+#                        raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
+#                    else:
+#                        # Exit to User
+#                        raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, ae))
             else:
                 # Malformed AMAPI return struct
                 # Exit to User
@@ -645,12 +663,26 @@ class Aggregate(object):
             # Exit to user
             raise StitchingError(e) # FIXME: right way to re-raise?
 
+        # Pull actual manifest out of result
+        # If v2, this already is the manifest
+        if self.api_version > 2:
+            try:
+                result = result[self.url]['value']['geni_rspec']
+            except Exception, e:
+                if isinstance(result, str) and opts.fakeModeDir:
+                    # Well OK then
+                    pass
+                else:
+                    msg = "Malformed return struct from %s at %s: %s" % (opName, self, e)
+                    self.logger.warn(msg)
+                    raise StitchingError("Stitching failed - got %s" % msg)
+
         # Handle DCN AMs
         if self.dcn:
             # FIXME: right counter?
             (text, result) = self.handleDcnAM(opts, slicename, self.allocateTries)
 
-        # FIXME FIXME: Caller handles saving the manifest, comparing man sug with request, etc?
+        # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
         return result
 
@@ -675,18 +707,22 @@ class Aggregate(object):
                 # FIXME: Big hack!!!
                 if not opts.fakeModeDir:
                     (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                    self.logger.debug("In handleDcn %s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # exit gracefully
-                # FIXME: to SCS excluding this hop? to user?
+                # FIXME: to SCS excluding this hop? to user? This could be some transient thing, such that redoing
+                # circuit as is would work. Or it could be something permanent. How do we know?
                 raise StitchingError("%s %s failed at %s: %s" % (opName, slicename, self, e))
 
-            # FIXME: Parse out sliver status / status
-            # FIXME FIXME
+            # Parse out sliver status / status
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
                     isinstance(result[self.url], dict):
                 if self.api_version == 2:
                     if result[self.url].has_key("geni_status"):
                         status = result[self.url]["geni_status"]
+                    else:
+                        # else malformed
+                        raise StitchingError("%s had malformed %s in handleDCN" % (self, opName))
                 else:
                     if result[self.url].has_key("value") and isinstance(result[self.url]["value"], dict) and \
                             result[self.url]["value"].has_key("geni_slivers") and isinstance(result[self.url]["value"]["geni_slivers"], list):
@@ -696,12 +732,22 @@ class Aggregate(object):
                                 break
                         # FIXME: Which sliver(s) do I look at?
                         # 1st? look for any not ready and take that?
+                        # And pull out any geni_error
                         # FIXME FIXME
+                        # FIXME: I don't really know how AMs will do v3 status' so wait
+                    else:
+                        # malformed
+                        raise StitchingError("%s had malformed %s in handleDCN" % (self, opName))
+            else:
+                # FIXME FIXME Big hack
+                if not opts.fakeModeDir:
+                    # malformed
+                    raise StitchingError("%s had malformed %s in handleDCN" % (self, opName))
 
             # FIXME: Big hack!!!
             if opts.fakeModeDir:
                 status = 'ready'
-            # On parse failure, exit gracefully
+
             status = str(status).lower().strip()
             if status in ('failed', 'ready', 'geni_allocated', 'geni_provisioned', 'geni_failed', 'geni_notready', 'geni_ready'):
                 break
@@ -709,8 +755,7 @@ class Aggregate(object):
 
         if status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready'):
             self.logger.warn("%s is %s at %s. Treat as VLAN unavailable.", opName, status, self)
-            # treat as VLAN_UNAVAILABLE
-            # deleteReservation FIXME FIXME FIXM
+            # deleteReservation
             opName = 'deletesliver'
             if self.api_version > 2:
                 opName = 'delete'
@@ -718,20 +763,13 @@ class Aggregate(object):
             try:
                 # FIXME: right counter?
                 (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                self.logger.debug("In handleDCN %s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # Exit to user
                 raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
-            self.handleVlanUnavailable() # FIXME FIXME
-            if not self.userRequested:
-                # Exit to SCS
-                # If we've tried this AM a few times, set its hops to be excluded
-                if self.allocateTries > self.MAX_TRIES:
-                    for hop in self.hops:
-                        hop.excludeFromSCS = True
-                raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
-            else:
-                # Exit to User
-                raise StitchingError("Stitching failed trying %s at %s" % (opName, self))
+
+            # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
+            self.handleVlanUnavailable(opName, e)
         else:
             # Status is ready
             # generate args for listresources
@@ -744,28 +782,48 @@ class Aggregate(object):
                 opName = 'createsliver'
             omniargs = ['-o', '--raiseErrorOnV2AMAPIError', '-a', self.url, opName, slicename]
             try:
-                return self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # Exit gracefully
-                raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, e))
+                raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
 
-    def handleSuggestedVLANNotRequest(self):
+            # Get the single manifest out of the result struct
+            try:
+                if self.api_version == 2:
+                    oneResult = result.values()[0]
+                else:
+                    oneResult = result[self.url]["value"]["geni_rspec"]
+            except Exception, e:
+                if isinstance(result, str) and opts.fakeModeDir:
+                    oneResult = result
+                else:
+                    raise StitchingError("Malformed return from %s at %s: %s" % (opName, self, e))
+            return (text, oneResult)
+
+    def handleSuggestedVLANNotRequest(self, opts, slicename):
         # FIXME FIXME FIXME
-#      note what we tried that failed (ie what was requested but not given at this hop)
+        # note what we tried that failed (ie what was requested but not given at this hop)
+#        for hop in self.hops:
+#            hop.vlans_unavailable.add(hop.hop_link.vlan_suggested_request)
+
 #      find an AM to redo
-#        note VLAN tags in manifest that don't work later as vlan_unavailable
+#        note VLAN tags in manifest that don't work later as vlan_unavailable on that AM
 #           FIXME: Or separate that into vlan_unavailable and vlan_tried?
 #        FIXME: AMs need a redo or reservation counter maybe, to avoid thrashing?
 #        FIXME: mark that we are redoing?
 #            idea: do we need this in allocate() on the AM we are redoing?
 #        delete that AM
+#            thatAM.deleteReservation(opts, slicename)
 #        set request VLAN tags on that AM
-#         be sure not to include VLANs we already had once that clearly failed
+            # See logic in copyVLANsAndDetectRedo
+#            thatAM.somehop.hop_link.vlan_suggested_request = self.someOtherHop.hop_link.vlan_suggested_manifest
+#         In avail, be sure not to include VLANs we already had once that clearly failed (see vlans_unavailable)
 #        exit from this AM without setting complete, so we recheck VLAN tag consistency later
-#      else gracefully exit
+#      else (no AM to redo) gracefully exit: raiseStitchingCircuitFailedError
         pass
 
-    def handleVlanUnavailable(self):
+    def handleVlanUnavailable(self, opName, exception):
 #        FIXME: See logic on wiki
 #        remember unavailable vlanRangeAvailability on the hop
 #        may need to mark hop explicity loose or add to hop_exclusion list for next SCS request
@@ -779,7 +837,18 @@ class Aggregate(object):
 #            FIXME: mark that we are redoing?
 #                idea: do we need this in allocate() on the AM we are redoing?
 #            delete reservation at that AM, and exit out from this AM in a graceful way (not setting .complete)
-        pass
+        if not self.userRequested:
+            # Exit to SCS
+            # If we've tried this AM a few times, set its hops to be excluded
+            if self.allocateTries > self.MAX_TRIES:
+                self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+                for hop in self.hops:
+                    self.logger.debug
+                    hop.excludeFromSCS = True
+            raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
+        else:
+            # Exit to User
+            raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, exception))
 
     def deleteReservation(self, opts, slicename):
         '''Delete any previous reservation/manifest at this AM'''
@@ -811,14 +880,39 @@ class Aggregate(object):
         self.logger.info("Doing %s at %s", opName, self.url)
         if not opts.fakeModeDir:
             try:
-                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
-                if not self.url in successList:
-                    raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
+#                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
+                (text, result) = self.doOmniCall(omniargs, opts)
+                if self.api_version == 2:
+                    (successList, fail) = result
+                    if not self.url in successList:
+                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
+                    else:
+                        self.logger.debug("Result: %s", text)
                 else:
-                    self.logger.debug("Result: %s", text)
+                    # API v3
+                    retCode = 0
+                    try:
+                        retCode = result[self.url]["code"]["geni_code"]
+                    except:
+                        # Malformed return - treat as error
+                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self.url, text))
+                    if retCode != 0:
+                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
+                    # need to check status of slivers to ensure they are all deleted
+                    try:
+                        for sliver in result[self.url]["value"]:
+                            status = sliver["geni_allocation_status"]
+                            if status != 'geni_unallocated':
+                                if sliver.has_key("geni_error"):
+                                    text = text + "; " + sliver["geni_error"]
+                                raise StitchingError("Failed to delete prior reservation at %s for sliver %s: %s" % (self.url, sliver["geni_sliver_urn"], text))
+                    except:
+                        # Malformed return I think
+                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self.url, text))
+
             except OmniError, e:
-                self.logger.error("Failed to %s: %s", opName, e)
-                raise StitchingError(e)
+                self.logger.error("Failed to %s at %s: %s", opName, self, e)
+                raise StitchingError(e) # FIXME: Right way to re-raise?
         # FIXME: Fake mode delete results from a file?
 
         # FIXME: Set a flag marking this AM was deleted?
@@ -850,6 +944,7 @@ class Aggregate(object):
         return omni.call(args, opts)
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
+    # FIXME FIXME: Need more fake result files and to clean this all up! ****
     def fakeAMAPICall(self, args, opts, opName, slicename, ctr):
         self.logger.info("Doing FAKE %s", opName)
 
