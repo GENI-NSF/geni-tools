@@ -121,6 +121,8 @@ class StitchingHandler(object):
     
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
+        self.parsedSCSRSpec = None
+        self.ams_to_process = None
 
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         try:
@@ -178,6 +180,7 @@ class StitchingHandler(object):
 
         # Parse SCS Response, constructing objects and dependencies, validating return
         self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
+        scsResponse = None # Just to note we are done with this here (keep no state)
 
         # FIXME: if notScript, print AM dependency tree?
 
@@ -205,6 +208,8 @@ class StitchingHandler(object):
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
         try:
             lastAM = launcher.launch(self.parsedSCSRSpec)
+# for testing caling the SCS only many times
+#            raise StitchingCircuitFailedError("testing")
         except StitchingCircuitFailedError, se:
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.warn("Stitching max circuit failures reached")
@@ -215,6 +220,8 @@ class StitchingHandler(object):
 
             # Flush the cache of aggregates. Loses all state. Avoids
             # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
+            aggs = copy.copy(self.ams_to_process)
+            self.ams_to_process = None # Clear local memory of AMs to avoid issues
             Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
@@ -228,7 +235,7 @@ class StitchingHandler(object):
             # FIXME: Here we pass in the request to give to the SCS. I'd like this
             # to be modified (different VLAN range? Some hops marked loose?) in future
 
-            lastAM = self.mainStitchingLoop(sliceurn, requestString, self.ams_to_process)
+            lastAM = self.mainStitchingLoop(sliceurn, requestString, aggs)
         except StitchingError, se:
             self.logger.warn("Stitching failed with an error")
             self.deleteAllReservations(launcher)
@@ -326,6 +333,8 @@ class StitchingHandler(object):
         try:
  #           request, scsOptions = self.constructSCSArgs(requestRSpecObject)
             request, scsOptions = self.constructSCSArgs(requestString, existingAggs)
+            existingAggs = None # Clear to note we are done
+            self.scsService.result = None # Avoid any unexpected issues
             scsResponse = self.scsService.ComputePath(sliceurn, request, scsOptions)
         except Exception as e:
             self.logger.error("Error from slice computation service: %s", e)
@@ -338,6 +347,7 @@ class StitchingHandler(object):
             with open ("scs-result.json", 'w') as file:
                 file.write(str(self.scsService.result))
 
+        self.scsService.result = None # Clear memory/state
         return scsResponse
 
     def constructSCSArgs(self, request, existingAggs=None):
@@ -425,9 +435,30 @@ class StitchingHandler(object):
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
             handler_utils._printResults(opts_copy, self.logger, header, content, scsFilename)
+            # In debug mode, keep copies of old SCS expanded requests
+            if self.logger.isEnabledFor(logging.DEBUG):
+                handler_utils._printResults(opts_copy, self.logger, header, content, scsFilename + str(self.scsCalls))
             self.logger.debug("Wrote SCS expanded RSpec to %s", scsFilename)
 #            with open(scsFilename, 'w') as file:
 #                file.write(expandedRSpec)
+
+            # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
+            if self.logger.isEnabledFor(logging.DEBUG):
+                start = 0
+                while True:
+                    if not content.find("<link id=", start) >= start:
+                        break
+                    hopIdStart = content.find('<link id=', start) + len('<link id=') + 1
+                    hopIdEnd = content.find(">", hopIdStart)-1
+                    # Print the link ID
+                    hop = content[hopIdStart:hopIdEnd]
+                    # find suggestedVLANRange
+                    suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
+                    suggestedEnd = content.find("</suggested", suggestedStart)
+                    suggested = content[suggestedStart:suggestedEnd]
+                    # print that
+                    self.logger.debug("SCS gave hop %s suggested VLAN %s", hop, suggested)
+                    start = suggestedEnd
 
        # parseRequest
         parsed_rspec = self.rspecParser.parse(expandedRSpec)
@@ -436,6 +467,7 @@ class StitchingHandler(object):
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()
+        scsResponse = None # once workflow extracted, done with that object
         if self.opts.debug:
             import pprint
             pp = pprint.PrettyPrinter(indent=2)
@@ -514,43 +546,44 @@ class StitchingHandler(object):
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, dependencies'''
-        stitching = rspec.stitching
-        self.logger.debug( "\n===== Hops =====")
-        for path in stitching.paths:
-            self.logger.debug( "Path %s" % (path.id))
-            for hop in path.hops:
-                self.logger.debug( "  Hop %s" % (hop))
-                # FIXME: don't use the private variable
-                self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
-                self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
-                if hop._hop_link.vlan_suggested_manifest:
-                    self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
-                if hop._hop_link.vlan_range_manifest:
-                    self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
-                self.logger.debug( "    Import VLANs From: %s" % (hop.import_vlans_from))
-                deps = hop.dependsOn
-                if deps:
-                    self.logger.debug( "    Dependencies:")
-                    for h in deps:
-                        self.logger.debug( "      Hop %s" % (h))
+        if rspec:
+            stitching = rspec.stitching
+            self.logger.debug( "\n===== Hops =====")
+            for path in stitching.paths:
+                self.logger.debug( "Path %s" % (path.id))
+                for hop in path.hops:
+                    self.logger.debug( "  Hop %s" % (hop))
+                    # FIXME: don't use the private variable
+                    self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
+                    self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
+                    if hop._hop_link.vlan_suggested_manifest:
+                        self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
+                    if hop._hop_link.vlan_range_manifest:
+                        self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
+                    self.logger.debug( "    Import VLANs From: %s" % (hop.import_vlans_from))
+                    deps = hop.dependsOn
+                    if deps:
+                        self.logger.debug( "    Dependencies:")
+                        for h in deps:
+                            self.logger.debug( "      Hop %s" % (h))
 
-
-        self.logger.debug( "\n===== Aggregates =====")
-        for agg in aggs:
-            self.logger.debug( "\nAggregate %s" % (agg))
-            if agg.userRequested:
-                self.logger.debug("   (User requested)")
-            else:
-                self.logger.debug("   (SCS added)")
-            if agg.dcn:
-                self.logger.debug("   A DCN Aggregate")
-            self.logger.debug("   Using AM API version %d", agg.api_version)
-            if agg.manifestDom:
-                self.logger.debug("   Have a reservation here (%s)!", agg.url)
-            for h in agg.hops:
-                self.logger.debug( "  Hop %s" % (h))
-            for ad in agg.dependsOn:
-                self.logger.debug( "  Depends on %s" % (ad))
+        if aggs and len(aggs) > 0:
+            self.logger.debug( "\n===== Aggregates =====")
+            for agg in aggs:
+                self.logger.debug( "\nAggregate %s" % (agg))
+                if agg.userRequested:
+                    self.logger.debug("   (User requested)")
+                else:
+                    self.logger.debug("   (SCS added)")
+                if agg.dcn:
+                    self.logger.debug("   A DCN Aggregate")
+                self.logger.debug("   Using AM API version %d", agg.api_version)
+                if agg.manifestDom:
+                    self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                for h in agg.hops:
+                    self.logger.debug( "  Hop %s" % (h))
+                for ad in agg.dependsOn:
+                    self.logger.debug( "  Depends on %s" % (ad))
 
     def _raise_omni_error( self, msg, err=OmniError, triple=None ):
         msg2 = msg
