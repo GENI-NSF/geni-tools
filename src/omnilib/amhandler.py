@@ -347,6 +347,8 @@ class AMCallHandler(object):
         # Create File
         # This logs or prints, depending on whether filename is None
         _printResults(self.opts, self.logger, header, prettyVersion, filename)
+        if filename:
+            os.unlink(filename)
 
         # FIXME: include filename in summary: always? only if 1 aggregate?
         if filename:

@@ -119,13 +119,14 @@ class ManifestRSpecCombiner:
                 cmid = component_manager_element.getAttribute('name')
                 didSwap = False
                 for am in ams_list:
+                    am_manifest_dom = am.manifestDom
                     if am.urn == cmid:
                         am_doc_root = am_manifest_dom.documentElement
                         for child in am_doc_root.childNodes:
                             if child.nodeType == Node.ELEMENT_NODE and \
                                     child.localName == RSpecParser.LINK_TAG:
                                 if child.getAttribute('client_id') == client_id and \
-                                        child.has_attribute('sliver_id'):
+                                        child.hasAttribute('sliver_id'):
                                     doc_root.replaceChild(child, link)
                                     didSwap = True
                                     break

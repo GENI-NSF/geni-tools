@@ -164,6 +164,9 @@ class Aggregate(object):
     SLIVERSTATUS_POLL_INTERVAL_SEC = 10
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
 
+    # Constant name of SCS expanded request (for use here and elsewhere)
+    fakeModeSCSFilename = '/tmp/stitching-scs-expanded-request.xml'
+
     @classmethod
     def find(cls, urn):
         if not urn in cls.aggs:
@@ -188,6 +191,7 @@ class Aggregate(object):
         self._hops = set()
         self._paths = set()
         self._dependsOn = set()
+        self.rspecfileName = None
         self.isDependencyFor = set() # AMs that depend on this: for ripple down deletes
         self.logger = logging.getLogger('stitch.Aggregate')
         # Note these are sort of RSpecs but not RSpec objects, to avoid a loop
@@ -664,6 +668,7 @@ class Aggregate(object):
             
         self.logger.info("\nDoing %s at %s", opName, self.url)
         self.logger.debug("omniargs %r", omniargs)
+        self.rspecfileName = rspecfileName
 
         result = None
 
@@ -1064,7 +1069,7 @@ class Aggregate(object):
         # derive filename
         # FIXME: Take the expanded request from the SCS and pretend it is the manifest
         # That way, we get the VLAN we asked for
-        resultPath = "/tmp/stitching-scs-expanded-request.xml"
+        resultPath = Aggregate.fakeModeSCSFilename
 
 #        # For now, results file only has a manifest. No JSON
 #        resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.json', 1)

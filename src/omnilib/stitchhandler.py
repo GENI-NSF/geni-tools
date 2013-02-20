@@ -25,6 +25,7 @@
 import copy
 import datetime
 import logging
+import os
 import string
 import time
 
@@ -49,11 +50,14 @@ from geni.util import rspec_schema
 class StitchingHandler(object):
     '''Workhorse class to do stitching'''
 
+
     def __init__(self, opts, config, logger):
         self.logger = logger
         config['logger'] = logger
         self.omni_config = config['omni']
         self.config = config
+        self.parsedSCSRSpec = None
+        self.ams_to_process = []
         self.opts = opts # command line options as parsed
         self.framework = omni.load_framework(self.config, self.opts)
         # FIXME: How many times is right to go back to the SCS
@@ -145,6 +149,8 @@ class StitchingHandler(object):
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
+            self.cleanup()
+
         except StitchingError, se:
             # Return anything different for stitching error?
             raise
@@ -166,6 +172,18 @@ class StitchingHandler(object):
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
         return ("Stitching Success", combinedManifest)
+
+    # Remove temporary files if not in debug mode or if output not specified
+    def cleanup(self):
+        if self.opts.debug or self.opts.outputfile: return
+        
+        if os.path.exists(Aggregate.fakeModeSCSFilename):
+            os.unlink(Aggregate.fakeModeSCSFilename)
+
+        for am in self.ams_to_process:
+            if am.rspecfileName:
+                if os.path.exists(am.rspecfileName):
+                    os.unlink(am.rspecfileName)
 
     def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
         # ExistingAggs are Aggregate objects
@@ -410,7 +428,6 @@ class StitchingHandler(object):
             # And this isn't quite right either - the headers look like a manifest
 #            (header, content, retVal) = handler_utils._getRSpecOutput(self.logger, expandedRSpec, self.slicename, 'stitching-scs-expanded', '', None)
 
-            scsFilename = '/tmp/stitching-scs-expanded-request.xml'
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
                 # This line seems to insert extra \ns - GCF ticket #202
@@ -424,9 +441,12 @@ class StitchingHandler(object):
             # Set -o to ensure this goes to a file, not logger or stdout
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
-            handler_utils._printResults(opts_copy, self.logger, header, content, scsFilename)
-            self.logger.debug("Wrote SCS expanded RSpec to %s", scsFilename)
-#            with open(scsFilename, 'w') as file:
+            handler_utils._printResults(opts_copy, self.logger, header, \
+                                            content, \
+                                            Aggregate.fakeModeSCSFilename)
+            self.logger.debug("Wrote SCS expanded RSpec to %s", \
+                                  Aggregate.fakeModeSCSFilename)
+#            with open(Aggregate.fakeModeSCSFilename, 'w') as file:
 #                file.write(expandedRSpec)
 
        # parseRequest
@@ -513,6 +533,7 @@ class StitchingHandler(object):
                 logging.disable(logging.NOTSET)
 
     def dump_objects(self, rspec, aggs):
+        if not rspec: return
         '''Print out the hops, aggregates, dependencies'''
         stitching = rspec.stitching
         self.logger.debug( "\n===== Hops =====")
