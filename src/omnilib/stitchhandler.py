@@ -175,7 +175,7 @@ class StitchingHandler(object):
 
     # Remove temporary files if not in debug mode or if output not specified
     def cleanup(self):
-        if self.opts.debug or self.opts.outputfile: return
+        if self.opts.debug or self.opts.output: return
         
         if os.path.exists(Aggregate.fakeModeSCSFilename):
             os.unlink(Aggregate.fakeModeSCSFilename)
