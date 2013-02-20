@@ -632,7 +632,7 @@ class Aggregate(object):
         # Write the request rspec to a string that we save to a file
 #        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
         # Careful - this is a request. Don't make it look like a manifest
-#        retVal, rspecfileName = _writeRSpec(opts, self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url)
+#        retVal, self.rspecfileName = _writeRSpec(opts, self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url)
         # FIXME: the header says it is reserved resources. Is this worse? Make my own header instead?
 #        (header, content, retVal) = _getRSpecOutput(self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url, None)
         requestString = self.requestDom.toprettyxml()
@@ -645,30 +645,29 @@ class Aggregate(object):
             content = "<!-- No valid RSpec returned. -->"
             if requestString is not None:
                 content += "\n<!-- \n" + requestString + "\n -->"
-        rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
+        self.rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
                                                        opName + '-request'+str(self.allocateTries), '.xml', 1)
-        rspecfileName = "/tmp/" + rspecfileName
+        self.rspecfileName = "/tmp/" + self.rspecfileName
 
 
         # Set -o to ensure this goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
 
-        _printResults(opts_copy, self.logger, header, content, rspecfileName)
-        self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, rspecfileName)
+        _printResults(opts_copy, self.logger, header, content, self.rspecfileName)
+        self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, self.rspecfileName)
 
-#        with open (rspecfileName, 'w') as file:
+#        with open (self.rspecfileName, 'w') as file:
 #            file.write(self.requestDom.toprettyxml())
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
         if opts.warn:
-            omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
+            omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
         else:
-            omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, rspecfileName]
+            omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
             
         self.logger.info("\nDoing %s at %s", opName, self.url)
         self.logger.debug("omniargs %r", omniargs)
-        self.rspecfileName = rspecfileName
 
         result = None
 
