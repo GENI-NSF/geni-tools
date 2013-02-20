@@ -176,7 +176,7 @@ class Aggregate(object):
         return cls.aggs.values()
 
     @classmethod
-    def clearCache(clse):
+    def clearCache(cls):
         cls.aggs = dict()
 
     def __init__(self, urn, url=None):
