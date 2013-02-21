@@ -24,6 +24,8 @@
 import time
 import logging
 
+from utils import StitchingRetryAggregateNewVlanError
+
 class Launcher(object):
 
     def __init__(self, options, slicename, aggs=[], logger=None):
@@ -45,7 +47,10 @@ class Launcher(object):
             for agg in ready_aggs:
                 lastAM = agg
                 # FIXME: Need a timeout mechanism on AM calls
-                agg.allocate(self.opts, self.slicename, rspec.dom)
+                try:
+                    agg.allocate(self.opts, self.slicename, rspec.dom)
+                except StitchingRetryAggregateNewVlanError, se:
+                    self.logger.debug("Will put %s back in the pool to allocate. Got %s", agg, se)
 
             # FIXME: Do we need to sleep?
 
