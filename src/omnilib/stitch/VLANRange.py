@@ -50,15 +50,17 @@ class VLANRange( set ):
     def __init__( self, vlan=None ):
         if vlan is None:
             super( VLANRange, self).__init__()
-        elif type(vlan) in (VLAN, int):
+        elif isinstance(vlan, VLAN) or isinstance(vlan, int):
             super( VLANRange, self).__init__([vlan])
-        elif type(vlan) in (list, tuple):
+        elif isinstance(vlan, list) or isinstance(vlan, tuple):
             retRange = VLANRange()
             for item in vlan:
                 newItem = VLAN(item)
                 retRange.add( newItem )
             super( VLANRange, self).__init__(vlan)
-        elif type(vlan) in (VLANRange):
+        elif isinstance(vlan, set):
+            super( VLANRange, self).__init__(vlan)
+        elif isinstance(vlan, VLANRange):
             super( VLANRange, self).__init__(vlan)
         else:
             raise TypeError("Value must be one of 'int', 'VLAN', or 'VLANRange' instead is '%s'" % type(vlan))
@@ -66,16 +68,17 @@ class VLANRange( set ):
         
     @classmethod
     def _isValidVLAN( cls, other ):
-        if type(other) in (VLANRange, VLAN):
+        if isinstance(other, VLANRange) or isinstance(other, VLAN):
             return True
         else:
             return False
     
     # Inherit from parent object (set):
     #   __contains__, __sub__, __and__, __eq__
-    def __add__( self, other ):
-        newRange = VLANRange( other )
-        super( VLANRange, self).__add__(newRange)                    
+    # FIXME: set has no __add__. There is __and__ or add, but no __add__. What is intended here?
+#    def __add__( self, other ):
+#        newRange = VLANRange( other )
+#        super( VLANRange, self).__add__(newRange)                    
 
     @classmethod
     def fromString( cls, stringIn ):
