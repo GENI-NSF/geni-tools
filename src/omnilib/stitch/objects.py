@@ -316,11 +316,11 @@ class Aggregate(object):
             if not suggestedValue:
                 self.logger.warn("Didn't find suggested value for hop %s", hop)
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("No suggested value element on hop" % hop))
+                self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True)
             elif suggestedValue in ('null', 'None', 'any'):
                 self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
                 # Treat as error? Or as vlan unavailable? FIXME
-                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop" % (suggestedValue, hop)))
+                self.handleVlanUnavailable("reservation", ("Invalid suggested value %s on hop %s" % (suggestedValue, hop)), hop, True)
             else:
                 suggestedObject = VLANRange.fromString(suggestedValue)
             # If these fail and others worked, this is malformed
@@ -333,16 +333,16 @@ class Aggregate(object):
             else:
                 rangeObject = VLANRange.fromString(rangeValue)
 
+            # If got here the manifest values are OK - save them away
             self.logger.debug("Hop %s manifest had suggested %s, avail %s", hop, suggestedValue, rangeValue)
+            hop._hop_link.vlan_suggested_manifest = suggestedObject
+            hop._hop_link.vlan_range_manifest = rangeObject
+
             if not suggestedObject <= hop._hop_link.vlan_suggested_request:
-                self.logger.error("AM %s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
+                self.logger.error("%s gave VLAN %s for hop %s which is not in our request %s", self, suggestedObject, hop, hop._hop_link.vlan_suggested_request)
                 # This is sug != requested case
                 self.handleSuggestedVLANNotRequest(opts, slicename)
                 hadSuggestedNotRequest = True
-
-            # If got here the manifest values are OK - save them away
-            hop._hop_link.vlan_suggested_manifest = suggestedObject
-            hop._hop_link.vlan_range_manifest = rangeObject
 
         # Mark AM not busy
         self.inProcess = False
@@ -527,7 +527,6 @@ class Aggregate(object):
         scsil2_node = None
 
         # FIXME: Call once for all hops
-        # FIXME: better error messages
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
@@ -542,7 +541,7 @@ class Aggregate(object):
                     stitching_node = child
                     break
         else:
-            raise StitchingError("No rspec element in manifest")
+            raise StitchingError("%s: No rspec element in manifest" % self)
 
         if stitching_node:
             for child in stitching_node.childNodes:
@@ -553,10 +552,10 @@ class Aggregate(object):
                         path_node = child
                         break
         else:
-            raise StitchingError("No stitching element in manifest")
+            raise StitchingError("%s: No stitching element in manifest" % self)
 
         if path_node:
-            self.logger.debug("Found path %s (id %s)" % (path_node, this_path_id))
+            self.logger.debug("%s Found rspec manifest stitching path %s (id %s)" % (self, path_node, this_path_id))
             for child in path_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == Path.HOP_TAG:
@@ -565,28 +564,28 @@ class Aggregate(object):
                         hop_node = child
                         break
         else:
-            raise StitchingError("No path %s element in manifest" % path_id)
+            raise StitchingError("%s: No stitching path %s element in manifest" % (self, path_id))
 
         if hop_node:
-            self.logger.debug("Found hop %s (id %s)" % (hop_node, this_hop_id))
+#            self.logger.debug("Found hop %s (id %s)" % (hop_node, this_hop_id))
             for child in hop_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == Hop.LINK_TAG:
                     link_node = child
                     break
         else:
-            raise StitchingError("Couldn't find hop %s in rspec. Looking in path %s (id %s)" % (hop_id, path_node, this_path_id))
+            raise StitchingError("%s: Couldn't find hop %s in manifest rspec. Looking in path %s (id %s)" % (self, hop_id, path_node, this_path_id))
 
         if link_node:
             link_id = link_node.getAttribute(HopLink.ID_TAG)
-            self.logger.debug("Hop had link %s", link_id)
+#            self.logger.debug("Hop had link %s", link_id)
             for child in link_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == 'switchingCapabilityDescriptor':
                     scd_node = child
                     break
         else:
-            raise StitchingError("Couldn't find link in hop %s in rspec" % (hop_id))
+            raise StitchingError("%s: Couldn't find link in hop %s in manifest rspec" % (self, hop_id))
 
         if scd_node:
             for child in scd_node.childNodes:
@@ -595,7 +594,7 @@ class Aggregate(object):
                     scsi_node = child
                     break
         else:
-            raise StitchingError("Couldn't find switchingCapabilityDescriptor in hop %s in link %s in rspec" % (hop_id, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in hop %s in link %s in manifest rspec" % (self, hop_id, link_id))
 
         if scsi_node:
             for child in scsi_node.childNodes:
@@ -604,7 +603,7 @@ class Aggregate(object):
                     scsil2_node = child
                     break
         else:
-            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo in hop %s in rspec" % hop_id)
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in hop %s in manifest rspec" % (self, hop_id))
 
         if scsil2_node:
             for child in scsil2_node.childNodes:
@@ -615,7 +614,7 @@ class Aggregate(object):
                     elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("Couldn't find switchingCapabilitySpecificInfo_L2sc in hop %s in rspec" % hop_id)
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in hop %s in manifest rspec" % (self, hop_id))
 
         return (vlan_range_availability, suggested_vlan_range)
 
@@ -630,11 +629,6 @@ class Aggregate(object):
         self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
-#        # FIXME: Put this file in /tmp? If not in fakeMode, delete when done?
-        # Careful - this is a request. Don't make it look like a manifest
-#        retVal, self.rspecfileName = _writeRSpec(opts, self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url)
-        # FIXME: the header says it is reserved resources. Is this worse? Make my own header instead?
-#        (header, content, retVal) = _getRSpecOutput(self.logger, self.requestDom.toprettyxml(), slicename, self.urn, self.url, None)
         requestString = self.requestDom.toprettyxml()
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
@@ -642,26 +636,25 @@ class Aggregate(object):
 #            content = rspec_util.getPrettyRSpec(requestString)
             content = string.replace(requestString, "\\n", '\n')
         else:
-            content = "<!-- No valid RSpec returned. -->"
-            if requestString is not None:
-                content += "\n<!-- \n" + requestString + "\n -->"
+            raise StitchingError("%s: Constructed request RSpec malformed? Begins: %s" % (self, requestString[:100]))
         self.rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
                                                        opName + '-request'+str(self.allocateTries), '.xml', 1)
+
+        # Put request RSpecs in /tmp - ensure writable
+        # FIXME: Commandline users would prefer something else?
         self.rspecfileName = "/tmp/" + self.rspecfileName
 
-
-        # Set -o to ensure this goes to a file, not logger or stdout
+        # Set -o to ensure this request RSpec goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
 
         _printResults(opts_copy, self.logger, header, content, self.rspecfileName)
         self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, self.rspecfileName)
 
-#        with open (self.rspecfileName, 'w') as file:
-#            file.write(self.requestDom.toprettyxml())
-
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
+        # In WARN mode, do not write results to a file. And note results also won't be in log (they are at INFO level)
         if opts.warn:
+            # FIXME: Clear opts.debug, .info, .tostdout?
             omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
         else:
             omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
@@ -690,32 +683,49 @@ class Aggregate(object):
                     # a stitching error (go to SCS) vs will never work (go to user)?
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
-                    # Exit to SCS
-                    if not self.userRequested:
-                        # If we've tried this AM a few times, set its hops to be excluded
-                        if self.allocateTries > self.MAX_TRIES:
-                            self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
-                            for hop in self.hops:
-                                hop.excludeFromSCS = True
-                    # This says always go back to the SCS
-                    # This is dangerous - we could thrash
-                    # FIXME: go back a limited # of times
-                    # FIXME: Uncomment below code so only errors at SCS AMs cause us to go back to SCS?
-                    self.inProcess = False
-                    raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
+                    isVlanAvailableIssue = False
+                    # PG based AMs seem to return a particular error code and string
+                    try:
+                        code = ae.returnstruct["code"]["geni_code"]
+                        amcode = ae.returnstruct["code"]["am_code"]
+                        msg = ae.returnstruct["output"]
+                        self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
+                        if "Could not reserve vlan tags" in msg and code==2 and amcode==2:
+                            self.logger.debug("Looks like a vlan availability issue")
+                            isVlanAvailableIssue = True
+                    except:
+                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
+                        pass
 
-#                    if not self.userRequested:
-#                        # Exit to SCS
-#                        # If we've tried this AM a few times, set its hops to be excluded
-#                        if self.allocateTries > self.MAX_TRIES:
-#                            self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
-#                            for hop in self.hops:
-#                                hop.excludeFromSCS = True
-#                        self.inProcess = False
-#                        raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
-#                    else:
-#                        # Exit to User
-#                        raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, ae))
+                    if isVlanAvailableIssue:
+                        self.handleVlanUnavailable(opName, ae)
+                    else:
+                        # Exit to SCS
+                        if not self.userRequested:
+                            # If we've tried this AM a few times, set its hops to be excluded
+                            if self.allocateTries > self.MAX_TRIES:
+                                self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+                                for hop in self.hops:
+                                    hop.excludeFromSCS = True
+                        # This says always go back to the SCS
+                        # This is dangerous - we could thrash
+                        # FIXME: go back a limited # of times
+                        # FIXME: Uncomment below code so only errors at SCS AMs cause us to go back to SCS?
+                        self.inProcess = False
+                        raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
+
+#                        if not self.userRequested:
+#                            # Exit to SCS
+#                            # If we've tried this AM a few times, set its hops to be excluded
+#                            if self.allocateTries > self.MAX_TRIES:
+#                                self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+#                                for hop in self.hops:
+#                                    hop.excludeFromSCS = True
+#                            self.inProcess = False
+#                            raise StitchingCircuitFailedError("Circuit failed at %s (%s). Try again from the SCS" % (self, ae))
+#                        else:
+#                            # Exit to User
+#                            raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, ae))
             else:
                 # Malformed AMAPI return struct
                 # Exit to User
@@ -731,6 +741,7 @@ class Aggregate(object):
             try:
                 result = result[self.url]['value']['geni_rspec']
             except Exception, e:
+                # FIXME: Do this even if not fakeModeDir?
                 if (isinstance(result, str) or isinstance(result, unicode)) and opts.fakeModeDir:
                     # Well OK then
                     pass
@@ -862,6 +873,7 @@ class Aggregate(object):
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
+                # Note this could be an AMAPIError. But what AMAPIError could this be that we could handle?
                 # Exit gracefully
                 raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
 
@@ -880,9 +892,12 @@ class Aggregate(object):
 
     def handleSuggestedVLANNotRequest(self, opts, slicename):
         # FIXME FIXME FIXME
+
         # note what we tried that failed (ie what was requested but not given at this hop)
-#        for hop in self.hops:
-#            hop.vlans_unavailable.add(hop.hop_link.vlan_suggested_request)
+        for hop in self.hops:
+            if hop._hop_link.vlan_suggested_manifest and len(hop._hop_link.vlan_suggested_manifest) > 0 and \
+                    hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest:
+                hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 #      find an AM to redo
 #        note VLAN tags in manifest that don't work later as vlan_unavailable on that AM
@@ -920,7 +935,7 @@ class Aggregate(object):
 # else can't find an AM to start over from: raise StitchingCircuitFailedError
         pass
 
-    def handleVlanUnavailable(self, opName, exception):
+    def handleVlanUnavailable(self, opName, exception, failedHop=None, suggestedWasNull=False):
 #        FIXME: See logic on wiki
 #        remember unavailable vlanRangeAvailability on the hop
 #        may need to mark hop explicity loose or add to hop_exclusion list for next SCS request
@@ -936,14 +951,125 @@ class Aggregate(object):
 #            delete reservation at that AM, and exit out from this AM in a graceful way (not setting .complete)
 
 # Wiki logic
-# REmember which tag was unavailable in hop.vlans_unavailable if I can tell. Plan to exclude that from SCS vlanRangeAvailability,
+# Remember which tag was unavailable in hop.vlans_unavailable if I can tell. Plan to exclude that from SCS vlanRangeAvailability,
 # if SCS supports that.
+
+        if not failedHop and len(self.hops) == 1:
+            failedHop = iter(self.hops).next()
+
+        if failedHop:
+            failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+
+        # If the hops do not do vlan_translation, then they all have this issue
+        for hop in self.hops:
+            if not hop._hop_link.vlan_xlate:
+                hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
   # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
 # Set some kind of flag so in process stuff pauses (for threading)
 # If APIv2 (and AM fails request if suggested unavail)
   # If suggested ANY then find AM where vlanRange was narrowed and redo there
   # Else suggested was single and vlanRange was a range --- FIXME
+
+        canRedoRequestHere = True
+        for hop in self.hops:
+            if hop.import_vlans:
+                # Some hops here depend on other AMs. This is a negotiation kind of case
+                canRedoRequestHere = False
+                break
+            if len(hop._hop_link.vlan_range_request) == 1:
+                # Only the 1 VLAN tag was in the available range
+                canRedoRequestHere = False
+                break
+        if canRedoRequestHere and isinstance(exception, AMAPIError) and exception.returnstruct:
+            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
+            # Does the error look like the particular tag just wasn't currently available?
+            try:
+                code = exception.returnstruct["code"]["geni_code"]
+                amcode = exception.returnstruct["code"]["am_code"]
+                msg = exception.returnstruct["output"]
+                self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
+                # FIXME: If we got an empty / None / null suggested value on the failedHop
+                # in a manifest, then we could also redo
+                if (failedHop and suggestedWasNull) or code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2):
+                    self.logger.debug("Looks like a vlan availability issue")
+                else:
+                    canRedoRequestHere = False
+            except:
+                pass
+
+# Next criteria: If there are hops that depend on this 
+# that do NOT do vlan translation AND have other hops that in turn depend on those hops, 
+# then there are too many variables - give up.
+# FIXME
+
+            for depAgg in self.isDependencyFor:
+                aggOK = True
+                for hop in depAgg.hops:
+                    if hop._hop_link.vlan_xlate:
+                        continue
+                    if not hop.import_vlans:
+                        continue
+                    # If this hop does not depend on the self AM, continue
+                    thisAM = False
+                    for depHop in hop.dependencies:
+                        if depHop.aggregate == self:
+                            thisAM = True
+                            # depHop is the local hop that hop imports from / depends on
+                            if failedHop and failedHop != depHop:
+                                # But it isn't the failed hop that is a problem. Does this mean this is OK?
+                                # FIXME FIXME
+                                pass
+                            break
+                    if not thisAM:
+                        # Can this be? For a particular hop, maybe. But not for all
+                        continue
+
+                    # OK so we found a hop that depends on this Aggregate and does not do vlan translation
+                    # Like PG-Utah depending on IG-Utah.
+                    # That's OK if that's it. But if that aggregate has other dependencies, then
+                    # this is too complicated. It could still be OK, but it's too complicated
+                    if iter(hop.aggregate.isDependencyFor).next():
+                        canRedoRequestHere=False
+                        aggOK = False
+                        break
+                # End of loop over hops in the dependent agg
+                if not aggOK:
+                    canRedoRequestHere=False
+                    break
+
+        if canRedoRequestHere:
+            self.logger.debug("After all checks looks like we can locally redo request for %s", self)
+            hop = None
+            newSug = ""
+            oldSug = ""
+            for hop in self.hops:
+                # Edit vlan ranges only for the failed hop if set
+                if failedHop and hop != failedHop:
+                    continue
+
+                # pull old suggested out of range
+                hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                # FIXME: Also pull that out of the manifest?
+                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
+                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
+
+                # Pick a random tag from range
+                oldSug = hop._hop_link.vlan_suggested_request
+                newSug = iter(hop._hop_link.vlan_range_request).next()
+                # Set that as suggested
+                hop._hop_link.vlan_range_request = VLANRange(newSug)
+
+            self.inProcess = False
+            if failedHop:
+                msg = "Retry %s with %s new suggested %s (not %s)" % (self, hop, newSug, oldSug)
+            else:
+                msg = "Retry %s with new suggested VLANs" % (self)
+            # This error is caught by Launcher, causing this AM to be put back in the ready pool
+            raise StitchingRetryAggregateNewVlanError(msg)
+
+        # If we got here, we can't handle this locally
         if not self.userRequested:
             # Exit to SCS
             # If we've tried this AM a few times, set its hops to be excluded
@@ -1064,6 +1190,9 @@ class Aggregate(object):
     # FIXME FIXME: Need more fake result files and to clean this all up! ****
     def fakeAMAPICall(self, args, opts, opName, slicename, ctr):
         self.logger.info("Doing FAKE %s", opName)
+
+        # FIXME: Maybe take the request filename and make a -p arg for finding the canned files?
+        # Or if I really use the scs, save the SCS in a file with the -p so I can find it here?
 
         # derive filename
         # FIXME: Take the expanded request from the SCS and pretend it is the manifest
