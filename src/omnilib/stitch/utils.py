@@ -29,3 +29,7 @@ class StitchingError(OmniError):
 class StitchingCircuitFailedError(StitchingError):
     '''A given stitching attempt failed, but a different circuit from the SCS might work.'''
     pass
+
+class StitchingRetryAggregateNewVlanError(StitchingError):
+    '''Allocation at a single AM failed cause VLAN unavailable. Try a different tag locally before going to the SCS.'''
+    pass
