@@ -400,22 +400,30 @@ class StitchingHandler(object):
             profile = {}
             for agg in existingAggs:
                 for hop in agg.hops:
-                    if hop.excludeFromSCS:
-
-                        # get path
+                    if hop.excludeFromSCS or hop.vlans_unavailable:
+                        # get path and ensure a pathStruct object
                         path = hop._path.id
                         if profile.has_key(path):
                             pathStruct = profile[path]
                         else:
                             pathStruct = {}
 
-                        # get hop URN
-                        urn = hop.urn
+                        # Get hop_exclusion_list
                         if pathStruct.has_key("hop_exclusion_list"):
                             excludes = pathStruct["hop_exclusion_list"]
                         else:
                             excludes = []
-                        excludes.append(urn)
+
+                        # get hop URN
+                        urn = hop.urn
+
+                        # Add to the excludes list
+                        if hop.excludeFromSCS:
+                            excludes.append(urn)
+                        elif hop.vlans_unavailable:
+                            excludes.append(urn + "=" + str(hop.vlans_unavailable))
+
+                        # Put the new objects in the struct
                         pathStruct["hop_exclusion_list"] = excludes
                         profile[path] = pathStruct
             options["geni_routing_profile"] = profile
