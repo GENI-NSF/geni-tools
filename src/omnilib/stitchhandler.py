@@ -198,6 +198,9 @@ class StitchingHandler(object):
         self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
         scsResponse = None # Just to note we are done with this here (keep no state)
 
+        # FIXME: Copy workflow_parser.aggs.hops.vlans_unavailable to the new hops? Other state?
+        existingAggs = None # Now done
+
         # FIXME: if notScript, print AM dependency tree?
 
         # Ensure we are processing all the workflow aggs plus any aggs in the RSpec not in
@@ -422,6 +425,8 @@ class StitchingHandler(object):
                             excludes.append(urn)
                         elif hop.vlans_unavailable:
                             excludes.append(urn + "=" + str(hop.vlans_unavailable))
+
+                        # FIXME: I'd like to preserve those vlans_unavailable between SCS calls. Hmm
 
                         # Put the new objects in the struct
                         pathStruct["hop_exclusion_list"] = excludes
