@@ -278,10 +278,13 @@ class Aggregate(object):
             self.logger.info("AM %s had previous result we didn't need to redo. Done", self)
             return
 
+        # FIXME: Check for all hops have reasonable vlan inputs?
+        for hop in self.hops:
+            if not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+                raise StitchingError("%s hop %s suggested %s not in avail %s", self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
+
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
-
-        # FIXME: Check for all hops have reasonable vlan inputs?
 
         self.completed = False
 
@@ -700,6 +703,7 @@ class Aggregate(object):
                     if isVlanAvailableIssue:
                         self.handleVlanUnavailable(opName, ae)
                     else:
+                        self.logger.debug("doRes says error not a VlanAvail issue")
                         # Exit to SCS
                         if not self.userRequested:
                             # If we've tried this AM a few times, set its hops to be excluded
@@ -956,13 +960,16 @@ class Aggregate(object):
 
         if not failedHop and len(self.hops) == 1:
             failedHop = iter(self.hops).next()
+            self.logger.debug("handleVlanUnavail got no specific failed hop, but AM only has hop %s", failedHop)
 
         if failedHop:
+            self.logger.debug("handleVU noting failedHop unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
             failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
 
         # If the hops do not do vlan_translation, then they all have this issue
         for hop in self.hops:
             if not hop._hop_link.vlan_xlate:
+                self.logger.debug("handleVU noting doesnt-xlate unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
                 hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
@@ -976,13 +983,15 @@ class Aggregate(object):
         for hop in self.hops:
             if hop.import_vlans:
                 # Some hops here depend on other AMs. This is a negotiation kind of case
+                self.logger.debug("%s imports vlans - so cannot redo here", hop)
                 canRedoRequestHere = False
                 break
             if len(hop._hop_link.vlan_range_request) == 1:
                 # Only the 1 VLAN tag was in the available range
+                self.logger.debug("%s has only 1 VLAN in the avail range, so cannot redo here", hop)
                 canRedoRequestHere = False
                 break
-        if canRedoRequestHere and isinstance(exception, AMAPIError) and exception.returnstruct:
+        if canRedoRequestHere and ((failedHop and suggestedWasNull) or (isinstance(exception, AMAPIError) and exception.returnstruct)):
             self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
             # Does the error look like the particular tag just wasn't currently available?
             try:
@@ -995,15 +1004,18 @@ class Aggregate(object):
                 if (failedHop and suggestedWasNull) or code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2):
                     self.logger.debug("Looks like a vlan availability issue")
                 else:
+                    self.logger.debug("handleVU says this isn't a vlan avail issue. Got error %d, %d, %s", code, amcode, msg)
                     canRedoRequestHere = False
             except:
-                pass
+                canRedoRequestHere = False
+                self.logger.debug("handleVU Exception getting msg from exception %s", exception)
 
 # Next criteria: If there are hops that depend on this 
 # that do NOT do vlan translation AND have other hops that in turn depend on those hops, 
 # then there are too many variables - give up.
 # FIXME
 
+        if canRedoRequestHere:
             for depAgg in self.isDependencyFor:
                 aggOK = True
                 for hop in depAgg.hops:
@@ -1028,16 +1040,21 @@ class Aggregate(object):
 
                     # OK so we found a hop that depends on this Aggregate and does not do vlan translation
                     # Like PG-Utah depending on IG-Utah.
+                    self.logger.debug("%s does not do VLAN xlate and depends on this AM", depAgg)
+
                     # That's OK if that's it. But if that aggregate has other dependencies, then
                     # this is too complicated. It could still be OK, but it's too complicated
                     if iter(hop.aggregate.isDependencyFor).next():
+                        self.logger.debug("dependentAgg %s's hop %s's Aggregate is a dependency for others - cannot redo here", depAgg, hop)
                         canRedoRequestHere=False
                         aggOK = False
                         break
                 # End of loop over hops in the dependent agg
                 if not aggOK:
+                    self.logger.debug("depAgg %s has an issue - cannot redo here", depAgg)
                     canRedoRequestHere=False
                     break
+            # end of loop over Aggs that depend on self
 
         if canRedoRequestHere:
             self.logger.debug("After all checks looks like we can locally redo request for %s", self)
@@ -1051,15 +1068,16 @@ class Aggregate(object):
 
                 # pull old suggested out of range
                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
-                # FIXME: Also pull that out of the manifest?
-                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
-                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
+#                # FIXME: Also pull that out of the manifest?
+#                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
+#                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
 
                 # Pick a random tag from range
                 oldSug = hop._hop_link.vlan_suggested_request
                 newSug = iter(hop._hop_link.vlan_range_request).next()
                 # Set that as suggested
-                hop._hop_link.vlan_range_request = VLANRange(newSug)
+                hop._hop_link.vlan_suggested_request = VLANRange(newSug)
+                self.logger.debug("handleUn on %s set Avail=%s, Sug=%s (Sug was %s)", hop, hop._hop_link.vlan_range_request, newSug, oldSug)
 
             self.inProcess = False
             if failedHop:
@@ -1068,6 +1086,8 @@ class Aggregate(object):
                 msg = "Retry %s with new suggested VLANs" % (self)
             # This error is caught by Launcher, causing this AM to be put back in the ready pool
             raise StitchingRetryAggregateNewVlanError(msg)
+
+        self.logger.debug("%s failure could not be redone locally", self)
 
         # If we got here, we can't handle this locally
         if not self.userRequested:
