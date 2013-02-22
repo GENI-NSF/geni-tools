@@ -423,7 +423,7 @@ class StitchingHandler(object):
                         # Add to the excludes list
                         if hop.excludeFromSCS:
                             excludes.append(urn)
-                        elif hop.vlans_unavailable:
+                        elif hop.vlans_unavailable and len(hop.vlans_unavailable) > 0:
                             excludes.append(urn + "=" + str(hop.vlans_unavailable))
 
                         # FIXME: I'd like to preserve those vlans_unavailable between SCS calls. Hmm
@@ -432,6 +432,7 @@ class StitchingHandler(object):
                         pathStruct["hop_exclusion_list"] = excludes
                         profile[path] = pathStruct
             options["geni_routing_profile"] = profile
+        self.logger.debug("Sending SCS options %s", options)
 
 #        return request.toXML(), options
         return request, options
