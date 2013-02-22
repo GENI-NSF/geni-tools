@@ -641,8 +641,13 @@ class StitchingHandler(object):
             self.logger.debug("Combined manifest RSpec was unicode")
 
         # FIXME
-        # For now this is really a request, but should be treating it as a manifest
+        # For fake mode this is really a request, but should be treating it as a manifest
         # For now, SCS gives us stitchSchemaV2 stuff, so rspeclint fails
-#        self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
-        self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
+        try:
+            if self.opts.fakeModeDir:
+                self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
+            else:
+                self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
+        except Exception, e:
+            self.logger.error(e)
         return manString
