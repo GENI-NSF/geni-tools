@@ -901,7 +901,7 @@ class Aggregate(object):
         for hop in self.hops:
             if hop._hop_link.vlan_suggested_manifest and len(hop._hop_link.vlan_suggested_manifest) > 0 and \
                     hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest:
-                hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 #      find an AM to redo
 #        note VLAN tags in manifest that don't work later as vlan_unavailable on that AM
@@ -964,13 +964,13 @@ class Aggregate(object):
 
         if failedHop:
             self.logger.debug("handleVU noting failedHop unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
-            failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+            failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
 
         # If the hops do not do vlan_translation, then they all have this issue
         for hop in self.hops:
             if not hop._hop_link.vlan_xlate:
                 self.logger.debug("handleVU noting doesnt-xlate unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
-                hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
   # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
@@ -986,7 +986,7 @@ class Aggregate(object):
                 self.logger.debug("%s imports vlans - so cannot redo here", hop)
                 canRedoRequestHere = False
                 break
-            if len(hop._hop_link.vlan_range_request) == 1:
+            if len(hop._hop_link.vlan_range_request) <= 1:
                 # Only the 1 VLAN tag was in the available range
                 self.logger.debug("%s has only 1 VLAN in the avail range, so cannot redo here", hop)
                 canRedoRequestHere = False
@@ -1044,7 +1044,8 @@ class Aggregate(object):
 
                     # That's OK if that's it. But if that aggregate has other dependencies, then
                     # this is too complicated. It could still be OK, but it's too complicated
-                    if iter(hop.aggregate.isDependencyFor).next():
+                    if hop.aggregate.isDependencyFor and len(hop.aggregate.isDependencyFor) > 0 \
+                            and iter(hop.aggregate.isDependencyFor).next():
                         self.logger.debug("dependentAgg %s's hop %s's Aggregate is a dependency for others - cannot redo here", depAgg, hop)
                         canRedoRequestHere=False
                         aggOK = False
@@ -1079,6 +1080,8 @@ class Aggregate(object):
                 hop._hop_link.vlan_suggested_request = VLANRange(newSug)
                 self.logger.debug("handleUn on %s set Avail=%s, Sug=%s (Sug was %s)", hop, hop._hop_link.vlan_range_request, newSug, oldSug)
 
+                # FIXME: Set hops that depend on this hop to the proper values, or let those happen naturaly?
+
             self.inProcess = False
             if failedHop:
                 msg = "Retry %s with %s new suggested %s (not %s)" % (self, hop, newSug, oldSug)
@@ -1103,6 +1106,9 @@ class Aggregate(object):
         else:
             # Exit to User
             raise StitchingError("Stitching failed trying %s at %s: %s" % (opName, self, exception))
+# FIXME FIXME: Go back to SCS here too? Or will that thrash?
+#            self.inProcess = False
+#            raise StitchingCircuitFailedError("Circuit failed at %s. Try again from the SCS" % self)
 
     def deleteReservation(self, opts, slicename):
         '''Delete any previous reservation/manifest at this AM'''
