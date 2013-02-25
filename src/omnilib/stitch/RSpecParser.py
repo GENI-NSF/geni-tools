@@ -69,17 +69,19 @@ class RSpecParser:
         stitching = None
         for child in rspec_element.childNodes:
             if child.localName == LINK_TAG:
-                self.logger.debug("Parsing Link")
+                #self.logger.debug("Parsing Link")
                 link = Link.fromDOM(child)
                 links.append(link)
             elif child.localName == NODE_TAG:
-                self.logger.debug("Parsing Node")
+                #self.logger.debug("Parsing Node")
                 nodes.append(Node.fromDOM(child))
             elif child.localName == STITCHING_TAG:
-                self.logger.debug("Parsing Stitching")
+                #self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
             else:
-                self.logger.debug("Skipping '%s' node", child.nodeName)
+#                self.logger.debug("Skipping '%s' node", child.nodeName)
+                pass
+
         rspec = RSpec(stitching)
         rspec.links = links
         rspec.nodes = nodes

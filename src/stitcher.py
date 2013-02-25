@@ -85,15 +85,14 @@ def call(argv, options=None):
     # We use the omni config file
     config = omni.load_config(options, logger)
 
-    logger.info("Using AM API version %d", options.api_version)
+    #logger.info("Using AM API version %d", options.api_version)
 
     if options.fakeModeDir:
-        logger.info("Got Fake Mode Dir %s", options.fakeModeDir)
         if not os.path.isdir(options.fakeModeDir):
-            logger.error("But that is not a directory!")
+            logger.error("Got Fake Mode Dir %s that is not a directory!", options.fakeModeDir)
             raise StitchingError("Fake Mod path not a directory: %s" % options.fakeModeDir)
         else:
-            logger.info("Running in fake mode")
+            logger.info("Running with Fake Mode Dir %s", options.fakeModeDir)
 
     if options.debug:
         logger.info(omni.getSystemInfo())
@@ -106,17 +105,18 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    print "This is stitcher.py"
+#    print "This is stitcher.py"
     # FIXME: Print other header stuff?
     try:
-        result = call(argv)
+        text, item = call(argv)
     # FIXME: If called from a script, then anything here?
 #    if options.script:
         # return json
 #        return result
 #    else:
-        prettyResult = json.dumps(result, ensure_ascii=True, indent=2)
-        print prettyResult
+        print text
+#        prettyResult = json.dumps(result, ensure_ascii=True, indent=2)
+#        print prettyResult
     except OmniError, oe:
         sys.exit(oe)
 

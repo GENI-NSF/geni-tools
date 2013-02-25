@@ -37,6 +37,7 @@ import omnilib.util.credparsing as credutils
 
 import omnilib.stitch.scs as scs
 import omnilib.stitch.RSpecParser
+from omnilib.stitch import RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
 from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError
@@ -72,10 +73,11 @@ class StitchingHandler(object):
         if not command or command.strip().lower() not in ('createsliver', 'allocate'):
             # Stitcher only handles createsliver or allocate
             if self.opts.fakeModeDir:
-                self.logger.info("In fake mode. Otherwise would call Omni with args %r", args)
-                return
+                msg = "In fake mode. Otherwise would call Omni with args %r" % args
+                self.logger.info(msg)
+                return (msg, None)
             else:
-                self.logger.info("Passing call to Omni")
+                self.logger.debug("Passing call to Omni")
                 return omni.call(args, self.opts)
 
         if len(args) > 1:
@@ -85,7 +87,7 @@ class StitchingHandler(object):
 
         if len(args) > 3:
             self.logger.warn("Arguments %s ignored", args[3:])
-        self.logger.info("Command=%s, slice=%s, rspec=%s", command, self.slicename, request)
+        #self.logger.info("Command=%s, slice=%s, rspec=%s", command, self.slicename, request)
 
         # Parse the RSpec
         requestString = ""
@@ -115,20 +117,25 @@ class StitchingHandler(object):
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
 
+        # FIXME: Confirm request is not asking for any loops
+
         # Remove any -a arguments from the opts so that when we later call omni
         # the right thing happens
         self.opts.aggregate = []
 
         # Ensure the slice is valid before all those Omni calls use it
-        sliceurn = self.confirmSliceOK()
+        (sliceurn, sliceexp) = self.confirmSliceOK()
+
+        # Ensure expires attribute set for DCN AMs
+        self.addExpiresAttribute(self.parsedUserRequest.dom, sliceexp)
     
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         try:
-            # FIXME: Passing in the request as a string. Want an object in future?
-            lastAM = self.mainStitchingLoop(sliceurn, requestString)
+            # FIXME: Passing in the request as a DOM. OK?
+            lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.dom)
 
             # FIXME: 
             # Construct a unified manifest
@@ -156,6 +163,17 @@ class StitchingHandler(object):
 
             if self.opts.debug:
                 self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
+
+        # Construct return
+        amcnt = len(self.ams_to_process)
+        scs_added_amcnt = 0
+        pathcnt = 0
+        if self.parsedSCSRSpec and self.parsedSCSRSpec.stitching:
+            pathcnt = len(self.parsedSCSRSpec.stitching.paths)
+        for am in self.ams_to_process:
+            if not am.userRequested:
+                scs_added_amcnt = scs_added_amcnt + 1
+        retMsg = "Stitching success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request), creating %d link(s)." % (self.slicename, amcnt, scs_added_amcnt, pathcnt)
  
         # FIXME: What do we want to return?
 #Make it something like createsliver / allocate, with the code/value/output triple plus a string
@@ -170,7 +188,7 @@ class StitchingHandler(object):
 #  Error code / message (standard GENI triple)
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
-        return ("Stitching Success", combinedManifest)
+        return (retMsg, combinedManifest)
 
     # Remove temporary files if not in debug mode or if output not specified
     def cleanup(self):
@@ -185,14 +203,13 @@ class StitchingHandler(object):
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
 
-    def mainStitchingLoop(self, sliceurn, requestString, existingAggs=None):
+    def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # ExistingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
         if self.scsCalls > 1:
             self.logger.warn("Calling SCS for the %dth time", self.scsCalls)
 
-        scsResponse = self.callSCS(sliceurn, requestString, existingAggs)
-#        scsResponse = self.callSCS(sliceurn, self.parsedUserRequest)
+        scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
         # Parse SCS Response, constructing objects and dependencies, validating return
         self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
@@ -233,8 +250,8 @@ class StitchingHandler(object):
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.warn("Stitching max circuit failures reached")
                 self.deleteAllReservations(launcher)
-                raise se
-            self.logger.warn("Stitching failed but will retry")
+                raise StitchingError("Stitching reservaction failed %d times. Last error: %s" % (self.scsCalls, se))
+            self.logger.warn("Stitching failed but will retry: %s", se)
             self.deleteAllReservations(launcher)
 
             # Flush the cache of aggregates. Loses all state. Avoids
@@ -254,9 +271,9 @@ class StitchingHandler(object):
             # FIXME: Here we pass in the request to give to the SCS. I'd like this
             # to be modified (different VLAN range? Some hops marked loose?) in future
 
-            lastAM = self.mainStitchingLoop(sliceurn, requestString, aggs)
+            lastAM = self.mainStitchingLoop(sliceurn, requestDOM, aggs)
         except StitchingError, se:
-            self.logger.warn("Stitching failed with an error")
+            self.logger.warn("Stitching failed with an error: %s", se)
             self.deleteAllReservations(launcher)
             raise se
         return lastAM
@@ -303,12 +320,12 @@ class StitchingHandler(object):
         try:
             sliceurn = self.framework.slice_name_to_urn(self.slicename)
         except Exception, e:
-            self.logger.error("Could not determine slice URN from name: %s", e)
+            self.logger.error("Could not determine slice URN from name %s: %s", self.slicename, e)
             raise StitchingError(e)
 
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
-            return sliceurn
+            return (sliceurn, '9999-12-12T12:00:00Z')
 
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
@@ -333,9 +350,9 @@ class StitchingHandler(object):
             # except:
             #     pass
             raise StitchingError("Slice %s expired at %s" % (sliceurn, sliceexp))
-        
-        # return the slice urn
-        return sliceurn
+
+        # return the slice urn, slice expiration (string)
+        return (sliceurn, sliceexp)
 
     def mustCallSCS(self, requestRSpecObject):
         # Does this request actually require stitching?
@@ -347,14 +364,13 @@ class StitchingHandler(object):
                     return True
         return False
 
-#    def callSCS(self, sliceurn, requestRSpecObject):
-    def callSCS(self, sliceurn, requestString, existingAggs):
+    def callSCS(self, sliceurn, requestDOM, existingAggs):
+        requestString, scsOptions = self.constructSCSArgs(requestDOM, existingAggs)
+        existingAggs = None # Clear to note we are done
+        self.scsService.result = None # Avoid any unexpected issues
+#        self.logger.debug("Calling SCS with options %s", scsOptions)
         try:
- #           request, scsOptions = self.constructSCSArgs(requestRSpecObject)
-            request, scsOptions = self.constructSCSArgs(requestString, existingAggs)
-            existingAggs = None # Clear to note we are done
-            self.scsService.result = None # Avoid any unexpected issues
-            scsResponse = self.scsService.ComputePath(sliceurn, request, scsOptions)
+            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
         except Exception as e:
             self.logger.error("Error from slice computation service: %s", e)
             raise StitchingError("SCS gave error: %s" % e)
@@ -369,7 +385,7 @@ class StitchingHandler(object):
         self.scsService.result = None # Clear memory/state
         return scsResponse
 
-    def constructSCSArgs(self, request, existingAggs=None):
+    def constructSCSArgs(self, requestDOM, existingAggs=None):
         # Eventually look at existingAggs' hops for VLANs to exclude as well
         # return requestString and options
 
@@ -399,7 +415,7 @@ class StitchingHandler(object):
 #        profile[path] = pathStruct
 #        options["geni_routing_profile"]=profile
 
-        if existingAggs:
+        if existingAggs and len(existingAggs) > 0:
             profile = {}
             for agg in existingAggs:
                 for hop in agg.hops:
@@ -434,8 +450,7 @@ class StitchingHandler(object):
             options["geni_routing_profile"] = profile
         self.logger.debug("Sending SCS options %s", options)
 
-#        return request.toXML(), options
-        return request, options
+        return requestDOM.toprettyxml(), options
         
     def parseSCSResponse(self, scsResponse):
         # save expanded RSpec
@@ -494,8 +509,8 @@ class StitchingHandler(object):
 
        # parseRequest
         parsed_rspec = self.rspecParser.parse(expandedRSpec)
-        self.logger.debug("Parsed SCS expanded RSpec of type %r",
-                          type(parsed_rspec))
+#        self.logger.debug("Parsed SCS expanded RSpec of type %r",
+#                          type(parsed_rspec))
 
         # parseWorkflow
         workflow = scsResponse.workflow_data()
@@ -551,7 +566,7 @@ class StitchingHandler(object):
                 omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
                 
             try:
-                self.logger.info("Getting extra AM info from Omni for AM %s", agg)
+                self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
                 logging.disable(logging.INFO)
                 (text, version) = omni.call(omniargs, options_copy)
                 logging.disable(logging.NOTSET)
@@ -568,7 +583,7 @@ class StitchingHandler(object):
                                 maxVer = int(key)
                         # Hack alert: v3 AM implementations don't work even if they exist
                         if maxVer != 2:
-                            self.logger.info("AM %s speaks API %d, but sticking with v2", agg, maxVer)
+                            self.logger.info("%s speaks API %d, but sticking with v2", agg, maxVer)
 #                        if self.opts.fakeModeDir:
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
@@ -651,3 +666,16 @@ class StitchingHandler(object):
         except Exception, e:
             self.logger.error(e)
         return manString
+
+    def addExpiresAttribute(self, rspecDOM, sliceexp):
+        if not rspecDOM:
+            return
+        if not sliceexp or str(sliceexp).strip() == "":
+            return
+
+        rspecs = rspecDOM.getElementsByTagName(RSpecParser.RSPEC_TAG)
+        if not rspecs or len(rspecs) < 1:
+            return
+        # FIXME: Need to tack on 'Z'?
+        rspecs[0].setAttribute('expires', str(sliceexp))
+        self.logger.debug("Added expires %s", rspecs[0].getAttribute("expires"))
