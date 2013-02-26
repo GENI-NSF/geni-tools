@@ -176,7 +176,9 @@ class WorkflowParser(object):
                                                               path.id)
                 raise StitchingError(msg)
             self._add_hop_info(hop, d)
-            hop_deps = d[self.DEPENDENCIES_KEY]
+            hop_deps = []
+            if d.has_key(self.DEPENDENCIES_KEY):
+                hop_deps = d[self.DEPENDENCIES_KEY]
             self._parse_hop_deps(hop_deps, hop, path)
 
     def _parse_hop_deps(self, deps, hop, path):
