@@ -325,7 +325,7 @@ class StitchingHandler(object):
 
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
-            return (sliceurn, '9999-12-12T12:00:00Z')
+            return (sliceurn, naiveUTC(datetime.datetime.max))
 
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
@@ -627,6 +627,8 @@ class StitchingHandler(object):
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                if agg.pgLogUrl:
+                    self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
@@ -676,6 +678,6 @@ class StitchingHandler(object):
         rspecs = rspecDOM.getElementsByTagName(RSpecParser.RSPEC_TAG)
         if not rspecs or len(rspecs) < 1:
             return
-        # FIXME: Need to tack on 'Z'?
-        rspecs[0].setAttribute('expires', str(sliceexp))
+
+        rspecs[0].setAttribute('expires', sliceexp.isoformat())
         self.logger.debug("Added expires %s", rspecs[0].getAttribute("expires"))
