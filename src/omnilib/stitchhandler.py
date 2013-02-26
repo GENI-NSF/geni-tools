@@ -235,10 +235,9 @@ class StitchingHandler(object):
             if found:
                 continue
             else:
-                self.logger.error("RSpec requires AM %s which is not in workflow", amURN)
                 am = Aggregate.find(amURN)
                 if not am.url:
-                    self.logger.error("And stitcher does not know the URL for that AM!")
+                    self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
                     self.ams_to_process.add(am)
 
