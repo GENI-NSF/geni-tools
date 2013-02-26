@@ -156,7 +156,8 @@ class StitchingHandler(object):
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
         except StitchingError, se:
-            # Return anything different for stitching error?
+            # FIXME: Return anything different for stitching error?
+            # Do we want to return a geni triple struct?
             raise
         finally:
             self.cleanup()
@@ -371,6 +372,9 @@ class StitchingHandler(object):
 #        self.logger.debug("Calling SCS with options %s", scsOptions)
         try:
             scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
+        except StitchingError as e:
+            self.logger.debug("Error from slice computation service: %s", e)
+            raise 
         except Exception as e:
             self.logger.error("Error from slice computation service: %s", e)
             raise StitchingError("SCS gave error: %s" % e)

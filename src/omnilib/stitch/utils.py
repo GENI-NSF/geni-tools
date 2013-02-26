@@ -33,3 +33,31 @@ class StitchingCircuitFailedError(StitchingError):
 class StitchingRetryAggregateNewVlanError(StitchingError):
     '''Allocation at a single AM failed cause VLAN unavailable. Try a different tag locally before going to the SCS.'''
     pass
+
+class StitchingServiceFailedError(StitchingError):
+    '''SCS service returned an error.'''
+    def __init__(self, msg=None, struct=None):
+        self.value = msg
+        self.returnstruct = struct
+        # FIXME: gen a message from struct and make that arg here
+        StitchingError.__init__(self, struct)
+
+#    def __repr__(self):
+    def __str__(self):
+        if not self.returnstruct:
+            return super(StitchingServiceFailedError, self).__repr__()
+        message = "StitchingServiceFailedError: "
+        if self.value:
+            message += self.value
+            message += "\n"
+        retStruct = self.returnstruct
+
+        if isinstance(retStruct, dict) and retStruct.has_key('code'):
+            if retStruct['code'].has_key('geni_code') and retStruct['code']['geni_code'] != 0:
+                message2 = "Error from Stitching Service: code " + str(retStruct['code']['geni_code'])
+            if retStruct.has_key('output'):
+                message2 += ": %s" % retStruct['output']
+            message += "%s" % message2
+        return message
+    pass
+

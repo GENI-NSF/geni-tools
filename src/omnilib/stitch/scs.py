@@ -24,7 +24,7 @@
 "Tools and utilities for talking to the stitching computation service."
 
 import xmlrpclib
-from utils import StitchingError
+from utils import StitchingError, StitchingServiceFailedError
 
 class Result(object):
     '''Hold and parse the raw result from the SCS'''
@@ -76,7 +76,10 @@ class Service(object):
             else:
                 # when there is no route I seem to get:
 #{'geni_code': 3} MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.
-                raise StitchingError("ComputePath invocation failed: %s" % geni_result.errorString())
+                if self.result:
+                    raise StitchingServiceFailedError(None, self.result)
+                else:
+                    raise StitchingServiceFailedError("ComputePath invocation failed: %s" % geni_result.errorString(), self.result)
         except xmlrpclib.Error as v:
             print "ERROR", v
             raise
