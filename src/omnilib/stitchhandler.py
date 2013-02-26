@@ -199,6 +199,9 @@ class StitchingHandler(object):
         if os.path.exists(Aggregate.fakeModeSCSFilename):
             os.unlink(Aggregate.fakeModeSCSFilename)
 
+        if not self.ams_to_process:
+            return
+
         for am in self.ams_to_process:
             if am.rspecfileName:
                 if os.path.exists(am.rspecfileName):
