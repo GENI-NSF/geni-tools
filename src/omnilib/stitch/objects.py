@@ -892,7 +892,7 @@ class Aggregate(object):
                 raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
 
             # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
-            self.handleVlanUnavailable(opName, e)
+            self.handleVlanUnavailable(opName, "Sliver status was %s" % status)
         else:
             # Status is ready
             # generate args for listresources
@@ -1009,6 +1009,8 @@ class Aggregate(object):
             if not hop._hop_link.vlan_xlate:
 #                self.logger.debug("handleVU noting doesnt-xlate unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+            elif not failedHop:
+                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
   # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
@@ -1029,7 +1031,7 @@ class Aggregate(object):
                 self.logger.debug("%s has only 1 VLAN in the avail range, so cannot redo here", hop)
                 canRedoRequestHere = False
                 break
-        if canRedoRequestHere and ((failedHop and suggestedWasNull) or (isinstance(exception, AMAPIError) and exception.returnstruct)):
+        if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
 #            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
             # Does the error look like the particular tag just wasn't currently available?
             try:
@@ -1039,7 +1041,7 @@ class Aggregate(object):
                 self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
-                if (failedHop and suggestedWasNull) or code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2):
+                if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 else:
@@ -1048,6 +1050,8 @@ class Aggregate(object):
             except:
                 canRedoRequestHere = False
                 self.logger.debug("handleVU Exception getting msg/code from exception %s", exception)
+#        else:
+            # FIXME: If canRedoRequestHere does this still hold?
 
 # Next criteria: If there are hops that depend on this 
 # that do NOT do vlan translation AND have other hops that in turn depend on those hops, 
