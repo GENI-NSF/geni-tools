@@ -41,9 +41,10 @@ def is_valid_v3(logger, credString):
     if not credString:
         logger.warn("None credString - not geni_sfa v3")
         return False
-    if not isinstance(credString, str):
+    if not (isinstance(credString, str) or isinstance(credString, unicode)):
         logger.warn("Not string credString %s", credString)
         return False
+    credString = str(credString)
     if credString.strip() == "":
         logger.warn("Empty string cred")
         return False
@@ -117,6 +118,9 @@ def get_cred_target_urn(logger, cred):
     if credString is None:
         return urn
 
+    if isinstance(credString, unicode):
+        credString = str(credString)
+
     # If credString is not a string then complain and return
     if type(credString) != type('abc'):
         if logger is None:
@@ -125,7 +129,7 @@ def get_cred_target_urn(logger, cred):
             logger = logging.getLogger("omni.credparsing")
             logger.setLevel(level)
         logger.error("Cannot parse target URN: Credential is not a string: %s", str(credString))
-        return credexp
+        return urn
 
     try:
         doc = md.parseString(credString)
@@ -167,6 +171,9 @@ def get_cred_owner_urn(logger, cred):
     if credString is None:
         return urn
 
+    if isinstance(credString, unicode):
+        credString = str(credString)
+
     # If credString is not a string then complain and return
     if type(credString) != type('abc'):
         if logger is None:
@@ -175,7 +182,7 @@ def get_cred_owner_urn(logger, cred):
             logger = logging.getLogger("omni.credparsing")
             logger.setLevel(level)
         logger.error("Cannot parse owner URN: Credential is not a string: %s", str(credString))
-        return credexp
+        return urn
 
     try:
         doc = md.parseString(credString)
@@ -221,6 +228,9 @@ def get_cred_exp(logger, cred):
         # failed to get a credential string. Can't check
         return credexp
 
+    if isinstance(credString, unicode):
+        credString = str(credString)
+
     # If credString is not a string then complain and return
     if type(credString) != type('abc'):
         if logger is None:
@@ -259,8 +269,9 @@ def is_cred_xml(cred):
     '''Is this a cred in XML format, or a struct? Return true if XML'''
     if cred is None:
         return False
-    if not isinstance(cred, str):
+    if not isinstance(cred, str) and not isinstance(cred, unicode):
         return False
+    cred = str(cred)
     if cred.strip() == "":
         return False
     cred = cred.strip()
