@@ -657,7 +657,7 @@ class Aggregate(object):
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
 #            content = rspec_util.getPrettyRSpec(requestString)
-            content = string.replace(requestString, "\\n", '\n')
+            content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
         else:
             raise StitchingError("%s: Constructed request RSpec malformed? Begins: %s" % (self, requestString[:100]))
         self.rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \

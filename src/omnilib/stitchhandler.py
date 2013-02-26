@@ -40,7 +40,7 @@ import omnilib.stitch.RSpecParser
 from omnilib.stitch import RSpecParser
 from omnilib.stitch.workflow import WorkflowParser
 import omnilib.stitch as stitch
-from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError
+from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
 from omnilib.stitch.objects import Aggregate
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
 
@@ -386,7 +386,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             self.logger.debug("Writing SCS result JSON to scs-result.json")
             with open ("scs-result.json", 'w') as file:
-                file.write(str(self.scsService.result))
+                file.write(stripBlankLines(str(self.scsService.result)))
 
         self.scsService.result = None # Clear memory/state
         return scsResponse
@@ -476,7 +476,7 @@ class StitchingHandler(object):
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
                 # This line seems to insert extra \ns - GCF ticket #202
 #                content = getPrettyRSpec(expandedRSpec)
-                content = string.replace(expandedRSpec, "\\n", '\n')
+                content = stripBlankLines(string.replace(expandedRSpec, "\\n", '\n'))
             else:
                 content = "<!-- No valid RSpec returned. -->"
                 if expandedRSpec is not None:
@@ -674,7 +674,8 @@ class StitchingHandler(object):
                 self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
         except Exception, e:
             self.logger.error(e)
-        return manString
+
+        return stripBlankLines(manString)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         if not rspecDOM:

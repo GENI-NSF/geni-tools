@@ -61,3 +61,15 @@ class StitchingServiceFailedError(StitchingError):
         return message
     pass
 
+def stripBlankLines(strWithBlanks):
+    if not strWithBlanks:
+        return strWithBlanks
+    if strWithBlanks.strip() == '':
+        return ''
+    lines = strWithBlanks.splitlines()
+    str2 = ''
+    for line in lines:
+        l = line.strip()
+        if l != '':
+            str2 = str2 + line + '\n'
+    return str2
