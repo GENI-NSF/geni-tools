@@ -26,6 +26,16 @@
 Then use Omni to allocate / createsliver reservations at all necessary aggregates. Return 
 the combined manifest RSpec.'''
 
+# Call this just like omni
+# 'createsliver' or 'allocate' commands with an RSpec that requires stitching will be processed 
+# by the stitcher code.
+# All other calls will be passed directly to Omni.
+# All calls are APIv2 (hard-coded) currently.
+# Input request RSpec does _not_ need a stitching extension, but should
+# be a single RSpec for all resources that you want in your slice.
+# To create a request that needs stitching, include >=1 <link> elements with 
+# >1 different <component_manager> elements.
+
 import json
 import logging
 import os
