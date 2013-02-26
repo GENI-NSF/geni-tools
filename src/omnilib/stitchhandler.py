@@ -400,8 +400,8 @@ class StitchingHandler(object):
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
-#        exclude = "urn:publicid:IDN+utah.geniracks.net+interface+procurve2:1.19"
-#        path = "link-utah-utah-ig"
+#        exclude = "urn:publicid:IDN+instageni.gpolab.bbn.com+interface+procurve2:5.24=3747-3748"
+#        path = "link-pg-utah1-ig-gpo1"
 
 #        path = "link-pg-utah1-ig-gpo1"
 #        exclude = "urn:publicid:IDN+ion.internet2.edu+interface+rtr.atla:ge-7/1/6:protogeni"
