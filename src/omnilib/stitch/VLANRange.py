@@ -88,7 +88,7 @@ class VLANRange( set ):
         #   1-20, 454, 700-801
         newObj = VLANRange()
 
-        inputs = stringIn.strip()
+        inputs = str(stringIn).strip()
         items = inputs.split(",")
         for item in items:
             splitItem = item.split("-")
