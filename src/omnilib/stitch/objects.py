@@ -694,6 +694,14 @@ class Aggregate(object):
             if "PG log url" in text:
                 pgInd = text.find("PG log url - look here for details on any failures: ")
                 self.pgLogUrl = text[pgInd + len("PG log url - look here for details on any failures: "):text.find(")", pgInd)]
+                self.logger.debug("Had PG log url in return text and recorded: %s", self.pgLogUrl)
+            elif result and isinstance(result, dict) and result.has_key('code') and \
+                    isinstance(result['code'], dict):
+                try:
+                    self.pgLogUrl = ae.returnstruct["code"]["protogeni_error_url"]
+                    self.logger.debug("Got PG Log url from return struct %s", self.pgLogUrl)
+                except:
+                    pass
         except AMAPIError, ae:
             self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
