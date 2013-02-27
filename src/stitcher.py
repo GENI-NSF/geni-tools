@@ -36,15 +36,37 @@ the combined manifest RSpec.'''
 # To create a request that needs stitching, include >=1 <link> elements with 
 # >1 different <component_manager> elements.
 
+# Selected known issues / todos
+# - Thread calls to omni
+# - Support AM API v3
+# - Consolidate constants
+# - Fully handle a VLAN_UNAVAILABLE error from an AM
+# - Fully handle negotiating among AMs for a VLAN tag to use
+#    As in when the returned suggestedVLANRange is not what was requested
+# - fakeMode is incomplete
+# - Tune counters, sleep durations, etc
+# - Return a struct with detailed results (not just comments in manifest)
+# - Return a struct on errors
+# - Get AM URLs from the Clearinghouse
+# - Use Authentication with the SCS
+# - Support Stitching schema v2
+# - Time out omni calls in case an AM hangs
+# - opts.warn is used to suppress omni output. Clean that up. A scriptMode option?
+# - Implement confirmSafeRequest to ensure no dangerous requests are made
+
 import json
 import logging
+import optparse 
 import os
 import sys
 
 import omni
 from omnilib.util import OmniError
-from omnilib.stitchhandler import StitchingError, StitchingHandler
-import optparse 
+from omnilib.stitchhandler import StitchingHandler
+from omnilib.stitch.utils import StitchingError
+
+# URL of the SCS service
+SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
 
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
@@ -77,7 +99,7 @@ def call(argv, options=None):
                       default=None)
     parser.add_option("--scsURL",
                       help="URL to the SCS service",
-                      default="http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc")
+                      default=SCS_URL)
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -115,7 +137,6 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-#    print "This is stitcher.py"
     # FIXME: Print other header stuff?
     try:
         text, item = call(argv)
@@ -125,8 +146,6 @@ def main(argv=None):
 #        return result
 #    else:
         print text
-#        prettyResult = json.dumps(result, ensure_ascii=True, indent=2)
-#        print prettyResult
     except OmniError, oe:
         sys.exit(oe)
 
