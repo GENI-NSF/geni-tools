@@ -21,13 +21,13 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 '''Parse an RSpec that might have a stitching extension, 
-for use in driving stitchign reservations and selecting VLANs'''
+for use in driving stitching reservations and selecting VLANs'''
 
 import logging
 import sys
 from xml.dom.minidom import parseString, getDOMImplementation
 
-from objects import *
+import objects
 from utils import StitchingError
 
 # XML tag constants
@@ -36,6 +36,7 @@ LINK_TAG = 'link'
 NODE_TAG = 'node'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
+EXPIRES_ATTRIBUTE = 'expires'
 # see geni.util.rspec_schema for namespaces
 
 # This should go away, its value is no longer used
@@ -60,6 +61,8 @@ class RSpecParser:
         return rspec
 
     def parseRSpec(self, rspec_element):
+        '''Parse the rspec element. Extract only stitching important elements.
+        Return an RSpec object for use in driving stitching.'''
         # FIXME: Here we use localName, ignoring the namespace. What's the right thing?
         if rspec_element.localName != RSPEC_TAG:
             msg = "parseRSpec got unexpected tag %s" % (rspec_element.tagName)
@@ -70,11 +73,11 @@ class RSpecParser:
         for child in rspec_element.childNodes:
             if child.localName == LINK_TAG:
                 #self.logger.debug("Parsing Link")
-                link = Link.fromDOM(child)
+                link = objects.Link.fromDOM(child)
                 links.append(link)
             elif child.localName == NODE_TAG:
                 #self.logger.debug("Parsing Node")
-                nodes.append(Node.fromDOM(child))
+                nodes.append(objects.Node.fromDOM(child))
             elif child.localName == STITCHING_TAG:
                 #self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
@@ -82,7 +85,8 @@ class RSpecParser:
 #                self.logger.debug("Skipping '%s' node", child.nodeName)
                 pass
 
-        rspec = RSpec(stitching)
+        # Create the object version of the rspec
+        rspec = objects.RSpec(stitching)
         rspec.links = links
         rspec.nodes = nodes
 
@@ -103,9 +107,9 @@ class RSpecParser:
         paths = []
         for child in stitching_element.childNodes:
             if child.localName == PATH_TAG:
-                path = Path.fromDOM(child)
+                path = objects.Path.fromDOM(child)
                 paths.append(path)
-        stitching = Stitching(last_update_time, paths)
+        stitching = objects.Stitching(last_update_time, paths)
         return stitching
 
 if __name__ == "__main__":
@@ -118,7 +122,7 @@ if __name__ == "__main__":
     file = open(filename, 'r')
     data = file.read()
     file.close()
-    parser = RSpecParser(verbose=True)
+    parser = RSpecParser()
     rspec = parser.parse(data)
     print "== RSPEC =="
     print "\t== NODES =="
@@ -131,10 +135,6 @@ if __name__ == "__main__":
         cnt +=1
         print node
         cnt2 = 1
-        for interface in node.interfaces:
-            print "\t\t\t== INTERFACE %s ==" % (str(cnt2))
-            cnt2 +=1
-            print interface
     cnt = 1
     for link in rspec.links:
         print "\t\t== LINK %s ==" % (str(cnt))
@@ -143,16 +143,17 @@ if __name__ == "__main__":
     print "\t== STITCHING == " 
     print rspec.stitching
     cnt = 1
-    for hop in rspec.stitching.path.hops:
-        print "\t\t== HOP %s ==" % (str(cnt))
-        cnt +=1
-        print hop
+    for path in rspec.stitching.paths:
+        for hop in path.hops:
+            print "\t\t== HOP %s ==" % (str(cnt))
+            cnt +=1
+            print hop
 
 # Now convert back to XML and print out
     impl = getDOMImplementation()
     doc = impl.createDocument(None, 'rspec', None)
     root = doc.documentElement
-    rspec.toXML(doc, root)
+    rspec.dom.toXML(doc, root)
     if len(sys.argv) > 2:
         outf = open(sys.argv[2], "w")
         doc.writexml(outf)
