@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
-'''Parse and hold the workflow struct returned by the SCS'''
+'''Parse and hold the workflow struct returned by the SCS. See parse()'''
 
 import logging
 import sys
@@ -45,18 +45,20 @@ class WorkflowParser(object):
         return self._aggs.values()
 
     def _get_agg(self, agg_url, agg_urn):
+        '''Find or make an Aggregate object with the given URN, giving it also this URL. Uses a local cache.'''
         cache_key = (agg_url, agg_urn)
         if cache_key in self._aggs:
             agg = self._aggs[cache_key]
         else:
-            agg = Aggregate.find(agg_urn)
+            agg = Aggregate.find(agg_urn) # find or make
             if not agg.url:
                 agg.url = agg_url
             self._aggs[cache_key] = agg
         return agg
 
     def parse(self, workflow, rspec):
-        """Parse the workflow into the rspec data structure."""
+        """Parse the workflow struct from the SCS into the given RSpec data structure.
+        Includes computing AM dependencies, hop import_from pointers, etc."""
         for link_id in workflow:
             path = rspec.find_path(link_id)
             if not path:
@@ -105,12 +107,13 @@ class WorkflowParser(object):
 
         if len(hop.dependsOn) == 0:
             self.logger.warn("%s says it imports vlans but has no dependencies!", hop)
-            # FIXME: Is this a bug?
+
             # if this hop does VLAN translation then there is nowhere to import form I think
             if hop._hop_link.vlan_xlate:
                 # we're doomed I think. print something and exit
                 self.logger.warn("%s does VLAN translation and imports vlans and has no dependencies. Huh?", hop)
                 return
+
             # Otherwise Look for another hop in the same AM in this path - idx 1 higher or 1 lower
             prevHop = hop.path.find_hop_idx(hop.idx - 1)
             if prevHop and prevHop.aggregate.urn == hop.aggregate.urn:
@@ -165,6 +168,7 @@ class WorkflowParser(object):
             agg.add_path(hop.path)
 
     def _parse_deps(self, deps, path):
+        '''Parse the dependencies struct deps, adding info to the given Path object.'''
         # Cache aggregate objects
         for d in deps:
             # Each dependency has a hop URN. Use that to
