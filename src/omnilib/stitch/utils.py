@@ -62,6 +62,7 @@ class StitchingServiceFailedError(StitchingError):
     pass
 
 def stripBlankLines(strWithBlanks):
+    '''Remove any blank lines from the given string'''
     if not strWithBlanks:
         return strWithBlanks
     if strWithBlanks.strip() == '':
