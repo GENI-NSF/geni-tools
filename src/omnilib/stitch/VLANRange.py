@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Utility classes to represent a VLAN tag and a VLAN range'''
 
 class VLAN( int ):
     # VLANs are [0, 4095] (inclusive)
@@ -47,6 +48,7 @@ class VLAN( int ):
         return cls.__maxvlan
 
 class VLANRange( set ):
+    '''A set of ints or VLANs representing a range of VLAN tags.'''
     def __init__( self, vlan=None ):
         if vlan is None:
             super( VLANRange, self).__init__()
@@ -82,6 +84,7 @@ class VLANRange( set ):
 
     @classmethod
     def fromString( cls, stringIn ):
+        '''Construct a VLAN range from a string like: 'any', '1,5,7,10-15'''
         # Valid inputs are like:
         #   any
         #   1-20
@@ -102,7 +105,7 @@ class VLANRange( set ):
                     minValue = int(first)
                     maxValue = minValue
                 except:
-                    if (type(first) is str) and ((first == "any") or (first == "")):
+                    if (type(first) is str) and ((first == "any") or (first == "") or (first == "*")):
                             minValue = VLAN.minvlan()
                             maxValue = VLAN.maxvlan()
                     else:
