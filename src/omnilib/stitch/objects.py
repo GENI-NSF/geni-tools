@@ -22,6 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Objects representing RSpecs, Aggregates, Hops, Paths. Includes the main workhorse
+functions for doing allocationg and deletions at aggregates.'''
 
 import copy
 import json
@@ -41,14 +43,15 @@ import omni
 from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
 from omnilib.util.dossl import is_busy_reply
 from omnilib.util.omnierror import OmniError, AMAPIError
+
 from geni.util import rspec_schema, rspec_util
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
+# FIXME: Merge RSpec element/attribute name constants into RSpecParser
 
 class Path(GENIObject):
-    '''Path'''
+    '''Path in stitching aka a Link'''
     __ID__ = validateText
-#    __simpleProps__ = [ ['id', int] ]
 
     # XML tag constants
     ID_TAG = 'id'
@@ -88,7 +91,6 @@ class Path(GENIObject):
 
     @hops.setter
     def hops(self, hopList):
-#DELETE        self._setListProp('hops', hopList, Hop, '_path')
         self._setListProp('hops', hopList, Hop)
 
     def find_hop(self, hop_urn):
@@ -151,13 +153,14 @@ class Stitching(GENIObject):
         else:
             return None
 
-
 class Aggregate(object):
     '''Aggregate'''
 
     # Hold all instances. One instance per URN.
     aggs = dict()
-    MAX_TRIES = 10
+
+    # FIXME: Move these constants up higher
+    MAX_TRIES = 10 # Max times to try allocating here. Compare with allocateTries
     BUSY_MAX_TRIES = 5 # dossl does 3
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
@@ -165,7 +168,10 @@ class Aggregate(object):
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
 
     # Constant name of SCS expanded request (for use here and elsewhere)
-    fakeModeSCSFilename = '/tmp/stitching-scs-expanded-request.xml'
+    FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
+
+    # Directory to store request rspecs - must be universally writable
+    REQ_RSPEC_DIR = '/tmp'
 
     @classmethod
     def find(cls, urn):
@@ -190,19 +196,19 @@ class Aggregate(object):
         self.userRequested = False
         self._hops = set()
         self._paths = set()
-        self._dependsOn = set()
+        self._dependsOn = set() # of Aggregate objects
         self.rspecfileName = None
         self.isDependencyFor = set() # AMs that depend on this: for ripple down deletes
         self.logger = logging.getLogger('stitch.Aggregate')
         # Note these are sort of RSpecs but not RSpec objects, to avoid a loop
         self.requestDom = None # the DOM as constructed to submit in request to this AM
         self.manifestDom = None # the DOM as we got back from the AM
-        self.api_version = 2 # FIXME: Set this from stitchhandler.parseSCSResponse
+        self.api_version = 2 # Set from stitchhandler.parseSCSResponse
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
-        # FIXME: # reservation tries since last call to SCS?
-        self.allocateTries = 0
+        # reservation tries since last call to SCS
+        self.allocateTries = 0 # see MAX_TRIES
 
-        self.pgLogUrl = None
+        self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
     def __str__(self):
         return "<Aggregate %s>" % (self.urn)
@@ -247,7 +253,10 @@ class Aggregate(object):
     def ready(self):
         return not self.completed and not self.inProcess and self.dependencies_complete
 
-    def allocate(self, opts, slicename, rspecDom):
+    def allocate(self, opts, slicename, rspecDom, scsCallCount):
+        '''Main workhorse function. Build the request rspec for this AM,
+        and make the reservation. On error, delete and signal failure.'''
+
         if self.inProcess:
             self.logger.warn("Called allocate on AM already in process: %s", self)
             return
@@ -280,7 +289,7 @@ class Aggregate(object):
             self.logger.info("%s had previous result we didn't need to redo. Done", self)
             return
 
-        # FIXME: Check for all hops have reasonable vlan inputs?
+        # Check that all hops have reasonable vlan inputs
         for hop in self.hops:
             if not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
                 raise StitchingError("%s hop %s suggested %s not in avail %s", self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
@@ -300,13 +309,13 @@ class Aggregate(object):
         # result is a manifest RSpec string. Errors wouuld be raised
         # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs,
         # VLAN_UNAVAILABLE errors, other errors
-        manifestString = self.doReservation(opts, slicename)
+        manifestString = self.doReservation(opts, slicename, scsCallCount)
 
         # Save it on the Agg
         try:
             self.manifestDom = parseString(manifestString)
 
-            # FIXME: Do this?
+            # FIXME: Do this? We get the same info on the combined manifest already
             # Put the AM reservation info in a comment on the per AM manifest
 #            commentText = "AM %s at %s reservation using APIv%d. " % (self.urn, self.url, self.api_version)
 #            if self.pgLogUrl:
@@ -327,13 +336,12 @@ class Aggregate(object):
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
         for hop in self.hops:
-            # FIXME: Hop ID is not specific enough. Need a path ID as well
             range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
             rangeValue = range_suggested[0]
             suggestedValue = range_suggested[1]
             if not suggestedValue:
                 self.logger.error("Didn't find suggested value in rspec for hop %s", hop)
-                # Treat as esrror? Or as vlan unavailable? FIXME
+                # Treat as error? Or as vlan unavailable? FIXME
                 self.handleVlanUnavailable("reservation", ("No suggested value element on hop %s" % hop), hop, True)
             elif suggestedValue in ('null', 'None', 'any'):
                 self.logger.error("Hop %s Suggested invalid: %s", hop, suggestedValue)
@@ -392,7 +400,6 @@ class Aggregate(object):
 
             new_suggested = hop._hop_link.vlan_suggested_request or VLANRange.fromString("any")
             if hop.import_vlans_from._hop_link.vlan_suggested_manifest:
-                # FIXME: Need deep copy?
                 new_suggested = hop.import_vlans_from._hop_link.vlan_suggested_manifest.copy()
             else:
                 self.logger.warn("%s's import_from %s had no suggestedVLAN manifest", hop, hop.import_vlans_from)
@@ -532,7 +539,7 @@ class Aggregate(object):
             path.editChangesIntoDom(domNode)
         return requestRSpecDom
 
-    # Take a hop element and return a tuple (vlanRangeAvailability, suggestedVLANRange)
+    # For a given hop, extract from the Manifest DOM a tuple (vlanRangeAvailability, suggestedVLANRange)
     def getVLANRangeSuggested(self, manifest, hop_id, path_id):
         vlan_range_availability = None
         suggested_vlan_range = None
@@ -604,7 +611,7 @@ class Aggregate(object):
 #            self.logger.debug("Hop had link %s", link_id)
             for child in link_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == 'switchingCapabilityDescriptor':
+                        child.localName == HopLink.SCD_TAG:
                     scd_node = child
                     break
         else:
@@ -613,7 +620,7 @@ class Aggregate(object):
         if scd_node:
             for child in scd_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == 'switchingCapabilitySpecificInfo':
+                        child.localName == HopLink.SCSI_TAG:
                     scsi_node = child
                     break
         else:
@@ -622,7 +629,7 @@ class Aggregate(object):
         if scsi_node:
             for child in scsi_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == 'switchingCapabilitySpecificInfo_L2sc':
+                        child.localName == HopLink.SCSI_L2_TAG:
                     scsil2_node = child
                     break
         else:
@@ -641,7 +648,11 @@ class Aggregate(object):
 
         return (vlan_range_availability, suggested_vlan_range)
 
-    def doReservation(self, opts, slicename):
+    def doReservation(self, opts, slicename, scsCallCount):
+        '''Reserve at this AM. Construct omni args, save RSpec to a file, call Omni,
+        handle raised Exceptions, DCN AMs wait for status ready, and return the manifest
+        '''
+
         # Ensure we have the right URL / API version / command combo
         # If this AM does APIv3, I'd like to use it
         # But the caller needs to know if we used APIv3 so they know whether to call provision later
@@ -661,11 +672,11 @@ class Aggregate(object):
         else:
             raise StitchingError("%s: Constructed request RSpec malformed? Begins: %s" % (self, requestString[:100]))
         self.rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
-                                                       opName + '-request'+str(self.allocateTries), '.xml', 1)
+                                                       opName + '-request-'+str(scsCallCount) + str(self.allocateTries), '.xml', 1)
 
         # Put request RSpecs in /tmp - ensure writable
         # FIXME: Commandline users would prefer something else?
-        self.rspecfileName = "/tmp/" + self.rspecfileName
+        self.rspecfileName = Aggregate.REQ_RSPEC_DIR + "/" + self.rspecfileName
 
         # Set -o to ensure this request RSpec goes to a file, not logger or stdout
         opts_copy = copy.deepcopy(opts)
@@ -702,6 +713,13 @@ class Aggregate(object):
                     self.logger.debug("Got PG Log url from return struct %s", self.pgLogUrl)
                 except:
                     pass
+            elif self.api_version == 3 or result is None:
+                # malformed result
+                msg = "%s got Malformed return from %s: %s" % (self, opName, text)
+                self.logger.error(msg)
+                # FIXME: Retry before going to the SCS? Or bail altogether?
+                self.inProcess = False
+                raise StitchingError(msg)
         except AMAPIError, ae:
             self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
@@ -730,9 +748,11 @@ class Aggregate(object):
                     try:
                         code = ae.returnstruct["code"]["geni_code"]
                         amcode = ae.returnstruct["code"]["am_code"]
+                        amtype = ae.returnstruct["code"]["am_type"]
                         msg = ae.returnstruct["output"]
 #                        self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
-                        if "Could not reserve vlan tags" in msg and code==2 and amcode==2:
+                        if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
+                                ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
                     except:
@@ -1037,11 +1057,13 @@ class Aggregate(object):
             try:
                 code = exception.returnstruct["code"]["geni_code"]
                 amcode = exception.returnstruct["code"]["am_code"]
+                amtype = ae.returnstruct["code"]["am_type"]
                 msg = exception.returnstruct["output"]
                 self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
-                if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2):
+                if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
+                        ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 else:
@@ -1056,7 +1078,6 @@ class Aggregate(object):
 # Next criteria: If there are hops that depend on this 
 # that do NOT do vlan translation AND have other hops that in turn depend on those hops, 
 # then there are too many variables - give up.
-# FIXME
 
         if canRedoRequestHere:
             for depAgg in self.isDependencyFor:
@@ -1189,7 +1210,7 @@ class Aggregate(object):
             try:
                 self.inProcess = True
 #                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
-                (text, result) = self.doOmniCall(omniargs, opts)
+                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, 1)
                 self.inProcess = False
                 if self.api_version == 2:
                     (successList, fail) = result
@@ -1232,6 +1253,7 @@ class Aggregate(object):
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
     def doAMAPICall(self, args, opts, opName, slicename, ctr):
+        # FIXME: Take scsCallCount as well?
         gotBusy = False
         busyCtr = 0
         while busyCtr < self.BUSY_MAX_TRIES:
@@ -1258,6 +1280,7 @@ class Aggregate(object):
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
     # FIXME FIXME: Need more fake result files and to clean this all up! ****
     def fakeAMAPICall(self, args, opts, opName, slicename, ctr):
+        # FIXME: Take scsCallCount as well?
         self.logger.info("Doing FAKE %s at %s", opName, self)
 
         # FIXME: Maybe take the request filename and make a -p arg for finding the canned files?
@@ -1266,7 +1289,7 @@ class Aggregate(object):
         # derive filename
         # FIXME: Take the expanded request from the SCS and pretend it is the manifest
         # That way, we get the VLAN we asked for
-        resultPath = Aggregate.fakeModeSCSFilename
+        resultPath = Aggregate.FAKEMODESCSFILENAME
 
 #        # For now, results file only has a manifest. No JSON
 #        resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.json', 1)
@@ -1489,6 +1512,7 @@ class RSpec(GENIObject):
 class Node(GENIObject):
     CLIENT_ID_TAG = 'client_id'
     COMPONENT_MANAGER_ID_TAG = 'component_manager_id'
+
     @classmethod
     def fromDOM(cls, element):
         """Parse a Node from a DOM element."""
@@ -1583,6 +1607,9 @@ class HopLink(object):
     VLAN_TRANSLATION_TAG = 'vlanTranslation'
     VLAN_RANGE_TAG = 'vlanRangeAvailability'
     VLAN_SUGGESTED_TAG = 'suggestedVLANRange'
+    SCD_TAG = 'switchingCapabilityDescriptor'
+    SCSI_TAG = 'switchingCapabilitySpecificInfo'
+    SCSI_L2_TAG = 'switchingCapabilitySpecificInfo_L2sc'
 
     @classmethod
     def fromDOM(cls, element):

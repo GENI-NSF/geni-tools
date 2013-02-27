@@ -20,27 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Launch each aggregate when it is ready, and detect when all are done.'''
 
-import time
 import logging
+import time
 
 from utils import StitchingRetryAggregateNewVlanError
 
 class Launcher(object):
 
     def __init__(self, options, slicename, aggs=[], logger=None):
-        self.aggs = aggs
-        self.opts = options
+        self.aggs = aggs # Aggregate objects
+        self.opts = options # Omni options
         self.slicename = slicename
         self.logger = logger or logging.getLogger('stitch.launcher')
 
-    def launch(self, rspec):
+    def launch(self, rspec, scsCallCount):
         '''The main loop for stitching: keep looking for AMs that are not complete, then 
         make a reservation there.'''
         lastAM = None
         while not self._complete():
-            # FIXME: Are there AMs to Delete? Or did that already happen?
-
             ready_aggs = self._ready_aggregates()
             self.logger.debug("\nThere are %d ready aggregates: %s",
                               len(ready_aggs), ready_aggs)
@@ -48,7 +47,7 @@ class Launcher(object):
                 lastAM = agg
                 # FIXME: Need a timeout mechanism on AM calls
                 try:
-                    agg.allocate(self.opts, self.slicename, rspec.dom)
+                    agg.allocate(self.opts, self.slicename, rspec.dom, scsCallCount)
                 except StitchingRetryAggregateNewVlanError, se:
                     self.logger.debug("Will put %s back in the pool to allocate. Got %s", agg, se)
 
