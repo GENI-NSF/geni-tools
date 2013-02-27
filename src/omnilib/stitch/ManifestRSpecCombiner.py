@@ -21,9 +21,9 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 '''
- Class to merge a set of individual manifest RSpecs received from
+ Class and function to merge a set of individual manifest RSpecs received from
  individual allocate/provision calls and join them into a single
- manifest for the whole stitching operation
+ manifest for the whole stitching operation.
 '''
 
 import json
@@ -34,6 +34,19 @@ from xml.dom.minidom import getDOMImplementation, parseString, Node
 import objects
 import RSpecParser
 
+# Constants for RSpec parsing -- FIXME: Merge into RSpecParser
+COMPONENT_MGR_ID = 'component_manager_id'
+COMP_MGR = 'component_manager'
+COMP_MGR_NAME = 'name'
+CLIENT_ID = 'client_id'
+SLIVER_ID = 'sliver_id'
+COMP_ID = 'component_id'
+INTFC_REF = 'interface_ref'
+VLANTAG = 'vlantag'
+HOP = 'hop'
+HOP_ID = 'id'
+PATH_ID = 'id'
+
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 
 class ManifestRSpecCombiner:
@@ -43,7 +56,7 @@ class ManifestRSpecCombiner:
         self.logger = logging.getLogger('stitch.ManifestRSpecCombiner')
 
     # Combine the manifest, replacing elements in the dom_template
-    # with the approapriate pieces from the manifests
+    # with the appropriate pieces from the manifests
     # Arguments:
     #    ams_list is a list of Aggregate objects
     #    dom_template is a dom object into which to replace selected
@@ -55,13 +68,10 @@ class ManifestRSpecCombiner:
         self.addAggregateDetails(ams_list, dom_template)
         return dom_template
 
-    # Replace the 'node' section of the dom_template with 
-    # a list of all node sections from the manifests
     def combineNodes(self, ams_list, dom_template):
-
-# FIXME: Support >1 node with same cmid
-# Make template_nodes_by_cmid be a list
-# Then in loop over AMs, match nodes in tmeplate_nodes by client_id
+        '''Replace the 'node' section of the dom_template with 
+        the corresponding node from the manifest of the Aggregate with a matching 
+        component_manager URN'''
 
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
@@ -70,7 +80,7 @@ class ManifestRSpecCombiner:
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == RSpecParser.NODE_TAG:
-                cmid = child.getAttribute('component_manager_id')
+                cmid = child.getAttribute(COMPONENT_MGR_ID)
                 # FIXME: This allows only one node per cmid. There can be multiple
                 if not template_nodes_by_cmid.has_key(cmid):
                     template_nodes_by_cmid[cmid] = []
@@ -87,18 +97,22 @@ class ManifestRSpecCombiner:
                 am_manifest_dom = am.manifestDom
                 am_doc_root = am_manifest_dom.documentElement
                 for template_node in template_nodes_by_cmid[urn]:
-                    template_client_id = template_node.getAttribute('client_id')
+                    template_client_id = template_node.getAttribute(CLIENT_ID)
                     for child in am_doc_root.childNodes:
                         if child.nodeType == Node.ELEMENT_NODE and \
                                 child.localName == RSpecParser.NODE_TAG:
-                            child_cmid = child.getAttribute('component_manager_id')
-                            child_client_id = child.getAttribute('client_id')
+                            child_cmid = child.getAttribute(COMPONENT_MGR_ID)
+                            child_client_id = child.getAttribute(CLIENT_ID)
                             if child_cmid == urn and child_client_id == template_client_id:
                                 #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
                                 doc_root.replaceChild(child, template_node)
 
-    # Replace each link in dom_template with matching link from (an) AM with same URN
     def combineLinks(self, ams_list, dom_template):
+        '''Replace each link in dom_template with matching link from (an) AM with same URN.
+        Add comments noting the vlantag and sliver_id other AMs gave that link.
+        Within that link, replace the interface_ref with the matching element from the AM that
+        put a component_id / sliver_id on that element.'''
+
         # For each link in template by component_manager_id
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
@@ -108,9 +122,9 @@ class ManifestRSpecCombiner:
                 link = child
                 # Get first 'component_manager' child element
 #                print "LINK = " + str(link) + " " + cmid
-                client_id = str(link.getAttribute('client_id'))
+                client_id = str(link.getAttribute(CLIENT_ID))
                 needSwap = False
-                if not link.hasAttribute('sliver_id') and not link.hasAttribute('vlantag'):
+                if not link.hasAttribute(SLIVER_ID) and not link.hasAttribute(VLANTAG):
                     needSwap = True
 #                    self.logger.debug("Link %s in template must be swapped", client_id)
                 else:
@@ -119,26 +133,26 @@ class ManifestRSpecCombiner:
 
                 # get list of all cmids on this link
                 # Only look at AMs that match
-                component_manager_elements = link.getElementsByTagName('component_manager')
+                component_manager_elements = link.getElementsByTagName(COMP_MGR)
                 cms = []
                 for cme in component_manager_elements:
-                   cms.append(str(cme.getAttribute('name')))
+                   cms.append(str(cme.getAttribute(COMP_MGR_NAME)))
 #                self.logger.debug("Ams in Link %s: %s", client_id, cms)
 
                 # Get interface_ref elements that need to be swapped
                 intfs = {}
-                for intf in link.getElementsByTagName('interface_ref'):
-                    if not intf.hasAttribute('sliver_id') and not intf.hasAttribute('component_id'):
-                        intfs[str(intf.getAttribute('client_id'))] = intf
-#                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute('client_id'))
+                for intf in link.getElementsByTagName(INTFC_REF):
+                    if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
+                        intfs[str(intf.getAttribute(CLIENT_ID))] = intf
+#                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
                     else:
                         sid = None
                         cid = None
-                        if intf.hasAttribute('component_id'):
-                            cid = intf.getAttribute('component_id')
-                        if intf.hasAttribute('sliver_id'):
-                            sid = intf.getAttribute('sliver_id')
-#                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute('client_id'), sid, cid)
+                        if intf.hasAttribute(COMP_ID):
+                            cid = intf.getAttribute(COMP_ID)
+                        if intf.hasAttribute(SLIVER_ID):
+                            sid = intf.getAttribute(SLIVER_ID)
+#                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 
 #                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
@@ -160,8 +174,8 @@ class ManifestRSpecCombiner:
                         if len(intfs) == 0 and not needSwap:
                             break
                         # Get the link with a sliverid and the right client_id
-                        if str(link2.getAttribute('client_id')) == client_id and \
-                                link2.hasAttribute('vlantag'):
+                        if str(link2.getAttribute(CLIENT_ID)) == client_id and \
+                                link2.hasAttribute(VLANTAG):
 #                            self.logger.debug("Found AM %s link %s that has vlantag %s", agg.urn, client_id, link2.getAttribute('vlantag'))
                             if needSwap:
 #                                self.logger.debug("Swapping link in template with this element")
@@ -171,39 +185,39 @@ class ManifestRSpecCombiner:
                                 # Before completing this swap
                                 for intf in link.childNodes:
                                     if intf.nodeType == Node.ELEMENT_NODE and \
-                                            intf.localName == 'interface_ref' and \
-                                            (intf.hasAttribute('sliver_id') or intf.hasAttribute('component_id')):
+                                            intf.localName == INTFC_REF and \
+                                            (intf.hasAttribute(SLIVER_ID) or intf.hasAttribute(COMP_ID)):
                                         for intf2 in link2.childNodes:
                                             if inf2.nodeType == Node.ELEMENT_NODE and \
-                                                    intf2.localName == 'interface_ref' and \
-                                                    str(intf2.getAttribute('client_id')) == str(intf.getAttribute('client_id')) and \
-                                                    (not intf2.hasAttribute('sliver_id') and not intf2.hasAttribute('component_id')):
-#                                                self.logger.debug("from old template saving iref %s", intf2.getAttribute('client_id'))
+                                                    intf2.localName == INTFC_REF and \
+                                                    str(intf2.getAttribute(CLIENT_ID)) == str(intf.getAttribute(CLIENT_ID)) and \
+                                                    (not intf2.hasAttribute(SLIVER_ID) and not intf2.hasAttribute(COMP_ID)):
+#                                                self.logger.debug("from old template saving iref %s", intf2.getAttribute(CLIENT_ID))
                                                 link2.replaceChild(intf, intf2)
                                                 break
 
                                 # Need to recreate intfs dict
                                 # Get interface_ref elements that need to be swapped
                                 intfs = {}
-                                for intf in link2.getElementsByTagName('interface_ref'):
-                                    if not intf.hasAttribute('sliver_id') and not intf.hasAttribute('component_id'):
-                                        intfs[str(intf.getAttribute('client_id'))] = intf
-#                                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute('client_id'))
+                                for intf in link2.getElementsByTagName(INTFC_REF):
+                                    if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
+                                        intfs[str(intf.getAttribute(CLIENT_ID))] = intf
+#                                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
                                     else:
                                         sid = None
                                         cid = None
-                                        if intf.hasAttribute('component_id'):
-                                            cid = intf.getAttribute('component_id')
-                                        if intf.hasAttribute('sliver_id'):
-                                            sid = intf.getAttribute('sliver_id')
-#                                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute('client_id'), sid, cid)
+                                        if intf.hasAttribute(COMP_ID):
+                                            cid = intf.getAttribute(COMP_ID)
+                                        if intf.hasAttribute(SLIVER_ID):
+                                            sid = intf.getAttribute(SLIVER_ID)
+#                                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 #                                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
                                 # Add a comment on link2 with link's sliver_id and vlan_tag
                                 lsid = None
-                                if link.hasAttribute('sliver_id'):
-                                    lsid = link.getAttribute('sliver_id')
-                                lvt = link.getAttribute('vlantag')
+                                if link.hasAttribute(SLIVER_ID):
+                                    lsid = link.getAttribute(SLIVER_ID)
+                                lvt = link.getAttribute(VLANTAG)
                                 comment_text = "AM %s: sliver_id=%s vlantag=%s" % (agg.urn, lsid, lvt)
                                 comment_element = dom_template.createComment(comment_text)
                                 link2.insertBefore(comment_element, link2.firstChild)
@@ -211,21 +225,21 @@ class ManifestRSpecCombiner:
                                 link = link2
                                 break # out of loop over link2's in this inner AM looking for the right link
 
-                            # Look at this version of the lin's interface_refs. If any have
+                            # Look at this version of the link's interface_refs. If any have
                             # a sliver_id or component_id, then this is the version with manifest info
                             # put it on the linke
                             for intf in link2.childNodes:
                                 if intf.nodeType == Node.ELEMENT_NODE and \
-                                        intf.localName == "interface_ref" and \
-                                        (intf.hasAttribute('sliver_id') or intf.hasAttribute('component_id')):
-                                    cid = str(intf.getAttribute('client_id'))
+                                        intf.localName == INTFC_REF and \
+                                        (intf.hasAttribute(SLIVER_ID) or intf.hasAttribute(COMP_ID)):
+                                    cid = str(intf.getAttribute(CLIENT_ID))
                                     if intfs.has_key(cid):
                                         sid = None
                                         compid = None
-                                        if intf.hasAttribute('component_id'):
-                                            compid = intf.getAttribute('component_id')
-                                        if intf.hasAttribute('sliver_id'):
-                                            sid = intf.getAttribute('sliver_id')
+                                        if intf.hasAttribute(COMP_ID):
+                                            compid = intf.getAttribute(COMP_ID)
+                                        if intf.hasAttribute(SLIVER_ID):
+                                            sid = intf.getAttribute(SLIVER_ID)
 #                                        self.logger.debug("replacing iref cid %s, sid %s, comp_id %s: %s for old %s", cid, sid, compid, intf, intfs[cid])
                                         link.replaceChild(intf, intfs[cid])
 #                                        self.logger.debug("Copied iref %s from AM %s", cid, agg.urn)
@@ -234,16 +248,16 @@ class ManifestRSpecCombiner:
 
                             # Add a comment on link with link2's sliver_id and vlan_tag
                             lsid = None
-                            if link2.hasAttribute('sliver_id'):
-                                lsid = link2.getAttribute('sliver_id')
-                            lvt = link2.getAttribute('vlantag')
+                            if link2.hasAttribute(SLIVER_ID):
+                                lsid = link2.getAttribute(SLIVER_ID)
+                            lvt = link2.getAttribute(VLANTAG)
                             comment_text = "AM %s: sliver_id=%s vlantag=%s" % (agg.urn, lsid, lvt)
                             comment_element = dom_template.createComment(comment_text)
                             link.insertBefore(comment_element, link.firstChild)
 
                             break # out of loop over Aggs' elements
 #                        else:
-#                            acid = str(link2.getAttribute('client_id'))
+#                            acid = str(link2.getAttribute(CLIENT_ID))
 #                            self.logger.debug("In manifest for AM %s found link %s", agg.urn, acid)
 #                            if acid == client_id:
 #                                self.logger.debug("Found AM %s link %s that has no vlantag - so we skip", agg.urn, client_id)
@@ -319,8 +333,8 @@ class ManifestRSpecCombiner:
 
         for child in template_path.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.localName == 'hop' and \
-                    child.getAttribute('id') == hop_id:
+                    child.localName == HOP and \
+                    child.getAttribute(HOP_ID) == hop_id:
                 template_hop = child
                 break
 
@@ -331,8 +345,8 @@ class ManifestRSpecCombiner:
         if am_path:
             for child in am_path.childNodes:
                 if child.nodeType == Node.ELEMENT_NODE and \
-                        child.localName == 'hop' and \
-                        child.getAttribute('id') == hop_id:
+                        child.localName == HOP and \
+                        child.getAttribute(HOP_ID) == hop_id:
                     am_hop = child
                     break
 
@@ -347,7 +361,7 @@ class ManifestRSpecCombiner:
         for child in stitching.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == RSpecParser.PATH_TAG and \
-                    child.getAttribute('id') == path_id:
+                    child.getAttribute(PATH_ID) == path_id:
                 path = child
                 break
         return path
@@ -367,6 +381,7 @@ class ManifestRSpecCombiner:
         return None
 
 def combineManifestRSpecs(ams_list, dom_template):
+    '''Combine the manifests from the given Aggregate objects into the given DOM template (a manifest). Return a DOM'''
     mrc = ManifestRSpecCombiner()
     return mrc.combine(ams_list, dom_template)
 
