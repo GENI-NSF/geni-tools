@@ -12,11 +12,18 @@ gcf 2.3:
  for all resources in all aggregates that you want stitched together
  in the slice. To create a request that needs stitching, include >=1
  <link> elements with >1 different <component_manager> elements.
+ (Ticket #250)
 
  * omni
   - Ticket #240: don't print ProtoGENI log URL in result summary on
   success
   - Ticket #242: Be robust to malformed geni_api_versions
+  - refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
+  - getversion not caching from PG because the log url looks like an
+ error (ticket #249)
+  - Busy results from XMLRPC calls missed: is_busy_result looking for
+ geni_code in wrong spot (ticket #247)
+  - Various minor code cleanup changes
 
 gcf 2.2:
  * GENI-in-a-Box code is now included, though it is not runnable from

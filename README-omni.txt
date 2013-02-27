@@ -40,6 +40,12 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.3:
  - Ticket #240: don't print ProtoGENI log URL in result summary on success
  - Ticket #242: Be robust to malformed geni_api_versions
+ - refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
+ - getversion not caching from PG because the log url looks like an
+ error (ticket #249)
+ - Busy results from XMLRPC calls missed: is_busy_result looking for
+ geni_code in wrong spot (ticket #247)
+ - Various minor code cleanup changes
 
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
