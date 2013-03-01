@@ -26,7 +26,9 @@
 Then use Omni to allocate / createsliver reservations at all necessary aggregates. Return 
 the combined manifest RSpec.'''
 
-# Call this just like omni
+# Call this just like omni:
+#     $ python ./src/stitcher.py -o createsliver <valid slice name> <path to RSpec file>
+# (assuming a valid omni_config in the usual spots)
 # 'createsliver' or 'allocate' commands with an RSpec that requires stitching will be processed 
 # by the stitcher code.
 # All other calls will be passed directly to Omni.
