@@ -706,20 +706,54 @@ class Aggregate(object):
                 pgInd = text.find("PG log url - look here for details on any failures: ")
                 self.pgLogUrl = text[pgInd + len("PG log url - look here for details on any failures: "):text.find(")", pgInd)]
                 self.logger.debug("Had PG log url in return text and recorded: %s", self.pgLogUrl)
-            elif result and isinstance(result, dict) and result.has_key('code') and \
-                    isinstance(result['code'], dict):
+            elif result and isinstance(result, dict) and len(result.keys()) == 1 and \
+                    result.itervalues().next().has_key('code') and \
+                    isinstance(result.itervalues().next()['code'], dict):
+                code = result.itervalues().next()['code']
                 try:
-                    self.pgLogUrl = ae.returnstruct["code"]["protogeni_error_url"]
+                    self.pgLogUrl = code["protogeni_error_url"]
                     self.logger.debug("Got PG Log url from return struct %s", self.pgLogUrl)
                 except:
                     pass
-            elif self.api_version == 3 or result is None:
+            elif self.api_version >= 3 or result is None:
                 # malformed result
                 msg = "%s got Malformed return from %s: %s" % (self, opName, text)
                 self.logger.error(msg)
                 # FIXME: Retry before going to the SCS? Or bail altogether?
                 self.inProcess = False
                 raise StitchingError(msg)
+
+            # May have changed URL versions - if so, save off the corrected URL?
+            if result and self.api_version > 2:
+                url = result.iterkeys().next()
+                if str(url) != str(self.url):
+                    self.logger.debug("%s found URL for API version is %s", self, url)
+                    # FIXME: Safe to change the local URL to the corrected one?
+#                    self.url = url
+
+            if self.api_version == 2 and result:
+                # Success in APIv2
+                pass
+            elif self.api_version >= 3 and result and isinstance(result, dict) and len(result.keys()) == 1 and \
+                    result.itervalues().next().has_key("code") and \
+                    isinstance(result.itervalues().next()["code"], dict) and \
+                    result.itervalues().next()["code"].has_key("geni_code"):
+                if result.itervalues().next()["code"]["geni_code"] != 0:
+                    #self.logger.debug("APIv3 result struct OK but non 0")
+                    # The struct in the AMAPIError is just the return value and not by URL
+                    raise AMAPIError(text, result.itervalues().next())
+                # Else this is success
+                #self.logger.debug("APIv3 proper result struct - success")
+            else:
+                if self.api_version == 2:
+                    msg = "%s got Empty v2 return from %s: %s" % (self, opName, text)
+                else:
+                    msg = "%s got Malformed v3+ return from %s: %s" % (self, opName, text)
+                self.logger.error(msg)
+                # FIXME: Retry before going to the SCS? Or bail altogether?
+                self.inProcess = False
+                raise StitchingError(msg)
+
         except AMAPIError, ae:
             self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
@@ -801,14 +835,14 @@ class Aggregate(object):
         # If v2, this already is the manifest
         if self.api_version > 2:
             try:
-                result = result[self.url]['value']['geni_rspec']
+                result = result.itervalues().next()['value']['geni_rspec']
             except Exception, e:
                 # FIXME: Do this even if not fakeModeDir?
                 if (isinstance(result, str) or isinstance(result, unicode)) and opts.fakeModeDir:
                     # Well OK then
                     pass
                 else:
-                    msg = "Malformed return struct from %s at %s: %s" % (opName, self, e)
+                    msg = "Malformed return struct from %s at %s: %s (result: %s)" % (opName, self, e, result)
                     self.logger.warn(msg)
                     raise StitchingError("Stitching failed - got %s" % msg)
 
@@ -1057,9 +1091,9 @@ class Aggregate(object):
             try:
                 code = exception.returnstruct["code"]["geni_code"]
                 amcode = exception.returnstruct["code"]["am_code"]
-                amtype = ae.returnstruct["code"]["am_type"]
+                amtype = exception.returnstruct["code"]["am_type"]
                 msg = exception.returnstruct["output"]
-                self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
+                self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
                 if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
@@ -1067,11 +1101,11 @@ class Aggregate(object):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 else:
-                    self.logger.debug("handleVU says this isn't a vlan avail issue. Got error %d, %d, %s", code, amcode, msg)
+                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %d, %s", code, amcode, msg)
                     canRedoRequestHere = False
-            except:
+            except Exception, e2:
                 canRedoRequestHere = False
-                self.logger.debug("handleVU Exception getting msg/code from exception %s", exception)
+                self.logger.debug("handleVU Exception getting msg/code from exception %s: %s", exception, e2)
 #        else:
             # FIXME: If canRedoRequestHere does this still hold?
 
@@ -1089,15 +1123,16 @@ class Aggregate(object):
                         continue
                     # If this hop does not depend on the self AM, continue
                     thisAM = False
-                    for depHop in hop.dependencies:
-                        if depHop.aggregate == self:
-                            thisAM = True
-                            # depHop is the local hop that hop imports from / depends on
-                            if failedHop and failedHop != depHop:
-                                # But it isn't the failed hop that is a problem. Does this mean this is OK?
-                                # FIXME FIXME
-                                pass
-                            break
+                    if hop.dependsOn:
+                        for depHop in hop.dependsOn:
+                            if depHop.aggregate == self:
+                                thisAM = True
+                                # depHop is the local hop that hop imports from / depends on
+                                if failedHop and failedHop != depHop:
+                                    # But it isn't the failed hop that is a problem. Does this mean this is OK?
+                                    # FIXME FIXME
+                                    pass
+                                break
                     if not thisAM:
                         # Can this be? For a particular hop, maybe. But not for all
                         continue
