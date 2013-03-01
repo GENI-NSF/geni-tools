@@ -222,8 +222,10 @@ def parseArgs(argv, options=None):
                       help="PlanetLab private key file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
                       help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
+    parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
+                      help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
-                      choices=['pg', 'pl'],
+                      choices=['pg', 'pl', 'portal'],
                       help="Control framework that you have an account with [options: [pg, pl], DEFAULT: %default]")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
