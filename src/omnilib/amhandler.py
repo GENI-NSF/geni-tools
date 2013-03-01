@@ -1483,7 +1483,7 @@ class AMCallHandler(object):
             for sliver in sliverFails.keys():
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-            (header, rspeccontent, rVal) = _getRSpecOutput(logger, rspec, name, client.urn, client.url, message, slivers)
+            (header, rspeccontent, rVal) = _getRSpecOutput(self.logger, rspec, name, client.urn, client.url, message, slivers)
             self.logger.debug(rVal)
             if status and isinstance(status, dict) and status.has_key('geni_rspec') and rspec and rspeccontent:
                 status['geni_rspec'] = rspeccontent
@@ -1855,7 +1855,7 @@ class AMCallHandler(object):
 
             if realresult:
                 # Success (maybe partial?)
-                (header, rspeccontent, rVal) = _getRSpecOutput(logger, rspec, slicename, client.urn, client.url, message)
+                (header, rspeccontent, rVal) = _getRSpecOutput(self.logger, rspec, slicename, client.urn, client.url, message)
                 self.logger.debug(rVal)
                 if realresult and isinstance(realresult, dict) and realresult.has_key('geni_rspec') and rspec and rspeccontent:
                     realresult['geni_rspec'] = rspeccontent
