@@ -35,6 +35,7 @@
 
 import string, re
 import sys, os, platform, shutil
+import zipfile
 from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
@@ -86,6 +87,57 @@ def modifySSHConfigFile(private_key_file):
         logger.info("Added to %s this line:\n\t'%s'" %(ssh_conf_file, linetoadd))
 
     f.close()
+
+def verify_pg(opts):
+    """ This function verifies that the we have everything we need
+        to run if framework is 'pg'
+    """
+    # If framework is pgeni, check that the cert file is in the right place
+    if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
+            sys.exit("Geni certificate not in '"+opts.cert+"'. \nMake sure you \
+place the .pem file that you downloaded from the Web UI there,\nor \
+use the '-p' option to specify a custom location of the certificate.\n")
+
+    logger.info("Using certfile %s", opts.cert)
+
+def verify_pl(opts):
+    """ This function verifies that the we have everything we need
+        to run if framework is 'pl'
+    """
+
+    # If framework is planetlab, check that the key are in the right place
+    if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
+            sys.exit("\nScript currently does not support automatic download of \
+PlanetLab cert.\nIf you have a copy place it at '"+opts.cert+"', \nor \
+use the '-p' option to specify a custom location of the certificate.\n")
+
+    if not os.path.exists(opts.plkey) or os.path.getsize(opts.cert) < 1:
+            sys.exit("\nPlanetLab private key not in '"+opts.plkey+"'. \nMake sure \
+you place the private key registered with PlanetLab there or use\n\
+the '-k' option to specify a custom location for the key.\n")
+
+    logger.info("Using certfile %s", opts.cert)
+    logger.info("Using PlanteLab private key file %s", opts.plkey)
+
+def verify_portal(opts):
+    """ This function verifies that the we have everything we need
+        to run if framework is 'portal'
+    """
+
+    # If framework is portal, check that the bundle file is in the right place
+    if not os.path.exists(opts.portal_bundle) or \
+           os.path.getsize(opts.portal_bundle) < 1 or \
+           not zipfile.is_zipfile(opts.portal_bundle) :
+            sys.exit("\nPortal bundle not in '"+opts.portal_bundle+"'.\n\
+Make sure you place the bundle downloaded from the portal there,\nor \
+use the '-z' option to specify a custom location.\n")
+
+    omnizip = zipfile.ZipFile(opts.portal_bundle)
+    omnizip.close()
+   
+    logger.info("Using portal bundle %s", opts.portal_bundle)
+    sys.exit("\nPortal configuration not implemented")
+
 
 def generatePublicKey(private_key_file):
     """ This function generates a public key using ssh-keygen 
@@ -236,7 +288,6 @@ def parseArgs(argv, options=None):
         return
 
     (opts, args) = parser.parse_args(argv, options)
-    print opts
     return opts, args
 
 def initialize(opts):
@@ -259,8 +310,10 @@ def initialize(opts):
 
     # If the value is the default add the appropriate file extention
     # based on the framework
+
     if not cmp(opts.cert, "~/.ssl/geni_cert") : 
-        if not cmp(opts.framework,'pg'):
+        if not cmp(opts.framework,'pg') or \
+           not cmp(opts.framework, 'portal') :
             opts.cert += ".pem"
         else : 
             if not cmp(opts.framework,'pl'):
@@ -270,7 +323,6 @@ def initialize(opts):
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
     opts.cert= os.path.abspath(opts.cert)
-    logger.info("Using certfile %s", opts.cert)
 
     # Expand the plkey file to a full path
     opts.plkey = os.path.expanduser(opts.plkey)
@@ -280,25 +332,20 @@ def initialize(opts):
     opts.prkey = os.path.expanduser(opts.prkey)
     opts.prkey = os.path.abspath(opts.prkey)
 
-    # If framework is pgeni, check that the cert file is in the right place
-    if not cmp(opts.framework,'pg'):
-        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
-            sys.exit("Geni certificate not in '"+opts.cert+"'. \nMake sure you \
-place the .pem file that you downloaded from the Web UI there,\nor \
-use the '-p' option to specify a custom location of the certificate.\n")
+    # Expand the portal bundle file to a full path
+    opts.portal_bundle = os.path.expanduser(opts.portal_bundle)
+    opts.portal_bundle = os.path.abspath(opts.portal_bundle)
 
-    # If framework is planetlab, check that the key are in the right place
+    #Verify we have all the information we need per framework
+    if not cmp(opts.framework,'pg'): 
+        verify_pg(opts)
+
     if not cmp(opts.framework,'pl'):
-        if not os.path.exists(opts.cert) or os.path.getsize(opts.cert) < 1:
-            sys.exit("\nScript currently does not support automatic download of \
-PlanetLab cert.\nIf you have a copy place it at '"+opts.cert+"', \nor \
-use the '-p' option to specify a custom location of the certificate.\n")
-        if not os.path.exists(opts.plkey) or os.path.getsize(opts.cert) < 1:
-            sys.exit("\nPlanetLab private key not in '"+opts.plkey+"'. \nMake sure \
-you place the private key registered with PlanetLab there or use\n\
-the '-k' option to specify a custom location for the key.\n")
-    
+        verify_pl(opts)
 
+    if not cmp(opts.framework,'portal'):
+        verify_portal(opts)
+    
 def createSSHKeypair(opts):
     global logger
 
