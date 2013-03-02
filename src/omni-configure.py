@@ -88,7 +88,7 @@ def modifySSHConfigFile(private_key_file):
 
     f.close()
 
-def verify_pg(opts):
+def validate_pg(opts):
     """ This function verifies that the we have everything we need
         to run if framework is 'pg'
     """
@@ -100,7 +100,7 @@ use the '-p' option to specify a custom location of the certificate.\n")
 
     logger.info("Using certfile %s", opts.cert)
 
-def verify_pl(opts):
+def validate_pl(opts):
     """ This function verifies that the we have everything we need
         to run if framework is 'pl'
     """
@@ -119,24 +119,182 @@ the '-k' option to specify a custom location for the key.\n")
     logger.info("Using certfile %s", opts.cert)
     logger.info("Using PlanteLab private key file %s", opts.plkey)
 
-def verify_portal(opts):
+def validate_portal(opts):
     """ This function verifies that the we have everything we need
         to run if framework is 'portal'
     """
 
     # If framework is portal, check that the bundle file is in the right place
     if not os.path.exists(opts.portal_bundle) or \
-           os.path.getsize(opts.portal_bundle) < 1 or \
-           not zipfile.is_zipfile(opts.portal_bundle) :
-            sys.exit("\nPortal bundle not in '"+opts.portal_bundle+"'.\n\
+           os.path.getsize(opts.portal_bundle) < 1 :
+        sys.exit("\nPortal bundle not in '"+opts.portal_bundle+"'.\n\
 Make sure you place the bundle downloaded from the portal there,\nor \
 use the '-z' option to specify a custom location.\n")
 
-    omnizip = zipfile.ZipFile(opts.portal_bundle)
+    if not zipfile.is_zipfile(opts.portal_bundle) :
+        sys.exit("\nFile '"+opts.portal_bundle+"' not a valid zip file.\n"+\
+                 "Exit!")
+    validate_bundle(opts.portal_bundle)
+
+    logger.info("Using portal bundle %s", opts.portal_bundle)
+
+def bundle_extract_keys(omnizip, opts) :
+   """ function that will extract any key files in zip bundle
+       in the approprate places
+         * private key will go to 'opts.prkey' and the corresponding
+           public key will go to 'opts.prkey'.pub
+         * all public keys except from the one corresponding to the 
+           included private key will go under ~/.ssh/
+           for any key with no extension we will add .pub
+   """
+   pubkey_list = []
+   filelist = omnizip.namelist()
+   # Keep track of the public key name in the bundle
+   # that corresponds to the private key, so that we 
+   # don't copy it again since it has a special name
+   pubkey_of_priv_inbundle = ""
+   # Make a first pass to extract the private and corresponding
+   # public keys
+   for x in filelist : 
+      if x.startswith('ssh/private') :
+        # verify that we have the corresponding public key
+        xpub = 'ssh/public/'+os.path.basename(x)+'.pub'
+        if xpub not in filelist :
+          # Remove the cert before we exit
+          os.remove(opts.cert)
+          sys_exit("There is no public key that corresponds to the private "+
+                   "key in the bundle, please email portal_help@geni.net")
+
+        # Place the private key in the right place
+        omnizip.extract(x, '/tmp')
+        opts.prkey = copyPrivateKeyFile(os.path.join('/tmp/', x), opts.prkey)
+
+        # Place the public key in the right place
+        omnizip.extract(xpub, '/tmp')
+        pubname = opts.prkey+'.pub'
+
+        # Try and see if this public key name exist
+        tmp = getFileName(pubname)
+        # if the file already exists, exit since we can't have a pub key 
+        # that does not match the private key
+        if cmp(tmp, pubname) :
+          # Remove the cert, the private key, and the /tmp/ssh folder before
+          # we exit
+          os.remove(opts.cert)
+          os.remove(opts.prkey)
+          shutil.rmtree('/tmp/ssh')
+          sys_exit("There is already a key named "+pubname+"Remove it first "+
+                   " and then rerun the script")
+        
+        logger.debug("Place public key %s at %s" \
+                     %(pubkey_of_priv_inbundle, pubname))
+        shutil.move(os.path.join('/tmp/', xpub), pubname)
+        pubkey_list.append(pubname)
+        pubkey_of_priv_inbundle = xpub
+   
+   # Make a second pass to extract all public keys other than the one that 
+   # corresponds to the private key
+   for x in filelist : 
+      if x.startswith('ssh/public') and \
+         not x.startswith(pubkey_of_priv_inbundle) :
+
+        omnizip.extract(x, '/tmp')
+        xname = os.path.basename(x)
+        xbase = os.path.splitext(xname)[0]
+        xfullpath = os.path.join('~/.ssh/', xbase + '.pub')
+        xfullpath = os.path.abspath(getFileName(xfullpath))
+        logger.debug("Copy public key %s to %s" %(x, xfullpath))
+        shutil.move(os.path.join('/tmp/', x), xfullpath)
+        pubkey_list.append(xfullpath)
+
+   shutil.rmtree('/tmp/ssh')
+
+   return pubkey_list
+
+def bundle_has_keys(omnizip) :
+   """ function that checks if there are any keys
+       in the ZipFile omnizip (downloaded from the portal)
+   """
+   haskeys = False
+   filelist = omnizip.namelist()
+   for x in filelist : 
+      if x.startswith('ssh') :
+        haskeys = True
+   return haskeys
+ 
+def bundle_has_private_key(omnizip) :
+   """ function that checks if there are any keys
+       in the ZipFile omnizip (downloaded from the portal)
+   """
+   hasprkey = False
+   filelist = omnizip.namelist()
+   for x in filelist : 
+      if x.startswith('ssh/private') :
+        hasprkey = True
+   return hasprkey
+
+def validate_bundle(filename) :
+    """ This function ensures that the bundle has all the 
+        necessary files
+    """
+    omnizip = zipfile.ZipFile(filename)
+    filelist = omnizip.namelist()
+    # Check if it has the absolutely necessary files
+    #   * omni_config
+    #   * geni_cert.pem
+
+    if 'omni_config' not in filelist : 
+      sys.exit("Portal bundle "+filename+" does not contain omni_config "+
+               "file. Please email portal_help@geni.net.")
+    if 'geni_cert.pem' not in filelist : 
+      sys.exit("Portal bundle "+filename+" does not contain geni_cert.pem "+
+               "file. Please email portal_help@geni.net.")
+    # Check what keys are in the bundle and print warning messages
+    # accordingly
+    haskeys = False
+    haskeys = False
+    hasprkey = False
+    for x in filelist : 
+      if x.startswith('ssh') :
+        haskeys = True
+      if x.startswith('ssh/private') :
+        hasprkey = True
+    if haskeys is False : 
+      logger.warn("NO SSH KEYS. There are no keys in the bundle you "+
+                  "downloaded from the portal. We will create a pair "+
+                  "for you based on your geni certificate. This key "+
+                  "will only be used for resources you reserve with omni!")
+
+    else :
+      if hasprkey is False :
+        pub_key_file_list = get_pub_keys_from_bundle(omnizip)
+        # XXX BUG: This will probably fail if the public key has an
+        # extension other than '.pub'
+        key_list =[(x,os.path.splitext(x)[0]) for x in pub_key_file_list]
+        warn_message = "\nThere is no PRIVATE KEY in the bundle. In order "+\
+                    "for some omni scripts to work (readyToLogin.py, "+\
+                    "remote-execute.py) you will need to place a copy "+\
+                    "of the corresponding private keys at: "
+        for (pub,pr) in key_list :
+          warn_message += "\n\t* private key for '"+pub+"' at ~/.ssh/"+pr
+        warn_message +="\n"
+        logger.warn(warn_message)
+
     omnizip.close()
    
-    logger.info("Using portal bundle %s", opts.portal_bundle)
-    sys.exit("\nPortal configuration not implemented")
+
+def get_pub_keys_from_bundle(omnizip) :
+    """ This function takes as input a ZipFile that corresponds
+        to a bundle dowloaded from the GENI Portal and returns 
+        a list of public key filenames
+    """
+    filelist = omnizip.namelist()
+    publist = []
+    for f in filelist :
+      if f.startswith("ssh/public/") :
+        publist.append(os.path.basename(f))  
+
+    return publist
 
 
 def generatePublicKey(private_key_file):
@@ -257,6 +415,7 @@ def copyPrivateKeyFile(src_file, dst_file):
     logger.debug("Changing permission on private key to 600")
     os.chmod(dst_file, 0600)
     os.chmod(src_file, 0600)
+    return dst_file
 
 def parseArgs(argv, options=None):
     """Construct an Options Parser for parsing omni-configure command line
@@ -336,21 +495,58 @@ def initialize(opts):
     opts.portal_bundle = os.path.expanduser(opts.portal_bundle)
     opts.portal_bundle = os.path.abspath(opts.portal_bundle)
 
-    #Verify we have all the information we need per framework
+    #validate we have all the information we need per framework
     if not cmp(opts.framework,'pg'): 
-        verify_pg(opts)
+        validate_pg(opts)
 
     if not cmp(opts.framework,'pl'):
-        verify_pl(opts)
+        validate_pl(opts)
 
     if not cmp(opts.framework,'portal'):
-        verify_portal(opts)
+        validate_portal(opts)
+        # In the case of the portal there is no cert
+        # file yet, extract it
+        opts.cert = getFileName(opts.cert)
+        extract_cert_from_bundle(opts.portal_bundle, opts.cert)
+
+def extract_cert_from_bundle(filename, dest) :
+    """ This functions extracts a cert named geni_cert.pem
+        out of a bundle downladed from the portal named <filename>
+        and saves it at <dest>
+    """
+    omnizip = zipfile.ZipFile(filename)
+    # extract() can only take a directory as argument
+    # extract it at /tmp and then move it to the file 
+    # we want
+    omnizip.extract('geni_cert.pem', '/tmp')
+    shutil.move('/tmp/geni_cert.pem', dest)
+    omnizip.close()
     
-def createSSHKeypair(opts):
+def configureSSHKeys(opts):
     global logger
 
+    # Use the default place for the geni private key
+    private_key_file = opts.prkey
+
+    if not cmp(opts.framework, 'portal') :
+      omnizip = zipfile.ZipFile(opts.portal_bundle)
+      # If there are no keys in the bundle create a pair
+      # the same was as for a PG framework
+      if not bundle_has_keys(omnizip) :
+        logger.info("Bundle does not have keys, use as Private SSH key the "+
+                    "key in the cert "+opts.cert)
+        pkey=opts.cert
+      else :
+      # if there are keys, then extract them in the right place
+      # and return the list of pubkey filenames for use in the 
+      # omni_config
+        pubkey_list = bundle_extract_keys(omnizip, opts)
+        #return pubkey_list
+      sys.exit("\nPortal configuration not implemented")
+          
     logger.info("\n\n\tCREATING SSH KEYPAIR")
 
+    # This is the place 
     if not cmp(opts.framework,'pg'):
       logger.debug("Framework is ProtoGENI use as Private SSH key the key in the cert: %s", opts.cert)
       pkey = opts.cert
@@ -359,16 +555,13 @@ def createSSHKeypair(opts):
         logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.plkey)
         pkey = opts.plkey
 
-    # Use the default place for the geni private key
-    private_key_file = opts.prkey
-
     # Make sure that the .ssh directory exists, if it doesn't create it
     ssh_dir = os.path.expanduser('~/.ssh')
     if not os.path.exists(ssh_dir) :
         logger.info("Creating directory: %s", ssh_dir)
         os.makedirs(ssh_dir)
 
-    copyPrivateKeyFile(pkey, private_key_file)
+    private_key_file = copyPrivateKeyFile(pkey, private_key_file)
 
     public_key_file = generatePublicKey(private_key_file)
     if not public_key_file:
@@ -378,7 +571,7 @@ def createSSHKeypair(opts):
 
     modifySSHConfigFile(private_key_file)
     
-    return private_key_file, public_key_file
+    return [public_key_file]
 
 def createConfigFile(opts, public_key_file):
     """ This function creates the omni_config file. 
@@ -590,8 +783,9 @@ def main():
     configLogging(opts)
     logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     initialize(opts)
-    (pr_key_file, pub_key_file) = createSSHKeypair(opts)
-    createConfigFile(opts,pub_key_file)
+    pub_key_file_list = configureSSHKeys(opts)
+    print pub_key_file_list
+    createConfigFile(opts,pub_key_file_list)
 
 if __name__ == "__main__":
     sys.exit(main())
