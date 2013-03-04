@@ -13,10 +13,7 @@ You SHOULD manually configure Omni if :
 
 == Release Notes ==
 GCF v2.2.1 and later also supports automatic configuration of omni 
-for portal credentials. Download the omni bundle from the portal, place
-it under ~/Downloads/omni_bundle.zip and run : 
-
-omni-configure.py -f portal
+for portal credentials. 
 
 Look at help for more info. 
 == omni-configure.py script ==
@@ -38,19 +35,28 @@ omni-configure.py will :
     and place it under ~/.ssh (~/.ssh/geni_key and ~/.ssh/geni_key.pub). 
     If the files already exist the user will be prompted about whether to 
     overwrite them or not. If the user chooses not to overwrite them, a new 
-    location will be picked. 
+    location will be picked. If you are running with a bundle from the portal
+    it will use the SSH key-pair created by the portal. 
     This public key is uploaded to any compute nodes that the user reserves
     using Omni and gives ssh access to the nodes, through the private key.
   * Updates the ssh config file (~/.ssh/config) to use by default the private
     key created by the script to login to nodes. 
 
 === Running omni-configure.py ===
-omni-configure.py needs only one file as input, the certificate file. 
+omni-configure.py needs only one file as input, the certificate file, or
+the omni bundle file downloaded from the portal
 
 If you have an account with a ProtoGENI site then:
   * login to the web UI (e.g. www.pgeni.gpolab.bbn.com, www.emulab.net)
   * download and save a copy of the cert under ~/.ssl/geni_cert.pem
   * run omni-configure.py
+
+If you have an account at the GENI Portal then:
+  * login to the portal (e.g. at panther.gpolab.bbn.com)
+  * under your profile tab, follow instruction about downloading the omni bundle
+    and save it at ~/Downloads/omni-bundle.zip
+  * run omni-configure.py -f portal
+
 
 === Usage of omni-configure.py ===
 
