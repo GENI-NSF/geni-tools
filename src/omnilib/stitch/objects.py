@@ -1172,9 +1172,15 @@ class Aggregate(object):
 #                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
 #                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
 
-                # Pick a random tag from range
                 oldSug = hop._hop_link.vlan_suggested_request
-                newSug = iter(hop._hop_link.vlan_range_request).next()
+
+                # If self is a VLAN producer, then set newSug to VLANRange('any') and let it pick?
+                if hop._hop_link.vlan_producer:
+                    newSug = VLANRange('any')
+                else:
+                    # Pick a random tag from range
+                    newSug = iter(hop._hop_link.vlan_range_request).next()
+
                 # Set that as suggested
                 hop._hop_link.vlan_suggested_request = VLANRange(newSug)
                 self.logger.debug("handleUn on %s doing local retry: set Avail=%s, Sug=%s (Sug was %s)", hop, hop._hop_link.vlan_range_request, newSug, oldSug)
@@ -1645,6 +1651,8 @@ class HopLink(object):
     SCD_TAG = 'switchingCapabilityDescriptor'
     SCSI_TAG = 'switchingCapabilitySpecificInfo'
     SCSI_L2_TAG = 'switchingCapabilitySpecificInfo_L2sc'
+    CAPABILITIES_TAG = 'capabilities'
+    CAPABILITY_TAG = 'capability'
 
     @classmethod
     def fromDOM(cls, element):
@@ -1684,15 +1692,38 @@ class HopLink(object):
         hoplink.vlan_xlate = vlan_translate
         hoplink.vlan_range_request = vlan_range_obj
         hoplink.vlan_suggested_request = vlan_suggested_obj
+
+        # Extract the advertised capabilities
+        capabilities = element.getElementsByTagName(cls.CAPABILITIES_TAG)
+        if capabilities and len(capabilities) > 0 and capabilities[0].childNodes:
+            hoplink.vlan_producer = False
+            hoplink.vlan_consumer = False
+            capabilityNodes = capabilities[0].getElementsByTagName(cls.CAPABILITY_TAG)
+            if capabilityNodes and len(capabilityNodes) > 0:
+                for capability in capabilityNodes:
+                    if capability.firstChild:
+                        cap = str(capability.firstChild.nodeValue).strip().lower()
+                        hoplink.capabilities.append(cap)
+                        if cap == 'producer':
+                            hoplink.vlan_producer = True
+                        elif cap == 'consumer':
+                            hoplink.vlan_consumer = True
         return hoplink
 
     def __init__(self, urn):
         self.urn = urn
         self.vlan_xlate = False
+
         self.vlan_range_request = ""
         self.vlan_suggested_request = None
         self.vlan_range_manifest = ""
         self.vlan_suggested_manifest = None
+
+        # If nothing advertised, assume AM only accepts tags
+        self.vlan_producer = False
+        self.vlan_consumer = True
+        self.capabilities = [] # list of string capabilities
+
         self.logger = logging.getLogger('stitch.HopLink')
 
     def editChangesIntoDom(self, domNode, request=True):
