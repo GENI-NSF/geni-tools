@@ -449,7 +449,7 @@ def parseArgs(argv, options=None):
                       help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl', 'portal'],
-                      help="Control framework that you have an account with [options: [pg, pl], DEFAULT: %default]")
+                      help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
