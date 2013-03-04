@@ -452,6 +452,9 @@ def parseArgs(argv, options=None):
                       help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
+    parser.add_option("--pick-project", dest="pick_project", 
+                      action="store_true",
+                      default=False, help="Lets you choose which project to use as default from the projects in the bundle downloaded from the portal")
 
     if argv is None:
         # prints to stderr
@@ -768,10 +771,17 @@ def getPortalConfig(opts, public_key_list, cert) :
     projects = loadProjects('/tmp/omni_config')
     os.remove('/tmp/omni_config')
 
-    if len(projects) > 1 :
-      defproj = selectProject(projects)
-    else :
-      defproj = projects[0]
+    if len(projects) == 0 :
+      logger.warn("You are not a member of any projects! You will need to:\n"+
+                  "\t 1. Join a project in the portal"+
+                  "\t 2. Use the -r flag with omni.py to specify your project "+
+                  "or \t    download a new bundle and rerun omni-configure.py")
+
+      defproj = ""
+    else : 
+      defproj = config['omni']['default_project']
+      if len(projects) > 1 and opts.pick_project :
+        defproj = selectProject(projects, defproj)
 
     # Replace default project with the selected one
     config['omni']['default_project'] = defproj
@@ -785,16 +795,23 @@ def getPortalConfig(opts, public_key_list, cert) :
 
     return omni_section + user_section + cf_section + amnick_section
 
-def selectProject(projects) : 
+def selectProject(projects, defproj) : 
     print("\nChoose one of your projects as your default:")
     i = 1
     for p in projects :
-      print("\t%d. %s" % (i,p))
+      if p == defproj :
+        print("\t*%d. %s" % (i,p))
+        defindex = i
+      else :
+        print("\t %d. %s" % (i,p))
       i+=1
-    valid_ans = map(str, range(1, len(projects)+1))
-    answer = raw_input("Enter your choice: ")
+    valid_ans = map(str, range(1, len(projects)+1)) + ['']
+    answer = raw_input("Enter your choice[%d]: "%defindex)
     while answer not in valid_ans:
         answer = raw_input("Your input has to be 1 to %d: " % len(projects))
+
+    if answer == '' :
+      answer = defindex
 
     return projects[int(answer)-1]
 
@@ -1034,6 +1051,7 @@ def main():
     argv = sys.argv[1:]
     (opts, args) = parseArgs(argv)
     configLogging(opts)
+    print opts
     logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     initialize(opts)
     pub_key_file_list = configureSSHKeys(opts)
