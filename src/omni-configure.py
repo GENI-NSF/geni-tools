@@ -53,7 +53,6 @@ def getYNAns(question):
         return False
     return True
 
-
 def modifySSHConfigFile(private_key_file):
     """ This function will modify the ssh config file (~/.ssh/config) 
         to include the 'private_key_file' as a default identity
@@ -396,7 +395,12 @@ def copyPrivateKeyFile(src_file, dst_file):
             k_exist = loadKeyFromFile(dst_file)
         if not k or not k_exist or not k_exist.is_same(k) : 
             dst_file = getFileName(dst_file)
-
+    else :
+      dstdir = os.path.dirname(dst_file)
+      if os.path.expanduser(dstdir) :
+        if not os.path.exists(dstdir) :
+          os.makedirs(dstdir)
+        
     # We don't do a blind copy in case the src file is in .pem format but we
     # extract the key from the file
     f = open(src_file, 'r')
@@ -407,6 +411,7 @@ def copyPrivateKeyFile(src_file, dst_file):
     if not pkey_match:
         logger.info("No private key in the file. Exit!")
         sys.exit()
+
     f = open(dst_file, 'w+')
     f.write(pkey_match.group(0))
     f.close()
@@ -471,12 +476,14 @@ def initialize(opts):
     # based on the framework
 
     if not cmp(opts.cert, "~/.ssl/geni_cert") : 
-        if not cmp(opts.framework,'pg') or \
-           not cmp(opts.framework, 'portal') :
+        if not cmp(opts.framework,'pg') :
             opts.cert += ".pem"
         else : 
             if not cmp(opts.framework,'pl'):
                 opts.cert += ".gid"
+            else :
+              if not cmp(opts.framework, 'portal') :
+                opts.cert +="-portal.pem"
         logger.debug("Cert is the default add the appropriate extension. Certfile is %s", opts.cert)
             
     # Expand the cert file to a full path
@@ -519,8 +526,13 @@ def extract_cert_from_bundle(filename, dest) :
     # extract it at /tmp and then move it to the file 
     # we want
     omnizip.extract('geni_cert.pem', '/tmp')
-    shutil.move('/tmp/geni_cert.pem', dest)
     omnizip.close()
+    # If the destination does not exist create it
+    destdir = os.path.dirname(dest)
+    if os.path.expanduser(destdir) :
+      if not os.path.exists(destdir) :
+        os.makedirs(destdir)
+    shutil.move('/tmp/geni_cert.pem', dest)
     
 def configureSSHKeys(opts):
     global logger
@@ -541,8 +553,8 @@ def configureSSHKeys(opts):
       # and return the list of pubkey filenames for use in the 
       # omni_config
         pubkey_list = bundle_extract_keys(omnizip, opts)
-        #return pubkey_list
-      sys.exit("\nPortal configuration not implemented")
+        return pubkey_list
+      #sys.exit("\nPortal configuration not implemented")
           
     logger.info("\n\n\tCREATING SSH KEYPAIR")
 
@@ -573,22 +585,9 @@ def configureSSHKeys(opts):
     
     return [public_key_file]
 
-def createConfigFile(opts, public_key_file):
-    """ This function creates the omni_config file. 
-        It will rewrite any existing omni_config file
-        and makes a backup of the omni_config file 
-        of the form omni_config_<i> 
-    """
-    global logger
+def getUserInfo(cert) :
 
-    cert = Certificate(filename=opts.cert)
-    # We need to get the issuer and the subject for SFA frameworks
-    # issuer -> authority
-    # subject -> user
-    issuer = cert.get_issuer()
-    logger.debug("Issuer of the cert is: %s", issuer)
-    subject = cert.get_subject()
-    logger.debug("Subject(user) of the cert is: %s", subject)
+    global logger
 
     # The user URN is in the Alternate Subject Data
     cert_alt_data = cert.get_data()
@@ -612,19 +611,264 @@ def createConfigFile(opts, public_key_file):
     user = urn.split('+')[-1]
     logger.debug("User is: %s", user)
 
+    return(user, urn)
+
+def createConfigFile(opts, public_key_list):
+    """ This function creates the omni_config file. 
+        It will rewrite any existing omni_config file
+        and makes a backup of the omni_config file 
+        of the form omni_config_<i> 
+    """
+    global logger
+
+    cert = Certificate(filename=opts.cert)
+
     if not cmp(opts.framework,'pg'):
-        if urn.find('emulab.net') != -1 :
-            sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
-        else :
-            if urn.find('pgeni.gpolab.bbn.com') != -1 :
-                sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
-            else : 
-              if urn.find('loni.org') != -1 :
-                sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
-              else:
-                raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % urn.split('+')[-2]) 
-        logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
-        cf_section = """
+      omni_config_str = getPGConfig(opts, public_key_list, cert)
+    else :
+      if not cmp(opts.framework, 'pl'):
+        omni_config_str = getPLConfig(opts, public_key_list, cert)
+      else :
+        if not cmp(opts.framework, 'portal'):
+          omni_config_str = getPortalConfig(opts, public_key_list, cert)
+    
+    # Write the config to a file
+    omni_bak_file = opts.configfile
+    omni_bak_file = getFileName(omni_bak_file)
+    if omni_bak_file != opts.configfile:
+        logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
+        shutil.copyfile(opts.configfile, omni_bak_file)
+        
+    try: 
+        f = open(opts.configfile, 'w')
+    except:
+        logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % opts.configfile)
+        sys.exit(-1)
+
+    print >>f, omni_config_str
+    f.close()
+    logger.info("Wrote omni configuration file at: %s", opts.configfile)
+   
+    
+def loadProjects(filename) :
+    import re
+    f = open(filename)
+    content = f.read()
+    f.close()
+    return re.findall('^\#?default_project = (\w+)', content, re.MULTILINE)
+
+
+def fixNicknames(config) :
+    config['aggregate_nicknames'] = {}
+    # ExoGENI AMs
+
+def getPortalOmniSection(opts, config, user, projects) :
+
+    omni_section = """
+[omni]
+default_cf=%s
+users=%s
+default_project=%s
+""" %(opts.framework, user, config['omni']['default_project'])
+
+    for p in projects :
+      if p != config['omni']['default_project'] :
+        omni_section +="#default_project=%s\n" % p
+
+    return omni_section
+
+def getPortalSFSection(opts, config) :
+
+    return """
+[portal]
+type = pgch
+ch = %s
+sa = %s
+cert = %s
+key = %s
+""" %(config['selected_framework']['ch'], 
+      config['selected_framework']['sa'],
+      opts.cert, opts.cert)
+
+def getPortalUserSection(opts, user, user_urn, public_key_list) :
+    return """
+[%s]
+urn=%s
+keys=%s
+""" %(user, user_urn, ','.join(public_key_list))
+
+def getPortalAMNickSection(opts, config) :
+
+    return """
+#------AM nicknames
+# Format :
+# Nickname=URN, URL
+# URN is optional
+[aggregate_nicknames]
+
+#ProtoGENI AMs
+pg-gpo1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-gpo2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-gpo=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn1=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+pg-bbn2=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+pg-bbn=,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+
+pg-utah1=,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-utah2=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-utah3=,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-utah=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+
+pg-ky1=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/1.0
+pg-ky2=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+pg-ky3=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/3.0
+pg-ky=,https://www.uky.emulab.net:12369/protogeni/xmlrpc/am/2.0
+
+#Exogeni AMs include OpenFlow ExoGENI AMs
+eg-gpo=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-bbn=,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+
+eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+
+# ExoSM
+eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+
+#InstaGENI AMs, include OpenFlow InstaGENI AMs
+ig-utah1=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am
+ig-utah2=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+ig-utah3=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+ig-utah=,https://utah.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+
+ig-gpo1=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+ig-gpo2=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+ig-gpo3=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
+ig-gpo=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+ig-bbn1=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
+ig-bbn2=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+ig-bbn3=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
+ig-bbn=,https://instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+
+""" 
+
+
+def getPortalConfig(opts, public_key_list, cert) :
+    # The bundle contains and omni_config
+    # extract it and load it
+    omnizip = zipfile.ZipFile(opts.portal_bundle)
+    omnizip.extract('omni_config', '/tmp')
+
+    config = loadConfigFile('/tmp/omni_config')
+    projects = loadProjects('/tmp/omni_config')
+    os.remove('/tmp/omni_config')
+
+    if len(projects) > 1 :
+      defproj = selectProject(projects)
+    else :
+      defproj = projects[0]
+
+    # Replace default project with the selected one
+    config['omni']['default_project'] = defproj
+
+    (user, user_urn) = getUserInfo(cert)
+
+    omni_section = getPortalOmniSection(opts, config, user, projects)
+    user_section = getPortalUserSection(opts, user, user_urn, public_key_list)
+    cf_section = getPortalSFSection(opts, config)
+    amnick_section = getPortalAMNickSection(opts, config)
+
+    return omni_section + user_section + cf_section + amnick_section
+
+def selectProject(projects) : 
+    print("\nChoose one of your projects as your default:")
+    i = 1
+    for p in projects :
+      print("\t%d. %s" % (i,p))
+      i+=1
+    valid_ans = map(str, range(1, len(projects)+1))
+    answer = raw_input("Enter your choice: ")
+    while answer not in valid_ans:
+        answer = raw_input("Your input has to be 1 to %d: " % len(projects))
+
+    return projects[int(answer)-1]
+
+def loadConfigFile(filename):
+    
+    import ConfigParser
+    confparser = ConfigParser.RawConfigParser()
+    try:
+        confparser.read(filename)
+    except ConfigParser.Error as exc:
+        logger.error("Config file %s could not be parsed."% filename)
+        sys.exit(-1)
+
+    # Load up the omni options
+    config = {}
+    config['omni'] = {}
+    for (key,val) in confparser.items('omni'):
+        config['omni'][key] = val
+ 
+    # Load up the users the user wants us to see        
+    config['users'] = []
+    if 'users' in config['omni']:
+        if config['omni']['users'].strip() is not '' :
+            for user in config['omni']['users'].split(','):
+                if user.strip() is not '' : 
+                    d = {}
+                    for (key,val) in confparser.items(user.strip()):
+                        d[key] = val
+                    config['users'].append(d)
+
+    # Find aggregate nicknames
+    config['aggregate_nicknames'] = {}
+    if confparser.has_section('aggregate_nicknames'):
+        for (key,val) in confparser.items('aggregate_nicknames'):
+            temp = val.split(',')
+            for i in range(len(temp)):
+                temp[i] = temp[i].strip()
+            if len(temp) != 2:
+                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+            if len(temp) == 0:
+                continue
+            if len(temp) == 1:
+                # Got 1 entry - if its a valid URL, use it
+                res = validate_url(temp[0])
+                if res is None or res.startswith("WARN:"):
+                    t = temp[0]
+                    temp = ["",t]
+                else:
+                    # not a valid URL. Skip it
+                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
+                    continue
+
+            # If temp len > 2: try to use it as is
+
+            config['aggregate_nicknames'][key] = temp
+
+    # Copy the control framework into a dictionary
+    cf = config['omni']['default_cf']
+    config['selected_framework'] = {}
+    for (key,val) in confparser.items(cf):
+        config['selected_framework'][key] = val
+
+    return config
+
+def getPGConfig(opts, public_key_list, cert) :
+
+    (user, user_urn) = getUserInfo(cert)
+
+    if user_urn.find('emulab.net') != -1 :
+        sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
+    else :
+        if user_urn.find('pgeni.gpolab.bbn.com') != -1 :
+            sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
+        else : 
+          if user_urn.find('loni.org') != -1 :
+            sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
+          else:
+            raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-2]) 
+    logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
+
+    cf_section = """
 [%s]
 type = pg
 ch = https://www.emulab.net:12369/protogeni/xmlrpc/ch
@@ -633,9 +877,20 @@ cert = %s
 key = %s
 """ %(opts.framework, sa, opts.cert, opts.cert)
 
-    else:
-      if not cmp(opts.framework, 'pl'):
-        cf_section = """
+    return createConfigStr(opts, public_key_list, cert, cf_section)
+
+def getPLConfig(opts, public_key_list, cert) :
+    # We need to get the issuer and the subject for SFA frameworks
+    # issuer -> authority
+    # subject -> user
+    issuer = cert.get_issuer()
+    logger.debug("Issuer of the cert is: %s", issuer)
+    subject = cert.get_subject()
+    logger.debug("Subject(user) of the cert is: %s", subject)
+
+    (user, user_urn) = getUserInfo(cert)
+
+    cf_section = """
 [%s]
 type = sfa
 authority=%s
@@ -646,11 +901,17 @@ registry=http://www.planet-lab.org:12345
 slicemgr=http://www.planet-lab.org:12347
 """ %(opts.framework, issuer, subject, opts.cert, opts.plkey)
 
+    return createConfigStr(opts, public_key_list, cert, cf_section)
+
+def createConfigStr(opts, public_key_list, cert, cf_section) :
+    
+    (user, user_urn) = getUserInfo(cert)
+
     omni_config_dict = {
                         'cf' : opts.framework,
                         'user' : user, 
-                        'urn' : urn,
-                        'pkey' : public_key_file,
+                        'urn' : user_urn,
+                        'pkey' : ",".join(public_key_list),
                         'cf_section' : cf_section,
                        }
     logger.debug("omni_config_dict is: %s", omni_config_dict)
@@ -749,22 +1010,7 @@ ig-of-bbn=,https://foam.instageni.gpolab.bbn.com:3626/foam/gapi/1
 
 """ % omni_config_dict
 
-    omni_bak_file = opts.configfile
-    omni_bak_file = getFileName(omni_bak_file)
-    if omni_bak_file != opts.configfile:
-        logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
-        shutil.copyfile(opts.configfile, omni_bak_file)
-        
-    try: 
-        f = open(opts.configfile, 'w')
-    except:
-        logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % opts.configfile)
-        sys.exit(-1)
-
-    print >>f, omni_config_file
-    f.close()
-    logger.info("Wrote omni configuration file at: %s", opts.configfile)
-   
+    return omni_config_file 
 
 def configLogging(opts) :
     global logger
@@ -784,7 +1030,6 @@ def main():
     logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     initialize(opts)
     pub_key_file_list = configureSSHKeys(opts)
-    print pub_key_file_list
     createConfigFile(opts,pub_key_file_list)
 
 if __name__ == "__main__":
