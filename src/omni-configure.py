@@ -450,11 +450,11 @@ def parseArgs(argv, options=None):
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl', 'portal'],
                       help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
-    parser.add_option("-v", "--verbose", default=False, action="store_true",
-                      help="Turn on verbose command summary for omni-configure script")
     parser.add_option("--pick-project", dest="pick_project", 
                       action="store_true",
                       default=False, help="Lets you choose which project to use as default from the projects in the bundle downloaded from the portal")
+    parser.add_option("-v", "--verbose", default=False, action="store_true",
+                      help="Turn on verbose command summary for omni-configure script")
 
     if argv is None:
         # prints to stderr
