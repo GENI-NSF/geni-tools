@@ -151,7 +151,7 @@ def bundle_extract_keys(omnizip, opts) :
    # Keep track of the public key name in the bundle
    # that corresponds to the private key, so that we 
    # don't copy it again since it has a special name
-   pubkey_of_priv_inbundle = ""
+   pubkey_of_priv_inbundle = "empty"
    # Make a first pass to extract the private and corresponding
    # public keys
    for x in filelist : 
@@ -202,6 +202,13 @@ def bundle_extract_keys(omnizip, opts) :
         xbase = os.path.splitext(xname)[0]
         xfullpath = os.path.join('~/.ssh/', xbase + '.pub')
         xfullpath = os.path.abspath(getFileName(xfullpath))
+
+        # Check if the file ~/.ssh exists and create it if not
+        dstdir = os.path.dirname(xfullpath)
+        if os.path.expanduser(dstdir) :
+          if not os.path.exists(dstdir) :
+            os.makedirs(dstdir)
+          
         logger.debug("Copy public key %s to %s" %(x, xfullpath))
         shutil.move(os.path.join('/tmp/', x), xfullpath)
         pubkey_list.append(xfullpath)
