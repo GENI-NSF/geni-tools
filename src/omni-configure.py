@@ -490,7 +490,7 @@ def initialize(opts):
                 opts.cert += ".gid"
             else :
               if not cmp(opts.framework, 'portal') :
-                opts.cert +="-portal.pem"
+                opts.cert +="_portal.pem"
         logger.debug("Cert is the default add the appropriate extension. Certfile is %s", opts.cert)
             
     # Expand the cert file to a full path
