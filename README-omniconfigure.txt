@@ -11,6 +11,14 @@ You SHOULD manually configure Omni if :
     with emulab.net as well as with pgeni.gpolab.bbn.com)
   * you want multiple users to have access to the reserved compute resources. 
 
+== Release Notes ==
+GCF v2.2.1 and later also supports automatic configuration of omni 
+for portal credentials. Download the omni bundle from the portal, place
+it under ~/Downloads/omni_bundle.zip and run : 
+
+omni-configure.py -f portal
+
+Look at help for more info. 
 == omni-configure.py script ==
 
 omni-configure.py is a script that will automatically create
@@ -56,11 +64,19 @@ Options:
   -p FILE, --cert=FILE  User certificate file location [DEFAULT:
                         ~/.ssl/geni_cert.pem]
   -k FILE, --plkey=FILE
-                        GPlanetLab private key file location [DEFAULT:
+                        PlanetLab private key file location [DEFAULT:
                         ~/.ssh/geni_pl_key]
+  -e FILE, --prkey=FILE
+                        Private key for loggin to compute resources file
+                        location [DEFAULT: ~/.ssh/geni_key]
+  -z FILE, --portal-bundle=FILE
+                        Private key for loggin to compute resources file
+                        location [DEFAULT: ~/Downloads/omni-bundle.zip]
   -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework that you have an account with
-                        [options: [pg, pl], DEFAULT: pg]
+                        [options: [pg, pl, portal], DEFAULT: pg]
+  --pick-project        Lets you choose which project to use as default from
+                        the projects in the bundle downloaded from the portal
   -v, --verbose         Turn on verbose command summary for omni-configure
                         script
 
