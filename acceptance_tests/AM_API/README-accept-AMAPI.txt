@@ -95,7 +95,7 @@ By policy, requires:
  * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
    is located at
 
-   {{{https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa}}}
+   {{{https://boss.pgeni.gpolab.bbn.com:443/protogeni/xmlrpc/sa}}}
 
  * A colleague with GENI credentials willing to delegate you a slice.
 

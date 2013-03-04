@@ -113,8 +113,7 @@ class AMCallHandler(object):
             thisVer = str(thisVer) # turn int into a string
             liveVers[thisVer]  = liveVers.get(thisVer, 0) + 1 # hash is by strings
             (thisVersions, message) = self._get_api_versions(client)
-            # Ticket 242: be robust to malformed geni_api_versions
-            if thisVersions and isinstance(thisVersions, dict):
+            if thisVersions:
                 for version in thisVersions.keys(): # version is a string
 #                    self.logger.debug("%s supports %d at %s", client.url, int(version), thisVersions[version])
                     versions[version] = versions.get(version, 0) + 1 # hash by strings
@@ -4179,8 +4178,7 @@ class AMCallHandler(object):
                         message = ""
                     if msg != "":
                         self.logger.info(msg)
-                        # FIXME: This may cause pg_log to be included in result summary even in success
-#                        message += msg
+                        message += msg
 
                 # FIXME: More complete error code handling!
                 elif self.opts.raiseErrorOnV2AMAPIError and result['code']['geni_code'] != 0 and self.opts.api_version == 2:

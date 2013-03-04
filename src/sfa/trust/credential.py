@@ -661,10 +661,8 @@ class Credential(object):
         # Call out to xmlsec1 to sign it
         ref = 'Sig_%s' % self.get_refid()
         filename = self.save_to_random_tmp_file()
-        command='%s --sign --node-id "%s" --privkey-pem %s,%s %s' \
-            % (self.xmlsec_path, ref, self.issuer_privkey, ",".join(gid_files), filename)
-#        print 'command',command
-        signed = os.popen(command).read()
+        signed = os.popen('%s --sign --node-id "%s" --privkey-pem %s,%s %s' \
+                 % (self.xmlsec_path, ref, self.issuer_privkey, ",".join(gid_files), filename)).read()
         os.remove(filename)
 
         for gid_file in gid_files:

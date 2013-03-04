@@ -397,7 +397,6 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
   status information
   '''
   print "NOT IMPLEMENTED YET"
-  return amLoginInfo
 
 def getKeysForUser( amType, username, keyList ):
   '''Returns a list of keys for the provided user based on the
@@ -446,7 +445,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          sys.stderr.write("There is no status information for node %s. Print login info.")
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
         output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
@@ -473,7 +472,6 @@ def printLoginInfo( loginInfoDict, keyList ) :
 def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
 
-  print loginInfoDict
 # Check if the output option is set
   defaultAnswer = not options.donotoverwrite
   prefix = ""
@@ -495,7 +493,7 @@ def printSSHConfigInfo( loginInfoDict, keyList ) :
           if item['geni_status'] != "ready" :
             continue
         except KeyError:
-          sys.stderr.write("There is no status information for node %s. Print login info.")
+          sys.stderr("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
 
       keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
