@@ -711,6 +711,9 @@ class StitchingHandler(object):
         if not rspecs or len(rspecs) < 1:
             return
 
+        if rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
+            self.logger.debug("Not over-riding expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
+            return
         rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, sliceexp.isoformat())
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
  
