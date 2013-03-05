@@ -396,9 +396,10 @@ def copyPrivateKeyFile(src_file, dst_file):
 
     if os.path.exists(dst_file):
         # Load current and existing keys to see if they are the same
+        logger.info("Loading SSH key from %s", src_file)
         k = loadKeyFromFile(src_file)
         if k:
-            logger.info("File %s already exists. Loading existing key...", dst_file)
+            logger.info("File %s already exists. Loading SSH key from %s", dst_file, dst_file)
             k_exist = loadKeyFromFile(dst_file)
         if not k or not k_exist or not k_exist.is_same(k) : 
             dst_file = getFileName(dst_file)
