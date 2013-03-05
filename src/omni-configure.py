@@ -161,7 +161,7 @@ def bundle_extract_keys(omnizip, opts) :
         if xpub not in filelist :
           # Remove the cert before we exit
           os.remove(opts.cert)
-          sys_exit("There is no public key that corresponds to the private "+
+          sys.exit("There is no public key that corresponds to the private "+
                    "key in the bundle, please email portal_help@geni.net")
 
         # Place the private key in the right place
@@ -182,8 +182,8 @@ def bundle_extract_keys(omnizip, opts) :
           os.remove(opts.cert)
           os.remove(opts.prkey)
           shutil.rmtree('/tmp/ssh')
-          sys_exit("There is already a key named "+pubname+"Remove it first "+
-                   " and then rerun the script")
+          sys.exit("There is already a key named "+pubname+". Remove it first "+
+                   "and then rerun the script")
         
         logger.debug("Place public key %s at %s" \
                      %(pubkey_of_priv_inbundle, pubname))
