@@ -616,7 +616,7 @@ def getUserInfo(cert) :
     if len(user_urn_list) > 1:
       sys.exit("There are more than one user URNs in the cert. Exit!")
 
-    urn = user_urn_list[0].lstrip('URI:')
+    urn = user_urn_list[0].strip().lstrip('URI:')
     logger.debug("User URN in the cert is: %s", urn)
     user = urn.split('+')[-1]
     logger.debug("User is: %s", user)
