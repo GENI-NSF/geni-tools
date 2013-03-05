@@ -668,9 +668,6 @@ def loadProjects(filename) :
     proj_re = '^#*\s*default_project\s*=\s*(.*)$'
     return re.findall(proj_re, content, re.MULTILINE)
 
-
-[a-zA-Z0-9][-a-zA-Z0-9]
-
 def fixNicknames(config) :
     config['aggregate_nicknames'] = {}
     # ExoGENI AMs
