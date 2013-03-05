@@ -976,9 +976,11 @@ class Aggregate(object):
             # Get the single manifest out of the result struct
             try:
                 if self.api_version == 2:
+                    oneResult = result.values()[0]["value"]
+                elif self.api_version == 1:
                     oneResult = result.values()[0]
                 else:
-                    oneResult = result[self.url]["value"]["geni_rspec"]
+                    oneResult = result.values()[0]["value"]["geni_rspec"]
             except Exception, e:
                 if (isinstance(result, str) or isinstance(result, unicode)) and opts.fakeModeDir:
                     oneResult = result
