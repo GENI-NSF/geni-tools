@@ -773,9 +773,9 @@ def getPortalConfig(opts, public_key_list, cert) :
 
     if len(projects) == 0 :
       logger.warn("You are not a member of any projects! You will need to:\n"+
-                  "\t 1. Join a project in the portal"+
+                  "\t 1. Join a project in the portal\n"+
                   "\t 2. Use the -r flag with omni.py to specify your project "+
-                  "or \t    download a new bundle and rerun omni-configure.py")
+                  "or \n\t    download a new bundle and rerun omni-configure.py")
 
       defproj = ""
     else : 
