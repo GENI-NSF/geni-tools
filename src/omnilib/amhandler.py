@@ -1284,7 +1284,7 @@ class AMCallHandler(object):
 
             retVal, filename = _writeRSpec(self.opts, self.logger, rspecOnly, slicename, urn, url, None, len(rspecs))
             if filename:
-                savedFileDesc += "Saved listresources RSpec at '%s' (url '%s') to file %s; " % (urn, url, filename)
+                savedFileDesc += "Saved listresources RSpec from '%s' (url '%s') to file %s; " % (urn, url, filename)
         # End of loop over rspecs
         self.logger.debug("rspecCtr %d", rspecCtr)
 
