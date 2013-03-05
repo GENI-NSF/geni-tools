@@ -662,12 +662,14 @@ def createConfigFile(opts, public_key_list):
    
     
 def loadProjects(filename) :
-    import re
     f = open(filename)
     content = f.read()
     f.close()
-    return re.findall('^\#?default_project = (\w+)', content, re.MULTILINE)
+    proj_re = '^#*\s*default_project\s*=\s*(.*)$'
+    return re.findall(proj_re, content, re.MULTILINE)
 
+
+[a-zA-Z0-9][-a-zA-Z0-9]
 
 def fixNicknames(config) :
     config['aggregate_nicknames'] = {}
@@ -817,8 +819,6 @@ def selectProject(projects, defproj) :
     return projects[int(answer)-1]
 
 def loadConfigFile(filename):
-    
-    import ConfigParser
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
