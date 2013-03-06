@@ -37,6 +37,10 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.3:
+ - Ticket #240: don't print ProtoGENI log URL in result summary on success
+ - Ticket #242: Be robust to malformed geni_api_versions
+
 New in v2.2.1:
  - omni-configure: Added support for automatic configuration of omni
    for portal credentials. (ticket #252)
