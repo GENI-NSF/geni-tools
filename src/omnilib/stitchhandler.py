@@ -634,6 +634,8 @@ class StitchingHandler(object):
                         self.logger.debug( "    VLAN Suggested (manifest): %s" % (hop._hop_link.vlan_suggested_manifest))
                     if hop._hop_link.vlan_range_manifest:
                         self.logger.debug( "    VLAN Available Range (manifest): %s" % (hop._hop_link.vlan_range_manifest))
+                    if hop.vlans_unavailable and len(hop.vlans_unavailable) > 0:
+                        self.logger.debug( "    VLANs found UN Available: %s" % hop.vlans_unavailable)
                     self.logger.debug( "    Import VLANs From: %s" % (hop.import_vlans_from))
                     deps = hop.dependsOn
                     if deps:
