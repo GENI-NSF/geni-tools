@@ -161,7 +161,7 @@ def bundle_extract_keys(omnizip, opts) :
         if xpub not in filelist :
           # Remove the cert before we exit
           os.remove(opts.cert)
-          sys_exit("There is no public key that corresponds to the private "+
+          sys.exit("There is no public key that corresponds to the private "+
                    "key in the bundle, please email portal_help@geni.net")
 
         # Place the private key in the right place
@@ -182,8 +182,8 @@ def bundle_extract_keys(omnizip, opts) :
           os.remove(opts.cert)
           os.remove(opts.prkey)
           shutil.rmtree('/tmp/ssh')
-          sys_exit("There is already a key named "+pubname+"Remove it first "+
-                   " and then rerun the script")
+          sys.exit("There is already a key named "+pubname+". Remove it first "+
+                   "and then rerun the script")
         
         logger.debug("Place public key %s at %s" \
                      %(pubkey_of_priv_inbundle, pubname))
@@ -396,9 +396,10 @@ def copyPrivateKeyFile(src_file, dst_file):
 
     if os.path.exists(dst_file):
         # Load current and existing keys to see if they are the same
+        logger.info("Loading SSH key from %s", src_file)
         k = loadKeyFromFile(src_file)
         if k:
-            logger.info("File %s already exists. Loading existing key...", dst_file)
+            logger.info("File %s already exists. Loading SSH key from %s", dst_file, dst_file)
             k_exist = loadKeyFromFile(dst_file)
         if not k or not k_exist or not k_exist.is_same(k) : 
             dst_file = getFileName(dst_file)
@@ -450,6 +451,9 @@ def parseArgs(argv, options=None):
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl', 'portal'],
                       help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
+    parser.add_option("--pick-project", dest="pick_project", 
+                      action="store_true",
+                      default=False, help="Lets you choose which project to use as default from the projects in the bundle downloaded from the portal")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
@@ -613,7 +617,7 @@ def getUserInfo(cert) :
     if len(user_urn_list) > 1:
       sys.exit("There are more than one user URNs in the cert. Exit!")
 
-    urn = user_urn_list[0].lstrip('URI:')
+    urn = user_urn_list[0].strip().lstrip('URI:')
     logger.debug("User URN in the cert is: %s", urn)
     user = urn.split('+')[-1]
     logger.debug("User is: %s", user)
@@ -658,12 +662,11 @@ def createConfigFile(opts, public_key_list):
    
     
 def loadProjects(filename) :
-    import re
     f = open(filename)
     content = f.read()
     f.close()
-    return re.findall('^\#?default_project = (\w+)', content, re.MULTILINE)
-
+    proj_re = '^#*\s*default_project\s*=\s*(.*)$'
+    return re.findall(proj_re, content, re.MULTILINE)
 
 def fixNicknames(config) :
     config['aggregate_nicknames'] = {}
@@ -768,10 +771,17 @@ def getPortalConfig(opts, public_key_list, cert) :
     projects = loadProjects('/tmp/omni_config')
     os.remove('/tmp/omni_config')
 
-    if len(projects) > 1 :
-      defproj = selectProject(projects)
-    else :
-      defproj = projects[0]
+    if len(projects) == 0 :
+      logger.warn("You are not a member of any projects! You will need to:\n"+
+                  "\t 1. Join a project in the portal\n"+
+                  "\t 2. Use the -r flag with omni.py to specify your project "+
+                  "or \n\t    download a new bundle and rerun omni-configure.py")
+
+      defproj = ""
+    else : 
+      defproj = config['omni']['default_project']
+      if len(projects) > 1 and opts.pick_project :
+        defproj = selectProject(projects, defproj)
 
     # Replace default project with the selected one
     config['omni']['default_project'] = defproj
@@ -785,22 +795,27 @@ def getPortalConfig(opts, public_key_list, cert) :
 
     return omni_section + user_section + cf_section + amnick_section
 
-def selectProject(projects) : 
+def selectProject(projects, defproj) : 
     print("\nChoose one of your projects as your default:")
     i = 1
     for p in projects :
-      print("\t%d. %s" % (i,p))
+      if p == defproj :
+        print("\t*%d. %s" % (i,p))
+        defindex = i
+      else :
+        print("\t %d. %s" % (i,p))
       i+=1
-    valid_ans = map(str, range(1, len(projects)+1))
-    answer = raw_input("Enter your choice: ")
+    valid_ans = map(str, range(1, len(projects)+1)) + ['']
+    answer = raw_input("Enter your choice[%d]: "%defindex)
     while answer not in valid_ans:
         answer = raw_input("Your input has to be 1 to %d: " % len(projects))
+
+    if answer == '' :
+      answer = defindex
 
     return projects[int(answer)-1]
 
 def loadConfigFile(filename):
-    
-    import ConfigParser
     confparser = ConfigParser.RawConfigParser()
     try:
         confparser.read(filename)
@@ -1034,6 +1049,7 @@ def main():
     argv = sys.argv[1:]
     (opts, args) = parseArgs(argv)
     configLogging(opts)
+    print opts
     logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     initialize(opts)
     pub_key_file_list = configureSSHKeys(opts)

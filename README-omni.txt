@@ -47,6 +47,10 @@ New in v2.3:
  geni_code in wrong spot (ticket #247)
  - Various minor code cleanup changes
 
+New in v2.2.1:
+ - omni-configure: Added support for automatic configuration of omni
+   for portal credentials. (ticket #252)
+
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
