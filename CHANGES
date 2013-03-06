@@ -7,7 +7,7 @@ gcf 2.3:
  'createsliver' or 'allocate' commands with an RSpec that requires
  stitching will be processed by the stitcher code. All other calls
  will be passed directly to Omni.
- All calls are APIv2 (hard-coded) currently. The iInput request RSpec
+ All calls are APIv2 (hard-coded) currently. The input request RSpec
  does _not_ need a stitching extension, but should be a single RSpec
  for all resources in all aggregates that you want stitched together
  in the slice. To create a request that needs stitching, include >=1
