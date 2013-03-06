@@ -278,6 +278,7 @@ class StitchingHandler(object):
             Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
+            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...", Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
             time.sleep(Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
 
             # construct new SCS args
