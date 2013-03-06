@@ -37,6 +37,10 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.2.1:
+ - omni-configure: Added support for automatic configuration of omni
+   for portal credentials. (ticket #252)
+
 New in v2.2:
  - If an aggregate does not speak the requested Ad RSpec version and
  the user is just using the default and the aggregate either speaks
