@@ -773,8 +773,8 @@ Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
-The date-time argument takes a standard form such as
-"YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
+The date-time argument takes a standard form such as "MM/DD/YYYY
+HH:MM" (quotes important) or "YYYYMMDDTHH:MM:SSZ". The date and time are separated by 'T'. The
 trailing 'Z' in this case represents time zone Zulu, which us UTC or
 GMT. You may specify a different time zone, or none. Warning: slice
 authorities are inconsistent in how they interpret times (with or
@@ -1395,7 +1395,8 @@ Sample Usage:
 This command will renew your resources at each aggregate up to the
 specified time.  This time must be less than or equal to the time
 available to the slice (see `print_slice_expiration` and
-`renewslice`).  Times are in UTC or supply an explicit timezone.
+`renewslice`).  Times are in UTC or supply an explicit timezone, and
+should be quoted if they contain spaces or forward slashes.
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>
@@ -1436,7 +1437,7 @@ Sample usage:
  * Renew slivers in slice myslice to the given time; any slivers that
  cannot be renewed to this time, stay as they were, while others are
  renewed
-    `omni.py -V 3 -a http://myaggregate/url --best-effort renew myslice 20120909`
+    `omni.py -V 3 -a http://myaggregate/url --best-effort renew myslice "2012/09/09 12:00"`
  * Renew the given sliver in myslice at this AM to the given time and
  write the result struct to the given file
 {{{
@@ -1444,6 +1445,12 @@ Sample usage:
              %s-renew-%a.json -u urn:publicid:IDN+myam+sliver+1 renew \
              myslice 20120909
 }}}
+
+This command will renew your resources at each aggregate up to the
+specified time.  This time must be less than or equal to the time
+available to the slice (see `print_slice_expiration` and
+`renewslice`).  Times are in UTC or supply an explicit timezone, and
+should be quoted if they contain spaces or forward slashes.
 
 Slice name could be a full URN, but is usually just the slice name portion.
 Note that PLC Web UI lists slices as <site name>_<slice name>

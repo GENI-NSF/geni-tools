@@ -2383,6 +2383,8 @@ class AMCallHandler(object):
         Note that the expiration time cannot be past your slice expiration
         time (see renewslice). Some aggregates will
         not allow you to _shorten_ your sliver expiration time.
+        Times are in UTC or supply an explicit timezone, and 
+        should be quoted if they contain spaces or forward slashes.
 
         -V# API Version #
         --devmode: Continue on error if possible
@@ -2475,6 +2477,13 @@ class AMCallHandler(object):
         """AM API Renew <slicename> <new expiration time in UTC
         or with a timezone>
         For use with AM API v3+. Use RenewSliver() in AM API v1&2.
+
+        This command will renew your resources at each aggregate up to the
+        specified time.  This time must be less than or equal to the time
+        available to the slice (see `print_slice_expiration` and
+        `renewslice`).  Times are in UTC or supply an explicit timezone, and
+        should be quoted if they contain spaces or forward slashes.
+
         Slice name could be a full URN, but is usually just the slice name portion.
         Note that PLC Web UI lists slices as <site name>_<slice name>
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
@@ -2531,7 +2540,7 @@ class AMCallHandler(object):
         omni.py -V3 -a http://myaggregate/url renew myslice 20120909
 
         Renew slivers in slice myslice to the given time; any slivers that cannot be renewed to this time, stay as they were, while others are renewed
-        omni.py -V3 -a http://myaggregate/url --best-effort renew myslice 20120909
+        omni.py -V3 -a http://myaggregate/url --best-effort renew myslice "2012/09/09 12:00"
 
         Renew the given sliver in myslice at this AM to the given time and write the result struct to the given file
         omni.py -V3 -a http://myaggregate/url -o --outputfile %s-renew-%a.json -u urn:publicid:IDN+myam+sliver+1 renew myslice 20120909
