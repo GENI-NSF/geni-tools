@@ -656,6 +656,8 @@ class StitchingHandler(object):
             self.logger.debug( "\n===== Hops =====")
             for path in stitching.paths:
                 self.logger.debug( "Path %s" % (path.id))
+                if path.globalId:
+                    self.logger.debug( "   GlobalId: %s" % path.globalId)
                 for hop in path.hops:
                     self.logger.debug( "  Hop %s" % (hop))
                     # FIXME: don't use the private variable

@@ -320,7 +320,7 @@ class ManifestRSpecCombiner:
         url = am.url
         api_version = am.api_version
         user_requested = am.userRequested
-        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}  for hop in am._hops]
+        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'path_global_id':hop.path.globalId, 'id':hop._id}  for hop in am._hops]
         ret = {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hops_info':hops_info}
         if am.pgLogUrl:
             ret["PG Log URL"] = am.pgLogUrl

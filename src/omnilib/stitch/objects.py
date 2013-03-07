@@ -56,6 +56,7 @@ class Path(GENIObject):
     # XML tag constants
     ID_TAG = 'id'
     HOP_TAG = 'hop'
+    GLOBAL_ID_TAG = 'globalId'
 
     @classmethod
     def fromDOM(cls, element):
@@ -69,6 +70,10 @@ class Path(GENIObject):
                 hop.path = path
                 hop.idx = len(path.hops)
                 path.hops.append(hop)
+            elif child.localName == cls.GLOBAL_ID_TAG:
+                globID = str(child.firstChild.nodeValue).strip()
+                path.globalId = globId
+
         for hop in path.hops:
             next_hop = path.find_hop(hop._next_hop)
             if next_hop:
@@ -80,6 +85,7 @@ class Path(GENIObject):
         self.id = id
         self._hops = []
         self._aggregates = set()
+        self.globalId = None
 
     @property
     def hops(self):
@@ -337,8 +343,14 @@ class Aggregate(object):
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
         for hop in self.hops:
             range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
-            rangeValue = range_suggested[0]
-            suggestedValue = range_suggested[1]
+            pathGlobalId = range_suggested[0]
+            rangeValue = range_suggested[1]
+            suggestedValue = range_suggested[2]
+            if pathGlobalId and pathGlobalId != '':
+                if hop.path.globalId and hop.path.globalId != pathGlobalId:
+                    self.logger.warn("Changing Path %s global ID from %s to %s", hop.path.id, hop.path.globalId, pathGlobalId)
+                hop.path.globalId = pathGlobalId
+
             if not suggestedValue:
                 self.logger.error("Didn't find suggested value in rspec for hop %s", hop)
                 # Treat as error? Or as vlan unavailable? FIXME
@@ -539,7 +551,7 @@ class Aggregate(object):
             path.editChangesIntoDom(domNode)
         return requestRSpecDom
 
-    # For a given hop, extract from the Manifest DOM a tuple (vlanRangeAvailability, suggestedVLANRange)
+    # For a given hop, extract from the Manifest DOM a tuple (pathGlobalId, vlanRangeAvailability, suggestedVLANRange)
     def getVLANRangeSuggested(self, manifest, hop_id, path_id):
         vlan_range_availability = None
         suggested_vlan_range = None
@@ -555,6 +567,7 @@ class Aggregate(object):
         scd_node = None
         scsi_node = None
         scsil2_node = None
+        path_globalId = None
 
         # FIXME: Call once for all hops
 
@@ -593,6 +606,9 @@ class Aggregate(object):
                     if this_hop_id == hop_id:
                         hop_node = child
                         break
+                elif child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == Path.GLOBAL_ID_TAG:
+                    path_globalId = str(child.firstChild.nodeValue).strip()
         else:
             raise StitchingError("%s: No stitching path %s element in manifest" % (self, path_id))
 
@@ -646,7 +662,7 @@ class Aggregate(object):
         else:
             raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in hop %s in manifest rspec" % (self, hop_id))
 
-        return (vlan_range_availability, suggested_vlan_range)
+        return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
     def doReservation(self, opts, slicename, scsCallCount):
         '''Reserve at this AM. Construct omni args, save RSpec to a file, call Omni,
