@@ -102,6 +102,8 @@ def call(argv, options=None):
     parser.add_option("--scsURL",
                       help="URL to the SCS service",
                       default=SCS_URL)
+    parser.add_option("--excludehop", metavar="HOP_EXCLUDE", action="append",
+                      help="Hop URN to exclude from any path")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)

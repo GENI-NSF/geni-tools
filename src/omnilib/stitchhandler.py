@@ -39,7 +39,7 @@ import omnilib.util.handler_utils as handler_utils
 
 import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
-from omnilib.stitch.objects import Aggregate
+from omnilib.stitch.objects import Aggregate, Link
 from omnilib.stitch import RSpecParser
 import omnilib.stitch.scs as scs
 from omnilib.stitch.workflow import WorkflowParser
@@ -444,8 +444,8 @@ class StitchingHandler(object):
 #        profile[path] = pathStruct
 #        options["geni_routing_profile"]=profile
 
+        profile = {}
         if existingAggs and len(existingAggs) > 0:
-            profile = {}
             for agg in existingAggs:
                 for hop in agg.hops:
                     if hop.excludeFromSCS or (hop.vlans_unavailable and len(hop.vlans_unavailable) > 0):
@@ -474,8 +474,36 @@ class StitchingHandler(object):
                         # Put the new objects in the struct
                         pathStruct[scs.HOP_EXCLUSION_TAG] = excludes
                         profile[path] = pathStruct
-            if profile != {}:
-                options[scs.GENI_PROFILE_TAG] = profile
+
+        # Exclude any hops given as an option from _all_ hops
+        links = requestDOM.getElementsByTagName(RSpecParser.LINK_TAG)
+        if self.opts.excludehop and len(self.opts.excludehop) > 0 and links and len(links) > 0:
+            self.logger.debug("Got links and option to exclude hops: %s", self.opts.excludehop)
+            for exclude in self.opts.excludehop:
+                # For each path
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+
+                    # Get hop_exclusion_list
+                    if pathStruct.has_key(scs.HOP_EXCLUSION_TAG):
+                        excludes = pathStruct[scs.HOP_EXCLUSION_TAG]
+                    else:
+                        excludes = []
+
+                    excludes.append(exclude)
+                    self.logger.debug("Excluding %s from path %s", exclude, path)
+
+                    # Put the new objects in the struct
+                    pathStruct[scs.HOP_EXCLUSION_TAG] = excludes
+                    profile[path] = pathStruct
+
+        if profile != {}:
+            options[scs.GENI_PROFILE_TAG] = profile
         self.logger.debug("Sending SCS options %s", options)
 
         return requestDOM.toprettyxml(), options
