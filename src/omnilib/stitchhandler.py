@@ -476,8 +476,10 @@ class StitchingHandler(object):
                         profile[path] = pathStruct
 
         # Exclude any hops given as an option from _all_ hops
-        links = requestDOM.getElementsByTagName(RSpecParser.LINK_TAG)
-        if self.opts.excludehop and len(self.opts.excludehop) > 0 and links and len(links) > 0:
+        links = None
+        if self.opts.excludehop and len(self.opts.excludehop) > 0:
+            links = requestDOM.getElementsByTagName(RSpecParser.LINK_TAG)
+        if links and len(links) > 0:
             self.logger.debug("Got links and option to exclude hops: %s", self.opts.excludehop)
             for exclude in self.opts.excludehop:
                 # For each path
