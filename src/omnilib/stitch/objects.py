@@ -679,7 +679,7 @@ class Aggregate(object):
         self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
-        requestString = self.requestDom.toprettyxml()
+        requestString = self.requestDom.toxml()
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
@@ -1756,11 +1756,11 @@ class HopLink(object):
             raise StitchingError("Hop Link %s given Dom node with different Id: %s" % (self, nodeId))
 
         if request:
-            newVlanRangeString = str(self.vlan_range_request)
-            newVlanSuggestedString = str(self.vlan_suggested_request)
+            newVlanRangeString = str(self.vlan_range_request).strip()
+            newVlanSuggestedString = str(self.vlan_suggested_request).strip()
         else:
-            newVlanRangeString = str(self.vlan_range_manifest)
-            newVlanSuggestedString = str(self.vlan_suggested_manifest)
+            newVlanRangeString = str(self.vlan_range_manifest).strip()
+            newVlanSuggestedString = str(self.vlan_suggested_manifest).strip()
 
         vlan_range = domNode.getElementsByTagName(self.VLAN_RANGE_TAG)
         if vlan_range and len(vlan_range) > 0:
