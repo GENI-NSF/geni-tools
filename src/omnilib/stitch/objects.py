@@ -170,7 +170,7 @@ class Aggregate(object):
     BUSY_MAX_TRIES = 5 # dossl does 3
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
-    SLIVERSTATUS_POLL_INTERVAL_SEC = 10
+    SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 100secs is short if ION is busy
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
 
     # Constant name of SCS expanded request (for use here and elsewhere)
