@@ -77,7 +77,7 @@ available via their native package management suite (eg. yum or apt).
 Debian/Ubuntu
 -------------
 sudo apt-get install python-m2crypto python-dateutil \
-                     python-pyopenssl libxmlsec1 xmlsec1 \
+                     python-openssl libxmlsec1 xmlsec1 \
                      libxmlsec1-openssl libxmlsec1-dev
 
 
