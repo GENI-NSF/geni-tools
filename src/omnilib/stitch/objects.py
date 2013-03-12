@@ -1100,8 +1100,8 @@ class Aggregate(object):
                 break
             if len(hop._hop_link.vlan_range_request) <= 1:
                 # Only the 1 VLAN tag was in the available range
-                self.logger.debug("%s has only 1 VLAN in the avail range, so cannot redo here", hop)
                 canRedoRequestHere = False
+                self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
                 break
         if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
 #            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
