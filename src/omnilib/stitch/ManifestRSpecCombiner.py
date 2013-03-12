@@ -307,7 +307,7 @@ class ManifestRSpecCombiner:
             am_details = self.computeAMDetails(am)
             am_details_text = json.dumps(am_details, indent=2)
             if didFirst:
-                comment_text = comment_text + "\n"
+                comment_text = comment_text + "\n\n"
             comment_text = comment_text + am_details_text + "\n"
             didFirst = True
         comment_element = dom_template.createComment(comment_text)
