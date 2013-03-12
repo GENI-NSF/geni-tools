@@ -1723,9 +1723,9 @@ class HopLink(object):
                     if capability.firstChild:
                         cap = str(capability.firstChild.nodeValue).strip().lower()
                         hoplink.capabilities.append(cap)
-                        if cap == 'producer':
+                        if cap == RSpecParser.PRODUCER_VALUE or cap == RSpecParser.VLANPRODUCER_VALUE:
                             hoplink.vlan_producer = True
-                        elif cap == 'consumer':
+                        elif cap == RSpecParser.CONSUMER_VALUE or cap == RSpecParser.VLANCONSUMER_VALUE:
                             hoplink.vlan_consumer = True
         return hoplink
 

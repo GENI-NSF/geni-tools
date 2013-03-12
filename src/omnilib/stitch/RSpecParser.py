@@ -37,6 +37,12 @@ NODE_TAG = 'node'
 STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
 EXPIRES_ATTRIBUTE = 'expires'
+# Capabilities element names
+CONSUMER_VALUE = 'consumer'
+PRODUCER_VALUE = 'producer'
+VLANCONSUMER_VALUE = 'vlanconsumer'
+VLANPRODUCER_VALUE = 'vlanproducer'
+
 # see geni.util.rspec_schema for namespaces
 
 # This should go away, its value is no longer used
