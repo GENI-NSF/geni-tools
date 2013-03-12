@@ -716,6 +716,7 @@ class Aggregate(object):
 
         try:
             # FIXME: Is that the right counter there?
+            self.pgLogUrl = None
             (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries)
             self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             if "PG log url" in text:
