@@ -28,6 +28,7 @@ from utils import StitchingError, StitchingServiceFailedError
 
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
+HOP_INCLUSION_TAG = 'hop_inclusion_list'
 GENI_PROFILE_TAG = 'geni_routing_profile'
 
 class Result(object):

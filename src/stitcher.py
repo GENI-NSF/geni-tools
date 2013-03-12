@@ -104,6 +104,8 @@ def call(argv, options=None):
                       default=SCS_URL)
     parser.add_option("--excludehop", metavar="HOP_EXCLUDE", action="append",
                       help="Hop URN to exclude from any path")
+    parser.add_option("--includehop", metavar="HOP_INCLUDE", action="append",
+                      help="Hop URN to include on every path - use with caution")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)

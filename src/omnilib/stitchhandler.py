@@ -477,10 +477,10 @@ class StitchingHandler(object):
 
         # Exclude any hops given as an option from _all_ hops
         links = None
-        if self.opts.excludehop and len(self.opts.excludehop) > 0:
+        if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0):
             links = requestDOM.getElementsByTagName(RSpecParser.LINK_TAG)
         if links and len(links) > 0:
-            self.logger.debug("Got links and option to exclude hops: %s", self.opts.excludehop)
+            self.logger.debug("Got links and option to exclude hops: %s, include hops: %s", self.opts.excludehop, self.opts.includehop)
             for exclude in self.opts.excludehop:
                 # For each path
                 for link in links:
@@ -502,6 +502,29 @@ class StitchingHandler(object):
 
                     # Put the new objects in the struct
                     pathStruct[scs.HOP_EXCLUSION_TAG] = excludes
+                    profile[path] = pathStruct
+
+            for include in self.opts.includehop:
+                # For each path
+                for link in links:
+                    path = link.getAttribute(Link.CLIENT_ID_TAG)
+                    path = str(path).strip()
+                    if profile.has_key(path):
+                        pathStruct = profile[path]
+                    else:
+                        pathStruct = {}
+
+                    # Get hop_inclusion_list
+                    if pathStruct.has_key(scs.HOP_INCLUSION_TAG):
+                        includes = pathStruct[scs.HOP_INCLUSION_TAG]
+                    else:
+                        includes = []
+
+                    includes.append(include)
+                    self.logger.debug("Including %s from path %s", include, path)
+
+                    # Put the new objects in the struct
+                    pathStruct[scs.HOP_INCLUSION_TAG] = includes
                     profile[path] = pathStruct
 
         if profile != {}:
