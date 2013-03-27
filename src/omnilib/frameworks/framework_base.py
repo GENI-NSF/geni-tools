@@ -148,7 +148,7 @@ class Framework_Base():
     def list_my_slices(self, username):
         """
         Get a list of slices for this user.
-        Returns: a list of slice names
+        Returns: a list of slice URNs
         """
         raise NotImplementedError('list_my_slices')
 

@@ -40,7 +40,7 @@ class Framework(pg_framework):
         self.logger = logging.getLogger("omni.pgch")
 
     def list_my_slices(self, user):
-        '''List slices owned by the user (name or hrn or URN) provided, returning a list of slice names.'''
+        '''List slices owned by the user (name or hrn or URN) provided, returning a list of slice URNs.'''
         userhrn = self.user_name_to_hrn(user)
         return self._list_my_slices(userhrn)
 

@@ -390,7 +390,10 @@ class Framework(Framework_Base):
             self.logger.error("Received error message from PG: %s", output)
             # Return an empty list.
             return list()
-        # value is a dict, containing a list of slices
+
+        # Resolve keys include uuid, slices, urn, subauthorities, name, hrn, gid, pubkeys, email, uid
+
+        # value is a dict, containing a list of slice URNs
         return pg_response['value']['slices']
 
     def _list_my_ssh_keys(self):

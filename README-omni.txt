@@ -45,6 +45,7 @@ New in v2.3:
  error (ticket #249)
  - Busy results from XMLRPC calls missed: is_busy_result looking for
  geni_code in wrong spot (ticket #247)
+ - Ticket #245: Return slice URNs from listmyslices in all cases
  - Various minor code cleanup changes
 
 New in v2.2.1:
