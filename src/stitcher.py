@@ -77,10 +77,10 @@ def call(argv, options=None):
 
     if options is not None and not options.__class__==optparse.Values:
         raise OmniError("Invalid options argument to call: must be an optparse.Values object")
-    
+
     if argv is None or not type(argv) == list:
         raise OmniError("Invalid argv argument to call: must be a list")
-    
+
     ##############################################################################
     # Get a parser from omni that understands omni options
     ##############################################################################
@@ -109,10 +109,10 @@ def call(argv, options=None):
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
-    
+
     # Put our logs in a different file by default
     parser.set_defaults(logoutput='stitcher.log')
-    
+
     # options is an optparse.Values object, and args is a list
     options, args = parser.parse_args(argv)
 
@@ -134,8 +134,8 @@ def call(argv, options=None):
 
     if options.debug:
         logger.info(omni.getSystemInfo())
-            
-    handler = StitchingHandler(options, config, logger)    
+
+    handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 
 # Goal of main is to call the 'call' method and print the result

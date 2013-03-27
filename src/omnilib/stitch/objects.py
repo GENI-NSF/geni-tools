@@ -535,6 +535,7 @@ class Aggregate(object):
 
         domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
 #        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, RSpecParser.PATH_TAG)
         for path in self.paths:
             #self.logger.debug("Looking for node for path %s", path)
             domNode = None

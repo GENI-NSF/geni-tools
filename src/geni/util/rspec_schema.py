@@ -46,3 +46,4 @@ PG_CRED_NAMESPACE = "http://www.protogeni.net/resources/credential/ext/policy/1"
 PG_CRED_SCHEMA = "http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"
 
 STITCH_SCHEMA_V1 = 'http://hpn.east.isi.edu/rspec/ext/stitch/0.1/'
+STITCH_SCHEMA_V2 = 'http://www.geni.net/resources/rspec/ext/stitch/2/'
