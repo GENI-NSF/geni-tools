@@ -82,7 +82,7 @@
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
        On fail: [string None] = omni.py renewslice SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
-       [string listOfSliceNames] = omni.py listmyslices USER
+       [string listOfSliceURNs] = omni.py listmyslices USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
