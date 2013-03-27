@@ -202,7 +202,7 @@ class PGSAnCHServer(object):
         output = None
         value = None
         try:
-            self.logger.debug("Calling register in delegate")
+            self.logger.debug("Calling RenewSlice in delegate")
             value = self._delegate.RenewSlice(args)
         except Exception, e:
             output = str(e)
@@ -456,12 +456,17 @@ class PGClearinghouse(Clearinghouse):
                           # Temporarily hardcode authority keys to get
                           # the user's inside keys
                           [portalCert], portalKey)
+        if not triple:
+            raise Exception("Failed to get inside keys: triple was none")
         if triple['code'] != 0:
-            self.logger.error("Failed to get inside keys for %s: %s",
-                              uuid,
+            self.logger.error("Failed to get inside keys for %s: code %d output %s",
+                              uuid, triple['code'], 
                               triple['output'])
-            return None
+            return (None, None)
         keysdict = triple['value']
+        if keysdict is None:
+            self.logger.error("Failed to get inside keys for %s: value was None. output: %s", uuid, triple['output'])
+            return (None, None)
         inside_key = keysdict['private_key']
         inside_certs = self.split_chain(keysdict['certificate'])
         result = (inside_key, inside_certs)
@@ -503,6 +508,9 @@ class PGClearinghouse(Clearinghouse):
         except Exception, exc:
             self.logger.error("GetCredential got unverifiable experimenter cert: %s", exc)
             raise
+
+        if not user_gid:
+            raise Exception("user_gid is None")
 
         if credential is None:
             # return user credential
@@ -953,8 +961,10 @@ class PGClearinghouse(Clearinghouse):
             sUrn = urn_util.URN(urn=urn)
             slice_name = sUrn.getName()
             slice_auth = sUrn.getAuthority()
+            self.logger.debug("Slice urn %s gives name %s and auth %s. Compare to SLICE_AUTHORITY %s", urn, slice_name, slice_auth, SLICE_AUTHORITY)
             # Compare that with SLICE_AUTHORITY
             project_id = ''
+            project_name = ''
             if slice_auth and slice_auth.startswith(SLICE_AUTHORITY) and len(slice_auth) > len(SLICE_AUTHORITY)+1:
                 project_name = slice_auth[len(SLICE_AUTHORITY)+2:]
                 self.logger.info("Creating slice in project %s" % project_name)
@@ -975,6 +985,8 @@ class PGClearinghouse(Clearinghouse):
                 if projtriple:
                     projval = getValueFromTriple(projtriple, self.logger, "lookup_project for create_slice", unwrap=True)
                     project_id = projval['project_id']
+            if project_id == '':
+                self.logger.warn("Got no project_id")
             argsdict = dict(project_id=project_id, slice_name=slice_name, owner_id=owner_id, project_name=project_name)
             slicetriple = None
             try:
@@ -1252,20 +1264,33 @@ class PGClearinghouse(Clearinghouse):
                     gidO = None
                     hrn = 'AM-hrn-unknown'
                     urn = 'AM-urn-unknown'
+                    if am.has_key('service_urn') and am['service_urn'] is not None and am['service_urn'].strip() != '':
+                        urn = am['service_urn']
+                        hrn = sfa.util.xrn.urn_to_hrn(urn)
+                        self.logger.debug("Got AM urn/hrn from SR: %s (%s)", urn, hrn)
                     if gidS and gidS.strip() != '':
                         self.logger.debug("Got AM cert for url %s:\n%s", url, gidS)
                         try:
                             gidO = gid.GID(string=gidS)
                             urnC = gidO.get_urn()
                             if urnC and urnC.strip() != '':
-                                urn = urnC
+                                if urn and urn != 'AM-urn-unknown' and urn != urnC.strip():
+                                    self.logger.warn("For AM at %s, SR has URN %s, cert says %s", url, urn, urnC)
+                                urn = urnC.strip()
                                 hrn = sfa.util.xrn.urn_to_hrn(urn)
                         except Exception, exc:
                             self.logger.error("ListComponents failed to create AM gid for AM at %s from server_cert we got from server: %s", url, traceback.format_exc())
                     else:
                         gidS = ''
-                    # try except construct gidO. Then pull out URN. Then turn that into hrn
-                    ret.append(dict(gid=gidS, hrn=hrn, url=url, urn=urn))
+
+                    # FIXME: Try to create a urn/hrn from the service_name if none found yet?
+
+                    if gidS and gidS != '' and hrn != 'AM-hrn-unknown' and urn != 'AM-urn-unknown' and url != '':
+                        ret.append(dict(gid=gidS, hrn=hrn, url=url, urn=urn))
+                    else:
+                        # Invalid cert or SR entry. Suppress these for now
+                        self.logger.error("AM with URL %s - invalid hrn (%s) or urn (%s) or gid or url", url, hrn, urn)
+            self.logger.info("ListComponents returning %d entries", len(ret))
             return ret
 
 # End of implementation of PG CH/SA servers
