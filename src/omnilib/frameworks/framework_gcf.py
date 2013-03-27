@@ -90,7 +90,7 @@ class Framework(Framework_Base):
         return aggs
 
     def list_my_slices(self, user):
-        '''List slices owned by the user (name or URN) provided, returning a list of slice names.'''
+        '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         if user is None or user.strip() == '':
             raise Exception('Empty user name')
@@ -111,16 +111,18 @@ class Framework(Framework_Base):
         # FIXME: use any message?
         _ = message #Appease eclipse
 
-        # Return is a urn. Strip out the name
-        slicenames = list()
-        if slices and isinstance(slices, list):
-            for slice in slices:
-                slicelower = string.lower(slice)
-                if not string.find(slicelower, "+slice+"):
-                    continue
-                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
-                slicenames.append(slicename)
-        return slicenames
+#        # Return is a urn. Strip out the name
+#        slicenames = list()
+#        if slices and isinstance(slices, list):
+#            for slice in slices:
+#                slicelower = string.lower(slice)
+#                if not string.find(slicelower, "+slice+"):
+#                    continue
+#                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
+#                slicenames.append(slicename)
+#        return slicenames
+
+        return slices
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""

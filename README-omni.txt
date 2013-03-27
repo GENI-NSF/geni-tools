@@ -40,6 +40,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.3:
  - Ticket #240: don't print ProtoGENI log URL in result summary on success
  - Ticket #242: Be robust to malformed geni_api_versions
+ - Ticket #245: Return slice URNs from listmyslices in all cases
 
 New in v2.2.1:
  - omni-configure: Added support for automatic configuration of omni

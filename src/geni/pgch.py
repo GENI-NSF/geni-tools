@@ -811,11 +811,11 @@ class PGClearinghouse(Clearinghouse):
 
                 # OK, we have a URN
                 slices = self.ListMySlices(urn)
-                # This is a list of URNs. I want names, and keyed by slices=
-                slicenames = list()
-                for slice in slices:
-                    slicenames.append(urn_util.nameFromURN(slice))
-                return dict(slices=slicenames)
+#                # This is a list of URNs. I want names, and keyed by slices=
+#                slicenames = list()
+#                for slice in slices:
+#                    slicenames.append(urn_util.nameFromURN(slice))
+                return dict(slices=slices)
 
             else:
                 # Talking to the real CH. Need a uuid, from which we can get a lot of data about slices
@@ -858,19 +858,24 @@ class PGClearinghouse(Clearinghouse):
                     self.logger.error("Resolve got error getting from lookup_slices. Code: %d, Msg: %s", slicestriple["code"], slicestriple["output"])
                     return slicestriple
 
-                # otherwise, create a list of the slice_name fields, and return that
+                # otherwise, create a list of the slice_urn fields, and return that
                 slices = getValueFromTriple(slicestriple, self.logger, "lookup_slices", unwrap=True)
-                slicenames = list()
+#                slicenames = list()
+                sliceurns = list()
                 if slices:
                     if isinstance(slices, list):
                         for slice in slices:
-                            if isinstance(slice, dict) and slice.has_key('slice_name'):
-                                slicenames.append(slice['slice_name'])
+#                            if isinstance(slice, dict) and slice.has_key('slice_name'):
+#                                slicenames.append(slice['slice_name'])
+#                            else:
+#                                self.logger.error("Malformed entry in list of slices from lookup_slices: %r", slice)
+                            if isinstance(slice, dict) and slice.has_key('slice_urn'):
+                                sliceurns.append(slice['slice_urn'])
                             else:
                                 self.logger.error("Malformed entry in list of slices from lookup_slices: %r", slice)
                     else:
                         self.logger.error("Malformed value (not a list) from lookup_slices: %r", slices)
-                return dict(slices=slicenames)
+                return dict(slices=sliceurns)
 
         else:
             self.logger.error("Unknown type %s" % type)
