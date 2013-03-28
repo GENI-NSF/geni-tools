@@ -61,7 +61,7 @@ REQ_RSPEC_FILE_1="request1.xml"
 REQ_RSPEC_FILE_2="request2.xml"
 REQ_RSPEC_FILE_3="request3.xml"
 BAD_RSPEC_FILE="bad.xml"
-SLEEP_TIME=20 # Pause between AM API calls in seconds
+SLEEP_TIME=30 # Pause between AM API calls in seconds
 
 SUCCESS = 0
 ################################################################################

@@ -510,7 +510,7 @@ Options:
   --ProtoGENIv2         Use ProtoGENI v2 RSpecs instead of GENI 3
   --sleep-time=SLEEP_TIME
                         Time to pause between some AM API calls in seconds
-                        (Default: 20 seconds)
+                        (Default: 30 seconds)
   --monitoring          Print output to allow tests to be used in monitoring.
                         Output is of the form: 'MONITORING test_TestName 1'
                         The third field is 1 if the test is successful and 0

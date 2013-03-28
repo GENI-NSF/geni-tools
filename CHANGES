@@ -26,6 +26,10 @@ gcf 2.3:
   - Ticket #245: Return slice URNs from listmyslices in all cases
   - Various minor code cleanup changes
 
+ * acceptance tests
+  - Increased the default time to sleep between AM API calls to 30
+ seconds, which appears to work more consistently.
+
 gcf 2.2.1:
  * omni:
   - omni-configure: Added support for automatic configuration of omni
