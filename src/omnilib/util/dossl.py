@@ -46,7 +46,8 @@ def is_busy_reply(result):
     """
     return (type(result) == dict
             and result.has_key('code')
-            and (((isinstance(result['code'], str) or isinstance(result['code'], unicode)) and result['code'] == 14) or \
+            and (((isinstance(result['code'], str) or isinstance(result['code'], unicode)) and str(result['code']).strip() == '14') or \
+                     (isinstance(result['code'], int) and result['code'] == 14) or \
                      (isinstance(result["code"], dict) and result["code"].has_key("geni_code") \
                           and isinstance(result["code"]["geni_code"], int) and result["code"]["geni_code"] == 14)))
 
