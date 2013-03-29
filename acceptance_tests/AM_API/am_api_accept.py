@@ -129,7 +129,7 @@ class Test(ut.OmniUnittest):
         rver = self.options_copy.rspectype[1]
 
         # call GetVersion
-        omniargs = ['getversion']
+        omniargs = ['getversion', "-o"]
         self.logger.info("\n=== doing checkRSpecVersion ===")
         (text, version) = self.call(omniargs, self.options_copy)
 
@@ -409,7 +409,7 @@ class Test(ut.OmniUnittest):
             return
 
         # (1) Get the usercredential
-        omniargs = ["getusercred"]
+        omniargs = ["getusercred", "-o"]
         self.logger.info("\n=== Test.test_ListResources_badCredential_badtype -- Should FAIL ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
 
@@ -427,7 +427,7 @@ class Test(ut.OmniUnittest):
         """test_ListResources_slice_with_usercred: Run ListResources with 
         a User Credential pretending to be the slice cred: should fail """
         # (1) Get the usercredential
-        omniargs = ["getusercred"]
+        omniargs = ["getusercred", "-o"]
         self.logger.info("\n=== Test.test_ListResources_slice_with_usercred ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
         self.options_copy.devmode = True
@@ -462,7 +462,7 @@ class Test(ut.OmniUnittest):
         """
 
         # (1) Get the usercredential
-        omniargs = ["getusercred"]
+        omniargs = ["getusercred", "-o"]
         self.logger.info("\n=== Test.test_ListResources_badCredential ===")
         (text, usercredstruct) = self.call(omniargs, self.options_copy)
 
@@ -505,7 +505,7 @@ class Test(ut.OmniUnittest):
         for i in xrange(num_slices):
             slice = slicelist[i]
             # (1) Get the slicecredential
-            omniargs = ["getslicecred", slice]
+            omniargs = ["getslicecred", slice, "-o"]
             self.logger.info("\n=== Test.test_ListResources_wrongSlice ===")
             (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
@@ -636,7 +636,7 @@ class Test(ut.OmniUnittest):
             rspec_namespace = self.ad_namespace
             rspec_schema = self.ad_schema
         
-        omniargs = [] 
+        omniargs = ["-o"] 
         
         if slicename:
             omniargs = omniargs + [AMAPI_call, str(slicename)]
@@ -863,7 +863,7 @@ class Test(ut.OmniUnittest):
                     geni_single_allocation = False
 
                     # 1: Get GetVersion Result
-                    omniargs = ["getversion"]
+                    omniargs = ["getversion", "-o"]
                     (text, ret_dict) = self.call(omniargs, self.options_copy)
                     self.assertTrue(len(ret_dict.keys()) > 0,
                                     "GetVersion returned nothing")
@@ -1289,7 +1289,7 @@ class Test(ut.OmniUnittest):
 
     def getSliceExpiration( self, slicename ):
         # (1) Get the slicecredential
-        omniargs = ["getslicecred", slicename]
+        omniargs = ["getslicecred", slicename, "-o"]
         (text, slicecredstruct) = self.call(omniargs, self.options_copy)
 
         if self.options_copy.api_version >= 3:
@@ -1595,7 +1595,7 @@ class Test(ut.OmniUnittest):
                          % self.options_copy.rspec_file )
        
         # CreateSliver
-        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)] 
+        omniargs = ["createsliver", slice_name, str(self.options_copy.rspec_file)]
         self.logger.info("\n=== Test.subtest_CreateSliver ===")
         text, manifest = self.call(omniargs, self.options_copy)
 
