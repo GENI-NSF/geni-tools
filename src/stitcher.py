@@ -35,8 +35,8 @@ the combined manifest RSpec.'''
 # All calls are APIv2 (hard-coded) currently.
 # Input request RSpec does _not_ need a stitching extension, but should
 # be a single RSpec for all resources that you want in your slice.
-# To create a request that needs stitching, include >=1 <link> elements with 
-# >1 different <component_manager> elements.
+# To create a request that needs stitching, include at least 1 <link> elements with 
+# more than 1 different <component_manager> elements.
 
 # Selected known issues / todos
 # - Thread calls to omni
