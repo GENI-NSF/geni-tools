@@ -118,6 +118,9 @@ Full details on options for each step are described below.
 
    Supply the --debug argument for more detailed logging.
 
+   Supply --user_cred_duration or --slice_duration to modify the
+   default lifetime of those credentials.
+
    See the gcf_config clearinghouse section for relevant constants.  Note
    that slice URNs are globally unique, and constrained to be proper
    children of their Clearinghouse (Slice Authority).  Another
