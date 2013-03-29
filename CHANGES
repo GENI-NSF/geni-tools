@@ -2,13 +2,14 @@
 
 gcf 2.3:
  * Added a new script to do GENI VLAN stitching: stitcher.py
+ See README-stitching.txt
  This script uses the GENI stitching service to expand a request RSpec
  to allow you reserve VLANs that cross between GENI aggregates. 
- 'createsliver' or 'allocate' commands with an RSpec that requires
+ `createsliver` or `allocate` commands with an RSpec that requires
  stitching will be processed by the stitcher code. All other calls
  will be passed directly to Omni.
  All calls are APIv2 (hard-coded) currently. The input request RSpec
- does _not_ need a stitching extension, but should be a single RSpec
+ does ''not'' need a stitching extension, but should be a single RSpec
  for all resources in all aggregates that you want stitched together
  in the slice. To create a request that needs stitching, include at
  least 1 <link> elements with more than 1 different
@@ -19,7 +20,7 @@ gcf 2.3:
   - Ticket #240: don't print ProtoGENI log URL in result summary on
   success
   - Ticket #242: Be robust to malformed geni_api_versions
-  - refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
+  - Refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
   - getversion not caching from PG because the log url looks like an
  error (ticket #249)
   - Busy results from XMLRPC calls missed: is_busy_result looking for
@@ -30,6 +31,10 @@ gcf 2.3:
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
  seconds, which appears to work more consistently.
+  - Suppress some verbose command output by sending results to files.
+
+ * gcf
+  - Restore missing gcf-ch options for specifying credential lifetimes.
 
 gcf 2.2.1:
  * omni:

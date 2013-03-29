@@ -25,9 +25,12 @@ for details on installing Omni.
 See README-omniconfigure.txt or
 http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure for details about how to configure Omni.
 
-The currently supported CFs are SFA (!PlanetLab),
-ProtoGENI and GCF. Omni works with any GENI AM API compliant AM.
-These include SFA, ProtoGENI, !OpenFlow and GCF.
+For 'stitching' support (experimenter defined custom topologies), see README-stitching.txt.
+
+The currently supported Clearinghouses are SFA (!PlanetLab),
+ProtoGENI (aka InstaGENI), GPO Clearinghouse, and GCF. Omni works with
+any GENI AM API compliant AM. These include SFA, ProtoGENI, InstaGENI,
+ExoGENI, !OpenFlow and GCF.
 
 Omni performs the following functions:
  * Talks to each CF in its native API
@@ -38,9 +41,11 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v2.3:
+ - Added a new script to do GENI VLAN stitching: stitcher.py
+ See README-stitching.txt  (Ticket #250)
  - Ticket #240: don't print ProtoGENI log URL in result summary on success
  - Ticket #242: Be robust to malformed geni_api_versions
- - refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
+ - Refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
  - getversion not caching from PG because the log url looks like an
  error (ticket #249)
  - Busy results from XMLRPC calls missed: is_busy_result looking for
