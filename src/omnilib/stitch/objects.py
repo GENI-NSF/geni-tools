@@ -172,6 +172,7 @@ class Aggregate(object):
     SLIVERSTATUS_MAX_TRIES = 10
     SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 100secs is short if ION is busy
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+    MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -213,6 +214,7 @@ class Aggregate(object):
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
+        self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
 
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
@@ -700,7 +702,7 @@ class Aggregate(object):
         opts_copy.output = True
 
         _printResults(opts_copy, self.logger, header, content, self.rspecfileName)
-        self.logger.info("Saved AM %s new request RSpec to file %s", self.urn, self.rspecfileName)
+        self.logger.debug("Saved AM %s new request RSpec to file %s", self.urn, self.rspecfileName)
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
         # In WARN mode, do not write results to a file. And note results also won't be in log (they are at INFO level)
@@ -773,7 +775,7 @@ class Aggregate(object):
                 raise StitchingError(msg)
 
         except AMAPIError, ae:
-            self.logger.warn("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
                     isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
 
@@ -1094,6 +1096,10 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
+        if self.localPickNewVlanTries > MAX_AGG_NEW_VLAN_TRIES:
+            canRedoRequestHere = False
+        else:
+            self.localPickNewVlanTries = self.localPickNewVlanTries + 1
         for hop in self.hops:
             if hop.import_vlans:
                 # Some hops here depend on other AMs. This is a negotiation kind of case
@@ -1199,7 +1205,9 @@ class Aggregate(object):
                     newSug = VLANRange('any')
                 else:
                     # Pick a random tag from range
-                    newSug = iter(hop._hop_link.vlan_range_request).next()
+                    import random
+                    newSug = random.choice(list(hop._hop_link.vlan_range_request))
+#                    newSug = iter(hop._hop_link.vlan_range_request).next()
 
                 # Set that as suggested
                 hop._hop_link.vlan_suggested_request = VLANRange(newSug)
@@ -1209,9 +1217,9 @@ class Aggregate(object):
 
             self.inProcess = False
             if failedHop:
-                msg = "Retry %s with %s new suggested %s (not %s)" % (self, hop, newSug, oldSug)
+                msg = "Retry %s %dth time with %s new suggested %s (not %s)" % (self, self.localPickNewVlanTries, hop, newSug, oldSug)
             else:
-                msg = "Retry %s with new suggested VLANs" % (self)
+                msg = "Retry %s %dth time with new suggested VLANs" % (self, self.localPickNewVlanTries)
             # This error is caught by Launcher, causing this AM to be put back in the ready pool
             raise StitchingRetryAggregateNewVlanError(msg)
 
