@@ -1266,7 +1266,13 @@ class PGClearinghouse(Clearinghouse):
                     urn = 'AM-urn-unknown'
                     if am.has_key('service_urn') and am['service_urn'] is not None and am['service_urn'].strip() != '':
                         urn = am['service_urn']
-                        hrn = sfa.util.xrn.urn_to_hrn(urn)
+                        hrn, typestr = sfa.util.xrn.urn_to_hrn(urn)
+                        ts = typestr.split('+')[1]
+                        hrn = hrn + "." + ts
+                        if '\\' in hrn:
+                            self.logger.debug("urn_to_hrn from service_urn in sr gave %s for urn %s", hrn, urn)
+                            hrn2 = hrn.replace('\\', '')
+                            hrn = hrn2
                         self.logger.debug("Got AM urn/hrn from SR: %s (%s)", urn, hrn)
                     if gidS and gidS.strip() != '':
                         self.logger.debug("Got AM cert for url %s:\n%s", url, gidS)
@@ -1277,7 +1283,13 @@ class PGClearinghouse(Clearinghouse):
                                 if urn and urn != 'AM-urn-unknown' and urn != urnC.strip():
                                     self.logger.warn("For AM at %s, SR has URN %s, cert says %s", url, urn, urnC)
                                 urn = urnC.strip()
-                                hrn = sfa.util.xrn.urn_to_hrn(urn)
+                                hrn, typestr = sfa.util.xrn.urn_to_hrn(urn)
+                                ts = typestr.split('+')[1]
+                                hrn = hrn + "." + ts
+                                if '\\' in hrn:
+                                    self.logger.debug("urn_to_hrn from cert gave %s for urn %s", hrn, urn)
+                                    hrn2 = hrn.replace('\\', '')
+                                    hrn = hrn2
                         except Exception, exc:
                             self.logger.error("ListComponents failed to create AM gid for AM at %s from server_cert we got from server: %s", url, traceback.format_exc())
                     else:
