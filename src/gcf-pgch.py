@@ -109,6 +109,10 @@ def parse_args(argv):
                       help="server port", metavar="PORT")
     parser.add_option("--debug", action="store_true", default=False,
                        help="enable debugging output")
+    parser.add_option("--user_cred_duration", default=geni.pgch.USER_CRED_LIFE, metavar="SECONDS",
+                      help="User credential lifetime in seconds (default %d)" % geni.pgch.USER_CRED_LIFE)
+    parser.add_option("--slice_duration", default=geni.pgch.SLICE_CRED_LIFE, metavar="SECONDS",
+                      help="Slice lifetime in seconds (default %d)" % geni.pgch.SLICE_CRED_LIFE)
     return parser.parse_args()
 
 def main(argv=None): 
