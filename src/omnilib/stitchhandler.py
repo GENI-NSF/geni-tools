@@ -221,7 +221,7 @@ class StitchingHandler(object):
         # existingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
         if self.scsCalls > 1:
-            self.logger.warn("Calling SCS for the %dth time", self.scsCalls)
+            self.logger.info("Calling SCS for the %dth and last time...", self.scsCalls)
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
@@ -263,7 +263,7 @@ class StitchingHandler(object):
 #            raise StitchingCircuitFailedError("testing")
         except StitchingCircuitFailedError, se:
             if self.scsCalls == self.maxSCSCalls:
-                self.logger.warn("Stitching max circuit failures reached")
+                self.logger.warn("Stitching max circuit failures reached - will delete and exit.")
                 self.deleteAllReservations(launcher)
                 raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
             self.logger.warn("Stitching failed but will retry: %s", se)
@@ -278,7 +278,7 @@ class StitchingHandler(object):
             Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
-            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...", Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
+            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
             time.sleep(Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
 
             # construct new SCS args
@@ -665,7 +665,7 @@ class StitchingHandler(object):
 
                         # Hack alert: v3 AM implementations don't work even if they exist
                         if maxVer != 2:
-                            self.logger.info("%s speaks API %d, but sticking with v2", agg, maxVer)
+                            self.logger.info("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
 #                        if self.opts.fakeModeDir:
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
