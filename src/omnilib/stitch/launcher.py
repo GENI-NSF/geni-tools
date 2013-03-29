@@ -49,7 +49,7 @@ class Launcher(object):
                 try:
                     agg.allocate(self.opts, self.slicename, rspec.dom, scsCallCount)
                 except StitchingRetryAggregateNewVlanError, se:
-                    self.logger.debug("Will put %s back in the pool to allocate. Got %s", agg, se)
+                    self.logger.info("Will put %s back in the pool to allocate. Got %s", agg, se)
 
             # FIXME: Do we need to sleep?
 
