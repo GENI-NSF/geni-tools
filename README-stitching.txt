@@ -95,6 +95,10 @@ logging. Currently, stitcher will write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs).
 
+`./stitcherTestFiles` contains a selection of sample request RSpecs
+for use with stitching. Note this is not exhaustive; multiple links
+between the same aggregate pairs are possible for example.
+
 === Options ===
 stitcher is a simple extension of Omni. As such, it uses all the same
 options as Omni. stitcher however adds several options:
@@ -116,7 +120,7 @@ Other options you should not need to use:
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
 
-== Key points ==
+== Tips and Details ==
  - Create a single request RSpec for all aggregates you want linked
  - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in the `<link>`
  - Stitching currently only works at Utah InstaGENI, GPO InstaGENI,
@@ -132,10 +136,14 @@ Other options you should not need to use:
  your request failed.
  - The script return is a single manifest RSpec for all the aggregates where you
  have reservations for this request.
-
-`./stitcherTestFiles` contains a selection of sample request RSpecs
-for use with stitching. Note this is not exhaustive; multiple links
-between the same aggregate pairs are possible for example.
+ - Stitcher will retry when something goes wrong, up to a point. If
+ the failure is isolated to a single aggregate failing to find a VLAN,
+ stitcher retries at just that aggregate (currently up to 50
+ times). If the problem is larger, stitcher will go back to the
+ Stitching Computation Service for a new path recommendation (possibly
+ excluding a failed hop or a set of failed VLAN tags). Stitcher will
+ retry that up to 5 times. After that or on other kinds of errors,
+ stitcher will delete any existing reservations and exit.
 
 === Stitching Computation Service ===
 
@@ -161,6 +169,27 @@ Many connections will cross Internet2's ION network. To support this,
 Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
+
+== Troubleshooting ==
+
+Stitching is new to GENI, and uses several prototype services (this
+client, the Stitching Computation Service, the ION aggregate, as well
+as stitching implementations at aggregates). Therefore, bugs and rough
+edges are expected. Please note failure conditions, expect occasional
+failures, and report any apparent bugs to omni-help@geni.net
+
+Expected failure conditions include:
+ - No path exists between specified endpoints
+ - No VLAN tags available at one of the aggregates
+
+As with Omni errors, when reporting problems please include as much
+detail as possible:
+ - `python src/omni.py --version`
+ - The exact commandline you used to invoke stitcher
+ - The request RSpec you used with stitcher
+ - The last few lines of your call to stitcher - all the logs if
+ possible
+ - The resulting manifest RSpec if the script succeeded
 
 == Known Issues and Limitations ==
  - Aggregate support is limited. Available aggregates as of 3/2013:
