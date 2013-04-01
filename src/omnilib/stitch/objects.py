@@ -1096,7 +1096,7 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if self.localPickNewVlanTries > MAX_AGG_NEW_VLAN_TRIES:
+        if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
