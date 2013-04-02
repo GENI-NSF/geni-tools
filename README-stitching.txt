@@ -198,10 +198,6 @@ as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
 failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
 
-Expected failure conditions include:
- - No path exists between specified endpoints
- - No VLAN tags available at one of the aggregates
-
 As with Omni errors, when reporting problems please include as much
 detail as possible:
  - `python src/omni.py --version`
@@ -210,6 +206,13 @@ detail as possible:
  - The last few lines of your call to stitcher - all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
+
+Some sample error messages and their meaning:
+ - `StitchingServiceFailedError: Error from Stitching Service: code 3: MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.`
+  - Errors like this mean there is no GENI layer 2 path possible
+    between your specified endpoints. Did you specify an `excludehop`
+    or `includehop` you shouldn't have? Follow the set of supported
+    aggregates (below)?
 
 == Known Issues and Limitations ==
  - Aggregate support is limited. Available aggregates as of 3/2013:
