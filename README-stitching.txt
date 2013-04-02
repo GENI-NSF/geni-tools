@@ -16,8 +16,8 @@ network topology, and this client expands that request using the
 necessary resources at each aggregate involved in the topology.
 
 '''Note''': This is new functionality, relying on several prototype services;
-expect problems. If issues arise, email [mailto:omni-help@geni.net
-omni-help@geni.net]. See below for known limitations.
+expect problems. If issues arise, email [mailto:omni-help@geni.net omni-help@geni.net]. 
+See below for known limitations.
 
 Currently, GENI stitching creates point to point (not multipoint or
 broadcast) layer 2 circuits between particular interfaces on
@@ -42,11 +42,12 @@ code will we exercised (otherwise you are just running Omni).
 
 To use stitcher:
 
- 0. Be sure you can run Omni.
+ 1. Be sure you can run Omni.
 
- 1. Design a topology. Write a standard RSpec. Include 1 more more `<link>`s
+ 2. Design a topology. Write a standard RSpec. Include 1 more more `<link>`s
  between interfaces on 2 compute nodes. E.G.
 {{{
+#!xml
   <link client_id="link-pg-utah1-ig-gpo1">
     <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
     <interface_ref client_id="pg-utah1:if0" />
@@ -55,22 +56,25 @@ To use stitcher:
   </link>
 }}}
 
- 2. Create and renew a slice.
+ 3. Create and renew a slice.
 
- 3. Call stitcher just like Omni, but using `stitcher.py`:
+ 4. Call stitcher just like Omni, but using `stitcher.py`:
 {{{
     $ python ./src/stitcher.py -o createsliver <valid slice name> <path to RSpec>
 }}}
 (assuming a valid `omni_config` in the usual spots)
 
- 4. Examine the resulting manifest RSpec. Stitcher returns a single
+ 5. Stitcher will make allocations at ALL aggregates required for your
+ topology. (It ignores the `-a` option.) This may take a while.
+
+ 6. Examine the resulting manifest RSpec. Stitcher returns a single
  combined manifest RSpec, covering all the resources just
  reserved. XML comments at the top of the RSpec summarize the
  aggregates at which reservations were made and the circuits reserved.
 
- 5. Use your resources.
+ 7. Use your resources.
 
- 6. Delete your resources when done. Be sure to delete resources from
+ 8. Delete your resources when done. Be sure to delete resources from
  all aggregates - including any reservations at transit networks you
  did not specify in your original request RSpec.
 
@@ -79,6 +83,14 @@ To use stitcher:
 `createsliver` or `allocate` commands with an RSpec that requires
 stitching will be processed by the stitcher code. All other calls will
 be passed directly to Omni.
+
+The same request RSpec will be submitted to every aggregate required
+for your topology. Stitcher will create reservations at each of these
+aggregates for you. Note however that stitcher only knows how to
+contact aggregates that are involved in the circuits you request -
+nodes you are trying to reserve in the RSpec that are not linked with
+a stitching link will not be reserved, because stitcher does not know
+the URL to contact that aggregate.
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate limitations.
 Your input request RSpec does ''not'' need a stitching extension, but
@@ -134,8 +146,16 @@ Other options you should not need to use:
  aggregates mentioned in your request RSpec, plus any intermediate
  aggregates required to complete your circuit (e.g. ION) - or none, if
  your request failed.
- - The script return is a single manifest RSpec for all the aggregates where you
- have reservations for this request.
+ - Stitcher sends the same request RSpec to all aggregates involved in
+ your request.
+ - Stitcher makes reservations at ''all'' aggregates involved in your
+ stitching circuits. Note however that stitcher only knows how to
+ contact aggregates that are involved in the circuits you request -
+ nodes you are trying to reserve in the RSpec that are not linked with
+ a stitching link will not be reserved, because stitcher does not know
+ the URL to contact that aggregate.
+ - The script return is a single manifest RSpec for all the aggregates
+ where you have reservations for this request.
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
  stitcher retries at just that aggregate (currently up to 50
@@ -151,13 +171,13 @@ For stitching, the request RSpec must specify the exact switches and
 ports to use to connect each aggregate. However, experimenters do not
 need to do this themselves. Instead, there is a Stitching Computation
 Service (SCS) which will fill in these details, including any transit
-networks at which you need a reservation (like ION). For details in
-this service, see
-http://geni.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI
+networks at which you need a reservation (like ION). For details on
+this service, see the
+[http://geni.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI MAX SCS wiki page].
+
 
 Experimenters can of course specify this information themselves, using
-the stitching extension
-(http://hpn.east.isi.edu/rspec/ext/stitch/0.1/stitch-schema.xsd). 
+[http://hpn.east.isi.edu/rspec/ext/stitch/0.1/stitch-schema.xsd the stitching extension]. 
 
 The Stitching Computation Service (SCS), also provides hints to the
 stitcher script on the order in which to make reservations at the
@@ -176,7 +196,7 @@ Stitching is new to GENI, and uses several prototype services (this
 client, the Stitching Computation Service, the ION aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
-failures, and report any apparent bugs to omni-help@geni.net
+failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@geni.net].
 
 Expected failure conditions include:
  - No path exists between specified endpoints
@@ -218,7 +238,7 @@ detail as possible:
  - Consolidate constants
  - Fully handle a VLAN_UNAVAILABLE error from an AM
  - Fully handle negotiating among AMs for a VLAN tag to use
-    As in when the returned suggestedVLANRange is not what was requested
+  - As in when the returned suggestedVLANRange is not what was requested
  - fakeMode is incomplete
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
@@ -235,5 +255,5 @@ detail as possible:
 
 == Related Reading ==
  - [http://geni.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
-- [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
+ - [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
 
