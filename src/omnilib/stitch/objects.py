@@ -26,6 +26,8 @@
 functions for doing allocationg and deletions at aggregates.'''
 
 import copy
+import datetime
+import dateutil
 import json
 import logging
 import os
@@ -40,6 +42,7 @@ import RSpecParser
 from utils import *
 
 import omni
+from omnilib.util import naiveUTC
 from omnilib.util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
 from omnilib.util.dossl import is_busy_reply
 from omnilib.util.omnierror import OmniError, AMAPIError
@@ -529,6 +532,25 @@ class Aggregate(object):
         # For each path on this AM, get that Path to write whatever it thinks necessary into a
         # deep clone of the incoming RSpec Dom
         requestRSpecDom = originalRSpec.cloneNode(True)
+
+        # If this is PG Utah and the rspec has an expires attribute
+        # and the value is > 7200min/5days from now, reset expires to
+        # 7200min/5 days from now -- PG sets a max for slivers of
+        # 7200, and fails your request if it is more
+        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
+            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
+                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+                expiresDT = dateutil.parser.parse(expires) # produce a datetime
+                now = datetime.datetime.utcnow()
+                pgmax = datetime.timedelta(minutes=7200)
+                if expiresDT - now > pgmax:
+                    newExpiresDT = now + pgmax
+                    newExpires = naiveUTC(newExpiresDT).isoformat()
+                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers" +
+                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
+                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+
         stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
