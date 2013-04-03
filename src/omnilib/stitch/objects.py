@@ -537,6 +537,8 @@ class Aggregate(object):
         # and the value is > 7200min/5days from now, reset expires to
         # 7200min/5 days from now -- PG sets a max for slivers of
         # 7200, and fails your request if it is more
+        # symptom is this error from createsliver: 
+        # "expiration is greater then the maximum number of minutes 7200"
         if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
             rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
             if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
@@ -547,7 +549,7 @@ class Aggregate(object):
                 if expiresDT - now > pgmax:
                     newExpiresDT = now + pgmax
                     newExpires = naiveUTC(newExpiresDT).isoformat()
-                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers" +
+                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
                                      "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
                     rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
 
