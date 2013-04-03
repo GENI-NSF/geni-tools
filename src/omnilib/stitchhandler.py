@@ -269,7 +269,7 @@ class StitchingHandler(object):
             self.logger.warn("Stitching failed but will retry: %s", se)
             success = self.deleteAllReservations(launcher)
             if not success:
-                raise StitchingError("Stitching failed. Would retry but delete had errors. Last Stitching error: %s", se)
+                raise StitchingError("Stitching failed. Would retry but delete had errors. Last Stitching error: %s" % se)
 
             # Flush the cache of aggregates. Loses all state. Avoids
             # double adding hops to aggregates, etc. But we lose the vlans_unavailable. And ?
