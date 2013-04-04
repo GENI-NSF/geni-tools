@@ -81,7 +81,7 @@ class CommandHandler(object):
         if not os.path.getsize(keyfile) > 0:
             sys.exit("Clearinghouse keyfile %s is empty" % keyfile)
 
-        ch = PGClearinghouse(True)
+        ch = PGClearinghouse((not opts.use_gpo_ch))
         # address is a tuple in python socket servers
         addr = (opts.host, int(opts.port))
         # rootcafile is turned into a concatenated file for Python SSL use inside ch.py
@@ -113,6 +113,8 @@ def parse_args(argv):
                       help="User credential lifetime in seconds (default %d)" % geni.pgch.USER_CRED_LIFE)
     parser.add_option("--slice_duration", default=geni.pgch.SLICE_CRED_LIFE, metavar="SECONDS",
                       help="Slice lifetime in seconds (default %d)" % geni.pgch.SLICE_CRED_LIFE)
+    parser.add_option("--use-gpo-ch", default=False, action="store_true",
+                      help="Use remote GPO Clearinghouse (default False) or the local GCF Clearinghouse")
     return parser.parse_args()
 
 def main(argv=None): 
@@ -143,7 +145,7 @@ def main(argv=None):
         if not hasattr(opts,key):
             setattr(opts,key,val)
     if getattr(opts,'rootcadir') is None:
-        setattr(opts,'rootcadir',config['global']['rootcadir'])        
+        setattr(opts,'rootcadir',config['global']['rootcadir'])
     config['debug'] = opts.debug
 
     ch = CommandHandler()        
