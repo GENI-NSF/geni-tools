@@ -424,7 +424,10 @@ class PGClearinghouse(Clearinghouse):
         # or "/ch" for SA or CH respectively.
         self._server.RequestHandlerClass = PgChRequestHandler
         self._server.register_instance(PGSAnCHServer(self, self.logger))
-        self.logger.info('GENI PGCH Listening on port %d...' % (addr[1]))
+        if self.gcf:
+            self.logger.info('GENI GCF PGCH Listening on port %d...' % (addr[1]))
+        else:
+            self.logger.info('GENI GPO CH PGCH Listening on port %d...' % (addr[1]))
         self._server.serve_forever()
 
     def readfile(self, path):
