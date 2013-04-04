@@ -543,10 +543,13 @@ class Aggregate(object):
             rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
             if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
                 expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
-                expiresDT = dateutil.parser.parse(expires) # produce a datetime
-                now = datetime.datetime.utcnow()
-                pgmax = datetime.timedelta(minutes=7200)
+                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
+                now = naiveUTC(datetime.datetime.utcnow())
+                # Hack - decrease expires by 6 hours cause PG is in
+                # mountain time ***
+                pgmax = datetime.timedelta(minutes=(7200-20-360)) # allow 20 minutes slop time to get the request RSpec to the AM
                 if expiresDT - now > pgmax:
+#                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
                     newExpiresDT = now + pgmax
                     newExpires = naiveUTC(newExpiresDT).isoformat()
                     self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
@@ -1349,6 +1352,8 @@ class Aggregate(object):
         # FIXME: Take scsCallCount as well?
         gotBusy = False
         busyCtr = 0
+        text = ""
+        result = None
         while busyCtr < self.BUSY_MAX_TRIES:
             try:
                 ctr = ctr + 1
@@ -1362,6 +1367,9 @@ class Aggregate(object):
                     self.logger.debug("%s got BUSY doing %s", self, opName)
                     time.sleep(self.BUSY_POLL_INTERVAL_SEC)
                     busyCtr = busyCtr + 1
+                    if busyCtr == self.BUSY_MAX_TRIES:
+                        raise ae
+                    text = str(ae)
                 else:
                     raise ae
         return (text, result)
