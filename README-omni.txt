@@ -50,7 +50,10 @@ New in v2.3:
  error (ticket #249)
  - Busy results from XMLRPC calls missed: is_busy_result looking for
  geni_code in wrong spot (ticket #247)
+ - Ensure RSpec test code can call rspeclint (ticket #246)
  - Ticket #245: Return slice URNs from listmyslices in all cases
+ - Ticket #226: Look for python in environment in scripts in a more
+ friendly way
  - Various minor code cleanup changes
 
 New in v2.2.1:

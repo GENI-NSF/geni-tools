@@ -25,16 +25,22 @@ gcf 2.3:
  error (ticket #249)
   - Busy results from XMLRPC calls missed: is_busy_result looking for
  geni_code in wrong spot (ticket #247)
+  - Ensure RSpec test code can call rspeclint (ticket #246)
   - Ticket #245: Return slice URNs from listmyslices in all cases
+  - Ticket #226: Look for python in environment in scripts in a more
+ friendly way
   - Various minor code cleanup changes
 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
  seconds, which appears to work more consistently.
   - Suppress some verbose command output by sending results to files.
+  - Ticket #236: Use the getversion cache when not testing getversion
 
  * gcf
   - Restore missing gcf-ch options for specifying credential lifetimes.
+  - gcf-pgch takes a new `--use-gpo-ch` option to force using the
+ remote GPO Clearinghouse (ticket #255)
 
 gcf 2.2.1:
  * omni:
