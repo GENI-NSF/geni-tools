@@ -129,7 +129,7 @@ class Test(ut.OmniUnittest):
         rver = self.options_copy.rspectype[1]
 
         # call GetVersion
-        omniargs = ['getversion', "-o"]
+        omniargs = ['getversion', "-o", "--ForceUseGetVersionCache"]
         self.logger.info("\n=== doing checkRSpecVersion ===")
         (text, version) = self.call(omniargs, self.options_copy)
 
@@ -863,7 +863,7 @@ class Test(ut.OmniUnittest):
                     geni_single_allocation = False
 
                     # 1: Get GetVersion Result
-                    omniargs = ["getversion", "-o"]
+                    omniargs = ["getversion", "-o", "--ForceUseGetVersionCache"]
                     (text, ret_dict) = self.call(omniargs, self.options_copy)
                     self.assertTrue(len(ret_dict.keys()) > 0,
                                     "GetVersion returned nothing")
