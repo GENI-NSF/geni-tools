@@ -779,7 +779,13 @@ class StitchingHandler(object):
         if rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
             self.logger.debug("Not over-riding expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
             return
-        rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, sliceexp.isoformat())
+
+        # Some PG based AMs cannot handle fractional seconds, and
+        # erroneously treat expires as in local time. So (a) avoid
+        # microseconds, and (b) explicitly note this is in UTC.
+        # So this is sliceexp.isoformat() except without the
+        # microseconds and with the Z
+        rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
  
     def confirmSafeRequest(self):

@@ -545,13 +545,16 @@ class Aggregate(object):
                 expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
                 expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
                 now = naiveUTC(datetime.datetime.utcnow())
-                # Hack - decrease expires by 6 hours cause PG is in
-                # mountain time ***
-                pgmax = datetime.timedelta(minutes=(7200-20-360)) # allow 20 minutes slop time to get the request RSpec to the AM
+                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
                 if expiresDT - now > pgmax:
 #                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
                     newExpiresDT = now + pgmax
-                    newExpires = naiveUTC(newExpiresDT).isoformat()
+                    # Some PG based AMs cannot handle fractional seconds, and
+                    # erroneously treat expires as in local time. So (a) avoid
+                    # microseconds, and (b) explicitly note this is in UTC.
+                    # So this is .isoformat() except without the
+                    # microseconds and with the Z
+                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
                     self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
                                      "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
                     rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
@@ -975,7 +978,7 @@ class Aggregate(object):
         # End of while loop getting sliverstatus
 
         if status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready'):
-            self.logger.warn("%s is %s at %s. Treat as VLAN unavailable.", opName, status, self)
+            self.logger.warn("%s is (still) %s at %s. Treat as VLAN unavailable.", opName, status, self)
             # deleteReservation
             opName = 'deletesliver'
             if self.api_version > 2:
