@@ -120,7 +120,8 @@ class Framework(pg_framework):
             auth = sa_host
 
         # Authority is of form: host:project
-        auth = auth+":"+project
+        baseauth = auth
+        auth = baseauth+":"+project
 
         # Could use is_valid_urn_bytype here, or just let the SA/AM do the check
         if is_valid_urn(name):
@@ -129,6 +130,8 @@ class Framework(pg_framework):
                 raise Exception("Invalid Slice name: got a non Slice URN %s"% name)
             # if config has an authority, make sure it matches
             urn_auth = string_to_urn_format(urn.getAuthority())
+            if not urn_auth.startswith(baseauth):
+                self.logger.warn("Slice authority (%s) didn't start with expected authority name: %s", urn_auth, baseauth)
             if urn_auth != auth:
                 self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_auth, auth))
                 self.logger.info("This may be OK though if you are using delegated slice credentials...")
