@@ -55,6 +55,9 @@ New in v2.3:
  - Ticket #226: Look for python in environment in scripts in a more
  friendly way
  - Update sample omni_config (ticket #258)
+ - Added `listslices` alias for `listmyslices`, and made username
+ argument optional (defaults to your username). (ticket #256)
+ - Log ProtoGENI log URL on clearinghouse errors (ticket #251)
  - Various minor code cleanup changes
 
 New in v2.2.1:
@@ -532,7 +535,7 @@ outstanding slices. Then you can choose to delete or renew them as
 needed. If you don't recall when your slice expires, use
 `print_slice_expiration` to remind yourself. 
 
- To List your slices : `omni.py listmyslices <username>`
+ To List your slices : `omni.py listmyslices`
 
  To Print slice expiration : `omni.py print_slice_expiration MySlice`
     
@@ -580,7 +583,8 @@ omni.py [options] <command and arguments>
                          getslicecred <slicename>                                             
                          renewslice <slicename> <new expiration time in UTC>                  
                          deleteslice <slicename>                                              
-                         listmyslices <username>                                              
+			 listslices [optional: username] [Alias for listmyslices]
+			 listmyslices [optional: username]
                          listmykeys                                                           
                          getusercred                                                          
                          print_slice_expiration <slicename>                                   

@@ -673,7 +673,8 @@ def getParser():
  \t\t\t getslicecred <slicename> \n\
  \t\t\t renewslice <slicename> <new expiration time in UTC> \n\
  \t\t\t deleteslice <slicename> \n\
- \t\t\t listmyslices <username> \n\
+ \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
+ \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\

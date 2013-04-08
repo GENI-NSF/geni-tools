@@ -253,13 +253,32 @@ class CHCallHandler(object):
         self.logger.info(prtStr)
         return prtStr, retVal
 
+    def listslices(self, args):
+        """Alias for listmyslices.
+        Provides a list of slices of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks."""
+        return self.listmyslices(args)
+
     def listmyslices(self, args):
-        """Provides a list of slices of user provided as first argument.
+        """Provides a list of slices of user provided as first
+        argument, or current user if no username supplied.
         Not supported by all frameworks."""
         if len(args) > 0:
             username = args[0].strip()
         else:
-            self._raise_omni_error('listmyslices requires 1 arg: user')
+            if self.opts.api_version >= 3:
+                (cred, message) = self.framework.get_user_cred_struct()
+            else:
+                (cred, message) = self.framework.get_user_cred()
+            credxml = credutils.get_cred_xml(cred)
+            if cred is None or credxml is None or credxml == "":
+                self._raise_omni_error("listmyslices failed to get your user credential: %s" % message)
+            usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
+            if usermatch:
+                username = usermatch.group(1)
+            else:
+                self._raise_omni_error("listmyslices failed to find your username")
 
         retStr = ""
         (slices, message) = _do_ssl(self.framework, None, "List Slices from Slice Authority", self.framework.list_my_slices, username)

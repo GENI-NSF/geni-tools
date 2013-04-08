@@ -94,6 +94,12 @@ class Framework(Framework_Base):
                 #'https://boss.emulab.net:443/protogeni/xmlrpc/am'
         #}
         
+    def _get_log_url(self, response):
+        url = None
+        if not response or not isinstance(response, dict) or not response.has_key('protogeni_error_url'):
+            return url
+        return response['protogeni_error_url']
+
     def get_user_cred(self):
         message = ""
         if self.user_cred == None:
@@ -107,13 +113,18 @@ class Framework(Framework_Base):
                 return None, message
                                   
             code = pg_response['code']
+            log = self._get_log_url(pg_response)
             if code:
                 self.logger.error("Failed to get a PG user credential: Received error code: %d", code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
+                if log:
+                    self.logger.error("See log: %s", log)
                 #return None
             else:
                 self.user_cred = pg_response['value']
+                if log:
+                    self.logger.debug("PG log url: %s", log)
         return self.user_cred, message
     
     def get_slice_cred(self, urn):
@@ -132,6 +143,9 @@ class Framework(Framework_Base):
         self.logger.debug("Got resolve response %r", response)
         if response is None:
             raise Exception("Failed to find PG slice %s: %s" % (urn, message))
+        log = self._get_log_url(response)
+        if log:
+            self.logger.debug("PG resolve slice log: %s", log)
         if response['code']:
             # Unable to resolve, slice does not exist
             raise Exception('PG Slice %s does not exist.' % (urn))
@@ -141,18 +155,29 @@ class Framework(Framework_Base):
             (response, message) = _do_ssl(self, None, ("Get PG slice credential for %s from SA %s" % (urn, self.config['sa'])), self.sa.GetCredential, params)
             if response is None:
                 raise Exception("Failed to get PG slice %s credential: %s" % (urn, message))
+
+            log = self._get_log_url(response)
+
             # When the CM is busy, it return error 14: 'slice is busy; try again later'
             # FIXME: All server calls should check for that 'try again later' and retry,
             # as dossl does when the AM raises that message in an XMLRPC fault
             if response['code']:
+                if log:
+                    self.logger.error("PG GetCredential for slice log: %s", log)
                 raise Exception("Failed to get PG slice %s credential: Error: %d, Message: %s" % (urn, response['code'], response['output']))
             if not response.has_key('value'):
                 self.logger.debug("Got GetCredential response %r", response)
+                if log:
+                    self.logger.error("PG GetCredential for slice log: %s", log)
                 raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
             if not type(response['value']) is str:
                 self.logger.debug("Got GetCredential response %r", response)
+                if log:
+                    self.logger.error("PG GetCredential for slice log: %s", log)
                 raise Exception("Failed to get valid PG slice credential for %s. Got non string: %r" % (urn, response['value']))
 
+            if log:
+                self.logger.debug("PG GetCredential for slice log: %s", log)
             return response['value']
 
     def slice_name_to_urn(self, name):
@@ -233,8 +258,13 @@ class Framework(Framework_Base):
                 self.logger.error("Failed to create new PG slice %s: %s", urn, message)
                 # FIXME: Return an error message?
                 return None
-            elif response['code']:
+            log = self._get_log_url(response)
+            if response['code']:
                 self.logger.error('Failed to create new PG slice %s: %s (code %d)', urn, response['output'], response['code'])
+                if log:
+                    self.logger.info("PG log url: %s", log)
+            elif log:
+                self.logger.debug("PG log url: %s", log)
             return response['value']
         else:
             # Slice exists, get credential and return it
@@ -244,8 +274,13 @@ class Framework(Framework_Base):
                 self.logger.error("Failed to get credential for existing PG slice %s", urn)
                 # FIXME: Return an error message?
                 return None
-            elif response['code']:
+            log = self._get_log_url(response)
+            if response['code']:
                 self.logger.error('Failed to get credential for existing PG slice %s: %s (code %d)', urn, response['output'], response['code'])
+                if log:
+                    self.logger.info("PG log url: %s", log)
+            elif log:
+                self.logger.debug("PG log url: %s", log)
             if not response.has_key('value'):
                 self.logger.debug("Got GetCredential response %r", response)
                 raise Exception("Failed to get valid PG slice credential for %s. Response had no value." % urn)
@@ -326,10 +361,14 @@ class Framework(Framework_Base):
             if response is None:
                 msg = msg % (urn, message)
             else:
-                msg = msg % (urn, response['output'])
+                log = self._get_log_url(response)
+                msg = msg % (urn, response['output'] + (". PG log url: %s" % log))
             self.logger.warning(msg)
             return None
         else:
+            log = self._get_log_url(response)
+            if log:
+                self.logger.debug("PG slice GetCredential log: %s", log)
             slice_cred = response['value']
             expiration = expiration_dt.isoformat()
             self.logger.info('Requesting new slice expiration %r', expiration)
@@ -342,11 +381,16 @@ class Framework(Framework_Base):
                 if response is None:
                     msg = msg % (urn, message)
                 else:
-                    msg = msg % (urn, "PG SA said: " + response['output'])
+                    log = self._get_log_url(response)
+                    msg = msg % (urn, "PG SA said: " + response['output'] + (". PG log url: %s" % log))
                 self.logger.warning(msg)
                 return None
             else:
                 # Success. requested expiration worked, return it.
+
+                log = self._get_log_url(response)
+                if log:
+                    self.logger.debug("PG RenewSlice log: %s", log)
 
                 # FIXME: response['value'] is the new slice
                 # cred. Could parse the new expiration date out of
@@ -383,11 +427,14 @@ class Framework(Framework_Base):
             self.logger.error("Cannot list slices: %s", message)
             return list()
 
+        log = self._get_log_url(pg_response)
         code = pg_response['code']
         if code:
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
             self.logger.error("Received error message from PG: %s", output)
+            if log:
+                self.logger.error("PG log url: %s", log)
             # Return an empty list.
             return list()
 
@@ -406,11 +453,14 @@ class Framework(Framework_Base):
             self.logger.error("Cannot get user's public SSH keys: %s", message)
             return list()
 
+        log = self._get_log_url(pg_response)
         code = pg_response['code']
         if code:
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
             self.logger.error("Received error message from PG: %s", output)
+            if log:
+                self.logger.error("PG log url: %s", log)
             # Return an empty list.
             return list()
 
@@ -443,6 +493,9 @@ class Framework(Framework_Base):
                 self.logger.error("Received error code: %d", pg_response['code'])
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
+                log = self._get_log_url(pg_response)
+                if log:
+                    self.logger.error("PG log url: %s", log)
             # Return an empty list.
             return list()
         # value is a list of dicts, each containing info about an aggregate

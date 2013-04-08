@@ -30,6 +30,9 @@ gcf 2.3:
   - Ticket #226: Look for python in environment in scripts in a more
  friendly way
   - Update sample omni_config (ticket #258)
+  - Added `listslices` alias for `listmyslices`, and made username
+  argument optional (defaults to your username). (ticket #256)
+  - Log ProtoGENI log URL on clearinghouse errors (ticket #251)
   - Various minor code cleanup changes
 
  * acceptance tests
