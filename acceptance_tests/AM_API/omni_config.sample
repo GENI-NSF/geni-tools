@@ -77,9 +77,6 @@ eg-of-bbn=,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1
 
-eg-fiu=,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-eg-of-fiu=,https://fiu-hn.exogeni.net:3626/foam/gapi/1
-
 # ExoSM
 eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
 
@@ -111,24 +108,6 @@ ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
-
-ig-northwestern1=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://boss.instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
-ig-northwestern2=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://boss.instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
-ig-northwestern3=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://boss.instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0
-ig-northwestern=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://boss.instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
-ig-of-northwestern=,https://foam.instageni.northwestern.edu:3626/foam/gapi/1
-
-ig-gatech1=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://boss.instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/1.0
-ig-gatech2=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://boss.instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
-ig-gatech3=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://boss.instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/3.0
-ig-gatech=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://boss.instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
-ig-of-gatech=,https://foam.instageni.rnoc.gatech.edu:3626/foam/gapi/1
-
-ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://boss.geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
-ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://boss.geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
-ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://boss.geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
-ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://boss.geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
-ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
 
 [pg-gpo]
 type=pg
