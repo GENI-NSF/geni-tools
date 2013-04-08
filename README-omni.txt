@@ -54,6 +54,7 @@ New in v2.3:
  - Ticket #245: Return slice URNs from listmyslices in all cases
  - Ticket #226: Look for python in environment in scripts in a more
  friendly way
+ - Update sample omni_config (ticket #258)
  - Various minor code cleanup changes
 
 New in v2.2.1:
