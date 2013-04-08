@@ -43,6 +43,7 @@ gcf 2.3:
   - Restore missing gcf-ch options for specifying credential lifetimes.
   - gcf-pgch takes a new `--use-gpo-ch` option to force using the
  remote GPO Clearinghouse (ticket #255)
+  - gcf-test supplies proper namespaces in request RSpecs (ticket #254)
 
 gcf 2.2.1:
  * omni:

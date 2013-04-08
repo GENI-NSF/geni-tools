@@ -99,8 +99,12 @@ def test_create_sliver(server, slice_urn, slice_credential, dom, api_version=2):
         # FIXME: Build up a request_rspec for real
         nodes = dom.getElementsByTagName('node')
         dom_impl = minidom.getDOMImplementation()
-        request_rspec = dom_impl.createDocument(None, 'rspec', None)
+        request_rspec = dom_impl.createDocument("http://www.geni.net/resources/rspec/3", 'rspec', None)
         top = request_rspec.documentElement
+        top.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        top.setAttribute("xsi:schemaLocation", "http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/request.xsd")
+        top.setAttribute("xmlns", "http://www.geni.net/resources/rspec/3")
+        top.setAttribute("type", "request")
         if nodes.length == 0:
             print 'failed: no nodes available'
             return
