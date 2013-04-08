@@ -362,7 +362,10 @@ class Framework(Framework_Base):
                 msg = msg % (urn, message)
             else:
                 log = self._get_log_url(response)
-                msg = msg % (urn, response['output'] + (". PG log url: %s" % log))
+                if log:
+                    msg = msg % (urn, response['output'] + (". PG log url: %s" % log))
+                else:
+                    msg = msg % (urn, response['output'])
             self.logger.warning(msg)
             return None
         else:
@@ -382,7 +385,10 @@ class Framework(Framework_Base):
                     msg = msg % (urn, message)
                 else:
                     log = self._get_log_url(response)
-                    msg = msg % (urn, "PG SA said: " + response['output'] + (". PG log url: %s" % log))
+                    if log:
+                        msg = msg % (urn, "PG SA said: " + response['output'] + (". PG log url: %s" % log))
+                    else:
+                        msg = msg % (urn, "PG SA said: " + response['output'])
                 self.logger.warning(msg)
                 return None
             else:
