@@ -63,7 +63,7 @@ import os
 import sys
 
 import omni
-from omnilib.util import OmniError
+from omnilib.util import OmniError, AMAPIError
 from omnilib.stitchhandler import StitchingHandler
 from omnilib.stitch.utils import StitchingError
 
@@ -152,6 +152,14 @@ def main(argv=None):
 #        return result
 #    else:
         print text
+    except AMAPIError, ae:
+        if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key('code'):
+            if isinstance(ae.returnstruct['code'], int) or isinstance(ae.returnstruct['code'], str):
+                sys.exit(int(ae.returnstruct['code']))
+            if isinstance(ae.returnstruct['code'], dict) and ae.returnstruct['code'].has_key('geni_code'):
+                sys.exit(int(ae.returnstruct['code']['geni_code']))
+        sys.exit(ae)
+
     except OmniError, oe:
         sys.exit(oe)
 
