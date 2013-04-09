@@ -32,6 +32,7 @@ import datetime
 import traceback
 import uuid as uuidModule
 import os
+import xmlrpclib
 
 import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCRequestHandler
@@ -582,7 +583,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # Need the slice_id given the urn
         # need the client cert
@@ -678,7 +682,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # confirm type is Slice or User
         if not type:
@@ -932,7 +939,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # confirm type is Slice or User
         if not type:
@@ -1082,7 +1092,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # get Slice UUID (aka slice_id)
         slice_cert = sfa.trust.credential.Credential(string=credential).get_gid_object()
@@ -1174,7 +1187,11 @@ class PGClearinghouse(Clearinghouse):
         creds.append(credential)
         privs = ()
 #        self.logger.info("type of credential: %s. Type of creds: %s", type(credential), type(creds))
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
 #        self.logger.info("getkeys did cred verify")
         # With the real CH, the SSH keys are held by the portal, not the CH
         # see db-util.php#fetchSshKeys which queries the ssh_key table in the portal DB
@@ -1245,7 +1262,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         if self.gcf:
             ret = list()

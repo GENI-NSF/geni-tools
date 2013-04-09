@@ -48,6 +48,7 @@ gcf 2.3:
  remote GPO Clearinghouse (ticket #255)
   - gcf-test supplies proper namespaces in request RSpecs (ticket #254)
   - pgch tests slice authority and project name for errors (ticket #243)
+  - cred_util CredentialVerifier does not raise XMLRPC faults (ticket #120)
 
 gcf 2.2.1:
  * omni:

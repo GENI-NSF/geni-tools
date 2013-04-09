@@ -34,6 +34,7 @@ import logging
 import os
 import uuid
 import xml.dom.minidom as minidom
+import xmlrpclib
 import zlib
 
 import geni
@@ -168,10 +169,14 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                credentials,
-                                                None,
-                                                privileges)
+        try:
+            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                    credentials,
+                                                    None,
+                                                    privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
 
@@ -258,10 +263,14 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
-        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                        credentials,
-                                                        slice_urn,
-                                                        privileges)
+        try:
+            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                            credentials,
+                                                            slice_urn,
+                                                            privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
@@ -352,10 +361,14 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                credentials,
-                                                slice_urn,
-                                                privileges)
+        try:
+            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                    credentials,
+                                                    slice_urn,
+                                                    privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
@@ -392,10 +405,14 @@ class ReferenceAggregateManager(object):
         # EG the 'info' privilege in a credential allows the operations
         # listslices, listnodes, policy
         privileges = (SLIVERSTATUSPRIV,)
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                credentials,
-                                                slice_urn,
-                                                privileges)
+        try:
+            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                    credentials,
+                                                    slice_urn,
+                                                    privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         if slice_urn in self._slices:
             theSlice = self._slices[slice_urn]
             # Now calculate the status of the sliver
@@ -432,10 +449,14 @@ class ReferenceAggregateManager(object):
 
         self.logger.info('RenewSliver(%r, %r)' % (slice_urn, expiration_time))
         privileges = (RENEWSLIVERPRIV,)
-        creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                        credentials,
-                                                        slice_urn,
-                                                        privileges)
+        try:
+            creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                            credentials,
+                                                            slice_urn,
+                                                            privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         # All the credentials we just got are valid
         if slice_urn in self._slices:
             # If any credential will still be valid at the newly
@@ -479,10 +500,14 @@ class ReferenceAggregateManager(object):
         behaving sliver, without deleting it to allow for forensics.'''
         self.logger.info('Shutdown(%r)' % (slice_urn))
         privileges = (SHUTDOWNSLIVERPRIV,)
-        self._cred_verifier.verify_from_strings(self._server.pem_cert,
-                                                        credentials,
-                                                        slice_urn,
-                                                        privileges)
+        try:
+            self._cred_verifier.verify_from_strings(self._server.pem_cert,
+                                                    credentials,
+                                                    slice_urn,
+                                                    privileges)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
         if slice_urn in self._slices:
             resources = self._agg.catalog(slice_urn)
             for resource in resources:
