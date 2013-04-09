@@ -381,10 +381,12 @@ class StitchingHandler(object):
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
-        Check: >=1 link in main body with >= 2 diff component_manager names and no shared_vlan extension'''
+        Check: >=1 link in main body with >= 2 diff component_manager
+        names and no shared_vlan extension and no non-VLAN link_type
+        '''
         if requestRSpecObject:
             for link in requestRSpecObject.links:
-                if len(link.aggregates) > 1 and not link.hasSharedVlan:
+                if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     return True
         return False
 

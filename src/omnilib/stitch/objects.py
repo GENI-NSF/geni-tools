@@ -1643,6 +1643,8 @@ class Link(GENIObject):
     INTERFACE_REF_TAG = 'interface_ref'
     NAME_TAG = 'name'
     SHARED_VLAN_TAG = 'link_shared_vlan'
+    LINK_TYPE_TAG = 'link_type'
+    VLAN_LINK_TYPE = 'vlan'
 
     @classmethod
     def fromDOM(cls, element):
@@ -1652,6 +1654,7 @@ class Link(GENIObject):
         refs = []
         aggs = []
         hasSharedVlan = False
+        typeName = cls.VLAN_LINK_TYPE
         for child in element.childNodes:
             if child.localName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
@@ -1666,10 +1669,14 @@ class Link(GENIObject):
             elif child.localName == cls.SHARED_VLAN_TAG:
 #                print 'got shared vlan'
                 hasSharedVlan = True
+            elif child.localName == cls.LINK_TYPE_TAG:
+                name = child.getAttribute(cls.NAME_TAG)
+                typeName = str(name).strip().lower()
         link = Link(client_id)
         link.aggregates = aggs
         link.interfaces = refs
         link.hasSharedVlan = hasSharedVlan
+        link.typeName = typeName
         return link
 
     def __init__(self, client_id):
@@ -1678,6 +1685,7 @@ class Link(GENIObject):
         self._aggregates = []
         self._interfaces = []
         self.hasSharedVlan = False
+        self.typeName = self.VLAN_LINK_TYPE
 
     @property
     def interfaces(self):

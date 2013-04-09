@@ -96,7 +96,8 @@ All calls use AM APIv2 (hard-coded) currently, due to aggregate limitations.
 Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
 To create a request that needs stitching, include at least 1 `<link>` elements with 
-more than 1 different `<component_manager>` elements.
+more than 1 different `<component_manager>` elements (and no
+`<shared_vlan>` element and no `<link_type>` element of other than `VLAN`).
 
 The result of stitcher is a single combined manifest RSpec, showing
 all resources reserved as a result of this request.

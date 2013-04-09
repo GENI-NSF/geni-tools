@@ -36,7 +36,8 @@ the combined manifest RSpec.'''
 # Input request RSpec does _not_ need a stitching extension, but should
 # be a single RSpec for all resources that you want in your slice.
 # To create a request that needs stitching, include at least 1 <link> elements with 
-# more than 1 different <component_manager> elements.
+# more than 1 different <component_manager> elements (and no
+#     shared_vlan element or link_type of other than VLAN)
 
 # Selected known issues / todos
 # - Thread calls to omni
