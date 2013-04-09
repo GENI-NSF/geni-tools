@@ -813,13 +813,22 @@ various aggregates.
 Note that !DeleteSlice is not supported by all control frameworks: some just
 let slices expire.
 
+==== listslices ====
+List slices registered under the given username at the configured
+slice authority.
+Alias for `listmyslices`.
+
 ==== listmyslices ====
-List slices registered under the given username.
+List slices registered under the given username at the configured
+slice authority.
 Not supported by all frameworks.
 
-Format: `omni.py listmyslices <username>`
+Format: `omni.py listmyslices [optional: username]`
 
 Sample Usage: `omni.py listmyslices jdoe`
+
+With no `username` supplied, it will look up slices registered to you
+(the user whose certificate is supplied).
 
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
