@@ -66,11 +66,6 @@ def create_uuid():
 
 
 class GID(Certificate):
-    uuid = None
-    hrn = None
-    urn = None
-    email = None # for adding to the SubjectAltName
-
     ##
     # Create a new GID object
     #
@@ -79,10 +74,14 @@ class GID(Certificate):
     # @param string If string!=None, load the GID from a string
     # @param filename If filename!=None, load the GID from a file
     # @param lifeDays life of GID in days - default is 1825==5 years
-
-    def __init__(self, create=False, subject=None, string=None, filename=None, uuid=None, hrn=None, urn=None, lifeDays=1825):
-        
+    # @param email Email address to put in subjectAltName - default is None
+    def __init__(self, create=False, subject=None, string=None, filename=None, uuid=None, hrn=None, urn=None, lifeDays=1825, email=None):
+        self.uuid = None
+        self.hrn = None
+        self.urn = None
+        self.email = None # for adding to the SubjectAltName
         Certificate.__init__(self, lifeDays, create, subject, string, filename)
+
         if subject:
             logger.debug("Creating GID for subject: %s" % subject)
         if uuid:
@@ -93,6 +92,8 @@ class GID(Certificate):
         if urn:
             self.urn = urn
             self.hrn, type = urn_to_hrn(urn)
+        if email:
+            self.set_email(email)
 
     def set_uuid(self, uuid):
         if isinstance(uuid, str):
