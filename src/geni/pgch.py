@@ -970,7 +970,7 @@ class PGClearinghouse(Clearinghouse):
             project_name = ''
             if slice_auth and slice_auth.startswith(SLICE_AUTHORITY) and len(slice_auth) > len(SLICE_AUTHORITY)+1:
                 project_name = slice_auth[len(SLICE_AUTHORITY)+2:]
-                self.logger.info("Creating slice in project %s" % project_name)
+                self.logger.info("Creating slice in project '%s'" % project_name)
                 if project_name.strip() == '':
                     self.logger.warn("Empty project name will fail")
                 argsdict = dict(project_name=project_name)
@@ -983,13 +983,29 @@ class PGClearinghouse(Clearinghouse):
                                           self.logger, argsdict, inside_certs,
                                           inside_key)
                 except Exception, e:
-                    self.logger.error("Exception getting project of name %s: %s", project_name, e)
+                    self.logger.error("Exception getting project of name '%s': %s", project_name, e)
                     #raise
                 if projtriple:
                     projval = getValueFromTriple(projtriple, self.logger, "lookup_project for create_slice", unwrap=True)
+                    if not projval:
+                        self.logger.warn("Got None value from lookup_project '%s'", project_name)
+                        if projtriple.has_key("output") and projtriple["output"]:
+                            self.logger.warn(projtriple["output"])
+                        ret = dict(code=1, value=None, output="Unknown project '%s'" % project_name)
+                        return ret
                     project_id = projval['project_id']
-            if project_id == '':
-                self.logger.warn("Got no project_id")
+            elif slice_auth and not slice_auth.startswith(SLICE_AUTHORITY):
+                msg = "Register got slice URN with unknown authority %s" % slice_auth
+                self.logger.error(msg)
+                raise Exception(msg)
+            elif slice_auth:
+                msg = "Slice authority missing project name: %s" % slice_auth
+                self.logger.error(msg)
+                raise Exception(msg)
+            if project_id == '' or project_id is None:
+                self.logger.warn("Got no project_id for project '%s'", project_name)
+                ret = dict(code=1, value=None, output="Unknown project '%s'" % project_name)
+                return ret
             argsdict = dict(project_id=project_id, slice_name=slice_name, owner_id=owner_id, project_name=project_name)
             slicetriple = None
             try:

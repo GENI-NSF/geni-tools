@@ -47,6 +47,7 @@ gcf 2.3:
   - gcf-pgch takes a new `--use-gpo-ch` option to force using the
  remote GPO Clearinghouse (ticket #255)
   - gcf-test supplies proper namespaces in request RSpecs (ticket #254)
+  - pgch tests slice authority and project name for errors (ticket #243)
 
 gcf 2.2.1:
  * omni:
