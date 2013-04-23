@@ -834,7 +834,10 @@ class Aggregate(object):
                         amcode = ae.returnstruct["code"]["am_code"]
                         amtype = ae.returnstruct["code"]["am_type"]
                         msg = ae.returnstruct["output"]
-#                        self.logger.debug("Error was code %s (am code %s): %s", code, amcode, msg)
+#                        self.logger.debug("Error was code %s (am code
+#                        %s): %s", code, amcode, msg)
+                        # ("Error reserving vlan tag for link" in msg
+                        # and code==2 and amcode==2 and amtype=="protogeni")
                         if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                                 ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
@@ -1152,6 +1155,8 @@ class Aggregate(object):
                 self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
+                        # ("Error reserving vlan tag for link" in msg
+                        # and code==2 and amcode==2 and amtype=="protogeni")
                 if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                         ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
