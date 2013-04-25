@@ -76,7 +76,8 @@ To use stitcher:
 
  8. Delete your resources when done. Be sure to delete resources from
  all aggregates - including any reservations at transit networks you
- did not specify in your original request RSpec.
+ did not specify in your original request RSpec. `stitcher` will not
+ automatically delete at all AMs.
 
 === Notes ===
 
@@ -112,9 +113,14 @@ several manifest RSpecs).
 for use with stitching. Note this is not exhaustive; multiple links
 between the same aggregate pairs are possible for example.
 
+When done, be sure to delete your reservations, at ''all''
+aggregates. `stitcher` will not automatically call delete at all
+aggregates involved in your stitched topology; you must name the
+aggregates explicitly (i.e. with multiple `-a` arguments).
+
 === Options ===
 stitcher is a simple extension of Omni. As such, it uses all the same
-options as Omni. stitcher however adds several options:
+options as Omni. `stitcher` however adds several options:
  - `--excludehop <hop URN>`: When supplied, the Stitching Computation
  Service will exclude the specified switch/port from ANY computed
  stitching paths. You can supply this argument many times.
@@ -207,13 +213,17 @@ detail as possible:
  - The last few lines of your call to stitcher - all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
+ - Listing of new rspec files created in `/tmp` and your current
+ working directory
 
 Some sample error messages and their meaning:
  - `StitchingServiceFailedError: Error from Stitching Service: code 3: MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.`
   - Errors like this mean there is no GENI layer 2 path possible
     between your specified endpoints. Did you specify an `excludehop`
     or `includehop` you shouldn't have? Follow the set of supported
-    aggregates (below)?
+    aggregates (below)? Alternatively, it may mean that `stitcher`
+    tried all available VLAN tags for one of your aggregates, and got
+    a stitching failure on each - probably because that tag was not available.
 
 == Known Issues and Limitations ==
  - Aggregate support is limited. Available aggregates as of 3/2013:
