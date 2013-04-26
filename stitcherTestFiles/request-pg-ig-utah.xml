@@ -7,24 +7,24 @@
        type="request">
 
   <node client_id="pg-utah" component_manager_id="urn:publicid:IDN+emulab.net+authority+cm" exclusive="false">
-    <sliver_type name="emulab-openvz"/>    
+    <sliver_type name="emulab-openvz"/>
     <interface client_id="pg-utah:if1">
-      <ip address="10.20.2.2" netmask="255.255.255.0" type="ipv4" />
+      <ip address="10.20.2.1" netmask="255.255.255.0" type="ipv4" />
     </interface>
   </node>
 
   <node client_id="ig-utah" component_manager_id="urn:publicid:IDN+utah.geniracks.net+authority+cm" exclusive="false">
-    <sliver_type name="emulab-openvz"/>    
+    <sliver_type name="emulab-openvz"/>
     <interface client_id="ig-utah:if1">
-      <ip address="10.20.2.3" netmask="255.255.255.0" type="ipv4" />
+      <ip address="10.20.2.2" netmask="255.255.255.0" type="ipv4" />
     </interface>
   </node>
 
   <link client_id="link-pg-utah-ig-utah">
-    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>    
+    <component_manager name="urn:publicid:IDN+emulab.net+authority+cm"/>
     <component_manager name="urn:publicid:IDN+utah.geniracks.net+authority+cm"/>
     <interface_ref client_id="pg-utah:if1"/>
-    <interface_ref client_id="ig-utah:if1"/>    
-  </link>  
+    <interface_ref client_id="ig-utah:if1"/>
+  </link>
 
 </rspec>
