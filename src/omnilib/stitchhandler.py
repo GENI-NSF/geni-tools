@@ -48,6 +48,8 @@ from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError, st
 from geni.util import rspec_schema
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
 
+from sfa.util.xrn import urn_to_hrn
+
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebae
 
 # Max # of times to call the stitching service
@@ -88,6 +90,8 @@ class StitchingHandler(object):
                 return (msg, None)
             else:
                 self.logger.debug("Passing call to Omni")
+                # Add -a options from the saved file, if none already supplied
+                self.addAggregateOptions(args)
                 return omni.call(args, self.opts)
 
         if len(args) > 1:
@@ -170,6 +174,10 @@ class StitchingHandler(object):
             # Do we want to return a geni triple struct?
             raise
         finally:
+            # Save a file with the aggregates used in this slice
+            self.saveAggregateList(sliceurn)
+
+            # Clean up temporary files
             self.cleanup()
 
             if self.opts.debug:
@@ -257,6 +265,7 @@ class StitchingHandler(object):
                 else:
                     self.ams_to_process.add(am)
 
+
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
         try:
@@ -264,6 +273,7 @@ class StitchingHandler(object):
             lastAM = launcher.launch(self.parsedSCSRSpec, self.scsCalls)
 # for testing calling the SCS only many times
 #            raise StitchingCircuitFailedError("testing")
+
         except StitchingCircuitFailedError, se:
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.warn("Stitching max circuit failures reached - will delete and exit.")
@@ -767,6 +777,98 @@ class StitchingHandler(object):
 
         return stripBlankLines(manString)
 
+    def saveAggregateList(self, sliceurn):
+        '''Save a file with the list of aggregates used. Used as input
+        to later stitcher calls, e.g. to delete from all AMs.'''
+        # URN to hrn
+        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
+            self.logger.warn("Couldn't parse slice HRN from URN %s",
+                             sliceurn)
+            return
+        # ./$slicehrn-amlist.txt
+        fname = "%s-amlist.txt" % slicehrn
+        if not self.ams_to_process or len(self.ams_to_process) == 0:
+            self.logger.debug("No AMs in AM list")
+            return
+
+        # URL,URN
+        with open (fname, 'w') as file:
+            file.write("# AM List for stitched slice %s\n" % sliceurn)
+            file.write("# Slice allocated at %s\n" % datetime.datetime.utcnow().isoformat())
+            for am in self.ams_to_process:
+                file.write("%s,%s\n" % (am.url, am.urn) )
+                # Include am.userRequested? am.api_version? len(am._hops)?
+#                file.write("%s,%s,%s,%d,%d\n" % (am.url, am.urn, am.userRequested,
+#                           am.api_version, len(am._hops)))
+
+
+    def addAggregateOptions(self, args):
+        '''Read a file with a list of aggregates, adding those as -a
+        options. Allows stitcher to delete from all AMs. Note that
+        extra aggregate options are added only if no -a options are
+        already supplied.'''
+        # Find slice name from args[1]
+        if not args or len(args) < 2:
+            self.logger.debug("Cannot find slice name")
+            return
+        slicename = args[1]
+
+        # get slice URN
+        # Get slice URN from name
+        try:
+            sliceurn = self.framework.slice_name_to_urn(slicename)
+        except Exception, e:
+            self.logger.warn("Could not determine slice URN from name %s: %s", slicename, e)
+            return
+
+        if not sliceurn or sliceurn.strip() == '':
+            self.logger.warn("Could not determine slice URN from name %s", slicename)
+            return
+
+        # get slice HRN
+        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
+            self.logger.warn("Couldn't parse slice HRN from URN %s",
+                             sliceurn)
+            return
+
+        # ./$slicehrn-amlist.txt
+        fname = "%s-amlist.txt" % slicehrn
+
+        # look to see if $slicehrn-amlist.txt exists
+        if not os.path.exists(fname) or not os.path.getsize(fname) > 0:
+            self.logger.warn("File of AMs for slice %s not found or empty: %s", slicename, fname)
+            return
+
+        self.logger.info("Reading stitching slice %s aggregates from file %s", slicename, fname)
+
+        self.opts.ensure_value('aggregate', [])
+        addOptions = True
+        if len(self.opts.aggregate) > 0:
+            addOptions = False
+        with open(fname, 'r') as file:
+        # For each line:
+            for line in file:
+                line = line.strip()
+                # Skip if starts with # or is empty
+                if line == '' or line.startswith('#'):
+                    continue
+                # split on ,
+                (url,urn) = line.split(',')
+#                (url,urn,userRequested,api_version,numHops) = line.split(',')
+                url = url.strip()
+                # If first looks like a URL, log
+                if not url == '':
+                    # add -a option
+                    # Note this next doesn't avoid the dup of a nickname
+                    if not url in self.opts.aggregate:
+                        if addOptions:
+                            self.logger.info("Adding aggregate option %s (%s)", url, urn)
+                            self.opts.aggregate.append(url)
+                        else:
+                            self.logger.info("NOTE not operating at slice' aggregate %s", url)
+
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         '''Set the expires attribute on the rspec to the slice expiration. DCN AMs allocate the circuit only until then.'''
         if not rspecDOM:
@@ -786,7 +888,8 @@ class StitchingHandler(object):
         # erroneously treat expires as in local time. So (a) avoid
         # microseconds, and (b) explicitly note this is in UTC.
         # So this is sliceexp.isoformat() except without the
-        # microseconds and with the Z
+        # microseconds and with the Z. Note that PG requires exactly
+        # this format.
         rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
         self.logger.debug("Added expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
  
