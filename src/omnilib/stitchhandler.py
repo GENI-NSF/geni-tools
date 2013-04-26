@@ -674,18 +674,37 @@ class StitchingHandler(object):
                             agg.dcn = True
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
+                        hasV2 = False
                         for key in version[agg.url]['value']['geni_api_versions'].keys():
+                            if int(key) == 2:
+                                hasV2 = True
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
+                        # Stitcher doesn't really know how to parse
+                        # APIv1 return structs
+                        if maxVer == 1:
+                            msg = "%s speaks only AM API v1 - not supported!" % agg
+                            #self.logger.error(msg)
+                            raise StitchingError(msg)
                         # Hack alert: v3 AM implementations don't work even if they exist
+                        if not hasV2:
+                            msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
+                            #self.logger.error(msg)
+                            raise StitchingError(msg)
                         if maxVer != 2:
                             self.logger.info("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
 #                        if self.opts.fakeModeDir:
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+            except StitchingError, se:
+                # FIXME: Return anything different for stitching error?
+                # Do we want to return a geni triple struct?
+                raise
             except:
+                pass
+            finally:
                 logging.disable(logging.NOTSET)
 
             # Remember we got the extra info for this AM
@@ -867,7 +886,7 @@ class StitchingHandler(object):
                             self.logger.info("Adding aggregate option %s (%s)", url, urn)
                             self.opts.aggregate.append(url)
                         else:
-                            self.logger.info("NOTE not operating at slice' aggregate %s", url)
+                            self.logger.info("NOTE not adding aggregate %s", url)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         '''Set the expires attribute on the rspec to the slice expiration. DCN AMs allocate the circuit only until then.'''

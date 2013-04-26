@@ -104,7 +104,10 @@ nodes you are trying to reserve in the RSpec that are not linked with
 a stitching link will not be reserved, because stitcher does not know
 the URL to contact that aggregate.
 
-All calls use AM APIv2 (hard-coded) currently, due to aggregate limitations.
+All calls use AM APIv2 (hard-coded) currently, due to aggregate
+limitations. If an aggregate does not speak AM API v2, `stitcher`
+exits.
+
 Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
 To create a request that needs stitching, include at least 1 `<link>` elements with 
@@ -269,6 +272,7 @@ Some sample error messages and their meaning:
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
  - AM API v3 is not supported - VLAN tag selection is not optimal
+ - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to
  an existing reservation.
  - Fatal errors are not recognized, so the script keeps trying longer
