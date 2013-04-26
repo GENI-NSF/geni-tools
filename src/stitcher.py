@@ -117,6 +117,13 @@ def call(argv, options=None):
     # options is an optparse.Values object, and args is a list
     options, args = parser.parse_args(argv)
 
+    # Set an option indicating if the user explicitly requested the RSpec version
+    options.ensure_value('explicitRSpecVersion', False)
+    options.explicitRSpecVersion = ('-t' in argv or '--rspectype' in argv)
+
+    if options.outputfile:
+        options.output = True
+
     # Set up the logger
     omni.configure_logging(options)
     logger = logging.getLogger("stitcher")
