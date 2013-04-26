@@ -131,6 +131,11 @@ class StitchingHandler(object):
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
 
+        if self.opts.explicitRSpecVersion:
+            self.logger.info("All manifest RSpecs will be in GENI v3 format")
+            self.opts.explicitRSpecVersion = False
+            self.opts.rspectype = ["GENI", '3']
+
         # FIXME: Confirm request is not asking for any loops
         self.confirmSafeRequest()
 

@@ -44,7 +44,7 @@ To use stitcher:
 
  1. Be sure you can run Omni.
 
- 2. Design a topology. Write a standard RSpec. Include 1 more more `<link>`s
+ 2. Design a topology. Write a standard GENI v3 RSpec. Include 1 or more `<link>`s
  between interfaces on 2 compute nodes. E.G.
 {{{
 #!xml
@@ -62,7 +62,7 @@ To use stitcher:
 {{{
     $ python ./src/stitcher.py -o createsliver <valid slice name> <path to RSpec>
 }}}
-(assuming a valid `omni_config` in the usual spots)
+(assuming a valid `omni_config` in one of the usual spots)
 
  5. Stitcher will make allocations at ALL aggregates required for your
  topology. (It ignores the `-a` option.) This may take a while.
@@ -114,7 +114,7 @@ To create a request that needs stitching, include at least 1 `<link>` elements w
 more than 1 different `<component_manager>` elements (and no
 `<shared_vlan>` element and no `<link_type>` element of other than `VLAN`).
 
-The result of stitcher is a single combined manifest RSpec, showing
+The result of stitcher is a single combined GENI v3 manifest RSpec, showing
 all resources reserved as a result of this request.
 
 stitcher output is controlled using the same options as Omni,
@@ -166,11 +166,10 @@ Other options you should not need to use:
  runs. Use the default.
 
 == Tips and Details ==
- - Create a single request RSpec for all aggregates you want linked
+ - Create a single GENI v3 request RSpec for all aggregates you want linked
  - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in the `<link>`
  - Stitching currently only works at Utah InstaGENI, GPO InstaGENI,
  Kentucky ProtoGENI, and Utah ProtoGENI
-  - And currently, Utah InstaGENI can only stitch to Utah ProtoGENI 
  - Use "src/stitcher.py" instead of "src/omni.py"
  - This script can take a while - it must make reservations at all the
  aggregates, and keep retrying at aggregates that can't provide
@@ -187,7 +186,7 @@ Other options you should not need to use:
  nodes you are trying to reserve in the RSpec that are not linked with
  a stitching link will not be reserved, because stitcher does not know
  the URL to contact that aggregate.
- - The script return is a single manifest RSpec for all the aggregates
+ - The script return is a single GENI v3 manifest RSpec for all the aggregates
  where you have reservations for this request.
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
