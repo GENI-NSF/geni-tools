@@ -80,6 +80,9 @@ def _listaggregates(handler):
             url = url.strip()
             urn = urn.strip()
             if url != '':
+                # Avoid duplicate aggregate entries
+                if url in ret.values() and ((ret.has_key(urn) and ret[urn]==url) or urn == "unspecified_AM_URN"):
+                    continue
                 while urn in ret:
                     urn += "+"
                 ret[urn] = url
