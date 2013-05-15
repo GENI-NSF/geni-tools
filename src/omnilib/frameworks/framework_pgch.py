@@ -108,16 +108,19 @@ class Framework(pg_framework):
             # otherwise, default to 'default_project' in 'omni_config'
             project = self.config['default_project']
 
-        # Get the authority from the SA hostname
-        url = urlparse(self.config['sa'])
-        sa_host = url.hostname
-        try:
-            sa_hostname, sa_domain = sa_host.split(".",1)
-            auth = sa_hostname
-        except:
-            # Funny SA
-            self.logger.debug("Found no . in sa hostname. Using whole hostname")
-            auth = sa_host
+        if self.config.has_key('authority'):
+            auth = self.config['authority']
+        else:
+            # Get the authority from the SA hostname
+            url = urlparse(self.config['sa'])
+            sa_host = url.hostname
+            try:
+                sa_hostname, sa_domain = sa_host.split(".",1)
+                auth = sa_hostname
+            except:
+                # Funny SA
+                self.logger.debug("Found no . in sa hostname. Using whole hostname")
+                auth = sa_host
 
         # Authority is of form: host:project
         baseauth = auth
