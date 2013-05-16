@@ -692,11 +692,13 @@ def getPortalSFSection(opts, config) :
     return """
 [portal]
 type = pgch
+authority = %s
 ch = %s
 sa = %s
 cert = %s
 key = %s
-""" %(config['selected_framework']['ch'], 
+""" %(config['selected_framework']['authority'], 
+      config['selected_framework']['ch'], 
       config['selected_framework']['sa'],
       opts.cert, opts.cert)
 
@@ -774,6 +776,11 @@ def getPortalConfig(opts, public_key_list, cert) :
     config = loadConfigFile('/tmp/omni_config')
     projects = loadProjects('/tmp/omni_config')
     os.remove('/tmp/omni_config')
+
+    if not config['selected_framework'].has_key('authority'):
+      sys.exit("You must have a newer version of the omni bundle:\n"+
+                  "\t 1. Download omni-bundle.zip from the Portal: https://portal.geni.net/secure/omni-bundle.php\n"+
+                  "\t 2. Rerun omni-configure.py")
 
     if len(projects) == 0 :
       logger.warn("You are not a member of any projects! You will need to:\n"+
