@@ -58,6 +58,9 @@ New in v2.3:
  - Added `listslices` alias for `listmyslices`, and made username
  argument optional (defaults to your username). (ticket #256)
  - Log ProtoGENI log URL on clearinghouse errors (ticket #251)
+ - Added new `get_ch_version` method for querying the the configured
+ clearinghouse for its version, if supported. And add support to the
+ GENI Clearinghouse interface. (ticket #270)
  - Various minor code cleanup changes
 
 New in v2.2.1:
@@ -578,9 +581,10 @@ omni.py [options] <command and arguments>
 			 deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only]
 			 listimages [optional: creatorurn] [ProtoGENI/InstaGENI only]
                 Clearinghouse / Slice Authority functions:                                    
-                         listaggregates                                                       
-                         createslice <slicename>                                              
-                         getslicecred <slicename>                                             
+                         get_ch_version
+                         listaggregates
+                         createslice <slicename>
+                         getslicecred <slicename>
                          renewslice <slicename> <new expiration time in UTC>                  
                          deleteslice <slicename>                                              
 			 listslices [optional: username] [Alias for listmyslices]
@@ -695,6 +699,12 @@ Options:
 
 === Supported commands ===
 Omni supports the following commands.
+
+==== get_ch_version ====
+Get the version information advertised by the configured framework /
+clearinghouse, if supported. Return is a dictionary.
+
+Format: `omni.py get_ch_version`
 
 ==== listaggregates ====
 List the URN and URL for all known aggregates.

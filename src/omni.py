@@ -75,6 +75,7 @@
        [string dictionary] = omni.py listimages [CREATORURN]
 
       Clearinghouse functions:
+       [string dictionary] = omni.py get_ch_version # dict of CH specific version information
        [string dictionary urn->url] = omni.py listaggregates
        On success: [string sliceurnstring] = omni.py createslice SLICENAME
        On fail: [string None] = omni.py createslice SLICENAME
@@ -668,6 +669,7 @@ def getParser():
  \t\t\t deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
  \t\t\t listimages [optional: creatorurn] [ProtoGENI/InstaGENI only] \n\
  \t\tClearinghouse / Slice Authority functions: \n\
+ \t\t\t get_ch_version \n\
  \t\t\t listaggregates \n\
  \t\t\t createslice <slicename> \n\
  \t\t\t getslicecred <slicename> \n\

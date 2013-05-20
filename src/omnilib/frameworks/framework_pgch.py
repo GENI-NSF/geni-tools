@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------
 
 from omnilib.frameworks.framework_pg import Framework as pg_framework
+from omnilib.util.dossl import _do_ssl
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 from sfa.util.xrn import urn_to_hrn
 
@@ -141,3 +142,40 @@ class Framework(pg_framework):
             return name
 
         return URN(auth, "slice", name).urn_string()
+
+    def get_version(self):
+        # Here we call getversion at the CH, then append the getversion at the SA
+        pg_response = dict()
+        versionstruct = dict()
+        (pg_response, message) = _do_ssl(self, None, ("GetVersion of GENI CH %s using cert %s" % (self.config['ch'], self.config['cert'])), self.ch.GetVersion)
+        _ = message #Appease eclipse
+        if pg_response is None:
+            self.logger.error("Failed to get version of GENI CH: %s", message)
+            # FIXME: Return error message?
+            return None, message
+
+        code = pg_response['code']
+        log = self._get_log_url(pg_response)
+        if code:
+            self.logger.error("Failed to get version of GENI CH: Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            if log:
+                self.logger.error("See log: %s", log)
+                #return None
+        else:
+            versionstruct = pg_response['value']
+            if log:
+                self.logger.debug("PG log url: %s", log)
+
+        # PGCH implements getversion only once
+#        sa_response = None
+#        (sa_response, message2) = _do_ssl(self, None, ("GetVersion of PG SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetVersion)
+#        _ = message2 #Appease eclipse
+#        if sa_response is not None:
+#            if isinstance(sa_response, dict) and sa_response.has_key('value'):
+#                versionstruct['sa-version'] = sa_response['value']
+#            else:
+#                versionstruct['sa-version'] = sa_response
+
+        return versionstruct, message

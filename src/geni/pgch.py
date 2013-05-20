@@ -56,6 +56,12 @@ SLICE_AUTHORITY = "geni//gpo//gcf"
 USER_CRED_LIFE = 86400
 SLICE_CRED_LIFE = 3600
 
+# Values returned by GetVersion
+API_VERSION = 1.3
+CODE_VERSION = "0001"
+CH_HOSTNAME = "ch.geni.net"
+CH_PORT = "8443"
+
 class PGSAnCHServer(object):
     def __init__(self, delegate, logger):
         self._delegate = delegate
@@ -274,6 +280,47 @@ class PGSAnCHServer(object):
 
 # Skipping GetCredential, Register, Resolve, Remove, Shutdown
 
+    def GetVersion(self):
+        # Note that the SA GetVersion is not implemented
+        # return value should be a struct with a bunch of entries
+        code = None
+        output = None
+        value = None
+        try:
+            self.logger.debug("Calling GetVersion()")
+            value = self._delegate.GetVersion()
+            self.logger.debug("GetVersion result: %r", value)
+        except Exception, e:
+            self.logger.error("GetVersion exception: %s", str(e))
+            output = str(e)
+            code = 1 # FIXME: Better codes
+            value = ''
+
+        # If the underlying thing is a triple, return it as is
+        if isinstance(value, dict) and value.has_key('value'):
+            if value.has_key('code'):
+                code = value['code']
+            if value.has_key('output'):
+                output = value['output']
+            value = value['value']
+
+        if value is None:
+            value = ""
+            if code is None or code == 0:
+                code = 1
+            if output is None:
+                output = "Unknown pgch error"
+        if output is None:
+            output = ""
+        if code is None:
+            code = 0
+
+        self.logger.debug("GetVersion final code: %r", code)
+        self.logger.debug("GetVersion final value: %r", value)
+        self.logger.debug("GetVersion final output: %r", output)
+        return dict(code=code, value=value, output=output)
+
+
     def ListComponents(self, args):
         # Returns list of CMs (AMs)
         # cred is user cred or slice cred - Omni uses user cred
@@ -317,7 +364,7 @@ class PGSAnCHServer(object):
         self.logger.debug("ListComponents final output: %r", output)
         return dict(code=code, value=value, output=output)
 
-# Skipping PostCRL, List, GetVersion
+# Skipping PostCRL, List
 
 # Flack wants to communicate to its Clearinghouse via the HTTP path
 # "/ch".  By default our XML-RPC server only handles requests to "/"
@@ -1232,6 +1279,37 @@ class PGClearinghouse(Clearinghouse):
             ret.append(entry);
         return ret
 
+# ----
+# CH API
+
+    def GetVersion(self):
+        self.logger.info("Called GetVersion")
+        version = dict()
+
+#	"peers"      => \%peers,
+#  	     $peers{$authority->urn()} = $authority->url();
+        peers = dict() # FIXME: This is the registered CMs at PG Utah
+        version['peers'] = peers
+#	"api"        => $API_VERSION,       1
+        version['api'] = API_VERSION
+#	"urn"        => $me->urn(),
+        version['urn'] = 'urn:publicid:IDN+' + CH_HOSTNAME + '+authority+ch'
+#	"hrn"        => $me->hrn(),
+        version['hrn'] = CH_HOSTNAME
+#	"url"        => $me->url(),
+        version['url'] = 'https://' + CH_HOSTNAME + ':' + CH_PORT
+#	"interface"  => "registry",
+        version['interface'] = 'registry'
+#	"code_tag"   => $commithash,
+        version['code_tag'] = CODE_VERSION
+#	# XXX
+#	"hostname"   => "www." . $OURDOMAIN,
+        version['hostname'] = CH_HOSTNAME
+
+        version['gcf-pgch_api'] = API_VERSION
+
+        return version
+
     def ListComponents(self, args):
         credential = None
         if args and args.has_key('credential'):
@@ -1346,12 +1424,6 @@ class PGClearinghouse(Clearinghouse):
 
 # End of implementation of PG CH/SA servers
 # ==========================
-
-    def GetVersion(self):
-        self.logger.info("Called GetVersion")
-        version = dict()
-        version['gcf-pgch_api'] = 1
-        return version
 
 # Rest comes from parent class
 

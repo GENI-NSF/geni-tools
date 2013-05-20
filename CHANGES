@@ -33,6 +33,9 @@ gcf 2.3:
   - Added `listslices` alias for `listmyslices`, and made username
   argument optional (defaults to your username). (ticket #256)
   - Log ProtoGENI log URL on clearinghouse errors (ticket #251)
+  - Added new `get_ch_version` method for querying the the configured
+  clearinghouse for its version, if supported. And add support to the
+  GENI Clearinghouse interface. (ticket #270)
   - Various minor code cleanup changes
 
  * acceptance tests

@@ -23,9 +23,12 @@
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
+
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+
 import logging
 import os
+import pprint
 import time
 import sys
 
@@ -435,6 +438,11 @@ class Framework(Framework_Base):
             self.logger.debug("peers was in value? %r", retVal)
             sites = retVal['value']['peers']
 
+        if self.logger.isEnabledFor(logging.DEBUG):
+            pp = pprint.PrettyPrinter(indent=4)
+            prettyVersion = pp.pformat(retVal)
+            self.logger.debug("SFA Slice Manager %s GetVersion:\n%s", self.config['slicemgr'], prettyVersion)
+
         if sites is None:
             # FIXME: Use message?
             sites = []
@@ -562,3 +570,26 @@ class Framework(Framework_Base):
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"
         return ret
+
+    def get_version(self):
+        # Here we call getversion at the registry. Could also do slicemgr. But that requires a user cred. 
+        # That is printed at debug level by a call to list_aggregates.
+        pl_response = dict()
+        versionstruct = dict()
+        (pl_response, message) = _do_ssl(self, None, ("GetVersion of SFA Registry %s using cert %s" % (self.config['registry'], self.config['cert'])), self.registry.GetVersion)
+        _ = message #Appease eclipse
+        if pl_response is None:
+            self.logger.error("Failed to get version of SFA Registry: %s", message)
+            # FIXME: Return error message?
+            return None, message
+        if isinstance(pl_response, dict) and pl_response.has_key('code'):
+            code = pl_response['code']
+            if code:
+                self.logger.error("Failed to get version of SFA Registry: Received error code: %d", code)
+                output = pl_response['output']
+                self.logger.error("Received error message: %s", output)
+            else:
+                versionstruct = pl_response['value']
+        else:
+            versionstruct = pl_response
+        return versionstruct, message

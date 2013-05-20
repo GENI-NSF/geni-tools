@@ -595,3 +595,39 @@ class Framework(Framework_Base):
         if not credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "2"
         return ret
+
+    def get_version(self):
+        # Here we call getversion at the CH, then append the getversion at the SA
+        pg_response = dict()
+        versionstruct = dict()
+        (pg_response, message) = _do_ssl(self, None, ("GetVersion of PG CH %s using cert %s" % (self.config['ch'], self.config['cert'])), self.ch.GetVersion)
+        _ = message #Appease eclipse
+        if pg_response is None:
+            self.logger.error("Failed to get version of PG CH: %s", message)
+            # FIXME: Return error message?
+            return None, message
+
+        code = pg_response['code']
+        log = self._get_log_url(pg_response)
+        if code:
+            self.logger.error("Failed to get version of PG CH: Received error code: %d", code)
+            output = pg_response['output']
+            self.logger.error("Received error message: %s", output)
+            if log:
+                self.logger.error("See log: %s", log)
+                #return None
+        else:
+            versionstruct = pg_response['value']
+            if log:
+                self.logger.debug("PG log url: %s", log)
+
+        sa_response = None
+        (sa_response, message2) = _do_ssl(self, None, ("GetVersion of PG SA %s using cert %s" % (self.config['sa'], self.config['cert'])), self.sa.GetVersion)
+        _ = message2 #Appease eclipse
+        if sa_response is not None:
+            if isinstance(sa_response, dict) and sa_response.has_key('value'):
+                versionstruct['sa-version'] = sa_response['value']
+            else:
+                versionstruct['sa-version'] = sa_response
+
+        return versionstruct, message

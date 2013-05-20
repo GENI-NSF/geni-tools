@@ -204,3 +204,24 @@ class Framework(Framework_Base):
         if credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "3"
         return ret
+
+    def get_version(self):
+        pl_response = dict()
+        versionstruct = dict()
+        (pl_response, message) = _do_ssl(self, None, ("GetVersion of GCF CH %s using cert %s" % (self.config['ch'], self.config['cert'])), self.ch.GetVersion)
+        _ = message #Appease eclipse
+        if pl_response is None:
+            self.logger.error("Failed to get version of GCF CH: %s", message)
+            # FIXME: Return error message?
+            return None, message
+        if isinstance(pl_response, dict) and pl_response.has_key('code'):
+            code = pl_response['code']
+            if code:
+                self.logger.error("Failed to get version of GCF CH: Received error code: %d", code)
+                output = pl_response['output']
+                self.logger.error("Received error message: %s", output)
+            else:
+                versionstruct = pl_response['value']
+        else:
+            versionstruct = pl_response
+        return versionstruct, message
