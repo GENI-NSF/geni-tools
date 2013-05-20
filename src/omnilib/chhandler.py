@@ -83,6 +83,24 @@ class CHCallHandler(object):
             self._raise_omni_error('Unknown function: %s' % call)
         return getattr(self,call)(args[1:])
 
+    def get_ch_version(self, args):
+        '''Call GetVersion at the Clearinghouse (if implemented).'''
+        retVal = ""
+        (ver, message) = self.framework.get_version()
+        if ver and ver != dict():
+            pp = pprint.PrettyPrinter(indent=4)
+            prettyVersion = pp.pformat(ver)
+            printStr = "CH has version %s" % prettyVersion
+            retVal += printStr + "\n"
+            self.logger.info(printStr)
+        else:
+            printStr = "GetVersion failed at CH: %s" % message
+            retVal += printStr + "\n"
+            self.logger.error(printStr)
+            if not self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.warn( "   Try re-running with --debug for more information." )
+        return retVal, ver
+
     def listaggregates(self, args):
         """Print the known aggregates' URN and URL.
         Gets aggregates from:

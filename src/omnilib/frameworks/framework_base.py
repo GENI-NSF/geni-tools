@@ -113,9 +113,15 @@ class Framework_Base():
             logger.info("NOT getting user credential from file %s - file doesn't exist or is empty", opts.usercredfile)
         return cred
         
+    def get_version(self):
+        """
+        Returns a dict of the GetVersion return from the control framework. And an error message if any.
+        """
+        raise NotImplementedError('get_version')
+
     def get_user_cred(self):
         """
-        Returns a user credential from the control framework as a string. And an error messge if any.
+        Returns a user credential from the control framework as a string. And an error message if any.
         """
         raise NotImplementedError('get_user_cred')
     
