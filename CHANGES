@@ -37,6 +37,7 @@ gcf 2.3:
   clearinghouse for its version, if supported. And add support to the
   GENI Clearinghouse interface. (ticket #270)
   - Various minor code cleanup changes
+  - Add 2 more known InstaGENI racks to the `omni_config` nicknames
 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30

@@ -762,6 +762,18 @@ ig-bbn2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.inst
 ig-bbn3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
 ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 
+ig-gatech=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am
+ig-gatech1=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/1.0
+ig-gatech2=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
+ig-gatech3=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-gatech=,https://foam.instageni.rnoc.gatech.edu:3626/foam/gapi/1
+
+ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
+ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
+ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
+ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
+
 """ 
 
 
@@ -1048,6 +1060,18 @@ ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
+
+ig-gatech=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am
+ig-gatech1=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/1.0
+ig-gatech2=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
+ig-gatech3=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-gatech=,https://foam.instageni.rnoc.gatech.edu:3626/foam/gapi/1
+
+ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
+ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
+ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
+ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
 
 """ % omni_config_dict
 
