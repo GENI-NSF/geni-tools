@@ -1171,7 +1171,7 @@ class PGClearinghouse(Clearinghouse):
                 slicetriple = invokeCH(self.sa_url, "renew_slice", self.logger,
                                        argsdict, inside_certs, inside_key)
             except Exception, e:
-                self.logger.error("Exception renewing slice %s: %s" % (urn, e))
+                self.logger.error("Exception renewing slice %s: %s" % (slice_uuid, e))
                 raise
 
             # Will raise an exception if triple malformed
