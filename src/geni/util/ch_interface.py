@@ -243,7 +243,7 @@ def getValueFromTriple(triple, logger, opname, unwrap=False):
     if not triple:
         logger.error("Got empty result triple after %s" % opname)
         raise Exception("Return struct was null for %s" % opname)
-    if not triple.has_key('value'):
+    if not isinstance(triple, dict) or not triple.has_key('value'):
         logger.error("Malformed return from %s: %s" % (opname, triple))
         raise Exception("malformed return from %s: %s" % (opname, triple))
     if unwrap:
