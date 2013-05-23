@@ -514,7 +514,7 @@ def parseArgs(argv, options=None):
                       help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
                       help="Bundle downloaded from the portal for configuring Omni [DEFAULT: %default]", metavar="FILE")
-    parser.add_option("-f", "--framework", default="pg", type='choice',
+    parser.add_option("-f", "--framework", default="portal", type='choice',
                       choices=['pg', 'pl', 'portal'],
                       help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
     parser.add_option("--pick-project", dest="pick_project", 
