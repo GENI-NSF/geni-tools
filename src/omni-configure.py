@@ -44,6 +44,11 @@ from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
 
+DEFAULT_PRIVATE_CERT_KEY = {}
+DEFAULT_PRIVATE_CERT_KEY['pg'] = "~/.ssh/geni_key_pg"
+DEFAULT_PRIVATE_CERT_KEY['pl'] = "~/.ssh/geni_key_pl"
+DEFAULT_PRIVATE_CERT_KEY['portal'] = "~/.ssl/geni_ssl_portal.key"
+
 def getYNAns(question):
     valid_ans=['','y', 'n']
     answer = raw_input("%s [Y,n]?" % question).lower()
@@ -52,6 +57,42 @@ def getYNAns(question):
     if answer == 'n':
         return False
     return True
+
+def loadKeyTextFromFile(filename):
+    """ This function parses the text in the file 'filename'
+        and loads in a string the whole text that corresponds 
+        to a private key.
+        * Returns a list of strings, each string corresponds to 
+          a key. If there are no keys the list is empty
+    """
+    f = open(filename, 'r')
+    text = f.read()
+    f.close()
+    pkey_match = re.findall("^-+BEGIN RSA PRIVATE KEY-+$.*?^-+END RSA PRIVATE KEY-+$", text, re.MULTILINE|re.S)
+
+    return pkey_match
+
+def setPrivateCertKey(opts):
+    ''' This function figures out if there is
+        an appropriate ssl key to use for the cert
+    '''
+
+    # First check the certificate file. If there is a private
+    # key included, then use that
+    keyList = loadKeyTextFromFile(opts.cert)
+    if len(keyList) > 0 :
+       if opts.prcertkey != "" :
+         logger.warn("Private key present in the cert file %s. Your option of %s, has been overwritten" % (opts.cert, opts.prcertkey))
+          
+       opts.prcertkey = opts.cert
+    # If the user wants to use the default name
+    else :
+      if opts.prcertkey == "" :
+        opts.prcertkey = DEFAULT_PRIVATE_CERT_KEY[opts.framework]
+        opts.prcertkey = os.path.expanduser(opts.prcertkey)
+        opts.prcertkey = os.path.abspath(opts.prcertkey)
+
+    logger.debug("Using as private key for the cert file: %s" %opts.prcertkey)
 
 def modifySSHConfigFile(private_key_file):
     """ This function will modify the ssh config file (~/.ssh/config) 
@@ -98,7 +139,14 @@ place the .pem file that you downloaded from the Web UI there,\nor \
 use the '-p' option to specify a custom location of the certificate.\n")
 
     logger.info("Using certfile %s", opts.cert)
+    
+    setPrivateCertKey(opts)
 
+    if not os.path.exists(opts.prcertkey) or os.path.getsize(opts.prcertkey) < 1:
+            sys.exit("Private key for the certificate not in '"+opts.prcertkey+"'. \n")
+
+    logger.debug("Using private key for the cert file %s", opts.prcertkey)
+    
 def validate_pl(opts):
     """ This function verifies that the we have everything we need
         to run if framework is 'pl'
@@ -110,13 +158,17 @@ def validate_pl(opts):
 PlanetLab cert.\nIf you have a copy place it at '"+opts.cert+"', \nor \
 use the '-p' option to specify a custom location of the certificate.\n")
 
-    if not os.path.exists(opts.plkey) or os.path.getsize(opts.cert) < 1:
-            sys.exit("\nPlanetLab private key not in '"+opts.plkey+"'. \nMake sure \
+    setPrivateCertKey(opts)
+
+    if not os.path.exists(opts.prcertkey) or \
+       os.path.getsize(opts.prcertkey) < 1:
+      sys.exit("\nPlanetLab private key not in '"+opts.prcertkey+"'. \n\
+      Make sure \
 you place the private key registered with PlanetLab there or use\n\
 the '-k' option to specify a custom location for the key.\n")
 
     logger.info("Using certfile %s", opts.cert)
-    logger.info("Using PlanteLab private key file %s", opts.plkey)
+    logger.info("Using PlanteLab private key file %s", opts.prcertkey)
 
 def validate_portal(opts):
     """ This function verifies that the we have everything we need
@@ -134,6 +186,22 @@ use the '-z' option to specify a custom location.\n")
         sys.exit("\nFile '"+opts.portal_bundle+"' not a valid zip file.\n"+\
                  "Exit!")
     validate_bundle(opts.portal_bundle)
+    # In the case of the portal there is no cert
+    # file yet, extract it
+    opts.cert = getFileName(opts.cert)
+    extract_cert_from_bundle(opts.portal_bundle, opts.cert)
+
+    setPrivateCertKey(opts)
+  
+    # If the private key for the cert is not in the cert, check
+    # that the file actually exist
+    if cmp(opts.prcertkey, opts.cert) : 
+      if not os.path.exists(opts.prcertkey) or \
+           os.path.getsize(opts.prcertkey) < 1 :
+        os.remove(opts.cert)
+        sys.exit("\nPrivate SSL key not in '"+opts.prcertkey+"'.\n\
+Either place your key in the above file or use\n \
+the '-k' option to specify a custom location for the key.\n")
 
     logger.info("Using portal bundle %s", opts.portal_bundle)
 
@@ -162,7 +230,7 @@ def bundle_extract_keys(omnizip, opts) :
           # Remove the cert before we exit
           os.remove(opts.cert)
           sys.exit("There is no public key that corresponds to the private "+
-                   "key in the bundle, please email portal_help@geni.net")
+                   "key in the bundle, please email help@geni.net")
 
         # Place the private key in the right place
         omnizip.extract(x, '/tmp')
@@ -251,10 +319,10 @@ def validate_bundle(filename) :
 
     if 'omni_config' not in filelist : 
       sys.exit("Portal bundle "+filename+" does not contain omni_config "+
-               "file. Please email portal_help@geni.net.")
+               "file. Please email help@geni.net.")
     if 'geni_cert.pem' not in filelist : 
       sys.exit("Portal bundle "+filename+" does not contain geni_cert.pem "+
-               "file. Please email portal_help@geni.net.")
+               "file. Please email help@geni.net.")
     # Check what keys are in the bundle and print warning messages
     # accordingly
     haskeys = False
@@ -411,17 +479,15 @@ def copyPrivateKeyFile(src_file, dst_file):
         
     # We don't do a blind copy in case the src file is in .pem format but we
     # extract the key from the file
-    f = open(src_file, 'r')
-    text = f.read()
-    f.close()
-    pkey_match = re.search("^-+BEGIN RSA PRIVATE KEY-+$.*^-+END RSA PRIVATE KEY-+$", text, re.MULTILINE|re.S)
+    keyList = loadKeyTextFromFile(src_file)
 
-    if not pkey_match:
+    if len(keyList) == 0 :
         logger.info("No private key in the file. Exit!")
         sys.exit()
 
     f = open(dst_file, 'w+')
-    f.write(pkey_match.group(0))
+    # Use only the first key, if multiple are present
+    f.write(keyList[0])
     f.close()
     logger.info("Private key stored at: %s", dst_file)
     # Change the permission to something appropriate for keys
@@ -442,12 +508,12 @@ def parseArgs(argv, options=None):
                       help="Config file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-p", "--cert", default="~/.ssl/geni_cert",
                       help="User certificate file location [DEFAULT: %default.pem]", metavar="FILE")
-    parser.add_option("-k", "--plkey", default="~/.ssh/geni_pl_key",
-                      help="PlanetLab private key file location [DEFAULT: %default]", metavar="FILE")
+    parser.add_option("-k", "--prcertkey", default="",
+                      help="Private key for the SSL certificate file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
                       help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
-                      help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
+                      help="Bundle downloaded from the portal for configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="pg", type='choice',
                       choices=['pg', 'pl', 'portal'],
                       help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
@@ -458,7 +524,6 @@ def parseArgs(argv, options=None):
                       help="Turn on verbose command summary for omni-configure script")
 
     if argv is None:
-        # prints to stderr
         parser.print_help()
         return
 
@@ -501,10 +566,6 @@ def initialize(opts):
     opts.cert= os.path.expanduser(opts.cert)
     opts.cert= os.path.abspath(opts.cert)
 
-    # Expand the plkey file to a full path
-    opts.plkey = os.path.expanduser(opts.plkey)
-    opts.plkey = os.path.abspath(opts.plkey)
-
     # Expand the private file to a full path
     opts.prkey = os.path.expanduser(opts.prkey)
     opts.prkey = os.path.abspath(opts.prkey)
@@ -522,11 +583,15 @@ def initialize(opts):
 
     if not cmp(opts.framework,'portal'):
         validate_portal(opts)
-        # In the case of the portal there is no cert
-        # file yet, extract it
-        opts.cert = getFileName(opts.cert)
-        extract_cert_from_bundle(opts.portal_bundle, opts.cert)
 
+    # Expand the prcertkey file to a full path
+    # In order to properly set the private key for the cert
+    #   we need to parse the cert file and look to see if there
+    #   is one included, but we can't do this here, so this
+    #   happens in each of the validate calls
+    opts.prcertkey = os.path.expanduser(opts.prcertkey)
+    opts.prcertkey = os.path.abspath(opts.prcertkey)
+       
 def extract_cert_from_bundle(filename, dest) :
     """ This functions extracts a cert named geni_cert.pem
         out of a bundle downladed from the portal named <filename>
@@ -557,26 +622,25 @@ def configureSSHKeys(opts):
       # the same was as for a PG framework
       if not bundle_has_keys(omnizip) :
         logger.info("Bundle does not have keys, use as Private SSH key the "+
-                    "key in the cert "+opts.cert)
-        pkey=opts.cert
+                    "key of the cert "+opts.cert)
+        pkey=opts.prcertkey
       else :
       # if there are keys, then extract them in the right place
       # and return the list of pubkey filenames for use in the 
       # omni_config
         pubkey_list = bundle_extract_keys(omnizip, opts)
         return pubkey_list
-      #sys.exit("\nPortal configuration not implemented")
           
     logger.info("\n\n\tCREATING SSH KEYPAIR")
 
     # This is the place 
     if not cmp(opts.framework,'pg'):
       logger.debug("Framework is ProtoGENI use as Private SSH key the key in the cert: %s", opts.cert)
-      pkey = opts.cert
+      pkey = opts.prcertkey
     else :
       if not cmp(opts.framework,'pl'):
-        logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.plkey)
-        pkey = opts.plkey
+        logger.debug("Framework is PlanetLab use as Private SSH key the pl key: %s", opts.prcertkey)
+        pkey = opts.prcertkey
 
     # Make sure that the .ssh directory exists, if it doesn't create it
     ssh_dir = os.path.expanduser('~/.ssh')
@@ -697,10 +761,11 @@ ch = %s
 sa = %s
 cert = %s
 key = %s
-""" %(config['selected_framework']['authority'], 
+""" %(
+      config['selected_framework']['authority'], 
       config['selected_framework']['ch'], 
       config['selected_framework']['sa'],
-      opts.cert, opts.cert)
+      opts.cert, opts.prcertkey)
 
 def getPortalUserSection(opts, user, user_urn, public_key_list) :
     return """
@@ -763,18 +828,6 @@ ig-bbn1=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.inst
 ig-bbn2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 ig-bbn3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
 ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-
-ig-gatech=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am
-ig-gatech1=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/1.0
-ig-gatech2=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
-ig-gatech3=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/3.0
-ig-of-gatech=,https://foam.instageni.rnoc.gatech.edu:3626/foam/gapi/1
-
-ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
-ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
-ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
-ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
-ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
 
 """ 
 
@@ -920,7 +973,7 @@ ch = https://www.emulab.net:12369/protogeni/xmlrpc/ch
 sa = %s
 cert = %s
 key = %s
-""" %(opts.framework, sa, opts.cert, opts.cert)
+""" %(opts.framework, sa, opts.cert, opts.prcertkey)
 
     return createConfigStr(opts, public_key_list, cert, cf_section)
 
@@ -944,7 +997,7 @@ cert=%s
 key=%s
 registry=http://www.planet-lab.org:12345
 slicemgr=http://www.planet-lab.org:12347
-""" %(opts.framework, issuer, subject, opts.cert, opts.plkey)
+""" %(opts.framework, issuer, subject, opts.cert, opts.prcertkey)
 
     return createConfigStr(opts, public_key_list, cert, cf_section)
 
@@ -1068,18 +1121,6 @@ ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
 
-ig-gatech=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am
-ig-gatech1=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/1.0
-ig-gatech2=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/2.0
-ig-gatech3=urn:publicid:IDN+instageni.rnoc.gatech.edu+authority+cm,https://instageni.rnoc.gatech.edu:12369/protogeni/xmlrpc/am/3.0
-ig-of-gatech=,https://foam.instageni.rnoc.gatech.edu:3626/foam/gapi/1
-
-ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
-ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
-ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
-ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
-ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
-
 """ % omni_config_dict
 
     return omni_config_file 
@@ -1099,9 +1140,9 @@ def main():
     argv = sys.argv[1:]
     (opts, args) = parseArgs(argv)
     configLogging(opts)
-    print opts
     logger.debug("Running %s with options %s" %(sys.argv[0], opts))
     initialize(opts)
+    logger.debug("Initialize Running %s with options %s" %(sys.argv[0], opts))
     pub_key_file_list = configureSSHKeys(opts)
     createConfigFile(opts,pub_key_file_list)
 
