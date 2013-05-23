@@ -65,16 +65,21 @@ class Framework(pg_framework):
         if not self.config.has_key('sa'):
             raise Exception("Invalid configuration: no slice authority (sa) defined")
 
-        # Get the authority from the SA hostname
-        url = urlparse(self.config['sa'])
-        sa_host = url.hostname
-        try:
-            sa_hostname, sa_domain = sa_host.split(".",1)
-            auth = sa_hostname
-        except:
-            # Funny SA
-            self.logger.debug("Found no . in sa hostname. Using whole hostname")
-            auth = sa_host
+        if self.config.has_key('authority'):
+            auth = self.config['authority']
+            # Must escape any periods so that SFA XRN code treats this whole thing as the authority name
+            auth = auth.replace('.', '\.')
+        else:
+            # Get the authority from the SA hostname
+            url = urlparse(self.config['sa'])
+            sa_host = url.hostname
+            try:
+                sa_hostname, sa_domain = sa_host.split(".",1)
+                auth = sa_hostname
+            except:
+                # Funny SA
+                self.logger.debug("Found no . in sa hostname. Using whole hostname")
+                auth = sa_host
 
         # Assume for now that if the name looks like auth.name, then it is a valid hrn
         if name.startswith(auth + '.'):
@@ -111,6 +116,10 @@ class Framework(pg_framework):
 
         if self.config.has_key('authority'):
             auth = self.config['authority']
+            # It appears that here we don't need to escape the periods, at least for now. 
+            # Probably because we generate a URN here and not an HRN.
+#            # Must escape any periods so that SFA XRN code treats this whole thing as the authority name
+#            auth = auth.replace('.', '\.')
         else:
             # Get the authority from the SA hostname
             url = urlparse(self.config['sa'])
