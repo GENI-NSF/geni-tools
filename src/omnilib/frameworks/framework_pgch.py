@@ -65,7 +65,7 @@ class Framework(pg_framework):
         if not self.config.has_key('sa'):
             raise Exception("Invalid configuration: no slice authority (sa) defined")
 
-        if self.config.has_key('authority'):
+        if self.config.has_key('authority') and self.config['authority'].strip()!='':
             auth = self.config['authority']
             # Must escape any periods so that SFA XRN code treats this whole thing as the authority name
             auth = auth.replace('.', '\.')
@@ -114,7 +114,7 @@ class Framework(pg_framework):
             # otherwise, default to 'default_project' in 'omni_config'
             project = self.config['default_project']
 
-        if self.config.has_key('authority'):
+        if self.config.has_key('authority') and self.config['authority'].strip()!='':
             auth = self.config['authority']
             # It appears that here we don't need to escape the periods, at least for now. 
             # Probably because we generate a URN here and not an HRN.
