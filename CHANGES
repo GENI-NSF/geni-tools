@@ -40,6 +40,8 @@ gcf 2.3:
   - Add 2 more known InstaGENI racks to the `omni_config` nicknames
   - Fix pgch handling of new `authority` field for GENI Portal
  accounts, for both slices and users (ticket #279)
+  - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
+  not 'PG' (ticket #281)
 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
