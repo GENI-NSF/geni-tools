@@ -750,6 +750,17 @@ class Aggregate(object):
         try:
             # FIXME: Is that the right counter there?
             self.pgLogUrl = None
+
+#            # Test code to force Utah to say it couldn't give the VLAN tag requested
+#            if "//geni-am" in self.url:
+#                ret = dict()
+#                ret["code"] = dict()
+#                ret["code"]["geni_code"] = 2
+#                ret["code"]["am_code"] = 2
+#                ret["code"]["am_type"] = "dcn"
+#                ret["output"] = "Could not reserve vlan tags"
+#                raise AMAPIError("test", ret)
+
             (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries)
             self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             if "PG log url" in text:
@@ -941,6 +952,9 @@ class Aggregate(object):
                 # circuit as is would work. Or it could be something permanent. How do we know?
                 raise StitchingError("%s %s failed at %s: %s" % (opName, slicename, self, e))
 
+            dcnerror = None # geni_error if any
+            circuitid = None # DCN circuit ID parsed from geni_urn
+
             # Parse out sliver status / status
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
                     isinstance(result[self.url], dict):
@@ -950,12 +964,47 @@ class Aggregate(object):
                     else:
                         # else malformed
                         raise StitchingError("%s had malformed %s result in handleDCN" % (self, opName))
+                    # Get any geni_error string
+                    if result[self.url].has_key("geni_resources") and \
+                            isinstance(result[self.url]["geni_resources"], list) and \
+                            len(result[self.url]["geni_resources"]) > 0 and \
+                            isinstance(result[self.url]["geni_resources"][0], dict) and \
+                            result[self.url]["geni_resources"][0].has_key("geni_error"):
+                        dcnerror = result[self.url]["geni_resources"][0]["geni_error"]
+                        self.logger.debug("Found geni_error '%s'", dcnerror)
+
+                    if result[self.url].has_key("geni_resources") and \
+                            isinstance(result[self.url]["geni_resources"], list) and \
+                            len(result[self.url]["geni_resources"]) > 0 and \
+                            isinstance(result[self.url]["geni_resources"][0], dict) and \
+                            result[self.url]["geni_resources"][0].has_key("geni_urn"):
+                        urn = result[self.url]["geni_resources"][0]["geni_urn"]
+                        if urn:
+                            import re
+                            match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
+                            if match:
+                                circuitid = match.group(1).strip()
+                                self.logger.debug("Found circuit '%s'", circuitid)
+                            else:
+                                self.logger.debug("Found no geni_urn match? URN: %s", urn)
                 else:
                     if result[self.url].has_key("value") and isinstance(result[self.url]["value"], dict) and \
                             result[self.url]["value"].has_key("geni_slivers") and isinstance(result[self.url]["value"]["geni_slivers"], list):
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
                                 status = sliver["geni_allocation_status"]
+                                if sliver.has_key("geni_error"):
+                                    dcnerror = sliver["geni_error"]
+                                if sliver.has_key("geni_sliver_urn"):
+                                    urn = sliver["geni_sliver_urn"]
+                                    if urn:
+                                        import re
+                                        match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
+                                        if match:
+                                            circuitid = match.group(1).strip()
+                                            self.logger.debug("Found circuit '%s'", circuitid)
+                                        else:
+                                            self.logger.debug("Found no geni_urn match? URN: %s", urn)
                                 break
                         # FIXME: Which sliver(s) do I look at?
                         # 1st? look for any not ready and take that?
@@ -978,10 +1027,20 @@ class Aggregate(object):
             status = str(status).lower().strip()
             if status in ('failed', 'ready', 'geni_allocated', 'geni_provisioned', 'geni_failed', 'geni_notready', 'geni_ready'):
                 break
+            if dcnerror and dcnerror.strip() != '':
+                if circuitid:
+                    self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
+                else:
+                    self.logger.info("%s is (still) %s at %s. Had error message: %s", opName, status, self, dcnerror)
         # End of while loop getting sliverstatus
 
         if status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready'):
-            self.logger.warn("%s is (still) %s at %s. Treat as VLAN unavailable.", opName, status, self)
+            if circuitid:
+                self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
+            else:
+                self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
+            if dcnerror and dcnerror.strip() != '':
+                self.logger.warn("  Status had error message: %s", dcnerror)
             # deleteReservation
             opName = 'deletesliver'
             if self.api_version > 2:
@@ -998,9 +1057,28 @@ class Aggregate(object):
                 # Exit to user
                 raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
 
-            # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
-            self.handleVlanUnavailable(opName, "Sliver status was %s" % status)
+            if circuitid:
+                msg = "Sliver status for circuit %s was (still): %s" % (circuitid, status)
+            else:
+                msg = "Sliver status was (still): %s" % status
+            if dcnerror and dcnerror.strip() != '':
+                msg = msg + ": " + dcnerror
+
+            # ION failures are often transient. If we haven't retried too many times, just try again
+            # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
+            # we used before and go back to the SCS
+            if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
+                # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
+                self.handleVlanUnavailable(opName, msg)
+            else:
+                self.localPickNewVlanTries = self.localPickNewVlanTries + 1
+                self.inProcess = False
+                raise StitchingRetryAggregateNewVlanError(msg)
+
         else:
+            if circuitid:
+                self.logger.info("DCN circuit %s is ready", circuitid)
+
             # Status is ready
             # generate args for listresources
             if self.api_version == 2:
@@ -1222,18 +1300,37 @@ class Aggregate(object):
             hop = None
             newSug = ""
             oldSug = ""
+
+            # If # hops > 1 and hops do not do translation, then I need to pick a tag that all hops can use and set it on all the hops
+            # EG A transit network that does not do translation
+            newTag = None # tag to use on all such hops
+            overallRange = VLANRange.fromString("any") # new request range to use on all such hops
+            hopsNoXlate = [] # hops that don't do xlation
+            for hop in self.hops:
+                if not hop._hop_link.vlan_xlate:
+                    hopsNoXlate.append(hop)
+                    # New request range will be the intersection of the existing request ranges, less the previously attempted suggested VLAN tags
+                    overallRange = overallRange.intersection(hop._hop_link.vlan_range_request) - hop._hop_link.vlan_suggested_request
+
             for hop in self.hops:
                 # Edit vlan ranges only for the failed hop if set
                 if failedHop and hop != failedHop:
+                    # FIXME: If the failedHop doesn't do xlation, then what? Don't we need to copy tags around?
                     continue
 
-                # pull old suggested out of range
-                hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                oldSug = hop._hop_link.vlan_suggested_request
+
+                # Set the new request range
+                if len(hopsNoXlate) > 1 and hop in hopsNoXlate:
+                    # Use the intersection from above
+                    self.logger.debug("%s is a transit AM. Use same request range on all hops: %s", self, overallRange)
+                    hop._hop_link.vlan_range_request = overallRange
+                else:
+                    # pull old suggested out of range
+                    hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
 #                # FIXME: Also pull that out of the manifest?
 #                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
 #                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
-
-                oldSug = hop._hop_link.vlan_suggested_request
 
                 # If self is a VLAN producer, then set newSug to VLANRange('any') and let it pick?
                 if hop._hop_link.vlan_producer:
@@ -1243,6 +1340,16 @@ class Aggregate(object):
                     import random
                     newSug = random.choice(list(hop._hop_link.vlan_range_request))
 #                    newSug = iter(hop._hop_link.vlan_range_request).next()
+
+                # If EG this is a transit AM not doing xlation, then keep the previously selected
+                # new tag if any, or save the one we just picked here to use on the other hops at this AM
+                if len(hopsNoXlate) > 1 and hop in hopsNoXlate:
+                    if newTag:
+                        self.logger.debug("%s is a transit network. Don't use selected tag %s, but use tag picked for other hop %s", self, newSug, newTag)
+                        newSug = newTag
+                    else:
+                        self.logger.debug("%s is a transit network. Save selected tag %s for other hops", self, newSug)
+                        newTag = newSug
 
                 # Set that as suggested
                 hop._hop_link.vlan_suggested_request = VLANRange(newSug)

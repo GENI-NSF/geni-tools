@@ -23,14 +23,15 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-""" The clear-pem-cert.py script.
+""" The clear-passphrases.py script.
     This script is meant to help users to remove the passphrase from their 
-    protogeni certificate.
+    the private key of SSL certs or of SSH keys
 """
 
-import string
+import string, re
 import sys, os, shutil, platform
 from subprocess import Popen, PIPE
+import ConfigParser
 import optparse
 import logging
 from sfa.trust.certificate import Certificate, Keypair
@@ -101,12 +102,16 @@ def parseArgs(argv):
     """
 
     parser = optparse.OptionParser()
-    parser.add_option("-p", "--cert", default="~/.ssl/geni_cert.pem",
-                      help="User certificate file location [DEFAULT: %default]", metavar="FILE")
-    parser.add_option("-k", "--key", default="~/.ssh/geni_key",
-                      help="Private SSH key file location [DEFAULT: %default]", metavar="FILE")
+    parser.add_option("-c", "--configfile", 
+                      help="Config file location", metavar="FILE")
+    parser.add_option("-f", "--framework",
+                      help="Control framework to use for creation/deletion of slices")
+    parser.add_option("-k", "--prcertkey", 
+                      help="Private key for SSL certificate file location ", metavar="FILE")
+    parser.add_option("-e", "--prkey",
+                      help="Private SSH key file location", metavar="FILE")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
-                      help="Turn on verbose command summary for omni-configure script")
+                      help="Turn on verbose command summary for clear-passphrases script")
 
     if argv is None:
         # prints to stderr
@@ -125,62 +130,59 @@ def configLogging(opts) :
     logging.basicConfig(level=level)
     logger = logging.getLogger("clearcert")
 
-def clearCert(certFile):
+def clearCert(prcertkeyFile):
     global logger
     #Check if the certificate has key that is encrypted
-    f = open(certFile, 'r')
+    f = open(prcertkeyFile, 'r')
     text = f.read()
     f.close()
     index = text.find("ENCRYPTED")
     if index == -1 :
-        logger.info("Certificate does not have a passphrase. Skip.")
+        logger.info("Private key for SSL certificate does not have a passphrase. Skip.")
         return 
 
-    # Copy cert file to a new location
-    certdir = os.path.dirname(certFile)
-    certname = os.path.splitext(os.path.basename(certFile))[0]
-    bakcertfile = os.path.join(certdir, certname + '_enc.pem')
-    bakcertfile = getFileName(bakcertfile)
+    # Copy key file to a new location
+    question = "Do you want to make a backup of your encrypted cert(%s)" % prcertkeyFile
+    if getYNAns(question):
+      backupEncFile(prcertkeyFile)
 
-    tmpcertfile = "%s.tmp" % certFile
-    logger.debug("Using tmpcertfile: %s", tmpcertfile)
-    shutil.copyfile(certFile, bakcertfile)
-    logger.info("The encoded certificate file is backed up at %s" % bakcertfile)
+    tmpprcertkeyfile = "%s.tmp" % prcertkeyFile
+    logger.debug("Using tmpprcertkeyfile: %s", tmpprcertkeyfile)
 
-    logger.info("Removing passphrase from cert...")
+    logger.info("Removing passphrase from private key of SSL cert...")
     command = ['openssl', 'rsa']
     command.append('-in')
-    command.append(certFile)
+    command.append(prcertkeyFile)
     command.append("-out")
-    command.append(tmpcertfile)
+    command.append(tmpprcertkeyfile)
     logger.debug("Run commnand: %s", command)
     p = Popen(command, stdout=PIPE)
     p.communicate()[0]
     if p.returncode != 0:
-        shutil.move(bakcertfile, certFile)
-        if os.path.exists(tmpcertfile):
-            os.remove(tmpcertfile)
-        logger.critical("\n\nError removing passphrase from certificate! \nMake sure you are using the right passphrase.\n")
+        shutil.move(bakprcertkeyfile, prcertkeyFile)
+        if os.path.exists(tmpprcertkeyfile):
+            os.remove(tmpprcertkeyfile)
+        logger.critical("\n\nError removing passphrase from private key! \nMake sure you are using the right passphrase.\n")
         sys.exit(-1)
     
     command = ['openssl', 'x509']
     command.append('-in')
-    command.append(certFile)
+    command.append(prcertkeyFile)
     logger.debug("Run commnand: %s", command)
     p = Popen(command, stdout=PIPE)
-    tmpcert = p.communicate()[0]
+    tmpprcertkey = p.communicate()[0]
     if p.returncode != 0:
-        shutil.move(bakcertfile, certFile)
-        if os.path.exists(tmpcertfile):
-            os.remove(tmpcertfile)
-        raise Exception("Error removing passphrase from certificate")
-    f = open(tmpcertfile,'a')
-    f.write("%s" % tmpcert)
+        shutil.move(bakprcertkeyfile, prcertkeyFile)
+        if os.path.exists(tmpprcertkeyfile):
+            os.remove(tmpprcertkeyfile)
+        raise Exception("Error removing passphrase from prcertkeyificate")
+    f = open(tmpprcertkeyfile,'a')
+    f.write("%s" % tmpprcertkey)
     f.close()
-    logger.debug("Move tmpcertfile to certfile")
-    shutil.move(tmpcertfile, certFile)
-    logger.info("Change permissions of %s to 0600", certFile)
-    os.chmod(certFile, 0600)
+    logger.debug("Move tmpfile to certfile")
+    shutil.move(tmpprcertkeyfile, prcertkeyFile)
+    logger.info("Change permissions of %s to 0600", prcertkeyFile)
+    os.chmod(prcertkeyFile, 0600)
 
 def clearSSHKey(keyFile):
 
@@ -192,36 +194,219 @@ def clearSSHKey(keyFile):
     if index == -1 :
         logger.info("SSH Key does not have a passphrase. Skip.")
         return 
+
     k = loadKeyFromFile(keyFile)
     if not k:
         logger.warning("Failed to load key from file. Unable to remove passphrase. Exit!")
         sys.exit()
     logger.debug("Loaded key from %s" %keyFile)
+
+    question = "Do you want to make a backup of your encrypted key(%s)" % keyFile
+    if getYNAns(question):
+      backupEncFile(keyFile)
+
     k.save_to_file(keyFile)
     logger.debug("Saved key to %s" %keyFile)
 
+def backupEncFile(fullname):
+    # Make a backup copy of the key
+    filedir = os.path.dirname(fullname)
+    filename = os.path.splitext(os.path.basename(fullname))[0]
+    extension = os.path.splitext(os.path.basename(fullname))[1]
+    bakfile = os.path.join(filedir, filename + '_enc' + extension)
+    bakfile = getFileName(bakfile)
+    shutil.copyfile(fullname, bakfile)
+    logger.info("Made back up of encrypted key to %s" %bakfile)
 
+def setConfigFile( opts ):
+  """Set the location of the omni config file.
+    Search path:
+    - filename from commandline
+      - in current directory
+      - in ~/.gcf
+    - omni_config in current directory
+    - omni_config in ~/.gcf
+    """
+
+  if opts.configfile:
+    # if configfile defined on commandline use that file and fail
+    # if it does not exist
+    if os.path.exists( opts.configfile ):
+        return
+    else:
+        # Check maybe the default directory for the file
+        configfile = os.path.join( '~/.gcf', opts.configfile )
+        configfile = os.path.expanduser( configfile )
+        if os.path.exists( configfile ):
+            opts.configfile = configile
+            return
+        else:
+            sys.exit("Config file '%s' or '%s' does not exist"
+                 % (opts.configfile, configfile))
+
+  # Check the default places
+  #   - first check in the local directory
+  configfile = os.path.expanduser( 'omni_config' )
+  if os.path.exists( configfile ):
+    opts.configfile = configile
+    return
+
+  #  - then check under ~/.gcf
+  configfile = os.path.expanduser( '~/.gcf/omni_config' )
+  if os.path.exists( configfile ):
+    opts.configfile = configfile
+    return
+
+  prtStr = """ Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
+   An example config file can be found in the source tarball or on the wiki"""
+  sys.exit( prtStr )
+
+def loadConfigFile(opts):
+
+    filename = opts.configfile 
+    logger.info("Loading config file %s", filename)
+        
+    confparser = ConfigParser.RawConfigParser()
+    try:
+        confparser.read(filename)
+    except ConfigParser.Error as exc:
+        sys.exit("Config file %s could not be parsed: %s"% (filename, str(exc)))
+
+    # Load up the omni options
+    config = {}
+    config['omni'] = {}
+    for (key,val) in confparser.items('omni'):
+        config['omni'][key] = val
+        
+    # Load up the users the user wants us to see        
+    config['users'] = []
+    if 'users' in config['omni']:
+        if config['omni']['users'].strip() is not '' :
+            for user in config['omni']['users'].split(','):
+                if user.strip() is not '' : 
+                    d = {}
+                    for (key,val) in confparser.items(user.strip()):
+                        d[key] = val
+                    config['users'].append(d)
+
+    # Load up the framework section
+    if not opts.framework:
+        opts.framework = config['omni']['default_cf']
+
+    logger.info("Using control framework %s" % opts.framework)
+
+    # Find the control framework
+    cf = opts.framework.strip()
+    if not confparser.has_section(cf):
+        logger.error( 'Missing framework %s in configuration file' % cf )
+        raise OmniError, 'Missing framework %s in configuration file' % cf
+    
+    # Copy the control framework into a dictionary
+    config['selected_framework'] = {}
+    for (key,val) in confparser.items(cf):
+        config['selected_framework'][key] = val
+
+    return config
+
+
+def findSSHPrivKeys( config ):
+    """Look in omni_config for user and key information of the public keys that
+    are installed in the nodes. It uses the global variable config and returns
+    keyList which is a dictionary of keyLists per user"""
+
+    keyList = [] 
+    if not config.has_key('users'):
+      logger.warn("Your omni_config is missing the 'users' attribute.")
+      return keyList
+
+    for user in config['users']:
+        # convert strings containing public keys (foo.pub) into
+        # private keys (foo)
+        privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
+        privuserkeys = privuserkeys.split(",")
+        for key in privuserkeys:
+            key = os.path.expanduser(key)
+            if os.path.exists(key):
+              keyList.append(key)
+    return keyList
+
+def removeSSHPassphrase(key):
+  question = "Do you want to remove the passphrase from you ssh-key (%s, key used to login to compute resources)" % key
+  if getYNAns(question):
+    if not os.path.exists(key):
+        raise Exception("Key file %s does not exist" % key)
+    logger.info("\n\tTHIS SCRIPT WILL REMOVE THE PASSPHRASE FROM YOUR SSH KEY.")
+    clearSSHKey(key)
+
+
+def removeSSLPassphrase(prcertkey):
+  question = "Do you want to remove the passphrase from your the private key of your SSL cert (%s)" % prcertkey
+  if getYNAns(question):
+    if not os.path.exists(prcertkey):
+        raise Exception("Key file %s does not exist" % prcertkey)
+    logger.info("\n\tTHIS SCRIPT WILL REPLACE %s WITH AN UNENCREPTED CERT KEY. A BACKUP OF THE ORIGINAL CERT WILL BE CREATED\n" % prcertkey)
+    # Check if this is a cert file
+    if fileIsSSLCert(prcertkey) :
+      clearCert(prcertkey)
+    else :
+      clearSSHKey(prcertkey)
+       
+def fileIsSSLCert(filename):
+    f = open(filename, 'r')
+    text = f.read()
+    f.close()
+    pkey_match = re.findall("^-+BEGIN CERTIFICATE-+$.*?^-+END CERTIFICATE-+$", text, re.MULTILINE|re.S)
+    if len(pkey_match) == 0:
+      return False
+    return True
 
 def main():
     global logger
     argv = sys.argv[1:]
     opts = parseArgs(argv)
     configLogging(opts)
-    # Expand the cert and key files to a full path
-    logger.debug("Running %s with options %s" %(sys.argv[0], opts))
-    opts.cert= os.path.expanduser(opts.cert)
-    opts.key= os.path.expanduser(opts.key)
-    question = "Do you want to remove the passphrase from your cert (%s)" % opts.cert
-    if getYNAns(question):
-        if not os.path.exists(opts.cert):
-            raise Exception("Certificate file %s does not exist" % opts.cert)
-        logger.info("\n\tTHIS SCRIPT WILL REPLACE %s WITH AN UNENCREPTED CERT. A BACKUP OF THE ORIGINAL CERT WILL BE CREATED\n" % opts.cert)
-        clearCert(opts.cert)
-    question = "Do you want to remove the passphrase from you ssh-key (%s, key used to login to compute resources)" % opts.key
-    if getYNAns(question):
-        logger.info("\n\tTHIS SCRIPT WILL REMOVE THE PASSPHRASE FROM YOUR SSH KEY. NO COPY OF THE ORIGINAL PRIVATE KEY WILL BE KEPT")
-        clearSSHKey(opts.key)
 
+    logger.debug("Running %s with options %s" %(sys.argv[0], opts))
+
+    # The script will either run with a config file or with the -p or -k option
+    # The -c option takes precedent so start with that
+    checkForConfig = True
+
+    if opts.configfile : 
+      # If you have specified the configfile then -p and -k will be ignored
+      if opts.prkey or opts.prcertkey : 
+        logger.warn("You have specified an omni config file location, the -p"+\
+                    +" and -k options are going to be ignored")
+        opts.prkey = None
+        opts.prcertkey = None
+
+    # If the user provided the location of a private key for the cert start from
+    # remove the passphrase
+    if opts.prcertkey : 
+      opts.prcertkey= os.path.expanduser(opts.prcertkey)
+      removeSSLPassphrase(opts.prcertkey)
+      checkForConfig = False
+        
+    if opts.prkey :
+      opts.prkey= os.path.expanduser(opts.prkey)
+      removeSSHPassphrase(opts.prkey)
+      checkForConfig = False
+    
+    if checkForConfig : 
+      setConfigFile(opts)
+      config = loadConfigFile(opts)
+
+      # Form config find the private key for the SSL cert
+      prcertkey = config["selected_framework"]["key"]
+      prcertkey= os.path.expanduser(prcertkey)
+      removeSSLPassphrase(prcertkey)
+
+      # Form config find all the private SSH keys stored in the user computer
+      keylist = findSSHPrivKeys(config)
+      logger.debug("List of private ssh keys: %s" %(str(keylist)))
+      for key in keylist : 
+        key = os.path.expanduser(key)
+        removeSSHPassphrase(key)
 
 if __name__ == "__main__":
     sys.exit(main())

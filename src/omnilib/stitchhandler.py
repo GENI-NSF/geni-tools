@@ -862,7 +862,7 @@ class StitchingHandler(object):
 
         # look to see if $slicehrn-amlist.txt exists
         if not os.path.exists(fname) or not os.path.getsize(fname) > 0:
-            self.logger.warn("File of AMs for slice %s not found or empty: %s", slicename, fname)
+            self.logger.debug("File of AMs for slice %s not found or empty: %s", slicename, fname)
             return
 
         self.logger.info("Reading stitching slice %s aggregates from file %s", slicename, fname)
