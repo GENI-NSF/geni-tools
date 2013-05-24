@@ -135,7 +135,7 @@ def getInfoFromManifest(manifestStr):
 
   return loginInfo
 
-def findUsersAndKeys( ):
+def findUsersAndKeys( include_keys=True ):
     """Look in omni_config for user and key information of the public keys that
     are installed in the nodes. It uses the global variable config and returns
     keyList which is a dictionary of keyLists per user"""
@@ -350,6 +350,11 @@ def getParser() :
   parser = omni.getParser()
 
   usage = "\n\tTypically: \t%s slicename" % os.path.basename(sys.argv[0])
+  usage += "\n\nReports the status of nodes and the ssh command to login to them."
+  usage += "\nTry the --no-keys and -o options."
+  usage += "\nIn addition, takes the same options as omni (-c, -a, -V, etc)."
+ 
+  usage += "\n\n== Providing a private key to ssh ==\nIn order to ssh, you will need to supply a private key.\nThere are three options for doing so:\n\t1) always append the -i option to the ssh command: \n\t\t$ ssh -i <path to private key> ...\n\t2) run an ssh agent and add your private key to that agent: \n\t\t$ ssh-add <path to private key>\n\t\t$ ssh ...\n\t3) create an ssh config file using the -o option:\n\t\t$ readyToLogin.py ... -o\n\t\tSSH Config saved at: .../sshconfig.txt\n\t\tLogin info saved at: .../logininfo.txt\n\t\t$ mv sshconfig.txt ~/.ssh/config\n"
   parser.set_usage(usage)
   
   # Parse Options
@@ -382,8 +387,11 @@ def parseArguments( argv=None, opts=None ) :
         argv = []
 
   parser = getParser()
+  parser.add_option("--no-keys", 
+                    dest="include_keys",
+                    help="Do not include ssh keys in output",
+                    action="store_false", default=True)
   (options, args) = parser.parse_args(argv, options)
-
   
   if len(args) > 0:
       slicename = args[0]
@@ -439,6 +447,11 @@ def printLoginInfo( loginInfoDict, keyList ) :
     f.write("="*80+"\n")
     f.write("LOGIN INFO for AM: %s\n" % amUrl)
     f.write("="*80+"\n")
+
+    f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
+
+
+    firstTime = True
     for item in amInfo["info"] :
       output = ""
       if options.readyonly :
@@ -449,31 +462,46 @@ def printLoginInfo( loginInfoDict, keyList ) :
           sys.stderr.write("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
-        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
-          # Check if node is in ready state
+        if firstTime:
+            output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
+            # Check if node is in ready state
+        firstTime=False
       except KeyError:
         pass
 
       keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
+      usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
+      if options.include_keys:
+          if len(keys)>0:
+              output += usrLoginMsg
+          for key in keys: 
+              output += printLoginInfoForOneUser( item, key=key )
 
-      output += "User %s logins to %s using:\n" % (item['username'], item['client_id'])
-      for key in keys: 
-        output += "\t"
-        if options.xterm :
-            output += "xterm -e ssh"
-        if str(item['port']) != '22' : 
-            output += " -p %s " % item['port']
-        output += " -i %s %s@%s" % ( key, item['username'], item['hostname'])
-        if options.xterm :
-            output += " &"
-        output += "\n"
+      else:
+          output += usrLoginMsg
+          output += printLoginInfoForOneUser( item )
+          
       f.write(output)
+    if options.include_keys:
+        f.write("\nNOTE: If your user is not listed, try using the --no-keys option.\n")
 
+def printLoginInfoForOneUser( item, key=None ):
+    output = "\t"
+    if options.xterm :
+        output += "xterm -e ssh"
+    if str(item['port']) != '22' : 
+        output += " -p %s " % item['port']
+    if key is not None:
+        output += " -i %s" % ( key )
+    output += " %s@%s" % ( item['username'], item['hostname'])
+    if options.xterm :
+        output += " &"
+    output += "\n"
+    return output
 
 def printSSHConfigInfo( loginInfoDict, keyList ) :
   '''Prints the SSH config Information from all AMs, all Users and all hosts '''
 
-  print loginInfoDict
 # Check if the output option is set
   defaultAnswer = not options.donotoverwrite
   prefix = ""
@@ -538,7 +566,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
-  keyList = findUsersAndKeys( )
+  keyList = findUsersAndKeys( options.include_keys )
   if sum(len(val) for val in keyList.itervalues())== 0:
     output = "ERROR:There are no keys. You can not login to your nodes.\n"
     sys.exit(-1)
