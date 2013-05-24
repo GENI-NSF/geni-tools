@@ -44,10 +44,24 @@ from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
 
-DEFAULT_PRIVATE_CERT_KEY = {}
-DEFAULT_PRIVATE_CERT_KEY['pg'] = "~/.ssh/geni_key_pg"
-DEFAULT_PRIVATE_CERT_KEY['pl'] = "~/.ssh/geni_key_pl"
-DEFAULT_PRIVATE_CERT_KEY['portal'] = "~/.ssl/geni_ssl_portal.key"
+DEFAULT_PRIVATE_CERT_KEY = {
+                            'pg' : "~/.ssh/geni_cert_key_pg",
+                            'pl' : "~/.ssh/geni_cert_key_pl",
+                            'portal' : "~/.ssl/geni_ssl_portal.key"
+                           }
+
+DEFAULT_PRIVATE_KEY = {
+                        'pg' : "~/.ssh/geni_key_pg",
+                        'pl' : "~/.ssh/geni_key_pl",
+                        'portal' : "~/.ssh/geni_key_portal"
+                      }
+
+DEFAULT_CERT = {
+                 'pg' : "~/.ssl/geni_cert_pg.pem",
+                 'pl' : "~/.ssl/geni_cert_pl.gid",
+                 'portal' : "~/.ssl/geni_cert_portal.pem"
+               }
+
 
 def getYNAns(question):
     valid_ans=['','y', 'n']
@@ -506,12 +520,17 @@ def parseArgs(argv, options=None):
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
                       help="Config file location [DEFAULT: %default]", metavar="FILE")
-    parser.add_option("-p", "--cert", default="~/.ssl/geni_cert",
-                      help="File location of user SSL certificate [DEFAULT: %default.pem]", metavar="FILE")
+    parser.add_option("-p", "--cert", default="",
+                      help="File location of user SSL certificate. Default is "+\
+                      "based on the selected framework (see -f option) [DEFAULT: %s]" % str(DEFAULT_CERT), metavar="FILE")
     parser.add_option("-k", "--prcertkey", default="",
-                      help="File location of private key for the user SSL certificate [DEFAULT: %default]", metavar="FILE")
-    parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
-                      help="File location of private SSH key for logging in to compute resources [DEFAULT: %default]", metavar="FILE")
+                      help="File location of private key for the user SSL "+\
+                      "certificate. Default is based on the selected framework"+\
+                      " (see -f option) [DEFAULT: %s]" % str(DEFAULT_PRIVATE_CERT_KEY), metavar="FILE")
+    parser.add_option("-e", "--prkey", default="",
+                      help="File location of private SSH key for logging "+ \
+                      "in to compute resources. Default is based on the "+\
+                      "selected framework (see -f option) [DEFAULT: %s]" % str(DEFAULT_PRIVATE_KEY), metavar="FILE")
     parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
                       help="Bundle downloaded from the portal for configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="portal", type='choice',
@@ -551,17 +570,14 @@ def initialize(opts):
     # If the value is the default add the appropriate file extention
     # based on the framework
 
-    if not cmp(opts.cert, "~/.ssl/geni_cert") : 
-        if not cmp(opts.framework,'pg') :
-            opts.cert += ".pem"
-        else : 
-            if not cmp(opts.framework,'pl'):
-                opts.cert += ".gid"
-            else :
-              if not cmp(opts.framework, 'portal') :
-                opts.cert +="_portal.pem"
-        logger.debug("Cert is the default add the appropriate extension. Certfile is %s", opts.cert)
+    if opts.cert == "" :
+        opts.cert = DEFAULT_CERT[opts.framework]
+        logger.debug("Cert is the default. Certfile is %s", opts.cert)
             
+    if opts.prkey == "" :
+        opts.prkey = DEFAULT_PRIVATE_KEY[opts.framework]
+        logger.debug("Private SSH key is the default. File is %s", opts.cert)
+
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
     opts.cert= os.path.abspath(opts.cert)
@@ -843,12 +859,13 @@ def getPortalConfig(opts, public_key_list, cert) :
     os.remove('/tmp/omni_config')
 
     if not config['selected_framework'].has_key('authority'):
-      sys.exit("You must have a newer version of the omni bundle:\n"+
+      sys.exit("\nERROR: Your omni bundle is old, you must get a new version:\n"+
                   "\t 1. Download new omni-bundle.zip from the Portal\n"+
-                  "\t 2. Rerun omni-configure.py")
+                  "\t 2. Rerun omni-configure.py"+
+                  "\nExiting!")
 
     if len(projects) == 0 :
-      logger.warn("You are not a member of any projects! You will need to:\n"+
+      logger.warn("\nWARNING: You are not a member of any projects! You will need to:\n"+
                   "\t 1. Join a project in the portal\n"+
                   "\t 2. Use the -r flag with omni.py to specify your project "+
                   "or \n\t    download a new bundle and rerun omni-configure.py")
