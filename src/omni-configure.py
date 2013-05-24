@@ -507,11 +507,11 @@ def parseArgs(argv, options=None):
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
                       help="Config file location [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-p", "--cert", default="~/.ssl/geni_cert",
-                      help="User certificate file location [DEFAULT: %default.pem]", metavar="FILE")
+                      help="File location of user SSL certificate [DEFAULT: %default.pem]", metavar="FILE")
     parser.add_option("-k", "--prcertkey", default="",
-                      help="Private key for the SSL certificate file location [DEFAULT: %default]", metavar="FILE")
+                      help="File location of private key for the user SSL certificate [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-e", "--prkey", default="~/.ssh/geni_key",
-                      help="Private key for loggin to compute resources file location [DEFAULT: %default]", metavar="FILE")
+                      help="File location of private SSH key for logging in to compute resources [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
                       help="Bundle downloaded from the portal for configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="portal", type='choice',
