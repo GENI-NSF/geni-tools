@@ -43,6 +43,27 @@ gcf 2.3:
   - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
   not 'PG' (ticket #281)
 
+ * clear-passphrases.py
+  - Modified the script so that it works with the private key for the
+SSL cert if not part of the SSL cert file. (#280)
+    Detailed modifications are:
+      - replaced option -p with -k to specify a path for the private
+key that corresponds to the SSL cert
+      - replaced option -k with -e to specify the path for the private
+SSH key
+      - added option -c to specify an omni_config file.
+      - be default the script works with an omni_config file where it
+parses the selected framework and users and finds the key for the SSL
+cert and of the private SSH keys that are available on the system and
+removes the passphrases
+      - if not options are specified it tries to find a default
+omni_config the order is the same as in omni.py
+      - you can either run the script with an omni_config file or with
+        the -k or -e options. If both -c and -k or -e options are
+        specified, -c takes precedence. If -k or -e are specified
+        without the -c, then those keys are decrypted, but the default
+        omni_config is not looked at.
+ 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
  seconds, which appears to work more consistently.
