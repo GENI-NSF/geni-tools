@@ -104,7 +104,7 @@ from omnilib.util.handler_utils import validate_url
 
 OMNI_VERSION="2.3"
 
-DEFAULT_RSPEC_SERVER = "http://www.gpolab.bbn.com/experiment-support"               
+DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 DEFAULT_RSPEC_EXTENSION = "xml"                
 
 def countSuccess( successList, failList ):
@@ -219,7 +219,7 @@ def load_config(opts, logger):
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
-    config['default_rspec_server'] = DEFAULT_RSPEC_SERVER
+    config['default_rspec_location'] = DEFAULT_RSPEC_LOCATION
     config['default_rspec_extension'] = DEFAULT_RSPEC_EXTENSION
     if confparser.has_section('rspec_nicknames'):
         for (key,val) in confparser.items('rspec_nicknames'):
@@ -227,8 +227,8 @@ def load_config(opts, logger):
             temp = val.strip()
             if temp == "":
                 continue
-            if key == "default_rspec_server":
-                config['default_rspec_server'] = temp      
+            if key == "default_rspec_location":
+                config['default_rspec_location'] = temp      
             elif key == "default_rspec_extension":
                 config['default_rspec_extension'] = temp                
             else:

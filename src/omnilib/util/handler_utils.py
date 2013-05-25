@@ -63,22 +63,27 @@ def _derefAggNick(handler, aggregateNickname):
 
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
-    contentstr = readFile2( rspecNickname )
+    try:
+        contentstr = readFile( rspecNickname )
+    except:
+        pass
     if contentstr is None:
         handler.logger.debug("RSpec '%s' is not a filename or a url" % (rspecNickname))
         if handler.config['rspec_nicknames'].has_key(rspecNickname):
-            handler.logger.debug("RSpec '%s' is a nickname" % (rspecNickname))
+            handler.logger.info("Substituting RSpec nickname '%s' with '%s'" % (rspecNickname, handler.config['rspec_nicknames'][rspecNickname]))
             try:
                 contentstr = readFile( handler.config['rspec_nicknames'][rspecNickname] )
             except:
                 pass
         else:
-            handler.logger.debug("RSpec '%s' is a remote file" % (rspecNickname))
+            handler.logger.info("Looking for RSpec '%s' is in the default rspec location" % (rspecNickname))
+
             try:
-                remoteurl = os.path.join(handler.config['default_rspec_server'], rspecNickname+"."+handler.config['default_rspec_extension'])
+                remoteurl = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
+                handler.logger.info("... which is '%s'" % (remoteurl))
                 contentstr = readFile( remoteurl )            
             except:
-                raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or remote file" % (rspecNickname)
+                raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)
     return contentstr
 
 
