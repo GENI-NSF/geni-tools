@@ -668,8 +668,8 @@ def getParser():
  \t\t\t getversion \n\
  \t\t\t listresources [In AM API V1 and V2 optional: slicename] \n\
  \t\t\t describe slicename [AM API V3 only] \n\
- \t\t\t createsliver <slicename> <rspec filename or URL> [AM API V1&2 only] \n\
- \t\t\t allocate <slicename> <rspec filename or URL> [AM API V3 only] \n\
+ \t\t\t createsliver <slicename> <rspec URL, filename, or nickname> [AM API V1&2 only] \n\
+ \t\t\t allocate <slicename> <rspec URL, filename, or nickname> [AM API V3 only] \n\
  \t\t\t provision <slicename> [AM API V3 only] \n\
  \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
  \t\t\t poa <slicename> <action> \n\
