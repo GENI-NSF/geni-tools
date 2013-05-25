@@ -1598,8 +1598,8 @@ class AMCallHandler(object):
                 self._raise_omni_error(msg)
 
         try:
-        # read the rspec into a string, and add it to the rspecs dict
-          rspec = _derefRSpecNick(self, rspecfile)
+            # read the rspec into a string, and add it to the rspecs dict
+            rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
@@ -1772,7 +1772,7 @@ class AMCallHandler(object):
         rspecfile = None
         if not (self.opts.devmode and len(args) < 2):
             rspecfile = args[1]
-        if rspecfile is None or not os.path.isfile(rspecfile):
+        if rspecfile is None: # FIXME: If file type arg, check the file exists: os.path.isfile(rspecfile) 
             # Dev mode should allow missing RSpec
             msg = 'File of resources to request missing: %s' % rspecfile
             if self.opts.devmode:
@@ -1780,9 +1780,9 @@ class AMCallHandler(object):
             else:
                 self._raise_omni_error(msg)
 
-        # read the rspec into a string, and add it to the rspecs dict
         try:
-            rspec = file(rspecfile).read()
+            # read the rspec into a string, and add it to the rspecs dict
+            rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
             msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
             if self.opts.devmode:
