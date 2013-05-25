@@ -26,11 +26,19 @@ import os
 
 URL_PREFIXES = ("http://", "https://", "ftp://")
 
+def readFile2( filestr ):
+    contentstr = None
+    if filestr.startswith(URL_PREFIXES):
+        contentstr = readFromURL(filestr)
+    elif os.path.exists(filestr):
+        contentstr = readFromLocalFile(filestr)
+    return contentstr
+
 def readFile( filestr ):
     contentstr = None
     if filestr.startswith(URL_PREFIXES):
         contentstr = readFromURL(filestr)
-    else :
+    else:
         contentstr = readFromLocalFile(filestr)
     return contentstr
 

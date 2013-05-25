@@ -104,6 +104,8 @@ from omnilib.util.handler_utils import validate_url
 
 OMNI_VERSION="2.3"
 
+DEFAULT_RSPEC_SERVER = "http://www.gpolab.bbn.com/experiment-support"               
+DEFAULT_RSPEC_EXTENSION = "xml"                
 
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
@@ -214,6 +216,32 @@ def load_config(opts, logger):
             # If temp len > 2: try to use it as is
 
             config['aggregate_nicknames'][key] = temp
+
+    # Find rspec nicknames
+    config['rspec_nicknames'] = {}
+    config['default_rspec_server'] = DEFAULT_RSPEC_SERVER
+    config['default_rspec_extension'] = DEFAULT_RSPEC_EXTENSION
+    if confparser.has_section('rspec_nicknames'):
+        for (key,val) in confparser.items('rspec_nicknames'):
+            key = key.strip()
+            temp = val.strip()
+#                logger.warn("Malformed definition of rspec nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+            if temp == "":
+                continue
+#             # Got 1 entry - if its a valid URL, use it
+#             res = validate_url(temp[0])
+#             if res is None or res.startswith("WARN:"):
+#                 pass
+#             else:
+#                 # not a valid URL. Skip it
+#                 logger.warn("Skipping rspec nickname %s: %s doesn't look like a URL", key, temp[0])
+#                 continue
+            if key == "default_rspec_server":
+                config['default_rspec_server'] = temp      
+            elif key == "default_rspec_extension":
+                config['default_rspec_extension'] = temp                
+            else:
+                config['rspec_nicknames'][key] = temp
 
     # Load up the framework section
     if not opts.framework:

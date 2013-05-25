@@ -33,6 +33,7 @@ import credparsing as credutils
 from dates import naiveUTC
 import json_encoding
 from geni.util import rspec_util
+from omnilib.util.files import *
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -59,6 +60,28 @@ def _derefAggNick(handler, aggregateNickname):
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
 
     return url,urn
+
+def _derefRSpecNick( handler, rspecNickname ):
+    contentstr = None
+    contentstr = readFile2( rspecNickname )
+    if contentstr is None:
+        handler.logger.debug("RSpec '%s' is not a filename or a url" % (rspecNickname))
+        if handler.config['rspec_nicknames'].has_key(rspecNickname):
+            handler.logger.debug("RSpec '%s' is a nickname" % (rspecNickname))
+            try:
+                contentstr = readFile( handler.config['rspec_nicknames'][rspecNickname] )
+            except:
+                pass
+        else:
+            handler.logger.debug("RSpec '%s' is a remote file" % (rspecNickname))
+            try:
+                remoteurl = os.path.join(handler.config['default_rspec_server'], rspecNickname+"."+handler.config['default_rspec_extension'])
+                contentstr = readFile( remoteurl )            
+            except:
+                raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or remote file" % (rspecNickname)
+    return contentstr
+
+
 
 def _listaggregates(handler):
     """List the aggregates that can be used for the current operation.
