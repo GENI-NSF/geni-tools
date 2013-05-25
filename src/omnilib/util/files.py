@@ -36,6 +36,7 @@ def readFile( filestr ):
 
 def readFromLocalFile( filename ):
     readstr = None
+    filename = os.path.expanduser( filename )
     with open(filename, 'r') as f:
         readstr = f.read()
     return readstr
