@@ -678,7 +678,10 @@ def configureSSHKeys(opts):
         os.remove(private_key_file)
         sys.exit(-1)
 
-    modifySSHConfigFile(private_key_file)
+    # Commented the modification of SSH config file out, since
+    # what it does is not very useful and there is no flag to turn 
+    # this off
+    #modifySSHConfigFile(private_key_file)
     
     pubkey_list.append(public_key_file)
     return pubkey_list
