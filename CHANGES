@@ -42,6 +42,16 @@ gcf 2.3:
  accounts, for both slices and users (ticket #279)
   - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
   not 'PG' (ticket #281)
+  - Add `authority` field to `pgch` framework (#268)
+
+ * omni-configure.py
+  - Handle local private key in omni-configure for portal (#267)
+  - Make `omni-configure.py` handle an `authority` field for framework `pgch` (#269)
+  - Make omni-configure.py default to portal ('-f portal') (#271)
+  - Modify omni-configure not to use the same filenames for different CH (#273)
+  - Remove typos from omni-configure.py -h (#282)
+  - If your SSH private key is not same of your SSL private key, generate one for use with some tools (#283)
+  - Modify the '-e' parameter to take a folder and not a file (#289)
 
  * clear-passphrases.py
   - Modified the script so that it works with the private key for the
@@ -63,12 +73,13 @@ omni_config the order is the same as in omni.py
         specified, -c takes precedence. If -k or -e are specified
         without the -c, then those keys are decrypted, but the default
         omni_config is not looked at.
- 
+ * readyToLogin.py 
+  - Make readyToLogin.py take a --no-keys option to support multiple members in a slice (#276)
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
  seconds, which appears to work more consistently.
   - Suppress some verbose command output by sending results to files.
-  - Ticket #236: Use the getversion cache when not testing getversion
+  - Use the getversion cache when not testing getversion (#236)
   - Update sample omni_config (ticket #258)
 
  * gcf
