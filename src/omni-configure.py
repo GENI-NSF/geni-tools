@@ -51,9 +51,9 @@ DEFAULT_PRIVATE_CERT_KEY = {
                            }
 
 DEFAULT_PRIVATE_KEY = {
-                        'pg' : "~/.ssh/geni_key_pg",
-                        'pl' : "~/.ssh/geni_key_pl",
-                        'portal' : "~/.ssh/geni_key_portal"
+                        'pg' : "geni_key_pg",
+                        'pl' : "geni_key_pl",
+                        'portal' : "geni_key_portal"
                       }
 
 DEFAULT_CERT = {
@@ -222,10 +222,10 @@ the '-k' option to specify a custom location for the key.\n")
 def bundle_extract_keys(omnizip, opts) :
    """ function that will extract any key files in zip bundle
        in the approprate places
-         * private key will go to 'opts.prkey' and the corresponding
-           public key will go to 'opts.prkey'.pub
+         * private key will go to 'opts.sshdir', the name will be 
+           the same as in the bundle
          * all public keys except from the one corresponding to the 
-           included private key will go under ~/.ssh/
+           included private key will go under 'opts.sshdir'
            for any key with no extension we will add .pub
    """
    pubkey_list = []
@@ -247,31 +247,32 @@ def bundle_extract_keys(omnizip, opts) :
                    "key in the bundle, please email help@geni.net")
 
         # Place the private key in the right place
-        omnizip.extract(x, '/tmp')
-        opts.prkey = copyPrivateKeyFile(os.path.join('/tmp/', x), opts.prkey)
+        omnizip.extract(x, '/tmp/omni_bundle')
+        prkeyfname = os.path.join(opts.sshdir, DEFAULT_PRIVATE_KEY[opts.framework])
+        prkeyfname = copyPrivateKeyFile(os.path.join('/tmp/omni_bundle/', x), prkeyfname)
 
         # Place the public key in the right place
-        omnizip.extract(xpub, '/tmp')
-        pubname = opts.prkey+'.pub'
+        omnizip.extract(xpub, '/tmp/omni_bundle')
+        pubname = prkeyfname +'.pub'
 
         # Try and see if this public key name exist
         tmp = getFileName(pubname)
         # if the file already exists, exit since we can't have a pub key 
         # that does not match the private key
         if cmp(tmp, pubname) :
-          # Remove the cert, the private key, and the /tmp/ssh folder before
+          # Remove the cert, the private key, and the /tmp/omni_bundle/ssh folder before
           # we exit
           os.remove(opts.cert)
-          os.remove(opts.prkey)
-          shutil.rmtree('/tmp/ssh')
+          os.remove(prkeyfname)
+          shutil.rmtree('/tmp/omni_bundle/ssh')
           sys.exit("There is already a key named "+pubname+". Remove it first "+
                    "and then rerun the script")
         
-        logger.debug("Place public key %s at %s" \
-                     %(pubkey_of_priv_inbundle, pubname))
-        shutil.move(os.path.join('/tmp/', xpub), pubname)
+        shutil.move(os.path.join('/tmp/omni_bundle/', xpub), pubname)
         pubkey_list.append(pubname)
         pubkey_of_priv_inbundle = xpub
+        logger.debug("Place public key %s at %s" \
+                     %(pubkey_of_priv_inbundle, pubname))
    
    # Make a second pass to extract all public keys other than the one that 
    # corresponds to the private key
@@ -279,10 +280,10 @@ def bundle_extract_keys(omnizip, opts) :
       if x.startswith('ssh/public') and \
          not x.startswith(pubkey_of_priv_inbundle) :
 
-        omnizip.extract(x, '/tmp')
+        omnizip.extract(x, '/tmp/omni_bundle')
         xname = os.path.basename(x)
         xbase = os.path.splitext(xname)[0]
-        xfullpath = os.path.join('~/.ssh/', xbase + '.pub')
+        xfullpath = os.path.join(opts.sshdir, xbase + '.pub')
         xfullpath = os.path.abspath(getFileName(xfullpath))
 
         # Check if the file ~/.ssh exists and create it if not
@@ -292,10 +293,10 @@ def bundle_extract_keys(omnizip, opts) :
             os.makedirs(dstdir)
           
         logger.debug("Copy public key %s to %s" %(x, xfullpath))
-        shutil.move(os.path.join('/tmp/', x), xfullpath)
+        shutil.move(os.path.join('/tmp/omni_bundle/', x), xfullpath)
         pubkey_list.append(xfullpath)
 
-   shutil.rmtree('/tmp/ssh')
+   shutil.rmtree('/tmp/omni_bundle/ssh')
 
    return pubkey_list
 
@@ -519,26 +520,33 @@ def parseArgs(argv, options=None):
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
-                      help="Config file location [DEFAULT: %default]", metavar="FILE")
+                      help="Config file location [DEFAULT: %default]", 
+                      metavar="FILE")
     parser.add_option("-p", "--cert", default="",
                       help="File location of user SSL certificate. Default is "+\
-                      "based on the selected framework (see -f option) [DEFAULT: %s]" % str(DEFAULT_CERT), metavar="FILE")
+                      "based on the selected framework (see -f option) [DEFAULT: %s]" 
+                      % str(DEFAULT_CERT), metavar="FILE")
     parser.add_option("-k", "--prcertkey", default="",
                       help="File location of private key for the user SSL "+\
                       "certificate. Default is based on the selected framework"+\
-                      " (see -f option) [DEFAULT: %s]" % str(DEFAULT_PRIVATE_CERT_KEY), metavar="FILE")
-    parser.add_option("-e", "--prkey", default="",
-                      help="File location of private SSH key for logging "+ \
-                      "in to compute resources. Default is based on the "+\
-                      "selected framework (see -f option) [DEFAULT: %s]" % str(DEFAULT_PRIVATE_KEY), metavar="FILE")
+                      " (see -f option) [DEFAULT: %s]" % str(DEFAULT_PRIVATE_CERT_KEY), 
+                      metavar="FILE")
+    parser.add_option("-s", "--sshdir", default="~/.ssh/",
+                      help="Directory for the location of SSH keys for "+ \
+                      "logging in to compute resources, [DEFAULT: %default]" ,
+                      metavar="FILE")
     parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
-                      help="Bundle downloaded from the portal for configuring Omni [DEFAULT: %default]", metavar="FILE")
+                      help="Bundle downloaded from the portal for "+ \
+                      "configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="portal", type='choice',
                       choices=['pg', 'pl', 'portal'],
-                      help="Control framework that you have an account with [options: [pg, pl, portal], DEFAULT: %default]")
+                      help="Control framework that you have an account " + \
+                      "with [options: [pg, pl, portal], DEFAULT: %default]")
     parser.add_option("--pick-project", dest="pick_project", 
                       action="store_true",
-                      default=False, help="Lets you choose which project to use as default from the projects in the bundle downloaded from the portal")
+                      default=False, help="Lets you choose which project to "+ \
+                      "use as default from the projects in the bundle "+ \
+                      "downloaded from the portal")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
@@ -574,17 +582,24 @@ def initialize(opts):
         opts.cert = DEFAULT_CERT[opts.framework]
         logger.debug("Cert is the default. Certfile is %s", opts.cert)
             
-    if opts.prkey == "" :
-        opts.prkey = DEFAULT_PRIVATE_KEY[opts.framework]
-        logger.debug("Private SSH key is the default. File is %s", opts.cert)
+    # Expand the ssh directory to a full path
+    opts.sshdir = os.path.expanduser(opts.sshdir)
+    opts.sshdir = os.path.abspath(opts.sshdir)
+    # Validate that the sshdir does not conflict with the tmp
+    # folders used for the portal
+    if opts.framework is 'portal':
+      print "PORTAL"
+      print opts.sshdir
+      if opts.sshdir.startswith('/tmp/omni_bundle') :
+            sys.exit("\n\nExit!\nYou can't use as your ssh directory "+\
+                     opts.sshdir + ". It is used internally by the script, rerun "+\
+                     "and choose a direcory is not under "+\
+                     "'/tmp/omni_bundle' to store your "+\
+                     "ssh keys." )
 
     # Expand the cert file to a full path
     opts.cert= os.path.expanduser(opts.cert)
     opts.cert= os.path.abspath(opts.cert)
-
-    # Expand the private file to a full path
-    opts.prkey = os.path.expanduser(opts.prkey)
-    opts.prkey = os.path.abspath(opts.prkey)
 
     # Expand the portal bundle file to a full path
     opts.portal_bundle = os.path.expanduser(opts.portal_bundle)
@@ -615,30 +630,32 @@ def extract_cert_from_bundle(filename, dest) :
     """
     omnizip = zipfile.ZipFile(filename)
     # extract() can only take a directory as argument
-    # extract it at /tmp and then move it to the file 
+    # extract it at /tmp/omni_bundle and then move it to the file 
     # we want
-    omnizip.extract('geni_cert.pem', '/tmp')
+    omnizip.extract('geni_cert.pem', '/tmp/omni_bundle')
     omnizip.close()
     # If the destination does not exist create it
     destdir = os.path.dirname(dest)
     if os.path.expanduser(destdir) :
       if not os.path.exists(destdir) :
         os.makedirs(destdir)
-    shutil.move('/tmp/geni_cert.pem', dest)
+    shutil.move('/tmp/omni_bundle/geni_cert.pem', dest)
     
 def configureSSHKeys(opts):
     global logger
 
     pubkey_list = []
     # Use the default place for the geni private key
-    private_key_file = opts.prkey
+    private_key_file = os.path.join(opts.sshdir, 
+                           DEFAULT_PRIVATE_KEY[opts.framework])
     pkey=opts.prcertkey
 
     if not cmp(opts.framework, 'portal') :
       omnizip = zipfile.ZipFile(opts.portal_bundle)
       # For the portal case we have to use a different default name
       # for the key generated by the ssl cert
-      private_key_file = os.path.expanduser("~/.ssh/geni_cert_portal_key")
+      private_key_file = os.path.expanduser(os.path.join(
+                                   opts.sshdir, "geni_cert_portal_key"))
       # If there are no keys in the bundle create a pair
       # the same was as for a PG framework
       if not bundle_has_keys(omnizip) :
@@ -857,16 +874,15 @@ ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.insta
 
 """ 
 
-
 def getPortalConfig(opts, public_key_list, cert) :
     # The bundle contains and omni_config
     # extract it and load it
     omnizip = zipfile.ZipFile(opts.portal_bundle)
-    omnizip.extract('omni_config', '/tmp')
+    omnizip.extract('omni_config', '/tmp/omni_bundle')
 
-    config = loadConfigFile('/tmp/omni_config')
-    projects = loadProjects('/tmp/omni_config')
-    os.remove('/tmp/omni_config')
+    config = loadConfigFile('/tmp/omni_bundle/omni_config')
+    projects = loadProjects('/tmp/omni_bundle/omni_config')
+    os.remove('/tmp/omni_bundle/omni_config')
 
     if not config['selected_framework'].has_key('authority'):
       sys.exit("\nERROR: Your omni bundle is old, you must get a new version:\n"+
@@ -1172,6 +1188,9 @@ def main():
     logger.debug("Initialize Running %s with options %s" %(sys.argv[0], opts))
     pub_key_file_list = configureSSHKeys(opts)
     createConfigFile(opts,pub_key_file_list)
+    if opts.framework is 'portal' : 
+      shutil.rmtree('/tmp/omni_bundle')
+      
 
 if __name__ == "__main__":
     sys.exit(main())
