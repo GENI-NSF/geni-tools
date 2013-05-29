@@ -121,6 +121,12 @@ ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kett
 ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
 ig-of-kettering=,https://foam.geni.kettering.edu:3626/foam/gapi/1
 
+ig-princeton=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am
+ig-princeton1=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/1.0
+ig-princeton2=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/2.0
+ig-princeton3=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-princeton=urn:publicid:IDN+openflow:foam:foam.instageni.cs.princeton.edu+authority+am,https://foam.instageni.cs.princeton.edu:3626/foam/gapi/1
+
 [pg-gpo]
 type=pg
 verbose=false
