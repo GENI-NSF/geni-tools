@@ -387,12 +387,14 @@ def parseArguments( argv=None, opts=None ) :
         argv = []
 
   parser = getParser()
+  # FIXME: This doesn't seem to actually happen when main_no_print is called from a script that passed in an opts
+  # Or rather, it may happen but isn't preserved. Can't this be done in the above getParser() function? If we did that, I think the rest would work.
   parser.add_option("--no-keys", 
                     dest="include_keys",
                     help="Do not include ssh keys in output",
                     action="store_false", default=True)
   (options, args) = parser.parse_args(argv, options)
-  
+
   if len(args) > 0:
       slicename = args[0]
   elif slicename == None:
@@ -566,7 +568,15 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
-  keyList = findUsersAndKeys( options.include_keys )
+  # FIXME: This try/except is a hack. Fix this above in parseArguments if possible
+  incl = True
+  try:
+       #FIXME: When called from other scripts, the include_keys option is not added
+      incl = options.include_keys
+  except AttributeError:
+      pass
+
+  keyList = findUsersAndKeys( incl )
   if sum(len(val) for val in keyList.itervalues())== 0:
     output = "ERROR:There are no keys. You can not login to your nodes.\n"
     sys.exit(-1)
