@@ -19,18 +19,15 @@ users with GENI accounts (credentials) that they can use to
 reserve resources in GENI AMs.
 
 See INSTALL.txt or 
-[http://trac.gpolab.bbn.com/gcf/wiki/OmniQuickStart Omni Quick Start] 
+[http://trac.gpolab.bbn.com/gcf/wiki/QuickStart the Installation instructions] 
 for details on installing Omni.
 
-See README-omniconfigure.txt or
-http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure for details about how to configure Omni.
+See README-omniconfigure.txt or 
+http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about how to configure Omni.
 
-For 'stitching' support (experimenter defined custom topologies), see README-stitching.txt.
-
-The currently supported Clearinghouses are SFA (!PlanetLab),
-ProtoGENI (aka InstaGENI), GPO Clearinghouse, and GCF. Omni works with
-any GENI AM API compliant AM. These include SFA, ProtoGENI, InstaGENI,
-ExoGENI, !OpenFlow and GCF.
+The currently supported CFs are the GENI Portal,
+ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
+These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
 
 Omni performs the following functions:
  * Talks to each CF in its native API

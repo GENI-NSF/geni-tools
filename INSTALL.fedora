@@ -1,0 +1,6 @@
+== !RedHat / Fedora ==
+{{{
+sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 \
+                 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
+}}}
+

@@ -1,36 +1,36 @@
-Install instructions for CentOS 5.5:
+== CentOS ==
 
 GCF requires Python 2.6.  It is possible that overriding Python 2.4 with 2.6 could cause
-problems on CentOS 5.5, so we provide these directions for a parallel install of Python:
+problems on CentOS 5.5, so we provide these directions for a parallel install of Python.
 
 
-1- Install python 2.6 as python26:
-
+ 1. Install python 2.6 as python26:
+{{{
 $ wget http://mirrors.geekymedia.com/centos/geekymedia.repo 
 $ sudo mv geekymedia.repo /etc/yum.repos.d/ 
 $ sudo yum install python26*
-
-2- Install the 2.6 version of setuptools which has easy_install
-
+}}}
+ 1. Install the 2.6 version of setuptools which has easy_install
+{{{
 $ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.egg 
 $ wget http://peak.telecommunity.com/dist/ez_setup.py 
 $ sudo python26 ez_setup.py setuptools-0.6c11-py2.6.egg
-
-3- Use easy_install (make sure it operates on /usr/lib/python2.6)
-
+}}}
+ 1. Use easy_install (make sure it operates on /usr/lib/python2.6)
+{{{
 $ sudo easy_install python-dateutil==1.4.1 
 $ sudo easy_install pyOpenSSL 
 $ sudo yum install swig
-
-Edit /usr/include/openssl/opensslconf.h, line 13: (a tweak necessary in Centos, 
-otherwise error given in m2crypto installation)
-
+}}}
+ Edit {{{/usr/include/openssl/opensslconf.h}}}, line 13: (a tweak necessary in CentOS, otherwise error given in m2crypto installation)
+{{{
 #include "/usr/include/openssl/opensslconf-i386.h"
-
+}}}
+{{{
 $ sudo easy_install m2crypto
-
-4- Make sure scripts use python26:
-
-Edit src/gen-certs.py, src/gcf-ch.py, src/gcf-am.py, src/omni.py and others line 1:
-
+}}}
+ 1. Make sure scripts use python26:
+ Edit src/gen-certs.py, src/gcf-ch.py and src/gcf-am.py line 1:
+{{{
 #!/usr/bin/env python26
+}}}
