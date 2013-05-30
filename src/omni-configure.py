@@ -754,6 +754,14 @@ def createConfigFile(opts, public_key_list):
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
     if omni_bak_file != opts.configfile:
+        question = "\n'" + opts.configfile + "' will be backed up at '" + \
+                   omni_bak_file + "' and replaced with the new " + \
+                   "configuration file. Continue"
+        if not getYNAns(question):
+            sys.exit("\nExiting! To create a configuration file other than " +\
+                     opts.configfile + " use a different filename by using " +\
+                     "the '-c' option")
+
         logger.info("Your old omni configuration file has been backed up at %s" % omni_bak_file)
         shutil.copyfile(opts.configfile, omni_bak_file)
         
