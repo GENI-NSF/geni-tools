@@ -359,9 +359,9 @@ def getParser() :
   
   # Parse Options
   parser.add_option("-x", "--xterm", dest="xterm",
-                    action="store_false", 
-                    default=True,
-                    help="do NOT add xterm")
+                    action="store_true", 
+                    default=False,
+                    help="add xterm in the SSH commands")
   parser.add_option( "--readyonly", dest="readyonly",
                     action="store_true", 
                     default=False,
@@ -489,6 +489,9 @@ def printLoginInfoForOneUser( item, key=None ):
     output = "\t"
     if options.xterm :
         output += "xterm -e ssh"
+    else :
+        output += "ssh"
+
     if str(item['port']) != '22' : 
         output += " -p %s " % item['port']
     if key is not None:
