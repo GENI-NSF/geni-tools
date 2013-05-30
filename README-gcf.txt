@@ -4,16 +4,22 @@
 This is formatted as a wiki page:
 README-gcf.txt -> http://trac.gpolab.bbn.com/gcf/wiki/GcfQuickStart
 }}}
+
 = gcf Configuration and Test Run =
-This is a quick configuration guide for the GCF software package. Run these 4 steps to get the sample API implementations running so as to test the installation. Full usage instructions  for each step are in README.txt
+This is a quick configuration guide for the GCF software package. Run
+these 4 steps to get the sample API implementations running so as to
+test the installation. Full usage instructions for each step are in
+README.txt
 
  1. Create gcf_config
 {{{
 cd gcf
 cp gcf_config.sample gcf_config
 }}}
-Optional: Edit gcf_config if you want to change settings from the default.
+
+Optional: Edit `gcf_config` if you want to change settings from the default.
  ''Note: for a test run edits are not needed. Do this only if you want to change settings from the defaults.''
+
  2. Create certificates and run the GENI Clearinghouse. 
   In terminal one:
 {{{
@@ -21,10 +27,12 @@ cd gcf
 python src/gen-certs.py
 python src/gcf-ch.py
 }}}
+
  3. Run the GENI Aggregate Manager in a second terminal:
 {{{
 python src/gcf-am.py
 }}}
+
  4. Run the gcf client test script in a third terminal window:
 {{{
 python src/gcf-test.py 

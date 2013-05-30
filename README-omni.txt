@@ -25,6 +25,9 @@ for details on installing Omni.
 See README-omniconfigure.txt or 
 http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about how to configure Omni.
 
+For 'stitching' support (experimenter defined custom topologies), see
+README-stitching.txt.
+
 The currently supported CFs are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
 These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
@@ -59,9 +62,15 @@ New in v2.3:
  clearinghouse for its version, if supported. And add support to the
  GENI Clearinghouse interface. (ticket #270)
  - Various minor code cleanup changes
- - Add 2 more known InstaGENI racks to the `omni_config` nicknames
+ - Add 3 more known InstaGENI racks to the `omni_config` nicknames
  - Fix pgch handling of new `authority` field for GENI Portal
  accounts, for both slices and users (ticket #279)
+ - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
+ not 'PG' (ticket #281)
+ - Add `authority` field to `pgch` framework. Omni users with a 'GENI
+ Clearinghouse' account should re download an Omni bundle from the
+ Portal and re-run omni-configure, or manually add a line setting
+ `authority = panther` (or `ch.geni.net` after June 5). (#268)
 
 New in v2.2.1:
  - omni-configure: Added support for automatic configuration of omni

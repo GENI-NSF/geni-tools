@@ -5,20 +5,20 @@ the Omni command-line tool.
 See README.txt for details on the usage of the gcf package, and
 README-omni.txt for details on Omni.
 
-Omni users follow these install instructions to ensure software dependencies are met.
+Omni users should follow these install instructions to ensure software dependencies are met.
 
-For upgrading look at the end of this file.
+Upgrading? For upgrading instructions look at the end of this file.
 
 {{{
 !#comment
-The rest of the page is wiki formatted. 
-Content from wiki:QuickStart
+The rest of the page is wiki formatted.
+Content should mirror wiki:QuickStart
 Section that is different is Section 3
 }}}
 
-== 1. Create the gcf directory == 
+== 1. Create the gcf directory ==
 
-      * If you have downloaded the software from the git repository, you can skip this step. 
+      * If you have downloaded the software from the git repository, you can skip this step.
       {{{
       tar xvfz gcf-2.2.1.tar.gz
       }}}
@@ -30,16 +30,32 @@ Section that is different is Section 3
       {{{
       cd <install-dir>
       rm gcf; ln -s gcf-2.2.1 gcf
-      }}}    
+      }}}
 
 ==  2. Add GCF to your path == 
-In order to be able to run omni.py, gcf-am.py and any of the scripts (e.g. readyToLogin.py) you will need to modify the `PATH` and the `PYTHONPATH` environment variables. It is recommended
-that you make these modifications in a configuration file so that they are set every time you login to your host.  The name of the configuration file is dependent to the shell you are running. In order
-to figure out which shell you are using run:
+
+In order to be able to run omni.py, gcf-am.py and any of the scripts
+(e.g. readyToLogin.py) you will need to modify the `PATH` and the
+`PYTHONPATH` environment variables. 
+
+It is recommended that you make these modifications in a configuration file so that they are set every
+time you login to your host.  The name of the configuration file is
+dependent on the shell you are running. 
+
+In order to figure out which shell you are using run:
 {{{
  ps -p $$
 }}}
-If you are using a bash shell, copy and paste these lines in the end of your `.bashrc` file. This file is located in your home directory. If the file does not exist, you can create it. If you are using a different shell, then modify these lines appropriately and add them to the configuration file of your shell. Make sure to replace `<PATH-TO-GCF-DIR>` with the actual path to your gcf directory. For example if you have installed gcf under `/usr/local/bin/` then `<PATH-TO-GCF-DIR>` is `/usr/local/bin/gcf`.
+
+If you are using a bash shell, copy and paste these lines to the end
+of your `.bashrc` file. This file is located in your home
+directory. If the file does not exist, you can create it. 
+If you are using a different shell, then modify these lines appropriately and add
+them to the configuration file of your shell. Make sure to replace
+`<PATH-TO-GCF-DIR>` with the actual path to your gcf directory. For
+example if you have installed gcf under `/usr/local/bin/` then
+`<PATH-TO-GCF-DIR>` is `/usr/local/bin/gcf`.
+
 {{{
 # set PATH so it includes geni software if it exists
 if [ -d "<PATH-TO-GCF-DIR>/src" ] ; then
@@ -54,7 +70,12 @@ For the changes to take effect in your current terminal run:
 }}}
 
 == 3. Install software dependencies ==
-The GCF package is intended to be run on a recent Unix distribution. Python 2.6 or better is required. This software is not Python 3 compatible. This software requires a number of readily available software packages. Most modern Linux distributions should have these packages available via their native package management suite (eg. yum or apt). 
+The GCF package is intended to be run on a recent Unix
+distribution. Python 2.6 or better is required. This software is not
+Python 3 compatible. This software requires a number of readily
+available software packages. Most modern Linux distributions should
+have these packages available via their native package management
+suite (eg. yum or apt). 
 
 Read the appropriate INSTALL.* file for installing dependencies for your
 specific platform (e.g. read the INSTALL.ubuntu for instructions about
@@ -66,17 +87,20 @@ this file and install them manually.
  NOTE: '''Windows users''', you might want to consider using Cygwin.
 
 If you want to take a look at the detailed list of software dependencies look 
-in this file, in section "Software Dependencies".  
+in this file, in section "Software Dependencies".
 
 == 4. Configure and test the installation ==
       * Look at README-omni.txt for configuring Omni. 
       * Look at README-gcf.txt for configuring GCF.
- 
+
 
 = Upgrade =
-In order to upgrade gcf, simply follow  [#a1.Createthegcfdirectory the instructions about creating a gcf dir]. 
+In order to upgrade gcf, simply follow  [#a1.Createthegcfdirectory the instructions about creating a gcf directory].
 
-'''NOTE''': If you have any configuration files (e.g. `omni_config` or `gcf_config`) under the directory of your previous gcf installation, make sure you move them under the new directory so that you still have easy access to them. 
+'''NOTE''': If you have any configuration files (e.g. `omni_config` or
+`gcf_config`) under the directory of your previous gcf installation,
+make sure you move them under the new directory so that you still have
+easy access to them.
 
 == Software Dependencies ==
 
@@ -110,7 +134,7 @@ More information is available at: https://launchpad.net/pyopenssl
 
 The XML Security Library provides implementations of XML Digital
 Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
-from this package is used to sign credentials.  
+from this package is used to sign credentials.
 
 On rpm systems the required packages are:
  * xmlsec1
