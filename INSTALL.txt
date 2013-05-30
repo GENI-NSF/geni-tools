@@ -7,199 +7,122 @@ README-omni.txt for details on Omni.
 
 Omni users follow these install instructions to ensure software dependencies are met.
 
+For upgrading look at the end of this file.
 
-1) Software Dependencies
-========================
+{{{
+!#comment
+The rest of the page is wiki formatted. 
+Content from wiki:QuickStart
+Section that is different is Section 3
+}}}
 
-Details on required packages:
+== 1. Create the gcf directory == 
 
-1. Python M2Crypto package
+      * If you have downloaded the software from the git repository, you can skip this step. 
+      {{{
+      tar xvfz gcf-2.2.1.tar.gz
+      }}}
+      * Move the gcf directory to the directory where you want to permanently keep gcf. This might be your home directory. [[BR]]If you have `sudo` privileges in your host, you might want to consider moving the gcf package under `/usr/local/bin/` for a cleaner setup. 
+      {{{
+      [sudo] mv gcf-2.2.1 <install-dir>
+      }}}
+      * Create a symbolic link  called `gcf` to your installation directory. This will make the process of upgrading omni easier.
+      {{{
+      cd <install-dir>
+      rm gcf; ln -s gcf-2.2.1 gcf
+      }}}    
 
-  The M2Crypto package provides utilities for handling X.509
-  certificates and SSL connections. M2Crypto is required by the
-  certificate class in sfa/trust. M2Crypto should be readily available
-  on most Linux distributions.
+==  2. Add GCF to your path == 
+In order to be able to run omni.py, gcf-am.py and any of the scripts (e.g. readyToLogin.py) you will need to modify the `PATH` and the `PYTHONPATH` environment variables. It is recommended
+that you make these modifications in a configuration file so that they are set every time you login to your host.  The name of the configuration file is dependent to the shell you are running. In order
+to figure out which shell you are using run:
+{{{
+ ps -p $$
+}}}
+If you are using a bash shell, copy and paste these lines in the end of your `.bashrc` file. This file is located in your home directory. If the file does not exist, you can create it. If you are using a different shell, then modify these lines appropriately and add them to the configuration file of your shell. Make sure to replace `<PATH-TO-GCF-DIR>` with the actual path to your gcf directory. For example if you have installed gcf under `/usr/local/bin/` then `<PATH-TO-GCF-DIR>` is `/usr/local/bin/gcf`.
+{{{
+# set PATH so it includes geni software if it exists
+if [ -d "<PATH-TO-GCF-DIR>/src" ] ; then
+    PATH="<PATH-TO-GCF-DIR>/src:<PATH-TO-GCF-DIR>/examples:$PATH"
+    export PYTHONPATH="<PATH-TO-GCF-DIR>/src:$PYTHONPATH" 
+fi
+}}}
 
-  More information is available at:
-    http://chandlerproject.org/bin/view/Projects/MeTooCrypto
+For the changes to take effect in your current terminal run:
+{{{
+   source <configuration_file>
+}}}
 
-2. Python dateutil package
+== 3. Install software dependencies ==
+The GCF package is intended to be run on a recent Unix distribution. Python 2.6 or better is required. This software is not Python 3 compatible. This software requires a number of readily available software packages. Most modern Linux distributions should have these packages available via their native package management suite (eg. yum or apt). 
 
-  The dateutil package provides date parsing routines to Python. It
-  should be readily available on most Linux distributions.
+Read the appropriate INSTALL.* file for installing dependencies for your
+specific platform (e.g. read the INSTALL.ubuntu for instructions about
+installing dependencies on an Ubuntu host). 
 
-  More information is available at:
-    http://labix.org/python-dateutil
+If there are no instructions for you OS, look at the software dependencies at
+this file and install them manually. 
+ Email [mailto:gcf-dev@geni.net] for help.
+ NOTE: '''Windows users''', you might want to consider using Cygwin.
 
-3. Python OpenSSL package
+If you want to take a look at the detailed list of software dependencies look 
+in this file, in section "Software Dependencies".  
 
-  The OpenSSL package provides a python API to the OpenSSL
-  package. There is an implicit dependency on OpenSSL, but that
-  should be handled by the Linux package manager (yum, apt, etc.)
+== 4. Configure and test the installation ==
+      * Look at README-omni.txt for configuring Omni. 
+      * Look at README-gcf.txt for configuring GCF.
+ 
 
-  More information is available at:
-    https://launchpad.net/pyopenssl
+= Upgrade =
+In order to upgrade gcf, simply follow  [#a1.Createthegcfdirectory the instructions about creating a gcf dir]. 
 
-4. xmlsec1 package
+'''NOTE''': If you have any configuration files (e.g. `omni_config` or `gcf_config`) under the directory of your previous gcf installation, make sure you move them under the new directory so that you still have easy access to them. 
 
-  The XML Security Library provides implementations of XML Digital
-  Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
-  from this package is used to sign credentials.  
+== Software Dependencies ==
 
-  On rpm systems the required packages are 
-     	 xmlsec1
-	 xmlsec1-openssl-devel
+GCF depends on the following packages:
 
-  On debian systems the packages are 
-     	 libxmlsec1
-	 xmlsec1
-	 libxmlsec1-openssl
-	 libxmlsec1-dev
+=== Python M2Crypto ===
 
-  More information is available at:
-    http://www.aleksey.com/xmlsec/
-    http://www.w3.org/TR/xmlenc-core/
-    http://www.ietf.org/rfc/rfc3275.txt
+The M2Crypto package provides utilities for handling X.509
+certificates and SSL connections. M2Crypto is required by the
+certificate class in sfa/trust. M2Crypto should be readily available
+on most Linux distributions.
 
+More information is available at: http://chandlerproject.org/bin/view/Projects/MeTooCrypto
 
-2) Platform Installation
-========================
+=== Python dateutil ===
 
-The GCF package is intended to be run on a modern Unix distribution
-(circa 2010 or 2009). Python 2.6 or better is required. This software is not
-Python 3 compatible.
+The dateutil package provides date parsing routines to Python. It
+should be readily available on most Linux distributions.
 
-This software requires a number of readily available software
-packages. Most modern Linux distributions should have these packages
-available via their native package management suite (eg. yum or apt).
+More information is available at: http://labix.org/python-dateutil
 
+=== Python OpenSSL ===
 
-Debian/Ubuntu
--------------
-sudo apt-get install python-m2crypto python-dateutil \
-                     python-openssl libxmlsec1 xmlsec1 \
-                     libxmlsec1-openssl libxmlsec1-dev
+The OpenSSL package provides a python API to the OpenSSL
+package. There is an implicit dependency on OpenSSL, but that
+should be handled by the Linux package manager (yum, apt, etc.)
 
+More information is available at: https://launchpad.net/pyopenssl
 
-RedHat/Fedora
--------------
-sudo yum install m2crypto python-dateutil pyOpenSSL xmlsec1 \
-                 xmlsec1-devel xmlsec1-openssl xmlsec1-openssl-devel
+=== xmlsec1 ===
 
+The XML Security Library provides implementations of XML Digital
+Signatures (RFC 3275) and W3C XML Encryption. The program xmlsec1
+from this package is used to sign credentials.  
 
-CentOS
-------
-Please see INSTALL.centos
+On rpm systems the required packages are:
+ * xmlsec1
+ * xmlsec1-openssl-devel
 
+On debian systems the packages are 
+ * libxmlsec1
+ * xmlsec1
+ * libxmlsec1-openssl
+ * libxmlsec1-dev
 
-MAC OS X
---------
-
-Using homebrew
-==============
-These instructions use homebrew: http://mxcl.github.com/homebrew/
-
-To install:
-  * `brew install python`
-  * This will install python at `/usr/local/bin` but the python that comes with Mac OS is at `/usr/bin` which takes precedent in the path, so modify your `~/.profile` file and add this line:
-      export PATH=/usr/local/bin:$PATH
-      and then run `source ~/.profile`
-  * Type `which python` to ensure that you are using the right one.
-  * `brew install swig`
-  * `pip install M2Crypto`
-  * `brew install libxmlsec1`
-  * `pip install python-dateutil`
-  * `brew install xmlsec1`
-  * `pip install pyopenssl`
-  * `omni-configure.py` and `omni.py` assume that your python is at `/usr/bin/python` so you have two options:
-    - always invoke them using python, e.g. `python src/omni-configure.py` and `python src/omni.py`
-    - modify the first line in each of the files to be `#!/usr/local/bin/python`
-
-If you want to test if your python can access the libraries you want, just start python
-in interactive mode and try to import the module (e.g. `import M2Crypto`).
-
-MacPorts Instructions
-=====================
-These instructions have not recently been tested. You may need to edit your `PATH` or `PYTHONPATH` to ensure all installed modules are properly found.
-
-You must have macports already installed.
-
-  % sudo port install py26-m2crypto py26-dateutil py26-openssl xmlsec
-  % cd /opt/local/lib
-  % sudo ln -s libxmlsec1-openssl.dylib libxmlsec1-openssl.so
-
-In each terminal that you wish to run GCF, run this command first for
-xmlsec1:
-
-  % export DYLD_LIBRARY_PATH=/opt/local/lib
-
-
-Windows/Cygwin
---------------
-The necessary libraries are likely available but we have no experience
-running in this environment.
-
-
-3) Test Run
-===========
-Here is a 4 step test install of this software. Full usage instructions 
-for each step are in README.txt
-
-1. Copy gcf_config into place.
-
-   In terminal one:
-     $ cd $GCF
-     $ cp gcf_config.sample gcf_config
-
-   Optional: Edit gcf_config if you want to change settings from the default.
-   For a test run edits are not needed.
-
-2. Create certificates and run the GENI Clearinghouse
-
-  In terminal one:
-    $ python src/gen-certs.py
-    $ python src/gcf-ch.py
-
-3. Run the GENI Aggregate Manager in a second terminal:
-    $ python src/gcf-am.py
-
-4. Run the gcf client test script in a third terminal window:
-    $ python src/gcf-test.py 
-
-
-You should see output like this:
-
-$ python src/gcf-test.py 
-INFO:gcf-test:CH Server is https://localhost:8000/. Using keyfile /home/jkarlin/.gcf/alice-key.pem, certfile /home/jkarlin/.gcf/alice-cert.pem
-INFO:gcf-test:AM Server is https://localhost:8001/. Using keyfile /home/jkarlin/.gcf/alice-key.pem, certfile /home/jkarlin/.gcf/alice-cert.pem
-Slice Creation SUCCESS: URN = urn:publicid:IDN+geni:gpo:gcf+slice+1468-659:127.0.0.1%3A8000
-Testing GetVersion... passed
-Testing ListResources... passed
-Testing CreateSliver... passed
-Testing SliverStatus... passed
-Testing ListResources... passed
-Testing RenewSliver... passed. (Result: False)
-Testing DeleteSliver... passed
-Testing ListResources... passed
-Second Slice URN = urn:publicid:IDN+geni:gpo:gcf+slice+065e-c63:127.0.0.1%3A8000
-Testing ListResources... passed
-Testing CreateSliver... passed
-Testing Shutdown... passed
-
-
-4) Next Steps
-=============
-If you ran in to issues or your output looks different:
-- Confirm you followed the install instructions including dependencies
-- See http://trac.gpolab.bbn.com/gcf/wiki/OmniTroubleShoot for more detailed help
-
-Look at the source for the reference aggregate manager to understand
-how the API and credentials are used, or to implement your own AM.
-
-See README-omni.txt to try the Omni client for talking to multiple
-aggregate managers and control frameworks.
-
-Try federating your test GCF aggregate manager with another clearinghouse. 
-For details, see README.txt
-
-Further reading is on the GENI Wiki, as listed in README.txt.
+More information is available at:
+ * http://www.aleksey.com/xmlsec/
+ * http://www.w3.org/TR/xmlenc-core/
+ * http://www.ietf.org/rfc/rfc3275.txt

@@ -1,0 +1,6 @@
+== Debian / Ubuntu ==
+{{{
+sudo apt-get install python-m2crypto python-dateutil \
+                     python-openssl libxmlsec1 xmlsec1 \
+                     libxmlsec1-openssl libxmlsec1-dev
+}}}
