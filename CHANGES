@@ -82,6 +82,7 @@ omni_config the order is the same as in omni.py
 
  * readyToLogin.py
   - Make readyToLogin.py take a --no-keys option to support multiple members in a slice (#276)
+  - Fix handling of no-keys option and calling from remote-execute script (#291)
 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
