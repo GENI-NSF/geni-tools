@@ -135,7 +135,7 @@ def getInfoFromManifest(manifestStr):
 
   return loginInfo
 
-def findUsersAndKeys( include_keys=True ):
+def findUsersAndKeys( ):
     """Look in omni_config for user and key information of the public keys that
     are installed in the nodes. It uses the global variable config and returns
     keyList which is a dictionary of keyLists per user"""
@@ -371,6 +371,10 @@ def getParser() :
                     default=False,
                     help="If '-o' is set do not overwrite files")
 
+  parser.add_option("--no-keys", 
+                    dest="include_keys",
+                    help="Do not include ssh keys in output",
+                    action="store_false", default=True)
   return parser
 
 
@@ -387,12 +391,6 @@ def parseArguments( argv=None, opts=None ) :
         argv = []
 
   parser = getParser()
-  # FIXME: This doesn't seem to actually happen when main_no_print is called from a script that passed in an opts
-  # Or rather, it may happen but isn't preserved. Can't this be done in the above getParser() function? If we did that, I think the rest would work.
-  parser.add_option("--no-keys", 
-                    dest="include_keys",
-                    help="Do not include ssh keys in output",
-                    action="store_false", default=True)
   (options, args) = parser.parse_args(argv, options)
 
   if len(args) > 0:
@@ -568,15 +566,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   options.warn = True
   framework, config, args, opts = omni.initialize( [], options )
 
-  # FIXME: This try/except is a hack. Fix this above in parseArguments if possible
-  incl = True
-  try:
-       #FIXME: When called from other scripts, the include_keys option is not added
-      incl = options.include_keys
-  except AttributeError:
-      pass
-
-  keyList = findUsersAndKeys( incl )
+  keyList = findUsersAndKeys( )
   if sum(len(val) for val in keyList.itervalues())== 0:
     output = "ERROR:There are no keys. You can not login to your nodes.\n"
     sys.exit(-1)
