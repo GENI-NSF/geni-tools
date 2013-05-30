@@ -63,6 +63,7 @@ New in v2.3:
  GENI Clearinghouse interface. (ticket #270)
  - Various minor code cleanup changes
  - Add 3 more known InstaGENI racks to the `omni_config` nicknames
+ (ticket #258)
  - Fix pgch handling of new `authority` field for GENI Portal
  accounts, for both slices and users (ticket #279)
  - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
