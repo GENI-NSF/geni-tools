@@ -15,6 +15,7 @@ gcf 2.3:
  least 1 <link> elements with more than 1 different
  <component_manager> elements.
  (Ticket #250)
+ * Update READMEs to match changes to gcf wiki (#272) 
 
  * omni
   - Ticket #240: don't print ProtoGENI log URL in result summary on
@@ -52,6 +53,7 @@ gcf 2.3:
   - Remove typos from omni-configure.py -h (#282)
   - If your SSH private key is not same of your SSL private key, generate one for use with some tools (#283)
   - Modify the '-e' parameter to take a folder and not a file (#289)
+  - omni-configure overwrites omni_config when told not to (#290)
 
  * clear-passphrases.py
   - Modified the script so that it works with the private key for the
