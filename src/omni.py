@@ -104,6 +104,8 @@ from omnilib.util.handler_utils import validate_url
 
 OMNI_VERSION="2.4"
 
+#DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
+#DEFAULT_RSPEC_EXTENSION = "xml"                
 
 def countSuccess( successList, failList ):
     """Intended to be used with 'renewsliver', 'deletesliver', and
@@ -214,6 +216,23 @@ def load_config(opts, logger):
             # If temp len > 2: try to use it as is
 
             config['aggregate_nicknames'][key] = temp
+
+    # Find rspec nicknames
+    config['rspec_nicknames'] = {}
+#    config['default_rspec_location'] = DEFAULT_RSPEC_LOCATION
+#    config['default_rspec_extension'] = DEFAULT_RSPEC_EXTENSION
+    if confparser.has_section('rspec_nicknames'):
+        for (key,val) in confparser.items('rspec_nicknames'):
+            key = key.strip()
+            temp = val.strip()
+            if temp == "":
+                continue
+            if key == "default_rspec_location":
+                config['default_rspec_location'] = temp      
+            elif key == "default_rspec_extension":
+                config['default_rspec_extension'] = temp                
+            else:
+                config['rspec_nicknames'][key] = temp
 
     # Load up the framework section
     if not opts.framework:
@@ -649,8 +668,8 @@ def getParser():
  \t\t\t getversion \n\
  \t\t\t listresources [In AM API V1 and V2 optional: slicename] \n\
  \t\t\t describe slicename [AM API V3 only] \n\
- \t\t\t createsliver <slicename> <rspec filename or URL> [AM API V1&2 only] \n\
- \t\t\t allocate <slicename> <rspec filename or URL> [AM API V3 only] \n\
+ \t\t\t createsliver <slicename> <rspec URL, filename, or nickname> [AM API V1&2 only] \n\
+ \t\t\t allocate <slicename> <rspec URL, filename, or nickname> [AM API V3 only] \n\
  \t\t\t provision <slicename> [AM API V3 only] \n\
  \t\t\t performoperationalaction <slicename> <action> [AM API V3 only] \n\
  \t\t\t poa <slicename> <action> \n\
