@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2010-2013 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -28,7 +28,7 @@ import os
 import sys
 
 copyright = """#----------------------------------------------------------------------
-# Copyright (c) 2012 Raytheon BBN Technologies
+# Copyright (c) 2013 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to

@@ -16,6 +16,7 @@ gcf 2.3:
  <component_manager> elements.
  (Ticket #250)
  * Update READMEs to match changes to gcf wiki (#272)
+ * Update copyright notices
 
  * omni
   - Ticket #240: don't print ProtoGENI log URL in result summary on
