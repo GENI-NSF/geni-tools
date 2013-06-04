@@ -102,7 +102,7 @@ from omnilib.util import OmniError, AMAPIError
 from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
 
-OMNI_VERSION="2.3"
+OMNI_VERSION="2.3.1"
 
 
 def countSuccess( successList, failList ):

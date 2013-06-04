@@ -1,6 +1,6 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
-gcf 2.3:
+gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py
  See README-stitching.txt
  This script uses the GENI stitching service to expand a request RSpec

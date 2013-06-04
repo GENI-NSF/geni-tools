@@ -40,7 +40,7 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.3:
+New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
  See README-stitching.txt  (Ticket #250)
  - Ticket #240: don't print ProtoGENI log URL in result summary on success
@@ -561,7 +561,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage:                                                                                        
-GENI Omni Command Line Aggregate Manager Tool Version 2.3
+GENI Omni Command Line Aggregate Manager Tool Version 2.3.1
 Copyright (c) 2013 Raytheon BBN Technologies
 
 omni.py [options] <command and arguments> 
