@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.4:
+
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py
  See README-stitching.txt
