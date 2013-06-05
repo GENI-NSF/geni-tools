@@ -106,15 +106,18 @@ class Framework(pg_framework):
         if not self.config.has_key('sa'):
             raise Exception("Invalid configuration: no slice authority (sa) defined")
 
-        if (not self.opts.project) and (not self.config.has_key('default_project')):
-            raise Exception("Invalid configuration: no default project defined")
-
+        # only require a project if name isn't a URN
         if self.opts.project:
             # use the command line option --project
             project = self.opts.project
-        else:
+        elif self.config.has_key('default_project'):
             # otherwise, default to 'default_project' in 'omni_config'
             project = self.config['default_project']
+        else:
+            # None means there was no project defined
+            # name better be a urn (which is checked below)
+            project = None
+
 
         if self.config.has_key('authority') and self.config['authority'].strip()!='':
             auth = self.config['authority']
@@ -134,10 +137,14 @@ class Framework(pg_framework):
                 self.logger.debug("Found no . in sa hostname. Using whole hostname")
                 auth = sa_host
 
-        # Authority is of form: host:project
-        baseauth = auth
-        auth = baseauth+":"+project
 
+        # Authority is of form: host:project
+        if project:
+            # if project isn't defined, you should have provided a full slice urn
+            baseauth = auth
+            auth = baseauth+":"+project
+
+        # Check whether name is a urn (and return it if it is)
         # Could use is_valid_urn_bytype here, or just let the SA/AM do the check
         if is_valid_urn(name):
             urn = URN(None, None, None, urn=name)
@@ -145,12 +152,16 @@ class Framework(pg_framework):
                 raise Exception("Invalid Slice name: got a non Slice URN %s"% name)
             # if config has an authority, make sure it matches
             urn_auth = string_to_urn_format(urn.getAuthority())
-            if not urn_auth.startswith(baseauth):
+            if project and not urn_auth.startswith(baseauth):
                 self.logger.warn("Slice authority (%s) didn't start with expected authority name: %s", urn_auth, baseauth)
-            if urn_auth != auth:
+            if project and urn_auth != auth:
                 self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_auth, auth))
                 self.logger.info("This may be OK though if you are using delegated slice credentials...")
             return name
+
+        # would like to check this earlier, but can't because have to wait to see if name is a complete urn
+        if not project:
+            raise Exception("Invalid configuration: no default project defined")
 
         return URN(auth, "slice", name).urn_string()
 
