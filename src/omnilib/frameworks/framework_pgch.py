@@ -139,9 +139,9 @@ class Framework(pg_framework):
 
 
         # Authority is of form: host:project
+        # if project isn't defined, you should have provided a full slice urn
+        baseauth = auth
         if project:
-            # if project isn't defined, you should have provided a full slice urn
-            baseauth = auth
             auth = baseauth+":"+project
 
         # Check whether name is a urn (and return it if it is)
@@ -152,8 +152,10 @@ class Framework(pg_framework):
                 raise Exception("Invalid Slice name: got a non Slice URN %s"% name)
             # if config has an authority, make sure it matches
             urn_auth = string_to_urn_format(urn.getAuthority())
-            if project and not urn_auth.startswith(baseauth):
+            # check to make sure the URN matches the configured authority
+            if not urn_auth.startswith(baseauth):
                 self.logger.warn("Slice authority (%s) didn't start with expected authority name: %s", urn_auth, baseauth)
+            # check to make sure the URN matches the configured project (but only if the project is configured)
             if project and urn_auth != auth:
                 self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_auth, auth))
                 self.logger.info("This may be OK though if you are using delegated slice credentials...")
