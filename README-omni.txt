@@ -41,6 +41,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 New in v2.4:
+ - Ticket #295: Support SCS !GetVersion for testing
 
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
@@ -563,7 +564,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage:                                                                                        
-GENI Omni Command Line Aggregate Manager Tool Version 2.3.1
+GENI Omni Command Line Aggregate Manager Tool Version 2.4
 Copyright (c) 2013 Raytheon BBN Technologies
 
 omni.py [options] <command and arguments> 
