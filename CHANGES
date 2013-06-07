@@ -2,7 +2,6 @@
 
 gcf 2.4:
  * omni
-  - Support SCS !GetVersion for testing (#295)
   - Add nicknames for RSpecs; includes ability to specify a default location (#265)
   - Make `allocate` accept rspecs loaded from a url (#287)
   - Make framework_pgch not require a project if slice URN is given (#293)
@@ -10,6 +9,10 @@ gcf 2.4:
 
  * gcf
   - Add timestamps to pgch logs (#297)
+
+ * stitcher
+  - Support SCS !GetVersion for testing (#295)
+  - Pause longer before retrying ION circuits (#298)
 
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py

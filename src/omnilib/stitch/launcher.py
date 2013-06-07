@@ -54,7 +54,7 @@ class Launcher(object):
 
                     # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
                     # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
-                    secs = Aggregate.BUSY_POLL_INTERVAL_SEC
+                    secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                     self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
                     time.sleep(secs)
 
