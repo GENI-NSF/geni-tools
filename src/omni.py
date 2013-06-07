@@ -593,7 +593,9 @@ def configure_logging(opts):
         deft['optlevel'] = optlevel
         applyLogConfig(opts.logconfig, defaults=deft)
     else:
-        logging.basicConfig(level=level)
+        # Ticket 296: Add timestamps to log messages
+        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
+        logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
     

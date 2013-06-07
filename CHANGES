@@ -3,6 +3,10 @@
 gcf 2.4:
  * omni
   - Ticket #295: Support SCS !GetVersion for testing
+  - Log messages: include timestamp, make clearer (#296)
+
+ * gcf
+  - Add timestamps to pgch logs (#297)
 
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py

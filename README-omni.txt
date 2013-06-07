@@ -42,6 +42,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 New in v2.4:
  - Ticket #295: Support SCS !GetVersion for testing
+ - Log messages: include timestamp, make clearer (#296)
 
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
