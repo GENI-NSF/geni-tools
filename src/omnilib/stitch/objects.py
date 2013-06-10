@@ -1776,7 +1776,8 @@ class Link(GENIObject):
             if child.localName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
                 agg = Aggregate.find(name)
-                aggs.append(agg)
+                if not agg in aggs:
+                    aggs.append(agg)
             elif child.localName == cls.INTERFACE_REF_TAG:
                 # FIXME: getAttributeNS?
                 c_id = child.getAttribute(cls.CLIENT_ID_TAG)

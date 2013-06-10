@@ -127,6 +127,7 @@ class StitchingHandler(object):
             
         # If this is not a real stitching thing, just let Omni handle this.
         if not self.mustCallSCS(self.parsedUserRequest):
+            self.logger.info("Not a stitching request - let Omni handle this.")
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
