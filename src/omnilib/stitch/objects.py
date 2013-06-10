@@ -173,7 +173,7 @@ class Aggregate(object):
     BUSY_MAX_TRIES = 5 # dossl does 3
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
-    SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 10secs is short if ION is busy
+    SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = 10 * 60 # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
