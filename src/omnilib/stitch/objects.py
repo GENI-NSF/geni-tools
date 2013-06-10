@@ -844,12 +844,18 @@ class Aggregate(object):
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
                     isVlanAvailableIssue = False
-                    # PG based AMs seem to return a particular error code and string
+                    isFatal = False # Is this error fatal at this AM, so we should give up
+                    fatalMsg = "" # Message to return if this is fatal
+
+                    # PG based AMs seem to return a particular error code and string when the VLAN isn't available
                     try:
                         code = ae.returnstruct["code"]["geni_code"]
                         amcode = ae.returnstruct["code"]["am_code"]
                         amtype = ae.returnstruct["code"]["am_type"]
                         msg = ae.returnstruct["output"]
+                        val = None
+                        if ae.returnstruct.has_key("value"):
+                            val = ae.returnstruct["value"]
 #                        self.logger.debug("Error was code %s (am code
 #                        %s): %s", code, amcode, msg)
                         # ("Error reserving vlan tag for link" in msg
@@ -858,6 +864,11 @@ class Aggregate(object):
                                 ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
+                        elif amtype == "protogeni":
+                            if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper")):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
                         pass
@@ -865,6 +876,10 @@ class Aggregate(object):
                     if isVlanAvailableIssue:
                         self.handleVlanUnavailable(opName, ae)
                     else:
+                        if isFatal and self.userRequested:
+                            # if it was not user requested, then going to the SCS to avoid that seems right
+                            raise StitchingError(fatalMsg)
+
                         # Exit to SCS
                         if not self.userRequested:
                             # If we've tried this AM a few times, set its hops to be excluded
