@@ -296,8 +296,14 @@ class StitchingHandler(object):
             Aggregate.clearCache()
 
             # Let AMs recover. Is this long enough?
-            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
-            time.sleep(Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
+            # If one of the AMs is a DCN AM, use that sleep time instead - longer
+            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+            for agg in aggs:
+                if agg.dcn:
+                    sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                    break
+            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
+            time.sleep(sTime)
 
             # construct new SCS args
             # redo SCS call et al
@@ -403,6 +409,12 @@ class StitchingHandler(object):
             for link in requestRSpecObject.links:
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
                     return True
+
+            # FIXME: Can we be robust to malformed requests, and stop and warn the user?
+                # EG the link has 2+ interface_ref elements that are on 2+ nodes belonging to 2+ AMs?
+                # Currently the parser only saves the IRefs on Links - no attempt to link to Nodes
+                # And for Nodes, we don't even look at the Interface sub-elements
+
         return False
 
     def callSCS(self, sliceurn, requestDOM, existingAggs):

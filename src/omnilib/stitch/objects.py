@@ -173,9 +173,11 @@ class Aggregate(object):
     BUSY_MAX_TRIES = 5 # dossl does 3
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
-    SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 100secs is short if ION is busy
+    SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 10secs is short if ION is busy
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+    PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = 10 * 60 # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
+    MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -291,7 +293,10 @@ class Aggregate(object):
 
             # FIXME: Need to sleep so AM has time to put those resources back in the pool
             # But really should do this on the AMs own thread to avoid blocking everything else
-            time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
+            if not self.dcn:
+                time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
+            else:
+                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -1067,7 +1072,7 @@ class Aggregate(object):
             # ION failures are often transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
+            if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable(opName, msg)
             else:
@@ -1207,7 +1212,7 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
+        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES):
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1

@@ -12,7 +12,7 @@ gcf 2.4:
 
  * stitcher
   - Support SCS !GetVersion for testing (#295)
-  - Pause longer before retrying ION circuits (#298)
+  - Pause longer before retrying ION circuits (#298, #299)
 
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py
