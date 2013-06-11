@@ -39,7 +39,7 @@ import omnilib.util.handler_utils as handler_utils
 
 import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
-from omnilib.stitch.objects import Aggregate, Link
+from omnilib.stitch.objects import Aggregate, Link, DCN_AM_RETRY_INTERVAL_SECS
 from omnilib.stitch import RSpecParser
 import omnilib.stitch.scs as scs
 from omnilib.stitch.workflow import WorkflowParser
@@ -240,6 +240,7 @@ class StitchingHandler(object):
             else:
                 self.logger.info("Calling SCS for the %dth time...", self.scsCalls)
 
+        self.logger.warn("DCN sleep is %d", DCN_AM_RETRY_INTERVAL_SECS)
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
         # Parse SCS Response, constructing objects and dependencies, validating return
@@ -276,6 +277,7 @@ class StitchingHandler(object):
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
         try:
             # Spin up the main loop
+            self.logger.warn("DCN sleep is %d", DCN_AM_RETRY_INTERVAL_SECS)
             lastAM = launcher.launch(self.parsedSCSRSpec, self.scsCalls)
 # for testing calling the SCS only many times
 #            raise StitchingCircuitFailedError("testing")
@@ -301,7 +303,7 @@ class StitchingHandler(object):
             sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
             for agg in aggs:
                 if agg.dcn:
-                    sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                    sTime = DCN_AM_RETRY_INTERVAL_SECS
                     break
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)

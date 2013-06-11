@@ -164,6 +164,9 @@ Other options you should not need to use:
  actual reservations at aggregates. For testing only.
  - `--scsURL <url>`: URL at which the Stitching Computation Service
  runs. Use the default.
+ - `--ionRetryIntervalSecs <# seconds>`: # of seconds to sleep between
+ reservation attempts at ION or another DCN based aggregate. Default
+ is 600 (10 minutes), to allow routers to reset.
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked
