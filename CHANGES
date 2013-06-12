@@ -1,5 +1,11 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.3.2:
+ * omni
+  - Make framework_pgch not require a project if slice URN is given (#293)
+ * clear-passphrases.py
+  - fix bug when omni_config is in certain directories (#304)
+
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py
  See README-stitching.txt
