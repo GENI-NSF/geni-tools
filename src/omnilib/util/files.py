@@ -30,13 +30,12 @@ def readFile( filestr ):
     contentstr = None
     if filestr.startswith(URL_PREFIXES):
         contentstr = readFromURL(filestr)
-    else:
+    else :
         contentstr = readFromLocalFile(filestr)
     return contentstr
 
 def readFromLocalFile( filename ):
     readstr = None
-    filename = os.path.expanduser( filename )
     with open(filename, 'r') as f:
         readstr = f.read()
     return readstr

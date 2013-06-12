@@ -238,7 +238,7 @@ def setConfigFile( opts ):
         configfile = os.path.join( '~/.gcf', opts.configfile )
         configfile = os.path.expanduser( configfile )
         if os.path.exists( configfile ):
-            opts.configfile = configfile
+            opts.configfile = configile
             return
         else:
             sys.exit("Config file '%s' or '%s' does not exist"
@@ -248,7 +248,7 @@ def setConfigFile( opts ):
   #   - first check in the local directory
   configfile = os.path.expanduser( 'omni_config' )
   if os.path.exists( configfile ):
-    opts.configfile = configfile
+    opts.configfile = configile
     return
 
   #  - then check under ~/.gcf
