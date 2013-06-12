@@ -15,6 +15,8 @@ gcf 2.4:
   - Pause longer before retrying ION circuits (#298, #299)
   - Link with 2 identical AMs has only 1 AM - use Omni (#300)
   - Give up on fatal mapper errors from ProtoGENI based AMs (#301)
+  - Add 2 new options to change sleep between sliverstatus calls at
+ ION AMs and reservation attempts (#299)
 
 gcf 2.3.1:
  * Added a new script to do GENI VLAN stitching: stitcher.py

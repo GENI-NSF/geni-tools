@@ -179,6 +179,7 @@ class Aggregate(object):
     SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
+    PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
     MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
 
@@ -289,7 +290,6 @@ class Aggregate(object):
         # Import VLANs, noting if we need to delete an old reservation at this AM first
         mustDelete, alreadyDone = self.copyVLANsAndDetectRedo()
 
-        self.logger.warn("DCN sleep is %d", DCN_AM_RETRY_INTERVAL_SECS)
         if mustDelete:
             self.logger.info("Must delete previous reservation for %s", self)
             alreadyDone = False
@@ -300,7 +300,7 @@ class Aggregate(object):
             if not self.dcn:
                 time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
             else:
-                time.sleep(DCN_AM_RETRY_INTERVAL_SECS)
+                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
         # end of block to delete a previous reservation
 
         if alreadyDone:

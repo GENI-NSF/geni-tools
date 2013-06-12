@@ -26,7 +26,7 @@ import logging
 import time
 
 from utils import StitchingRetryAggregateNewVlanError
-from objects import Aggregate, DCN_AM_RETRY_INTERVAL_SECS
+from objects import Aggregate
 
 class Launcher(object):
 
@@ -48,7 +48,6 @@ class Launcher(object):
                 lastAM = agg
                 # FIXME: Need a timeout mechanism on AM calls
                 try:
-                    self.logger.warn("DCN sleep is %d", DCN_AM_RETRY_INTERVAL_SECS)
                     agg.allocate(self.opts, self.slicename, rspec.dom, scsCallCount)
                 except StitchingRetryAggregateNewVlanError, se:
                     self.logger.info("Will put %s back in the pool to allocate. Got %s", agg, se)
@@ -57,7 +56,7 @@ class Launcher(object):
                     # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
                     secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                     if agg.dcn:
-                        secs = DCN_AM_RETRY_INTERVAL_SECS
+                        secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
                     self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
                     time.sleep(secs)
 

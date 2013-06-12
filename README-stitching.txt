@@ -167,6 +167,9 @@ Other options you should not need to use:
  - `--ionRetryIntervalSecs <# seconds>`: # of seconds to sleep between
  reservation attempts at ION or another DCN based aggregate. Default
  is 600 (10 minutes), to allow routers to reset.
+ - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
+ sliverstatus calls at ION or another DCN based aggregate. Default
+ is 30.
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked

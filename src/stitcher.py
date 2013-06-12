@@ -113,6 +113,9 @@ def call(argv, options=None):
     parser.add_option("--ionRetryIntervalSecs", type="int", 
                       help="Seconds to sleep before retrying at ION (default 10*60)",
                       default=omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+    parser.add_option("--ionStatusIntervalSecs", type="int", 
+                      help="Seconds to sleep between sliverstatus calls at ION (default 30)",
+                      default=30)
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -146,8 +149,8 @@ def call(argv, options=None):
         else:
             logger.info("Running with Fake Mode Dir %s", options.fakeModeDir)
 
-    omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS = options.ionRetryIntervalSecs
-    logger.warn("DCN sleep was just set from %d. Is %d.", options.ionRetryIntervalSecs, omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+    Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = options.ionRetryIntervalSecs
+    Aggregate.SLIVERSTATUS_POLL_INTERVAL_SEC = options.ionStatusIntervalSecs
 
     if options.debug:
         logger.info(omni.getSystemInfo())
