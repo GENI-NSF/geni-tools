@@ -40,6 +40,9 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.3.2:
+  - Make framework_pgch not require a project if slice URN is given (#293)
+
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
  See README-stitching.txt  (Ticket #250)
