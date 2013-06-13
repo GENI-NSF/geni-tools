@@ -242,6 +242,18 @@ class StitchingHandler(object):
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
+        if self.scsCalls > 1 and existingAggs:
+            # We are doing another call.
+            # Let AMs recover. Is this long enough?
+            # If one of the AMs is a DCN AM, use that sleep time instead - longer
+            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
+            for agg in existingAggs:
+                if agg.dcn:
+                    sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+                    break
+            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
+            time.sleep(sTime)
+
         # Parse SCS Response, constructing objects and dependencies, validating return
         self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
         scsResponse = None # Just to note we are done with this here (keep no state)
@@ -295,16 +307,6 @@ class StitchingHandler(object):
             aggs = copy.copy(self.ams_to_process)
             self.ams_to_process = None # Clear local memory of AMs to avoid issues
             Aggregate.clearCache()
-
-            # Let AMs recover. Is this long enough?
-            # If one of the AMs is a DCN AM, use that sleep time instead - longer
-            sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
-            for agg in aggs:
-                if agg.dcn:
-                    sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
-                    break
-            self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
-            time.sleep(sTime)
 
             # construct new SCS args
             # redo SCS call et al
@@ -363,6 +365,8 @@ class StitchingHandler(object):
         '''Ensure the given slice name corresponds to a current valid slice,
         and return the Slice URN and expiration datetime.'''
 
+        self.logger.info("Checking that slice %s is valid...", self.slicename)
+
         # Get slice URN from name
         try:
             sliceurn = self.framework.slice_name_to_urn(self.slicename)
@@ -389,6 +393,8 @@ class StitchingHandler(object):
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)
         sliceexp = naiveUTC(sliceexp)
         now = datetime.datetime.utcnow()
+        shorthours = 3
+        middays = 1
         if sliceexp <= now:
             # FIXME: Maybe if the slice doesn't exist, create it?
             # omniargs = ["createslice", self.slicename]
@@ -397,6 +403,13 @@ class StitchingHandler(object):
             # except:
             #     pass
             raise StitchingError("Slice %s expired at %s" % (sliceurn, sliceexp))
+        elif sliceexp - datetime.timedelta(hours=shorthours) <= now:
+            self.logger.warn('Slice %s expires in <= %d hours on %s UTC' % (sliceurn, shorthours, sliceexp))
+            self.logger.debug('It is now %s UTC' % (datetime.datetime.utcnow()))
+        elif sliceexp - datetime.timedelta(days=middays) <= now:
+            self.logger.info('Slice %s expires within %d day on %s UTC' % (sliceurn, middays, sliceexp))
+        else:
+            self.logger.info('Slice %s expires on %s UTC' % (sliceurn, sliceexp))
 
         # return the slice urn, slice expiration (datetime)
         return (sliceurn, sliceexp)

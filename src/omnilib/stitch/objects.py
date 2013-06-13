@@ -770,7 +770,8 @@ class Aggregate(object):
 #                ret["output"] = "Could not reserve vlan tags"
 #                raise AMAPIError("test", ret)
 
-            (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries)
+            # FIXME: Try disabling all bug WARN log messages? But I lose PG Log URL? 
+            (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
             self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             if "PG log url" in text:
                 pgInd = text.find("PG log url - look here for details on any failures: ")
@@ -968,7 +969,7 @@ class Aggregate(object):
                 # FIXME: shouldn't ctr be based on tries here?
                 # FIXME: Big hack!!!
                 if not opts.fakeModeDir:
-                    (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                    (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                     self.logger.debug("handleDcn %s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # exit gracefully
@@ -1075,7 +1076,7 @@ class Aggregate(object):
                 omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 # FIXME: right counter?
-                (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                 self.logger.debug("handleDCN %s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # Exit to user
@@ -1121,7 +1122,8 @@ class Aggregate(object):
             else:
                 omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
-                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr)
+                # FIXME: Suppressing all but WARN messages, but I'll lose PG log URL?
+                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
                 # Note this could be an AMAPIError. But what AMAPIError could this be that we could handle?
@@ -1445,7 +1447,7 @@ class Aggregate(object):
             try:
                 self.inProcess = True
 #                (text, (successList, fail)) = self.doOmniCall(omniargs, opts)
-                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, 1)
+                (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, 1, suppressLogs=True)
                 self.inProcess = False
                 if self.api_version == 2:
                     (successList, fail) = result
@@ -1487,7 +1489,8 @@ class Aggregate(object):
         return
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
-    def doAMAPICall(self, args, opts, opName, slicename, ctr):
+    # suppressLogs makes Omni part log at WARN and up only
+    def doAMAPICall(self, args, opts, opName, slicename, ctr, suppressLogs=False):
         # FIXME: Take scsCallCount as well?
         gotBusy = False
         busyCtr = 0
@@ -1499,7 +1502,7 @@ class Aggregate(object):
                 if opts.fakeModeDir:
                     (text, result) = self.fakeAMAPICall(args, opts, opName, slicename, ctr)
                 else:
-                    (text, result) = self.doOmniCall(args, opts)
+                    (text, result) = self.doOmniCall(args, opts, suppressLogs)
                 break # Not an error - breakout of loop
             except AMAPIError, ae:
                 if is_busy_reply(ae.returnstruct):
@@ -1513,9 +1516,15 @@ class Aggregate(object):
                     raise ae
         return (text, result)
 
-    def doOmniCall(self, args, opts):
+    # suppressLogs makes Omni part log at WARN and up only
+    def doOmniCall(self, args, opts, suppressLogs=False):
         # spawn a thread if threading
-        return omni.call(args, opts)
+        if suppressLogs and not opts.debug:
+            logging.disable(logging.INFO)
+        res = omni.call(args, opts)
+        if suppressLogs:
+            logging.disable(logging.NOTSET)
+        return res
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
     # FIXME FIXME: Need more fake result files and to clean this all up! ****
