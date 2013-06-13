@@ -954,6 +954,10 @@ class Aggregate(object):
         tries = 0
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
+            # Pause before calls to sliverstatus
+            self.logger.info("Pause to let circuit become ready...")
+            time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
+
             # generate args for sliverstatus
             if self.api_version == 2:
                 opName = 'sliverstatus'
