@@ -4074,11 +4074,11 @@ class AMCallHandler(object):
                     if not message and msg != "":
                         message = ""
                     if msg != "":
-                        # Force this log URL to be logged even if we're at WARN log level
-                        if not self.logger.isEnabledFor(logging.INFO):
-                            self.logger.warn(msg)
-                        else:
-                            self.logger.info(msg)
+#                        # Force this log URL to be logged even if we're at WARN log level? That's noisy
+#                        if not self.logger.isEnabledFor(logging.INFO):
+#                            self.logger.warn(msg)
+#                        else:
+                        self.logger.info(msg)
                         # FIXME: This may cause pg_log to be included in result summary even in success
 #                        message += msg
 
