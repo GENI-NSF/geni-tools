@@ -880,6 +880,25 @@ ig-bbn2=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.inst
 ig-bbn3=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/3.0
 ig-bbn=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 
+ig-ky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
+ig-ky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ig-ky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
+ig-ky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ig-uky1=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/1.0
+ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
+ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
+
+ig-kettering=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am
+ig-kettering1=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/1.0
+ig-kettering2=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/2.0
+ig-kettering3=urn:publicid:IDN+geni.kettering.edu+authority+cm,https://geni.kettering.edu:12369/protogeni/xmlrpc/am/3.0
+
+ig-northwestern=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am
+ig-northwestern1=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
+ig-northwestern2=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
+ig-northwestern3=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0
+
 """ 
 
 def getPortalConfig(opts, public_key_list, cert) :

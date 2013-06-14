@@ -20,6 +20,7 @@ gcf 2.4:
 gcf 2.3.2:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
+  - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
  * clear-passphrases.py
   - fix bug when omni_config is in certain directories (#304)
 
