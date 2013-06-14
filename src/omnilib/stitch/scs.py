@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #----------------------------------------------------------------------
 # Copyright (c) 2013 Raytheon BBN Technologies
 #
@@ -24,8 +22,6 @@
 #----------------------------------------------------------------------
 "Tools and utilities for talking to the stitching computation service."
 
-import pprint
-import sys
 import xmlrpclib
 
 from utils import StitchingError, StitchingServiceFailedError
@@ -65,17 +61,6 @@ class Result(object):
 class Service(object):
     def __init__(self, url):
         self.url = url
-
-    def GetVersion(self):
-        server = xmlrpclib.ServerProxy(self.url)
-        try:
-            result = server.GetVersion()
-        except xmlrpclib.Error as v:
-            print "ERROR", v
-            raise
-        print "GetVersion said:"
-        pp = pprint.PrettyPrinter(indent=4)
-        print pp.pformat(result)
 
     def ComputePath(self, slice_urn, request_rspec, options):
         """Invoke the XML-RPC service with the request rspec.
@@ -170,17 +155,3 @@ class Link(object):
     def parse_dependencies(self, data):
         for d in data:
             self.dependencies.append(Dependency(d))
-
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv[1:]
-        SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
-        scsI = Service(SCS_URL)
-        scsI.GetVersion()
-
-# To run this main, be sure to do:
-# export PYTHONPATH=$PYTHONPATH:/path/to/gcf
-
-if __name__ == "__main__":
-  sys.exit(main())
-

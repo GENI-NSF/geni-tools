@@ -125,11 +125,7 @@ def main(argv=None):
     level = logging.INFO
     if opts.debug:
         level = logging.DEBUG
-    # Match Apache error log format
-    fmt = '[%(asctime)s] [%(levelname)s] %(name)s: %(message)s'
-    # Apache error log date format: %a %b %d %H:%M:%S %Y
-    # A shorter date format '%m-%d %H:%M:%S'
-    logging.basicConfig(level=level,format=fmt,datefmt='%a %b %d %H:%M:%S %Y')
+    logging.basicConfig(level=level)
     if not args:
         args = ('runserver',)
 

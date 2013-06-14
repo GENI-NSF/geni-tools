@@ -33,7 +33,6 @@ import credparsing as credutils
 from dates import naiveUTC
 import json_encoding
 from geni.util import rspec_util
-from omnilib.util.files import *
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -60,34 +59,6 @@ def _derefAggNick(handler, aggregateNickname):
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
 
     return url,urn
-
-def _derefRSpecNick( handler, rspecNickname ):
-    contentstr = None
-    try:
-        contentstr = readFile( rspecNickname )
-    except:
-        pass
-    if contentstr is None:
-        handler.logger.debug("RSpec '%s' is not a filename or a url" % (rspecNickname))
-        if handler.config['rspec_nicknames'].has_key(rspecNickname):
-            handler.logger.info("Substituting RSpec nickname '%s' with '%s'" % (rspecNickname, handler.config['rspec_nicknames'][rspecNickname]))
-            try:
-                contentstr = readFile( handler.config['rspec_nicknames'][rspecNickname] )
-            except:
-                pass
-        elif handler.config.has_key('default_rspec_location') and handler.config.has_key('default_rspec_extension'):
-            handler.logger.info("Looking for RSpec '%s' is in the default rspec location" % (rspecNickname))
-            try:
-                remoteurl = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
-                handler.logger.info("... which is '%s'" % (remoteurl))
-                contentstr = readFile( remoteurl )            
-            except:
-                raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)
-        else:
-            raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)            
-    return contentstr
-
-
 
 def _listaggregates(handler):
     """List the aggregates that can be used for the current operation.

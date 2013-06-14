@@ -49,9 +49,6 @@ from omnilib.util.omnierror import OmniError, AMAPIError
 
 from geni.util import rspec_schema, rspec_util
 
-# Seconds to pause between calls to a DCN AM (ie ION)
-DCN_AM_RETRY_INTERVAL_SECS = 10 * 60 # Xi and Chad say ION routers take a long time to reset
-
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
 # FIXME: Merge RSpec element/attribute name constants into RSpecParser
 
@@ -176,12 +173,9 @@ class Aggregate(object):
     BUSY_MAX_TRIES = 5 # dossl does 3
     BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
     SLIVERSTATUS_MAX_TRIES = 10
-    SLIVERSTATUS_POLL_INTERVAL_SEC = 30 # Xi says 10secs is short if ION is busy; per ticket 1045, even 20 may be too short
+    SLIVERSTATUS_POLL_INTERVAL_SEC = 20 # Xi says 100secs is short if ION is busy
     PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
-    # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
-    PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
-    MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -297,10 +291,7 @@ class Aggregate(object):
 
             # FIXME: Need to sleep so AM has time to put those resources back in the pool
             # But really should do this on the AMs own thread to avoid blocking everything else
-            if not self.dcn:
-                time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
-            else:
-                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
+            time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -848,18 +839,12 @@ class Aggregate(object):
                     # This is where we have to distinguish node unavailable vs VLAN unavailable vs something else
 
                     isVlanAvailableIssue = False
-                    isFatal = False # Is this error fatal at this AM, so we should give up
-                    fatalMsg = "" # Message to return if this is fatal
-
-                    # PG based AMs seem to return a particular error code and string when the VLAN isn't available
+                    # PG based AMs seem to return a particular error code and string
                     try:
                         code = ae.returnstruct["code"]["geni_code"]
                         amcode = ae.returnstruct["code"]["am_code"]
                         amtype = ae.returnstruct["code"]["am_type"]
                         msg = ae.returnstruct["output"]
-                        val = None
-                        if ae.returnstruct.has_key("value"):
-                            val = ae.returnstruct["value"]
 #                        self.logger.debug("Error was code %s (am code
 #                        %s): %s", code, amcode, msg)
                         # ("Error reserving vlan tag for link" in msg
@@ -868,11 +853,6 @@ class Aggregate(object):
                                 ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
-                        elif amtype == "protogeni":
-                            if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper")):
-                                self.logger.debug("Fatal error from PG AM")
-                                isFatal = True
-                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
                         pass
@@ -880,10 +860,6 @@ class Aggregate(object):
                     if isVlanAvailableIssue:
                         self.handleVlanUnavailable(opName, ae)
                     else:
-                        if isFatal and self.userRequested:
-                            # if it was not user requested, then going to the SCS to avoid that seems right
-                            raise StitchingError(fatalMsg)
-
                         # Exit to SCS
                         if not self.userRequested:
                             # If we've tried this AM a few times, set its hops to be excluded
@@ -1091,7 +1067,7 @@ class Aggregate(object):
             # ION failures are often transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
+            if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable(opName, msg)
             else:
@@ -1231,7 +1207,7 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+        if self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES:
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
@@ -1795,8 +1771,7 @@ class Link(GENIObject):
             if child.localName == cls.COMPONENT_MANAGER_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
                 agg = Aggregate.find(name)
-                if not agg in aggs:
-                    aggs.append(agg)
+                aggs.append(agg)
             elif child.localName == cls.INTERFACE_REF_TAG:
                 # FIXME: getAttributeNS?
                 c_id = child.getAttribute(cls.CLIENT_ID_TAG)
