@@ -158,6 +158,13 @@ ig-princeton2=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://i
 ig-princeton3=urn:publicid:IDN+instageni.cs.princeton.edu+authority+cm,https://instageni.cs.princeton.edu:12369/protogeni/xmlrpc/am/3.0
 ig-of-princeton=urn:publicid:IDN+openflow:foam:foam.instageni.cs.princeton.edu+authority+am,https://foam.instageni.cs.princeton.edu:3626/foam/gapi/1
 
+
+ig-northwestern=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am
+ig-northwestern1=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
+ig-northwestern2=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
+ig-northwestern3=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0
+ig-of-northwestern=urn:publicid:IDN+openflow:foam:foam.instageni.northwestern.edu+authority+am,https://foam.instageni.northwestern.edu:3626/foam/gapi/1
+
 # ==================================
 # Configure Control Frameworks here
 
