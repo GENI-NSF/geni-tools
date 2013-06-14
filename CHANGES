@@ -16,6 +16,8 @@ gcf 2.4:
   - Give up on fatal mapper errors from ProtoGENI based AMs (#301)
   - Add 2 new options to change sleep between sliverstatus calls at
  ION AMs and reservation attempts (#299)
+  - Sleep between runs after re-calling SCS, in case the sleep isn't
+ needed. (#305)
 
 gcf 2.3.2:
  * omni
