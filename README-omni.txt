@@ -40,7 +40,7 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.3.2:
+New in v2.3.3:
   - Make framework_pgch not require a project if slice URN is given (#293)
   - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
 

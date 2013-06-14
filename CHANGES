@@ -1,6 +1,6 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
-gcf 2.3.2:
+gcf 2.3.3:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
   - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
