@@ -49,7 +49,6 @@ New in v2.4:
 
 New in v2.3.2:
   - Make framework_pgch not require a project if slice URN is given (#293)
-  - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
 
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py

@@ -23,7 +23,6 @@
 
 from omnilib.frameworks.framework_pg import Framework as pg_framework
 from omnilib.util.dossl import _do_ssl
-from omnilib.util import OmniError
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 from sfa.util.xrn import urn_to_hrn
 
@@ -150,9 +149,7 @@ class Framework(pg_framework):
         if is_valid_urn(name):
             urn = URN(None, None, None, urn=name)
             if not string_to_urn_format(urn.getType()) == "slice":
-                errmsg = "Invalid Slice name: got a non Slice URN %s"% name
-                self.logger.error(errmsg)
-                raise OmniError, errmsg                
+                raise Exception("Invalid Slice name: got a non Slice URN %s"% name)
             # if config has an authority, make sure it matches
             urn_auth = string_to_urn_format(urn.getAuthority())
             # check to make sure the URN matches the configured authority
@@ -166,9 +163,7 @@ class Framework(pg_framework):
 
         # would like to check this earlier, but can't because have to wait to see if name is a complete urn
         if not project:
-            errmsg = "Invalid configuration: no default project defined"
-            self.logger.error(errmsg)
-            raise OmniError, errmsg
+            raise Exception("Invalid configuration: no default project defined")
 
         return URN(auth, "slice", name).urn_string()
 
