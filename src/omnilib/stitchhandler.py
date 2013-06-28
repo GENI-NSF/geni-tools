@@ -294,7 +294,7 @@ class StitchingHandler(object):
 
         except StitchingCircuitFailedError, se:
             if self.scsCalls == self.maxSCSCalls:
-                self.logger.warn("Stitching max circuit failures reached - will delete and exit.")
+                self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                 self.deleteAllReservations(launcher)
                 raise StitchingError("Stitching reservation failed %d times. Last error: %s" % (self.scsCalls, se))
             self.logger.warn("Stitching failed but will retry: %s", se)
@@ -315,7 +315,7 @@ class StitchingHandler(object):
             # to be modified (different VLAN range? Some hops marked loose?) in future
             lastAM = self.mainStitchingLoop(sliceurn, requestDOM, aggs)
         except StitchingError, se:
-            self.logger.warn("Stitching failed with an error: %s", se)
+            self.logger.error("Stitching failed with an error: %s", se)
             self.deleteAllReservations(launcher)
             raise se
         return lastAM
