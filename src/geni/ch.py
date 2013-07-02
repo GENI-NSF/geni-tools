@@ -43,7 +43,7 @@ import sfa.trust.gid as gid
 
 # Variable to turn on multi-threaded CH server
 # If true, spawn a different thread for each RPC
-THREADED = False
+THREADED = True
 
 
 # Substitute eg "openflow//stanford"

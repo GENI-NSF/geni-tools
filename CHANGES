@@ -1,5 +1,11 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.2.1-threading:
+ This is an unreleased patch of 2.2.1. It is 2.2.2 plus commit a6ab97de514768fe87304f0c37928fa8c341c707.
+ Done 7/2/2013.
+ * gcf
+  - ch now has a static variable that makes it multi-threaded
+
 gcf 2.2.1:
  * omni:
   - omni-configure: Added support for automatic configuration of omni
