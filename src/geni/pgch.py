@@ -400,9 +400,6 @@ class PGClearinghouse(Clearinghouse):
             if key.lower() == 'sr_url':
                 self.sr_url = val.strip()
                 continue
-            if key.lower() == 'pa_url':
-                self.pa_url = val.strip()
-                continue
         
     def runserver(self, addr, keyfile=None, certfile=None,
                   ca_certs=None, authority=None,
@@ -1036,7 +1033,7 @@ class PGClearinghouse(Clearinghouse):
                     # CAUTION: untested use of inside cert/key
                     user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                     inside_key, inside_certs = self.getInsideKeys(user_uuid)
-                    projtriple = invokeCH(self.pa_url, "lookup_project",
+                    projtriple = invokeCH(self.sa_url, "lookup_project",
                                           self.logger, argsdict, inside_certs,
                                           inside_key)
                 except Exception, e:
