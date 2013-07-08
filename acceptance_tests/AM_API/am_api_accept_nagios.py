@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #----------------------------------------------------------------------
 # Copyright (c) 2012-2013 Raytheon BBN Technologies
@@ -173,6 +173,34 @@ class NagiosTest(accept.Test):
                 self.logger.debug("<=== Finished sleeping")
         self.assertTrue( status_ready, 
                          "SliverStatus on slice '%s' expected to be '%s' but was not" % (slicename, geni_status))
+
+
+    def test_get_ch_version(self):
+        """test_get_ch_version: Passes if a 'get_ch_version' returns an XMLRPC struct
+        """
+        # Do AM API call
+        omniargs = ["get_ch_version"]
+        self.logger.info("\n=== Test.test_get_ch_version ===")
+        (text, ret_dict) = self.call(omniargs, self.options_copy)
+
+        pprinter = pprint.PrettyPrinter(indent=4)
+        # If this isn't a dictionary, something has gone wrong in Omni.  
+        self.assertDict(ret_dict,
+                        "Return from 'get_ch_version' " \
+                        "expected to contain dictionary" \
+                        "but instead returned:\n %s"
+                        % (pprinter.pformat(ret_dict)))
+        # An empty dict indicates a misconfiguration!
+        self.assertTrue(ret_dict,
+                        "Return from 'get_ch_version' " \
+                        "expected to contain dictionary " \
+                       "but instead returned empty dictionary. ")
+
+        value = self.assertReturnKeyValueType( 'get_ch_version', None, ret_dict, 
+                                                   'api', float )
+
+        self.success = True
+
 
     @classmethod
     def nagios_parser( cls, parser=omni.getParser(), usage=None):
