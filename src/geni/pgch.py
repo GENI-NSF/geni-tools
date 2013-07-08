@@ -559,7 +559,7 @@ class PGClearinghouse(Clearinghouse):
             # FIXME: Next 3 lines for debugging only
             #username = user_gid.get_hrn().split('.')[-1]
             #if args and args.has_key('cert') and not username in args['cert']:
-                #print "ERROR: GetCred got arg of user cert %s, server.pem_cert for user %s" % (args['cert'], user_gid.get_hrn())
+                #self.logger.error("GetCred got arg of user cert %s, server.pem_cert for user %s" % (args['cert'], user_gid.get_hrn()))
         except Exception, exc:
             self.logger.error("GetCredential failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to GetCredential. Cant get user GID from SSL client certificate." % exc)
