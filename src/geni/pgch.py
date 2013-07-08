@@ -29,13 +29,14 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
+import dateutil.parser
 import traceback
 import uuid as uuidModule
 import os
 import xmlrpclib
 
-import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCRequestHandler
+from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
@@ -43,7 +44,7 @@ import sfa.trust.gid as gid
 import sfa.trust.credential
 import sfa.util.xrn
 from geni.util.ch_interface import *
-from ch import Clearinghouse
+from ch import Clearinghouse, THREADED
 
 
 # Substitute eg "openflow//stanford"
@@ -380,6 +381,9 @@ class PGSAnCHServer(object):
 class PgChRequestHandler(SecureXMLRPCRequestHandler):
     rpc_paths = ('/', '/ch',)
 
+class PgChThreadedRequestHandler(SecureThreadedXMLRPCRequestHandler):
+    rpc_paths = ('/', '/ch',)
+
 class PGClearinghouse(Clearinghouse):
 
     def __init__(self, gcf=False):
@@ -467,7 +471,10 @@ class PGClearinghouse(Clearinghouse):
         # Override the default RequestHandlerClass to allow
         # Flack to communicate to our PGCH using either "/"
         # or "/ch" for SA or CH respectively.
-        self._server.RequestHandlerClass = PgChRequestHandler
+        if THREADED:
+            self._server.RequestHandlerClass = PgChThreadedRequestHandler
+        else:
+            self._server.RequestHandlerClass = PgChRequestHandler
         self._server.register_instance(PGSAnCHServer(self, self.logger))
         if self.gcf:
             self.logger.info('GENI GCF PGCH Listening on port %d...' % (addr[1]))
@@ -538,12 +545,21 @@ class PGClearinghouse(Clearinghouse):
             uuid = args['uuid']
         self.logger.debug("In getCred")
         
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Construct cert, pulling in the intermediate signer cert if any (SSL doesn't give us the chain)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct the GID
         try:
             user_gid = gid.GID(string=user_certstr)
+            # FIXME: Next 3 lines for debugging only
+            username = user_gid.get_hrn().split('.')[3]
+            if not username in args['cert']:
+                print "ERROR: GetCred got arg of user cert %s, server.pem_cert for user %s" % (args['cert'], user_gid.get_hrn())
         except Exception, exc:
             self.logger.error("GetCredential failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to GetCredential. Cant get user GID from SSL client certificate." % exc)
@@ -686,8 +702,13 @@ class PGClearinghouse(Clearinghouse):
         # type is Slice or User
         # Return is dict: (see above)
 
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Get full user cert chain (append MA if any)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct GID
         try:
@@ -949,7 +970,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred, type must be Slice
         # returns slice cred
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1107,7 +1133,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # returns renewed slice credential
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
         try:
             user_gid = gid.GID(string=user_certstr)
         except Exception, exc:
@@ -1208,7 +1239,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # return list( of dict(type='ssh', key=$key))
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1316,7 +1352,12 @@ class PGClearinghouse(Clearinghouse):
         # return list( of dict(gid=<cert>, hrn=<hrn>, url=<AM URL>))
         # Matt seems to say hrn is not critical, and can maybe even skip cert
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
