@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010 Raytheon BBN Technologies
+# Copyright (c) 2010-2013 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -62,6 +62,8 @@ class SecureXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         # XXX do we want to delete the peercert attribute?
         # If so, use:        del self.server.peercert
         self.server.peercert = None
+        self.server.der_cert = None
+        self.server.pem_cert = None
         SimpleXMLRPCRequestHandler.finish(self)
         
     def der_to_pem(self, der_cert_bytes):

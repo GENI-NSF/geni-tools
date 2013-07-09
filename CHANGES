@@ -1,5 +1,19 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.2.1-threading-ticket313:
+ July 9, 2013: This is an unreleased patch of 2.2.1 building on 2.2.1-threading. 
+ Patches added include:
+  - 362d7160ebedddcc56fb28e9130f4ac9c81a465a
+  - 1ab3c81d04f009fa2a7c384b8258a6df2507a409
+  - 83a74eaa7562f35b368f94c02d0b1c2f3430fc7e
+  - 9f3e6961589ed6db6c2412d97116fb6be70fab1d
+  - 2b76b1089dd4276079f2992203405fb73dd9e459
+
+ * gcf
+  - pgch now supports multi-threading
+  - pgch now also includes various fixes from v2.3, including using the SA not the PA,
+  implementing GetVersion, and some bug fixes.
+
 gcf 2.2.1-threading:
  This is an unreleased patch of 2.2.1. It is 2.2.2 plus commit a6ab97de514768fe87304f0c37928fa8c341c707.
  Done 7/2/2013.

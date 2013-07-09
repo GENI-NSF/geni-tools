@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011 Raytheon BBN Technologies
+# Copyright (c) 2011-2013 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -29,12 +29,14 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
+import dateutil.parser
 import traceback
 import uuid as uuidModule
 import os
+import xmlrpclib
 
-import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCRequestHandler
+from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
@@ -42,7 +44,7 @@ import sfa.trust.gid as gid
 import sfa.trust.credential
 import sfa.util.xrn
 from geni.util.ch_interface import *
-from ch import Clearinghouse
+from ch import Clearinghouse, THREADED
 
 
 # Substitute eg "openflow//stanford"
@@ -54,6 +56,12 @@ SLICE_AUTHORITY = "geni//gpo//gcf"
 # Extend slice lifetimes to actually use the resources
 USER_CRED_LIFE = 86400
 SLICE_CRED_LIFE = 3600
+
+# Values returned by GetVersion
+API_VERSION = 1.3
+CODE_VERSION = "0001"
+CH_HOSTNAME = "ch.geni.net"
+CH_PORT = "8443"
 
 class PGSAnCHServer(object):
     def __init__(self, delegate, logger):
@@ -202,7 +210,7 @@ class PGSAnCHServer(object):
         output = None
         value = None
         try:
-            self.logger.debug("Calling register in delegate")
+            self.logger.debug("Calling RenewSlice in delegate")
             value = self._delegate.RenewSlice(args)
         except Exception, e:
             output = str(e)
@@ -273,6 +281,47 @@ class PGSAnCHServer(object):
 
 # Skipping GetCredential, Register, Resolve, Remove, Shutdown
 
+    def GetVersion(self):
+        # Note that the SA GetVersion is not implemented
+        # return value should be a struct with a bunch of entries
+        code = None
+        output = None
+        value = None
+        try:
+            self.logger.debug("Calling GetVersion()")
+            value = self._delegate.GetVersion()
+            self.logger.debug("GetVersion result: %r", value)
+        except Exception, e:
+            self.logger.error("GetVersion exception: %s", str(e))
+            output = str(e)
+            code = 1 # FIXME: Better codes
+            value = ''
+
+        # If the underlying thing is a triple, return it as is
+        if isinstance(value, dict) and value.has_key('value'):
+            if value.has_key('code'):
+                code = value['code']
+            if value.has_key('output'):
+                output = value['output']
+            value = value['value']
+
+        if value is None:
+            value = ""
+            if code is None or code == 0:
+                code = 1
+            if output is None:
+                output = "Unknown pgch error"
+        if output is None:
+            output = ""
+        if code is None:
+            code = 0
+
+        self.logger.debug("GetVersion final code: %r", code)
+        self.logger.debug("GetVersion final value: %r", value)
+        self.logger.debug("GetVersion final output: %r", output)
+        return dict(code=code, value=value, output=output)
+
+
     def ListComponents(self, args):
         # Returns list of CMs (AMs)
         # cred is user cred or slice cred - Omni uses user cred
@@ -316,7 +365,7 @@ class PGSAnCHServer(object):
         self.logger.debug("ListComponents final output: %r", output)
         return dict(code=code, value=value, output=output)
 
-# Skipping PostCRL, List, GetVersion
+# Skipping PostCRL, List
 
 # Flack wants to communicate to its Clearinghouse via the HTTP path
 # "/ch".  By default our XML-RPC server only handles requests to "/"
@@ -330,6 +379,9 @@ class PGSAnCHServer(object):
 #
 # See http://docs.python.org/2/library/simplexmlrpcserver.html
 class PgChRequestHandler(SecureXMLRPCRequestHandler):
+    rpc_paths = ('/', '/ch',)
+
+class PgChThreadedRequestHandler(SecureThreadedXMLRPCRequestHandler):
     rpc_paths = ('/', '/ch',)
 
 class PGClearinghouse(Clearinghouse):
@@ -351,9 +403,6 @@ class PGClearinghouse(Clearinghouse):
                 continue
             if key.lower() == 'sr_url':
                 self.sr_url = val.strip()
-                continue
-            if key.lower() == 'pa_url':
-                self.pa_url = val.strip()
                 continue
         
     def runserver(self, addr, keyfile=None, certfile=None,
@@ -422,9 +471,15 @@ class PGClearinghouse(Clearinghouse):
         # Override the default RequestHandlerClass to allow
         # Flack to communicate to our PGCH using either "/"
         # or "/ch" for SA or CH respectively.
-        self._server.RequestHandlerClass = PgChRequestHandler
+        if THREADED:
+            self._server.RequestHandlerClass = PgChThreadedRequestHandler
+        else:
+            self._server.RequestHandlerClass = PgChRequestHandler
         self._server.register_instance(PGSAnCHServer(self, self.logger))
-        self.logger.info('GENI PGCH Listening on port %d...' % (addr[1]))
+        if self.gcf:
+            self.logger.info('GENI GCF PGCH Listening on port %d...' % (addr[1]))
+        else:
+            self.logger.info('GENI GPO CH PGCH Listening on port %d...' % (addr[1]))
         self._server.serve_forever()
 
     def readfile(self, path):
@@ -456,12 +511,17 @@ class PGClearinghouse(Clearinghouse):
                           # Temporarily hardcode authority keys to get
                           # the user's inside keys
                           [portalCert], portalKey)
+        if not triple:
+            raise Exception("Failed to get inside keys: triple was none")
         if triple['code'] != 0:
-            self.logger.error("Failed to get inside keys for %s: %s",
-                              uuid,
+            self.logger.error("Failed to get inside keys for %s: code %d output %s",
+                              uuid, triple['code'], 
                               triple['output'])
-            return None
+            return (None, None)
         keysdict = triple['value']
+        if keysdict is None:
+            self.logger.error("Failed to get inside keys for %s: value was None. output: %s", uuid, triple['output'])
+            return (None, None)
         inside_key = keysdict['private_key']
         inside_certs = self.split_chain(keysdict['certificate'])
         result = (inside_key, inside_certs)
@@ -485,12 +545,21 @@ class PGClearinghouse(Clearinghouse):
             uuid = args['uuid']
         self.logger.debug("In getCred")
         
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Construct cert, pulling in the intermediate signer cert if any (SSL doesn't give us the chain)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct the GID
         try:
             user_gid = gid.GID(string=user_certstr)
+            # FIXME: Next 3 lines for debugging only
+            #username = user_gid.get_hrn().split('.')[-1]
+            #if args and args.has_key('cert') and not username in args['cert']:
+                #self.logger.error("GetCred got arg of user cert %s, server.pem_cert for user %s" % (args['cert'], user_gid.get_hrn()))
         except Exception, exc:
             self.logger.error("GetCredential failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to GetCredential. Cant get user GID from SSL client certificate." % exc)
@@ -503,6 +572,9 @@ class PGClearinghouse(Clearinghouse):
         except Exception, exc:
             self.logger.error("GetCredential got unverifiable experimenter cert: %s", exc)
             raise
+
+        if not user_gid:
+            raise Exception("user_gid is None")
 
         if credential is None:
             # return user credential
@@ -571,7 +643,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # Need the slice_id given the urn
         # need the client cert
@@ -627,8 +702,13 @@ class PGClearinghouse(Clearinghouse):
         # type is Slice or User
         # Return is dict: (see above)
 
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Get full user cert chain (append MA if any)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct GID
         try:
@@ -667,7 +747,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # confirm type is Slice or User
         if not type:
@@ -811,11 +894,11 @@ class PGClearinghouse(Clearinghouse):
 
                 # OK, we have a URN
                 slices = self.ListMySlices(urn)
-                # This is a list of URNs. I want names, and keyed by slices=
-                slicenames = list()
-                for slice in slices:
-                    slicenames.append(urn_util.nameFromURN(slice))
-                return dict(slices=slicenames)
+#                # This is a list of URNs. I want names, and keyed by slices=
+#                slicenames = list()
+#                for slice in slices:
+#                    slicenames.append(urn_util.nameFromURN(slice))
+                return dict(slices=slices)
 
             else:
                 # Talking to the real CH. Need a uuid, from which we can get a lot of data about slices
@@ -858,19 +941,24 @@ class PGClearinghouse(Clearinghouse):
                     self.logger.error("Resolve got error getting from lookup_slices. Code: %d, Msg: %s", slicestriple["code"], slicestriple["output"])
                     return slicestriple
 
-                # otherwise, create a list of the slice_name fields, and return that
+                # otherwise, create a list of the slice_urn fields, and return that
                 slices = getValueFromTriple(slicestriple, self.logger, "lookup_slices", unwrap=True)
-                slicenames = list()
+#                slicenames = list()
+                sliceurns = list()
                 if slices:
                     if isinstance(slices, list):
                         for slice in slices:
-                            if isinstance(slice, dict) and slice.has_key('slice_name'):
-                                slicenames.append(slice['slice_name'])
+#                            if isinstance(slice, dict) and slice.has_key('slice_name'):
+#                                slicenames.append(slice['slice_name'])
+#                            else:
+#                                self.logger.error("Malformed entry in list of slices from lookup_slices: %r", slice)
+                            if isinstance(slice, dict) and slice.has_key('slice_urn'):
+                                sliceurns.append(slice['slice_urn'])
                             else:
                                 self.logger.error("Malformed entry in list of slices from lookup_slices: %r", slice)
                     else:
                         self.logger.error("Malformed value (not a list) from lookup_slices: %r", slices)
-                return dict(slices=slicenames)
+                return dict(slices=sliceurns)
 
         else:
             self.logger.error("Unknown type %s" % type)
@@ -882,7 +970,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred, type must be Slice
         # returns slice cred
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -916,7 +1009,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # confirm type is Slice or User
         if not type:
@@ -948,11 +1044,13 @@ class PGClearinghouse(Clearinghouse):
             sUrn = urn_util.URN(urn=urn)
             slice_name = sUrn.getName()
             slice_auth = sUrn.getAuthority()
+            self.logger.debug("Slice urn %s gives name %s and auth %s. Compare to SLICE_AUTHORITY %s", urn, slice_name, slice_auth, SLICE_AUTHORITY)
             # Compare that with SLICE_AUTHORITY
             project_id = ''
+            project_name = ''
             if slice_auth and slice_auth.startswith(SLICE_AUTHORITY) and len(slice_auth) > len(SLICE_AUTHORITY)+1:
                 project_name = slice_auth[len(SLICE_AUTHORITY)+2:]
-                self.logger.info("Creating slice in project %s" % project_name)
+                self.logger.info("Creating slice in project '%s'" % project_name)
                 if project_name.strip() == '':
                     self.logger.warn("Empty project name will fail")
                 argsdict = dict(project_name=project_name)
@@ -961,15 +1059,33 @@ class PGClearinghouse(Clearinghouse):
                     # CAUTION: untested use of inside cert/key
                     user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                     inside_key, inside_certs = self.getInsideKeys(user_uuid)
-                    projtriple = invokeCH(self.pa_url, "lookup_project",
+                    projtriple = invokeCH(self.sa_url, "lookup_project",
                                           self.logger, argsdict, inside_certs,
                                           inside_key)
                 except Exception, e:
-                    self.logger.error("Exception getting project of name %s: %s", project_name, e)
+                    self.logger.error("Exception getting project of name '%s': %s", project_name, e)
                     #raise
                 if projtriple:
                     projval = getValueFromTriple(projtriple, self.logger, "lookup_project for create_slice", unwrap=True)
+                    if not projval:
+                        self.logger.warn("Got None value from lookup_project '%s'", project_name)
+                        if projtriple.has_key("output") and projtriple["output"]:
+                            self.logger.warn(projtriple["output"])
+                        ret = dict(code=1, value=None, output="Unknown project '%s'" % project_name)
+                        return ret
                     project_id = projval['project_id']
+            elif slice_auth and not slice_auth.startswith(SLICE_AUTHORITY):
+                msg = "Register got slice URN with unknown authority %s" % slice_auth
+                self.logger.error(msg)
+                raise Exception(msg)
+            elif slice_auth:
+                msg = "Slice authority missing project name: %s" % slice_auth
+                self.logger.error(msg)
+                raise Exception(msg)
+            if project_id == '' or project_id is None:
+                self.logger.warn("Got no project_id for project '%s'", project_name)
+                ret = dict(code=1, value=None, output="Unknown project '%s'" % project_name)
+                return ret
             argsdict = dict(project_id=project_id, slice_name=slice_name, owner_id=owner_id, project_name=project_name)
             slicetriple = None
             try:
@@ -1017,7 +1133,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # returns renewed slice credential
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
         try:
             user_gid = gid.GID(string=user_certstr)
         except Exception, exc:
@@ -1046,7 +1167,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         # get Slice UUID (aka slice_id)
         slice_cert = sfa.trust.credential.Credential(string=credential).get_gid_object()
@@ -1075,7 +1199,7 @@ class PGClearinghouse(Clearinghouse):
                 slicetriple = invokeCH(self.sa_url, "renew_slice", self.logger,
                                        argsdict, inside_certs, inside_key)
             except Exception, e:
-                self.logger.error("Exception renewing slice %s: %s" % (urn, e))
+                self.logger.error("Exception renewing slice %s: %s" % (slice_uuid, e))
                 raise
 
             # Will raise an exception if triple malformed
@@ -1115,7 +1239,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # return list( of dict(type='ssh', key=$key))
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1138,7 +1267,11 @@ class PGClearinghouse(Clearinghouse):
         creds.append(credential)
         privs = ()
 #        self.logger.info("type of credential: %s. Type of creds: %s", type(credential), type(creds))
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
+
 #        self.logger.info("getkeys did cred verify")
         # With the real CH, the SSH keys are held by the portal, not the CH
         # see db-util.php#fetchSshKeys which queries the ssh_key table in the portal DB
@@ -1153,12 +1286,12 @@ class PGClearinghouse(Clearinghouse):
             self.logger.warn("GetKeys couldnt get uuid for user from cert with urn %s" % user_urn)
         else:
             self.logger.info("GetKeys called for user with uuid %s" % user_uuid)
-        # Use new MA lookup_ssh_keys method
+        # Use new MA lookup_public_ssh_keys method
         inside_key, inside_certs = self.getInsideKeys(user_uuid)
         argsdict=dict(member_id=user_uuid);
-        keys_triple=invokeCH(self.ma_url, "lookup_ssh_keys", self.logger,
+        keys_triple=invokeCH(self.ma_url, "lookup_public_ssh_keys", self.logger,
                              argsdict, inside_certs, inside_key)
-        self.logger.info("lookup_ssh_keys: " + str(keys_triple));
+        self.logger.info("lookup_public_ssh_keys: " + str(keys_triple));
         if not keys_triple['value']:
             self.logger.error("No SSH key structure. Return the triple with error");
             return keys_triple;
@@ -1179,6 +1312,37 @@ class PGClearinghouse(Clearinghouse):
             ret.append(entry);
         return ret
 
+# ----
+# CH API
+
+    def GetVersion(self):
+        self.logger.info("Called GetVersion")
+        version = dict()
+
+#	"peers"      => \%peers,
+#  	     $peers{$authority->urn()} = $authority->url();
+        peers = dict() # FIXME: This is the registered CMs at PG Utah
+        version['peers'] = peers
+#	"api"        => $API_VERSION,       1
+        version['api'] = API_VERSION
+#	"urn"        => $me->urn(),
+        version['urn'] = 'urn:publicid:IDN+' + CH_HOSTNAME + '+authority+ch'
+#	"hrn"        => $me->hrn(),
+        version['hrn'] = CH_HOSTNAME
+#	"url"        => $me->url(),
+        version['url'] = 'https://' + CH_HOSTNAME + ':' + CH_PORT
+#	"interface"  => "registry",
+        version['interface'] = 'registry'
+#	"code_tag"   => $commithash,
+        version['code_tag'] = CODE_VERSION
+#	# XXX
+#	"hostname"   => "www." . $OURDOMAIN,
+        version['hostname'] = CH_HOSTNAME
+
+        version['gcf-pgch_api'] = API_VERSION
+
+        return version
+
     def ListComponents(self, args):
         credential = None
         if args and args.has_key('credential'):
@@ -1188,7 +1352,12 @@ class PGClearinghouse(Clearinghouse):
         # return list( of dict(gid=<cert>, hrn=<hrn>, url=<AM URL>))
         # Matt seems to say hrn is not critical, and can maybe even skip cert
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1209,7 +1378,10 @@ class PGClearinghouse(Clearinghouse):
         creds = list()
         creds.append(credential)
         privs = ()
-        self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        try:
+            self._cred_verifier.verify_from_strings(user_certstr, creds, None, privs)
+        except Exception, e:
+            raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
         if self.gcf:
             ret = list()
@@ -1247,30 +1419,49 @@ class PGClearinghouse(Clearinghouse):
                     gidO = None
                     hrn = 'AM-hrn-unknown'
                     urn = 'AM-urn-unknown'
+                    if am.has_key('service_urn') and am['service_urn'] is not None and am['service_urn'].strip() != '':
+                        urn = am['service_urn']
+                        hrn, typestr = sfa.util.xrn.urn_to_hrn(urn)
+                        ts = typestr.split('+')[1]
+                        hrn = hrn + "." + ts
+                        if '\\' in hrn:
+                            self.logger.debug("urn_to_hrn from service_urn in sr gave %s for urn %s", hrn, urn)
+                            hrn2 = hrn.replace('\\', '')
+                            hrn = hrn2
+                        self.logger.debug("Got AM urn/hrn from SR: %s (%s)", urn, hrn)
                     if gidS and gidS.strip() != '':
                         self.logger.debug("Got AM cert for url %s:\n%s", url, gidS)
                         try:
                             gidO = gid.GID(string=gidS)
                             urnC = gidO.get_urn()
                             if urnC and urnC.strip() != '':
-                                urn = urnC
-                                hrn = sfa.util.xrn.urn_to_hrn(urn)
+                                if urn and urn != 'AM-urn-unknown' and urn != urnC.strip():
+                                    self.logger.warn("For AM at %s, SR has URN %s, cert says %s", url, urn, urnC)
+                                urn = urnC.strip()
+                                hrn, typestr = sfa.util.xrn.urn_to_hrn(urn)
+                                ts = typestr.split('+')[1]
+                                hrn = hrn + "." + ts
+                                if '\\' in hrn:
+                                    self.logger.debug("urn_to_hrn from cert gave %s for urn %s", hrn, urn)
+                                    hrn2 = hrn.replace('\\', '')
+                                    hrn = hrn2
                         except Exception, exc:
                             self.logger.error("ListComponents failed to create AM gid for AM at %s from server_cert we got from server: %s", url, traceback.format_exc())
                     else:
                         gidS = ''
-                    # try except construct gidO. Then pull out URN. Then turn that into hrn
-                    ret.append(dict(gid=gidS, hrn=hrn, url=url, urn=urn))
+
+                    # FIXME: Try to create a urn/hrn from the service_name if none found yet?
+
+                    if gidS and gidS != '' and hrn != 'AM-hrn-unknown' and urn != 'AM-urn-unknown' and url != '':
+                        ret.append(dict(gid=gidS, hrn=hrn, url=url, urn=urn))
+                    else:
+                        # Invalid cert or SR entry. Suppress these for now
+                        self.logger.error("AM with URL %s - invalid hrn (%s) or urn (%s) or gid or url", url, hrn, urn)
+            self.logger.info("ListComponents returning %d entries", len(ret))
             return ret
 
 # End of implementation of PG CH/SA servers
 # ==========================
-
-    def GetVersion(self):
-        self.logger.info("Called GetVersion")
-        version = dict()
-        version['gcf-pgch_api'] = 1
-        return version
 
 # Rest comes from parent class
 
