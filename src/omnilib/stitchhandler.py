@@ -50,10 +50,14 @@ from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_ex
 
 from sfa.util.xrn import urn_to_hrn
 
-DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebae
+DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
+ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
+
+# File in which we save the slice cred so omni calls don't have to keep re-fetching it
+SLICECRED_FILENAME = '/tmp/saved-stitching-slice-cred.xml'
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
@@ -162,6 +166,16 @@ class StitchingHandler(object):
 
             # Construct a unified manifest
             # include AMs, URLs, API versions
+            if lastAM.isEG:
+                self.logger.debug("Last AM was an EG AM. Find another for the template.")
+                i = 1
+                while lastAM.isEG and i <= len(self.ams_to_process):
+                    # This has lost some hops and messed up hop IDs. Don't use it as the template
+                    # I'd like to find another AM we did recently
+                    lastAM = self.ams_to_process[-i]
+                    i = i + 1
+                if lastAM.isEG:
+                    self.logger.debug("Still had an EG template AM?")
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
@@ -378,8 +392,10 @@ class StitchingHandler(object):
             self.logger.info("Fake mode: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
+
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
+
         if not slicecred:
             # FIXME: Maybe if the slice doesn't exist, create it?
             # omniargs = ["createslice", self.slicename]
@@ -388,6 +404,12 @@ class StitchingHandler(object):
             # except:
             #     pass
             raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
+
+        # Force the slice cred to be from a saved file if not already set
+        if not self.opts.slicecredfile:
+            self.opts.slicecredfile = SLICECRED_FILENAME
+            # FIXME: -4 is to cut off .xml. It would be -4 if the cred is json
+            handler_utils._save_cred(self, self.opts.slicecredfile[:-4], slicecred)
 
         # Ensure slice not expired
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)
@@ -680,6 +702,10 @@ class StitchingHandler(object):
             if agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
 
+            # FIXME: Better to detect by URN?
+            if "geni.renci.org:11443" in agg.url:
+                agg.isExoSM
+
 # For using the test ION AM
 #            if 'alpha.dragon' in agg.url:
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
@@ -703,6 +729,12 @@ class StitchingHandler(object):
                         if DCN_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is DCN", agg)
                             agg.dcn = True
+                        elif ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is Orca", agg)
+                            agg.isEG = True
+                    elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is Orca", agg)
+                            agg.isEG = True
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
@@ -778,6 +810,10 @@ class StitchingHandler(object):
                     self.logger.debug("   (SCS added)")
                 if agg.dcn:
                     self.logger.debug("   A DCN Aggregate")
+                if agg.isEG:
+                    self.logger.debug("   An Orca Aggregate")
+                if agg.isExoSM:
+                    self.logger.debug("   The ExoSM Aggregate")
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
@@ -965,6 +1001,8 @@ class StitchingHandler(object):
 
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
+                    agg.isEG = oldAgg.isEG
+                    agg.isExoSM = oldAgg.isExoSM
                     agg.userRequested = oldAgg.userRequested
                     agg.api_version = oldAgg.api_version
                     break

@@ -5,6 +5,7 @@ gcf 2.4:
   - Add nicknames for RSpecs; includes ability to specify a default location (#265)
   - Make `allocate` accept rspecs loaded from a url (#287)
   - Log messages: include timestamp, make clearer (#296)
+  - Refactor chhandler credential saving methods into handler_utils (#309)
 
  * gcf
   - Add timestamps to pgch logs (#297)
@@ -19,6 +20,10 @@ gcf 2.4:
  ION AMs and reservation attempts (#299)
   - Sleep between runs after re-calling SCS, in case the sleep isn't
  needed. (#305)
+  - Support EG AM Manifests where hop IDs are changed and only some
+ hops are included, and vlanRangeAvailable is not trustworthy (#317)
+  - Save the slice credential to a file when we check it is valid, if
+ it didn't already come from a file. (#309)
 
 gcf 2.3.2:
  * omni

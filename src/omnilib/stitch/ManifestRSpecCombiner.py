@@ -284,8 +284,13 @@ class ManifestRSpecCombiner:
                 hop_id = hop._id
                 path_id = hop.path.id
                 template_path = self.findPathByID(template_stitching, path_id)
-#                print "AGG " + str(am) + " HID " + str(hop_id)
-                self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+                #                print "AGG " + str(am) + " HID " + str(hop_id)
+                if not am.isEG:
+                    self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+                else:
+                    self.logger.debug("Had EG AM in combineHops: %s", am)
+                    link_id = hop._hop_link.urn
+                    self.replaceHopLinkElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id, link_id)
 
     # Add details about allocations to each aggregate in a 
     # structured comment at root of DOM
@@ -359,6 +364,45 @@ class ManifestRSpecCombiner:
             template_path.replaceChild(am_hop, template_hop)
         else:
             self.logger.error ("Can't replace hop in template: AM HOP %s TEMPLATE HOP %s" % (am_hop, template_hop))
+
+    # Replace the hop link element in the template DOM with the hop link element 
+    # from the aggregate DOM that has the given HOP LINK ID
+    # For use with EG AMs
+    def replaceHopLinkElement(self, template_path, am_stitching, template_hop_id, path_id, link_id):
+        template_link = None
+        template_hop = None
+
+        for child in template_path.childNodes:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.localName == HOP and \
+                    child.getAttribute(HOP_ID) == template_hop_id:
+                template_hop = child
+                for child2 in child.childNodes:
+                    if child2.nodeType == Node.ELEMENT_NODE and \
+                            child2.localName == LINK:
+                        template_link = child2
+                        break
+
+        # Find the path for the given path_id (there may be more than one)
+        am_path = self.findPathByID(am_stitching, path_id)
+
+        am_link = None
+        if am_path:
+            for child in am_path.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == HOP:
+                    for child2 in child.childNodes:
+                        if child2.nodeType == Node.ELEMENT_NODE and \
+                                child2.localName == LINK and \
+                                child1.getAttribute(LINK_ID) == link_id:
+                            am_link = child
+                            break
+
+        if am_link and template_link and template_hop:
+            self.logger.debug("Replacing " + str(template_link) + " with " + str(am_link))
+            template_hop.replaceChild(am_link, template_link)
+        else:
+            self.logger.error ("Can't replace hop link in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None

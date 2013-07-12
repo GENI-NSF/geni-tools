@@ -39,8 +39,7 @@ from geni.util.urn_util import nameFromURN, is_valid_urn_bytype
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
-from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration
-import omnilib.util.json_encoding as json_encoding
+from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred
 
 class CHCallHandler(object):
     """
@@ -172,7 +171,7 @@ class CHCallHandler(object):
             self.logger.info( printStr )
             if self.opts.api_version >= 3:
                 slice_cred = self.framework.wrap_cred(slice_cred)
-            filename = self._maybe_save_slicecred(name, slice_cred)
+            filename = _maybe_save_slicecred(name, slice_cred)
             if filename is not None:
                 prstr = "Wrote slice %s credential to file '%s'" % (name, filename)
                 retVal += prstr + "\n"
@@ -386,7 +385,7 @@ class CHCallHandler(object):
                     fname = user + "-" + fname
                 if self.opts.prefix and self.opts.prefix.strip() != "":
                     fname = self.opts.prefix.strip() + "-" + fname
-            filename = self._save_cred(fname, cred)
+            filename = _save_cred(fname, cred)
             self.logger.info("Wrote %s user credential to %s" % (user, filename))
             self.logger.debug("User credential:\n%r", cred)
             return "Saved user %s credential to %s" % (user, filename), cred
@@ -464,7 +463,7 @@ class CHCallHandler(object):
 
         retVal = credutils.get_cred_xml(cred)
         retItem = cred
-        filename = self._maybe_save_slicecred(name, cred)
+        filename = _maybe_save_slicecred(name, cred)
         if filename is not None:
             self.logger.info("Wrote slice %s credential to file '%s'" % (name, filename))
             retVal = "Saved slice %s cred to file %s" % (name, filename)
@@ -527,61 +526,3 @@ class CHCallHandler(object):
 #########
 ## Helper functions follow
 
-    def _maybe_save_slicecred(self, name, slicecred):
-        """Save slice credential to a file, returning the filename or
-        None on error or config not specifying -o
-
-        Only saves if self.opts.output and non-empty credential
-
-        If you didn't specify -o but do specify --tostdout, then write
-        the slice credential to STDOUT
-
-        Filename is:
-        --slicecredfile if supplied
-        else [<--p value>-]-<slicename>-cred.[xml or json, depending on credential format]
-        """
-        if name is None or name.strip() == "" or slicecred is None or (credutils.is_cred_xml(slicecred) and slicecred.strip() is None):
-            return None
-
-        filename = None
-        if self.opts.output:
-            if self.opts.slicecredfile:
-                filename = self.opts.slicecredfile
-            else:
-                filename = name + "-cred"
-                if self.opts.prefix and self.opts.prefix.strip() != "":
-                    filename = self.opts.prefix.strip() + "-" + filename
-            filename = self._save_cred(filename, slicecred)
-        elif self.opts.tostdout:
-            self.logger.info("Writing slice %s cred to STDOUT per options", name)
-            # pprint does bad on XML, but OK on JSON
-            print slicecred
-        return filename
-
-    def _save_cred(self, name, cred):
-        '''
-        Save the given credential to a file of the given name.
-        Infer an appropriate file extension from the file type.
-        If we are using APIv3+ and the credential is not a struct, wrap it before saving.
-        '''
-        ftype = ".xml"
-        # FIXME: Do this?
-        if credutils.is_cred_xml(cred) and self.opts.api_version >= 3:
-            self.logger.debug("V3 requested, got unwrapped cred. Wrapping before saving")
-            cred = self.framework.wrap_cred(cred)
-
-        if not credutils.is_cred_xml(cred):
-            ftype = ".json"
-            credout = json.dumps(cred, cls=json_encoding.DateTimeAwareJSONEncoder)
-            # then read:                 cred = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
-        else:
-            credout = cred
-
-        filename = name + ftype
-# usercred did this:
-#        with open(fname, "wb") as file:
-#            file.write(cred)
-        with open(filename, 'w') as file:
-            file.write(credout + "\n")
-
-        return filename

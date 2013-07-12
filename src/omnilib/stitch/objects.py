@@ -221,6 +221,8 @@ class Aggregate(object):
         self.manifestDom = None # the DOM as we got back from the AM
         self.api_version = 2 # Set from stitchhandler.parseSCSResponse
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
+        self.isEG = False # Handle EG AMs differently - manifests are different
+        self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
@@ -356,7 +358,13 @@ class Aggregate(object):
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
         for hop in self.hops:
-            range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
+            # 7/12/13: FIXME: EG Manifests reset the Hop ID. So you have to look for the link URN
+            if self.isEG:
+                self.logger.debug("Parsing EG manifest with special method")
+                range_suggested = self.getEGVLANRangeSuggested(self.manifestDom, hop._hop_link.urn, hop.path.id)
+            else:
+                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
+
             pathGlobalId = range_suggested[0]
             rangeValue = range_suggested[1]
             suggestedValue = range_suggested[2]
@@ -443,6 +451,12 @@ class Aggregate(object):
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
             if hop.import_vlans_from._hop_link.vlan_range_manifest:
+                # FIXME: vlan_range_manifest on EG AMs is junk and we should use the vlan_range_request maybe? Or maybe the Ad?
+                if hop.import_vlans_from._aggregate.isEG:
+                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range %s, request vlan_range %s, request vlan suggested", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_suggested_request)
+#                    int1 = hop.import_vlans_from._hop_link.vlan_range_request
+#                else:
+#                    int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
                 int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
             else:
                 self.logger.warn("%s's import_from %s had no avail VLAN manifest", hop, hop.import_vlans_from)
@@ -706,6 +720,129 @@ class Aggregate(object):
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
+    # EG Manifest have only some hops and wrong hop ID. So search by the HopLink ID (URN)
+    def getEGVLANRangeSuggested(self, manifest, link_id, path_id):
+        vlan_range_availability = None
+        suggested_vlan_range = None
+
+        rspec_node = None
+        stitching_node = None
+        path_node = None
+        this_path_id = ""
+        hop_node = None
+        hop_id = ""
+        link_node = None
+        this_link_id = ""
+        scd_node = None
+        scsi_node = None
+        scsil2_node = None
+        path_globalId = None
+
+        # FIXME: Call once for all hops
+
+        for child in manifest.childNodes:
+            if child.nodeType == XMLNode.ELEMENT_NODE and \
+                    child.localName == RSpecParser.RSPEC_TAG:
+                rspec_node = child
+                break
+
+        if rspec_node:
+            for child in rspec_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == RSpecParser.STITCHING_TAG:
+                    stitching_node = child
+                    break
+        else:
+            raise StitchingError("%s: No rspec element in manifest" % self)
+
+        if stitching_node:
+            for child in stitching_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == RSpecParser.PATH_TAG:
+                    this_path_id = child.getAttribute(Path.ID_TAG)
+                    if this_path_id == path_id:
+                        path_node = child
+                        break
+        else:
+            raise StitchingError("%s: No stitching element in manifest" % self)
+
+        if path_node:
+#            self.logger.debug("%s Found rspec manifest stitching path %s (id %s)" % (self, path_node, this_path_id))
+            for child in path_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == Path.HOP_TAG:
+
+                    hop_id = child.getAttribute(Hop.ID_TAG)
+                    hop_node = child
+                    link_node = None
+                    for child in hop_node.childNodes:
+                        if child.nodeType == XMLNode.ELEMENT_NODE and \
+                                child.localName == Hop.LINK_TAG:
+                            this_link_id = child.getAttribute(HopLink.ID_TAG)
+                            if this_link_id == link_id:
+                                link_node = child
+                                break
+                    if link_node:
+                        break
+                            
+        if link_node:
+            self.logger.debug("Hop %s had link %s", hop_id, link_id)
+            for child in link_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCD_TAG:
+                    scd_node = child
+                    break
+        else:
+            self.logger.warn("%s: Couldn't find link %s in path %s in EG manifest rspec" % (self, link_id, path_id))
+            # SCS adds EG internal hops - to get from the VLAN component to the VM component.
+            # But EG does not include those in the manifest.
+            # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
+            # fake thing if those are hops we can't find.
+
+            # fake avail and suggested
+            fakeAvail = "2-4094"
+            fakeSuggested = ""
+            # Find the HopLink on this AM with the given link_id
+            for hop in self.hops:
+                if hop.urn == link_id:
+                    fakeSuggested = hop._hop_link.vlan_suggested_request
+                    break
+            self.logger.warn(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
+            return (path_globalId, fakeAvail, fakeSuggested)
+            #raise StitchingError("%s: Couldn't find link %s in path %s in manifest rspec" % (self, link_id, path_id))
+
+
+        if scd_node:
+            for child in scd_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_TAG:
+                    scsi_node = child
+                    break
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in link %s in manifest rspec" % (self, link_id))
+
+        if scsi_node:
+            for child in scsi_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_L2_TAG:
+                    scsil2_node = child
+                    break
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in link %s in manifest rspec" % (self, link_id))
+
+        if scsil2_node:
+            for child in scsil2_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE:
+                    child_text = child.childNodes[0].nodeValue
+                    if child.localName == HopLink.VLAN_RANGE_TAG:
+                        vlan_range_availability = child_text
+                    elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
+                        suggested_vlan_range = child_text
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in link %s in manifest rspec" % (self, link_id))
+
+        return (path_globalId, vlan_range_availability, suggested_vlan_range)
+
     def doReservation(self, opts, slicename, scsCallCount):
         '''Reserve at this AM. Construct omni args, save RSpec to a file, call Omni,
         handle raised Exceptions, DCN AMs wait for status ready, and return the manifest
@@ -865,6 +1002,10 @@ class Aggregate(object):
 #                        %s): %s", code, amcode, msg)
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
+
+                        # FIXME: Add support for EG specific vlan unavail errors
+                        # FIXME: Add support for EG specific fatal errors
+
                         if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                                 ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
@@ -939,6 +1080,13 @@ class Aggregate(object):
         if self.dcn:
             # FIXME: right counter?
             (text, result) = self.handleDcnAM(opts, slicename, self.allocateTries)
+
+        if self.isEG:
+            # FIXME: A later manifest will have more information, like login information
+            # Also, by watching sliver status, we can detect if the provisioning fails
+            # Specifically, if the link sliver is the only thing that fails, then it is
+            # handleVlanUnavailable
+            self.logger.info("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
 
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
@@ -1265,6 +1413,9 @@ class Aggregate(object):
                 # in a manifest, then we could also redo
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
+
+                # FIXME Put in things for EG VLAN Unavail errors
+
                 if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                         ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")

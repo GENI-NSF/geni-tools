@@ -547,3 +547,61 @@ def _printResults(opts, logger, header, content, filename=None):
                 file.write( "\n" )
 # End of _printResults
 
+def _maybe_save_slicecred(handler, name, slicecred):
+    """Save slice credential to a file, returning the filename or
+    None on error or config not specifying -o
+    
+    Only saves if handler.opts.output and non-empty credential
+    
+    If you didn't specify -o but do specify --tostdout, then write
+    the slice credential to STDOUT
+    
+    Filename is:
+    --slicecredfile if supplied
+    else [<--p value>-]-<slicename>-cred.[xml or json, depending on credential format]
+    """
+    if name is None or name.strip() == "" or slicecred is None or (credutils.is_cred_xml(slicecred) and slicecred.strip() is None):
+        return None
+
+    filename = None
+    if handler.opts.output:
+        if handler.opts.slicecredfile:
+            filename = handler.opts.slicecredfile
+        else:
+            filename = name + "-cred"
+            if handler.opts.prefix and handler.opts.prefix.strip() != "":
+                filename = handler.opts.prefix.strip() + "-" + filename
+        filename = _save_cred(filename, slicecred)
+    elif handler.opts.tostdout:
+        handler.logger.info("Writing slice %s cred to STDOUT per options", name)
+        # pprint does bad on XML, but OK on JSON
+        print slicecred
+    return filename
+
+def _save_cred(handler, name, cred):
+    '''
+    Save the given credential to a file of the given name.
+    Infer an appropriate file extension from the file type.
+    If we are using APIv3+ and the credential is not a struct, wrap it before saving.
+    '''
+    ftype = ".xml"
+    # FIXME: Do this?
+    if credutils.is_cred_xml(cred) and handler.opts.api_version >= 3:
+        handler.logger.debug("V3 requested, got unwrapped cred. Wrapping before saving")
+        cred = handler.framework.wrap_cred(cred)
+
+    if not credutils.is_cred_xml(cred):
+        ftype = ".json"
+        credout = json.dumps(cred, cls=json_encoding.DateTimeAwareJSONEncoder)
+        # then read:                 cred = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+    else:
+        credout = cred
+
+    filename = name + ftype
+# usercred did this:
+#        with open(fname, "wb") as file:
+#            file.write(cred)
+    with open(filename, 'w') as file:
+        file.write(credout + "\n")
+
+    return filename
