@@ -940,6 +940,16 @@ class Aggregate(object):
 #                    self.url = url
 
             if self.api_version == 2 and result:
+                if self.isEG:
+                    import re
+                    # EG inserts a geni_sliver_info tag on nodes or links that gives the sliverstatus. It sometimes says failed.
+                    # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
+                    match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
+                    if match:
+                        msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
+                        self.logger.debug("EG AM %s reported %s", self, msg)
+                        raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))
+
                 # Success in APIv2
                 pass
             elif self.api_version >= 3 and result and isinstance(result, dict) and len(result.keys()) == 1 and \
@@ -950,6 +960,16 @@ class Aggregate(object):
                     #self.logger.debug("APIv3 result struct OK but non 0")
                     # The struct in the AMAPIError is just the return value and not by URL
                     raise AMAPIError(text, result.itervalues().next())
+                elif self.isEG:
+                    import re
+                    # EG inserts a geni_sliver_info tag on nodes or links that gives the sliverstatus. It sometimes says failed.
+                    # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
+                    match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
+                    if match:
+                        msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
+                        self.logger.debug("EG AM %s reported %s", self, msg)
+                        raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))
+
                 # Else this is success
                 #self.logger.debug("APIv3 proper result struct - success")
             else:
@@ -964,6 +984,23 @@ class Aggregate(object):
 
         except AMAPIError, ae:
             self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+
+            if self.isEG:
+                # deleteReservation
+                opName = 'deletesliver'
+                if self.api_version > 2:
+                    opName = 'delete'
+                if opts.warn:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                else:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                try:
+                    # FIXME: right counter?
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName, slicename, self, text)
+                except Exception, e:
+                    self.logger.warn("Failed to delete failed (AMAPIError) reservation at EG AM %s: %s", self, e)
+
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
                     isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
 
@@ -1015,6 +1052,15 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                        elif self.isEG:
+                            # AM said success but manifest said failed
+                            # FIXME: Other fatal errors?
+                            if "Insufficient numCPUCores" in msg or "edge domain does not exist" in msg or "check_image_size error" in msg or "incorrect image URL in ImageProxy" in msg:
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+                            # FIXME: Detect error on link only
+                            pass
+
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
                         pass
@@ -1058,6 +1104,23 @@ class Aggregate(object):
                 raise StitchingError("Stitching failed: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
         except Exception, e:
             # Some other error (OmniError, StitchingError)
+
+            if self.isEG:
+                # deleteReservation
+                opName = 'deletesliver'
+                if self.api_version > 2:
+                    opName = 'delete'
+                if opts.warn:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                else:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                try:
+                    # FIXME: right counter?
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had Exception: %s %s at %s got: %s", opName, slicename, self, text)
+                except Exception, e:
+                    self.logger.warn("Failed to delete failed (Exception) reservation at EG AM %s: %s", self, e)
+
             # Exit to user
             raise StitchingError(e) # FIXME: right way to re-raise?
 
