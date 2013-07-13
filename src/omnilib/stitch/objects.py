@@ -1005,8 +1005,6 @@ class Aggregate(object):
                     # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
                     match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
                     if match:
-                    # FIXME: HACK
-#                    if match and "Insufficient numCPU" not in match.group(3):
                         msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
                         self.logger.debug("EG AM %s reported %s", self, msg)
                         raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))
