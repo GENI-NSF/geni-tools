@@ -241,6 +241,13 @@ class StitchingHandler(object):
             return
 
         for am in self.ams_to_process:
+            # Remove getversion files
+            filename = handler_utils._construct_output_filename(self.opts, None, am.url, am.urn, "getversion", ".json", 1)
+            print "Will delete getversion file %s for am url %s, urn %s" % (filename, am.url, am.urn)
+            if os.path.exists(filename):
+                os.unlink(filename)
+
+            # Remove any RSpec
             if am.rspecfileName:
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
