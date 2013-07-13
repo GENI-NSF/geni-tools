@@ -39,7 +39,7 @@ import omnilib.util.handler_utils as handler_utils
 
 import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
-from omnilib.stitch.objects import Aggregate, Link
+from omnilib.stitch.objects import Aggregate, Link, Node
 from omnilib.stitch import RSpecParser
 import omnilib.stitch.scs as scs
 from omnilib.stitch.workflow import WorkflowParser
@@ -297,6 +297,10 @@ class StitchingHandler(object):
                 else:
                     self.ams_to_process.add(am)
 
+        # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
+        # doesn't try to do anything with it
+        if self.opts.fakeEndpoint:
+            self.addFakeNode()
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
@@ -1006,3 +1010,30 @@ class StitchingHandler(object):
                     agg.userRequested = oldAgg.userRequested
                     agg.api_version = oldAgg.api_version
                     break
+
+    # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
+    # doesn't try to do anything with it
+    def addFakeNode(self):
+        fakeNode = self.parsedSCSRSpec.dom.createElement(RSpecParser.NODE_TAG)
+        fakeInterface = self.parsedSCSRSpec.dom.createElement("interface")
+        fakeInterface.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
+        fakeNode.setAttribute(Node.CLIENT_ID_TAG, "fake")
+        fakeNode.setAttribute(Node.COMPONENT_MANAGER_ID_TAG, "urn:publicid:IDN+fake+authority+am")
+        fakeNode.appendChild(fakeInterface)
+        fakeiRef = self.parsedSCSRSpec.dom.createElement(Link.INTERFACE_REF_TAG)
+        fakeiRef.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
+        # Find the rspec element from parsedSCSRSpec.dom
+        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+        if rspecs and len(rspecs):
+            rspec = rspecs[0]
+            # Add a node to the dom
+            self.logger.info("Adding fake Node endpoint")
+            rspec.appendChild(fakeNode)
+
+            # Also find all links and add an interface_ref
+            for child in rspec.childNodes:
+                if child.localName == RSpecParser.LINK_TAG:
+                    # add and interface_ref
+                    self.logger.info("Adding fake iref endpoint on link " + str(child))
+                    child.appendChild(fakeiRef)
+#        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())
