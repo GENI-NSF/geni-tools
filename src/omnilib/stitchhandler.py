@@ -288,6 +288,16 @@ class StitchingHandler(object):
                 if agg.urn == amURN:
                     found = True
                     break
+                if agg.isEG:
+                    # For EG there are multiple URNs that are really the same
+                    # If find one, found them all
+                    import re
+                    urn2 = re.sub("vmsite", "Net", agg.urn)
+                    if urn2 == agg.urn:
+                        urn2 = re.sub("Net", "vmsite", agg.urn)
+                    if urn2 == amURN:
+                        found = True
+                        break
             if found:
                 continue
             else:
@@ -773,6 +783,18 @@ class StitchingHandler(object):
                 pass
             finally:
                 logging.disable(logging.NOTSET)
+
+            if agg.isEG:
+                # For EG there are multiple URNs that are really the same
+                # Mark them all user requested if any are
+                # Net vmsite
+                import re
+                urn2 = re.sub("vmsite", "Net", agg.urn)
+                if urn2 == agg.urn:
+                    urn2 = re.sub("Net", "vmsite", agg.urn)
+                # Note which AMs were user requested
+                if urn2 in self.parsedUserRequest.amURNs:
+                    agg.userRequested = True
 
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
