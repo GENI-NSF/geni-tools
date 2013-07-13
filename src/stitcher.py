@@ -56,6 +56,8 @@ the combined manifest RSpec.'''
 # - Time out omni calls in case an AM hangs
 # - opts.warn is used to suppress omni output. Clean that up. A scriptMode option?
 # - Implement confirmSafeRequest to ensure no dangerous requests are made
+# - Handle known EG error messages
+# - Loop checking to see if EG sliverstatus says success or failure
 
 import json
 import logging
@@ -116,6 +118,8 @@ def call(argv, options=None):
     parser.add_option("--ionStatusIntervalSecs", type="int", 
                       help="Seconds to sleep between sliverstatus calls at ION (default 30)",
                       default=30)
+    parser.add_option("--fakeEndpoint", default=False, action="store_true",
+                      help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
