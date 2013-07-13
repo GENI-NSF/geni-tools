@@ -170,6 +170,13 @@ Other options you should not need to use:
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
  is 30.
+- `--fakeEndpoint`: Use this if you want a dynamic circuit that ends
+not at a node, but at a switch (EG because you have a static VLAN to a
+fixed non-AM controlled host from there.). This option adds a fake
+node and interface_ref to the link. Note that your request RSpec will
+still need >= 2 component_managers on the <link>, and you will need a
+skeletal stitching extension with 1 hop being the switch/VLAN where
+you want to end, and a 2nd being the AM where you want to end up.
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked

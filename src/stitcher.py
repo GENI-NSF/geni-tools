@@ -56,6 +56,8 @@ the combined manifest RSpec.'''
 # - Time out omni calls in case an AM hangs
 # - opts.warn is used to suppress omni output. Clean that up. A scriptMode option?
 # - Implement confirmSafeRequest to ensure no dangerous requests are made
+# - Handle known EG error messages
+# - Loop checking to see if EG sliverstatus says success or failure
 
 import json
 import logging
