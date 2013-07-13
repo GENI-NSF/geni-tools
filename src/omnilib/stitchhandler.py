@@ -242,8 +242,7 @@ class StitchingHandler(object):
 
         for am in self.ams_to_process:
             # Remove getversion files
-            filename = handler_utils._construct_output_filename(self.opts, None, am.url, am.urn, "getversion", ".json", 1)
-            print "Will delete getversion file %s for am url %s, urn %s" % (filename, am.url, am.urn)
+            filename = handler_utils._construct_output_filename(self.opts, None, am.url, None, "getversion", ".json", 1)
             if os.path.exists(filename):
                 os.unlink(filename)
 
