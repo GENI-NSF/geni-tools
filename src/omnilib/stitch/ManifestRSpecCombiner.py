@@ -94,20 +94,20 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
-            urn = am.urn
-            if template_nodes_by_cmid.has_key(urn):
-                am_manifest_dom = am.manifestDom
-                am_doc_root = am_manifest_dom.documentElement
-                for template_node in template_nodes_by_cmid[urn]:
-                    template_client_id = template_node.getAttribute(CLIENT_ID)
-                    for child in am_doc_root.childNodes:
-                        if child.nodeType == Node.ELEMENT_NODE and \
-                                child.localName == RSpecParser.NODE_TAG:
-                            child_cmid = child.getAttribute(COMPONENT_MGR_ID)
-                            child_client_id = child.getAttribute(CLIENT_ID)
-                            if child_cmid == urn and child_client_id == template_client_id:
-                                #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
-                                doc_root.replaceChild(child, template_node)
+            for urn in am.urn_syns:
+                if template_nodes_by_cmid.has_key(urn):
+                    am_manifest_dom = am.manifestDom
+                    am_doc_root = am_manifest_dom.documentElement
+                    for template_node in template_nodes_by_cmid[urn]:
+                        template_client_id = template_node.getAttribute(CLIENT_ID)
+                        for child in am_doc_root.childNodes:
+                            if child.nodeType == Node.ELEMENT_NODE and \
+                                    child.localName == RSpecParser.NODE_TAG:
+                                child_cmid = child.getAttribute(COMPONENT_MGR_ID)
+                                child_client_id = child.getAttribute(CLIENT_ID)
+                                if child_cmid == urn and child_client_id == template_client_id:
+                                    #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
+                                    doc_root.replaceChild(child, template_node)
 
     def combineLinks(self, ams_list, dom_template):
         '''Replace each link in dom_template with matching link from (an) AM with same URN.
@@ -164,7 +164,12 @@ class ManifestRSpecCombiner:
                 for agg in ams_list:
                     if len(intfs) == 0 and not needSwap:
                         break
-                    if agg.urn not in cms and (agg.urn[:-2] + "cm") not in cms and (agg.urn[-2] + "am") not in cms:
+                    notIn = True
+                    for urn in agg.urn_syns:
+                        if urn in cms:
+                            notIn = False
+                            break
+                    if notIn:
                         # Not a relevant aggregate
 #                        self.logger.debug("Skipping AM %s not involved in link %s", agg.urn, client_id)
                         continue

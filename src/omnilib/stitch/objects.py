@@ -192,8 +192,16 @@ class Aggregate(object):
     @classmethod
     def find(cls, urn):
         if not urn in cls.aggs:
-            m = cls(urn)
-            cls.aggs[urn] = m
+            syns = Aggregate.urn_syns(urn)
+            found = False
+            for urn2 in syns:
+                if urn2 in cls.aggs:
+                    found = True
+                    urn = urn2
+                    break
+            if not found:
+                m = cls(urn)
+                cls.aggs[urn] = m
         return cls.aggs[urn]
 
     @classmethod
@@ -204,8 +212,39 @@ class Aggregate(object):
     def clearCache(cls):
         cls.aggs = dict()
 
+    # Produce a list of URN synonyms for the AM
+    # IE don't get caught by cm/am differences
+    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+    @classmethod
+    def urn_syns(cls, urn):
+        urn_syns = list()
+        urn_syns.append(urn)
+
+        import re
+        urn2 = urn[:-2] + 'cm'
+        if urn2 == urn:
+            urn2 = urn[:-2] + 'cm'
+        urn_syns.append(urn2)
+
+        urn2 = re.sub("vmsite", "Net", urn)
+        if urn2 == urn:
+            urn2 = re.sub("Net", "vmsite", urn)
+        urn_syns.append(urn2)
+
+        urn3 = urn2[:-2] + 'cm'
+        if urn3 == urn2:
+            urn3 = urn2[:-2] + 'cm'
+        urn_syns.append(urn3)
+        return urn_syns
+
     def __init__(self, urn, url=None):
         self.urn = urn
+
+        # Produce a list of URN synonyms for the AM
+        # IE don't get caught by cm/am differences
+        # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+        self.urn_syns = Aggregate.urn_syns(urn)
+
         self.url = url
         self.inProcess = False
         self.completed = False
@@ -966,6 +1005,8 @@ class Aggregate(object):
                     # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
                     match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
                     if match:
+                    # FIXME: HACK
+#                    if match and "Insufficient numCPU" not in match.group(3):
                         msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
                         self.logger.debug("EG AM %s reported %s", self, msg)
                         raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))

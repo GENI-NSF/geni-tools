@@ -288,13 +288,9 @@ class StitchingHandler(object):
                 if agg.urn == amURN:
                     found = True
                     break
-                if agg.isEG:
-                    # For EG there are multiple URNs that are really the same
-                    # If find one, found them all
-                    import re
-                    urn2 = re.sub("vmsite", "Net", agg.urn)
-                    if urn2 == agg.urn:
-                        urn2 = re.sub("Net", "vmsite", agg.urn)
+                # For EG there are multiple URNs that are really the same
+                # If find one, found them all
+                for urn2 in agg.urn_syns:
                     if urn2 == amURN:
                         found = True
                         break
@@ -715,6 +711,10 @@ class StitchingHandler(object):
             # Note which AMs were user requested
             if agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
+            else:
+                for urn2 in agg.urn_syns:
+                    if urn2 in self.parsedUserRequest.amURNs:
+                        agg.userRequested = True
 
             # FIXME: Better to detect by URN?
             if "geni.renci.org:11443" in agg.url:
@@ -783,18 +783,6 @@ class StitchingHandler(object):
                 pass
             finally:
                 logging.disable(logging.NOTSET)
-
-            if agg.isEG:
-                # For EG there are multiple URNs that are really the same
-                # Mark them all user requested if any are
-                # Net vmsite
-                import re
-                urn2 = re.sub("vmsite", "Net", agg.urn)
-                if urn2 == agg.urn:
-                    urn2 = re.sub("Net", "vmsite", agg.urn)
-                # Note which AMs were user requested
-                if urn2 in self.parsedUserRequest.amURNs:
-                    agg.userRequested = True
 
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
