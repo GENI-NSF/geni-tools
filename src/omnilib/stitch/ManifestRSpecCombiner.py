@@ -44,7 +44,9 @@ COMP_ID = 'component_id'
 INTFC_REF = 'interface_ref'
 VLANTAG = 'vlantag'
 HOP = 'hop'
+LINK = 'link'
 HOP_ID = 'id'
+LINK_ID = 'id'
 PATH_ID = 'id'
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
@@ -394,7 +396,7 @@ class ManifestRSpecCombiner:
                     for child2 in child.childNodes:
                         if child2.nodeType == Node.ELEMENT_NODE and \
                                 child2.localName == LINK and \
-                                child1.getAttribute(LINK_ID) == link_id:
+                                child2.getAttribute(LINK_ID) == link_id:
                             am_link = child
                             break
 
