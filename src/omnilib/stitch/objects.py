@@ -453,7 +453,7 @@ class Aggregate(object):
             if hop.import_vlans_from._hop_link.vlan_range_manifest:
                 # FIXME: vlan_range_manifest on EG AMs is junk and we should use the vlan_range_request maybe? Or maybe the Ad?
                 if hop.import_vlans_from._aggregate.isEG:
-                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range %s, request vlan_range %s, request vlan suggested %s", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_suggested, hop.import_vlans_from._hop_link.vlan_suggested_request)
+                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range %s, request vlan_range %s, request vlan suggested %s", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
 #                    int1 = hop.import_vlans_from._hop_link.vlan_range_request
 #                else:
 #                    int1 = hop.import_vlans_from._hop_link.vlan_range_manifest

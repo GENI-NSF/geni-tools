@@ -164,7 +164,7 @@ class ManifestRSpecCombiner:
                 for agg in ams_list:
                     if len(intfs) == 0 and not needSwap:
                         break
-                    if agg.urn not in cms:
+                    if agg.urn not in cms and (agg.urn[:-2] + "cm") not in cms and (agg.urn[-2] + "am") not in cms:
                         # Not a relevant aggregate
 #                        self.logger.debug("Skipping AM %s not involved in link %s", agg.urn, client_id)
                         continue
@@ -384,6 +384,7 @@ class ManifestRSpecCombiner:
                             child2.localName == LINK:
                         template_link = child2
                         break
+                break
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
@@ -397,14 +398,14 @@ class ManifestRSpecCombiner:
                         if child2.nodeType == Node.ELEMENT_NODE and \
                                 child2.localName == LINK and \
                                 child2.getAttribute(LINK_ID) == link_id:
-                            am_link = child
+                            am_link = child2
                             break
 
         if am_link and template_link and template_hop:
             self.logger.debug("Replacing " + str(template_link) + " with " + str(am_link))
             template_hop.replaceChild(am_link, template_link)
         else:
-            self.logger.error ("Can't replace hop link in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (am_link, template_hop, template_link))
+            self.logger.error("Can't replace hop link in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None
