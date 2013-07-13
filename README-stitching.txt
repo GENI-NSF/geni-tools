@@ -295,7 +295,12 @@ Some sample error messages and their meaning:
  time before allocating resources.
 
 == To Do items ==
+ - Handle known ExoGENI error messages - particularly those that are fatal, and
+ those that mean the VLAN failed and we should retry witha different tag
+ - With ExoGENI AMs: After reservation, loop checking sliverstatus for
+ success or failure, then get the manifest after that
  - Thread all calls to omni
+ - Add Aggregate specific top level RSpec elements in combined manifest
  - Support AM API v3
  - Consolidate constants
  - Fully handle a `VLAN_UNAVAILABLE` error from an AM
