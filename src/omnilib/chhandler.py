@@ -385,7 +385,7 @@ class CHCallHandler(object):
                     fname = user + "-" + fname
                 if self.opts.prefix and self.opts.prefix.strip() != "":
                     fname = self.opts.prefix.strip() + "-" + fname
-            filename = _save_cred(fname, cred)
+            filename = _save_cred(self, fname, cred)
             self.logger.info("Wrote %s user credential to %s" % (user, filename))
             self.logger.debug("User credential:\n%r", cred)
             return "Saved user %s credential to %s" % (user, filename), cred
@@ -463,7 +463,7 @@ class CHCallHandler(object):
 
         retVal = credutils.get_cred_xml(cred)
         retItem = cred
-        filename = _maybe_save_slicecred(name, cred)
+        filename = _maybe_save_slicecred(self, name, cred)
         if filename is not None:
             self.logger.info("Wrote slice %s credential to file '%s'" % (name, filename))
             retVal = "Saved slice %s cred to file %s" % (name, filename)

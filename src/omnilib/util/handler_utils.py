@@ -571,7 +571,7 @@ def _maybe_save_slicecred(handler, name, slicecred):
             filename = name + "-cred"
             if handler.opts.prefix and handler.opts.prefix.strip() != "":
                 filename = handler.opts.prefix.strip() + "-" + filename
-        filename = _save_cred(filename, slicecred)
+        filename = _save_cred(handler, filename, slicecred)
     elif handler.opts.tostdout:
         handler.logger.info("Writing slice %s cred to STDOUT per options", name)
         # pprint does bad on XML, but OK on JSON
