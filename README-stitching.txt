@@ -170,13 +170,24 @@ Other options you should not need to use:
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
  is 30.
-- `--fakeEndpoint`: Use this if you want a dynamic circuit that ends
-not at a node, but at a switch (EG because you have a static VLAN to a
-fixed non-AM controlled host from there.). This option adds a fake
-node and interface_ref to the link. Note that your request RSpec will
-still need >= 2 component_managers on the <link>, and you will need a
-skeletal stitching extension with 1 hop being the switch/VLAN where
-you want to end, and a 2nd being the AM where you want to end up.
+ - `--fakeEndpoint`: Use this if you want a dynamic circuit that ends
+ not at a node, but at a switch (EG because you have a static VLAN to a
+ fixed non-AM controlled host from there.). This option adds a fake
+ node and interface_ref to the link. Note that your request RSpec will
+ still need >= 2 component_managers on the <link>, and you will need a
+ skeletal stitching extension with 1 hop being the switch/VLAN where
+ you want to end, and a 2nd being the AM where you want to end up.
+ - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
+ ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
+ instead use the local rack URL, and therefore only local rack
+ allocated VMs and VLANs. For this to work, your `omni_config` must
+ have an entry for the local ExoGENI rack that specifies both the
+ aggregate URN as well as the URL, EG:
+{{{
+eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
+}}}
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked

@@ -722,9 +722,26 @@ class StitchingHandler(object):
                     if urn2 in self.parsedUserRequest.amURNs:
                         agg.userRequested = True
 
-            # FIXME: Better to detect by URN?
+            # FIXME: Better way to detect this?
             if "geni.renci.org:11443" in agg.url:
-                agg.isExoSM
+                agg.isExoSM = True
+
+            # EG AMs in particular have 2 URLs in some sense - ExoSM and local
+            # So note the other one, since VMs are split between the 2
+            for (amURN, amURL) in self.config['aggregate_nicknames'].values():
+                if amURN in agg.urn_syns:
+                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url:
+                        agg.alt_url = amURL
+                        break
+#                    else:
+#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s", agg, agg.url, amURL)
+
+            if agg.isExoSM and agg.alt_url and self.opts.noExoSM:
+                self.logger.warn("%s used ExoSM URL. Changing to %s", agg, agg.alt_url)
+                amURL = agg.url
+                agg.url = agg.alt_url
+                agg.alt_url = amURL
+                agg.isExoSM = False
 
 # For using the test ION AM
 #            if 'alpha.dragon' in agg.url:
@@ -834,6 +851,8 @@ class StitchingHandler(object):
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
                     self.logger.debug("   The ExoSM Aggregate")
+                if agg.alt_url:
+                    self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
@@ -1024,6 +1043,7 @@ class StitchingHandler(object):
                     agg.isEG = oldAgg.isEG
                     agg.isExoSM = oldAgg.isExoSM
                     agg.userRequested = oldAgg.userRequested
+                    agg.alt_url = oldAgg.alt_url
                     agg.api_version = oldAgg.api_version
                     break
 

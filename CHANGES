@@ -25,8 +25,9 @@ gcf 2.4:
   - Save the slice credential to a file when we check it is valid, if
  it didn't already come from a file. (#309)
   - Delete old getversion files (#307)
-  - Add new `--fakeEndpoint` options for use when link ends at a
+  - Add new `--fakeEndpoint` option for use when link ends at a
  switch, so AMs are happy.
+  - Add new `--noExoSM` option to try to force using local rack VMs
 
 gcf 2.3.2:
  * omni
