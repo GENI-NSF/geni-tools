@@ -171,7 +171,7 @@ class CHCallHandler(object):
             self.logger.info( printStr )
             if self.opts.api_version >= 3:
                 slice_cred = self.framework.wrap_cred(slice_cred)
-            filename = _maybe_save_slicecred(name, slice_cred)
+            filename = _maybe_save_slicecred(self, name, slice_cred)
             if filename is not None:
                 prstr = "Wrote slice %s credential to file '%s'" % (name, filename)
                 retVal += prstr + "\n"
