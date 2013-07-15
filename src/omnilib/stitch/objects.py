@@ -246,6 +246,7 @@ class Aggregate(object):
         self.urn_syns = Aggregate.urn_syns(urn)
 
         self.url = url
+        self.alt_url = None # IE the rack URL vs the ExoSM URL
         self.inProcess = False
         self.completed = False
         self.userRequested = False
@@ -1094,10 +1095,28 @@ class Aggregate(object):
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
-                            if "Insufficient numCPUCores" in msg or "edge domain does not exist" in msg or "check_image_size error" in msg or "incorrect image URL in ImageProxy" in msg:
+                            if "edge domain does not exist" in msg or "check_image_size error" in msg or "incorrect image URL in ImageProxy" in msg:
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
                             # FIXME: Detect error on link only
+
+                            # If the problem is resource allocation at ExoSM vs local and we have
+                            # an alternative, try the alternative
+                            if "Insufficient numCPUCores" in msg:
+                                if self.alt_url is not None and self.allocateTries < self.MAX_TRIES:
+                                    msg = "Retrying reservation at %s at URL %s instead of %s to resolve error: %s" % (self, self.alt_url, self.url, msg)
+                                    self.logger.info(msg)
+                                    oldURL = self.url
+                                    self.url = self.alt_url
+                                    self.alt_url = oldURL
+                                    # put the agg back in the queue to try again, but only do this trick once
+                                    self.allocateTries = self.MAX_TRIES
+                                    self.inProcess = False
+                                    raise StitchingRetryAggregateNewVlanError(msg)
+                                else:
+                                    isFatal = True
+                                    fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+
                             pass
 
                     except:
