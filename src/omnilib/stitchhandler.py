@@ -128,7 +128,9 @@ class StitchingHandler(object):
             
             # parseRequest
             self.parsedUserRequest = self.rspecParser.parse(requestString)
-            
+        else:
+            raise OmniError("No request RSpec found!")
+
         # If this is not a real stitching thing, just let Omni handle this.
         if not self.mustCallSCS(self.parsedUserRequest):
             self.logger.info("Not a stitching request - let Omni handle this.")
