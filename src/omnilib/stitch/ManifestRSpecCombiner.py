@@ -389,7 +389,13 @@ class ManifestRSpecCombiner:
                             child2.localName == LINK:
                         template_link = child2
                         break
+                if not template_link:
+                    self.logger.warn("Did not find stitching hop %s's link in template manifest RSpec", template_hop_id)
+                    return
                 break
+        if not template_hop:
+            self.logger.warn("Did not find stitching hop %s in template manifest RSpec", template_hop_id)
+            return
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
@@ -405,12 +411,17 @@ class ManifestRSpecCombiner:
                                 child2.getAttribute(LINK_ID) == link_id:
                             am_link = child2
                             break
+            if not am_link:
+                self.logger.warn("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s", link_id, path_id)
+                return
+        else:
+            self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
 
         if am_link and template_link and template_hop:
             self.logger.debug("Replacing " + str(template_link) + " with " + str(am_link))
             template_hop.replaceChild(am_link, template_link)
         else:
-            self.logger.error("Can't replace hop link in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (am_link, template_hop, template_link))
+            self.logger.warn("Can't replace hop link in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None
