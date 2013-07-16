@@ -28,6 +28,7 @@ gcf 2.4:
   - Add new `--fakeEndpoint` option for use when link ends at a
  switch, so AMs are happy.
   - Add new `--noExoSM` option to try to force using local rack VMs
+  - Quiet down errors merging ExoGENI manifest RSpecs (#321)
 
 gcf 2.3.2:
  * omni
