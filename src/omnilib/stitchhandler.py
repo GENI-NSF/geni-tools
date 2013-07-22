@@ -307,9 +307,14 @@ class StitchingHandler(object):
             else:
                 am = Aggregate.find(amURN)
                 if not am.url:
+                    # FIXME: try to pull from agg nicknames in the omni_config
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
                     self.ams_to_process.add(am)
+
+        self.logger.info("Stitched reservation will include resources from these aggregates:")
+        for am in self.ams_to_process:
+            self.logger.info(am)
 
         # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
         # doesn't try to do anything with it
@@ -731,8 +736,8 @@ class StitchingHandler(object):
             # EG AMs in particular have 2 URLs in some sense - ExoSM and local
             # So note the other one, since VMs are split between the 2
             for (amURN, amURL) in self.config['aggregate_nicknames'].values():
-                if amURN in agg.urn_syns:
-                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url:
+                if amURN.strip() in agg.urn_syns:
+                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url and not amURL.strip == '':
                         agg.alt_url = amURL
                         break
 #                    else:
