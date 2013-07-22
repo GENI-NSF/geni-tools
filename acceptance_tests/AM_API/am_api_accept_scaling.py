@@ -73,11 +73,8 @@ SUCCESS = 0
 #
 # This script relies on the unittest module.
 #
-# To run all tests:
-# ./am_api_accept.py -a <AM to test>
-#
-# To run a single test:
-# ./am_api_accept.py -a <AM to test> Test.test_GetVersion
+# To run:
+# am_api_accept_scaling.py -a eg-bbn -V 2 --rspec-file twoegvmsoneline.rspec --un-bound ScalingTest.test_CreateSliverWorkflow_scalingTest 
 #
 # To add a new test:
 # Create a new method with a name starting with 'test_".  It will
@@ -104,8 +101,10 @@ class ScalingTest(accept.Test):
         manifest2 = []
         slicenames = []
 
-        NUM_SLICES = 17
+        NUM_SLICES = 17 #30
         num_slices = NUM_SLICES
+        # TO DO: num_slices should be a command line argument
+        # TO DO: make always --un-bound
 
         for i in xrange(num_slices):
             slicenames.append("")
