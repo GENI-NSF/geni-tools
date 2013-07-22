@@ -218,12 +218,13 @@ class Aggregate(object):
     @classmethod
     def urn_syns(cls, urn):
         urn_syns = list()
+        urn = urn.strip()
         urn_syns.append(urn)
 
         import re
         urn2 = urn[:-2] + 'cm'
         if urn2 == urn:
-            urn2 = urn[:-2] + 'cm'
+            urn2 = urn[:-2] + 'am'
         urn_syns.append(urn2)
 
         urn2 = re.sub("vmsite", "Net", urn)
@@ -233,7 +234,7 @@ class Aggregate(object):
 
         urn3 = urn2[:-2] + 'cm'
         if urn3 == urn2:
-            urn3 = urn2[:-2] + 'cm'
+            urn3 = urn2[:-2] + 'am'
         urn_syns.append(urn3)
         return urn_syns
 
