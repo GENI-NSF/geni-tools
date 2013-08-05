@@ -4541,15 +4541,16 @@ class AMCallHandler(object):
                     self.logger.warn(msg + ", but continuing...")
                 else:
                     self._raise_omni_error(msg)
-            elif time <= datetime.datetime.utcnow():
-                if not self.opts.devmode:
-                    # Syseng ticket 3011: User typo means their sliver expires.
-                    # Instead either (a) raise an error, or (b) substitute something a
-                    # few minutes in the future
-                    self.logger.info('Sliver(s) in %s will be set to expire now' % name)
-                    time = datetime.datetime.utcnow()
             else:
                 self.logger.debug('Slice expires at %s UTC, at or after requested time %s UTC' % (slice_exp, time))
+
+        if time <= datetime.datetime.utcnow():
+            if not self.opts.devmode:
+                # Syseng ticket 3011: User typo means their sliver expires.
+                # Instead raise an error
+                self._raise_omni_error("Cannot renew sliver(s) in %s to now or the past (%s UTC <= %s UTC)" % (name, time, datetime.datetime.utcnow()))
+#                    self.logger.info('Sliver(s) in %s will be set to expire now' % name)
+#                    time = datetime.datetime.utcnow()
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
