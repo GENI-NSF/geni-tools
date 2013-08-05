@@ -181,7 +181,7 @@ class Aggregate(object):
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
-    MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
+    MAX_DCN_AGG_NEW_VLAN_TRIES = 3 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -1363,7 +1363,7 @@ class Aggregate(object):
             if dcnerror and dcnerror.strip() != '':
                 msg = msg + ": " + dcnerror
 
-            # ION failures are often transient. If we haven't retried too many times, just try again
+            # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
             if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
@@ -1511,17 +1511,20 @@ class Aggregate(object):
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
-        for hop in self.hops:
-            if hop.import_vlans:
-                # Some hops here depend on other AMs. This is a negotiation kind of case
-#                self.logger.debug("%s imports vlans - so cannot redo here", hop)
-                canRedoRequestHere = False
-                break
-            if len(hop._hop_link.vlan_range_request) <= 1:
-                # Only the 1 VLAN tag was in the available range
-                canRedoRequestHere = False
-                self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
-                break
+
+        if canRedRequestHere:
+            for hop in self.hops:
+                if hop.import_vlans:
+                    # Some hops here depend on other AMs. This is a negotiation kind of case
+                    #                self.logger.debug("%s imports vlans - so cannot redo here", hop)
+                    canRedoRequestHere = False
+                    break
+                if len(hop._hop_link.vlan_range_request) <= 1:
+                    # Only the 1 VLAN tag was in the available range
+                    canRedoRequestHere = False
+                    self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
+                    break
+
         if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
 #            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
             # Does the error look like the particular tag just wasn't currently available?
