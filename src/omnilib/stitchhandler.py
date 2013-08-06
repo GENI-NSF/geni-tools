@@ -329,7 +329,13 @@ class StitchingHandler(object):
             else:
                 am = Aggregate.find(amURN)
                 if not am.url:
-                    # FIXME: try to pull from agg nicknames in the omni_config
+                    # Try to pull from agg nicknames in the omni_config
+                    for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
+                        if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
+                            am.url = amURLNick
+                            self.logger.info("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
+                            break
+                if not am.url:
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
                     self.ams_to_process.add(am)
@@ -338,7 +344,7 @@ class StitchingHandler(object):
         for am in self.ams_to_process:
             self.logger.info(am)
 
-        # If we said this rspec needs a fixed / fakse endpoint, add it here - so the SCS and other stuff
+        # If we said this rspec needs a fixed / fake endpoint, add it here - so the SCS and other stuff
         # doesn't try to do anything with it
         if self.opts.fixedEndpoint:
             self.addFakeNode()
