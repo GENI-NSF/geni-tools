@@ -181,7 +181,7 @@ class Aggregate(object):
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
-    MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
+    MAX_DCN_AGG_NEW_VLAN_TRIES = 3 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -212,13 +212,8 @@ class Aggregate(object):
     def clearCache(cls):
         cls.aggs = dict()
 
-    # Produce a list of URN synonyms for the AM
-    # IE don't get caught by cm/am differences
-    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
     @classmethod
-    def urn_syns(cls, urn):
-        urn_syns = list()
-        urn = urn.strip()
+    def urn_syns_helper(cls, urn, urn_syns):
         urn_syns.append(urn)
 
         import re
@@ -236,6 +231,27 @@ class Aggregate(object):
         if urn3 == urn2:
             urn3 = urn2[:-2] + 'am'
         urn_syns.append(urn3)
+        return urn_syns
+
+    # Produce a list of URN synonyms for the AM
+    # IE don't get caught by cm/am differences
+    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+    @classmethod
+    def urn_syns(cls, urn):
+        urn_syns = list()
+        urn = urn.strip()
+        wasUni = False
+        if isinstance(urn, unicode):
+            wasUni = True
+
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
+        if wasUni:
+            urn = str(urn)
+        else:
+            urn = unicode(urn)
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
         return urn_syns
 
     def __init__(self, urn, url=None):
@@ -340,10 +356,11 @@ class Aggregate(object):
 
             # FIXME: Need to sleep so AM has time to put those resources back in the pool
             # But really should do this on the AMs own thread to avoid blocking everything else
-            if not self.dcn:
-                time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
-            else:
-                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
+            sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
+            if self.dcn:
+                sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+            self.logger.info("Pause %d seconds to let aggregate free resources...", sleepSecs)
+            time.sleep(sleepSecs)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -834,7 +851,7 @@ class Aggregate(object):
                     scd_node = child
                     break
         else:
-            self.logger.warn("%s: Couldn't find link %s in path %s in EG manifest rspec" % (self, link_id, path_id))
+            self.logger.info("%s: Couldn't find link %s in path %s in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
             # SCS adds EG internal hops - to get from the VLAN component to the VM component.
             # But EG does not include those in the manifest.
             # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
@@ -848,7 +865,7 @@ class Aggregate(object):
                 if hop.urn == link_id:
                     fakeSuggested = hop._hop_link.vlan_suggested_request
                     break
-            self.logger.warn(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
+            self.logger.info(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
             return (path_globalId, fakeAvail, fakeSuggested)
             #raise StitchingError("%s: Couldn't find link %s in path %s in manifest rspec" % (self, link_id, path_id))
 
@@ -1208,7 +1225,7 @@ class Aggregate(object):
             # Also, by watching sliver status, we can detect if the provisioning fails
             # Specifically, if the link sliver is the only thing that fails, then it is
             # handleVlanUnavailable
-            self.logger.info("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
+            self.logger.debug("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
 
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
@@ -1225,7 +1242,7 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
-            self.logger.info("Pause to let circuit become ready...")
+            self.logger.info("Pause %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
             # generate args for sliverstatus
@@ -1363,10 +1380,10 @@ class Aggregate(object):
             if dcnerror and dcnerror.strip() != '':
                 msg = msg + ": " + dcnerror
 
-            # ION failures are often transient. If we haven't retried too many times, just try again
+            # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
+            if self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable(opName, msg)
             else:
@@ -1507,21 +1524,24 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES):
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
-        for hop in self.hops:
-            if hop.import_vlans:
-                # Some hops here depend on other AMs. This is a negotiation kind of case
-#                self.logger.debug("%s imports vlans - so cannot redo here", hop)
-                canRedoRequestHere = False
-                break
-            if len(hop._hop_link.vlan_range_request) <= 1:
-                # Only the 1 VLAN tag was in the available range
-                canRedoRequestHere = False
-                self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
-                break
+
+        if canRedoRequestHere:
+            for hop in self.hops:
+                if hop.import_vlans:
+                    # Some hops here depend on other AMs. This is a negotiation kind of case
+                    #                self.logger.debug("%s imports vlans - so cannot redo here", hop)
+                    canRedoRequestHere = False
+                    break
+                if len(hop._hop_link.vlan_range_request) <= 1:
+                    # Only the 1 VLAN tag was in the available range
+                    canRedoRequestHere = False
+                    self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
+                    break
+
         if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
 #            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
             # Does the error look like the particular tag just wasn't currently available?

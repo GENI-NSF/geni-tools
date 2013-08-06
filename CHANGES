@@ -7,6 +7,8 @@ gcf 2.4:
   - Log messages: include timestamp, make clearer (#296)
   - Refactor chhandler credential saving methods into handler_utils (#309)
   - Renew to now or past raises an exception (#337)
+  - Explicitly import framework files to support packaging (#322)
+  - Ignore unicode vs string in comparing AM URNs (#333)
 
  * gcf
   - Add timestamps to pgch logs (#297)
@@ -30,6 +32,7 @@ gcf 2.4:
  switch, so AMs are happy.
   - Add new `--noExoSM` option to try to force using local rack VMs
   - Quiet down errors merging ExoGENI manifest RSpecs (#321)
+  - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
 
 gcf 2.3.2:
  * omni
