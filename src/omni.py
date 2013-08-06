@@ -103,15 +103,15 @@ from omnilib.handler import CallHandler
 from omnilib.util.handler_utils import validate_url
 
 # Explicitly import framework files so py2exe is happy
-import omnilib.frameworks.frameworks.framework_apg
-import omnilib.frameworks.frameworks.framework_base
-import omnilib.frameworks.frameworks.framework_gcf
-import omnilib.frameworks.frameworks.framework_gch
-import omnilib.frameworks.frameworks.framework_gib
-import omnilib.frameworks.frameworks.framework_of
-import omnilib.frameworks.frameworks.framework_pg
-import omnilib.frameworks.frameworks.framework_pgch
-import omnilib.frameworks.frameworks.framework_sfa
+import omnilib.frameworks.framework_apg
+import omnilib.frameworks.framework_base
+import omnilib.frameworks.framework_gcf
+import omnilib.frameworks.framework_gch
+import omnilib.frameworks.framework_gib
+import omnilib.frameworks.framework_of
+import omnilib.frameworks.framework_pg
+import omnilib.frameworks.framework_pgch
+import omnilib.frameworks.framework_sfa
 
 OMNI_VERSION="2.4"
 
