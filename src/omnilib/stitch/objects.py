@@ -851,7 +851,7 @@ class Aggregate(object):
                     scd_node = child
                     break
         else:
-            self.logger.warn("%s: Couldn't find link %s in path %s in EG manifest rspec" % (self, link_id, path_id))
+            self.logger.info("%s: Couldn't find link %s in path %s in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
             # SCS adds EG internal hops - to get from the VLAN component to the VM component.
             # But EG does not include those in the manifest.
             # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
@@ -865,7 +865,7 @@ class Aggregate(object):
                 if hop.urn == link_id:
                     fakeSuggested = hop._hop_link.vlan_suggested_request
                     break
-            self.logger.warn(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
+            self.logger.info(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
             return (path_globalId, fakeAvail, fakeSuggested)
             #raise StitchingError("%s: Couldn't find link %s in path %s in manifest rspec" % (self, link_id, path_id))
 
@@ -1225,7 +1225,7 @@ class Aggregate(object):
             # Also, by watching sliver status, we can detect if the provisioning fails
             # Specifically, if the link sliver is the only thing that fails, then it is
             # handleVlanUnavailable
-            self.logger.info("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
+            self.logger.debug("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
 
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
