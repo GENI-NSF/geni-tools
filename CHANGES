@@ -7,6 +7,7 @@ gcf 2.4:
   - Log messages: include timestamp, make clearer (#296)
   - Refactor chhandler credential saving methods into handler_utils (#309)
   - Renew to now or past raises an exception (#337)
+  - Explicitly import framework files to support packaging (#322)
 
  * gcf
   - Add timestamps to pgch logs (#297)
