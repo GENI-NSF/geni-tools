@@ -248,12 +248,15 @@ class StitchingHandler(object):
         return (retMsg, combinedManifest)
 
     def cleanup(self):
-        '''Remove temporary files if not in debug mode or if output not specified'''
-        if self.opts.debug or self.opts.output: 
+        '''Remove temporary files if not in debug mode'''
+        if self.opts.debug:
             return
         
         if os.path.exists(Aggregate.FAKEMODESCSFILENAME):
             os.unlink(Aggregate.FAKEMODESCSFILENAME)
+
+        if self.savedSliceCred and os.path.exists(self.opts.slicecredfile):
+            os.unlink(self.opts.slicecredfile)
 
         if not self.ams_to_process:
             return
@@ -265,7 +268,7 @@ class StitchingHandler(object):
                 os.unlink(filename)
 
             # Remove any RSpec
-            if am.rspecfileName:
+            if am.rspecfileName and not self.opts.output:
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
 
@@ -449,6 +452,7 @@ class StitchingHandler(object):
             #     pass
             raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
 
+        self.savedSliceCred = False
         # Force the slice cred to be from a saved file if not already set
         if not self.opts.slicecredfile:
             self.opts.slicecredfile = SLICECRED_FILENAME
@@ -463,6 +467,7 @@ class StitchingHandler(object):
                 trim = -5
             # -4 is to cut off .xml. It would be -5 if the cred is json
             handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
+            self.savedSliceCred = True
 
         # Ensure slice not expired
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)
