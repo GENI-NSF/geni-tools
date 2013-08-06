@@ -356,10 +356,11 @@ class Aggregate(object):
 
             # FIXME: Need to sleep so AM has time to put those resources back in the pool
             # But really should do this on the AMs own thread to avoid blocking everything else
-            if not self.dcn:
-                time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
-            else:
-                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
+            sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
+            if self.dcn:
+                sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+            self.logger.info("Pause %d seconds to let aggregate free resources...", sleepSecs)
+            time.sleep(sleepSecs)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -1241,7 +1242,7 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
-            self.logger.info("Pause to let circuit become ready...")
+            self.logger.info("Pause %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
             # generate args for sliverstatus
