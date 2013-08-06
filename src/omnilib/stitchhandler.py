@@ -57,7 +57,8 @@ ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 MAX_SCS_CALLS = 5
 
 # File in which we save the slice cred so omni calls don't have to keep re-fetching it
-SLICECRED_FILENAME = '/tmp/saved-stitching-slice-cred.xml'
+# Valid substitutions: %username, %slicename, %slicehrn
+SLICECRED_FILENAME = '/tmp/slice-%slicehrn-for-%username-cred.xml'
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
@@ -151,6 +152,21 @@ class StitchingHandler(object):
         self.opts.aggregate = []
 
         # FIXME: Maybe use threading to parallelize confirmSliceOK and the 1st SCS call?
+
+        # Get username for slicecred filename
+        import re
+        if self.opts.api_version >= 3:
+            (cred, message) = self.framework.get_user_cred_struct()
+        else:
+            (cred, message) = self.framework.get_user_cred()
+        credxml = credutils.get_cred_xml(cred)
+        if cred is None or credxml is None or credxml == "":
+            raise OmniError("listmyslices failed to get your user credential: %s" % message)
+        usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
+        if usermatch:
+            self.username = usermatch.group(1)
+        else:
+            raise OmniError("listmyslices failed to find your username")
 
         # Ensure the slice is valid before all those Omni calls use it
         (sliceurn, sliceexp) = self.confirmSliceOK()
@@ -414,6 +430,8 @@ class StitchingHandler(object):
             self.logger.error("Could not determine slice URN from name %s: %s", self.slicename, e)
             raise StitchingError(e)
 
+        self.slicehrn = urn_to_hrn(sliceurn)[0]
+
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
@@ -434,8 +452,17 @@ class StitchingHandler(object):
         # Force the slice cred to be from a saved file if not already set
         if not self.opts.slicecredfile:
             self.opts.slicecredfile = SLICECRED_FILENAME
-            # FIXME: -4 is to cut off .xml. It would be -4 if the cred is json
-            handler_utils._save_cred(self, self.opts.slicecredfile[:-4], slicecred)
+            if "%username" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%username", self.username)
+            if "%slicename" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
+            if "%slicehrn" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
+            trim = -4
+            if self.opts.slicecredfile.endswith("json"):
+                trim = -5
+            # -4 is to cut off .xml. It would be -5 if the cred is json
+            handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
 
         # Ensure slice not expired
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)

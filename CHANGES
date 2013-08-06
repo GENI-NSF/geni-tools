@@ -26,7 +26,7 @@ gcf 2.4:
   - Support EG AM Manifests where hop IDs are changed and only some
  hops are included, and vlanRangeAvailable is not trustworthy (#317)
   - Save the slice credential to a file when we check it is valid, if
- it didn't already come from a file. (#309)
+ it didn't already come from a file. (#309, #331)
   - Delete old getversion files (#307)
   - Add new `--fixedEndpoint` option for use when link ends at a
  switch, so AMs are happy.
