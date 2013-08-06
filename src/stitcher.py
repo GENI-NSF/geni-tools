@@ -118,7 +118,7 @@ def call(argv, options=None):
     parser.add_option("--ionStatusIntervalSecs", type="int", 
                       help="Seconds to sleep between sliverstatus calls at ION (default 30)",
                       default=30)
-    parser.add_option("--fakeEndpoint", default=False, action="store_true",
+    parser.add_option("--fixedEndpoint", default=False, action="store_true",
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
                       help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")

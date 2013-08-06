@@ -319,9 +319,9 @@ class StitchingHandler(object):
         for am in self.ams_to_process:
             self.logger.info(am)
 
-        # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
+        # If we said this rspec needs a fixed / fakse endpoint, add it here - so the SCS and other stuff
         # doesn't try to do anything with it
-        if self.opts.fakeEndpoint:
+        if self.opts.fixedEndpoint:
             self.addFakeNode()
 
         # The launcher handles calling the aggregates to do their allocation

@@ -170,7 +170,7 @@ Other options you should not need to use:
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
  is 30.
- - `--fakeEndpoint`: Use this if you want a dynamic circuit that ends
+ - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
  not at a node, but at a switch (EG because you have a static VLAN to a
  fixed non-AM controlled host from there.). This option adds a fake
  node and interface_ref to the link. Note that your request RSpec will
