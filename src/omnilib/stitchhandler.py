@@ -335,10 +335,24 @@ class StitchingHandler(object):
                             am.url = amURLNick
                             self.logger.info("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
                             break
+
+                if not am.url:
+                    # Try asking our CH for AMs to get the URL for the
+                    # given URN
+                    fw_ams = dict()
+                    try:
+                        fw_ams = self.framework.list_aggregates()
+                        for fw_am_urn in fw_ams.keys():
+                            if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+                                am.url = fw_ams[fw_am_urn]
+                                self.logger.info("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
+                                break
+                    except:
+                        pass
                 if not am.url:
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
-                    self.ams_to_process.add(am)
+                    self.ams_to_process.append(am)
 
         self.logger.info("Stitched reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
@@ -771,7 +785,7 @@ class StitchingHandler(object):
                         agg.userRequested = True
 
             # FIXME: Better way to detect this?
-            if "geni.renci.org:11443" in agg.url:
+            if "geni.renci.org:11443" in str(agg.url):
                 agg.isExoSM = True
 
             # EG AMs in particular have 2 URLs in some sense - ExoSM and local
@@ -783,6 +797,24 @@ class StitchingHandler(object):
                         break
 #                    else:
 #                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s", agg, agg.url, amURL)
+
+            # Try to get a URL from the CH? Do we want/need this
+            # expense? This is a call to the CH....
+            # Comment this out - takes too long, not clear
+            # it is needed.
+#            if not agg.alt_url:
+#                fw_ams = dict()
+#                try:
+#                    fw_ams = self.framework.list_aggregates()
+#                    for fw_am_urn in fw_ams.keys():
+#                        if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+#                            cand_url = fw_ams[fw_am_urn]
+#                            if cand_url != am.url and not am.url in cand_url and not cand_url in am.url:
+#                                am.alt_url = cand_url
+#                                self.logger.debug("Found AM %s alternate URL from CH ListAggs: %s", am.urn, am.alt_url)
+#                                break
+#                except:
+#                    pass
 
             if agg.isExoSM and agg.alt_url and self.opts.noExoSM:
                 self.logger.warn("%s used ExoSM URL. Changing to %s", agg, agg.alt_url)
