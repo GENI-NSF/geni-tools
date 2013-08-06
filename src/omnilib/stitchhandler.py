@@ -257,10 +257,13 @@ class StitchingHandler(object):
         # existingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
         if self.scsCalls > 1:
+            thStr = 'th'
+            if self.scsCalls == 2 or self.scsCalls == 3:
+                thStr = 'rd'
             if self.scsCalls == self.maxSCSCalls:
-                self.logger.info("Calling SCS for the %dth and last time...", self.scsCalls)
+                self.logger.info("Calling SCS for the %d%s and last time...", self.scsCalls, thStr)
             else:
-                self.logger.info("Calling SCS for the %dth time...", self.scsCalls)
+                self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
