@@ -8,6 +8,7 @@ gcf 2.4:
   - Refactor chhandler credential saving methods into handler_utils (#309)
   - Renew to now or past raises an exception (#337)
   - Explicitly import framework files to support packaging (#322)
+  - Ignore unicode vs string in comparing AM URNs (#333)
 
  * gcf
   - Add timestamps to pgch logs (#297)

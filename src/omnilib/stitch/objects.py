@@ -212,13 +212,8 @@ class Aggregate(object):
     def clearCache(cls):
         cls.aggs = dict()
 
-    # Produce a list of URN synonyms for the AM
-    # IE don't get caught by cm/am differences
-    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
     @classmethod
-    def urn_syns(cls, urn):
-        urn_syns = list()
-        urn = urn.strip()
+    def urn_syns_helper(cls, urn, urn_syns):
         urn_syns.append(urn)
 
         import re
@@ -236,6 +231,27 @@ class Aggregate(object):
         if urn3 == urn2:
             urn3 = urn2[:-2] + 'am'
         urn_syns.append(urn3)
+        return urn_syns
+
+    # Produce a list of URN synonyms for the AM
+    # IE don't get caught by cm/am differences
+    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+    @classmethod
+    def urn_syns(cls, urn):
+        urn_syns = list()
+        urn = urn.strip()
+        wasUni = False
+        if isinstance(urn, unicode):
+            wasUni = True
+
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
+        if wasUni:
+            urn = str(urn)
+        else:
+            urn = unicode(urn)
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
         return urn_syns
 
     def __init__(self, urn, url=None):
@@ -1366,7 +1382,7 @@ class Aggregate(object):
             # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
+            if self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable(opName, msg)
             else:
@@ -1507,12 +1523,12 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES):
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
 
-        if canRedRequestHere:
+        if canRedoRequestHere:
             for hop in self.hops:
                 if hop.import_vlans:
                     # Some hops here depend on other AMs. This is a negotiation kind of case
