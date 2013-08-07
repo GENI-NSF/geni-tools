@@ -47,7 +47,7 @@ import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
     _derefRSpecNick, \
     _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
-    _getRSpecOutput, _writeRSpec, _printResults
+    _getRSpecOutput, _writeRSpec, _printResults, _load_cred
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 from omnilib.util.files import *
@@ -1041,6 +1041,7 @@ class AMCallHandler(object):
             if message != "":
                 self.logger.debug("Got %d AMs but also got an error message: %s", len(clientList), message)
             creds = _maybe_add_abac_creds(self.framework, cred)
+            creds = self._maybe_add_creds_from_files(creds)
 
         # Connect to each available GENI AM to list their resources
         for client in clientList:
@@ -1412,6 +1413,7 @@ class AMCallHandler(object):
             self.logger.info('Describe Slice %s:' % urn)
 
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
+            creds = self._maybe_add_creds_from_files(creds)
 
             urnsarg, slivers = self._build_urns(urn)
 
@@ -1646,6 +1648,7 @@ class AMCallHandler(object):
         self.logger.info("Creating sliver(s) from rspec file %s for slice %s", rspecfile, urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         # Copy the user config and read the keys from the files into the structure
         slice_users = self._get_users_arg()
@@ -1802,6 +1805,7 @@ class AMCallHandler(object):
         # Build args
         options = self._build_options('Allocate', None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
         args = [urn, creds, rspec, options]
         descripMsg = "slivers in slice %s" % urn
         op = 'Allocate'
@@ -2030,6 +2034,7 @@ class AMCallHandler(object):
             descripMsg = "%d slivers in slice %s" % (len(slivers), urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         # Get Clients
         successCnt = 0
@@ -2268,6 +2273,7 @@ class AMCallHandler(object):
             descripMsg = "%s on %d slivers in slice %s" % (action, len(slivers), urn)
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
         args = [urnsarg, creds, action, options]
         self.logger.debug("Doing POA with urns %s, action %s, %d creds, and options %s", urnsarg, action, len(creds), options)
 
@@ -2417,6 +2423,7 @@ class AMCallHandler(object):
         self.logger.info('Renewing Sliver %s until %s (UTC)' % (name, time_with_tz))
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         op = "RenewSliver"
         options = self._build_options(op, None)
@@ -2575,6 +2582,7 @@ class AMCallHandler(object):
         self.logger.info('Renewing Slivers in slice %s until %s (UTC)' % (name, time_with_tz))
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         urnsarg, slivers = self._build_urns(urn)
 
@@ -2748,6 +2756,7 @@ class AMCallHandler(object):
             self.logger.info('Status of Slice %s:' % urn)
 
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
+            creds = self._maybe_add_creds_from_files(creds)
 
             args = [urn, creds]
             options = self._build_options(op, None)
@@ -2900,6 +2909,7 @@ class AMCallHandler(object):
             self.logger.info('Status of Slice %s:' % urn)
 
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
+            creds = self._maybe_add_creds_from_files(creds)
 
             urnsarg, slivers = self._build_urns(urn)
             args = [urnsarg, creds]
@@ -3085,6 +3095,7 @@ class AMCallHandler(object):
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "DeleteSliver")
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         args = [urn, creds]
         op = 'DeleteSliver'
@@ -3227,6 +3238,7 @@ class AMCallHandler(object):
          retVal, slice_exp) = self._args_to_slicecred(args, 1, "Delete")
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         urnsarg, slivers = self._build_urns(urn)
 
@@ -3372,6 +3384,7 @@ class AMCallHandler(object):
         (name, urn, slice_cred, retVal, slice_exp) = self._args_to_slicecred(args, 1, "Shutdown")
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         args = [urn, creds]
         op = "Shutdown"
@@ -3510,6 +3523,7 @@ class AMCallHandler(object):
             publicString = "private"
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
+        creds = self._maybe_add_creds_from_files(creds)
         options = dict()
         options['global'] = makePublic
         args = (sliceURN, imageName, sliverURN, creds, options)
@@ -3623,6 +3637,7 @@ class AMCallHandler(object):
                 cred = ""
 
         creds = _maybe_add_abac_creds(self.framework, cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         options = dict()
 
@@ -3728,6 +3743,7 @@ class AMCallHandler(object):
                 cred = ""
 
         creds = _maybe_add_abac_creds(self.framework, cred)
+        creds = self._maybe_add_creds_from_files(creds)
 
         invoker_authority = None
         if cred:
@@ -4570,6 +4586,22 @@ class AMCallHandler(object):
         return time, time_with_tz, time_string
     # end of datetimeFromString
 
+    def _maybe_add_creds_from_files(self, creds):
+        if creds is None:
+            creds = []
+        # Load and pass along also any 'credentials' specified with the
+        # --cred argument
+        if self.opts.cred and len(self.opts.cred) > 0:
+            for credfile in self.opts.cred:
+                # load it (comes out wrapped as needed)
+                # FIXME: Wrapping code needs updates to mark speaksfor?
+                cred = _load_cred(self, credfile)
+                # append it
+                if cred:
+                    self.logger.info("Adding credential %s to arguments", credfile)
+                    creds.append(cred)
+        return creds
+
 # End of AMHandler
 
 def make_client(url, framework, opts):
@@ -4603,6 +4635,7 @@ def _maybe_add_abac_creds(framework, cred):
     as supplied, as normal.'''
     if is_ABAC_framework(framework):
         creds = get_abac_creds(framework.abac_dir)
+        # FIXME: wrap in JSON as needed?
         creds.append(cred)
     else:
         creds = [cred]
