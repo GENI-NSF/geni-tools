@@ -33,6 +33,7 @@ gcf 2.4:
   - Add new `--noExoSM` option to try to force using local rack VMs
   - Quiet down errors merging ExoGENI manifest RSpecs (#321)
   - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
+  - Find missing AM URLs from `omni_config` nicknames or CH if possible (#319)
 
 gcf 2.3.2:
  * omni
