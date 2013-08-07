@@ -572,7 +572,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
 
   keyList = findUsersAndKeys( )
   if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
-    output = "ERROR:There are no keys. You can not login to your nodes.\n"
+    print "ERROR: There are no keys. You can not login to your nodes."
     sys.exit(-1)
 
   # Run equivalent of 'omni.py getversion'
