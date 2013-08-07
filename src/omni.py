@@ -800,10 +800,18 @@ def getParser():
                       help="Use the given Orca slice id")
     parser.add_option("--abac", default=False, action="store_true",
                       help="Use ABAC authorization")
-    parser.add_option("--speaksfor",
+    parser.add_option("--speaksfor", metavar="USER_URN",
                       help="Supply given URN as user we are speaking for in Speaks For option")
-    parser.add_option("--cred", action='append',
+    parser.add_option("--cred", action='append', metavar="CRED_FILENAME",
                       help="Send credential in given filename with any call that takes a list of credentials")
+# Sample options file content:
+#{
+# "option_name_1": "value",
+# "option_name_2": {"complicated_dict" : 37},
+# "option_name_3": 67
+#}
+    parser.add_option("--optionsfile", metavar="JSON_OPTIONS_FILENAME",
+                      help="Send all options defined in named JSON format file to methods that take options")
     return parser
 
 def parse_args(argv, options=None):

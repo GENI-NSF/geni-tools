@@ -4296,8 +4296,47 @@ class AMCallHandler(object):
                 self.logger.warn("Got geni_best_effort for method %s but using anyhow", op)
                 options["geni_best_effort"] = self.opts.geni_best_effort
 
+        # To support Speaks For, allow specifying the URN of the user
+        # the tool is speaking for. 
         if self.opts.speaksfor:
             options["geni_experimenter_urn"] = self.opts.speaksfor
+
+        # To support all the methods that take arbitrary options,
+        # allow specifying a JSON format file that specifies
+        # name/value pairs, with values of various types.
+        # Note that options here may over-ride other options.
+        # Sample options file content:
+#{
+# "option_name_1": "value",
+# "option_name_2": {"complicated_dict" : 37},
+# "option_name_3": 67
+#}
+        if self.opts.optionsfile:
+            if not (os.path.exists(self.opts.optionsfile) and os.path.getsize(self.opts.optionsfile) > 0):
+                msg = "Options file %s doesn't exist or is not readable" % self.opts.optionsfile
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
+
+            try:
+                optionsStruct = None
+                with open(self.opts.optionsfile, 'r') as optsfp:
+                    # , encoding='ascii', cls=DateTimeAwareJSONDecoder, strict=False)
+                    optionsStruct = json.load(optsfp)
+                self.logger.debug("options read from file: %s", optionsStruct)
+                if optionsStruct and isinstance(optionsStruct, dict) and len(optionsStruct.keys()) > 0:
+                    for name, value in optionsStruct.iteritems():
+                        self.logger.debug("Adding option %s=%s", name, value)
+                        options[name] = value
+            except Exception, e:
+                import traceback
+                msg = "Failed to read options from JSON-format file %s: %s" % (self.opts.optionsfile, e)
+                self.logger.debug(traceback.format_exc())
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    self._raise_omni_error(msg)
 
         return options
 

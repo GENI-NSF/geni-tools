@@ -717,8 +717,9 @@ Options:
   --orca-slice-id=ORCA_SLICE_ID
                         Use the given Orca slice id
   --abac                Use ABAC authorization
-  --speaksfor		Supply given URN as user we are speaking for in Speaks For option
-  --cred		Send credential in given filename with any call that takes a list of credentials
+  --speaksfor=USER_URN	Supply given URN as user we are speaking for in Speaks For option
+  --cred=CRED_FILENAME	Send credential in given filename with any call that takes a list of credentials
+  --optionsfile=JSON_OPTIONS_FILENAME	Send all options defined in named JSON format file to methods that take options
 }}}
 
 === Supported commands ===
