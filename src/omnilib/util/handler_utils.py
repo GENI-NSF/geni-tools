@@ -598,7 +598,10 @@ def _save_cred(handler, name, cred):
     else:
         credout = cred
 
-    filename = name + ftype
+    if not name.endswith(ftype):
+        filename = name + ftype
+    else:
+        filename = name
 # usercred did this:
 #        with open(fname, "wb") as file:
 #            file.write(cred)

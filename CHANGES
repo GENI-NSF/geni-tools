@@ -11,6 +11,8 @@ gcf 2.4:
   - Ignore unicode vs string in comparing AM URNs (#333)
   - New option `--speaksfor` to specify a user urn for the speaks for option (#339)
     See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
+  - When renewing a slice using a saved slice credential, save the new
+  slice credential and avoid printing the old slice expiration (#314)
 
  * gcf
   - Add timestamps to pgch logs (#297)
