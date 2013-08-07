@@ -153,7 +153,8 @@ def findUsersAndKeys( ):
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
             if not os.path.exists(os.path.expanduser(key)):
-                print "Key file [%s] does NOT exist." % key
+                if options.include_keys:
+                    print "Key file [%s] does NOT exist." % key
             else:
                 keyList[username].append(key)
     return keyList
@@ -570,7 +571,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
   framework, config, args, opts = omni.initialize( [], options )
 
   keyList = findUsersAndKeys( )
-  if sum(len(val) for val in keyList.itervalues())== 0:
+  if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
     output = "ERROR:There are no keys. You can not login to your nodes.\n"
     sys.exit(-1)
 
