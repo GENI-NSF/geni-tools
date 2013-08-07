@@ -802,6 +802,8 @@ def getParser():
                       help="Use ABAC authorization")
     parser.add_option("--speaksfor",
                       help="Supply given URN as user we are speaking for in Speaks For option")
+    parser.add_option("--cred", action='append',
+                      help="Send credential in given filename with any call that takes a list of credentials")
     return parser
 
 def parse_args(argv, options=None):

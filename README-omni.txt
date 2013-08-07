@@ -718,6 +718,7 @@ Options:
                         Use the given Orca slice id
   --abac                Use ABAC authorization
   --speaksfor		Supply given URN as user we are speaking for in Speaks For option
+  --cred		Send credential in given filename with any call that takes a list of credentials
 }}}
 
 === Supported commands ===

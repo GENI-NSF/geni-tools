@@ -13,10 +13,15 @@ gcf 2.4:
     See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
   - When renewing a slice using a saved slice credential, save the new
   slice credential and avoid printing the old slice expiration (#314)
+  - New option `--cred` to specify file containing a credential to
+  send to any call that takes a list of credentials. Supply this
+  argument as many times as desired. (#46)
 
  * gcf
   - Add timestamps to pgch logs (#297)
   - Make ch optionally multi-threaded (#313)
+  - Credential verifier logs when a credential is unparseable but
+  moves on to try others (#46)
 
  * stitcher
   - Support SCS !GetVersion for testing (#295)
