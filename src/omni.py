@@ -720,6 +720,7 @@ def getParser():
                       help="Config file name", metavar="FILE")
     parser.add_option("-f", "--framework", default="",
                       help="Control framework to use for creation/deletion of slices")
+    # This goes in options.api_version. Also causes setting options.explicitAPIVersion
     parser.add_option("-V", "--api-version", type="int", default=2,
                       help="Specify version of AM API to use (default 2)")
     parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
@@ -727,6 +728,7 @@ def getParser():
     parser.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
+    # This causes settiong options.explicitRSpecVersion as well
     parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
                       help="RSpec type and version to return, default 'GENI 3'")
     parser.add_option("--debug", action="store_true", default=False,
@@ -739,6 +741,7 @@ def getParser():
                        help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
     parser.add_option("-o", "--output",  default=False, action="store_true",
                       help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
+    # If this next is set, then options.output is also set
     parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
     parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
@@ -778,6 +781,7 @@ def getParser():
     parser.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
                       default=False, action="store_true",
                       help="Require using the GetVersion cache if possible (default false)")
+    # This causes setting options.GetVersionCacheOldestDate
     parser.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
                       default=7,
                       help="Age in days of GetVersion cache info before refreshing (default is 7)")
@@ -796,7 +800,7 @@ def getParser():
                       help="Do not send timezone on RenewSliver")
     parser.add_option("--no-ssl", dest="ssl", action="store_false",
                       default=True, help="do not use ssl")
-    parser.add_option("--orca-slice-id",
+    parser.add_option("--orca-slice-id", dest="orca_slice_id",
                       help="Use the given Orca slice id")
     parser.add_option("--abac", default=False, action="store_true",
                       help="Use ABAC authorization")
