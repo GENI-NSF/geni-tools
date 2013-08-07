@@ -16,6 +16,17 @@ gcf 2.4:
   - New option `--cred` to specify file containing a credential to
   send to any call that takes a list of credentials. Supply this
   argument as many times as desired. (#46)
+  - New options `--optionsfile` takes the name of a JSON format file
+  listing additional named options to supply to calls that take
+  options (#327)
+  Sample options file content:
+{{{
+{
+ "option_name_1": "value",
+ "option_name_2": {"complicated_dict" : 37},
+ "option_name_3": 67
+}
+}}}
 
  * gcf
   - Add timestamps to pgch logs (#297)
