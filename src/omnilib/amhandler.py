@@ -316,7 +316,8 @@ class AMCallHandler(object):
                 self.logger.debug(" ... opts.noGetVersionCache set")
             elif cachedVersion is None:
                 self.logger.debug(" ... cachedVersion was None")
-            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
+            options = self._build_options("GetVersion", None)
+            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion, options)
 
             # This next line is experimenter-only maybe?
             message = _append_geni_error_output(thisVersion, message)
@@ -1120,6 +1121,8 @@ class AMCallHandler(object):
                 self.logger.warn(message + "... continuing with next AM")
                 continue
 
+            options = self._build_options("ListResources", options)
+
             # Done constructing options to ListResources
 #-----
 
@@ -1647,7 +1650,8 @@ class AMCallHandler(object):
         # Copy the user config and read the keys from the files into the structure
         slice_users = self._get_users_arg()
 
-        options = None
+        op = "CreateSliver"
+        options = self._build_options(op, None)
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
         if self.opts.api_version >= 2:
@@ -1656,7 +1660,6 @@ class AMCallHandler(object):
             args.append(options)
 #---
 
-        op = "CreateSliver"
         msg = "Create Sliver %s at %s" % (urn, url)
         self.logger.debug("Doing createsliver with urn %s, %d creds, rspec of length %d starting '%s...', users struct %s, options %r", urn, len(creds), len(rspec), rspec[:min(100, len(rspec))], slice_users, options)
         try:
@@ -2415,7 +2418,8 @@ class AMCallHandler(object):
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
-        options = None
+        op = "RenewSliver"
+        options = self._build_options(op, None)
         args = [urn, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
@@ -2430,7 +2434,6 @@ class AMCallHandler(object):
         successList = []
         failList = []
         (clientList, message) = self._getclients()
-        op = "RenewSliver"
         msg = "Renew Sliver %s on " % (urn)
         for client in clientList:
             try:
@@ -2738,6 +2741,7 @@ class AMCallHandler(object):
         retItem = {}
         args = []
         creds = []
+        op = 'SliverStatus'
         # Query status at each client
         (clientList, message) = self._getclients()
         if len(clientList) > 0:
@@ -2746,11 +2750,10 @@ class AMCallHandler(object):
             creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
             args = [urn, creds]
-            options = None
+            options = self._build_options(op, None)
             # API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
-                options = dict()
                 args.append(options)
             self.logger.debug("Doing sliverstatus with urn %s, %d creds, options %r", urn, len(creds), options)
         else:
@@ -2758,7 +2761,6 @@ class AMCallHandler(object):
             retVal += prstr + "\n"
             self.logger.warn(prstr)
 
-        op = 'SliverStatus'
         msg = "%s of %s at " % (op, urn)
 
         # Call SliverStatus on each client
@@ -3085,11 +3087,11 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         args = [urn, creds]
-        options = None
+        op = 'DeleteSliver'
+        options = self._build_options(op, None)
 #--- API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = dict()
             args.append(options)
 
         self.logger.debug("Doing deletesliver with urn %s, %d creds, options %r", urn, len(creds), options)
@@ -3098,7 +3100,6 @@ class AMCallHandler(object):
         failList = []
         successCnt = 0
         (clientList, message) = self._getclients()
-        op = 'DeleteSliver'
         msg = "%s %s at " % (op, urn)
 
         # Connect to each available GENI AM
@@ -3373,10 +3374,10 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
 
         args = [urn, creds]
-        options = dict()
+        op = "Shutdown"
+        options = self._build_options(op, None)
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = dict()
             args.append(options)
 
         self.logger.debug("Doing shutdown with urn %s, %d creds, options %r", urn, len(creds), options)
@@ -3388,7 +3389,6 @@ class AMCallHandler(object):
         retItem = dict()
         (clientList, message) = self._getclients()
         msg = "Shutdown %s on " % (urn)
-        op = "Shutdown"
         for client in clientList:
             try:
                 ((res, message), client) = self._api_call(client, msg + client.url, op, args)
@@ -4279,6 +4279,9 @@ class AMCallHandler(object):
             elif self.opts.devmode:
                 self.logger.warn("Got geni_best_effort for method %s but using anyhow", op)
                 options["geni_best_effort"] = self.opts.geni_best_effort
+
+        if self.opts.speaksfor:
+            options["geni_experimenter_urn"] = self.opts.speaksfor
 
         return options
 

@@ -36,10 +36,11 @@ import pprint
 import re
 
 from geni.util.urn_util import nameFromURN, is_valid_urn_bytype
+from sfa.util.xrn import get_leaf
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
-from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred
+from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn
 
 class CHCallHandler(object):
     """
@@ -284,17 +285,8 @@ class CHCallHandler(object):
         if len(args) > 0:
             username = args[0].strip()
         else:
-            if self.opts.api_version >= 3:
-                (cred, message) = self.framework.get_user_cred_struct()
-            else:
-                (cred, message) = self.framework.get_user_cred()
-            credxml = credutils.get_cred_xml(cred)
-            if cred is None or credxml is None or credxml == "":
-                self._raise_omni_error("listmyslices failed to get your user credential: %s" % message)
-            usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
-            if usermatch:
-                username = usermatch.group(1)
-            else:
+            username = get_leaf(_get_user_urn(self))
+            if not username:
                 self._raise_omni_error("listmyslices failed to find your username")
 
         retStr = ""

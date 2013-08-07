@@ -34,6 +34,7 @@ from dates import naiveUTC
 import json_encoding
 from geni.util import rspec_util
 from omnilib.util.files import *
+from sfa.trust.gid import GID
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -605,3 +606,29 @@ def _save_cred(handler, name, cred):
         file.write(credout + "\n")
 
     return filename
+
+def _is_user_cert_expired(handler):
+    # create a gid
+    usergid = None
+    try:
+        usergid = GID(filename=handler.framework.config['cert'])
+    except Exception, e:
+        handler.logger.debug("Failed to create GID from %s: %s",
+                             handler.framework.config['cert'], e)
+    if usergid and usergid.cert.has_expired():
+        return True
+    return False
+
+def _get_user_urn(handler):
+    # create a gid
+    usergid = None
+    try:
+        usergid = GID(filename=handler.framework.config['cert'])
+    except Exception, e:
+        handler.logger.debug("Failed to create GID from %s: %s",
+                             handler.framework.config['cert'], e)
+    # do get_urn
+    if usergid:
+        return usergid.get_urn()
+    else:
+        return None

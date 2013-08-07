@@ -800,6 +800,8 @@ def getParser():
                       help="Use the given Orca slice id")
     parser.add_option("--abac", default=False, action="store_true",
                       help="Use ABAC authorization")
+    parser.add_option("--speaksfor",
+                      help="Supply given URN as user we are speaking for in Speaks For option")
     return parser
 
 def parse_args(argv, options=None):

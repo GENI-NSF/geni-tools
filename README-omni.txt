@@ -717,6 +717,7 @@ Options:
   --orca-slice-id=ORCA_SLICE_ID
                         Use the given Orca slice id
   --abac                Use ABAC authorization
+  --speaksfor		Supply given URN as user we are speaking for in Speaks For option
 }}}
 
 === Supported commands ===

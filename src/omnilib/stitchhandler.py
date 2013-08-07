@@ -48,7 +48,7 @@ from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError, st
 from geni.util import rspec_schema
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
 
-from sfa.util.xrn import urn_to_hrn
+from sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
@@ -154,19 +154,9 @@ class StitchingHandler(object):
         # FIXME: Maybe use threading to parallelize confirmSliceOK and the 1st SCS call?
 
         # Get username for slicecred filename
-        import re
-        if self.opts.api_version >= 3:
-            (cred, message) = self.framework.get_user_cred_struct()
-        else:
-            (cred, message) = self.framework.get_user_cred()
-        credxml = credutils.get_cred_xml(cred)
-        if cred is None or credxml is None or credxml == "":
-            raise OmniError("listmyslices failed to get your user credential: %s" % message)
-        usermatch = re.search(r"\<owner_urn>urn:publicid:IDN\+.+\+user\+(\w+)\<\/owner_urn\>", credxml)
-        if usermatch:
-            self.username = usermatch.group(1)
-        else:
-            raise OmniError("listmyslices failed to find your username")
+        self.username = get_leaf(handler_utils._get_user_urn(self))
+        if not self.username:
+            raise OmniError("Failed to find your username to name your slice credential")
 
         # Ensure the slice is valid before all those Omni calls use it
         (sliceurn, sliceexp) = self.confirmSliceOK()
