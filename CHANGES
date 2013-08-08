@@ -55,6 +55,13 @@ gcf 2.4:
   - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
   - Find missing AM URLs from `omni_config` nicknames or CH if possible (#319)
 
+ * readyToLogin
+  - when _using_ the --no-keys option, don't check whether the user has
+    any private ssh keys to use logging into nodes (#341)
+  - when _not_ using the --no-keys option, print a helpful error message
+    when you bail due to a lack of having any private SSH keys to use
+    logging into nodes (#342)
+
 gcf 2.3.2:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
