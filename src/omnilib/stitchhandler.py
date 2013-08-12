@@ -671,7 +671,7 @@ class StitchingHandler(object):
             options[scs.GENI_PROFILE_TAG] = profile
         self.logger.debug("Sending SCS options %s", options)
 
-        return requestDOM.toprettyxml(), options
+        return requestDOM.toprettyxml(encoding="utf-8"), options
         
     def parseSCSResponse(self, scsResponse):
 
@@ -952,7 +952,7 @@ class StitchingHandler(object):
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
-        manString = combinedManifestDom.toprettyxml()
+        manString = combinedManifestDom.toprettyxml(encoding="utf-8")
 
         # set rspec to be UTF-8
         if isinstance(manString, unicode):

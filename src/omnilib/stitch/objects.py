@@ -423,9 +423,9 @@ class Aggregate(object):
             else:
                 range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
 
-            pathGlobalId = range_suggested[0]
-            rangeValue = range_suggested[1]
-            suggestedValue = range_suggested[2]
+            pathGlobalId = str(range_suggested[0]).strip()
+            rangeValue = str(range_suggested[1]).strip()
+            suggestedValue = str(range_suggested[2]).strip()
             if pathGlobalId and pathGlobalId != '':
                 if hop.path.globalId and hop.path.globalId != pathGlobalId:
                     self.logger.warn("Changing Path %s global ID from %s to %s", hop.path.id, hop.path.globalId, pathGlobalId)
@@ -916,7 +916,7 @@ class Aggregate(object):
         self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
-        requestString = self.requestDom.toxml()
+        requestString = self.requestDom.toxml(encoding="utf-8")
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
