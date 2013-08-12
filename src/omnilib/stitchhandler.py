@@ -161,9 +161,9 @@ class StitchingHandler(object):
         # Ensure the slice is valid before all those Omni calls use it
         (sliceurn, sliceexp) = self.confirmSliceOK()
 
-        # Ensure expires attribute set for DCN AMs
-        self.addExpiresAttribute(self.parsedUserRequest.dom, sliceexp)
-    
+        # Here is where we used to add the expires attribute. No
+        # longer necessary (or a good idea).
+
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
@@ -671,7 +671,7 @@ class StitchingHandler(object):
             options[scs.GENI_PROFILE_TAG] = profile
         self.logger.debug("Sending SCS options %s", options)
 
-        return requestDOM.toprettyxml(), options
+        return requestDOM.toprettyxml(encoding="utf-8"), options
         
     def parseSCSResponse(self, scsResponse):
 
@@ -839,9 +839,12 @@ class StitchingHandler(object):
                         elif ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
+                        # FIXME: elif something to detect isPG. "protogeni" in
+                        # URL? "instageni" or "emulab" or "protogeni" in URN? 
                     elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
+                    # FIXME: A PG elif per above goes here
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
@@ -917,6 +920,8 @@ class StitchingHandler(object):
                     self.logger.debug("   (SCS added)")
                 if agg.dcn:
                     self.logger.debug("   A DCN Aggregate")
+                if agg.isPG:
+                    self.logger.debug("   A ProtoGENI Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
@@ -952,7 +957,7 @@ class StitchingHandler(object):
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
-        manString = combinedManifestDom.toprettyxml()
+        manString = combinedManifestDom.toprettyxml(encoding="utf-8")
 
         # set rspec to be UTF-8
         if isinstance(manString, unicode):
@@ -1065,7 +1070,11 @@ class StitchingHandler(object):
                             self.logger.info("NOTE not adding aggregate %s", url)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
-        '''Set the expires attribute on the rspec to the slice expiration. DCN AMs allocate the circuit only until then.'''
+        '''Set the expires attribute on the rspec to the slice
+        expiration. DCN AMs used to not support renew, but this is no
+        longer true, so this should not be necessary. Additionally,
+        some AMs treat this as a strict requirement and if this
+        exceeds local policy for maximum sliver, the request will fail.'''
         if not rspecDOM:
             return
         if not sliceexp or str(sliceexp).strip() == "":
@@ -1110,6 +1119,7 @@ class StitchingHandler(object):
 
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
+                    agg.isPG = oldAgg.isPG
                     agg.isEG = oldAgg.isEG
                     agg.isExoSM = oldAgg.isExoSM
                     agg.userRequested = oldAgg.userRequested
