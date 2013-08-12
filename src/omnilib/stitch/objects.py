@@ -1824,9 +1824,14 @@ class Aggregate(object):
         # spawn a thread if threading
         if suppressLogs and not opts.debug:
             logging.disable(logging.INFO)
-        res = omni.call(args, opts)
-        if suppressLogs:
-            logging.disable(logging.NOTSET)
+        res = None
+        try:
+            res = omni.call(args, opts)
+        except:
+            raise
+        finally:
+            if suppressLogs:
+                logging.disable(logging.NOTSET)
         return res
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least
