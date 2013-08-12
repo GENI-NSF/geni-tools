@@ -54,6 +54,7 @@ gcf 2.4:
   - Quiet down errors merging ExoGENI manifest RSpecs (#321)
   - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
   - Find missing AM URLs from `omni_config` nicknames or CH if possible (#319)
+  - Stop adding expires attribute on request rspecs (#344)
 
  * readyToLogin
   - when _using_ the --no-keys option, don't check whether the user has
