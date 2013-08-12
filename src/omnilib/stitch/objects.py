@@ -280,6 +280,7 @@ class Aggregate(object):
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
         self.isEG = False # Handle EG AMs differently - manifests are different
         self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
+        self.isPG = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
@@ -614,31 +615,36 @@ class Aggregate(object):
         # deep clone of the incoming RSpec Dom
         requestRSpecDom = originalRSpec.cloneNode(True)
 
-        # If this is PG Utah and the rspec has an expires attribute
-        # and the value is > 7200min/5days from now, reset expires to
-        # 7200min/5 days from now -- PG sets a max for slivers of
-        # 7200, and fails your request if it is more
-        # symptom is this error from createsliver: 
-        # "expiration is greater then the maximum number of minutes 7200"
-        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
-            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
-            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
-                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
-                now = naiveUTC(datetime.datetime.utcnow())
-                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
-                if expiresDT - now > pgmax:
-#                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
-                    newExpiresDT = now + pgmax
-                    # Some PG based AMs cannot handle fractional seconds, and
-                    # erroneously treat expires as in local time. So (a) avoid
-                    # microseconds, and (b) explicitly note this is in UTC.
-                    # So this is .isoformat() except without the
-                    # microseconds and with the Z
-                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
-                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
-                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
-                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+        # This block no longer necessary. If stitchhandler sets the
+        # expires attribute, then this is true. Otherwise, don't do
+        # this, as it's a strange thing for the tool to know AM sliver
+        # lifetime policies.
+#        # If this is a PG AM and the rspec has an expires attribute
+#        # and the value is > 7200min/5days from now, reset expires to
+#        # 7200min/5 days from now -- PG sets a max for slivers of
+#        # 7200, and fails your request if it is more
+#        # symptom is this error from createsliver: 
+#        # "expiration is greater then the maximum number of minutes 7200"
+#        # FIXME: Need a check for isPG to do this!
+#        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
+#            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
+#                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+#                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
+#                now = naiveUTC(datetime.datetime.utcnow())
+#                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
+#                if expiresDT - now > pgmax:
+##                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
+#                    newExpiresDT = now + pgmax
+#                    # Some PG based AMs cannot handle fractional seconds, and
+#                    # erroneously treat expires as in local time. So (a) avoid
+#                    # microseconds, and (b) explicitly note this is in UTC.
+#                    # So this is .isoformat() except without the
+#                    # microseconds and with the Z
+#                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
+#                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
+#                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
+#                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
 
         stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
