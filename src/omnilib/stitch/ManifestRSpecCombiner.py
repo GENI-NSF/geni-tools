@@ -143,29 +143,38 @@ class ManifestRSpecCombiner:
 #                self.logger.debug("Ams in Link %s: %s", client_id, cms)
 
                 # Get interface_ref elements that need to be swapped
-                intfs = {}
+                intfs = {} # Hash by interface_ref client_id of iref elements to swap
                 for intf in link.getElementsByTagName(INTFC_REF):
                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
-                    else:
-                        sid = None
-                        cid = None
-                        if intf.hasAttribute(COMP_ID):
-                            cid = intf.getAttribute(COMP_ID)
-                        if intf.hasAttribute(SLIVER_ID):
-                            sid = intf.getAttribute(SLIVER_ID)
+#                    else:
+#                        sid = None
+#                        cid = None
+#                        if intf.hasAttribute(COMP_ID):
+#                            cid = intf.getAttribute(COMP_ID)
+#                        if intf.hasAttribute(SLIVER_ID):
+#                            sid = intf.getAttribute(SLIVER_ID)
 #                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 
 #                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
+                # If this is a manifest link and all irefs have
+                # manifest info, then this link is done. Move on.
+                # FIXME: This means we do not add the link sliver_id
+                # & VLAN tag from other AMs on this link.
                 if len(intfs) == 0 and not needSwap:
                     continue
 
                 for agg in ams_list:
+                    # If this is a manifest link and all irefs have
+                    # manifest info, then this link is done. Move on.
+                    # FIXME: This means we do not add the link sliver_id
+                    # & VLAN tag from other AMs on this link.
                     if len(intfs) == 0 and not needSwap:
                         break
-                    notIn = True
+
+                    notIn = True # Is the AM involved in this link?
                     for urn in agg.urn_syns:
                         if urn in cms:
                             notIn = False
@@ -176,9 +185,14 @@ class ManifestRSpecCombiner:
                         continue
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
+
                     man = agg.manifestDom
                     link_elements = man.getElementsByTagName(RSpecParser.LINK_TAG)
                     for link2 in link_elements:
+                        # If this is a manifest link and all irefs have
+                        # manifest info, then this link is done. Move on.
+                        # FIXME: This means we do not add the link sliver_id
+                        # & VLAN tag from other AMs on this link.
                         if len(intfs) == 0 and not needSwap:
                             break
                         # Get the link with a sliverid and the right client_id
@@ -211,13 +225,13 @@ class ManifestRSpecCombiner:
                                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
-                                    else:
-                                        sid = None
-                                        cid = None
-                                        if intf.hasAttribute(COMP_ID):
-                                            cid = intf.getAttribute(COMP_ID)
-                                        if intf.hasAttribute(SLIVER_ID):
-                                            sid = intf.getAttribute(SLIVER_ID)
+#                                    else:
+#                                        sid = None
+#                                        cid = None
+#                                        if intf.hasAttribute(COMP_ID):
+#                                            cid = intf.getAttribute(COMP_ID)
+#                                        if intf.hasAttribute(SLIVER_ID):
+#                                            sid = intf.getAttribute(SLIVER_ID)
 #                                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 #                                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
@@ -232,6 +246,7 @@ class ManifestRSpecCombiner:
 
                                 link = link2
                                 break # out of loop over link2's in this inner AM looking for the right link
+                            # End of block to do swap of link
 
                             # Look at this version of the link's interface_refs. If any have
                             # a sliver_id or component_id, then this is the version with manifest info
@@ -255,6 +270,8 @@ class ManifestRSpecCombiner:
                                 # End of loop over this Aggs link's children, looking for i_refs
 
                             # Add a comment on link with link2's sliver_id and vlan_tag
+                            # Note we don't get here always - see
+                            # FIXMEs above
                             lsid = None
                             if link2.hasAttribute(SLIVER_ID):
                                 lsid = link2.getAttribute(SLIVER_ID)
