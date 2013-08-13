@@ -528,7 +528,7 @@ class StitchingHandler(object):
         existingAggs = None # Clear to note we are done
         self.scsService.result = None # Avoid any unexpected issues
 
-#        self.logger.debug("Calling SCS with options %s", scsOptions)
+        self.logger.debug("Calling SCS with options %s", scsOptions)
         try:
             scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
         except StitchingError as e:

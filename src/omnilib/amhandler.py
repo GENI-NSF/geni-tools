@@ -316,8 +316,11 @@ class AMCallHandler(object):
                 self.logger.debug(" ... opts.noGetVersionCache set")
             elif cachedVersion is None:
                 self.logger.debug(" ... cachedVersion was None")
-            options = self._build_options("GetVersion", None)
-            (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion, options)
+            if self.opts.api_version >= 2:
+                options = self._build_options("GetVersion", None)
+                (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion, options)
+            else:
+                (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
 
             # This next line is experimenter-only maybe?
             message = _append_geni_error_output(thisVersion, message)
@@ -4269,6 +4272,8 @@ class AMCallHandler(object):
 
     def _build_options(self, op, options):
         '''Add geni_best_effort and geni_end_time to options if supplied, applicable'''
+        if self.opts.api_version == 1 and op != 'ListResources':
+            return None
         if not options or options is None:
             options = {}
 
