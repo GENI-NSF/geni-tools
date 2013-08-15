@@ -317,7 +317,7 @@ class AMCallHandler(object):
             elif cachedVersion is None:
                 self.logger.debug(" ... cachedVersion was None")
             if self.opts.api_version >= 2:
-                options = self._build_options("GetVersion", None)
+                options = self._build_options("GetVersion", None, None)
                 (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion, options)
             else:
                 (thisVersion, message) = _do_ssl(self.framework, None, "GetVersion at %s" % (str(client.url)), client.GetVersion)
@@ -1125,7 +1125,7 @@ class AMCallHandler(object):
                 self.logger.warn(message + "... continuing with next AM")
                 continue
 
-            options = self._build_options("ListResources", options)
+            options = self._build_options("ListResources", slicename, options)
 
             # Done constructing options to ListResources
 #-----
@@ -1421,7 +1421,7 @@ class AMCallHandler(object):
             urnsarg, slivers = self._build_urns(urn)
 
             # Add the options dict
-            options = self._build_options('Describe', options)
+            options = self._build_options('Describe', name, options)
         else:
             prstr = "No aggregates available to describe slice at: %s" % message
             retVal += prstr + "\n"
@@ -1657,7 +1657,7 @@ class AMCallHandler(object):
         slice_users = self._get_users_arg()
 
         op = "CreateSliver"
-        options = self._build_options(op, None)
+        options = self._build_options(op, slicename, None)
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
         if self.opts.api_version >= 2:
@@ -1806,7 +1806,7 @@ class AMCallHandler(object):
         rspec = self._maybeGetRSpecFromStruct(rspec)
 
         # Build args
-        options = self._build_options('Allocate', None)
+        options = self._build_options('Allocate', slicename, None)
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         creds = self._maybe_add_creds_from_files(creds)
         args = [urn, creds, rspec, options]
@@ -2029,7 +2029,7 @@ class AMCallHandler(object):
         if slice_users and len(slice_users) > 0:
             options['geni_users'] = slice_users
 
-        options = self._build_options(op, options)
+        options = self._build_options(op, slicename, options)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "slivers in slice %s" % urn
@@ -2268,7 +2268,7 @@ class AMCallHandler(object):
             elif action.lower() == "restart":
                 self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
 
-        options = self._build_options(op, None)
+        options = self._build_options(op, slicename, None)
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "%s on slivers in slice %s" % (action, urn)
@@ -2429,7 +2429,7 @@ class AMCallHandler(object):
         creds = self._maybe_add_creds_from_files(creds)
 
         op = "RenewSliver"
-        options = self._build_options(op, None)
+        options = self._build_options(op, name, None)
         args = [urn, creds, time_string]
 #--- AM API version specific
         if self.opts.api_version >= 2:
@@ -2596,7 +2596,7 @@ class AMCallHandler(object):
         op = 'Renew'
         args = [urnsarg, creds, time_string]
         # Add the options dict
-        options = self._build_options(op, None)
+        options = self._build_options(op, name, None)
         args.append(options)
 
         self.logger.debug("Doing renew with urns %s, %d creds, time %s, options %r", urnsarg, len(creds), time_string, options)
@@ -2762,7 +2762,7 @@ class AMCallHandler(object):
             creds = self._maybe_add_creds_from_files(creds)
 
             args = [urn, creds]
-            options = self._build_options(op, None)
+            options = self._build_options(op, name, None)
             # API version specific
             if self.opts.api_version >= 2:
                 # Add the options dict
@@ -2917,7 +2917,7 @@ class AMCallHandler(object):
             urnsarg, slivers = self._build_urns(urn)
             args = [urnsarg, creds]
             # Add the options dict
-            options = self._build_options('Status', None)
+            options = self._build_options('Status', name, None)
             args.append(options)
             self.logger.debug("Doing status with urns %s, %d creds, options %r", urnsarg, len(creds), options)
         else:
@@ -3102,7 +3102,7 @@ class AMCallHandler(object):
 
         args = [urn, creds]
         op = 'DeleteSliver'
-        options = self._build_options(op, None)
+        options = self._build_options(op, name, None)
 #--- API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
@@ -3251,7 +3251,7 @@ class AMCallHandler(object):
 
         args = [urnsarg, creds]
         # Add the options dict
-        options = self._build_options('Delete', None)
+        options = self._build_options('Delete', name, None)
         args.append(options)
 
         self.logger.debug("Doing delete with urns %s, %d creds, options %r",
@@ -3391,7 +3391,7 @@ class AMCallHandler(object):
 
         args = [urn, creds]
         op = "Shutdown"
-        options = self._build_options(op, None)
+        options = self._build_options(op, name, None)
         if self.opts.api_version >= 2:
             # Add the options dict
             args.append(options)
@@ -4270,7 +4270,8 @@ class AMCallHandler(object):
             urns.append(slice_urn)
         return urns, slivers
 
-    def _build_options(self, op, options):
+    # slicename included just to pass on to datetimeFromString
+    def _build_options(self, op, slicename, options):
         '''Add geni_best_effort and geni_end_time to options if supplied, applicable'''
         if self.opts.api_version == 1 and op != 'ListResources':
             return None
@@ -4283,7 +4284,7 @@ class AMCallHandler(object):
                     self.logger.warn("Got geni_end_time for method %s but using anyhow", op)
                 time = datetime.datetime.max
                 try:
-                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time)
+                    (time, time_with_tz, time_string) = self._datetimeFromString(self.opts.geni_end_time, name=slicename)
                     options["geni_end_time"] = time_string
                 except Exception, exc:
                     msg = 'Couldnt parse geni_end_time from %s: %r' % (self.opts.geni_end_time, exc)
@@ -4569,16 +4570,21 @@ class AMCallHandler(object):
 
         return result
 
+    # name arg: if present then we assume you are trying to
+    # renew/create slivers with the given time - so raise an error if
+    # the time is invalid
     def _datetimeFromString(self, dateString, slice_exp = None, name=None):
         '''Get time, time_with_tz, time_string from the given string. Log/etc appropriately
         if given a slice expiration to limit by.
+        If given a slice name or slice expiration, insist that the given time is a valid
+        time for requesting sliver expirations.
         Generally, use time_with_tz for comparisons and time_string to print or send in API Call.'''
         time = datetime.datetime.max
         try:
             if dateString is not None or self.opts.devmode:
                 time = dateutil.parser.parse(dateString)
         except Exception, exc:
-            msg = "Renew couldn't parse time from %s: %s" % (dateString, exc)
+            msg = "Couldn't parse time from %s: %s" % (dateString, exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -4599,7 +4605,7 @@ class AMCallHandler(object):
             if not name:
                 name = "<unspecified>"
             if time > slice_exp:
-                msg = 'Cannot renew sliver(s) in %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
+                msg = 'Cannot request or renew sliver(s) in %s until %s UTC because it is after the slice expiration time %s UTC' % (name, time, slice_exp)
                 if self.opts.devmode:
                     self.logger.warn(msg + ", but continuing...")
                 else:
@@ -4608,12 +4614,14 @@ class AMCallHandler(object):
                 self.logger.debug('Slice expires at %s UTC, at or after requested time %s UTC' % (slice_exp, time))
 
         if time <= datetime.datetime.utcnow():
-            if not self.opts.devmode:
+            if name is not None and not self.opts.devmode:
                 # Syseng ticket 3011: User typo means their sliver expires.
                 # Instead raise an error
-                self._raise_omni_error("Cannot renew sliver(s) in %s to now or the past (%s UTC <= %s UTC)" % (name, time, datetime.datetime.utcnow()))
+                self._raise_omni_error("Cannot request or renew sliver(s) in %s to now or the past (%s UTC <= %s UTC)" % (name, time, datetime.datetime.utcnow()))
 #                    self.logger.info('Sliver(s) in %s will be set to expire now' % name)
 #                    time = datetime.datetime.utcnow()
+            elif name is not None and self.opts.devmode:
+                self.logger.warn("Will request or renew sliver(s) in %s to now or the past (%s UTC <= %s UTC)" % (name, time, datetime.datetime.utcnow()))
 
         # Add UTC TZ, to have an RFC3339 compliant datetime, per the AM API
         time_with_tz = time.replace(tzinfo=dateutil.tz.tzutc())
