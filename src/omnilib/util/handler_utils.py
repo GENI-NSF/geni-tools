@@ -466,9 +466,10 @@ def _writeRSpec(opts, logger, rspec, slicename, urn, url, message=None, clientco
         filename = _construct_output_filename(opts, slicename, url, urn, mname, ".xml", clientcount)
         # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
 
-    # Create FILE
-    # This prints or logs results, depending on whether filename is None
-    _printResults(opts, logger, header, content, filename)
+    if filename or (rspec is not None and str(rspec).strip() != ''):
+        # Create FILE
+        # This prints or logs results, depending on whether filename is None
+        _printResults(opts, logger, header, content, filename)
     return retVal, filename
 # End of _writeRSpec
 
