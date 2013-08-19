@@ -63,6 +63,18 @@ SLEEP_TIME=3
 # 
 # The above also works with -V 3.
 #
+# Run using:
+#
+# ./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios
+# Outputs file to default location used by getusercred.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred
+#
+# Outputs file as myusercred.xml.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred -V 3
+# Outputs file as myusercred.json
+#
 #
 ################################################################################
 

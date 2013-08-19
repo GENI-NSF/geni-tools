@@ -65,6 +65,10 @@ gcf 2.4:
     when you bail due to a lack of having any private SSH keys to use
     logging into nodes (#342)
 
+ * acceptance tests
+  - test_getusercred_nagios() downloads a user credentials and
+    validates it format for use with monitoring (#338)
+
 gcf 2.3.2:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
