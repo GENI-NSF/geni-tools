@@ -175,8 +175,7 @@ def getInfoFromSliceManifest( amUrl ) :
       text, apicallout = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing %s, review the logs." % apicall
-      sys.exit(-1)
-
+      return []
     key = amUrl
     if tmpoptions.api_version == 1:
       # Key is (urn,url)
@@ -185,7 +184,7 @@ def getInfoFromSliceManifest( amUrl ) :
     if not apicallout.has_key(key):
       print "ERROR: No manifest found from %s at %s; review the logs." % \
             (apicall, amUrl)
-      sys.exit(-1)
+      return []
 
     if tmpoptions.api_version == 1:
       manifest = apicallout[key]
@@ -193,7 +192,7 @@ def getInfoFromSliceManifest( amUrl ) :
       if not apicallout [key].has_key("value"):
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
-        sys.exit(-1)
+        return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
@@ -203,7 +202,7 @@ def getInfoFromSliceManifest( amUrl ) :
           manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
-          sys.exit(-1)
+          return []          
 
     return getInfoFromManifest(manifest)
 
