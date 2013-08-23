@@ -2,6 +2,7 @@
 
 gcf 2.4:
  * omni
+  - Add Utah DDC rack (#347)
   - Add nicknames for RSpecs; includes ability to specify a default location (#265)
   - Make `allocate` accept rspecs loaded from a url (#287)
   - Log messages: include timestamp, make clearer (#296)
