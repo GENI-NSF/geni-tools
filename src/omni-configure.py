@@ -1191,6 +1191,17 @@ ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
 
+# ============================================
+# Utah Downtown Data Center InstaGENI Rack
+# ============================================
+utahddc-ig=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utahddc-ig1=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/1.0
+utahddc-ig2=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utahddc-ig3=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+utahddc-ig-of=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/2
+utahddc-ig-of1=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/1
+utahddc-ig-of2=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/2
+
 """ % omni_config_dict
 
     return omni_config_file 
