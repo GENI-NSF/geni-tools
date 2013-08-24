@@ -62,6 +62,7 @@ DEFAULT_CERT = {
                  'portal' : "~/.ssl/geni_cert_portal.pem"
                }
 
+DEFAULT_LOCAL_RSPEC_DIR = os.path.expanduser( '~/.gcf/rspecs' )
 
 def getYNAns(question):
     valid_ans=['','y', 'n']
@@ -750,6 +751,9 @@ def createConfigFile(opts, public_key_list):
         if not cmp(opts.framework, 'portal'):
           omni_config_str = getPortalConfig(opts, public_key_list, cert)
     
+    # Make a .gcf/rspecs directory
+    if not os.path.exists( DEFAULT_LOCAL_RSPEC_DIR ):
+        os.mkdir( DEFAULT_LOCAL_RSPEC_DIR ) 
     # Write the config to a file
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
@@ -824,6 +828,29 @@ def getPortalUserSection(opts, user, user_urn, public_key_list) :
 urn=%s
 keys=%s
 """ %(user, user_urn, ','.join(public_key_list))
+
+
+def getRSpecNickSection(opts, config) :
+
+    return """
+#------RSpec nicknames
+# When you call
+#      omni.py createsliver myslice myrspec
+# omni will try to read 'myrspec' by interpreting it in the following order:
+# 1. a URL or a file on the local filesystem
+# 2. a nickname specified in the omni_config
+# 3. a file in a location (file or url) defined as: 
+#    <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+
+[rspec_nicknames]
+# Format :
+# Nickname= [location of RSpec file]
+# myawesometopology = ~/.gcf/rspecs/myrspecfile.rspec
+hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+default_rspec_location = http://www.gpolab.bbn.com/experiment-support
+default_rspec_extension = rspec
+"""
 
 def getPortalAMNickSection(opts, config) :
 
@@ -937,9 +964,10 @@ def getPortalConfig(opts, public_key_list, cert) :
     omni_section = getPortalOmniSection(opts, config, user, projects)
     user_section = getPortalUserSection(opts, user, user_urn, public_key_list)
     cf_section = getPortalSFSection(opts, config)
+    rspecnick_section = getRSpecNickSection(opts, config)
     amnick_section = getPortalAMNickSection(opts, config)
 
-    return omni_section + user_section + cf_section + amnick_section
+    return omni_section + user_section + cf_section + rspecnick_section + amnick_section
 
 def selectProject(projects, defproj) : 
     print("\nChoose one of your projects as your default:")
@@ -1096,6 +1124,24 @@ keys = %(pkey)s
 
 # ---------- Frameworks ----------
 %(cf_section)s
+
+#------RSpec nicknames
+# When you call
+#      omni.py createsliver myslice myrspec
+# omni will try to read 'myrspec' by interpreting it in the following order:
+# 1. a URL or a file on the local filesystem
+# 2. a nickname specified in the omni_config
+# 3. a file in a location (file or url) defined as: 
+#    <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+
+[rspec_nicknames]
+# Format :
+# Nickname= [location of RSpec file]
+# myawesometopology = ~/.gcf/rspecs/myrspecfile.rspec
+hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+default_rspec_location = http://www.gpolab.bbn.com/experiment-support
+default_rspec_extension = rspec
 
 #------AM nicknames
 # Format :
