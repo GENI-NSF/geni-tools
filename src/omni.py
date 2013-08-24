@@ -716,106 +716,134 @@ def getParser():
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 
     parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
-    parser.add_option("-c", "--configfile",
-                      help="Config file name", metavar="FILE")
-    parser.add_option("-f", "--framework", default="",
-                      help="Control framework to use for creation/deletion of slices")
+
+    # Basics
+    basicgroup = optparse.OptionGroup( parser, "Basic and Most Used Options")
+    basicgroup.add_option("-c", "--configfile",
+                      help="Config file name (aka `omni_config`)", metavar="FILE")
     # This goes in options.api_version. Also causes setting options.explicitAPIVersion
-    parser.add_option("-V", "--api-version", type="int", default=2,
+    basicgroup.add_option("-V", "--api-version", type="int", default=2,
                       help="Specify version of AM API to use (default 2)")
-    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
+    basicgroup.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
-    parser.add_option("-r", "--project", 
-                      help="Name of project. (For use with pgch framework.)")
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
-    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
+    basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
                       help="RSpec type and version to return, default 'GENI 3'")
-    parser.add_option("--debug", action="store_true", default=False,
-                       help="Enable debugging output. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--info", action="store_true", default=False,
-                       help="Set logging to INFO.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--warn", action="store_true", default=False,
-                       help="Set log level to WARN. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--error", action="store_true", default=False,
-                       help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
-    # If this next is set, then options.output is also set
-    parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
-                      help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="Filename prefix when saving results (used with -o, not --usercredfile, --slicecredfile, or --outputfile)")
-    parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
-    parser.add_option("--tostdout", default=False, action="store_true",
-                      help="Print results like rspecs to STDOUT instead of to log stream")
-    parser.add_option("--no-compress", dest='geni_compressed', 
-                      default=True, action="store_false",
-                      help="Do not compress returned values")
-    parser.add_option("--available", dest='geni_available',
+    basicgroup.add_option("-r", "--project", 
+                      help="Name of project. (For use with pgch framework.)")
+    basicgroup.add_option("--available", dest='geni_available',
                       default=False, action="store_true",
                       help="Only return available resources")
-    parser.add_option("--best-effort", dest='geni_best_effort',
+    basicgroup.add_option("-f", "--framework", default="",
+                      help="Control framework to use for creation/deletion of slices")
+
+    parser.add_option_group( basicgroup )
+    # AM API v3 specific
+    v3group = optparse.OptionGroup( parser, "AM API v3+",
+                          "Options used in AM API v3 or later" )
+    v3group.add_option("-u", "--sliver-urn", dest="slivers", action="append",
+                      help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
+    v3group.add_option("--best-effort", dest='geni_best_effort',
                       default=False, action="store_true",
                       help="Should AMs attempt to complete the operation on only some slivers, if others fail")
-    parser.add_option("-u", "--sliver-urn", dest="slivers", action="append",
-                      help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
-    parser.add_option("--end-time", dest='geni_end_time',
+    v3group.add_option("--end-time", dest='geni_end_time',
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
-    parser.add_option("-v", "--verbose", default=True, action="store_true",
-                      help="Turn on verbose command summary for omni commandline tool")
-    parser.add_option("--verbosessl", default=False, action="store_true",
-                      help="Turn on verbose SSL / XMLRPC logging")
-    parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
-                      help="Turn off verbose command summary for omni commandline tool")
-    parser.add_option("-l", "--logconfig", default=None,
-                      help="Python logging config file")
-    parser.add_option("--logoutput", default='omni.log',
-                      help="Python logging output file [use %(logfilename)s in logging config file]")
-    parser.add_option("--NoGetVersionCache", dest='noGetVersionCache',
-                      default=False, action="store_true",
-                      help="Disable using cached GetVersion results (forces refresh of cache)")
-    parser.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
-                      default=False, action="store_true",
-                      help="Require using the GetVersion cache if possible (default false)")
-    # This causes setting options.GetVersionCacheOldestDate
-    parser.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
-                      default=7,
-                      help="Age in days of GetVersion cache info before refreshing (default is 7)")
-    parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
-                      default="~/.gcf/get_version_cache.json",
-                      help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
-    parser.add_option("--devmode", default=False, action="store_true",
-                      help="Run in developer mode: more verbose, less error checking of inputs")
-    parser.add_option("--arbitrary-option", dest='arbitrary_option',
-                      default=False, action="store_true",
-                      help="Add an arbitrary option to ListResources (for testing purposes)")
-    parser.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
-                      default=False, action="store_true",
-                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
-    parser.add_option("--no-tz", default=False, action="store_true",
-                      help="Do not send timezone on RenewSliver")
-    parser.add_option("--no-ssl", dest="ssl", action="store_false",
-                      default=True, help="do not use ssl")
-    parser.add_option("--orca-slice-id", dest="orca_slice_id",
-                      help="Use the given Orca slice id")
-    parser.add_option("--abac", default=False, action="store_true",
-                      help="Use ABAC authorization")
-    parser.add_option("--speaksfor", metavar="USER_URN",
+    v3group.add_option("--speaksfor", metavar="USER_URN",
                       help="Supply given URN as user we are speaking for in Speaks For option")
-    parser.add_option("--cred", action='append', metavar="CRED_FILENAME",
+    v3group.add_option("--cred", action='append', metavar="CRED_FILENAME",
                       help="Send credential in given filename with any call that takes a list of credentials")
+
 # Sample options file content:
 #{
 # "option_name_1": "value",
 # "option_name_2": {"complicated_dict" : 37},
 # "option_name_3": 67
 #}
-    parser.add_option("--optionsfile", metavar="JSON_OPTIONS_FILENAME",
+    v3group.add_option("--optionsfile", metavar="JSON_OPTIONS_FILENAME",
                       help="Send all options defined in named JSON format file to methods that take options")
+    parser.add_option_group( v3group )
+
+    # logging levels
+    loggroup = optparse.OptionGroup( parser, "Logging and Verboseness",
+                          "Control the amount of output to the screen and/or to a log" )
+    loggroup.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
+                      help="Turn off verbose command summary for omni commandline tool")
+    loggroup.add_option("-v", "--verbose", default=True, action="store_true",
+                      help="Turn on verbose command summary for omni commandline tool")
+    loggroup.add_option("--debug", action="store_true", default=False,
+                       help="Enable debugging output. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--info", action="store_true", default=False,
+                       help="Set logging to INFO.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--warn", action="store_true", default=False,
+                       help="Set log level to WARN. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--error", action="store_true", default=False,
+                       help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--verbosessl", default=False, action="store_true",
+                      help="Turn on verbose SSL / XMLRPC logging")
+    loggroup.add_option("-l", "--logconfig", default=None,
+                      help="Python logging config file")
+    loggroup.add_option("--logoutput", default='omni.log',
+                      help="Python logging output file [use %(logfilename)s in logging config file]")
+    loggroup.add_option("--tostdout", default=False, action="store_true",
+                      help="Print results like rspecs to STDOUT instead of to log stream")
+    parser.add_option_group( loggroup )
+
+    # output to files
+    filegroup = optparse.OptionGroup( parser, "File Output",
+                          "Control name of output file and whether to output to a file" )
+    filegroup.add_option("-o", "--output",  default=False, action="store_true",
+                      help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
+    filegroup.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
+                      help="Filename prefix when saving results (used with -o, not --usercredfile, --slicecredfile, or --outputfile)")
+    # If this next is set, then options.output is also set
+    filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
+                      help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
+    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
+    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    parser.add_option_group( filegroup )
+    # GetVersion
+    gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
+                          "Control GetVersion Cache" )
+    gvgroup.add_option("--NoGetVersionCache", dest='noGetVersionCache',
+                      default=False, action="store_true",
+                      help="Disable using cached GetVersion results (forces refresh of cache)")
+    gvgroup.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
+                      default=False, action="store_true",
+                      help="Require using the GetVersion cache if possible (default false)")
+    # This causes setting options.GetVersionCacheOldestDate
+    gvgroup.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
+                      default=7,
+                      help="Age in days of GetVersion cache info before refreshing (default is 7)")
+    gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
+                      default="~/.gcf/get_version_cache.json",
+                      help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
+    parser.add_option_group( gvgroup )
+    # Development related
+    devgroup = optparse.OptionGroup( parser, "For Developers",
+                          "Features only needed by developers" )
+    devgroup.add_option("--devmode", default=False, action="store_true",
+                      help="Run in developer mode: more verbose, less error checking of inputs")
+    devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
+                      default=False, action="store_true",
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
+    devgroup.add_option("--no-tz", default=False, action="store_true",
+                      help="Do not send timezone on RenewSliver")
+    devgroup.add_option("--no-ssl", dest="ssl", action="store_false",
+                      default=True, help="do not use ssl")
+    devgroup.add_option("--orca-slice-id", dest="orca_slice_id",
+                      help="Use the given Orca slice id")
+    devgroup.add_option("--no-compress", dest='geni_compressed', 
+                      default=True, action="store_false",
+                      help="Do not compress returned values")
+    devgroup.add_option("--abac", default=False, action="store_true",
+                      help="Use ABAC authorization")
+    devgroup.add_option("--arbitrary-option", dest='arbitrary_option',
+                      default=False, action="store_true",
+                      help="Add an arbitrary option to ListResources (for testing purposes)")
+    parser.add_option_group( devgroup )
     return parser
 
 def parse_args(argv, options=None):
