@@ -1143,8 +1143,7 @@ hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rsp
 default_rspec_location = http://www.gpolab.bbn.com/experiment-support
 default_rspec_extension = rspec
 
-#------AM nick
-names
+#------AM nicknames
 # Format :
 # Nickname=URN, URL
 # URN is optional
