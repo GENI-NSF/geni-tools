@@ -62,6 +62,7 @@ DEFAULT_CERT = {
                  'portal' : "~/.ssl/geni_cert_portal.pem"
                }
 
+DEFAULT_LOCAL_RSPEC_DIR = os.path.expanduser( '~/.gcf/rspecs' )
 
 def getYNAns(question):
     valid_ans=['','y', 'n']
@@ -750,6 +751,9 @@ def createConfigFile(opts, public_key_list):
         if not cmp(opts.framework, 'portal'):
           omni_config_str = getPortalConfig(opts, public_key_list, cert)
     
+    # Make a .gcf/rspecs directory
+    if not os.path.exists( DEFAULT_LOCAL_RSPEC_DIR ):
+        os.mkdir( DEFAULT_LOCAL_RSPEC_DIR ) 
     # Write the config to a file
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
@@ -824,6 +828,29 @@ def getPortalUserSection(opts, user, user_urn, public_key_list) :
 urn=%s
 keys=%s
 """ %(user, user_urn, ','.join(public_key_list))
+
+
+def getRSpecNickSection(opts, config) :
+
+    return """
+#------RSpec nicknames
+# When you call
+#      omni.py createsliver myslice myrspec
+# omni will try to read 'myrspec' by interpreting it in the following order:
+# 1. a URL or a file on the local filesystem
+# 2. a nickname specified in the omni_config
+# 3. a file in a location (file or url) defined as: 
+#    <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+
+[rspec_nicknames]
+# Format :
+# Nickname= [location of RSpec file]
+# myawesometopology = ~/.gcf/rspecs/myrspecfile.rspec
+hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+default_rspec_location = http://www.gpolab.bbn.com/experiment-support
+default_rspec_extension = rspec
+"""
 
 def getPortalAMNickSection(opts, config) :
 
@@ -937,9 +964,10 @@ def getPortalConfig(opts, public_key_list, cert) :
     omni_section = getPortalOmniSection(opts, config, user, projects)
     user_section = getPortalUserSection(opts, user, user_urn, public_key_list)
     cf_section = getPortalSFSection(opts, config)
+    rspecnick_section = getRSpecNickSection(opts, config)
     amnick_section = getPortalAMNickSection(opts, config)
 
-    return omni_section + user_section + cf_section + amnick_section
+    return omni_section + user_section + cf_section + rspecnick_section + amnick_section
 
 def selectProject(projects, defproj) : 
     print("\nChoose one of your projects as your default:")
@@ -1097,6 +1125,24 @@ keys = %(pkey)s
 # ---------- Frameworks ----------
 %(cf_section)s
 
+#------RSpec nicknames
+# When you call
+#      omni.py createsliver myslice myrspec
+# omni will try to read 'myrspec' by interpreting it in the following order:
+# 1. a URL or a file on the local filesystem
+# 2. a nickname specified in the omni_config
+# 3. a file in a location (file or url) defined as: 
+#    <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+
+[rspec_nicknames]
+# Format :
+# Nickname= [location of RSpec file]
+# myawesometopology = ~/.gcf/rspecs/myrspecfile.rspec
+hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+default_rspec_location = http://www.gpolab.bbn.com/experiment-support
+default_rspec_extension = rspec
+
 #------AM nicknames
 # Format :
 # Nickname=URN, URL
@@ -1190,6 +1236,17 @@ ig-uky2=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.e
 ig-uky3=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/3.0
 ig-uky=urn:publicid:IDN+lan.sdn.uky.edu+authority+cm,https://boss.lan.sdn.uky.edu:12369/protogeni/xmlrpc/am/2.0
 ig-of-uky=,https://foam.lan.sdn.uky.edu:3626/foam/gapi/1
+
+# ============================================
+# Utah Downtown Data Center InstaGENI Rack
+# ============================================
+utahddc-ig=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utahddc-ig1=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/1.0
+utahddc-ig2=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
+utahddc-ig3=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/3.0
+utahddc-ig-of=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/2
+utahddc-ig-of1=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/1
+utahddc-ig-of2=urn:publicid:IDN+openflow:foam:foam.utahddc.geniracks.net+authority+am,https://foam.utahddc.geniracks.net:3626/foam/gapi/2
 
 """ % omni_config_dict
 
