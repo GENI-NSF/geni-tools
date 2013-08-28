@@ -98,6 +98,7 @@ import logging.config
 import optparse
 import os
 import sys
+import urllib
 
 from omnilib.util import OmniError, AMAPIError
 from omnilib.handler import CallHandler
@@ -115,6 +116,8 @@ import omnilib.frameworks.framework_pgch
 import omnilib.frameworks.framework_sfa
 
 OMNI_VERSION="2.4"
+
+LOCATION_OF_AGG_NICK_CONFIG = "http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -164,16 +167,11 @@ def load_agg_nick_config(opts, logger):
                 logger.info("Config file '%s' or '%s' does not exist"
                      % (opts.aggNickCacheName, configfile))
 
-    print configfiles
     # Find the first valid config file
     for cf in configfiles:         
         filename = os.path.expanduser(cf)
         if os.path.exists(filename):
             break
-        else:
-            print "no file "+str(filename)
-
-
     config = {}       
     
     # Did we find a valid config file?
@@ -345,6 +343,17 @@ def load_framework(config, opts):
     framework = framework_mod.Framework(config['selected_framework'], opts)
     return framework    
 
+def update_agg_nick_cache( opts, logger ):
+    """Try to download the definitive version of `agg_nick_cache` and
+    store in the specified place."""
+    try:
+        # wget `agg_nick_cache`
+        #cp `agg_nick_cache` opts.aggNickCacheName
+        urllib.urlretrieve( LOCATION_OF_AGG_NICK_CONFIG, opts.aggNickCacheName )
+        logger.info("Downloaded latest `agg_nick_cache` and copied to '%s'." % opts.aggNickCacheName)
+    except:
+        logger.info("Attempted to download latest `agg_nick_cache` but could not.")
+
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
     (Supplying an existing options object allows pre-setting certain values not in argv.)
@@ -355,6 +364,8 @@ def initialize(argv, options=None ):
 
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
+    if opts.noAggNickCache:
+        update_agg_nick_cache( opts, logger )
     config = load_agg_nick_config(opts, logger)
     config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
@@ -949,7 +960,7 @@ def parse_args(argv, options=None):
     # From AggNickCacheAge (int days) produce options.AggNickCacheOldestDate as a datetime.datetime
     options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.AggNickCacheAge)
 
-    options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
+    options.aggNickCacheName = os.path.normcase(os.path.expanduser(options.aggNickCacheName))
 
     if options.noAggNickCache and options.useAggNickCache:
         parser.error("Cannot both force not using the AggNick cache and force TO use it.")
