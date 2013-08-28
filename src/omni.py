@@ -788,6 +788,19 @@ def getParser():
     parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
                       help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
+    parser.add_option("--NoAggNickCache", dest='noAggNickCache',
+                      default=False, action="store_true",
+                      help="Disable using cached AggNick results and force refresh of cache (default is %default)")
+    parser.add_option("--ForceUseAggNickCache", dest='useAggNickCache',
+                      default=False, action="store_true",
+                      help="Require using the AggNick cache if possible (default %default)")
+    # This causes setting options.AggNickCacheOldestDate
+    parser.add_option("--AggNickCacheAge", dest='AggNickCacheAge',
+                      default=7,
+                      help="Age in days of AggNick cache info before refreshing (default is %default)")
+    parser.add_option("--AggNickCacheName", dest='getversionCacheName',
+                      default="~/.gcf/agg_nick_cache",
+                      help="File where AggNick info will be cached, default is %default")
     parser.add_option("--devmode", default=False, action="store_true",
                       help="Run in developer mode: more verbose, less error checking of inputs")
     parser.add_option("--arbitrary-option", dest='arbitrary_option',
