@@ -93,6 +93,7 @@
 import ConfigParser
 from copy import deepcopy
 import datetime
+import inspect
 import logging.config
 import optparse
 import os
@@ -133,7 +134,67 @@ def countSuccess( successList, failList ):
     succNum = len( successList )
     return (succNum, succNum + len( failList ) )
 
-def load_config(opts, logger):
+def load_agg_nick_config(opts, logger):
+    """Load the agg_nick_cache file.
+    Search path:
+    - filename from commandline
+      - in current directory
+      - in ~/.gcf
+    - agg_nick_cache in current directory
+    - agg_nick_cache in ~/.gcf
+    """
+
+    # the directory of this file
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = curr_dir.rsplit("/",1)[0]
+    # Load up the config file
+    configfiles = ['agg_nick_cache','~/.gcf/agg_nick_cache', os.path.join(parent_dir, 'agg_nick_cache.base')]
+    
+    if opts.aggNickCacheName:
+        # if aggNickCacheName defined on commandline does not exist, fail
+        if os.path.exists( opts.aggNickCacheName ):
+            configfiles.insert(0, opts.aggNickCacheName)
+        else:
+            # Check maybe the default directory for the file
+            configfile = os.path.join( '~/.gcf', opts.aggNickCacheName )
+            configfile = os.path.expanduser( configfile )
+            if os.path.exists( configfile ):
+                configfiles.insert(0, configfile)
+            else:
+                logger.info("Config file '%s' or '%s' does not exist"
+                     % (opts.aggNickCacheName, configfile))
+
+    print configfiles
+    # Find the first valid config file
+    for cf in configfiles:         
+        filename = os.path.expanduser(cf)
+        if os.path.exists(filename):
+            break
+        else:
+            print "no file "+str(filename)
+
+
+    config = {}       
+    
+    # Did we find a valid config file?
+    if not os.path.exists(filename):
+        prtStr = """Could not find an agg_nick_cache file in local directory or in ~/.gcf/agg_nick_cache"""
+        logger.info( prtStr )
+        return config
+
+    logger.info("Loading agg_nick_cache file %s", filename)
+    
+    confparser = ConfigParser.RawConfigParser()
+    try:
+        confparser.read(filename)
+    except ConfigParser.Error as exc:
+        logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
+        raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
+
+    config = load_aggregate_nicknames( config, confparser )
+    return config
+
+def load_config(opts, logger, config={}):
     """Load the omni config file.
     Search path:
     - filename from commandline
@@ -185,7 +246,6 @@ def load_config(opts, logger):
         raise OmniError, "Config file %s could not be parsed: %s"% (filename, str(exc))
 
     # Load up the omni options
-    config = {}
     config['logger'] = logger
     config['omni'] = {}
     for (key,val) in confparser.items('omni'):
@@ -202,31 +262,7 @@ def load_config(opts, logger):
                         d[key] = val
                     config['users'].append(d)
 
-    # Find aggregate nicknames
-    config['aggregate_nicknames'] = {}
-    if confparser.has_section('aggregate_nicknames'):
-        for (key,val) in confparser.items('aggregate_nicknames'):
-            temp = val.split(',')
-            for i in range(len(temp)):
-                temp[i] = temp[i].strip()
-            if len(temp) != 2:
-                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
-            if len(temp) == 0:
-                continue
-            if len(temp) == 1:
-                # Got 1 entry - if its a valid URL, use it
-                res = validate_url(temp[0])
-                if res is None or res.startswith("WARN:"):
-                    t = temp[0]
-                    temp = ["",t]
-                else:
-                    # not a valid URL. Skip it
-                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
-                    continue
-
-            # If temp len > 2: try to use it as is
-
-            config['aggregate_nicknames'][key] = temp
+    config = load_aggregate_nicknames( config, confparser )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -269,6 +305,35 @@ def load_config(opts, logger):
 
     return config
 
+def load_aggregate_nicknames( config, confparser ):
+    # Find aggregate nicknames
+    if not config.has_key('aggregate_nicknames'):
+        config['aggregate_nicknames'] = {}
+    if confparser.has_section('aggregate_nicknames'):
+        for (key,val) in confparser.items('aggregate_nicknames'):
+            temp = val.split(',')
+            for i in range(len(temp)):
+                temp[i] = temp[i].strip()
+            if len(temp) != 2:
+                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+            if len(temp) == 0:
+                continue
+            if len(temp) == 1:
+                # Got 1 entry - if its a valid URL, use it
+                res = validate_url(temp[0])
+                if res is None or res.startswith("WARN:"):
+                    t = temp[0]
+                    temp = ["",t]
+                else:
+                    # not a valid URL. Skip it
+                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
+                    continue
+
+            # If temp len > 2: try to use it as is
+
+            config['aggregate_nicknames'][key] = temp
+    return config
+
 def load_framework(config, opts):
     """Select the Control Framework to use from the config, and instantiate the proper class."""
 
@@ -290,7 +355,8 @@ def initialize(argv, options=None ):
 
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
-    config = load_config(opts, logger)
+    config = load_agg_nick_config(opts, logger)
+    config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts
@@ -798,7 +864,7 @@ def getParser():
     parser.add_option("--AggNickCacheAge", dest='AggNickCacheAge',
                       default=7,
                       help="Age in days of AggNick cache info before refreshing (default is %default)")
-    parser.add_option("--AggNickCacheName", dest='getversionCacheName',
+    parser.add_option("--AggNickCacheName", dest='aggNickCacheName',
                       default="~/.gcf/agg_nick_cache",
                       help="File where AggNick info will be cached, default is %default")
     parser.add_option("--devmode", default=False, action="store_true",
@@ -879,6 +945,14 @@ def parse_args(argv, options=None):
 
     if options.noGetVersionCache and options.useGetVersionCache:
         parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
+
+    # From AggNickCacheAge (int days) produce options.AggNickCacheOldestDate as a datetime.datetime
+    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.AggNickCacheAge)
+
+    options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
+
+    if options.noAggNickCache and options.useAggNickCache:
+        parser.error("Cannot both force not using the AggNick cache and force TO use it.")
 
     if options.outputfile:
         options.output = True
