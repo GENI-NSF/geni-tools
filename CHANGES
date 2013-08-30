@@ -28,6 +28,8 @@ gcf 2.4:
  "option_name_3": 67
 }
 }}}
+ - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
+   for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
 
  * gcf
   - Add timestamps to pgch logs (#297)
