@@ -42,15 +42,41 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.4:
-  - Add nicknames for RSpecs; includes ability to specify a default location (#265)
-  - Make `allocate` accept rspecs loaded from a url (#287)
-  - Make framework_pgch not require a project if slice URN is given (#293)
-  - Log messages: include timestamp, make clearer (#296)
+ - Add nicknames for RSpecs; includes ability to specify a default location (#265)
+ - Make `allocate` accept rspecs loaded from a url (#287)
+ - Make calls using your GENI Clearinghouse account not require a project if slice URN is given (#293)
+ - Renew to now or past raises an exception (#337)
+ - New option `--speaksfor` to specify a user urn for the speaks for option (#339)
+   See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
+ - New option `--cred` to specify file containing a credential to
+   send to any call that takes a list of credentials. Supply this
+   argument as many times as desired. (#46)
+ - New option `--optionsfile` takes the name of a JSON format file
+   listing additional named options to supply to calls that take
+   options (#327)
+   Sample options file content:
+{{{
+{
+ "option_name_1": "value",
+ "option_name_2": {"complicated_dict" : 37},
+ "option_name_3": 67
+}
+}}}
+ - New command `nicknames` lists the known aggregate nicknames (#146)
+ - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
+   for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
+ - Log messages: include timestamp, make clearer (#296)
+ - Refactor chhandler credential saving methods into handler_utils (#309)
+ - Explicitly import framework files to support packaging (#322)
+ - Ignore unicode vs string in comparing AM URNs (#333)
+ - When renewing a slice using a saved slice credential, save the new
+   slice credential and avoid printing the old slice expiration (#314)
+ - Document omni command line options (#329)
 
 New in v2.3.2:
-  - Make framework_pgch not require a project if slice URN is given (#293)
-  - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
-  - clear-passphrases.py: fix bug when omni_config is in certain directories (#304) 
+ - Make framework_pgch not require a project if slice URN is given (#293)
+ - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
+ - `clear-passphrases.py`: fix bug when omni_config is in certain directories (#304) 
 
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
@@ -263,98 +289,7 @@ Detailed changes:
  - Clean up createsliver output (ticket #139)
  - Listresources notes if supplied slice credential is expired (ticket #162)
 
-New in v1.6.2:
- * Added omni-configure.py script to autogenerate the omni_config (#127)
- * Log malformed sliverstatus (#128)
- * Better missing file error messages in delegateSliceCred (#129)
- * Update to SFA codebase as of 4/13/12
- * Bug fix: Handle AM down when !ListResources calls !GetVersion and
-   gets a null (#131)
- * Implement list my slices for SFA/PlanetLab (#137)
- * Allow listing public keys installed by / known by the CH (#136)
-
-New in v1.6:
- * Fix bug in printout of !CreateSliver error (ticket #95)
- * Make getversion AM API v2 implementation be consistent with other commands (#109)
- * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
- * Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
- * libstitch example scripts handle V2 AMs in some cases (#119)
- * Updated get_aggregates() call due to changes in SFA (#94)
- * Fix bug in _get_advertised_rspec() (#114)
- * Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
- * readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
- * Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
-
-New in v1.5.2:
-  * validate the API version argument (#92)
-
-New in v1.5.1:
-  * Incorporated latest SFA library changes (tag sfa-2.0-4)
-  * Complete support of AM API v2 (ticket #69)
-    - Default is AM API v1
-    - Use -V 2 or --api-version 2 to cause omni to use AM APIv2 to speak to aggregates
-   * Added --available to have listresources filter calls to only include available nodes (ticket #74)
-   * Added --no-compress to allow the user to specify that AM API call returns should not be compressed (ticket #73)
-
-New in v1.5:
-  * Remove AM specific URL validation checks; they were confusing. (ticket #66)
-  * Incorporated SFA library fixes
-  * Updated readyToLogin script to filter out nodes that aren't ready
-    and handle if !PlanetLab has no resources
-  * Improved check of manifest RSpec returned by !CreateSliver
-  * Added --usercredfile to allow the user to provide their user credential as a file
-  * Implemented preliminary (but incomplete) support of AM API v2
-
-New in v1.4:
- * Omni logging is configurable with a -l option, or from a
- script by calling applyLogConfig(). (ticket #61)
- * Omni aborts if it detects your slice has expired (ticket #51)
- * Omni config can define aggregate nicknames, to use instead
- of a URL in the -a argument. (ticket #62)
- * Solved a thread safety bug in omni - copy options list. (ticket #63)
- * SFA logger handles log file conflicts (ticket #48)
- * Handle expired user certs nicely in Omni (ticket #52)
- * Write output filename when !ListResources or !GetVersion saves
- results to a file. (ticket #53)
- * Warn on common AM URL typos. (ticket #54)
- * Pause 10sec and retry (max 3x) if server says it is busy, 
- as PG often does. (ticket #55)
- * SFA library updates (eg slices declare an XML namespace)
- * SFA library bug fixes
- * Added a "--no-tz" option for renewing slivers at older SFA-based
- aggregates. (ticket #65)
-
-New in v1.3.2:
- * Fixed user-is-a-slice bug (ticket #49)
-
-New in v1.3.1:
- * Correctly verify delegated slice credentials
- * Ensure the root error is reported to the user when there are
-   problems.
- * Once the user has failed to enter their passphrase twice,
-   exit - don't bury it in later errors. (ticket #43)
- * Clean up timezone handling, correctly handling credentials that
- specify a timezone. (ticket #47)
- * examples directory contains simple scripting examples
- * New delegateSliceCred script allowing off-line delegation of
-   slice credentials.
-   Run src/delegateSliceCred.py -h for usage. (ticket #44)
-
-New in v1.3:
- * Omnispecs are deprecated, and native RSpecs are the default
- * Many commands take a '-o' option getting output saved to a
- file. Specifically, use that with 'listresources' and 'createsliver'
- to save advertisement and manifest RSpecs. See Handling Omni Output below.
- * Slice credentials can be saved to a file and re-used.
- * Added support for GENI AM API Draft Revisions.
- * You can specify a particular RSpec format, at aggregates that speak
- more than one format (eg both SFA and GENI V3).
- * New functions 'listmyslices' and 'print_slice_expiration'
- * All commands return a tuple: text result description and a
- command-specific object, suitable for use by calling scripts
- * Log and output messages are clearer.
-
-Full changes are listed in the CHANGES file.
+Older changes are listed in the CHANGES file.
 
 == Handling Omni Output ==
 Omni supports the `-o` option to have Omni save the output of Omni to
@@ -415,6 +350,10 @@ Or [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingExpiration Omni Scripting E
 and
 [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingWithOptions Omni Scripting with Options] 
 on the gcf wiki.
+
+'''NOTE''': Omni uses multiple command line options, and creates its
+own option names internally. Be sure not to pick the same option names. See omni.py and the
+getParser() function, around line 719 for all the option names.
 
 == Extending Omni ==
 
