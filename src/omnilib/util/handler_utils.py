@@ -641,9 +641,9 @@ def printNicknames(config, opts):
     '''Get the known aggregate nicknames and return them as a string and a struct'''
     retStruct = config['aggregate_nicknames'].keys()
     retString = "Omni knows the following Aggregate Nicknames:\n\n"
-    retString += "%16s | %s | URL\n" % ("Nickname", string.ljust("URN", 50))
+    retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
     retString += "=============================================================================================================\n"
     for nick in config['aggregate_nicknames'].keys():
         (urn, url) = config['aggregate_nicknames'][nick]
-        retString += "%16s | %s | %s\n" % (nick, string.ljust(urn, 50), url)
+        retString += "%16s | %s | %s\n" % (nick, string.ljust(url, 70), urn)
     return retString, retStruct
