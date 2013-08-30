@@ -62,6 +62,7 @@ New in v2.4:
  "option_name_3": 67
 }
 }}}
+ - New command `nicknames` lists the known aggregate nicknames (#146)
  - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
    for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
  - Log messages: include timestamp, make clearer (#296)

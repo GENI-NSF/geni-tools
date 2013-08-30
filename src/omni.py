@@ -100,7 +100,7 @@ import sys
 
 from omnilib.util import OmniError, AMAPIError
 from omnilib.handler import CallHandler
-from omnilib.util.handler_utils import validate_url
+from omnilib.util.handler_utils import validate_url, printNicknames
 
 # Explicitly import framework files so py2exe is happy
 import omnilib.frameworks.framework_apg
@@ -488,10 +488,13 @@ def API_call( framework, config, args, opts, verbose=False ):
     if opts.debug:
         logger.info(getSystemInfo() + "\nOmni: " + getOmniVersion())
 
-    # Process the user's call
-    handler = CallHandler(framework, config, opts)    
-#    Returns string, item
-    result = handler._handle(args)
+    if len(args) > 0 and args[0].lower() == "nicknames":
+        result = printNicknames(config, opts)
+    else:
+        # Process the user's call
+        handler = CallHandler(framework, config, opts)
+    #    Returns string, item
+        result = handler._handle(args)
     if result is None:
         retVal = None
         retItem = None
