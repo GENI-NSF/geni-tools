@@ -87,7 +87,9 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
-    
+
+      Other functions:
+       [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
 """
 
 import ConfigParser
@@ -715,6 +717,8 @@ def getParser():
  \t\t\t listmykeys \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
+ \t\tOther functions: \n\
+ \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 

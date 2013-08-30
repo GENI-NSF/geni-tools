@@ -62,7 +62,7 @@ New in v2.4:
  "option_name_3": 67
 }
 }}}
- - New command `nicknames` lists the known aggregate nicknames (#146)
+ - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
  - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
    for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
  - Log messages: include timestamp, make clearer (#296)
@@ -553,6 +553,8 @@ omni.py [options] <command and arguments>
                          listmykeys                                                           
                          getusercred                                                          
                          print_slice_expiration <slicename>                                   
+ 		Other functions: 
+ 			 nicknames 
 
          See README-omni.txt for details.
          And see the Omni website at http://trac.gpolab.bbn.com/gcf
@@ -656,9 +658,13 @@ Options:
   --orca-slice-id=ORCA_SLICE_ID
                         Use the given Orca slice id
   --abac                Use ABAC authorization
-  --speaksfor=USER_URN	Supply given URN as user we are speaking for in Speaks For option
-  --cred=CRED_FILENAME	Send credential in given filename with any call that takes a list of credentials
-  --optionsfile=JSON_OPTIONS_FILENAME	Send all options defined in named JSON format file to methods that take options
+  --speaksfor=USER_URN	Supply given URN as user we are speaking for in Speaks 
+			For option
+  --cred=CRED_FILENAME	Send credential in given filename with any call that 
+  			takes a list of credentials
+  --optionsfile=JSON_OPTIONS_FILENAME	
+			Send all options defined in named JSON format file to 
+			methods that take options
 }}}
 
 === Supported commands ===
@@ -1805,3 +1811,27 @@ Aggregates queried:
    nickname in `omni_config`, if provided, ELSE
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+=== nicknames ===
+Print / return the known Aggregate and RSpec nicknames, as defined in
+the Omni config file(s). 
+
+Sample Output:
+{{{
+....
+  Result Summary: Omni knows the following Aggregate Nicknames:
+
+        Nickname | URL                                                                    | URN
+=============================================================================================================
+          pg-bbn | https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0             | urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm
+....
+Omni knows the following RSpec Nicknames:
+
+  Nickname | Location
+====================================================================================
+ hellogeni | http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+(Default RSpec location: http://www.gpolab.bbn.com/experiment-support )
+
+(Default RSpec extension: rspec )
+}}}
