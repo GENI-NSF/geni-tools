@@ -338,9 +338,11 @@ def load_aggregate_nicknames( config, confparser, filename, logger ):
                     continue
 
             # If temp len > 2: try to use it as is
-
+            if config['aggregate_nicknames'].has_key(key):
+                logger.warn("Conflict for aggregate nickname '%s'.  Loaded from '%s'.", key, filename)                
+            else:
+                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
             config['aggregate_nicknames'][key] = temp
-            logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
     return config
 
 def load_framework(config, opts):
