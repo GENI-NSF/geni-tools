@@ -442,6 +442,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
   else :
     f = sys.stdout
 
+  firstTime = {}
   for amUrl, amInfo in loginInfoDict.items() :
     f.write("\n")
     f.write("="*80+"\n")
@@ -450,9 +451,9 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
-
-    firstTime = True
     for item in amInfo["info"] :
+      if not firstTime.has_key( item['client_id'] ):
+          firstTime[ item['client_id'] ] = True
       output = ""
       if options.readyonly :
         try:
@@ -462,10 +463,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
           sys.stderr.write("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
-        if firstTime:
+        if firstTime[ item['client_id'] ]:
             output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
             # Check if node is in ready state
-        firstTime=False
+        firstTime[ item['client_id'] ]=False
       except KeyError:
         pass
 
