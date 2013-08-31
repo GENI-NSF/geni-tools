@@ -882,7 +882,7 @@ def getParser():
                       help="Require using the AggNick cache if possible (default %default)")
     # This causes setting options.AggNickCacheOldestDate
     parser.add_option("--AggNickCacheAge", dest='AggNickCacheAge',
-                      default=7,
+                      default=1,
                       help="Age in days of AggNick cache info before refreshing (default is %default)")
     parser.add_option("--AggNickCacheName", dest='aggNickCacheName',
                       default="~/.gcf/agg_nick_cache",
