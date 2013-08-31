@@ -175,7 +175,7 @@ def load_agg_nick_config(opts, logger):
     else:
         aggNickCacheTimestamp = None
 
-    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
         update_agg_nick_cache( opts, logger )
 
     # Find the first valid config file
