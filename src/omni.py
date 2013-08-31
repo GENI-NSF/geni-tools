@@ -117,8 +117,6 @@ import omnilib.frameworks.framework_sfa
 
 OMNI_VERSION="2.4"
 
-LOCATION_OF_AGG_NICK_CONFIG = "http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache"
-
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
 
@@ -362,10 +360,10 @@ def update_agg_nick_cache( opts, logger ):
     try:
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
-        urllib.urlretrieve( LOCATION_OF_AGG_NICK_CONFIG, opts.aggNickCacheName )
-        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (LOCATION_OF_AGG_NICK_CONFIG, opts.aggNickCacheName))
+        urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
+        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
     except:
-        logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % LOCATION_OF_AGG_NICK_CONFIG )
+        logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
@@ -889,6 +887,9 @@ def getParser():
     parser.add_option("--AggNickCacheName", dest='aggNickCacheName',
                       default="~/.gcf/agg_nick_cache",
                       help="File where AggNick info will be cached, default is %default")
+    parser.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
+                      default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
+                      help="Website with latest agg_nick_cache, default is %default")
     parser.add_option("--devmode", default=False, action="store_true",
                       help="Run in developer mode: more verbose, less error checking of inputs")
     parser.add_option("--arbitrary-option", dest='arbitrary_option',
