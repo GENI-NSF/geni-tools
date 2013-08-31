@@ -87,7 +87,9 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
-    
+
+      Other functions:
+       [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
 """
 
 import ConfigParser
@@ -102,7 +104,7 @@ import urllib
 
 from omnilib.util import OmniError, AMAPIError
 from omnilib.handler import CallHandler
-from omnilib.util.handler_utils import validate_url
+from omnilib.util.handler_utils import validate_url, printNicknames
 
 # Explicitly import framework files so py2exe is happy
 import omnilib.frameworks.framework_apg
@@ -576,10 +578,13 @@ def API_call( framework, config, args, opts, verbose=False ):
     if opts.debug:
         logger.info(getSystemInfo() + "\nOmni: " + getOmniVersion())
 
-    # Process the user's call
-    handler = CallHandler(framework, config, opts)    
-#    Returns string, item
-    result = handler._handle(args)
+    if len(args) > 0 and args[0].lower() == "nicknames":
+        result = printNicknames(config, opts)
+    else:
+        # Process the user's call
+        handler = CallHandler(framework, config, opts)
+    #    Returns string, item
+        result = handler._handle(args)
     if result is None:
         retVal = None
         retItem = None
@@ -800,6 +805,8 @@ def getParser():
  \t\t\t listmykeys \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
+ \t\tOther functions: \n\
+ \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 
