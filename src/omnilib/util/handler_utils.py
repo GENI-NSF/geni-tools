@@ -59,6 +59,11 @@ def _derefAggNick(handler, aggregateNickname):
         if tempurn.strip() != "":
             urn = tempurn
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
+    else:
+        # if we got here, we are assuming amNick is actually a URL
+        # Print a warning now if it doesn't look a URL
+        if validate_url( amNick ):
+            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)            
 
     return url,urn
 
@@ -466,9 +471,10 @@ def _writeRSpec(opts, logger, rspec, slicename, urn, url, message=None, clientco
         filename = _construct_output_filename(opts, slicename, url, urn, mname, ".xml", clientcount)
         # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
 
-    # Create FILE
-    # This prints or logs results, depending on whether filename is None
-    _printResults(opts, logger, header, content, filename)
+    if filename or (rspec is not None and str(rspec).strip() != ''):
+        # Create FILE
+        # This prints or logs results, depending on whether filename is None
+        _printResults(opts, logger, header, content, filename)
     return retVal, filename
 # End of _writeRSpec
 
@@ -635,3 +641,30 @@ def _get_user_urn(handler):
         return usergid.get_urn()
     else:
         return None
+
+def printNicknames(config, opts):
+    '''Get the known aggregate and rspec nicknames and return them as a string and a struct'''
+    retStruct = dict()
+    retStruct['aggregate_nicknames'] = config['aggregate_nicknames']
+    retString = "Omni knows the following Aggregate Nicknames:\n\n"
+    retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
+    retString += "=============================================================================================================\n"
+    for nick in config['aggregate_nicknames'].keys():
+        (urn, url) = config['aggregate_nicknames'][nick]
+        retString += "%16s | %s | %s\n" % (nick, string.ljust(url, 70), urn)
+
+    retStruct['rspec_nicknames'] = config['rspec_nicknames']
+    if len(config['rspec_nicknames']) > 0:
+        retString += "\nOmni knows the following RSpec Nicknames:\n\n"
+        retString += "%14s | %s\n" % ("Nickname", "Location")
+        retString += "====================================================================================\n"
+        for nick in config['rspec_nicknames']:
+            location = config['rspec_nicknames'][nick]
+            retString += "%14s | %s\n" % (nick, location)
+
+    if config.has_key("default_rspec_location"):
+        retString += "\n(Default RSpec location: %s )\n" % config["default_rspec_location"]
+    if config.has_key("default_rspec_extension"):
+        retString += "\n(Default RSpec extension: %s )\n" % config["default_rspec_extension"]
+
+    return retString, retStruct
