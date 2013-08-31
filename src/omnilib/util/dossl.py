@@ -111,6 +111,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     certsubj = certObj.get_urn()
                 except:
                     pass
+                # FIXME: amhandler looks for this exact string
                 msg = "Server does not trust the CA (%s) that signed your (%s) user certificate! Use an account at another clearinghouse or find another server." % (certiss, certsubj)
                 framework.logger.error("Can't do %s. %s", reason, msg)
                 if not framework.logger.isEnabledFor(logging.DEBUG):
@@ -129,6 +130,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     expiredAt = certObj.cert.get_notAfter()
                 except:
                     pass
+                # FIXME: amhandler looks for this exact string
                 msg = "Your user certificate %s has expired" % userURN
                 if expiredAt:
                     msg += " at %s" % expiredAt
@@ -137,6 +139,8 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                     msg += "ProtoGENI users should log in to their account at the ProtoGENI website at http://%s and create and download a new certificate. " % issuer
                 elif issuer.find("plc.") == 0:
                     msg += "PlanetLab users should email PlanetLab support (support@planet-lab.org) to get a new user certificate."
+                elif issuer.find("ch.geni") == 0:
+                    msg += "GENI Clearinghouse users should email Portal help (portal-help@geni.net) to get a new certificate."
                 else:
                     msg += "Contact your certificate issuer: %s. " % issuer
                     msg += "ProtoGENI users should log in to their SA website and create and download a new certificate. "
@@ -180,13 +184,15 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
             # Check for an M2Crypto timeout case, which manifests as socket error 115, 'Operation now in progress'
             if sock_err.errno == 115:
                 framework.logger.debug("%s Operation timed out.", failMsg)
+                # FIXME: amhandler looks for this exact string
                 return (None, "Operation timed out")
             else:
                 framework.logger.error("%s: Unknown socket error: %s" % (failMsg, sock_err))
                 if not framework.logger.isEnabledFor(logging.DEBUG):
                     framework.logger.error('    ..... Run with --debug for more information')
                 framework.logger.debug(traceback.format_exc())
-                return (None, str(sock_err))
+                # FIXME: amhandler looks for this exact string
+                return (None, "Unknown socket error: %s" % str(sock_err))
         except Exception, exc:
             if suppresserrors:
                 for suppresserror in suppresserrors:
