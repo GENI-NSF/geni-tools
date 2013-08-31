@@ -150,13 +150,16 @@ def load_agg_nick_config(opts, logger):
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = curr_dir.rsplit("/",1)[0]
+
     # Load up the config file
     configfiles = ['agg_nick_cache','~/.gcf/agg_nick_cache', os.path.join(parent_dir, 'agg_nick_cache.base')]
     
+    aggNickCacheExists = False
     if opts.aggNickCacheName:
         # if aggNickCacheName defined on commandline does not exist, fail
         if os.path.exists( opts.aggNickCacheName ):
             configfiles.insert(0, opts.aggNickCacheName)
+            aggNickCacheExists = True
         else:
             # Check maybe the default directory for the file
             configfile = os.path.join( '~/.gcf', opts.aggNickCacheName )
@@ -166,6 +169,14 @@ def load_agg_nick_config(opts, logger):
             else:
                 logger.info("Config file '%s' or '%s' does not exist"
                      % (opts.aggNickCacheName, configfile))
+    if aggNickCacheExists:
+        aggNickCacheDate = os.path.getmtime(opts.aggNickCacheName)
+        aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
+    else:
+        aggNickCacheTimestamp = None
+
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+        update_agg_nick_cache( opts, logger )
 
     # Find the first valid config file
     for cf in configfiles:         
@@ -180,7 +191,8 @@ def load_agg_nick_config(opts, logger):
         logger.info( prtStr )
         return config
 
-    logger.info("Loading agg_nick_cache file %s", filename)
+
+    logger.info("Loading agg_nick_cache file '%s'", filename)
     
     confparser = ConfigParser.RawConfigParser()
     try:
@@ -189,7 +201,7 @@ def load_agg_nick_config(opts, logger):
         logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
         raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
 
-    config = load_aggregate_nicknames( config, confparser )
+    config = load_aggregate_nicknames( config, confparser, filename, logger )
     return config
 
 def load_config(opts, logger, config={}):
@@ -260,7 +272,7 @@ def load_config(opts, logger, config={}):
                         d[key] = val
                     config['users'].append(d)
 
-    config = load_aggregate_nicknames( config, confparser )
+    config = load_aggregate_nicknames( config, confparser, filename, logger )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -303,7 +315,7 @@ def load_config(opts, logger, config={}):
 
     return config
 
-def load_aggregate_nicknames( config, confparser ):
+def load_aggregate_nicknames( config, confparser, filename, logger ):
     # Find aggregate nicknames
     if not config.has_key('aggregate_nicknames'):
         config['aggregate_nicknames'] = {}
@@ -330,6 +342,7 @@ def load_aggregate_nicknames( config, confparser ):
             # If temp len > 2: try to use it as is
 
             config['aggregate_nicknames'][key] = temp
+            logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
     return config
 
 def load_framework(config, opts):
@@ -348,11 +361,11 @@ def update_agg_nick_cache( opts, logger ):
     store in the specified place."""
     try:
         # wget `agg_nick_cache`
-        #cp `agg_nick_cache` opts.aggNickCacheName
+        # cp `agg_nick_cache` opts.aggNickCacheName
         urllib.urlretrieve( LOCATION_OF_AGG_NICK_CONFIG, opts.aggNickCacheName )
-        logger.info("Downloaded latest `agg_nick_cache` and copied to '%s'." % opts.aggNickCacheName)
+        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (LOCATION_OF_AGG_NICK_CONFIG, opts.aggNickCacheName))
     except:
-        logger.info("Attempted to download latest `agg_nick_cache` but could not.")
+        logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % LOCATION_OF_AGG_NICK_CONFIG )
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
@@ -364,8 +377,6 @@ def initialize(argv, options=None ):
 
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
-    if opts.noAggNickCache:
-        update_agg_nick_cache( opts, logger )
     config = load_agg_nick_config(opts, logger)
     config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
