@@ -62,8 +62,6 @@ DEFAULT_CERT = {
                  'portal' : "~/.ssl/geni_cert_portal.pem"
                }
 
-DEFAULT_LOCAL_RSPEC_DIR = os.path.expanduser( '~/.gcf/rspecs' )
-
 def getYNAns(question):
     valid_ans=['','y', 'n']
     answer = raw_input("%s [Y,n]?" % question).lower()
@@ -751,9 +749,6 @@ def createConfigFile(opts, public_key_list):
         if not cmp(opts.framework, 'portal'):
           omni_config_str = getPortalConfig(opts, public_key_list, cert)
     
-    # Make a .gcf/rspecs directory
-    if not os.path.exists( DEFAULT_LOCAL_RSPEC_DIR ):
-        os.mkdir( DEFAULT_LOCAL_RSPEC_DIR ) 
     # Write the config to a file
     omni_bak_file = opts.configfile
     omni_bak_file = getFileName(omni_bak_file)
