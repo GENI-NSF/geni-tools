@@ -83,6 +83,8 @@ SUCCESS = 0
 ################################################################################
 NUM_SLEEP = 12
 MAX_TIME_TO_CREATESLIVER = 3*60 # 3 minutes
+NUM_SLICES = 3 # number of slices to create
+DEFAULT_SLICE_NAME = "scale" # eg scale01, scale02, etc
 
 class ScalingTest(accept.Test):
     def test_CreateSliverWorkflow_scalingTest(self): 
@@ -101,15 +103,16 @@ class ScalingTest(accept.Test):
         manifest2 = []
         slicenames = []
 
-        NUM_SLICES = 17 #30
-        num_slices = NUM_SLICES
-        # TO DO: num_slices should be a command line argument
-        # TO DO: make always --un-bound
+        num_slices = self.options_copy.num_slices
+
+        # make always --un-bound (since this test assumes that you can
+        # offer the same rspec to an aggregate multiple times)
+        self.options_copy.bound = False
 
         for i in xrange(num_slices):
             slicenames.append("")
 #                slicenames[i] = self.create_slice_name()+str(i)
-            slicenames[i] = "egtest"+str(i)
+            slicenames[i] = self.options_copy.slice_name+str(i)
 
         for i in xrange(num_slices):
             # if reusing a slice name, don't create (or delete) the slice
@@ -224,14 +227,14 @@ class ScalingTest(accept.Test):
     def subtest_SliverStatus_scaling(self, slicenames):
         num_slices = len(slicenames)
         have_slept = 0
-        long_sleep = max( 5, MAX_TIME_TO_CREATESLIVER / NUM_SLEEP )
+        long_sleep = max( 5, self.options_copy.max_time / NUM_SLEEP )
         short_sleep = 30
         # before starting check if this is going to fail for unrecoverable reasons having nothing to do with being ready
         # maybe get the slice credential
         # self.subtest_generic_SliverStatus( slicename )        
         slices_to_test = set(range(num_slices))
         status_ready = {}
-        while have_slept <= MAX_TIME_TO_CREATESLIVER:
+        while have_slept <= self.options_copy.max_time:
             tmp_slices_to_test = copy.deepcopy(slices_to_test)
             for i in tmp_slices_to_test:
                 status_ready[i] = False
@@ -256,22 +259,44 @@ class ScalingTest(accept.Test):
             have_slept += long_sleep
             self.logger.debug("<=== Finished sleeping")
         for i in set(range(num_slices)):
-            self.assertTrue( status_ready[i], 
-                             "SliverStatus on slice '%s' expected to be '%s' but was not" % (slicenames[i], geni_status))
             if status_ready[i]:
                 print "%d: SliverStatus on slice [%s] completed with status READY"%(i, slicenames[i])
             else:
                 print "%d: SliverStatus on slice [%s] completed WITHOUT status ready."%(i, slicenames[i])
+                print "%d: Consider setting --max-createsliver-time value to be greater than %s seconds."%(i, self.options_copy.max_time)
+        for i in set(range(num_slices)):
+            self.assertTrue( status_ready[i], 
+                             "SliverStatus on slice '%s' expected to be '%s' but was not" % (slicenames[i], geni_status))
 
     @classmethod
-    def scaling_parser( cls, parser=omni.getParser(), usage=None):
+    def getParser( cls, parser=accept.Test.getParser(), usage=None):
         parser.add_option( "--max-createsliver-time", 
-                           action="store", type='int', dest='MAX_TIME_TO_CREATESLIVER', 
-                           help="Max time will attempt to check status of a sliver before failing")
+                           action="store", type='int', 
+                           default = MAX_TIME_TO_CREATESLIVER,
+                           dest='max_time', 
+                           help="Max number of seconds will attempt to check status of a sliver before failing  [default: %default]")
 
+        parser.add_option( "--num-slices", 
+                           action="store", type='int', 
+                           default=NUM_SLICES, 
+                           dest='num_slices', 
+                           help="Number of slices to create [default: %default]")
+        parser.add_option( "--slice-name", 
+                           action="store", type='string', 
+                           default=DEFAULT_SLICE_NAME,
+                           dest='slice_name', 
+                           help="Use slice name as base of slice name [default: %default]")
+        return parser
+
+    @classmethod
+    def scaling_parser( cls, parser=None, usage=None):
+        if parser is None:
+            parser = cls.getParser()
+        argv = ScalingTest.unittest_parser(parser=parser, usage=usage)
+        return argv
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \
             "\n      Also try --vv" % sys.argv[0]
-    ScalingTest.accept_parser(usage=usage)
+    argv = ScalingTest.scaling_parser(usage=usage)
     unittest.main()
