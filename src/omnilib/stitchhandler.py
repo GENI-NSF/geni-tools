@@ -346,7 +346,7 @@ class StitchingHandler(object):
 
         self.logger.info("Stitched reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
-            self.logger.info(am)
+            self.logger.info("\t%s", am)
 
         # If we said this rspec needs a fixed / fake endpoint, add it here - so the SCS and other stuff
         # doesn't try to do anything with it
