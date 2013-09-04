@@ -644,7 +644,7 @@ def printNicknames(config, opts):
     retString = "Omni knows the following Aggregate Nicknames:\n\n"
     retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
     retString += "=============================================================================================================\n"
-    for nick in config['aggregate_nicknames'].keys():
+    for nick in sorted(config['aggregate_nicknames'].keys()):
         (urn, url) = config['aggregate_nicknames'][nick]
         retString += "%16s | %s | %s\n" % (nick, string.ljust(url, 70), urn)
 
@@ -653,7 +653,7 @@ def printNicknames(config, opts):
         retString += "\nOmni knows the following RSpec Nicknames:\n\n"
         retString += "%14s | %s\n" % ("Nickname", "Location")
         retString += "====================================================================================\n"
-        for nick in config['rspec_nicknames']:
+        for nick in sorted(config['rspec_nicknames'].keys()):
             location = config['rspec_nicknames'][nick]
             retString += "%14s | %s\n" % (nick, location)
 
