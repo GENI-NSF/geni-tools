@@ -181,7 +181,7 @@ class Aggregate(object):
     # See DCN_AM_RETRY_INTERVAL_SECS for the DCN AM equiv of PAUSE_FOR_AM_TO_FREE...
     PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = DCN_AM_RETRY_INTERVAL_SECS # Xi and Chad say ION routers take a long time to reset
     MAX_AGG_NEW_VLAN_TRIES = 50 # Max times to locally pick a new VLAN
-    MAX_DCN_AGG_NEW_VLAN_TRIES = 10 # Max times to locally pick a new VLAN
+    MAX_DCN_AGG_NEW_VLAN_TRIES = 3 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
     FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
@@ -192,8 +192,16 @@ class Aggregate(object):
     @classmethod
     def find(cls, urn):
         if not urn in cls.aggs:
-            m = cls(urn)
-            cls.aggs[urn] = m
+            syns = Aggregate.urn_syns(urn)
+            found = False
+            for urn2 in syns:
+                if urn2 in cls.aggs:
+                    found = True
+                    urn = urn2
+                    break
+            if not found:
+                m = cls(urn)
+                cls.aggs[urn] = m
         return cls.aggs[urn]
 
     @classmethod
@@ -204,9 +212,58 @@ class Aggregate(object):
     def clearCache(cls):
         cls.aggs = dict()
 
+    @classmethod
+    def urn_syns_helper(cls, urn, urn_syns):
+        urn_syns.append(urn)
+
+        import re
+        urn2 = urn[:-2] + 'cm'
+        if urn2 == urn:
+            urn2 = urn[:-2] + 'am'
+        urn_syns.append(urn2)
+
+        urn2 = re.sub("vmsite", "Net", urn)
+        if urn2 == urn:
+            urn2 = re.sub("Net", "vmsite", urn)
+        urn_syns.append(urn2)
+
+        urn3 = urn2[:-2] + 'cm'
+        if urn3 == urn2:
+            urn3 = urn2[:-2] + 'am'
+        urn_syns.append(urn3)
+        return urn_syns
+
+    # Produce a list of URN synonyms for the AM
+    # IE don't get caught by cm/am differences
+    # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+    @classmethod
+    def urn_syns(cls, urn):
+        urn_syns = list()
+        urn = urn.strip()
+        wasUni = False
+        if isinstance(urn, unicode):
+            wasUni = True
+
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
+        if wasUni:
+            urn = str(urn)
+        else:
+            urn = unicode(urn)
+        urn_syns = cls.urn_syns_helper(urn, urn_syns)
+
+        return urn_syns
+
     def __init__(self, urn, url=None):
         self.urn = urn
+
+        # Produce a list of URN synonyms for the AM
+        # IE don't get caught by cm/am differences
+        # Also, EG AMs have both a vmsite and a Net bit that could be in component_manager_ids
+        self.urn_syns = Aggregate.urn_syns(urn)
+
         self.url = url
+        self.alt_url = None # IE the rack URL vs the ExoSM URL
         self.inProcess = False
         self.completed = False
         self.userRequested = False
@@ -221,6 +278,9 @@ class Aggregate(object):
         self.manifestDom = None # the DOM as we got back from the AM
         self.api_version = 2 # Set from stitchhandler.parseSCSResponse
         self.dcn = False # DCN AMs require waiting for sliverstatus to say ready before the manifest is legit
+        self.isEG = False # Handle EG AMs differently - manifests are different
+        self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
+        self.isPG = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
@@ -297,10 +357,11 @@ class Aggregate(object):
 
             # FIXME: Need to sleep so AM has time to put those resources back in the pool
             # But really should do this on the AMs own thread to avoid blocking everything else
-            if not self.dcn:
-                time.sleep(self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS)
-            else:
-                time.sleep(self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS)
+            sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
+            if self.dcn:
+                sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
+            self.logger.info("Pause %d seconds to let aggregate free resources...", sleepSecs)
+            time.sleep(sleepSecs)
         # end of block to delete a previous reservation
 
         if alreadyDone:
@@ -356,10 +417,16 @@ class Aggregate(object):
         # Parse out the VLANs we got, saving them away on the HopLinks
         # Note and complain if we didn't get VLANs or the VLAN we got is not what we requested
         for hop in self.hops:
-            range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
-            pathGlobalId = range_suggested[0]
-            rangeValue = range_suggested[1]
-            suggestedValue = range_suggested[2]
+            # 7/12/13: FIXME: EG Manifests reset the Hop ID. So you have to look for the link URN
+            if self.isEG:
+                self.logger.debug("Parsing EG manifest with special method")
+                range_suggested = self.getEGVLANRangeSuggested(self.manifestDom, hop._hop_link.urn, hop.path.id)
+            else:
+                range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
+
+            pathGlobalId = str(range_suggested[0]).strip()
+            rangeValue = str(range_suggested[1]).strip()
+            suggestedValue = str(range_suggested[2]).strip()
             if pathGlobalId and pathGlobalId != '':
                 if hop.path.globalId and hop.path.globalId != pathGlobalId:
                     self.logger.warn("Changing Path %s global ID from %s to %s", hop.path.id, hop.path.globalId, pathGlobalId)
@@ -443,6 +510,12 @@ class Aggregate(object):
             int1 = VLANRange.fromString("any")
             int2 = VLANRange.fromString("any")
             if hop.import_vlans_from._hop_link.vlan_range_manifest:
+                # FIXME: vlan_range_manifest on EG AMs is junk and we should use the vlan_range_request maybe? Or maybe the Ad?
+                if hop.import_vlans_from._aggregate.isEG:
+                    self.logger.debug("Hop %s imports from %s on an EG AM. It lists manifest vlan_range %s, request vlan_range %s, request vlan suggested %s", hop, hop.import_vlans_from, hop.import_vlans_from._hop_link.vlan_range_manifest, hop.import_vlans_from._hop_link.vlan_range_request, hop.import_vlans_from._hop_link.vlan_suggested_request)
+#                    int1 = hop.import_vlans_from._hop_link.vlan_range_request
+#                else:
+#                    int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
                 int1 = hop.import_vlans_from._hop_link.vlan_range_manifest
             else:
                 self.logger.warn("%s's import_from %s had no avail VLAN manifest", hop, hop.import_vlans_from)
@@ -542,31 +615,36 @@ class Aggregate(object):
         # deep clone of the incoming RSpec Dom
         requestRSpecDom = originalRSpec.cloneNode(True)
 
-        # If this is PG Utah and the rspec has an expires attribute
-        # and the value is > 7200min/5days from now, reset expires to
-        # 7200min/5 days from now -- PG sets a max for slivers of
-        # 7200, and fails your request if it is more
-        # symptom is this error from createsliver: 
-        # "expiration is greater then the maximum number of minutes 7200"
-        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
-            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
-            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
-                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
-                now = naiveUTC(datetime.datetime.utcnow())
-                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
-                if expiresDT - now > pgmax:
-#                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
-                    newExpiresDT = now + pgmax
-                    # Some PG based AMs cannot handle fractional seconds, and
-                    # erroneously treat expires as in local time. So (a) avoid
-                    # microseconds, and (b) explicitly note this is in UTC.
-                    # So this is .isoformat() except without the
-                    # microseconds and with the Z
-                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
-                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
-                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
-                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+        # This block no longer necessary. If stitchhandler sets the
+        # expires attribute, then this is true. Otherwise, don't do
+        # this, as it's a strange thing for the tool to know AM sliver
+        # lifetime policies.
+#        # If this is a PG AM and the rspec has an expires attribute
+#        # and the value is > 7200min/5days from now, reset expires to
+#        # 7200min/5 days from now -- PG sets a max for slivers of
+#        # 7200, and fails your request if it is more
+#        # symptom is this error from createsliver: 
+#        # "expiration is greater then the maximum number of minutes 7200"
+#        # FIXME: Need a check for isPG to do this!
+#        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
+#            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
+#                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+#                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
+#                now = naiveUTC(datetime.datetime.utcnow())
+#                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
+#                if expiresDT - now > pgmax:
+##                    self.logger.warn("Now: %s, expiresDT: %s", now, expiresDT)
+#                    newExpiresDT = now + pgmax
+#                    # Some PG based AMs cannot handle fractional seconds, and
+#                    # erroneously treat expires as in local time. So (a) avoid
+#                    # microseconds, and (b) explicitly note this is in UTC.
+#                    # So this is .isoformat() except without the
+#                    # microseconds and with the Z
+#                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
+#                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
+#                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
+#                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
 
         stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
@@ -706,6 +784,129 @@ class Aggregate(object):
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
+    # EG Manifest have only some hops and wrong hop ID. So search by the HopLink ID (URN)
+    def getEGVLANRangeSuggested(self, manifest, link_id, path_id):
+        vlan_range_availability = None
+        suggested_vlan_range = None
+
+        rspec_node = None
+        stitching_node = None
+        path_node = None
+        this_path_id = ""
+        hop_node = None
+        hop_id = ""
+        link_node = None
+        this_link_id = ""
+        scd_node = None
+        scsi_node = None
+        scsil2_node = None
+        path_globalId = None
+
+        # FIXME: Call once for all hops
+
+        for child in manifest.childNodes:
+            if child.nodeType == XMLNode.ELEMENT_NODE and \
+                    child.localName == RSpecParser.RSPEC_TAG:
+                rspec_node = child
+                break
+
+        if rspec_node:
+            for child in rspec_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == RSpecParser.STITCHING_TAG:
+                    stitching_node = child
+                    break
+        else:
+            raise StitchingError("%s: No rspec element in manifest" % self)
+
+        if stitching_node:
+            for child in stitching_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == RSpecParser.PATH_TAG:
+                    this_path_id = child.getAttribute(Path.ID_TAG)
+                    if this_path_id == path_id:
+                        path_node = child
+                        break
+        else:
+            raise StitchingError("%s: No stitching element in manifest" % self)
+
+        if path_node:
+#            self.logger.debug("%s Found rspec manifest stitching path %s (id %s)" % (self, path_node, this_path_id))
+            for child in path_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == Path.HOP_TAG:
+
+                    hop_id = child.getAttribute(Hop.ID_TAG)
+                    hop_node = child
+                    link_node = None
+                    for child in hop_node.childNodes:
+                        if child.nodeType == XMLNode.ELEMENT_NODE and \
+                                child.localName == Hop.LINK_TAG:
+                            this_link_id = child.getAttribute(HopLink.ID_TAG)
+                            if this_link_id == link_id:
+                                link_node = child
+                                break
+                    if link_node:
+                        break
+                            
+        if link_node:
+            self.logger.debug("Hop %s had link %s", hop_id, link_id)
+            for child in link_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCD_TAG:
+                    scd_node = child
+                    break
+        else:
+            self.logger.info("%s: Couldn't find link %s in path %s in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
+            # SCS adds EG internal hops - to get from the VLAN component to the VM component.
+            # But EG does not include those in the manifest.
+            # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
+            # fake thing if those are hops we can't find.
+
+            # fake avail and suggested
+            fakeAvail = "2-4094"
+            fakeSuggested = ""
+            # Find the HopLink on this AM with the given link_id
+            for hop in self.hops:
+                if hop.urn == link_id:
+                    fakeSuggested = hop._hop_link.vlan_suggested_request
+                    break
+            self.logger.info(" ... returning Fake avail/suggested %s, %s", fakeAvail, fakeSuggested)
+            return (path_globalId, fakeAvail, fakeSuggested)
+            #raise StitchingError("%s: Couldn't find link %s in path %s in manifest rspec" % (self, link_id, path_id))
+
+
+        if scd_node:
+            for child in scd_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_TAG:
+                    scsi_node = child
+                    break
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in link %s in manifest rspec" % (self, link_id))
+
+        if scsi_node:
+            for child in scsi_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_L2_TAG:
+                    scsil2_node = child
+                    break
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in link %s in manifest rspec" % (self, link_id))
+
+        if scsil2_node:
+            for child in scsil2_node.childNodes:
+                if child.nodeType == XMLNode.ELEMENT_NODE:
+                    child_text = child.childNodes[0].nodeValue
+                    if child.localName == HopLink.VLAN_RANGE_TAG:
+                        vlan_range_availability = child_text
+                    elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
+                        suggested_vlan_range = child_text
+        else:
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in link %s in manifest rspec" % (self, link_id))
+
+        return (path_globalId, vlan_range_availability, suggested_vlan_range)
+
     def doReservation(self, opts, slicename, scsCallCount):
         '''Reserve at this AM. Construct omni args, save RSpec to a file, call Omni,
         handle raised Exceptions, DCN AMs wait for status ready, and return the manifest
@@ -721,7 +922,7 @@ class Aggregate(object):
         self.allocateTries = self.allocateTries + 1
 
         # Write the request rspec to a string that we save to a file
-        requestString = self.requestDom.toxml()
+        requestString = self.requestDom.toxml(encoding="utf-8")
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
             # This line seems to insert extra \ns - GCF ticket #202
@@ -803,6 +1004,16 @@ class Aggregate(object):
 #                    self.url = url
 
             if self.api_version == 2 and result:
+                if self.isEG:
+                    import re
+                    # EG inserts a geni_sliver_info tag on nodes or links that gives the sliverstatus. It sometimes says failed.
+                    # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
+                    match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
+                    if match:
+                        msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
+                        self.logger.debug("EG AM %s reported %s", self, msg)
+                        raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))
+
                 # Success in APIv2
                 pass
             elif self.api_version >= 3 and result and isinstance(result, dict) and len(result.keys()) == 1 and \
@@ -813,6 +1024,16 @@ class Aggregate(object):
                     #self.logger.debug("APIv3 result struct OK but non 0")
                     # The struct in the AMAPIError is just the return value and not by URL
                     raise AMAPIError(text, result.itervalues().next())
+                elif self.isEG:
+                    import re
+                    # EG inserts a geni_sliver_info tag on nodes or links that gives the sliverstatus. It sometimes says failed.
+                    # FIXME: Want to say cannot have /node> or /link> before the geni_sliver_info
+                    match = re.search(r"<(node|link).+client_id=\"([^\"]+)\".+geni_sliver_info error=\"Reservation .* \(Slice urn:publicid:IDN\+.*%s\) is in state \[Failed.*Last ticket update: (\S[^\n\r]*)" % slicename, result, re.DOTALL)
+                    if match:
+                        msg="Error in manifest: %s '%s' had error: %s" % (match.group(1), match.group(2), match.group(3))
+                        self.logger.debug("EG AM %s reported %s", self, msg)
+                        raise AMAPIError(text + "; " + match.group(3), dict(code=dict(geni_code=-2,am_type='orca',am_code='2'),value=result,output=msg))
+
                 # Else this is success
                 #self.logger.debug("APIv3 proper result struct - success")
             else:
@@ -827,6 +1048,23 @@ class Aggregate(object):
 
         except AMAPIError, ae:
             self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+
+            if self.isEG:
+                # deleteReservation
+                opName = 'deletesliver'
+                if self.api_version > 2:
+                    opName = 'delete'
+                if opts.warn:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                else:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                try:
+                    # FIXME: right counter?
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName, slicename, self, text)
+                except Exception, e:
+                    self.logger.warn("Failed to delete failed (AMAPIError) reservation at EG AM %s: %s", self, e)
+
             if ae.returnstruct and isinstance(ae.returnstruct, dict) and ae.returnstruct.has_key("code") and \
                     isinstance(ae.returnstruct["code"], dict) and ae.returnstruct["code"].has_key("geni_code"):
 
@@ -865,6 +1103,10 @@ class Aggregate(object):
 #                        %s): %s", code, amcode, msg)
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
+
+                        # FIXME: Add support for EG specific vlan unavail errors
+                        # FIXME: Add support for EG specific fatal errors
+
                         if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                                 ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
@@ -874,6 +1116,33 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                        elif self.isEG:
+                            # AM said success but manifest said failed
+                            # FIXME: Other fatal errors?
+                            if "edge domain does not exist" in msg or "check_image_size error" in msg or "incorrect image URL in ImageProxy" in msg:
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+                            # FIXME: Detect error on link only
+
+                            # If the problem is resource allocation at ExoSM vs local and we have
+                            # an alternative, try the alternative
+                            if "Insufficient numCPUCores" in msg:
+                                if self.alt_url is not None and self.allocateTries < self.MAX_TRIES:
+                                    msg = "Retrying reservation at %s at URL %s instead of %s to resolve error: %s" % (self, self.alt_url, self.url, msg)
+                                    self.logger.info(msg)
+                                    oldURL = self.url
+                                    self.url = self.alt_url
+                                    self.alt_url = oldURL
+                                    # put the agg back in the queue to try again, but only do this trick once
+                                    self.allocateTries = self.MAX_TRIES
+                                    self.inProcess = False
+                                    raise StitchingRetryAggregateNewVlanError(msg)
+                                else:
+                                    isFatal = True
+                                    fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+
+                            pass
+
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
                         pass
@@ -917,6 +1186,23 @@ class Aggregate(object):
                 raise StitchingError("Stitching failed: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
         except Exception, e:
             # Some other error (OmniError, StitchingError)
+
+            if self.isEG:
+                # deleteReservation
+                opName = 'deletesliver'
+                if self.api_version > 2:
+                    opName = 'delete'
+                if opts.warn:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                else:
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                try:
+                    # FIXME: right counter?
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had Exception: %s %s at %s got: %s", opName, slicename, self, text)
+                except Exception, e:
+                    self.logger.warn("Failed to delete failed (Exception) reservation at EG AM %s: %s", self, e)
+
             # Exit to user
             raise StitchingError(e) # FIXME: right way to re-raise?
 
@@ -940,6 +1226,13 @@ class Aggregate(object):
             # FIXME: right counter?
             (text, result) = self.handleDcnAM(opts, slicename, self.allocateTries)
 
+        if self.isEG:
+            # FIXME: A later manifest will have more information, like login information
+            # Also, by watching sliver status, we can detect if the provisioning fails
+            # Specifically, if the link sliver is the only thing that fails, then it is
+            # handleVlanUnavailable
+            self.logger.debug("Got an EG AM: FIXME: It could still fail, and this manifest lacks some info.")
+
         # Caller handles saving the manifest, comparing man sug with request, etc
         # FIXME: Not returning text here. Correct?
         return result
@@ -955,7 +1248,7 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
-            self.logger.info("Pause to let circuit become ready...")
+            self.logger.info("Pause %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
             # generate args for sliverstatus
@@ -1093,10 +1386,10 @@ class Aggregate(object):
             if dcnerror and dcnerror.strip() != '':
                 msg = msg + ": " + dcnerror
 
-            # ION failures are often transient. If we haven't retried too many times, just try again
+            # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES:
+            if self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable(opName, msg)
             else:
@@ -1237,21 +1530,24 @@ class Aggregate(object):
   # Else suggested was single and vlanRange was a range --- FIXME
 
         canRedoRequestHere = True
-        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries > self.MAX_DCN_AGG_NEW_VLAN_TRIES):
+        if (not self.dcn and self.localPickNewVlanTries > self.MAX_AGG_NEW_VLAN_TRIES) or (self.dcn and self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES):
             canRedoRequestHere = False
         else:
             self.localPickNewVlanTries = self.localPickNewVlanTries + 1
-        for hop in self.hops:
-            if hop.import_vlans:
-                # Some hops here depend on other AMs. This is a negotiation kind of case
-#                self.logger.debug("%s imports vlans - so cannot redo here", hop)
-                canRedoRequestHere = False
-                break
-            if len(hop._hop_link.vlan_range_request) <= 1:
-                # Only the 1 VLAN tag was in the available range
-                canRedoRequestHere = False
-                self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
-                break
+
+        if canRedoRequestHere:
+            for hop in self.hops:
+                if hop.import_vlans:
+                    # Some hops here depend on other AMs. This is a negotiation kind of case
+                    #                self.logger.debug("%s imports vlans - so cannot redo here", hop)
+                    canRedoRequestHere = False
+                    break
+                if len(hop._hop_link.vlan_range_request) <= 1:
+                    # Only the 1 VLAN tag was in the available range
+                    canRedoRequestHere = False
+                    self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
+                    break
+
         if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
 #            self.logger.debug("%s failed request. Does not depend on others so maybe redo?", self)
             # Does the error look like the particular tag just wasn't currently available?
@@ -1265,6 +1561,9 @@ class Aggregate(object):
                 # in a manifest, then we could also redo
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
+
+                # FIXME Put in things for EG VLAN Unavail errors
+
                 if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
                         ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
@@ -1525,9 +1824,14 @@ class Aggregate(object):
         # spawn a thread if threading
         if suppressLogs and not opts.debug:
             logging.disable(logging.INFO)
-        res = omni.call(args, opts)
-        if suppressLogs:
-            logging.disable(logging.NOTSET)
+        res = None
+        try:
+            res = omni.call(args, opts)
+        except:
+            raise
+        finally:
+            if suppressLogs:
+                logging.disable(logging.NOTSET)
         return res
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least

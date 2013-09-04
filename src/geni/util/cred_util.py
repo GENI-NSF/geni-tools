@@ -131,7 +131,13 @@ class CredentialVerifier(object):
         and then verify the GID has the right privileges according 
         to the given credentials on the given target.'''
         def make_cred(cred_string):
-            return cred.Credential(string=cred_string)
+            credO = None
+            try:
+                credO = cred.Credential(string=cred_string)
+            except Exception, e:
+                self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
+            return credO
+
         return self.verify(gid.GID(string=gid_string),
                            map(make_cred, cred_strings),
                            target_urn,
@@ -207,6 +213,9 @@ class CredentialVerifier(object):
         failure = ""
         tried_creds = ""
         for cred in credentials:
+            if cred is None:
+                failure = "Credential was unparseable"
+                continue
             if tried_creds != "":
                 tried_creds = "%s, %s" % (tried_creds, cred.get_gid_caller().get_urn())
             else:

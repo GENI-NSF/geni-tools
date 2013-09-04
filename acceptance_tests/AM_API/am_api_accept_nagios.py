@@ -63,6 +63,18 @@ SLEEP_TIME=3
 # 
 # The above also works with -V 3.
 #
+# Run using:
+#
+# ./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios
+# Outputs file to default location used by getusercred.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred
+#
+# Outputs file as myusercred.xml.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred -V 3
+# Outputs file as myusercred.json
+#
 #
 ################################################################################
 
@@ -79,11 +91,39 @@ class NagiosTest(accept.Test):
         accept.Test.setUp( self )
         self.slicename = self.create_slice_name( prefix="nag-" )
 
+
+    def test_getusercred_nagios(self):
+        """test_getusercred_nagios: Passes if getting a user credential succeed.  
+        Use omni option --outputfile to specify the location of where to write the user credential file."""
+        self.logger.info("\n=== NagioTest.test_getusercred_nagios ===")
+        self.subtest_getusercred_nagios()
+        self.success = True
+
+    def subtest_getusercred_nagios(self):
+        # (1) Get the usercredential
+        omniargs = ["getusercred", "-o"]
+        (text, usercredstruct) = self.call(omniargs, self.options_copy)
+        if self.options_copy.api_version <= 2:
+            self.assertStr( usercredstruct,
+                        "Return from 'getusercred' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                        % (usercredstruct))
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( usercredstruct ),
+                        "Return from 'getusercred' " \
+                            "expected to be XML " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (usercredstruct[:100]))
+        else:
+            geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
+
     def test_CreateSliver_nagios(self):
         """test_CreateSliver: Passes if the sliver creation workflow succeeds.  
         Use --rspec-file to replace the default request RSpec."""
         self.logger.info("\n=== Test.test_CreateSliver_nagios ===")
-
         self.subtest_CreateSliver_nagios( self.slicename )
         self.success = True
 

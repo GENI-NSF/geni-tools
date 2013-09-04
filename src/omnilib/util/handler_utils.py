@@ -34,6 +34,7 @@ from dates import naiveUTC
 import json_encoding
 from geni.util import rspec_util
 from omnilib.util.files import *
+from sfa.trust.gid import GID
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -58,6 +59,11 @@ def _derefAggNick(handler, aggregateNickname):
         if tempurn.strip() != "":
             urn = tempurn
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
+    else:
+        # if we got here, we are assuming amNick is actually a URL
+        # Print a warning now if it doesn't look a URL
+        if validate_url( amNick ):
+            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)            
 
     return url,urn
 
@@ -465,9 +471,10 @@ def _writeRSpec(opts, logger, rspec, slicename, urn, url, message=None, clientco
         filename = _construct_output_filename(opts, slicename, url, urn, mname, ".xml", clientcount)
         # FIXME: Could add note to retVal here about file it was saved to? For now, caller does that.
 
-    # Create FILE
-    # This prints or logs results, depending on whether filename is None
-    _printResults(opts, logger, header, content, filename)
+    if filename or (rspec is not None and str(rspec).strip() != ''):
+        # Create FILE
+        # This prints or logs results, depending on whether filename is None
+        _printResults(opts, logger, header, content, filename)
     return retVal, filename
 # End of _writeRSpec
 
@@ -547,3 +554,117 @@ def _printResults(opts, logger, header, content, filename=None):
                 file.write( "\n" )
 # End of _printResults
 
+def _maybe_save_slicecred(handler, name, slicecred):
+    """Save slice credential to a file, returning the filename or
+    None on error or config not specifying -o
+    
+    Only saves if handler.opts.output and non-empty credential
+    
+    If you didn't specify -o but do specify --tostdout, then write
+    the slice credential to STDOUT
+    
+    Filename is:
+    --slicecredfile if supplied
+    else [<--p value>-]-<slicename>-cred.[xml or json, depending on credential format]
+    """
+    if name is None or name.strip() == "" or slicecred is None or (credutils.is_cred_xml(slicecred) and slicecred.strip() is None):
+        return None
+
+    filename = None
+    if handler.opts.output:
+        if handler.opts.slicecredfile:
+            filename = handler.opts.slicecredfile
+        else:
+            filename = name + "-cred"
+            if handler.opts.prefix and handler.opts.prefix.strip() != "":
+                filename = handler.opts.prefix.strip() + "-" + filename
+        filename = _save_cred(handler, filename, slicecred)
+    elif handler.opts.tostdout:
+        handler.logger.info("Writing slice %s cred to STDOUT per options", name)
+        # pprint does bad on XML, but OK on JSON
+        print slicecred
+    return filename
+
+def _save_cred(handler, name, cred):
+    '''
+    Save the given credential to a file of the given name.
+    Infer an appropriate file extension from the file type.
+    If we are using APIv3+ and the credential is not a struct, wrap it before saving.
+    '''
+    ftype = ".xml"
+    # FIXME: Do this?
+    if credutils.is_cred_xml(cred) and handler.opts.api_version >= 3:
+        handler.logger.debug("V3 requested, got unwrapped cred. Wrapping before saving")
+        cred = handler.framework.wrap_cred(cred)
+
+    if not credutils.is_cred_xml(cred):
+        ftype = ".json"
+        credout = json.dumps(cred, cls=json_encoding.DateTimeAwareJSONEncoder)
+        # then read:                 cred = json.load(f, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+    else:
+        credout = cred
+
+    if not name.endswith(ftype):
+        filename = name + ftype
+    else:
+        filename = name
+# usercred did this:
+#        with open(fname, "wb") as file:
+#            file.write(cred)
+    with open(filename, 'w') as file:
+        file.write(credout + "\n")
+
+    return filename
+
+def _is_user_cert_expired(handler):
+    # create a gid
+    usergid = None
+    try:
+        usergid = GID(filename=handler.framework.config['cert'])
+    except Exception, e:
+        handler.logger.debug("Failed to create GID from %s: %s",
+                             handler.framework.config['cert'], e)
+    if usergid and usergid.cert.has_expired():
+        return True
+    return False
+
+def _get_user_urn(handler):
+    # create a gid
+    usergid = None
+    try:
+        usergid = GID(filename=handler.framework.config['cert'])
+    except Exception, e:
+        handler.logger.debug("Failed to create GID from %s: %s",
+                             handler.framework.config['cert'], e)
+    # do get_urn
+    if usergid:
+        return usergid.get_urn()
+    else:
+        return None
+
+def printNicknames(config, opts):
+    '''Get the known aggregate and rspec nicknames and return them as a string and a struct'''
+    retStruct = dict()
+    retStruct['aggregate_nicknames'] = config['aggregate_nicknames']
+    retString = "Omni knows the following Aggregate Nicknames:\n\n"
+    retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
+    retString += "=============================================================================================================\n"
+    for nick in config['aggregate_nicknames'].keys():
+        (urn, url) = config['aggregate_nicknames'][nick]
+        retString += "%16s | %s | %s\n" % (nick, string.ljust(url, 70), urn)
+
+    retStruct['rspec_nicknames'] = config['rspec_nicknames']
+    if len(config['rspec_nicknames']) > 0:
+        retString += "\nOmni knows the following RSpec Nicknames:\n\n"
+        retString += "%14s | %s\n" % ("Nickname", "Location")
+        retString += "====================================================================================\n"
+        for nick in config['rspec_nicknames']:
+            location = config['rspec_nicknames'][nick]
+            retString += "%14s | %s\n" % (nick, location)
+
+    if config.has_key("default_rspec_location"):
+        retString += "\n(Default RSpec location: %s )\n" % config["default_rspec_location"]
+    if config.has_key("default_rspec_extension"):
+        retString += "\n(Default RSpec extension: %s )\n" % config["default_rspec_extension"]
+
+    return retString, retStruct

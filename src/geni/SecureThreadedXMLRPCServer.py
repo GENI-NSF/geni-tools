@@ -48,6 +48,11 @@ class SecureThreadedXMLRPCRequestHandler(SecureXMLRPCRequestHandler):
     def setup(self):
         SecureXMLRPCRequestHandler.setup(self)
 
+        # Clear single-thread versions of info - not used and hides bugs
+        self.server.peercert = None
+        self.server.der_cert = None
+        self.server.pem_cert = None
+
         # Now save all this information in a thread specific data structure.    
         # This is so we can have multiple requests active on this server        
         # with a thread assigned to each request.                               
@@ -55,9 +60,10 @@ class SecureThreadedXMLRPCRequestHandler(SecureXMLRPCRequestHandler):
             self.request.getpeercert()
         SecureThreadedXMLRPCRequestHandler.request_specific_info.der_cert = \
             self.request.getpeercert(binary_form=True)
+
         # This last is what a GID is created from                               
         SecureThreadedXMLRPCRequestHandler.request_specific_info.pem_cert = \
-            self.der_to_pem(GSecureXMLRPCRequestHandler.request_specific_info.der_cert)
+            self.der_to_pem(SecureThreadedXMLRPCRequestHandler.request_specific_info.der_cert)
         SecureThreadedXMLRPCRequestHandler.request_specific_info.thread_name = \
             threading.current_thread().name
         SecureThreadedXMLRPCRequestHandler.request_specific_info.requestline = \
@@ -67,8 +73,7 @@ class SecureThreadedXMLRPCRequestHandler(SecureXMLRPCRequestHandler):
 
         if self.server.logRequests:
             self.log_message('Setup by thread %s' % \
-                                    SecureThreadedXMLRPCRequestHandler.request_specific_info.theead_name )
-
+                                    SecureThreadedXMLRPCRequestHandler.request_specific_info.thread_name )
 
     @staticmethod
     def get_pem_cert() :

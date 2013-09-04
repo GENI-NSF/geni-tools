@@ -153,7 +153,8 @@ def findUsersAndKeys( ):
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
             if not os.path.exists(os.path.expanduser(key)):
-                print "Key file [%s] does NOT exist." % key
+                if options.include_keys:
+                    print "Key file [%s] does NOT exist." % key
             else:
                 keyList[username].append(key)
     return keyList
@@ -174,8 +175,7 @@ def getInfoFromSliceManifest( amUrl ) :
       text, apicallout = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
       print "ERROR: There was an error executing %s, review the logs." % apicall
-      sys.exit(-1)
-
+      return []
     key = amUrl
     if tmpoptions.api_version == 1:
       # Key is (urn,url)
@@ -184,7 +184,7 @@ def getInfoFromSliceManifest( amUrl ) :
     if not apicallout.has_key(key):
       print "ERROR: No manifest found from %s at %s; review the logs." % \
             (apicall, amUrl)
-      sys.exit(-1)
+      return []
 
     if tmpoptions.api_version == 1:
       manifest = apicallout[key]
@@ -192,7 +192,7 @@ def getInfoFromSliceManifest( amUrl ) :
       if not apicallout [key].has_key("value"):
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
-        sys.exit(-1)
+        return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
@@ -202,7 +202,7 @@ def getInfoFromSliceManifest( amUrl ) :
           manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
-          sys.exit(-1)
+          return []          
 
     return getInfoFromManifest(manifest)
 
@@ -442,6 +442,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
   else :
     f = sys.stdout
 
+  firstTime = {}
   for amUrl, amInfo in loginInfoDict.items() :
     f.write("\n")
     f.write("="*80+"\n")
@@ -450,9 +451,9 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
-
-    firstTime = True
     for item in amInfo["info"] :
+      if not firstTime.has_key( item['client_id'] ):
+          firstTime[ item['client_id'] ] = True
       output = ""
       if options.readyonly :
         try:
@@ -462,10 +463,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
           sys.stderr.write("There is no status information for node %s. Print login info.")
       # If there are status info print it, if not just skip it
       try:
-        if firstTime:
+        if firstTime[ item['client_id'] ]:
             output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
             # Check if node is in ready state
-        firstTime=False
+        firstTime[ item['client_id'] ]=False
       except KeyError:
         pass
 
@@ -570,8 +571,8 @@ def main_no_print(argv=None, opts=None, slicen=None):
   framework, config, args, opts = omni.initialize( [], options )
 
   keyList = findUsersAndKeys( )
-  if sum(len(val) for val in keyList.itervalues())== 0:
-    output = "ERROR:There are no keys. You can not login to your nodes.\n"
+  if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
+    print "ERROR: There are no keys. You can not login to your nodes."
     sys.exit(-1)
 
   # Run equivalent of 'omni.py getversion'

@@ -33,6 +33,7 @@ from xml.dom.minidom import getDOMImplementation, parseString, Node
 
 import objects
 import RSpecParser
+from utils import stripBlankLines
 
 # Constants for RSpec parsing -- FIXME: Merge into RSpecParser
 COMPONENT_MGR_ID = 'component_manager_id'
@@ -44,7 +45,9 @@ COMP_ID = 'component_id'
 INTFC_REF = 'interface_ref'
 VLANTAG = 'vlantag'
 HOP = 'hop'
+LINK = 'link'
 HOP_ID = 'id'
+LINK_ID = 'id'
 PATH_ID = 'id'
 
 # FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
@@ -66,6 +69,7 @@ class ManifestRSpecCombiner:
         self.combineLinks(ams_list, dom_template)
         self.combineHops(ams_list, dom_template)
         self.addAggregateDetails(ams_list, dom_template)
+#        self.logger.debug("After addAggDets, man is %s", stripBlankLines(dom_template.toprettyxml(encoding="utf-8")))
         return dom_template
 
     def combineNodes(self, ams_list, dom_template):
@@ -81,7 +85,6 @@ class ManifestRSpecCombiner:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == RSpecParser.NODE_TAG:
                 cmid = child.getAttribute(COMPONENT_MGR_ID)
-                # FIXME: This allows only one node per cmid. There can be multiple
                 if not template_nodes_by_cmid.has_key(cmid):
                     template_nodes_by_cmid[cmid] = []
                 template_nodes_by_cmid[cmid].append(child)
@@ -92,20 +95,20 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
-            urn = am.urn
-            if template_nodes_by_cmid.has_key(urn):
-                am_manifest_dom = am.manifestDom
-                am_doc_root = am_manifest_dom.documentElement
-                for template_node in template_nodes_by_cmid[urn]:
-                    template_client_id = template_node.getAttribute(CLIENT_ID)
-                    for child in am_doc_root.childNodes:
-                        if child.nodeType == Node.ELEMENT_NODE and \
-                                child.localName == RSpecParser.NODE_TAG:
-                            child_cmid = child.getAttribute(COMPONENT_MGR_ID)
-                            child_client_id = child.getAttribute(CLIENT_ID)
-                            if child_cmid == urn and child_client_id == template_client_id:
-                                #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
-                                doc_root.replaceChild(child, template_node)
+            for urn in am.urn_syns:
+                if template_nodes_by_cmid.has_key(urn):
+                    am_manifest_dom = am.manifestDom
+                    am_doc_root = am_manifest_dom.documentElement
+                    for template_node in template_nodes_by_cmid[urn]:
+                        template_client_id = template_node.getAttribute(CLIENT_ID)
+                        for child in am_doc_root.childNodes:
+                            if child.nodeType == Node.ELEMENT_NODE and \
+                                    child.localName == RSpecParser.NODE_TAG:
+                                child_cmid = child.getAttribute(COMPONENT_MGR_ID)
+                                child_client_id = child.getAttribute(CLIENT_ID)
+                                if child_cmid == urn and child_client_id == template_client_id:
+                                    #self.logger.debug("Replacing " + str(template_node) + " with " + str(child) + " " + child_cmid)
+                                    doc_root.replaceChild(child, template_node)
 
     def combineLinks(self, ams_list, dom_template):
         '''Replace each link in dom_template with matching link from (an) AM with same URN.
@@ -140,37 +143,56 @@ class ManifestRSpecCombiner:
 #                self.logger.debug("Ams in Link %s: %s", client_id, cms)
 
                 # Get interface_ref elements that need to be swapped
-                intfs = {}
+                intfs = {} # Hash by interface_ref client_id of iref elements to swap
                 for intf in link.getElementsByTagName(INTFC_REF):
                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
-                    else:
-                        sid = None
-                        cid = None
-                        if intf.hasAttribute(COMP_ID):
-                            cid = intf.getAttribute(COMP_ID)
-                        if intf.hasAttribute(SLIVER_ID):
-                            sid = intf.getAttribute(SLIVER_ID)
+#                    else:
+#                        sid = None
+#                        cid = None
+#                        if intf.hasAttribute(COMP_ID):
+#                            cid = intf.getAttribute(COMP_ID)
+#                        if intf.hasAttribute(SLIVER_ID):
+#                            sid = intf.getAttribute(SLIVER_ID)
 #                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 
 #                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
+                # If this is a manifest link and all irefs have
+                # manifest info, then this link is done. Move on.
+                # FIXME: This means we do not add the link sliver_id
+                # & VLAN tag from other AMs on this link.
                 if len(intfs) == 0 and not needSwap:
                     continue
 
                 for agg in ams_list:
+                    # If this is a manifest link and all irefs have
+                    # manifest info, then this link is done. Move on.
+                    # FIXME: This means we do not add the link sliver_id
+                    # & VLAN tag from other AMs on this link.
                     if len(intfs) == 0 and not needSwap:
                         break
-                    if agg.urn not in cms:
+
+                    notIn = True # Is the AM involved in this link?
+                    for urn in agg.urn_syns:
+                        if urn in cms:
+                            notIn = False
+                            break
+                    if notIn:
                         # Not a relevant aggregate
 #                        self.logger.debug("Skipping AM %s not involved in link %s", agg.urn, client_id)
                         continue
 #                    else:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
+
                     man = agg.manifestDom
                     link_elements = man.getElementsByTagName(RSpecParser.LINK_TAG)
                     for link2 in link_elements:
+                        # If this is a manifest link and all irefs have
+                        # manifest info, then this link is done. Move on.
+                        # FIXME: This means we do not add the link sliver_id
+                        # & VLAN tag from other AMs on this link.
                         if len(intfs) == 0 and not needSwap:
                             break
                         # Get the link with a sliverid and the right client_id
@@ -203,13 +225,13 @@ class ManifestRSpecCombiner:
                                     if not intf.hasAttribute(SLIVER_ID) and not intf.hasAttribute(COMP_ID):
                                         intfs[str(intf.getAttribute(CLIENT_ID))] = intf
 #                                        self.logger.debug("intfc_ref %s has no sliver_id or component_id", intf.getAttribute(CLIENT_ID))
-                                    else:
-                                        sid = None
-                                        cid = None
-                                        if intf.hasAttribute(COMP_ID):
-                                            cid = intf.getAttribute(COMP_ID)
-                                        if intf.hasAttribute(SLIVER_ID):
-                                            sid = intf.getAttribute(SLIVER_ID)
+#                                    else:
+#                                        sid = None
+#                                        cid = None
+#                                        if intf.hasAttribute(COMP_ID):
+#                                            cid = intf.getAttribute(COMP_ID)
+#                                        if intf.hasAttribute(SLIVER_ID):
+#                                            sid = intf.getAttribute(SLIVER_ID)
 #                                        self.logger.debug("intfc_ref %s has sliver_id %s, component_id %s", intf.getAttribute(CLIENT_ID), sid, cid)
 #                                self.logger.debug("Interfaces we need to swap: %s", intfs)
 
@@ -224,6 +246,7 @@ class ManifestRSpecCombiner:
 
                                 link = link2
                                 break # out of loop over link2's in this inner AM looking for the right link
+                            # End of block to do swap of link
 
                             # Look at this version of the link's interface_refs. If any have
                             # a sliver_id or component_id, then this is the version with manifest info
@@ -247,6 +270,8 @@ class ManifestRSpecCombiner:
                                 # End of loop over this Aggs link's children, looking for i_refs
 
                             # Add a comment on link with link2's sliver_id and vlan_tag
+                            # Note we don't get here always - see
+                            # FIXMEs above
                             lsid = None
                             if link2.hasAttribute(SLIVER_ID):
                                 lsid = link2.getAttribute(SLIVER_ID)
@@ -280,12 +305,43 @@ class ManifestRSpecCombiner:
     def combineHops(self, ams_list, dom_template):
         template_stitching = self.getStitchingElement(dom_template)
         for am in ams_list:
+            if am.dcn:
+                self.logger.debug("Pulling hops from a DCN AM: %s", am)
+
+            if am.manifestDom == dom_template:
+                self.logger.debug("AM %s's manifest is the dom_template- no need to do combinedHops here.", am)
+                continue
+
+            # FIXME: Should this be am._hops or is am.hops OK as is?
+            # In my testing, everything in _hops is in .hops
             for hop in am.hops:
+                self.logger.debug("computeHops: replacing hop %s from am.hops", hop)
                 hop_id = hop._id
                 path_id = hop.path.id
+                if hop_id is None:
+                    self.logger.error("%s had am.hops entry with no ID: %s", am, hop)
+                    continue
+                if path_id is None:
+                    self.logger.error("%s had am.hops entry %s with a path that has no ID: %s", am, hop, hop.path)
+                    continue
                 template_path = self.findPathByID(template_stitching, path_id)
-#                print "AGG " + str(am) + " HID " + str(hop_id)
-                self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+                if template_path is None:
+                    self.logger.error("Cannot find path %s in template manifest", path_id)
+                    continue
+                #self.logger.debug("Found path %s in template manifest: %s", path_id, template_path.toxml(encoding="utf-8"))
+                #                print "AGG " + str(am) + " HID " + str(hop_id)
+                if not am.isEG:
+                    self.replaceHopElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id)
+#                    for child in template_path.childNodes:
+#                        if child.nodeType == Node.ELEMENT_NODE and \
+#                                child.localName == HOP and \
+#                                child.getAttribute(HOP_ID) == hop_id:
+#                            self.logger.debug("After replaceHopElem template_path has hop %s", child.toprettyxml(encoding="utf-8"))
+                else:
+                    self.logger.debug("Had EG AM in combineHops: %s", am)
+                    link_id = hop._hop_link.urn
+                    self.replaceHopLinkElement(template_path, self.getStitchingElement(am.manifestDom), hop_id, path_id, link_id)
+#            self.logger.debug("After swapping hops for %s, stitching extension is %s", am, stripBlankLines(template_stitching.toprettyxml(encoding="utf-8")))
 
     # Add details about allocations to each aggregate in a 
     # structured comment at root of DOM
@@ -341,24 +397,82 @@ class ManifestRSpecCombiner:
                     child.getAttribute(HOP_ID) == hop_id:
                 template_hop = child
                 break
+        if template_hop is None:
+            self.logger.error("Cannot find hop %s in template manifest path %s", hop_id, path_id)
+            return
 
         # Find the path for the given path_id (there may be more than one)
         am_path = self.findPathByID(am_stitching, path_id)
 
         am_hop = None
-        if am_path:
+        if am_path is not None:
             for child in am_path.childNodes:
                 if child.nodeType == Node.ELEMENT_NODE and \
                         child.localName == HOP and \
                         child.getAttribute(HOP_ID) == hop_id:
                     am_hop = child
                     break
+        else:
+            self.logger.error("Cannot find path %s in AM's stitching extension", path_id)
+            return
 
-        if am_hop and template_hop:
-            #self.logger.debug("Replacing " + str(template_hop) + " with " + str(am_hop))
+        if am_hop is not None and template_hop is not None:
+            self.logger.debug("Replacing " + template_hop.toxml(encoding="utf-8") + " with " + am_hop.toxml(encoding="utf-8"))
             template_path.replaceChild(am_hop, template_hop)
         else:
-            self.logger.error ("Can't replace hop in template: AM HOP %s TEMPLATE HOP %s" % (am_hop, template_hop))
+            self.logger.error ("Can't replace hop %s from path %s in template: AM HOP %s TEMPLATE HOP %s" % (hop_id, path_id, am_hop, template_hop))
+            return
+
+    # Replace the hop link element in the template DOM with the hop link element 
+    # from the aggregate DOM that has the given HOP LINK ID
+    # For use with EG AMs
+    def replaceHopLinkElement(self, template_path, am_stitching, template_hop_id, path_id, link_id):
+        template_link = None
+        template_hop = None
+
+        for child in template_path.childNodes:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.localName == HOP and \
+                    child.getAttribute(HOP_ID) == template_hop_id:
+                template_hop = child
+                for child2 in child.childNodes:
+                    if child2.nodeType == Node.ELEMENT_NODE and \
+                            child2.localName == LINK:
+                        template_link = child2
+                        break
+                if template_link is None:
+                    self.logger.warn("Did not find stitching hop %s's link in template manifest RSpec for path %s", template_hop_id, path_id)
+                    return
+                break
+        if template_hop is None:
+            self.logger.warn("Did not find stitching hop %s in template manifest RSpec for path %s", template_hop_id, path_id)
+            return
+
+        # Find the path for the given path_id (there may be more than one)
+        am_path = self.findPathByID(am_stitching, path_id)
+
+        am_link = None
+        if am_path is not None:
+            for child in am_path.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == HOP:
+                    for child2 in child.childNodes:
+                        if child2.nodeType == Node.ELEMENT_NODE and \
+                                child2.localName == LINK and \
+                                child2.getAttribute(LINK_ID) == link_id:
+                            am_link = child2
+                            break
+            if am_link is None:
+                self.logger.info("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2 times for ExoGENI aggregates)", link_id, path_id)
+                return
+        else:
+            self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
+
+        if am_link is not None and template_link is not None and template_hop is not None:
+            self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
+            template_hop.replaceChild(am_link, template_link)
+        else:
+            self.logger.warn("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None

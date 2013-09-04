@@ -107,6 +107,9 @@ class Framework(Framework_Base):
         if self.user_cred == None:
             self.logger.debug("Getting user credential from %s SA %s", self.fwtype, self.config['sa'])
             pg_response = dict()
+            # Next 2 lines for debugging only
+            #params = {'cert': self.config['cert']}
+            #(pg_response, message) = _do_ssl(self, None, ("Get %s user credential from SA %s using cert %s" % (self.fwtype, self.config['sa'], self.config['cert'])), self.sa.GetCredential, params)
             (pg_response, message) = _do_ssl(self, None, ("Get %s user credential from SA %s using cert %s" % (self.fwtype, self.config['sa'], self.config['cert'])), self.sa.GetCredential)
             _ = message #Appease eclipse
             if pg_response is None:

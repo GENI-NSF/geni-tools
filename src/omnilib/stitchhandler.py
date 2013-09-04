@@ -39,7 +39,7 @@ import omnilib.util.handler_utils as handler_utils
 
 import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
-from omnilib.stitch.objects import Aggregate, Link
+from omnilib.stitch.objects import Aggregate, Link, Node
 from omnilib.stitch import RSpecParser
 import omnilib.stitch.scs as scs
 from omnilib.stitch.workflow import WorkflowParser
@@ -48,12 +48,17 @@ from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError, st
 from geni.util import rspec_schema
 from geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
 
-from sfa.util.xrn import urn_to_hrn
+from sfa.util.xrn import urn_to_hrn, get_leaf
 
-DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebae
+DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
+ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
+
+# File in which we save the slice cred so omni calls don't have to keep re-fetching it
+# Valid substitutions: %username, %slicename, %slicehrn
+SLICECRED_FILENAME = '/tmp/slice-%slicehrn-for-%username-cred.xml'
 
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
@@ -124,7 +129,9 @@ class StitchingHandler(object):
             
             # parseRequest
             self.parsedUserRequest = self.rspecParser.parse(requestString)
-            
+        else:
+            raise OmniError("No request RSpec found!")
+
         # If this is not a real stitching thing, just let Omni handle this.
         if not self.mustCallSCS(self.parsedUserRequest):
             self.logger.info("Not a stitching request - let Omni handle this.")
@@ -146,12 +153,17 @@ class StitchingHandler(object):
 
         # FIXME: Maybe use threading to parallelize confirmSliceOK and the 1st SCS call?
 
+        # Get username for slicecred filename
+        self.username = get_leaf(handler_utils._get_user_urn(self))
+        if not self.username:
+            raise OmniError("Failed to find your username to name your slice credential")
+
         # Ensure the slice is valid before all those Omni calls use it
         (sliceurn, sliceexp) = self.confirmSliceOK()
 
-        # Ensure expires attribute set for DCN AMs
-        self.addExpiresAttribute(self.parsedUserRequest.dom, sliceexp)
-    
+        # Here is where we used to add the expires attribute. No
+        # longer necessary (or a good idea).
+
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
@@ -162,6 +174,16 @@ class StitchingHandler(object):
 
             # Construct a unified manifest
             # include AMs, URLs, API versions
+            if lastAM.isEG:
+                self.logger.debug("Last AM was an EG AM. Find another for the template.")
+                i = 1
+                while lastAM.isEG and i <= len(self.ams_to_process):
+                    # This has lost some hops and messed up hop IDs. Don't use it as the template
+                    # I'd like to find another AM we did recently
+                    lastAM = self.ams_to_process[-i]
+                    i = i + 1
+                if lastAM.isEG:
+                    self.logger.debug("Still had an EG template AM?")
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
@@ -216,18 +238,27 @@ class StitchingHandler(object):
         return (retMsg, combinedManifest)
 
     def cleanup(self):
-        '''Remove temporary files if not in debug mode or if output not specified'''
-        if self.opts.debug or self.opts.output: 
+        '''Remove temporary files if not in debug mode'''
+        if self.opts.debug:
             return
         
         if os.path.exists(Aggregate.FAKEMODESCSFILENAME):
             os.unlink(Aggregate.FAKEMODESCSFILENAME)
 
+        if self.savedSliceCred and os.path.exists(self.opts.slicecredfile):
+            os.unlink(self.opts.slicecredfile)
+
         if not self.ams_to_process:
             return
 
         for am in self.ams_to_process:
-            if am.rspecfileName:
+            # Remove getversion files
+            filename = handler_utils._construct_output_filename(self.opts, None, am.url, None, "getversion", ".json", 1)
+            if os.path.exists(filename):
+                os.unlink(filename)
+
+            # Remove any RSpec
+            if am.rspecfileName and not self.opts.output:
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
 
@@ -235,10 +266,13 @@ class StitchingHandler(object):
         # existingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
         if self.scsCalls > 1:
+            thStr = 'th'
+            if self.scsCalls == 2 or self.scsCalls == 3:
+                thStr = 'rd'
             if self.scsCalls == self.maxSCSCalls:
-                self.logger.info("Calling SCS for the %dth and last time...", self.scsCalls)
+                self.logger.info("Calling SCS for the %d%s and last time...", self.scsCalls, thStr)
             else:
-                self.logger.info("Calling SCS for the %dth time...", self.scsCalls)
+                self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
 
@@ -274,15 +308,50 @@ class StitchingHandler(object):
                 if agg.urn == amURN:
                     found = True
                     break
+                # For EG there are multiple URNs that are really the same
+                # If find one, found them all
+                for urn2 in agg.urn_syns:
+                    if urn2 == amURN:
+                        found = True
+                        break
             if found:
                 continue
             else:
                 am = Aggregate.find(amURN)
                 if not am.url:
+                    # Try to pull from agg nicknames in the omni_config
+                    for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
+                        if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
+                            am.url = amURLNick
+                            self.logger.info("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
+                            break
+
+                if not am.url:
+                    # Try asking our CH for AMs to get the URL for the
+                    # given URN
+                    fw_ams = dict()
+                    try:
+                        fw_ams = self.framework.list_aggregates()
+                        for fw_am_urn in fw_ams.keys():
+                            if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+                                am.url = fw_ams[fw_am_urn]
+                                self.logger.info("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
+                                break
+                    except:
+                        pass
+                if not am.url:
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
-                    self.ams_to_process.add(am)
+                    self.ams_to_process.append(am)
 
+        self.logger.info("Stitched reservation will include resources from these aggregates:")
+        for am in self.ams_to_process:
+            self.logger.info(am)
+
+        # If we said this rspec needs a fixed / fake endpoint, add it here - so the SCS and other stuff
+        # doesn't try to do anything with it
+        if self.opts.fixedEndpoint:
+            self.addFakeNode()
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
@@ -374,12 +443,16 @@ class StitchingHandler(object):
             self.logger.error("Could not determine slice URN from name %s: %s", self.slicename, e)
             raise StitchingError(e)
 
+        self.slicehrn = urn_to_hrn(sliceurn)[0]
+
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
             return (sliceurn, naiveUTC(datetime.datetime.max))
 
+
         # Get slice cred
         (slicecred, message) = handler_utils._get_slice_cred(self, sliceurn)
+
         if not slicecred:
             # FIXME: Maybe if the slice doesn't exist, create it?
             # omniargs = ["createslice", self.slicename]
@@ -388,6 +461,23 @@ class StitchingHandler(object):
             # except:
             #     pass
             raise StitchingError("Could not get a slice credential for slice %s: %s" % (sliceurn, message))
+
+        self.savedSliceCred = False
+        # Force the slice cred to be from a saved file if not already set
+        if not self.opts.slicecredfile:
+            self.opts.slicecredfile = SLICECRED_FILENAME
+            if "%username" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%username", self.username)
+            if "%slicename" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
+            if "%slicehrn" in self.opts.slicecredfile:
+                self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
+            trim = -4
+            if self.opts.slicecredfile.endswith("json"):
+                trim = -5
+            # -4 is to cut off .xml. It would be -5 if the cred is json
+            handler_utils._save_cred(self, self.opts.slicecredfile[:trim], slicecred)
+            self.savedSliceCred = True
 
         # Ensure slice not expired
         sliceexp = credutils.get_cred_exp(self.logger, slicecred)
@@ -438,7 +528,7 @@ class StitchingHandler(object):
         existingAggs = None # Clear to note we are done
         self.scsService.result = None # Avoid any unexpected issues
 
-#        self.logger.debug("Calling SCS with options %s", scsOptions)
+        self.logger.debug("Calling SCS with options %s", scsOptions)
         try:
             scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
         except StitchingError as e:
@@ -581,7 +671,7 @@ class StitchingHandler(object):
             options[scs.GENI_PROFILE_TAG] = profile
         self.logger.debug("Sending SCS options %s", options)
 
-        return requestDOM.toprettyxml(), options
+        return requestDOM.toprettyxml(encoding="utf-8"), options
         
     def parseSCSResponse(self, scsResponse):
 
@@ -679,6 +769,49 @@ class StitchingHandler(object):
             # Note which AMs were user requested
             if agg.urn in self.parsedUserRequest.amURNs:
                 agg.userRequested = True
+            else:
+                for urn2 in agg.urn_syns:
+                    if urn2 in self.parsedUserRequest.amURNs:
+                        agg.userRequested = True
+
+            # FIXME: Better way to detect this?
+            if "geni.renci.org:11443" in str(agg.url):
+                agg.isExoSM = True
+
+            # EG AMs in particular have 2 URLs in some sense - ExoSM and local
+            # So note the other one, since VMs are split between the 2
+            for (amURN, amURL) in self.config['aggregate_nicknames'].values():
+                if amURN.strip() in agg.urn_syns:
+                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url and not amURL.strip == '':
+                        agg.alt_url = amURL
+                        break
+#                    else:
+#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s", agg, agg.url, amURL)
+
+            # Try to get a URL from the CH? Do we want/need this
+            # expense? This is a call to the CH....
+            # Comment this out - takes too long, not clear
+            # it is needed.
+#            if not agg.alt_url:
+#                fw_ams = dict()
+#                try:
+#                    fw_ams = self.framework.list_aggregates()
+#                    for fw_am_urn in fw_ams.keys():
+#                        if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
+#                            cand_url = fw_ams[fw_am_urn]
+#                            if cand_url != am.url and not am.url in cand_url and not cand_url in am.url:
+#                                am.alt_url = cand_url
+#                                self.logger.debug("Found AM %s alternate URL from CH ListAggs: %s", am.urn, am.alt_url)
+#                                break
+#                except:
+#                    pass
+
+            if agg.isExoSM and agg.alt_url and self.opts.noExoSM:
+                self.logger.warn("%s used ExoSM URL. Changing to %s", agg, agg.alt_url)
+                amURL = agg.url
+                agg.url = agg.alt_url
+                agg.alt_url = amURL
+                agg.isExoSM = False
 
 # For using the test ION AM
 #            if 'alpha.dragon' in agg.url:
@@ -703,6 +836,15 @@ class StitchingHandler(object):
                         if DCN_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is DCN", agg)
                             agg.dcn = True
+                        elif ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is Orca", agg)
+                            agg.isEG = True
+                        # FIXME: elif something to detect isPG. "protogeni" in
+                        # URL? "instageni" or "emulab" or "protogeni" in URN? 
+                    elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is Orca", agg)
+                            agg.isEG = True
+                    # FIXME: A PG elif per above goes here
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
@@ -778,6 +920,14 @@ class StitchingHandler(object):
                     self.logger.debug("   (SCS added)")
                 if agg.dcn:
                     self.logger.debug("   A DCN Aggregate")
+                if agg.isPG:
+                    self.logger.debug("   A ProtoGENI Aggregate")
+                if agg.isEG:
+                    self.logger.debug("   An Orca Aggregate")
+                if agg.isExoSM:
+                    self.logger.debug("   The ExoSM Aggregate")
+                if agg.alt_url:
+                    self.logger.debug("   Alternate URL: %s", agg.alt_url)
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
@@ -807,7 +957,7 @@ class StitchingHandler(object):
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
         lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
-        manString = combinedManifestDom.toprettyxml()
+        manString = combinedManifestDom.toprettyxml(encoding="utf-8")
 
         # set rspec to be UTF-8
         if isinstance(manString, unicode):
@@ -920,7 +1070,11 @@ class StitchingHandler(object):
                             self.logger.info("NOTE not adding aggregate %s", url)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
-        '''Set the expires attribute on the rspec to the slice expiration. DCN AMs allocate the circuit only until then.'''
+        '''Set the expires attribute on the rspec to the slice
+        expiration. DCN AMs used to not support renew, but this is no
+        longer true, so this should not be necessary. Additionally,
+        some AMs treat this as a strict requirement and if this
+        exceeds local policy for maximum sliver, the request will fail.'''
         if not rspecDOM:
             return
         if not sliceexp or str(sliceexp).strip() == "":
@@ -965,6 +1119,37 @@ class StitchingHandler(object):
 
                     # FIXME: agg.allocateTries?
                     agg.dcn = oldAgg.dcn
+                    agg.isPG = oldAgg.isPG
+                    agg.isEG = oldAgg.isEG
+                    agg.isExoSM = oldAgg.isExoSM
                     agg.userRequested = oldAgg.userRequested
+                    agg.alt_url = oldAgg.alt_url
                     agg.api_version = oldAgg.api_version
                     break
+
+    # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
+    # doesn't try to do anything with it
+    def addFakeNode(self):
+        fakeNode = self.parsedSCSRSpec.dom.createElement(RSpecParser.NODE_TAG)
+        fakeInterface = self.parsedSCSRSpec.dom.createElement("interface")
+        fakeInterface.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
+        fakeNode.setAttribute(Node.CLIENT_ID_TAG, "fake")
+        fakeNode.setAttribute(Node.COMPONENT_MANAGER_ID_TAG, "urn:publicid:IDN+fake+authority+am")
+        fakeNode.appendChild(fakeInterface)
+        fakeiRef = self.parsedSCSRSpec.dom.createElement(Link.INTERFACE_REF_TAG)
+        fakeiRef.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
+        # Find the rspec element from parsedSCSRSpec.dom
+        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+        if rspecs and len(rspecs):
+            rspec = rspecs[0]
+            # Add a node to the dom
+            self.logger.info("Adding fake Node endpoint")
+            rspec.appendChild(fakeNode)
+
+            # Also find all links and add an interface_ref
+            for child in rspec.childNodes:
+                if child.localName == RSpecParser.LINK_TAG:
+                    # add and interface_ref
+                    self.logger.info("Adding fake iref endpoint on link " + str(child))
+                    child.appendChild(fakeiRef)
+#        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())

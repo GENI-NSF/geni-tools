@@ -29,13 +29,14 @@ list of aggregates read from a config file, and create a new Slice Credential.
 """
 
 import datetime
+import dateutil.parser
 import traceback
 import uuid as uuidModule
 import os
 import xmlrpclib
 
-import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCRequestHandler
+from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
@@ -43,7 +44,7 @@ import sfa.trust.gid as gid
 import sfa.trust.credential
 import sfa.util.xrn
 from geni.util.ch_interface import *
-from ch import Clearinghouse
+from ch import Clearinghouse, THREADED
 
 
 # Substitute eg "openflow//stanford"
@@ -380,6 +381,9 @@ class PGSAnCHServer(object):
 class PgChRequestHandler(SecureXMLRPCRequestHandler):
     rpc_paths = ('/', '/ch',)
 
+class PgChThreadedRequestHandler(SecureThreadedXMLRPCRequestHandler):
+    rpc_paths = ('/', '/ch',)
+
 class PGClearinghouse(Clearinghouse):
 
     def __init__(self, gcf=False):
@@ -467,7 +471,10 @@ class PGClearinghouse(Clearinghouse):
         # Override the default RequestHandlerClass to allow
         # Flack to communicate to our PGCH using either "/"
         # or "/ch" for SA or CH respectively.
-        self._server.RequestHandlerClass = PgChRequestHandler
+        if THREADED:
+            self._server.RequestHandlerClass = PgChThreadedRequestHandler
+        else:
+            self._server.RequestHandlerClass = PgChRequestHandler
         self._server.register_instance(PGSAnCHServer(self, self.logger))
         if self.gcf:
             self.logger.info('GENI GCF PGCH Listening on port %d...' % (addr[1]))
@@ -493,6 +500,7 @@ class PGClearinghouse(Clearinghouse):
 
     def getInsideKeys(self, uuid):
         if self.inside_keys.has_key(uuid):
+            self.logger.info("Already had keys for %r", uuid);
             return self.inside_keys[uuid]
         # Fetch the inside keys...
         self.logger.info("get inside keys for %r", uuid);
@@ -538,12 +546,21 @@ class PGClearinghouse(Clearinghouse):
             uuid = args['uuid']
         self.logger.debug("In getCred")
         
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Construct cert, pulling in the intermediate signer cert if any (SSL doesn't give us the chain)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct the GID
         try:
             user_gid = gid.GID(string=user_certstr)
+            # FIXME: Next 3 lines for debugging only
+            #username = user_gid.get_hrn().split('.')[-1]
+            #if args and args.has_key('cert') and not username in args['cert']:
+                #self.logger.error("GetCred got arg of user cert %s, server.pem_cert for user %s" % (args['cert'], user_gid.get_hrn()))
         except Exception, exc:
             self.logger.error("GetCredential failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to GetCredential. Cant get user GID from SSL client certificate." % exc)
@@ -575,6 +592,7 @@ class PGClearinghouse(Clearinghouse):
                     # CAUTION: untested use of inside cert/key
                     user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                     inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    self.logger.info("Calling get_user_credential for %s (%s)", user_gid.get_hrn(), user_uuid)
                     restriple = invokeCH(self.sa_url, "get_user_credential",
                                          self.logger, argsdict, inside_certs,
                                          inside_key)
@@ -642,6 +660,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling lookup_slice_by_urn(%s) for %s (%s)", urn, user_gid.get_hrn(), user_uuid)
                 slicetriple = invokeCH(self.sa_url, 'lookup_slice_by_urn',
                                        self.logger, argsdict, inside_certs,
                                        inside_key)
@@ -667,6 +686,7 @@ class PGClearinghouse(Clearinghouse):
         try:
             user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
             inside_key, inside_certs = self.getInsideKeys(user_uuid)
+            self.logger.info("Calling get_slice_credential(%s) for %s (%s)", slice_id, user_gid.get_hrn(), user_uuid)
             res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
                            argsdict, inside_certs, inside_key)
         except Exception, e:
@@ -686,8 +706,13 @@ class PGClearinghouse(Clearinghouse):
         # type is Slice or User
         # Return is dict: (see above)
 
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
         # Get full user cert chain (append MA if any)
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         # Construct GID
         try:
@@ -792,15 +817,18 @@ class PGClearinghouse(Clearinghouse):
                 # Call the real CH
                 if urn and not uuid:
                     argsdict=dict(slice_urn=urn)
+                    key=urn
                     op = 'lookup_slice_by_urn'
                 else:
                     argsdict=dict(slice_id=uuid)
+                    key=uuid
                     op = 'lookup_slice'
                 slicetriple = None
                 try:
                     # CAUTION: untested use of inside cert/key
                     user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                     inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    self.logger.info("Calling %s(%s) for %s (%s)", op, key, user_gid.get_hrn(), user_uuid)
                     slicetriple = invokeCH(self.sa_url, op, self.logger,
                                            argsdict, inside_certs, inside_key)
                 except Exception, e:
@@ -868,7 +896,7 @@ class PGClearinghouse(Clearinghouse):
                         urn = user_gid.get_urn()
                 # If we still have no URN, bail
                 if not urn or not urn_util.is_valid_urn(urn):
-                    self.logger.warn("Resolve(user) on gcf implemented only when given a urn or can construct on. Was asked about user with hrn=%s (or urn=%s, uuid=%s)" % (hrn, urn, uuid))
+                    self.logger.warn("Resolve(user) on gcf implemented only when given a urn or can construct one. Was asked about user with hrn=%s (or urn=%s, uuid=%s)" % (hrn, urn, uuid))
                     return dict(slices=list())
 
                 # OK, we have a URN
@@ -907,6 +935,7 @@ class PGClearinghouse(Clearinghouse):
                 try:
                     # CAUTION: untested use of inside cert/key
                     inside_key, inside_certs = self.getInsideKeys(str(uuidO))
+                    self.logger.info("Calling lookup_slices(%s) for %s (%s)", str(uuidO), user_gid.get_hrn(), str(uuidO))
                     slicestriple = invokeCH(self.sa_url, "lookup_slices",
                                             self.logger, argsdict, inside_certs,
                                             inside_key)
@@ -949,7 +978,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred, type must be Slice
         # returns slice cred
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -990,8 +1024,8 @@ class PGClearinghouse(Clearinghouse):
 
         # confirm type is Slice or User
         if not type:
-            self.logger.error("Missing type to Resolve")
-            raise Exception("Missing type to Resolve")
+            self.logger.error("Missing type to Register")
+            raise Exception("Missing type to Register")
         if not type.lower() == 'slice':
             self.logger.error("Tried to register type %s" % type)
             raise Exception("Can't register non slice %s" % type)
@@ -1033,6 +1067,7 @@ class PGClearinghouse(Clearinghouse):
                     # CAUTION: untested use of inside cert/key
                     user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                     inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                    self.logger.info("Calling lookup_project(%s) for %s (%s)", project_name, user_gid.get_hrn(), user_uuid)
                     projtriple = invokeCH(self.sa_url, "lookup_project",
                                           self.logger, argsdict, inside_certs,
                                           inside_key)
@@ -1066,6 +1101,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling create_slice(project=%s, slice_name=%s) for %s (%s)", project_name, slice_name, user_gid.get_hrn(), user_uuid)
                 slicetriple = invokeCH(self.sa_url, "create_slice", self.logger,
                                        argsdict, inside_certs, inside_key)
             except Exception, e:
@@ -1090,6 +1126,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling get_slice_credential(%s) for %s (%s)", sliceval['slice_id'], user_gid.get_hrn(), user_uuid)
                 res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
                                argsdict, inside_certs, inside_key)
             except Exception, e:
@@ -1107,7 +1144,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # returns renewed slice credential
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
         try:
             user_gid = gid.GID(string=user_certstr)
         except Exception, exc:
@@ -1165,6 +1207,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling renew_slice(%s, %s) for %s (%s)", slice_uuid, expiration, user_gid.get_hrn(), user_uuid)
                 slicetriple = invokeCH(self.sa_url, "renew_slice", self.logger,
                                        argsdict, inside_certs, inside_key)
             except Exception, e:
@@ -1189,6 +1232,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling get_slice_credential(%s) for %s (%s)", sliceval['slice_id'], user_gid.get_hrn(), user_uuid)
                 res = invokeCH(self.sa_url, 'get_slice_credential', self.logger,
                                argsdict, inside_certs, inside_key)
             except Exception, e:
@@ -1208,7 +1252,12 @@ class PGClearinghouse(Clearinghouse):
         # cred is user cred
         # return list( of dict(type='ssh', key=$key))
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1316,7 +1365,12 @@ class PGClearinghouse(Clearinghouse):
         # return list( of dict(gid=<cert>, hrn=<hrn>, url=<AM URL>))
         # Matt seems to say hrn is not critical, and can maybe even skip cert
 
-        user_certstr = addMACert(self._server.pem_cert, self.logger, self.macert)
+        if THREADED:
+            client_certstr=SecureThreadedXMLRPCRequestHandler.get_pem_cert()
+        else:
+            client_certstr = self._server.pem_cert
+
+        user_certstr = addMACert(client_certstr, self.logger, self.macert)
 
         try:
             user_gid = gid.GID(string=user_certstr)
@@ -1356,6 +1410,7 @@ class PGClearinghouse(Clearinghouse):
                 # CAUTION: untested use of inside cert/key
                 user_uuid = str(uuidModule.UUID(int=user_gid.get_uuid()))
                 inside_key, inside_certs = self.getInsideKeys(user_uuid)
+                self.logger.info("Calling get_services_of_type(0=AM) for %s (%s)", user_gid.get_hrn(), user_uuid)
                 amstriple = invokeCH(self.sr_url, "get_services_of_type",
                                      self.logger, argsdict, inside_certs,
                                      inside_key)
