@@ -93,6 +93,9 @@ class Path(GENIObject):
         self._aggregates = set()
         self.globalId = None
 
+    def __str__(self):
+        return "<Path %s with %d hops across %d AMs>" % (self.id, len(self._hops), len(self._aggregates))
+
     @property
     def hops(self):
         return self._hops
@@ -307,6 +310,7 @@ class Aggregate(object):
 
     def add_hop(self, hop):
         self._hops.add(hop)
+#        self.logger.debug("%s now has %d hops", self, len(self._hops))
 
     def add_path(self, path):
         self._paths.add(path)
@@ -373,7 +377,27 @@ class Aggregate(object):
         # Check that all hops have reasonable vlan inputs
         for hop in self.hops:
             if not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
-                raise StitchingError("%s hop %s suggested %s not in avail %s", self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
+                raise StitchingError("%s hop %s suggested %s not in avail %s" % (self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request))
+
+        # Check that if a hop has the same URN as another on this AM, that it has a different VLAN tag
+        tagByURN = dict()
+        hopByURN = dict()
+        for hop in self.hops:
+            if hop.urn in tagByURN.keys():
+                tags = tagByURN[hop.urn]
+                if hop._hop_link.vlan_suggested_request in tags:
+                    # This could happen due to an apparent SCS bug (#1100). I suppose I could treat this as VLANUnavailable?
+                    raise StitchingError("%s %s has request tag %s that is already in use by %s" % (self, hop, hop._hop_link.vlan_suggested_request, hopByURN[hop.urn][tags.index(hop._hop_link.vlan_suggested_request)]))
+                else:
+                    self.logger.debug("%s %s has same URN as other hop(s) on this AM %s. But this hop uses request tag %s, that hop(s) used %s", self, hop, str(hopByURN[hop.urn][0]), hop._hop_link.vlan_suggested_request, str(tagByURN[hop.urn][0]))
+                    tagByURN[hop.urn].append(hop._hop_link.vlan_suggested_request)
+                    hopByURN[hop.urn].append(hop)
+            else:
+                tagByURN[hop.urn] = list()
+                tagByURN[hop.urn].append(hop._hop_link.vlan_suggested_request)
+                hopByURN[hop.urn] = list()
+                hopByURN[hop.urn].append(hop)
+            # FIXME: Ticket #355: If this is PG/IG (self.isPG once stitchandler fills that in), then complain if any hop on a different path uses the same VLAN tag
 
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
@@ -424,11 +448,14 @@ class Aggregate(object):
             else:
                 range_suggested = self.getVLANRangeSuggested(self.manifestDom, hop._id, hop.path.id)
 
-            pathGlobalId = str(range_suggested[0]).strip()
+            pathGlobalId = None
+
+            if range_suggested[0] is not None:
+                pathGlobalId = str(range_suggested[0]).strip()
             rangeValue = str(range_suggested[1]).strip()
             suggestedValue = str(range_suggested[2]).strip()
-            if pathGlobalId and pathGlobalId != '':
-                if hop.path.globalId and hop.path.globalId != pathGlobalId:
+            if pathGlobalId and pathGlobalId is not None and pathGlobalId != "None" and pathGlobalId != '':
+                if hop.path.globalId and hop.path.globalId is not None and hop.path.globalId != "None" and hop.path.globalId != pathGlobalId:
                     self.logger.warn("Changing Path %s global ID from %s to %s", hop.path.id, hop.path.globalId, pathGlobalId)
                 hop.path.globalId = pathGlobalId
 
@@ -524,6 +551,8 @@ class Aggregate(object):
             else:
                 self.logger.warn("%s had no avail VLAN request", hop, hop.import_vlans_from)
             new_avail = int1 & int2
+
+            # FIXME: Limit new_avail to exclude any request_manifest on any other hops with same URN? Or should that have been done in handleVU?
 
             # If we've noted VLANs we already tried that failed (cause of later failures
             # or cause the AM wouldn't give the tag), then be sure to exclude those
@@ -650,7 +679,7 @@ class Aggregate(object):
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
-            raise StitchingError("Couldn't find stitching element in rspec for %s request", self)
+            raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
         domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
 #        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
@@ -1108,7 +1137,7 @@ class Aggregate(object):
                         # FIXME: Add support for EG specific fatal errors
 
                         if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
-                                ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
+                                ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
                         elif amtype == "protogeni":
@@ -1274,8 +1303,8 @@ class Aggregate(object):
                 # circuit as is would work. Or it could be something permanent. How do we know?
                 raise StitchingError("%s %s failed at %s: %s" % (opName, slicename, self, e))
 
-            dcnerror = None # geni_error if any
-            circuitid = None # DCN circuit ID parsed from geni_urn
+            dcnErrors = dict() # geni_error by geni_urn of individual resource
+            circuitIDs = dict() # DCN circuit ID by geni_urn (one parse from the other)
 
             # Parse out sliver status / status
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
@@ -1289,45 +1318,60 @@ class Aggregate(object):
                     # Get any geni_error string
                     if result[self.url].has_key("geni_resources") and \
                             isinstance(result[self.url]["geni_resources"], list) and \
-                            len(result[self.url]["geni_resources"]) > 0 and \
-                            isinstance(result[self.url]["geni_resources"][0], dict) and \
-                            result[self.url]["geni_resources"][0].has_key("geni_error"):
-                        dcnerror = result[self.url]["geni_resources"][0]["geni_error"]
-                        self.logger.debug("Found geni_error '%s'", dcnerror)
-
-                    if result[self.url].has_key("geni_resources") and \
-                            isinstance(result[self.url]["geni_resources"], list) and \
-                            len(result[self.url]["geni_resources"]) > 0 and \
-                            isinstance(result[self.url]["geni_resources"][0], dict) and \
-                            result[self.url]["geni_resources"][0].has_key("geni_urn"):
-                        urn = result[self.url]["geni_resources"][0]["geni_urn"]
-                        if urn:
-                            import re
-                            match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
-                            if match:
-                                circuitid = match.group(1).strip()
-                                self.logger.debug("Found circuit '%s'", circuitid)
+                            len(result[self.url]["geni_resources"]) > 0:
+                        for resource in result[self.url]["geni_resources"]:
+                            if not isinstance(resource, dict) and not resource.has_key("geni_urn"):
+                                self.logger.debug("Malformed sliverstatus - resource not a dict or has no geni_urn: %s", str(resource))
+                                continue
+                            urn = resource["geni_urn"]
+                            if urn:
+                                circuitid = None
+                                import re
+                                match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
+                                if match:
+                                    circuitid = match.group(1).strip()
+                                    self.logger.debug("Found circuit '%s'", circuitid)
+                                else:
+                                    self.logger.debug("Found no geni_urn match? URN: %s", urn)
+                                circuitIDs[urn] = circuitid
+                                if resource.has_key("geni_error"):
+                                    dcnErrors[urn] = resource["geni_error"]
+                                    self.logger.debug("Found geni_error '%s' for circuit %s", dcnErrors[urn], circuitid)
+                                else:
+                                    self.logger.debug("Malformed sliverstatus missing geni_error tag: %s", str(resource))
+                                    dcnErrors[urn] = None
                             else:
-                                self.logger.debug("Found no geni_urn match? URN: %s", urn)
+                                self.logger.debug("Malformed sliverstatus has empty geni_urn: %s", str(resource))
                 else:
                     if result[self.url].has_key("value") and isinstance(result[self.url]["value"], dict) and \
                             result[self.url]["value"].has_key("geni_slivers") and isinstance(result[self.url]["value"]["geni_slivers"], list):
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
                                 status = sliver["geni_allocation_status"]
+                                dcnerror = None
                                 if sliver.has_key("geni_error"):
                                     dcnerror = sliver["geni_error"]
                                 if sliver.has_key("geni_sliver_urn"):
                                     urn = sliver["geni_sliver_urn"]
                                     if urn:
                                         import re
+                                        circuitid = None
                                         match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
                                         if match:
                                             circuitid = match.group(1).strip()
                                             self.logger.debug("Found circuit '%s'", circuitid)
                                         else:
                                             self.logger.debug("Found no geni_urn match? URN: %s", urn)
-                                break
+                                        circuitIDs[urn] = circuitid
+                                        dcnErrors[urn] = dcnerror
+                                    else:
+                                        self.logger.debug("Malformed sliverstatus has empty sliver_urn: %s", str(sliver))
+                                else:
+                                    self.logger.debug("Malformed sliverstatus has no geni_sliver_urn: %s", str(sliver))
+
+                                break # FIXME: This stops at the first sliver. Can we do better? Ticket 261
+                            else:
+                                self.logger.debug("Malformed sliverstatus has non dict sliver entry or entry with no geni_allocation_status: %s", str(sliver))
                         # FIXME: Which sliver(s) do I look at?
                         # 1st? look for any not ready and take that?
                         # And pull out any geni_error
@@ -1349,20 +1393,27 @@ class Aggregate(object):
             status = str(status).lower().strip()
             if status in ('failed', 'ready', 'geni_allocated', 'geni_provisioned', 'geni_failed', 'geni_notready', 'geni_ready'):
                 break
-            if dcnerror and dcnerror.strip() != '':
-                if circuitid:
-                    self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
-                else:
-                    self.logger.info("%s is (still) %s at %s. Had error message: %s", opName, status, self, dcnerror)
+            for entry in circuitIDs.keys():
+                circuitid = circuitIDs[entry]
+                dcnerror = dcnErrors[entry]
+                if dcnerror and dcnerror.strip() != '':
+                    if circuitid:
+                        self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
+                    else:
+                        self.logger.info("%s is (still) %s at %s. Had error message: %s", opName, status, self, dcnerror)
         # End of while loop getting sliverstatus
 
         if status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready'):
-            if circuitid:
-                self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
-            else:
-                self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
-            if dcnerror and dcnerror.strip() != '':
-                self.logger.warn("  Status had error message: %s", dcnerror)
+            for entry in circuitIDs.keys():
+                circuitid = circuitIDs[entry]
+                dcnerror = dcnErrors[entry]
+                if circuitid:
+                    self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
+                else:
+                    self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
+                if dcnerror and dcnerror.strip() != '':
+                    self.logger.warn("  Status had error message: %s", dcnerror)
+
             # deleteReservation
             opName = 'deletesliver'
             if self.api_version > 2:
@@ -1379,12 +1430,20 @@ class Aggregate(object):
                 # Exit to user
                 raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
 
-            if circuitid:
-                msg = "Sliver status for circuit %s was (still): %s" % (circuitid, status)
-            else:
-                msg = "Sliver status was (still): %s" % status
-            if dcnerror and dcnerror.strip() != '':
-                msg = msg + ": " + dcnerror
+            msg = None
+            for entry in circuitIDs.keys():
+                circuitid = circuitIDs[entry]
+                dcnerror = dcnErrors[entry]
+                if msg == None:
+                    msg = ""
+                else:
+                    msg = msg + ".\n"
+                if circuitid:
+                    msg = msg + "Sliver status for circuit %s was (still): %s" % (circuitid, status)
+                else:
+                    msg = msg + "Sliver status was (still): %s" % status
+                if dcnerror and dcnerror.strip() != '':
+                    msg = msg + ": " + dcnerror
 
             # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
@@ -1398,8 +1457,11 @@ class Aggregate(object):
                 raise StitchingRetryAggregateNewVlanError(msg)
 
         else:
-            if circuitid:
-                self.logger.info("DCN circuit %s is ready", circuitid)
+            for entry in circuitIDs.keys():
+                circuitid = circuitIDs[entry]
+                dcnerror = dcnErrors[entry]
+                if circuitid:
+                    self.logger.info("DCN circuit %s is ready", circuitid)
 
             # Status is ready
             # generate args for listresources
@@ -1444,6 +1506,7 @@ class Aggregate(object):
 
     def handleSuggestedVLANNotRequest(self, opts, slicename):
         # FIXME FIXME FIXME
+        # Ticket 261
 
         # note what we tried that failed (ie what was requested but not given at this hop)
         for hop in self.hops:
@@ -1510,17 +1573,59 @@ class Aggregate(object):
             failedHop = iter(self.hops).next()
 #            self.logger.debug("handleVlanUnavail got no specific failed hop, but AM only has hop %s", failedHop)
 
-        if failedHop:
-#            self.logger.debug("handleVU noting failedHop unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
-            failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+        # PG Error messages sometimes indicate the failed path, so we might be able to ID The failed hop.
+        # That would let us be more conservative in what we mark unavailable.
+        if not failedHop:
+            if len(self.paths) > 1 and isinstance(exception, AMAPIError) and exception.returnstruct:
+                #self.logger.debug("handleVU: No failed hop, >1 paths. If this is a PG error that names the link, I should be able to set the failedHop")
+                try:
+                    code = exception.returnstruct["code"]["geni_code"]
+                    amcode = exception.returnstruct["code"]["am_code"]
+                    amtype = exception.returnstruct["code"]["am_type"]
+                    msg = exception.returnstruct["output"]
 
-        # If the hops do not do vlan_translation, then they all have this issue
+                    if 'vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni":
+                        #self.logger.debug("This was a PG error message that names the failed link/tag")
+                        # Parse out the tag and link name
+                        import re
+                        match = re.match("^vlan tag (\d+) for '(.+)' not available", msg)
+                        if match:
+                            failedPath = match.group(2).strip()
+                            failedTag = match.group(1).strip()
+                            failedHopsnoXlate = []
+                            for hop in self.hops:
+                                if hop.path.id == failedPath:
+                                    if not VLANRange.fromString(failedTag) <= hop._hop_link.vlan_suggested_request:
+                                        self.logger.debug("%s is on PG reported failed path %s but its sug request was %s, not reported unavail %s", hop, failedPath, hop._hop_link.vlan_suggested_request, failedTag)
+                                    else:
+                                        if not hop._hop_link.vlan_xlate:
+                                            failedHopsnoXlate.append(hop)
+                                        hop.vlans_unavailable = hop.vlans_unavailable.union(VLANRange.fromString(failedTag))
+                                        self.logger.debug("%s unavail adding PG reported failed tag %s", hop, failedTag)
+                            if len(failedHopsnoXlate) >= 1:
+                                # When PG U is transit net, the count will be 2. If I pick one to be the failed hop, I believe the right thing happens
+                                # Hence I can pick any of these hops
+                                failedHop = failedHopsnoXlate[0]
+                                self.logger.debug("Based on parsed error message: %s, setting failed hop to %s", msg, failedHop)
+                            else:
+                                self.logger.debug("Cannot set failedHop from parsed error message: %s: Got %d failed hops that don't do translation", msg, len(failedHopsnoXlate))
+                        else:
+                            self.logger.debug("Failed to parse failed tag and link from PG message: %s", msg)
+#                    else:
+#                        self.logger.debug("This isn't the PG error message that lets me find the failed path")
+                except Exception, e2:
+                    # Could not get msg / AM type from exception. So cannot reset failedHop
+                    self.logger.debug("Failed to parse message from AMAPIError: %s", e2)
+                    pass
+
+        # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in self.hops:
-            if not hop._hop_link.vlan_xlate:
-#                self.logger.debug("handleVU noting doesnt-xlate unavail vlan %s", failedHop._hop_link.vlan_suggested_request)
+            if not failedHop or hop==failedHop or (hop.path==failedHop.path and not hop._hop_link.vlan_xlate):
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-            elif not failedHop:
-                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                # Find other failed hops with same URN. Those should also avoid this failed tag
+                for hop2 in self.hops:
+                    if hop.urn == hop2.urn and hop != hop2 and (not failedHop or hop2==failedHop or (hop2.path==failedHop.path and not hop2._hop_link.vlan_xlate)):
+                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
   # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
@@ -1542,8 +1647,8 @@ class Aggregate(object):
                     #                self.logger.debug("%s imports vlans - so cannot redo here", hop)
                     canRedoRequestHere = False
                     break
-                if len(hop._hop_link.vlan_range_request) <= 1:
-                    # Only the 1 VLAN tag was in the available range
+                if len(hop._hop_link.vlan_range_request) <= 1 and (not failedHop or hop == failedHop or (not hop._hop_link.vlan_xlate and failedHop.path == hop.path)):
+                    # Only the 1 VLAN tag was in the available range and we need a different tag
                     canRedoRequestHere = False
                     self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
                     break
@@ -1565,12 +1670,14 @@ class Aggregate(object):
                 # FIXME Put in things for EG VLAN Unavail errors
 
                 if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
-                        ('vlan tag for ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
+                        ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 else:
                     self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %d, %s", code, amcode, msg)
                     canRedoRequestHere = False
+
+
             except Exception, e2:
                 canRedoRequestHere = False
                 self.logger.debug("handleVU Exception getting msg/code from exception %s: %s", exception, e2)
@@ -1627,72 +1734,139 @@ class Aggregate(object):
         if canRedoRequestHere:
 #            self.logger.debug("After all checks looks like we can locally redo request for %s", self)
             hop = None
-            newSug = ""
-            oldSug = ""
+            newSugByPath = dict()
+            oldSugByPath = dict()
 
             # If # hops > 1 and hops do not do translation, then I need to pick a tag that all hops can use and set it on all the hops
             # EG A transit network that does not do translation
-            newTag = None # tag to use on all such hops
-            overallRange = VLANRange.fromString("any") # new request range to use on all such hops
-            hopsNoXlate = [] # hops that don't do xlation
+
+            # Init some vars
+            newTagByPath = dict()
+            overallRangeByPath = dict()
+            hopsNoXlateByPath = dict()
+            resetHops = list()
+            for path in self.paths:
+                newSugByPath[path] = ""
+                oldSugByPath[path] = ""
+                newTagByPath[path] = None # Tag to use on all such hops
+                overallRangeByPath[path] = VLANRange.fromString("any")  # new request range to use on all such hops
+                hopsNoXlateByPath[path] = [] # hops that don't do xlation
+
+            # Gather the hops that don't do VLAN translation and the overall new request range to use for them
             for hop in self.hops:
+                path = hop.path
                 if not hop._hop_link.vlan_xlate:
-                    hopsNoXlate.append(hop)
-                    # New request range will be the intersection of the existing request ranges, less the previously attempted suggested VLAN tags
-                    overallRange = overallRange.intersection(hop._hop_link.vlan_range_request) - hop._hop_link.vlan_suggested_request
+                    hopsNoXlateByPath[path].append(hop)
+                    # New request range will be the intersection of the existing request ranges
+                    overallRangeByPath[path] = overallRangeByPath[path].intersection(hop._hop_link.vlan_range_request)
+                    # only subtract the request from last time if this hop is considered a failure
+                    if not failedHop or hop == failedHop or (hop.path == failedHop.path and not hop._hop_link.vlan_xlate):
+                        self.logger.debug("Overall range for %s will exclude %s previous suggested %s", path, hop, hop._hop_link.vlan_suggested_request)
+                        overallRangeByPath[path] = overallRangeByPath[path] - hop._hop_link.vlan_suggested_request
+                    # Exclude known unavails from this hop
+                    overallRangeByPath[path] = overallRangeByPath[path] - hop.vlans_unavailable
+
+            for path in self.paths:
+                self.logger.debug("New overallrange for %s: %s", path, overallRangeByPath[path])
+
+            # FIXME: Should other hops exclude from their availRange a tag that another hop is using for its suggested (if a diff path)
 
             for hop in self.hops:
-                # Edit vlan ranges only for the failed hop if set
-                if failedHop and hop != failedHop:
+                path = hop.path
+                # Edit vlan ranges only for the failed hop if set, plus other hops impacted by that
+                if failedHop and hop != failedHop and (hop._hop_link.vlan_xlate or hop.path != failedHop.path):
                     # FIXME: If the failedHop doesn't do xlation, then what? Don't we need to copy tags around?
+                    self.logger.debug("Not changing suggested /range requested for non failed %s", hop)
                     continue
 
-                oldSug = hop._hop_link.vlan_suggested_request
+                oldSugByPath[path] = hop._hop_link.vlan_suggested_request
 
                 # Set the new request range
-                if len(hopsNoXlate) > 1 and hop in hopsNoXlate:
+                if len(hopsNoXlateByPath[path]) > 1 and hop in hopsNoXlateByPath[path]:
                     # Use the intersection from above
-                    self.logger.debug("%s is a transit AM. Use same request range on all hops: %s", self, overallRange)
-                    hop._hop_link.vlan_range_request = overallRange
+                    self.logger.debug("%s is a transit AM. Use same request range on all hops: %s", self, overallRangeByPath[path])
+                    hop._hop_link.vlan_range_request = overallRangeByPath[path]
                 else:
                     # pull old suggested out of range
                     hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                    # Also pull out any known unavail tags
+                    hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop.vlans_unavailable
 #                # FIXME: Also pull that out of the manifest?
 #                if hop._hop_link.vlan_range_manifest and len(hop._hop_link.vlan_range_manifest) > 0:
 #                    hop._hop_link.vlan_range_manifest = hop._hop_link.vlan_range_manifest - hop._hop_link.vlan_suggested_request
 
+                # If this hop has same URN as another hop on this AM but diff path, and that other hop has a newSug, then exclude from this range that newSug
+                for doneHop in resetHops:
+                    if doneHop.urn == hop.urn and doneHop != hop and doneHop.path == hop.path:
+                        self.logger.warn("%s already handled and has same URN as %s and same path", doneHop, hop)
+                    if doneHop.urn == hop.urn and doneHop != hop and doneHop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        if doneHop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+                            hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - doneHop._hop_link.vlan_suggested_request
+                            self.logger.debug("%s range request used to include new suggested %s for %s. New: %s", hop, doneHop._hop_link.vlan_suggested_request, doneHop, hop._hop_link.vlan_range_request)
+                        else:
+                            self.logger.debug("%s range request already excluded new suggested %s for %s: %s", hop, doneHop._hop_link.vlan_suggested_request, doneHop, hop._hop_link.vlan_range_request)
+                    # If this hop/tag failed, then exclude that failed tag from other hops with same URN
+                    if doneHop.urn == hop.urn and doneHop != hop and (not failedHop or hop == failedHop or (hop.path==failedHop.path and not hop._hop_link.vlan_xlate)):
+                        if doneHop._hop_link.vlan_suggested_request<=hop._hop_link.vlan_suggested_request:
+                            self.logger.debug("%s failed and previously used %s, but other hop %s is now trying it. FIXME!", hop, hop._hop_link.vlan_suggested_request, doneHop)
+                        else:
+                            doneHop._hop_link.vlan_range_request = doneHop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                            self.logger.debug("Reset %s range request to exclude %s previous failed tag %s. New: %s", doneHop, hop, hop._hop_link.vlan_suggested_request, doneHop._hop_link.vlan_range_request)
+                    # FIXME: Ticket #355: If this is PG/IG (self.isPG once stitchandler fills that in), then any hop on a different path: it's new suggested should not be in the new range request here
+                            # Is this enough to ensure that this hops new range_request does not include any tags used by any other path? I think so
+
+
                 # If self is a VLAN producer, then set newSug to VLANRange('any') and let it pick?
                 if hop._hop_link.vlan_producer:
-                    newSug = VLANRange('any')
+                    newSugByPath[path] = VLANRange('any')
                 else:
                     # Pick a random tag from range
                     import random
-                    newSug = random.choice(list(hop._hop_link.vlan_range_request))
+                    newSugByPath[path] = random.choice(list(hop._hop_link.vlan_range_request))
 #                    newSug = iter(hop._hop_link.vlan_range_request).next()
+                    # FIXME: Make sure that newSug is not the pick on another hop on this AM on diff path with same URN
+                    # And make sure it is excluded from the range_request on other such hops
 
                 # If EG this is a transit AM not doing xlation, then keep the previously selected
                 # new tag if any, or save the one we just picked here to use on the other hops at this AM
-                if len(hopsNoXlate) > 1 and hop in hopsNoXlate:
-                    if newTag:
-                        self.logger.debug("%s is a transit network. Don't use selected tag %s, but use tag picked for other hop %s", self, newSug, newTag)
-                        newSug = newTag
+                if len(hopsNoXlateByPath[path]) > 1 and hop in hopsNoXlateByPath[path]:
+                    if newTagByPath[path]:
+                        self.logger.debug("%s is a transit network. Don't use selected tag %s, but use tag picked for other hop %s", self, newSugByPath[path], newTagByPath[path])
+                        newSugByPath[path] = newTagByPath[path]
                     else:
-                        self.logger.debug("%s is a transit network. Save selected tag %s for other hops", self, newSug)
-                        newTag = newSug
+                        self.logger.debug("%s is a transit network. Save selected tag %s for other hops", self, newSugByPath[path])
+                        newTagByPath[path] = newSugByPath[path]
 
                 # Set that as suggested
-                hop._hop_link.vlan_suggested_request = VLANRange(newSug)
-                self.logger.debug("handleUn on %s doing local retry: set Avail=%s, Sug=%s (Sug was %s)", hop, hop._hop_link.vlan_range_request, newSug, oldSug)
+                hop._hop_link.vlan_suggested_request = VLANRange(newSugByPath[path])
+                self.logger.debug("handleUn on %s doing local retry: set Avail=%s, Sug=%s (Sug was %s)", hop, hop._hop_link.vlan_range_request, newSugByPath[path], oldSugByPath[path])
 
                 # FIXME: Set hops that depend on this hop to the proper values, or let those happen naturaly?
 
+                # Make sure any other hops on same Link exclude from their range request the VLAN suggested here
+                for doneHop in resetHops:
+                    if doneHop.urn == hop.urn and doneHop._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request and hop._hop_link.vlan_suggested_rquest != VLANRange.fromString("any"):
+                        raise StitchingError("%s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, doneHop))
+                    if doneHop.urn == hop.urn and hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        if hop._hop_link.vlan_suggested_request <= doneHop._hop_link.vlan_range_request:
+                            doneHop._hop_link.vlan_range_request = doneHop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                            self.logger.debug("%s range request used to include new suggested %s for %s. New: %s", doneHop, hop._hop_link.vlan_suggested_request, hop, doneHop._hop_link.vlan_range_request)
+                        else:
+                            self.logger.debug("%s range request already excluded new suggested %s for %s: %s", doneHop, hop._hop_link.vlan_suggested_request, hop, doneHop._hop_link.vlan_range_request)
+                    # FIXME: Ticket #355: For PG/IG (self.isPG once stitchandler fills that in), ensure that other hops on other paths exclude newly picked tag from their range request
+
+                resetHops.append(hop)
+            # End of Loop over hops to set new suggested request and range request
+
+
             self.inProcess = False
             if failedHop:
-                msg = "Retry %s %dth time with %s new suggested %s (not %s)" % (self, self.localPickNewVlanTries, hop, newSug, oldSug)
+                msg = "Retry %s %dth time with %s new suggested %s (not %s)" % (self, self.localPickNewVlanTries, failedHop, newSugByPath[failedHop.path], oldSugByPath[failedHop.path])
             else:
                 msg = "Retry %s %dth time with new suggested VLANs" % (self, self.localPickNewVlanTries)
             # This error is caught by Launcher, causing this AM to be put back in the ready pool
             raise StitchingRetryAggregateNewVlanError(msg)
+        # End of block to handle redoing request locally
 
         self.logger.debug("%s failure could not be redone locally", self)
 
