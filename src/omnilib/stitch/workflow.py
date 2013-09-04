@@ -99,6 +99,11 @@ class WorkflowParser(object):
             if hop.aggregate == dependency.aggregate:
                 continue
 
+            if dependency.urn == hop.urn:
+                self.logger.error("%s says it depends on %s with same URN", hop, dependency)
+            if dependency._path != hop._path:
+                self.logger.error("%s says it depends on %s with a different path", hop, dependency)
+
             # Then look for the closest hop
             distance = abs(hop.idx - dependency.idx)
             if distance < min_distance:

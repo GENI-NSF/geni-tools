@@ -33,6 +33,7 @@ gcf 2.4:
   - Document omni command line options (#329)
   - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
   - Split aggregate nicknames into a separate file from `omni_config` (#352)
+  - Re-organize Omni help message for readability (#350)
 
  * gcf
   - Add timestamps to pgch logs (#297)
@@ -43,7 +44,7 @@ gcf 2.4:
  * stitcher
   - Support SCS !GetVersion for testing (#295)
   - Pause longer before retrying ION circuits (#298, #299)
-  - Link with 2 identical AMs has only 1 AM - use Omni (#300)
+  - A Link with 2 identical AMs really has only 1 AM, so use Omni (#300)
   - Give up on fatal mapper errors from ProtoGENI based AMs (#301)
   - Add 2 new options to change sleep between sliverstatus calls at
  ION AMs and reservation attempts (#299)
@@ -61,8 +62,15 @@ gcf 2.4:
   - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
   - Find missing AM URLs from `omni_config` nicknames or CH if possible (#319)
   - Stop adding expires attribute on request rspecs (#344)
-  - A little more careful when merging hops in the combined manifest RSpec (#323)
-  - Be sure to re-enable logging when an omni call raises an exception (#335)
+  - Be a little more careful when merging hops in the combined manifest RSpec (#323)
+  - Be sure to re-enable logging when an omni call raises an exception
+ (#335)
+  - Support multiple circuits when parsing sliverstatus at DCN AMs
+ (#292)
+  - PG AMs now report the failed path/tag - use that to ID the failed
+ hop (#354)
+  - Be sure to use distinct tags when 2 paths go across the same
+ hop. Generally clean up code to pick a new VLAN tag locally (#353)
  
  * omni-configure.py
   - add support for rspec nicknames and default rspec locations (#326)
