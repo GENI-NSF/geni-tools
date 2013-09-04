@@ -46,6 +46,18 @@ default_cf = my_gcf
 # argument. In addition, rather than remembering the URL, you can define a
 # nickname for the aggregate here. This is completely optional.
 
+#------AM nicknames
+# Omni defines a standard set of aggregate nicknames. These are retrieved periodically
+# from http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
+# Put your custom aggregate nicknames here. 
+# To see all available nicknames try: omni.py nicknames
+#
+# Format :
+# Nickname=URN, URL
+# URN is optional
+[aggregate_nicknames]
+# boston=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
+
 #------RSpec nicknames
 # When you call
 #      omni.py createsliver myslice myrspec

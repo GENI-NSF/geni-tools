@@ -33,6 +33,7 @@ gcf 2.4:
   - Document omni command line options (#329)
   - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
   - Split aggregate nicknames into a separate file from `omni_config` (#352)
+  - Re-organize Omni help message for readability (#350)
 
  * gcf
   - Add timestamps to pgch logs (#297)

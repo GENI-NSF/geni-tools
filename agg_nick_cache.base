@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on August 30, 2013
+# Last updated on September 4, 2013
 
 #------AM nicknames
 # Format :
@@ -64,18 +64,18 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 of-uen=,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
 
 # ExoGENI AMs, including OpenFlow ExoGENI AMs
-eg-gpo=	urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-gpo-eg=	urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am ,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-gpo=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+gpo-eg=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-of-gpo= urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am ,https://bbn-hn.exogeni.net:3626/foam/gapi/1
-eg-of-bbn= urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am ,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+eg-of-gpo=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/1
+eg-of-bbn=urn:publicid:IDN+openflow:foam:bbn-hn.exogeni.gpolab.bbn.com+authority+am,https://bbn-hn.exogeni.net:3626/foam/gapi/1
 
-eg-renci=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-renci-eg=,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+renci-eg=urn:publicid:IDN+exogeni.net:rcivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-of-renci=,https://rci-hn.exogeni.net:3626/foam/gapi/1
 
 # ExoSM
-eg-sm=,https://geni.renci.org:11443/orca/xmlrpc
+eg-sm=urn:publicid:IDN+exogeni.net+authority+am,https://geni.renci.org:11443/orca/xmlrpc
 
 # InstaGENI AMs, including OpenFlow InstaGENI AMs
 ig-utah1=urn:publicid:IDN+utah.geniracks.net+authority+cm,https://boss.utah.geniracks.net:12369/protogeni/xmlrpc/am/1.0
