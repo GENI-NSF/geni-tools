@@ -32,6 +32,7 @@ gcf 2.4:
    for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
   - Document omni command line options (#329)
   - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
+  - Split aggregate nicknames into a separate file from `omni_config` (#352)
 
  * gcf
   - Add timestamps to pgch logs (#297)
@@ -81,10 +82,13 @@ gcf 2.4:
     logging into nodes (#342)
   - fix bug if call readyToLogin against multiple AMs where not all of
     them have resources allocated to the indicated slice (#330)
+  - fix bug when readyToLogin.py reports ready when some node has failed (#343)
 
  * acceptance tests
+  - Added test for `get_ch_version` (#316)
   - test_getusercred_nagios() downloads a user credentials and
     validates it format for use with monitoring (#338)
+  - Added am_api_accept_scaling.py which contains a scaling test (#324)
 
 gcf 2.3.2:
  * omni

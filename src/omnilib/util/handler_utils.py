@@ -59,6 +59,11 @@ def _derefAggNick(handler, aggregateNickname):
         if tempurn.strip() != "":
             urn = tempurn
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
+    else:
+        # if we got here, we are assuming amNick is actually a URL
+        # Print a warning now if it doesn't look a URL
+        if validate_url( amNick ):
+            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)            
 
     return url,urn
 

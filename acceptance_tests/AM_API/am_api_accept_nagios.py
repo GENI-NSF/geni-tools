@@ -187,13 +187,13 @@ class NagiosTest(accept.Test):
     def subtest_SliverStatus_nagios(self, slicename):
         have_slept = 0
         status_ready = False
-        long_sleep = max( 5, MAX_TIME_TO_CREATESLIVER / NUM_SLEEP )
+        long_sleep = max( 5, self.options_copy.max_time / NUM_SLEEP )
         if slicename==None:
             slicename = self.create_slice_name()
         # before starting check if this is going to fail for unrecoverable reasons having nothing to do with being ready
         # maybe get the slice credential
         # self.subtest_generic_SliverStatus( slicename )        
-        while have_slept <= MAX_TIME_TO_CREATESLIVER:
+        while have_slept <= self.options_copy.max_time:
             try:
                 # checks geni_operational_status to see if ready
                 if self.options_copy.api_version >= 3:
@@ -243,11 +243,20 @@ class NagiosTest(accept.Test):
 
 
     @classmethod
-    def nagios_parser( cls, parser=omni.getParser(), usage=None):
-        parser.add_option( "--max-createsliver-time", 
-                           action="store", type='int', dest='MAX_TIME_TO_CREATESLIVER', 
-                           help="Max time will attempt to check status of a sliver before failing")
+    def getParser( cls, parser=accept.Test.getParser(), usage=None):
 
+        parser.add_option( "--max-createsliver-time", 
+                           action="store", type='int', 
+                           default = MAX_TIME_TO_CREATESLIVER,
+                           dest='max_time', 
+                           help="Max number of seconds will attempt to check status of a sliver before failing  [default: %default]")
+        return parser
+
+    def nagios_parser( cls, parser=None, usage=None):
+        if parser is None:
+            parser = cls.getParser()
+        argv = NagiosTest.unittest_parser(parser=parser, usage=usage)
+        return argv
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \

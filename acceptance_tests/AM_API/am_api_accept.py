@@ -1925,7 +1925,7 @@ class Test(ut.OmniUnittest):
             self.subtest_Renew_many( slicename )
 
     @classmethod
-    def accept_parser( cls, parser=omni.getParser(), usage=None):
+    def getParser( cls, parser=omni.getParser(), usage=None):
         parser.add_option( "--reuse-slice", 
                            action="store", type='string', dest='reuse_slice_name', 
                            help="Use slice name provided instead of creating/deleting a new slice")
@@ -1994,8 +1994,13 @@ class Test(ut.OmniUnittest):
         parser.remove_option("-t")
         parser.set_defaults(logoutput='acceptance.log')
 
-        argv = Test.unittest_parser(parser=parser, usage=usage)
+        return parser
 
+    @classmethod
+    def accept_parser( cls, parser=None, usage=None):
+        if parser is None:
+            parser = cls.getParser()
+        argv = Test.unittest_parser(parser=parser, usage=usage)
         return argv
 
 
