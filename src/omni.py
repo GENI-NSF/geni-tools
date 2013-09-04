@@ -201,7 +201,7 @@ def load_agg_nick_config(opts, logger):
         logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
         raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
 
-    config = load_aggregate_nicknames( config, confparser, filename, logger )
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     return config
 
 def load_config(opts, logger, config={}):
@@ -272,7 +272,7 @@ def load_config(opts, logger, config={}):
                         d[key] = val
                     config['users'].append(d)
 
-    config = load_aggregate_nicknames( config, confparser, filename, logger )
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -315,7 +315,7 @@ def load_config(opts, logger, config={}):
 
     return config
 
-def load_aggregate_nicknames( config, confparser, filename, logger ):
+def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
     # Find aggregate nicknames
     if not config.has_key('aggregate_nicknames'):
         config['aggregate_nicknames'] = {}
@@ -340,7 +340,13 @@ def load_aggregate_nicknames( config, confparser, filename, logger ):
                     continue
 
             # If temp len > 2: try to use it as is
-            if config['aggregate_nicknames'].has_key(key):
+            
+            # Check for aggregate nickname conflicts
+            # This nickname (key) is already loaded 
+            # AND has a different url 
+            # AND aggregates are specified on the command line
+            # AND this nickname is one that is being queried on the command line
+            if (config['aggregate_nicknames'].has_key(key) and config['aggregate_nicknames'][key] != temp) and (len(opts.aggregate) > 0 and (key in opts.aggregate)):
                 logger.warn("Conflict for aggregate nickname '%s'.  Loaded from '%s'.", key, filename)                
             else:
                 logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
