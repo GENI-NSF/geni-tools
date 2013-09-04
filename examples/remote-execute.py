@@ -65,28 +65,37 @@ def getLoginCommands( loginInfoDict, keyList ):
           print "There is no status information for a node. This script might fail. "
 
       keys = readyToLogin.getKeysForUser(amInfo["amType"], item["username"], keyList)
-
+      if len(keys) == 0:
+        continue
       clientid = item['client_id']
-      if loginCommands.has_key(clientid) : 
+      if not loginCommands.has_key(clientid) : 
+        loginCommands[clientid] = {}
+      elif loginCommands[clientid]['username'] == item["username"]:
         print "More than one nodes have the same client id or the sliver is configured for multiple users. Exit!"
         sys.exit(-1)
+      else:
+        # ignore subsequent usernames for the same client_id
+        continue
       # Use only the first key
       output = "ssh"
       if str(item['port']) != '22' : 
             output += " -p %s " % item['port']
       output += " -i %s %s@%s" % ( keys[0], item['username'], item['hostname'])
-      loginCommands[clientid] = output
+
+      loginCommands[clientid]['command'] = output
+      loginCommands[clientid]['username'] = item["username"]
   
   return loginCommands
 
 def modifyToIgnoreHostChecking(loginCommands) :
 
   for k,c in loginCommands.items():
-    loginCommands[k] = c.replace("ssh ", "ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ")
+    c = loginCommands[k]['command']
+    loginCommands[k]['command'] = c.replace("ssh ", "ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ")
 
 def executeCommand( loginCommands, host, command) :
   print "Send command %s to %s" % (command, host)
-  finalCommand = loginCommands[host] + " '" + command +"'"
+  finalCommand = loginCommands[host]["command"] + " '" + command +"'"
   os.system(finalCommand)
   print "Done with command %s to %s" % (command, host)
   time.sleep(5)
