@@ -341,9 +341,16 @@ def load_aggregate_nicknames( config, confparser, filename, logger ):
 
             # If temp len > 2: try to use it as is
             if config['aggregate_nicknames'].has_key(key):
-                logger.warn("Conflict for aggregate nickname '%s'.  Loaded from '%s'.", key, filename)                
-            else:
-                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
+                if config['aggregate_nicknames'][key] == temp:
+                    #logger.debug("AM nickname %s from %s defined identically already", key, filename)
+                    continue
+                elif temp[0] == "" and config['aggregate_nicknames'][key][1] == temp[1]:
+                    #logger.debug("AM nickname %s from %s already defined and with a URN", key, filename)
+                    continue
+                else:
+                    logger.info("Aggregate nickname '%s' being redefined using value from '%s'. Old: %s=%s. New: %s=%s", key, filename, config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
+#            else:
+#                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
             config['aggregate_nicknames'][key] = temp
     return config
 
