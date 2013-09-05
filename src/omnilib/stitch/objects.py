@@ -34,7 +34,7 @@ import os
 import random
 import string
 import time
-from xml.dom.minidom import parseString, Node as XMLNode, Document
+from xml.dom.minidom import parseString, Node as XMLNode
 
 from GENIObject import *
 from VLANRange import *
@@ -2451,10 +2451,10 @@ class HopLink(object):
                 vlan_range[0].firstChild.nodeValue = newVlanRangeString
 #                self.logger.debug("Set vlan range on node %r: %s", vlan_range[0], vlan_range[0].firstChild.nodeValue)
             else:
-                vlan_range[0].appendChild(Document.createTextNode(newVlanRangeString))
+                vlan_range[0].appendChild(domNode.ownerDocument.createTextNode(newVlanRangeString))
         else:
-            vlanRangeNode = Document.createElement(self.VLAN_RANGE_TAG)
-            vlanRangeNode.appendChild(Document.createTextNode(newVlanRangeString))
+            vlanRangeNode = domNode.ownerDocument.createElement(self.VLAN_RANGE_TAG)
+            vlanRangeNode.appendChild(domNode.ownerDocument.createTextNode(newVlanRangeString))
             # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
             l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
             if l2scNodes and len(l2scNodes) > 0:
@@ -2468,10 +2468,10 @@ class HopLink(object):
                 vlan_suggested[0].firstChild.nodeValue = newVlanSuggestedString
 #                self.logger.debug("Set vlan suggested on node %r: %s", vlan_suggested[0], vlan_suggested[0].firstChild.nodeValue)
             else:
-                vlan_suggested[0].appendChild(Document.createTextNode(newVlanSuggestedString))
+                vlan_suggested[0].appendChild(domNode.ownerDocument.createTextNode(newVlanSuggestedString))
         else:
-            vlanSuggestedNode = Document.createElement(self.VLAN_RANGE_TAG)
-            vlanSuggestedNode.appendChild(Document.createTextNode(newVlanSuggestedString))
+            vlanSuggestedNode = domNode.ownerDocument.createElement(self.VLAN_RANGE_TAG)
+            vlanSuggestedNode.appendChild(domNode.ownerDocument.createTextNode(newVlanSuggestedString))
             # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
             l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
             if l2scNodes and len(l2scNodes) > 0:
