@@ -34,7 +34,7 @@ import os
 import random
 import string
 import time
-from xml.dom.minidom import parseString, Node as XMLNode
+from xml.dom.minidom import parseString, Node as XMLNode, Document
 
 from GENIObject import *
 from VLANRange import *
