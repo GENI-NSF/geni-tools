@@ -64,6 +64,8 @@ of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 of-uen=,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
 
 # ExoGENI AMs, including OpenFlow ExoGENI AMs
+# On URNs, note that each EG rack has xxxvmsite and xxxNet
+# And the same component_managers are available through the ExoSM
 eg-gpo=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 gpo-eg=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc

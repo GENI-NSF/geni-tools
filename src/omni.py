@@ -340,16 +340,22 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
                     continue
 
             # If temp len > 2: try to use it as is
-            
-            # Check for aggregate nickname conflicts
-            # This nickname (key) is already loaded 
-            # AND has a different url 
-            # AND aggregates are specified on the command line
-            # AND this nickname is one that is being queried on the command line
-            if (config['aggregate_nicknames'].has_key(key) and config['aggregate_nicknames'][key] != temp) and (len(opts.aggregate) > 0 and (key in opts.aggregate)):
-                logger.warn("Conflict for aggregate nickname '%s'.  Loaded from '%s'.", key, filename)                
-            else:
-                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
+            if config['aggregate_nicknames'].has_key(key):
+                if config['aggregate_nicknames'][key] == temp:
+                    #logger.debug("AM nickname %s from %s defined identically already", key, filename)
+                    continue
+                elif temp[0] == "" and config['aggregate_nicknames'][key][1] == temp[1]:
+                    #logger.debug("AM nickname %s from %s already defined and with a URN", key, filename)
+                    continue
+                else:
+                    msg = "Aggregate nickname '%s' being redefined using value from '%s'" % (key, filename)
+                    if key in opts.aggregate:
+                        logger.warn(msg)
+                    else:
+                        logger.info(msg)
+                    logger.debug("     Old: %s=%s. New: %s=%s", config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
+#            else:
+#                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
             config['aggregate_nicknames'][key] = temp
     return config
 

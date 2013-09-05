@@ -71,6 +71,7 @@ gcf 2.4:
  hop (#354)
   - Be sure to use distinct tags when 2 paths go across the same
  hop. Generally clean up code to pick a new VLAN tag locally (#353)
+  - Fix up use of minidom Document (#358)
  
  * omni-configure.py
   - add support for rspec nicknames and default rspec locations (#326)
