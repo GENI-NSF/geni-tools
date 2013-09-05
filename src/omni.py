@@ -201,7 +201,7 @@ def load_agg_nick_config(opts, logger):
         logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
         raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
 
-    config = load_aggregate_nicknames( config, confparser, filename, logger )
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     return config
 
 def load_config(opts, logger, config={}):
@@ -272,7 +272,7 @@ def load_config(opts, logger, config={}):
                         d[key] = val
                     config['users'].append(d)
 
-    config = load_aggregate_nicknames( config, confparser, filename, logger )
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -315,7 +315,7 @@ def load_config(opts, logger, config={}):
 
     return config
 
-def load_aggregate_nicknames( config, confparser, filename, logger ):
+def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
     # Find aggregate nicknames
     if not config.has_key('aggregate_nicknames'):
         config['aggregate_nicknames'] = {}
@@ -348,7 +348,12 @@ def load_aggregate_nicknames( config, confparser, filename, logger ):
                     #logger.debug("AM nickname %s from %s already defined and with a URN", key, filename)
                     continue
                 else:
-                    logger.info("Aggregate nickname '%s' being redefined using value from '%s'. Old: %s=%s. New: %s=%s", key, filename, config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
+                    msg = "Aggregate nickname '%s' being redefined using value from '%s'" % (key, filename)
+                    if key in opts.aggregate:
+                        logger.warn(msg)
+                    else:
+                        logger.info(msg)
+                    logger.debug("     Old: %s=%s. New: %s=%s", config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
 #            else:
 #                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
             config['aggregate_nicknames'][key] = temp
