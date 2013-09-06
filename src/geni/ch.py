@@ -35,7 +35,7 @@ import os
 
 import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCServer
-from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer
+from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer, SecureThreadedXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
@@ -310,7 +310,7 @@ class Clearinghouse(object):
         # that user would be used here - and can still get a valid slice
         try:
             if THREADED:
-                user_gid = gid.GID(string=SecureThreadedXMLRPCHandler.get_pem_cert())
+                user_gid = gid.GID(string=SecureThreadedXMLRPCRequestHandler.get_pem_cert())
             else:
                 user_gid = gid.GID(string=self._server.pem_cert)
         except Exception, exc:
