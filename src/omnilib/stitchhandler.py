@@ -115,10 +115,13 @@ class StitchingHandler(object):
         if request:
             try:
                 # read the rspec into a string, and add it to the rspecs dict
-                requestString = readFile(request)
+                requestString = handler_utils._derefRSpecNick(self, request)
             except Exception, exc:
-                msg = 'Unable to read rspec file %s: %s' % (request, str(exc))
-                raise OmniError(msg)
+                msg = "Unable to read rspec file '%s': %s" % (request, str(exc))
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    raise OmniError(msg)
 
             #    # Test if the rspec is really json containing an RSpec, and pull out the right thing
             #    requestString = amhandler.self._maybeGetRSpecFromStruct(requestString)
