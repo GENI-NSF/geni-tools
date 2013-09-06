@@ -134,7 +134,7 @@ ig-of-kettering=urn:publicid:IDN+openflow:foam:foam.geni.kettering.edu+authority
 ig-northwestern=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am
 ig-northwestern1=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
 ig-northwestern2=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
-ig-northwestern3=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0=
+ig-northwestern3=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/3.0
 northwestern-ig=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am
 northwestern1-ig=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/1.0
 northwestern2-ig=urn:publicid:IDN+instageni.northwestern.edu+authority+cm,https://instageni.northwestern.edu:12369/protogeni/xmlrpc/am/2.0
