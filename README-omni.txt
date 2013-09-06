@@ -42,18 +42,22 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.4:
- - Add nicknames for RSpecs; includes ability to specify a default location (#265)
+ - Add nicknames for RSpecs; includes ability to specify a default
+ location. See the sample omni_config for deatils. (#265)
  - Make `allocate` accept rspecs loaded from a url (#287)
- - Make calls using your GENI Clearinghouse account not require a project if slice URN is given (#293)
- - Renew to now or past raises an exception (#337)
- - New option `--speaksfor` to specify a user urn for the speaks for option (#339)
+ - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
+ - Split aggregate nicknames into a separate file from `omni_config`. (#352)
+   Omni periodically downloads a config file of standard aggregate
+   nicknames so you don't have to define these, and can get such
+   nicknames as soon as new aggregates are available.
+ - New option `--speaksfor` to specify a user urn for the speaks for option. (#339) 
    See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
- - New option `--cred` to specify file containing a credential to
+ - New option `--cred` to specify a file containing a credential to
    send to any call that takes a list of credentials. Supply this
    argument as many times as desired. (#46)
  - New option `--optionsfile` takes the name of a JSON format file
    listing additional named options to supply to calls that take
-   options (#327)
+   options. (#327)
    Sample options file content:
 {{{
 {
@@ -62,21 +66,18 @@ New in v2.4:
  "option_name_3": 67
 }
 }}}
- - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
- - Split aggregate nicknames into a separate file from `omni_config` (#352)
-   Omni periodically downloads a config file of standard aggregate
-   nicknames so you don't have to define these, and can get such
-   nicknames as soon as new aggregates are available.
- - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
-   for a given Omni invocation. Createsliver now gets its client similar to other methods. (#275)
  - Log messages: include timestamp, make clearer (#296)
- - Refactor chhandler credential saving methods into handler_utils (#309)
- - Explicitly import framework files to support packaging (#322)
- - Ignore unicode vs string in comparing AM URNs (#333)
+ - Renew to now or past raises an exception (#337)
+ - Re-organize Omni help message for readability (#350)
  - When renewing a slice using a saved slice credential, save the new
    slice credential and avoid printing the old slice expiration (#314)
+ - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
+   for a given Omni invocation. `CreateSliver` now gets its aggregate similar to other methods. (#275,#311)
+ - Add Utah DDC rack (#347)
+ - Refactor chhandler credential saving methods into `handler_utils.py` (#309)
+ - Explicitly import framework files to support packaging (#322)
+ - Ignore unicode vs string in comparing AM URNs (#333)
  - Document omni command line options (#329)
- - Re-organize Omni help message for readability (#350)
 
 New in v2.3.2:
  - Make framework_pgch not require a project if slice URN is given (#293)
