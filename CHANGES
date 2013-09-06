@@ -86,6 +86,9 @@ gcf 2.4:
     them have resources allocated to the indicated slice (#330)
   - fix bug when readyToLogin.py reports ready when some node has failed (#343)
 
+ * remote-execute
+  - Fixed bug handling multi-user slices (#349)
+
  * acceptance tests
   - Added test for `get_ch_version` (#316)
   - test_getusercred_nagios() downloads a user credentials and
