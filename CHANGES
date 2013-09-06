@@ -41,7 +41,7 @@ gcf 2.4:
 
  * gcf
   - Add timestamps to pgch logs (#297)
-  - Make ch optionally multi-threaded (#313)
+  - Make ch optionally multi-threaded, default True (#313,#359)
   - Credential verifier logs when a credential is unparseable but
     moves on to try others (#46)
 
