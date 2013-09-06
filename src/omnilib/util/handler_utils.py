@@ -667,4 +667,13 @@ def printNicknames(config, opts):
     if config.has_key("default_rspec_extension"):
         retString += "\n(Default RSpec extension: %s )\n" % config["default_rspec_extension"]
 
+    if opts.aggregate and len(opts.aggregate) > 0:
+        retString += "\nRequested aggregate nicknames:\n"
+        for nick in opts.aggregate:
+            if nick in config['aggregate_nicknames'].keys():
+                (urn, url) = config['aggregate_nicknames'][nick]
+                retString += "\t%s = %s (%s)\n" % (nick, url, urn)
+            else:
+                retString += "\t%s = Not a known aggregate nickname\n" % nick
+
     return retString, retStruct
