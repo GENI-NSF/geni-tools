@@ -348,14 +348,7 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
                     #logger.debug("AM nickname %s from %s already defined and with a URN", key, filename)
                     continue
                 else:
-                    msg = "Aggregate nickname '%s' being redefined using value from '%s'" % (key, filename)
-                    if opts.aggregate and key in opts.aggregate:
-                        if temp[1] != config['aggregate_nicknames'][key][1]:
-                            logger.warn(msg)
-                        else:
-                            logger.info(msg) # Should this also be at DEBUG?
-                    else:
-                        logger.debug(msg)
+                    logger.debug("Aggregate nickname '%s' being redefined using value from '%s'", key, filename)
                     logger.debug("     Old: %s=%s. New: %s=%s", config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
 #            else:
 #                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
