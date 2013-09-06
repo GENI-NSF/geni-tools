@@ -1013,7 +1013,12 @@ def parse_args(argv, options=None):
                      % (options.api_version, supported_versions))
 
     # From GetVersionCacheAge (int days) produce options.GetVersionCacheOldestDate as a datetime.datetime
-    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.GetVersionCacheAge)
+    indays = -1
+    try:
+        indays = int(options.GetVersionCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse GetVersionCacheAge: %s" % e 
+    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
 
@@ -1021,7 +1026,12 @@ def parse_args(argv, options=None):
         parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
 
     # From AggNickCacheAge (int days) produce options.AggNickCacheOldestDate as a datetime.datetime
-    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.AggNickCacheAge)
+    indays = -1
+    try:
+        indays = int(options.AggNickCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse AggNickCacheAge: %s" % e 
+    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.aggNickCacheName = os.path.normcase(os.path.expanduser(options.aggNickCacheName))
 

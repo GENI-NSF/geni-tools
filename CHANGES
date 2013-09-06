@@ -38,6 +38,7 @@ gcf 2.4:
   - Explicitly import framework files to support packaging (#322)
   - Ignore unicode vs string in comparing AM URNs (#333)
   - Document omni command line options (#329)
+  - Fix parsing of cache ages (#362)
 
  * gcf
   - Add timestamps to pgch logs (#297)

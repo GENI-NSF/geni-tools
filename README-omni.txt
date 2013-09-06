@@ -78,6 +78,7 @@ New in v2.4:
  - Explicitly import framework files to support packaging (#322)
  - Ignore unicode vs string in comparing AM URNs (#333)
  - Document omni command line options (#329)
+ - Fix parsing of cache ages (#362)
 
 New in v2.3.2:
  - Make framework_pgch not require a project if slice URN is given (#293)
