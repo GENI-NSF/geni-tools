@@ -43,7 +43,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
- location. See the sample omni_config for deatils. (#265)
+ location. See the sample omni_config for deatils. (#265,#360)
  - Make `allocate` accept rspecs loaded from a url (#287)
  - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
  - Split aggregate nicknames into a separate file from `omni_config`. (#352)

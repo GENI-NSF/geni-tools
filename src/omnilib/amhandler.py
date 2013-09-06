@@ -1687,7 +1687,7 @@ class AMCallHandler(object):
             rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
-            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            msg = "Unable to read rspec file '%s': %s" % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
                 self.logger.warn(msg)
@@ -1857,7 +1857,7 @@ class AMCallHandler(object):
             # read the rspec into a string, and add it to the rspecs dict
             rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
-            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            msg = "Unable to read rspec file '%s': %s" % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
                 self.logger.warn(msg)
