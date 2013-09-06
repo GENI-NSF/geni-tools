@@ -349,7 +349,7 @@ def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
                     continue
                 else:
                     msg = "Aggregate nickname '%s' being redefined using value from '%s'" % (key, filename)
-                    if key in opts.aggregate:
+                    if opts.aggregate and key in opts.aggregate:
                         logger.warn(msg)
                     else:
                         logger.info(msg)
