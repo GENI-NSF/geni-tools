@@ -99,6 +99,7 @@ gcf 2.4:
   - `test_getusercred_nagios()` downloads a user credential and
     validates its format for use with monitoring (#338)
   - Added `am_api_accept_scaling.py` which contains a scaling test (#324)
+  - Don't try to renew a slice shorter (#363)
 
 gcf 2.3.2:
  * omni
