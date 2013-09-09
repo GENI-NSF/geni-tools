@@ -698,7 +698,9 @@ Options:
     --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
                         Website with latest agg_nick_cache, default is
                         http://trac.gpolab.bbn.com/gcf/raw-
-                        attachment/wiki/Omni/agg_nick_cache
+                        attachment/wiki/Omni/agg_nick_cache. To force Omni to
+                        read this cache, delete your local AggNickCache or use
+                        --NoAggNickCache.
 
   For Developers:
     Features only needed by developers

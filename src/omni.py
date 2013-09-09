@@ -943,7 +943,7 @@ def getParser():
                       help="File where AggNick info will be cached, default is %default")
     angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
                       default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
-                      help="Website with latest agg_nick_cache, default is %default")
+                      help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 
     # Development related
