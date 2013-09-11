@@ -125,16 +125,11 @@ def getInfoFromManifest(manifestStr):
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
   loginInfo = []
   for node_el in dom.findall(tag("node")):
-#    print "==> Node client_id=%s"%node_el.attrib["client_id"]
     for serv_el in node_el.findall(tag("services")):
-#      print "\t=> Services"
       for login_el in serv_el.findall(tag("login")):
-#         print "==> Login username=%s"%login_el.attrib["username"]
          try:
            loginInfo.append(login_el.attrib)
-#           print loginInfo[-1]
            loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
-#           print loginInfo
          except AttributeError:
            print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
            sys.exit(-1)
@@ -210,7 +205,8 @@ def getInfoFromSliceManifest( amUrl ) :
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
           return []          
 
-    return getInfoFromManifest(manifest)
+    maniInfo = getInfoFromManifest(manifest)
+    return maniInfo 
 
 def getInfoFromSliverStatusPG( sliverStat ):
 
@@ -425,7 +421,7 @@ def getKeysForUser( amType, username, keyList ):
     #ProtoGENI actually creates accounts per user so check the username
     # before adding the key. ORCA and PL just add all the keys to one
     # user
-    if amType == "protogeni" and user != username :
+    if amType in ["protogeni","orca"] and user != username :
       continue
     for k in keys:
       userKeyList.append(k)
