@@ -39,6 +39,7 @@ gcf 2.4:
   - Ignore unicode vs string in comparing AM URNs (#333)
   - Document omni command line options (#329)
   - Fix parsing of cache ages (#362)
+  - Check for 0 sliver expirations in parsing `Provision` results (#364)
 
  * gcf
   - Add timestamps to pgch logs (#297)
