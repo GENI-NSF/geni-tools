@@ -991,13 +991,14 @@ class Aggregate(object):
             self.pgLogUrl = None
 
 #            # Test code to force Utah to say it couldn't give the VLAN tag requested
-#            if "//geni-am" in self.url:
+#            if "emulab.net" in self.url:
+#                self.logger.debug("Forcing %s to report an error", self)
 #                ret = dict()
 #                ret["code"] = dict()
 #                ret["code"]["geni_code"] = 2
 #                ret["code"]["am_code"] = 2
-#                ret["code"]["am_type"] = "dcn"
-#                ret["output"] = "Could not reserve vlan tags"
+#                ret["code"]["am_type"] = "protogeni"
+#                ret["output"] = "*** ERROR: mapper: Reached run limit. Giving up."
 #                raise AMAPIError("test", ret)
 
             # FIXME: Try disabling all bug WARN log messages? But I lose PG Log URL? 
@@ -1190,12 +1191,21 @@ class Aggregate(object):
                                 self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
                                 for hop in self.hops:
                                     hop.excludeFromSCS = True
+
+                            if isFatal:
+                                self.logger.debug("%s allocation failed fatally - exclude its hops. Got %s", self, fatalMsg)
+                                for hop in self.hops:
+                                    hop.excludeFromSCS = True
                         # This says always go back to the SCS
                         # This is dangerous - we could thrash
                         # FIXME: go back a limited # of times
                         # FIXME: Uncomment below code so only errors at SCS AMs cause us to go back to SCS?
                         self.inProcess = False
-                        raise StitchingCircuitFailedError("Circuit reservation failed at %s (%s). Try again from the SCS" % (self, ae))
+                        if isFatal:
+                            errormsg = fatalMsg
+                        else:
+                            errormsg = "Circuit reservation failed at %s (%s). Try again from the SCS" % (self, ae)
+                        raise StitchingCircuitFailedError(errormsg)
 
 #                        if not self.userRequested:
 #                            # Exit to SCS

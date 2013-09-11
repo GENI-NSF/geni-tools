@@ -70,6 +70,7 @@ class StitchingHandler(object):
         self.omni_config = config['omni']
         self.config = config
         self.parsedSCSRSpec = None
+        self.lastException = None
         self.ams_to_process = []
         self.opts = opts # command line options as parsed
         self.framework = omni.load_framework(self.config, self.opts)
@@ -203,7 +204,11 @@ class StitchingHandler(object):
         except StitchingError, se:
             # FIXME: Return anything different for stitching error?
             # Do we want to return a geni triple struct?
-            raise
+            if self.lastException:
+                self.logger.error("Root cause error: %s", self.lastException)
+                newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
+                se = newError
+            raise se
         finally:
             # Save a file with the aggregates used in this slice
             self.saveAggregateList(sliceurn)
@@ -278,6 +283,7 @@ class StitchingHandler(object):
                 self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
+        self.lastException = None # Clear any last exception from the last run through
 
         if self.scsCalls > 1 and existingAggs:
             # We are doing another call.
@@ -365,6 +371,7 @@ class StitchingHandler(object):
 #            raise StitchingCircuitFailedError("testing")
 
         except StitchingCircuitFailedError, se:
+            self.lastException = se
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                 self.deleteAllReservations(launcher)
@@ -388,6 +395,10 @@ class StitchingHandler(object):
             lastAM = self.mainStitchingLoop(sliceurn, requestDOM, aggs)
         except StitchingError, se:
             self.logger.error("Stitching failed with an error: %s", se)
+            if self.lastException:
+                self.logger.error("Root cause error: %s", self.lastException)
+                newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
+                se = newError
             self.deleteAllReservations(launcher)
             raise se
         return lastAM
