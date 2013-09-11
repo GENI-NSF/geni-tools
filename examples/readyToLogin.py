@@ -125,13 +125,19 @@ def getInfoFromManifest(manifestStr):
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
   loginInfo = []
   for node_el in dom.findall(tag("node")):
+#    print "==> Node client_id=%s"%node_el.attrib["client_id"]
     for serv_el in node_el.findall(tag("services")):
-      try:
-        loginInfo.append(serv_el.find(tag("login")).attrib)
-        loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
-      except AttributeError:
-        print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
-        sys.exit(-1)
+#      print "\t=> Services"
+      for login_el in serv_el.findall(tag("login")):
+#         print "==> Login username=%s"%login_el.attrib["username"]
+         try:
+           loginInfo.append(login_el.attrib)
+#           print loginInfo[-1]
+           loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
+#           print loginInfo
+         except AttributeError:
+           print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
+           sys.exit(-1)
 
   return loginInfo
 
