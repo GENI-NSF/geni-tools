@@ -92,6 +92,7 @@ gcf 2.4:
   - Fix bug if call `readyToLogin` against multiple AMs where not all of
     them have resources allocated to the indicated slice (#330)
   - Fix bug when `readyToLogin.py` reports ready when some node has failed (#343)
+  - Add support for ExoGENI multi-user slices to readyToLogin.py (#366)
 
  * remote-execute
   - Fixed bug handling multi-user slices (#349)
