@@ -145,6 +145,9 @@ def parseArguments( argv=None ) :
 
 def main(argv=None):
   
+  if not argv:
+    argv = sys.argv[1:]
+
   parseArguments(argv=argv)
   print "Find login Info for hosts in slice %s" % slicename
   loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)

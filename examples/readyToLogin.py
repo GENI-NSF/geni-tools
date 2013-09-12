@@ -622,6 +622,8 @@ def main_no_print(argv=None, opts=None, slicen=None):
 
 
 def main(argv=None):
+    if not argv:
+        argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
     printLoginInfo(loginInfoDict, keyList) 

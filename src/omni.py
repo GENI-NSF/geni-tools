@@ -998,7 +998,7 @@ def parse_args(argv, options=None, parser=None):
     if argv is None:
         # prints to stderr
         parser.print_help()
-        return
+        return None, []
 
     (options, args) = parser.parse_args(argv, options)
 
