@@ -450,7 +450,7 @@ def main(argv=None):
                     help="A non-omni option added by %s"%sys.argv[0],
                     action="store_true", default=False)
   # options is an optparse.Values object, and args is a list
-  options, args = parser.parse_args(sys.argv[1:])
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
   if options.myScriptPrivateOption:
     # do something special for your private script's options
     print "Got myScriptOption"
@@ -977,9 +977,9 @@ def getParser():
     parser.add_option_group( devgroup )
     return parser
 
-def parse_args(argv, options=None):
-    """Parse the given argv list using the Omni optparse.OptionParser.
-    Fill options into the given option optparse.Values object
+def parse_args(argv, options=None, parser=None):
+    """Parse the given argv list using the Omni optparse.OptionParser, or the parser supplied if given.
+    Fill options into the given option optparse.Values object if supplied.
     """
     if options is not None and not options.__class__==optparse.Values:
         raise OmniError("Invalid options argument to parse_args: must be an optparse.Values object")
@@ -991,7 +991,10 @@ def parse_args(argv, options=None):
         # Make a deep copy
         options = deepcopy(options)
 
-    parser = getParser()
+    if parser is not None and not isinstance(parser, optparse.OptionParser):
+        raise OmniError("parse_args got invalid parser: %s." % parser)
+    if parser is None:
+        parser = getParser()
     if argv is None:
         # prints to stderr
         parser.print_help()
