@@ -61,7 +61,7 @@ def main(argv=None):
                     help="A non-omni option added by %s"%sys.argv[0],
                     action="store_true", default=False)
   # options is an optparse.Values object, and args is a list
-  options, args = parser.parse_args(sys.argv[1:])
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
   if options.myScriptPrivateOption:
     # do something special for your private script's options
     print "Got myScriptOption"

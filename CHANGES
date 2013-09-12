@@ -40,6 +40,8 @@ gcf 2.4:
   - Document omni command line options (#329)
   - Fix parsing of cache ages (#362)
   - Check for 0 sliver expirations in parsing `Provision` results (#364)
+  - Allow scripts to use the omni `parse_args` with a supplied parser 
+    (one that the script modified from the omni base). (#368)
 
  * gcf
   - Add timestamps to pgch logs (#297)
@@ -79,6 +81,8 @@ gcf 2.4:
     hop. Generally clean up code to pick a new VLAN tag locally (#353)
   - Fix up use of minidom Document (#358)
   - Bail out more completely if a transit aggregate has a fatal error (#365)
+  - Be sure `--noExoSM` option is honored: load the AM nickname cache, 
+    and make sure we do all the usual omni option post processing. (#367)
  
  * omni-configure.py
   - Add support for rspec nicknames and default rspec locations (#326)

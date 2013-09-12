@@ -79,6 +79,9 @@ New in v2.4:
  - Ignore unicode vs string in comparing AM URNs (#333)
  - Document omni command line options (#329)
  - Fix parsing of cache ages (#362)
+ - Check for 0 sliver expirations in parsing `Provision` results (#364)
+ - Allow scripts to use the omni `parse_args` with a supplied parser 
+   (one that the script modified from the omni base). (#368)
 
 New in v2.3.2:
  - Make framework_pgch not require a project if slice URN is given (#293)
@@ -364,7 +367,7 @@ on the gcf wiki.
 
 '''NOTE''': Omni uses multiple command line options, and creates its
 own option names internally. Be sure not to pick the same option names. See omni.py and the
-getParser() function, around line 719 for all the option names.
+getParser() function, around line 781 for all the option names.
 
 == Extending Omni ==
 

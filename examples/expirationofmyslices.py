@@ -41,7 +41,7 @@ def main(argv=None):
   ##############################################################################
   parser = omni.getParser()
   parser.set_usage("%s [options] username"%sys.argv[0])
-  options, args = parser.parse_args(sys.argv[1:])
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
 
   # pull username from the command line
   if len(args) > 0:

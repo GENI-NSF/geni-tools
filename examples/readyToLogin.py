@@ -393,7 +393,7 @@ def parseArguments( argv=None, opts=None ) :
         argv = []
 
   parser = getParser()
-  (options, args) = parser.parse_args(argv, options)
+  (options, args) = omni.parse_args(argv, options, parser=parser)
 
   if len(args) > 0:
       slicename = args[0]

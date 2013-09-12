@@ -130,7 +130,7 @@ def parseArguments( argv=None ) :
         argv = []
 
   parser = getParser()
-  (options, args) = parser.parse_args(argv, options)
+  (options, args) = omni.parse_args(argv, options, parser=parser)
 
   
   if len(args) > 0:

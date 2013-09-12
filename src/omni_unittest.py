@@ -1085,7 +1085,7 @@ geni_rspec: <geni.rspec, RSpec manifest>,
                           help="Give -v to unittest", default=False)
         parser.add_option("--qq", action="store_true", 
                           help="Give -q to unittest", default=False)
-        cls.options, cls.args = parser.parse_args(sys.argv[1:])
+        cls.options, cls.args = omni.parse_args(sys.argv[1:], parser=parser)
 
         # Use the default log configuration file provided with the
         # test unless the -l option is used
