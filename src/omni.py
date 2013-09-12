@@ -405,6 +405,10 @@ def call(argv, options=None, verbose=False):
     Verbose option allows printing the command and summary, or suppressing it.
     Callers can control omni logs (suppressing console printing for example) using python logging.
 
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
+
     Can call functions like this:
      User does:    myscript.py -f my_sfa --myScriptPrivateOption describe ahtest-describe-emulab-net.json
 
@@ -578,7 +582,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     """Call the function from the given args list. 
     Apply the options from the given optparse.Values opts argument
     If verbose, print the command and the summary.
-    Return the summary and the result object.
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
     """
 
     logger = config['logger']

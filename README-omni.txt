@@ -345,6 +345,10 @@ use the `omni.call` function.
   text, returnStruct = omni.call( ['listmyslices', username], options )  
 }}}
 
+The return from `omni.call` is a list of 2 items: a human readable string summarizing the result 
+(possibly an error message), and the result object (may be `None` on error). The result 
+object type varies by the underlying command called.
+
 Omni scripting allows a script to:
  * Have its own private options
  * Programmatically set other omni options (like inferring the "-a")
