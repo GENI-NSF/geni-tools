@@ -45,9 +45,12 @@ def main(argv=None):
 
   # pull username from the command line
   if len(args) > 0:
-    username = args[0]
+    username = args[0].strip()
   else:
-    sys.exit( "Must provide a username as the first argument of script" )
+    username = None
+#    username = sfa.util.xrn.get_leaf(omnilib.util.handler_utils._get_user_urn(self))
+#    if not username:
+#      sys.exit( "Must provide a username as the first argument of script" )
 
   ##############################################################################
   # And now call omni, and omni sees your parsed options and arguments
@@ -56,7 +59,11 @@ def main(argv=None):
   #        'omni.py print_slice_expiration slicename'
   ##############################################################################
   # (1) Run equivalent of 'omni.py listmyslices username'
-  text, sliceList = omni.call( ['listmyslices', username], options )        
+  if username:
+    text, sliceList = omni.call( ['listmyslices', username], options )
+  else:
+    text, sliceList = omni.call( ['listmyslices'], options )
+    username = "(you)"
   
   #  print some summary info
   printStr = "="*80+"\n"

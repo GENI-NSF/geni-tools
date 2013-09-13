@@ -101,6 +101,9 @@ gcf 2.4:
  * remote-execute
   - Fixed bug handling multi-user slices (#349)
 
+ * expirationofmyslices
+  - Allow calling without a username (#370)
+
  * acceptance tests
   - Added test for `get_ch_version` (#316)
   - `test_getusercred_nagios()` downloads a user credential and
