@@ -56,6 +56,8 @@ the combined manifest RSpec.'''
 # - Time out omni calls in case an AM hangs
 # - opts.warn is used to suppress omni output. Clean that up. A scriptMode option?
 # - Implement confirmSafeRequest to ensure no dangerous requests are made
+# - Handle known EG error messages
+# - Loop checking to see if EG sliverstatus says success or failure
 
 import json
 import logging
@@ -116,6 +118,10 @@ def call(argv, options=None):
     parser.add_option("--ionStatusIntervalSecs", type="int", 
                       help="Seconds to sleep between sliverstatus calls at ION (default 30)",
                       default=30)
+    parser.add_option("--fixedEndpoint", default=False, action="store_true",
+                      help="RSpec uses a static endpoint - add a fake node with an interface on every link")
+    parser.add_option("--noExoSM", default=False, action="store_true",
+                      help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -123,22 +129,17 @@ def call(argv, options=None):
     # Put our logs in a different file by default
     parser.set_defaults(logoutput='stitcher.log')
 
-    # options is an optparse.Values object, and args is a list
-    options, args = parser.parse_args(argv)
-
-    # Set an option indicating if the user explicitly requested the RSpec version
-    options.ensure_value('explicitRSpecVersion', False)
-    options.explicitRSpecVersion = ('-t' in argv or '--rspectype' in argv)
-
-    if options.outputfile:
-        options.output = True
+    # Have omni use our parser to parse the args, manipulating options as needed
+    options, args = omni.parse_args(argv, parser=parser)
 
     # Set up the logger
     omni.configure_logging(options)
     logger = logging.getLogger("stitcher")
 
     # We use the omni config file
-    config = omni.load_config(options, logger)
+    # First load the agg nick cache
+    config = omni.load_agg_nick_config(options, logger)
+    config = omni.load_config(options, logger, config)
 
     #logger.info("Using AM API version %d", options.api_version)
 

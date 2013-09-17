@@ -99,7 +99,7 @@ def setNSPrefix(prefix):
   '''
   global NSPrefix
   if prefix not in VALID_NS:
-    print "Listresources namespace %s is not valid. Exit!"
+    print "Listresources namespace %s is not valid. Exit!" % prefix
     sys.exit(-1)
 
   NSPrefix = prefix
@@ -123,16 +123,28 @@ def getInfoFromManifest(manifestStr):
     sys.exit(-1)
 
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
+  gsiNS = "{http://groups.geni.net/exogeni/attachment/wiki/RspecExtensions/sliver-info/1}" # Use to look up sliverstatus in RSpec for EG
   loginInfo = []
   for node_el in dom.findall(tag("node")):
+    # Try to get the per node status from the EG specific geni_sliver_info RSpec extension
+    geni_status = ""
+    for gsi_el in node_el.findall("%s%s" % (gsiNS, "geni_sliver_info")):
+#        print "Got a geni_sliver_info that says state is: %s" % (gsi_el.attrib['state'])
+        geni_status = gsi_el.attrib['state']
     for serv_el in node_el.findall(tag("services")):
-      try:
-        loginInfo.append(serv_el.find(tag("login")).attrib)
-        loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
-      except AttributeError:
-        print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
-        sys.exit(-1)
-
+      for login_el in serv_el.findall(tag("login")):
+#         print "Looking in login tag: %s with attribute %s in node %s" % (login_el, login_el.attrib, node_el.attrib["client_id"])
+         try:
+           loginInfo.append(login_el.attrib)
+           loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
+         except AttributeError, ae:
+           print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
+           print "Error: %s" % ae
+           sys.exit(-1)
+         if not loginInfo[-1].has_key("geni_status"):
+             loginInfo[-1]["geni_status"] = geni_status #From the geni_sliver_info sub element
+         if not loginInfo[-1].has_key("am_status"):
+             loginInfo[-1]["am_status"] = geni_status #From the geni_sliver_info sub element
   return loginInfo
 
 def findUsersAndKeys( ):
@@ -153,9 +165,11 @@ def findUsersAndKeys( ):
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
             if not os.path.exists(os.path.expanduser(key)):
-                print "Key file [%s] does NOT exist." % key
+                if options.include_keys:
+                    print "Key file [%s] does NOT exist." % key
             else:
                 keyList[username].append(key)
+        #print "Found %d keys for %s" % (len(keyList[username]), username)
     return keyList
 
 def getInfoFromSliceManifest( amUrl ) :
@@ -172,10 +186,10 @@ def getInfoFromSliceManifest( amUrl ) :
     argv = [apicall, slicename]
     try:
       text, apicallout = omni.call( argv, tmpoptions )
-    except (oe.AMAPIError, oe.OmniError) :
+    except (oe.AMAPIError, oe.OmniError) as err:
       print "ERROR: There was an error executing %s, review the logs." % apicall
-      sys.exit(-1)
-
+      #print "error was: %s" % err
+      return []
     key = amUrl
     if tmpoptions.api_version == 1:
       # Key is (urn,url)
@@ -184,15 +198,15 @@ def getInfoFromSliceManifest( amUrl ) :
     if not apicallout.has_key(key):
       print "ERROR: No manifest found from %s at %s; review the logs." % \
             (apicall, amUrl)
-      sys.exit(-1)
+      return []
 
     if tmpoptions.api_version == 1:
       manifest = apicallout[key]
     else:
-      if not apicallout [key].has_key("value"):
+      if not apicallout[key].has_key("value"):
         print "ERROR: No value slot in return from %s from %s; review the logs."\
               % (apicall, amUrl)
-        sys.exit(-1)
+        return []
       value = apicallout[key]["value"]
 
       if tmpoptions.api_version == 2:
@@ -202,9 +216,10 @@ def getInfoFromSliceManifest( amUrl ) :
           manifest = value['geni_rspec']
         else:
           print "ERROR: API v%s not yet supported" %tmpoptions.api_version
-          sys.exit(-1)
+          return []          
 
-    return getInfoFromManifest(manifest)
+    maniInfo = getInfoFromManifest(manifest)
+    return maniInfo 
 
 def getInfoFromSliverStatusPG( sliverStat ):
 
@@ -244,9 +259,11 @@ def getInfoFromSliverStatusPG( sliverStat ):
         continue
       for children1 in resourceDict['pg_manifest']['children']:
         if not children1.has_key('children'):
+          #print "No child in resource[pg_man][children]"
           continue
         for children2 in children1['children']:
           if not children2.has_key("attributes"):
+            #print "No attributes on child under pg_man/children"
             continue
           child = children2['attributes']
           port = ""
@@ -254,18 +271,25 @@ def getInfoFromSliverStatusPG( sliverStat ):
           if child.has_key("hostname"):
             hostname = child["hostname"]
           else:
+            #print "No hostname"
             continue
           if child.has_key("port"):
             port = child["port"]
           client_id = ""
           if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
             client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+          #else:
+          #    print "Got no client_id from pg_man/attribs"
           geni_status = ""
           if resourceDict.has_key("geni_status"):
             geni_status = resourceDict["geni_status"]
+          #else:
+          #    print "Got no geni_status for resource"
           am_status = ""
           if resourceDict.has_key("pg_status"):
             am_status = resourceDict["pg_status"]
+          #else:
+          #    print "Got no pg_status"
           for user, keys in pgKeyList.items():
             loginInfo.append({'authentication':'ssh-keys', 
                               'hostname':hostname,
@@ -299,6 +323,23 @@ def getInfoFromSliverStatusPL( sliverStat ):
                        })
     return loginInfo
 
+def getInfoFromSliverStatusOrca( sliverStat ):
+    # NOTE: not currently used
+    loginInfo = []
+    if not sliverStat or not sliverStat.has_key('geni_resources'):
+      print "ERROR: Empty Sliver Status, or no geni_resources listed"
+      return loginInfo
+
+    for resourceDict in sliverStat['geni_resources']:
+      if not resourceDict.has_key("geni_urn") or not resourceDict.has_key("geni_status"):
+          continue
+      urn = resourceDict['geni_urn']
+      client_id = urn.split(':')[-1]
+      loginInfo.append({'client_id':client_id, 'geni_status':resourceDict['geni_status']})
+      print "Orca SliverStatus for URN %s got client_id %s, status %s" % (urn, client_id, resourceDict['geni_status'])
+
+    return loginInfo
+
 def getInfoFromSliverStatus( amUrl, amType ) :
     tmpoptions = copy.deepcopy(options)
     tmpoptions.aggregate = [amUrl]
@@ -328,6 +369,8 @@ def getInfoFromSliverStatus( amUrl, amType ) :
       loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
     if amType == 'protogeni' : 
       loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
+#    if amType == 'orca' : 
+#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
       
     return loginInfo
 
@@ -341,7 +384,7 @@ def getAMTypeFromGetVersionOut(amUrl, amOutput) :
   # FOAM does not have a code field, use foam_version
   if amOutput.has_key("foam_version"):
     return "foam"
-  # ORCA does not have a code field, use foam_version
+  # ORCA does not have a code field, use orca_version
   if amOutput.has_key("value") and amOutput["value"].has_key("orca_version"):
     return "orca"
   return None
@@ -391,7 +434,7 @@ def parseArguments( argv=None, opts=None ) :
         argv = []
 
   parser = getParser()
-  (options, args) = parser.parse_args(argv, options)
+  (options, args) = omni.parse_args(argv, options, parser=parser)
 
   if len(args) > 0:
       slicename = args[0]
@@ -419,8 +462,9 @@ def getKeysForUser( amType, username, keyList ):
     #ProtoGENI actually creates accounts per user so check the username
     # before adding the key. ORCA and PL just add all the keys to one
     # user
-    if amType == "protogeni" and user != username :
-      continue
+    if amType in ["protogeni","orca"] and user != username :
+        #print "Skipping keys for %s that is not %s" % (user, username)
+        continue
     for k in keys:
       userKeyList.append(k)
 
@@ -442,6 +486,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
   else :
     f = sys.stdout
 
+  firstTime = {}
   for amUrl, amInfo in loginInfoDict.items() :
     f.write("\n")
     f.write("="*80+"\n")
@@ -450,30 +495,49 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
-
-    firstTime = True
     for item in amInfo["info"] :
+      if not firstTime.has_key( item['client_id'] ):
+          firstTime[ item['client_id'] ] = True
+      #    print "This is first time for %s" % item['client_id']
       output = ""
       if options.readyonly :
         try:
           if item['geni_status'] != "ready" :
-            continue
+              #print "%s is not ready: %s" % (item['client_id'], item['geni_status'])
+              continue
         except KeyError:
-          sys.stderr.write("There is no status information for node %s. Print login info.")
+          sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
       # If there are status info print it, if not just skip it
       try:
-        if firstTime:
-            output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'],item['am_status'])
+        if firstTime[ item['client_id'] ]:
+            gsOut = ""
+            amsOut = ""
+            if item.has_key('geni_status'):
+                gsOut = "geni_status is: %s" % item['geni_status']
+            if item.has_key('am_status'):
+                amsOut = "am_status: %s" % item['am_status']
+            if gsOut:
+                if amsOut:
+                    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                else:
+                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+            elif amsOut:
+                    output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
+            else:
+                    output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
             # Check if node is in ready state
-        firstTime=False
-      except KeyError:
-        pass
+        firstTime[ item['client_id'] ]=False
+      except KeyError as ke:
+          #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
+          pass
 
       keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
       usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
       if options.include_keys:
           if len(keys)>0:
               output += usrLoginMsg
+          #else:
+          #    print "User %s has no keys" % item['username']
           for key in keys: 
               output += printLoginInfoForOneUser( item, key=key )
 
@@ -570,8 +634,8 @@ def main_no_print(argv=None, opts=None, slicen=None):
   framework, config, args, opts = omni.initialize( [], options )
 
   keyList = findUsersAndKeys( )
-  if sum(len(val) for val in keyList.itervalues())== 0:
-    output = "ERROR:There are no keys. You can not login to your nodes.\n"
+  if options.include_keys and sum(len(val) for val in keyList.itervalues())== 0:
+    print "ERROR: There are no keys. You can not login to your nodes."
     sys.exit(-1)
 
   # Run equivalent of 'omni.py getversion'
@@ -607,6 +671,7 @@ def main_no_print(argv=None, opts=None, slicen=None):
                                }
       continue
     if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
+      #print "Getting login info from manifest for %s" % amUrl
       amLoginInfo = getInfoFromSliceManifest(amUrl)
       # Get the status only if we care
       if len(amLoginInfo) > 0 :
@@ -615,10 +680,14 @@ def main_no_print(argv=None, opts=None, slicen=None):
         loginInfoDict[amUrl] = {'amType':amType,
                                 'info':amLoginInfo
                                }
+      #else:
+      #    print "Not getting node status for %s" % amUrl
   return loginInfoDict, keyList
 
 
 def main(argv=None):
+    if not argv:
+        argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
     printLoginInfo(loginInfoDict, keyList) 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #----------------------------------------------------------------------
 # Copyright (c) 2012-2013 Raytheon BBN Technologies
@@ -63,6 +63,18 @@ SLEEP_TIME=3
 # 
 # The above also works with -V 3.
 #
+# Run using:
+#
+# ./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios
+# Outputs file to default location used by getusercred.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred
+#
+# Outputs file as myusercred.xml.
+#
+#./am_api_accept_nagios.py NagiosTest.test_getusercred_nagios --usercredfile myusercred -V 3
+# Outputs file as myusercred.json
+#
 #
 ################################################################################
 
@@ -79,11 +91,39 @@ class NagiosTest(accept.Test):
         accept.Test.setUp( self )
         self.slicename = self.create_slice_name( prefix="nag-" )
 
+
+    def test_getusercred_nagios(self):
+        """test_getusercred_nagios: Passes if getting a user credential succeed.  
+        Use omni option --outputfile to specify the location of where to write the user credential file."""
+        self.logger.info("\n=== NagioTest.test_getusercred_nagios ===")
+        self.subtest_getusercred_nagios()
+        self.success = True
+
+    def subtest_getusercred_nagios(self):
+        # (1) Get the usercredential
+        omniargs = ["getusercred", "-o"]
+        (text, usercredstruct) = self.call(omniargs, self.options_copy)
+        if self.options_copy.api_version <= 2:
+            self.assertStr( usercredstruct,
+                        "Return from 'getusercred' " \
+                            "expected to be string " \
+                            "but instead returned: %r" 
+                        % (usercredstruct))
+            # Test if file is XML 
+            self.assertTrue(rspec_util.is_wellformed_xml( usercredstruct ),
+                        "Return from 'getusercred' " \
+                            "expected to be XML " \
+                            "but instead returned: \n" \
+                            "%s\n" \
+                            "... edited for length ..." 
+                        % (usercredstruct[:100]))
+        else:
+            geni_type, geni_version, usercred = self.assertUserCred(usercredstruct)
+
     def test_CreateSliver_nagios(self):
         """test_CreateSliver: Passes if the sliver creation workflow succeeds.  
         Use --rspec-file to replace the default request RSpec."""
         self.logger.info("\n=== Test.test_CreateSliver_nagios ===")
-
         self.subtest_CreateSliver_nagios( self.slicename )
         self.success = True
 
@@ -147,13 +187,13 @@ class NagiosTest(accept.Test):
     def subtest_SliverStatus_nagios(self, slicename):
         have_slept = 0
         status_ready = False
-        long_sleep = max( 5, MAX_TIME_TO_CREATESLIVER / NUM_SLEEP )
+        long_sleep = max( 5, self.options_copy.max_time / NUM_SLEEP )
         if slicename==None:
             slicename = self.create_slice_name()
         # before starting check if this is going to fail for unrecoverable reasons having nothing to do with being ready
         # maybe get the slice credential
         # self.subtest_generic_SliverStatus( slicename )        
-        while have_slept <= MAX_TIME_TO_CREATESLIVER:
+        while have_slept <= self.options_copy.max_time:
             try:
                 # checks geni_operational_status to see if ready
                 if self.options_copy.api_version >= 3:
@@ -174,12 +214,49 @@ class NagiosTest(accept.Test):
         self.assertTrue( status_ready, 
                          "SliverStatus on slice '%s' expected to be '%s' but was not" % (slicename, geni_status))
 
-    @classmethod
-    def nagios_parser( cls, parser=omni.getParser(), usage=None):
-        parser.add_option( "--max-createsliver-time", 
-                           action="store", type='int', dest='MAX_TIME_TO_CREATESLIVER', 
-                           help="Max time will attempt to check status of a sliver before failing")
 
+    def test_get_ch_version(self):
+        """test_get_ch_version: Passes if a 'get_ch_version' returns an XMLRPC struct
+        """
+        # Do AM API call
+        omniargs = ["get_ch_version"]
+        self.logger.info("\n=== Test.test_get_ch_version ===")
+        (text, ret_dict) = self.call(omniargs, self.options_copy)
+
+        pprinter = pprint.PrettyPrinter(indent=4)
+        # If this isn't a dictionary, something has gone wrong in Omni.  
+        self.assertDict(ret_dict,
+                        "Return from 'get_ch_version' " \
+                        "expected to contain dictionary" \
+                        "but instead returned:\n %s"
+                        % (pprinter.pformat(ret_dict)))
+        # An empty dict indicates a misconfiguration!
+        self.assertTrue(ret_dict,
+                        "Return from 'get_ch_version' " \
+                        "expected to contain dictionary " \
+                       "but instead returned empty dictionary. ")
+
+        value = self.assertReturnKeyValueType( 'get_ch_version', None, ret_dict, 
+                                                   'api', float )
+
+        self.success = True
+
+
+    @classmethod
+    def getParser( cls, parser=accept.Test.getParser(), usage=None):
+
+        parser.add_option( "--max-createsliver-time", 
+                           action="store", type='int', 
+                           default = MAX_TIME_TO_CREATESLIVER,
+                           dest='max_time', 
+                           help="Max number of seconds will attempt to check status of a sliver before failing  [default: %default]")
+        return parser
+
+    def nagios_parser( cls, parser=None, usage=None):
+        if parser is None:
+            parser = cls.getParser()
+        argv = NagiosTest.unittest_parser(parser=parser, usage=usage)
+        return argv
 
 if __name__ == '__main__':
     usage = "\n      %s -a am-undertest" \

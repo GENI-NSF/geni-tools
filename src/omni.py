@@ -87,20 +87,35 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
-    
+
+      Other functions:
+       [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
 """
 
 import ConfigParser
 from copy import deepcopy
 import datetime
+import inspect
 import logging.config
 import optparse
 import os
 import sys
+import urllib
 
 from omnilib.util import OmniError, AMAPIError
 from omnilib.handler import CallHandler
-from omnilib.util.handler_utils import validate_url
+from omnilib.util.handler_utils import validate_url, printNicknames
+
+# Explicitly import framework files so py2exe is happy
+import omnilib.frameworks.framework_apg
+import omnilib.frameworks.framework_base
+import omnilib.frameworks.framework_gcf
+import omnilib.frameworks.framework_gch
+import omnilib.frameworks.framework_gib
+import omnilib.frameworks.framework_of
+import omnilib.frameworks.framework_pg
+import omnilib.frameworks.framework_pgch
+import omnilib.frameworks.framework_sfa
 
 OMNI_VERSION="2.4"
 
@@ -122,7 +137,74 @@ def countSuccess( successList, failList ):
     succNum = len( successList )
     return (succNum, succNum + len( failList ) )
 
-def load_config(opts, logger):
+def load_agg_nick_config(opts, logger):
+    """Load the agg_nick_cache file.
+    Search path:
+    - filename from commandline
+      - in current directory
+      - in ~/.gcf
+    - agg_nick_cache in current directory
+    - agg_nick_cache in ~/.gcf
+    """
+
+    # the directory of this file
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = curr_dir.rsplit("/",1)[0]
+
+    # Load up the config file
+    configfiles = ['agg_nick_cache','~/.gcf/agg_nick_cache', os.path.join(parent_dir, 'agg_nick_cache.base')]
+    
+    aggNickCacheExists = False
+    if opts.aggNickCacheName:
+        # if aggNickCacheName defined on commandline does not exist, fail
+        if os.path.exists( opts.aggNickCacheName ):
+            configfiles.insert(0, opts.aggNickCacheName)
+            aggNickCacheExists = True
+        else:
+            # Check maybe the default directory for the file
+            configfile = os.path.join( '~/.gcf', opts.aggNickCacheName )
+            configfile = os.path.expanduser( configfile )
+            if os.path.exists( configfile ):
+                configfiles.insert(0, configfile)
+            else:
+                logger.info("Config file '%s' or '%s' does not exist"
+                     % (opts.aggNickCacheName, configfile))
+    if aggNickCacheExists:
+        aggNickCacheDate = os.path.getmtime(opts.aggNickCacheName)
+        aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
+    else:
+        aggNickCacheTimestamp = None
+
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+        update_agg_nick_cache( opts, logger )
+
+    # Find the first valid config file
+    for cf in configfiles:         
+        filename = os.path.expanduser(cf)
+        if os.path.exists(filename):
+            break
+    config = {}       
+    
+    # Did we find a valid config file?
+    if not os.path.exists(filename):
+        prtStr = """Could not find an agg_nick_cache file in local directory or in ~/.gcf/agg_nick_cache"""
+        logger.info( prtStr )
+        return config
+
+
+    logger.info("Loading agg_nick_cache file '%s'", filename)
+    
+    confparser = ConfigParser.RawConfigParser()
+    try:
+        confparser.read(filename)
+    except ConfigParser.Error as exc:
+        logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
+        raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
+
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
+    return config
+
+def load_config(opts, logger, config={}):
     """Load the omni config file.
     Search path:
     - filename from commandline
@@ -174,7 +256,6 @@ def load_config(opts, logger):
         raise OmniError, "Config file %s could not be parsed: %s"% (filename, str(exc))
 
     # Load up the omni options
-    config = {}
     config['logger'] = logger
     config['omni'] = {}
     for (key,val) in confparser.items('omni'):
@@ -191,31 +272,7 @@ def load_config(opts, logger):
                         d[key] = val
                     config['users'].append(d)
 
-    # Find aggregate nicknames
-    config['aggregate_nicknames'] = {}
-    if confparser.has_section('aggregate_nicknames'):
-        for (key,val) in confparser.items('aggregate_nicknames'):
-            temp = val.split(',')
-            for i in range(len(temp)):
-                temp[i] = temp[i].strip()
-            if len(temp) != 2:
-                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
-            if len(temp) == 0:
-                continue
-            if len(temp) == 1:
-                # Got 1 entry - if its a valid URL, use it
-                res = validate_url(temp[0])
-                if res is None or res.startswith("WARN:"):
-                    t = temp[0]
-                    temp = ["",t]
-                else:
-                    # not a valid URL. Skip it
-                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
-                    continue
-
-            # If temp len > 2: try to use it as is
-
-            config['aggregate_nicknames'][key] = temp
+    config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
 
     # Find rspec nicknames
     config['rspec_nicknames'] = {}
@@ -258,6 +315,46 @@ def load_config(opts, logger):
 
     return config
 
+def load_aggregate_nicknames( config, confparser, filename, logger, opts ):
+    # Find aggregate nicknames
+    if not config.has_key('aggregate_nicknames'):
+        config['aggregate_nicknames'] = {}
+    if confparser.has_section('aggregate_nicknames'):
+        for (key,val) in confparser.items('aggregate_nicknames'):
+            temp = val.split(',')
+            for i in range(len(temp)):
+                temp[i] = temp[i].strip()
+            if len(temp) != 2:
+                logger.warn("Malformed definition of aggregate nickname %s. Should be <URN>,<URL> where URN may be empty. Got: %s", key, val)
+            if len(temp) == 0:
+                continue
+            if len(temp) == 1:
+                # Got 1 entry - if its a valid URL, use it
+                res = validate_url(temp[0])
+                if res is None or res.startswith("WARN:"):
+                    t = temp[0]
+                    temp = ["",t]
+                else:
+                    # not a valid URL. Skip it
+                    logger.warn("Skipping aggregate nickname %s: %s doesn't look like a URL", key, temp[0])
+                    continue
+
+            # If temp len > 2: try to use it as is
+            if config['aggregate_nicknames'].has_key(key):
+                if config['aggregate_nicknames'][key] == temp:
+                    #logger.debug("AM nickname %s from %s defined identically already", key, filename)
+                    continue
+                elif temp[0] == "" and config['aggregate_nicknames'][key][1] == temp[1]:
+                    #logger.debug("AM nickname %s from %s already defined and with a URN", key, filename)
+                    continue
+                else:
+                    logger.debug("Aggregate nickname '%s' being redefined using value from '%s'", key, filename)
+                    logger.debug("     Old: %s=%s. New: %s=%s", config['aggregate_nicknames'][key][0], config['aggregate_nicknames'][key][1], temp[0], temp[1])
+#            else:
+#                logger.debug("Loaded aggregate nickname '%s' from file '%s'." % (key, filename))
+            config['aggregate_nicknames'][key] = temp
+    return config
+
 def load_framework(config, opts):
     """Select the Control Framework to use from the config, and instantiate the proper class."""
 
@@ -269,6 +366,17 @@ def load_framework(config, opts):
     framework = framework_mod.Framework(config['selected_framework'], opts)
     return framework    
 
+def update_agg_nick_cache( opts, logger ):
+    """Try to download the definitive version of `agg_nick_cache` and
+    store in the specified place."""
+    try:
+        # wget `agg_nick_cache`
+        # cp `agg_nick_cache` opts.aggNickCacheName
+        urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
+        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
+    except:
+        logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
+
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
     (Supplying an existing options object allows pre-setting certain values not in argv.)
@@ -279,7 +387,8 @@ def initialize(argv, options=None ):
 
     opts, args = parse_args(argv, options)
     logger = configure_logging(opts)
-    config = load_config(opts, logger)
+    config = load_agg_nick_config(opts, logger)
+    config = load_config(opts, logger, config)
     framework = load_framework(config, opts)
     logger.debug('User Cert File: %s', framework.cert)
     return framework, config, args, opts
@@ -295,6 +404,10 @@ def call(argv, options=None, verbose=False):
 
     Verbose option allows printing the command and summary, or suppressing it.
     Callers can control omni logs (suppressing console printing for example) using python logging.
+
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
 
     Can call functions like this:
      User does:    myscript.py -f my_sfa --myScriptPrivateOption describe ahtest-describe-emulab-net.json
@@ -337,7 +450,7 @@ def main(argv=None):
                     help="A non-omni option added by %s"%sys.argv[0],
                     action="store_true", default=False)
   # options is an optparse.Values object, and args is a list
-  options, args = parser.parse_args(sys.argv[1:])
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
   if options.myScriptPrivateOption:
     # do something special for your private script's options
     print "Got myScriptOption"
@@ -469,7 +582,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     """Call the function from the given args list. 
     Apply the options from the given optparse.Values opts argument
     If verbose, print the command and the summary.
-    Return the summary and the result object.
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
     """
 
     logger = config['logger']
@@ -477,10 +592,13 @@ def API_call( framework, config, args, opts, verbose=False ):
     if opts.debug:
         logger.info(getSystemInfo() + "\nOmni: " + getOmniVersion())
 
-    # Process the user's call
-    handler = CallHandler(framework, config, opts)    
-#    Returns string, item
-    result = handler._handle(args)
+    if len(args) > 0 and args[0].lower() == "nicknames":
+        result = printNicknames(config, opts)
+    else:
+        # Process the user's call
+        handler = CallHandler(framework, config, opts)
+    #    Returns string, item
+        result = handler._handle(args)
     if result is None:
         retVal = None
         retItem = None
@@ -701,99 +819,167 @@ def getParser():
  \t\t\t listmykeys \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
+ \t\tOther functions: \n\
+ \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 
     parser = optparse.OptionParser(usage=usage, version="%prog: " + getOmniVersion())
-    parser.add_option("-c", "--configfile",
-                      help="Config file name", metavar="FILE")
-    parser.add_option("-f", "--framework", default="",
-                      help="Control framework to use for creation/deletion of slices")
-    parser.add_option("-V", "--api-version", type="int", default=2,
-                      help="Specify version of AM API to use (default 2)")
-    parser.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
+
+    # Basics
+    basicgroup = optparse.OptionGroup( parser, "Basic and Most Used Options")
+    basicgroup.add_option("-a", "--aggregate", metavar="AGGREGATE_URL", action="append",
                       help="Communicate with a specific aggregate")
-    parser.add_option("-r", "--project", 
-                      help="Name of project. (For use with pgch framework.)")
-    # Note that type and version are case in-sensitive strings.
-    parser.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
-                      help="RSpec type and version to return, default 'GENI 3'")
-    parser.add_option("--debug", action="store_true", default=False,
-                       help="Enable debugging output. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--info", action="store_true", default=False,
-                       help="Set logging to INFO.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--warn", action="store_true", default=False,
-                       help="Set log level to WARN. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("--error", action="store_true", default=False,
-                       help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
-    parser.add_option("-o", "--output",  default=False, action="store_true",
-                      help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
-    parser.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
-                      help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    parser.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
-                      help="Filename prefix when saving results (used with -o, not --usercredfile, --slicecredfile, or --outputfile)")
-    parser.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    parser.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
-    parser.add_option("--tostdout", default=False, action="store_true",
-                      help="Print results like rspecs to STDOUT instead of to log stream")
-    parser.add_option("--no-compress", dest='geni_compressed', 
-                      default=True, action="store_false",
-                      help="Do not compress returned values")
-    parser.add_option("--available", dest='geni_available',
+    basicgroup.add_option("--available", dest='geni_available',
                       default=False, action="store_true",
                       help="Only return available resources")
-    parser.add_option("--best-effort", dest='geni_best_effort',
+    basicgroup.add_option("-c", "--configfile",
+                      help="Config file name (aka `omni_config`)", metavar="FILE")
+    basicgroup.add_option("-f", "--framework", default="",
+                      help="Control framework to use for creation/deletion of slices")
+    basicgroup.add_option("-r", "--project", 
+                      help="Name of project. (For use with pgch framework.)")
+    # Note that type and version are case in-sensitive strings.
+    # This causes settiong options.explicitRSpecVersion as well
+    basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
+                      help="RSpec type and version to return, default 'GENI 3'")
+    # This goes in options.api_version. Also causes setting options.explicitAPIVersion
+    basicgroup.add_option("-V", "--api-version", type="int", default=2,
+                      help="Specify version of AM API to use (default 2)")
+
+    parser.add_option_group( basicgroup )
+    # AM API v3 specific
+    v3group = optparse.OptionGroup( parser, "AM API v3+",
+                          "Options used in AM API v3 or later" )
+    v3group.add_option("--best-effort", dest='geni_best_effort',
                       default=False, action="store_true",
                       help="Should AMs attempt to complete the operation on only some slivers, if others fail")
-    parser.add_option("-u", "--sliver-urn", dest="slivers", action="append",
-                      help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
-    parser.add_option("--end-time", dest='geni_end_time',
+    v3group.add_option("--cred", action='append', metavar="CRED_FILENAME",
+                      help="Send credential in given filename with any call that takes a list of credentials")
+    v3group.add_option("--end-time", dest='geni_end_time',
                       help="Requested end time for any newly allocated or provisioned slivers - may be ignored by the AM")
-    parser.add_option("-v", "--verbose", default=True, action="store_true",
-                      help="Turn on verbose command summary for omni commandline tool")
-    parser.add_option("--verbosessl", default=False, action="store_true",
-                      help="Turn on verbose SSL / XMLRPC logging")
-    parser.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
+# Sample options file content:
+#{
+# "option_name_1": "value",
+# "option_name_2": {"complicated_dict" : 37},
+# "option_name_3": 67
+#}
+    v3group.add_option("--optionsfile", metavar="JSON_OPTIONS_FILENAME",
+                      help="Send all options defined in named JSON format file to methods that take options")
+    v3group.add_option("--speaksfor", metavar="USER_URN",
+                      help="Supply given URN as user we are speaking for in Speaks For option")
+    v3group.add_option("-u", "--sliver-urn", dest="slivers", action="append",
+                      help="Sliver URN (not name) on which to act. Supply this option multiple times for multiple slivers, or not at all to apply to the entire slice")
+
+    parser.add_option_group( v3group )
+
+    # logging levels
+    loggroup = optparse.OptionGroup( parser, "Logging and Verboseness",
+                          "Control the amount of output to the screen and/or to a log" )
+    loggroup.add_option("-q", "--quiet", default=True, action="store_false", dest="verbose",
                       help="Turn off verbose command summary for omni commandline tool")
-    parser.add_option("-l", "--logconfig", default=None,
+    loggroup.add_option("-v", "--verbose", default=True, action="store_true",
+                      help="Turn on verbose command summary for omni commandline tool")
+    loggroup.add_option("--debug", action="store_true", default=False,
+                       help="Enable debugging output. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--info", action="store_true", default=False,
+                       help="Set logging to INFO.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--warn", action="store_true", default=False,
+                       help="Set log level to WARN. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file. If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--error", action="store_true", default=False,
+                       help="Set log level to ERROR. This won't print the command outputs, e.g. manifest rspec, so use the -o or the --outputfile options to save it to a file.If multiple loglevel are set from commandline (e.g. --debug, --info) the more verbose one will be preferred.")
+    loggroup.add_option("--verbosessl", default=False, action="store_true",
+                      help="Turn on verbose SSL / XMLRPC logging")
+    loggroup.add_option("-l", "--logconfig", default=None,
                       help="Python logging config file")
-    parser.add_option("--logoutput", default='omni.log',
+    loggroup.add_option("--logoutput", default='omni.log',
                       help="Python logging output file [use %(logfilename)s in logging config file]")
-    parser.add_option("--NoGetVersionCache", dest='noGetVersionCache',
+    loggroup.add_option("--tostdout", default=False, action="store_true",
+                      help="Print results like rspecs to STDOUT instead of to log stream")
+    parser.add_option_group( loggroup )
+
+    # output to files
+    filegroup = optparse.OptionGroup( parser, "File Output",
+                          "Control name of output file and whether to output to a file" )
+    filegroup.add_option("-o", "--output",  default=False, action="store_true",
+                      help="Write output of many functions (getversion, listresources, allocate, status, getslicecred,...) , to a file (Omni picks the name)")
+    filegroup.add_option("-p", "--prefix", default=None, metavar="FILENAME_PREFIX",
+                      help="Filename prefix when saving results (used with -o, not --usercredfile, --slicecredfile, or --outputfile)")
+    # If this next is set, then options.output is also set
+    filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
+                      help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
+    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
+    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    parser.add_option_group( filegroup )
+    # GetVersion
+    gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
+                          "Control GetVersion Cache" )
+    gvgroup.add_option("--NoGetVersionCache", dest='noGetVersionCache',
                       default=False, action="store_true",
                       help="Disable using cached GetVersion results (forces refresh of cache)")
-    parser.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
+    gvgroup.add_option("--ForceUseGetVersionCache", dest='useGetVersionCache',
                       default=False, action="store_true",
                       help="Require using the GetVersion cache if possible (default false)")
-    parser.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
+    # This causes setting options.GetVersionCacheOldestDate
+    gvgroup.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
                       default=7,
                       help="Age in days of GetVersion cache info before refreshing (default is 7)")
-    parser.add_option("--GetVersionCacheName", dest='getversionCacheName',
+    gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
                       help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
-    parser.add_option("--devmode", default=False, action="store_true",
-                      help="Run in developer mode: more verbose, less error checking of inputs")
-    parser.add_option("--arbitrary-option", dest='arbitrary_option',
+    parser.add_option_group( gvgroup )
+
+    # AggNick
+    angroup = optparse.OptionGroup( parser, "Aggregate Nickname Cache",
+                          "Control Aggregate Nickname Cache" )
+    angroup.add_option("--NoAggNickCache", dest='noAggNickCache',
+                      default=False, action="store_true",
+                      help="Disable using cached AggNick results and force refresh of cache (default is %default)")
+    angroup.add_option("--ForceUseAggNickCache", dest='useAggNickCache',
+                      default=False, action="store_true",
+                      help="Require using the AggNick cache if possible (default %default)")
+    # This causes setting options.AggNickCacheOldestDate
+    angroup.add_option("--AggNickCacheAge", dest='AggNickCacheAge',
+                      default=1,
+                      help="Age in days of AggNick cache info before refreshing (default is %default)")
+    angroup.add_option("--AggNickCacheName", dest='aggNickCacheName',
+                      default="~/.gcf/agg_nick_cache",
+                      help="File where AggNick info will be cached, default is %default")
+    angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
+                      default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
+                      help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
+    parser.add_option_group( angroup )
+
+    # Development related
+    devgroup = optparse.OptionGroup( parser, "For Developers",
+                          "Features only needed by developers" )
+    devgroup.add_option("--abac", default=False, action="store_true",
+                      help="Use ABAC authorization")
+    devgroup.add_option("--arbitrary-option", dest='arbitrary_option',
                       default=False, action="store_true",
                       help="Add an arbitrary option to ListResources (for testing purposes)")
-    parser.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
+    devgroup.add_option("--devmode", default=False, action="store_true",
+                      help="Run in developer mode: more verbose, less error checking of inputs")
+    devgroup.add_option("--no-compress", dest='geni_compressed', 
+                      default=True, action="store_false",
+                      help="Do not compress returned values")
+    devgroup.add_option("--no-ssl", dest="ssl", action="store_false",
+                      default=True, help="do not use ssl")
+    devgroup.add_option("--no-tz", default=False, action="store_true",
+                      help="Do not send timezone on RenewSliver")
+    devgroup.add_option("--orca-slice-id", dest="orca_slice_id",
+                      help="Use the given Orca slice id")
+    devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
-    parser.add_option("--no-tz", default=False, action="store_true",
-                      help="Do not send timezone on RenewSliver")
-    parser.add_option("--no-ssl", dest="ssl", action="store_false",
-                      default=True, help="do not use ssl")
-    parser.add_option("--orca-slice-id",
-                      help="Use the given Orca slice id")
-    parser.add_option("--abac", default=False, action="store_true",
-                      help="Use ABAC authorization")
+    parser.add_option_group( devgroup )
     return parser
 
-def parse_args(argv, options=None):
-    """Parse the given argv list using the Omni optparse.OptionParser.
-    Fill options into the given option optparse.Values object
+def parse_args(argv, options=None, parser=None):
+    """Parse the given argv list using the Omni optparse.OptionParser, or the parser supplied if given.
+    Fill options into the given option optparse.Values object if supplied.
     """
     if options is not None and not options.__class__==optparse.Values:
         raise OmniError("Invalid options argument to parse_args: must be an optparse.Values object")
@@ -805,11 +991,14 @@ def parse_args(argv, options=None):
         # Make a deep copy
         options = deepcopy(options)
 
-    parser = getParser()
+    if parser is not None and not isinstance(parser, optparse.OptionParser):
+        raise OmniError("parse_args got invalid parser: %s." % parser)
+    if parser is None:
+        parser = getParser()
     if argv is None:
         # prints to stderr
         parser.print_help()
-        return
+        return None, []
 
     (options, args) = parser.parse_args(argv, options)
 
@@ -833,12 +1022,30 @@ def parse_args(argv, options=None):
                      % (options.api_version, supported_versions))
 
     # From GetVersionCacheAge (int days) produce options.GetVersionCacheOldestDate as a datetime.datetime
-    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.GetVersionCacheAge)
+    indays = -1
+    try:
+        indays = int(options.GetVersionCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse GetVersionCacheAge: %s" % e 
+    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
 
     if options.noGetVersionCache and options.useGetVersionCache:
         parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
+
+    # From AggNickCacheAge (int days) produce options.AggNickCacheOldestDate as a datetime.datetime
+    indays = -1
+    try:
+        indays = int(options.AggNickCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse AggNickCacheAge: %s" % e 
+    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
+
+    options.aggNickCacheName = os.path.normcase(os.path.expanduser(options.aggNickCacheName))
+
+    if options.noAggNickCache and options.useAggNickCache:
+        parser.error("Cannot both force not using the AggNick cache and force TO use it.")
 
     if options.outputfile:
         options.output = True

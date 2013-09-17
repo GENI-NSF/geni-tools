@@ -2,23 +2,116 @@
 
 gcf 2.4:
  * omni
-  - Add nicknames for RSpecs; includes ability to specify a default location (#265)
+  - Add nicknames for RSpecs; includes ability to specify a default
+  location. See the sample omni_config for details. (#265,#360,#361)
   - Make `allocate` accept rspecs loaded from a url (#287)
-  - Make framework_pgch not require a project if slice URN is given (#293)
+  - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
+  - Split aggregate nicknames into a separate file from `omni_config`. (#352)
+    Omni periodically downloads a config file of standard aggregate
+    nicknames so you don't have to define these, and can get such
+    nicknames as soon as new aggregates are available.
+  - New option `--speaksfor` to specify a user urn for the speaks for option. (#339) 
+    See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
+  - New option `--cred` to specify a file containing a credential to
+  send to any call that takes a list of credentials. Supply this
+  argument as many times as desired. (#46)
+  - New option `--optionsfile` takes the name of a JSON format file
+  listing additional named options to supply to calls that take
+  options. (#327)
+  Sample options file content:
+{{{
+{
+ "option_name_1": "value",
+ "option_name_2": {"complicated_dict" : 37},
+ "option_name_3": 67
+}
+}}}
   - Log messages: include timestamp, make clearer (#296)
+  - Renew to now or past raises an exception (#337)
+  - Re-organize Omni help message for readability (#350)
+  - When renewing a slice using a saved slice credential, save the new
+  slice credential and avoid printing the old slice expiration (#314)
+  - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
+   for a given Omni invocation. `CreateSliver` now gets its aggregate similar to other methods. (#275,#311)
+  - Add Utah DDC rack (#347)
+  - Refactor chhandler credential saving methods into `handler_utils.py` (#309)
+  - Explicitly import framework files to support packaging (#322)
+  - Ignore unicode vs string in comparing AM URNs (#333)
+  - Document omni command line options (#329)
+  - Fix parsing of cache ages (#362)
+  - Check for 0 sliver expirations in parsing `Provision` results (#364)
+  - Allow scripts to use the omni `parse_args` with a supplied parser 
+    (one that the script modified from the omni base). (#368)
 
  * gcf
   - Add timestamps to pgch logs (#297)
+  - Make ch optionally multi-threaded, default True (#313,#359)
+  - Credential verifier logs when a credential is unparseable but
+    moves on to try others (#46)
 
  * stitcher
+  - Add 2 new options to change sleep between sliverstatus calls at
+    ION AMs and reservation attempts (#299)
+  - Support EG AM Manifests where hop IDs are changed and only some
+    hops are included, and vlanRangeAvailable is not trustworthy (#317)
+  - Add new `--fixedEndpoint` option for use when link ends at a
+    switch, so AMs are happy. (#336)
+  - Add new `--noExoSM` option to try to force using local rack VMs
+  - Save the slice credential to a file when we check it is valid, if
+    it didn't already come from a file. (#309, #331)
+  - Delete old getversion files (#307)
+  - Retry DCN (ION) reservations at most 3 times locally, not 10 (#332)
+  - Find missing AM URLs from `omni_config` nicknames or CH if possible (#319)
+  - Stop adding expires attribute on request rspecs (#344)
   - Support SCS !GetVersion for testing (#295)
   - Pause longer before retrying ION circuits (#298, #299)
-  - Link with 2 identical AMs has only 1 AM - use Omni (#300)
+  - A Link with 2 identical AMs really has only 1 AM, so use Omni (#300)
   - Give up on fatal mapper errors from ProtoGENI based AMs (#301)
-  - Add 2 new options to change sleep between sliverstatus calls at
- ION AMs and reservation attempts (#299)
+  - Sleep between runs after re-calling SCS, in case the sleep isn't
+    needed. (#305)
+  - Quiet down errors merging ExoGENI manifest RSpecs (#321)
+  - Be a little more careful when merging hops in the combined manifest RSpec (#323)
+  - Be sure to re-enable logging when an omni call raises an exception
+    (#335)
+  - Support multiple circuits when parsing sliverstatus at DCN AMs
+    (#292)
+  - PG AMs now report the failed path/tag - use that to ID the failed
+    hop (#354)
+  - Be sure to use distinct tags when 2 paths go across the same
+    hop. Generally clean up code to pick a new VLAN tag locally (#353)
+  - Fix up use of minidom Document (#358)
+  - Bail out more completely if a transit aggregate has a fatal error (#365)
+  - Be sure `--noExoSM` option is honored: load the AM nickname cache, 
+    and make sure we do all the usual omni option post processing. (#367)
+ 
+ * omni-configure.py
+  - Add support for rspec nicknames and default rspec locations (#326)
 
-gcf 2.3.3:
+ * readyToLogin
+  - When _using_ the `--no-keys` option, don't check whether the user has
+    any private ssh keys to use logging into nodes (#341)
+  - When _not_ using the `--no-keys` option, print a helpful error message
+    when you bail due to a lack of having any private SSH keys to use
+    logging into nodes (#342)
+  - Fix bug if call `readyToLogin` against multiple AMs where not all of
+    them have resources allocated to the indicated slice (#330)
+  - Fix bug when `readyToLogin.py` reports ready when some node has failed (#343)
+  - Add support for ExoGENI multi-user slices to readyToLogin.py (#366)
+
+ * remote-execute
+  - Fixed bug handling multi-user slices (#349)
+
+ * expirationofmyslices
+  - Allow calling without a username (#370)
+
+ * acceptance tests
+  - Added test for `get_ch_version` (#316)
+  - `test_getusercred_nagios()` downloads a user credential and
+    validates its format for use with monitoring (#338)
+  - Added `am_api_accept_scaling.py` which contains a scaling test (#324)
+  - Don't try to renew a slice shorter (#363)
+
+gcf 2.3.2:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
   - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)

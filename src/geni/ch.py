@@ -35,10 +35,15 @@ import os
 
 import dateutil.parser
 from SecureXMLRPCServer import SecureXMLRPCServer
+from SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer, SecureThreadedXMLRPCRequestHandler
 import geni.util.cred_util as cred_util
 import geni.util.cert_util as cert_util
 import geni.util.urn_util as urn_util
 import sfa.trust.gid as gid
+
+# Variable to turn on multi-threaded CH server
+# If true, spawn a different thread for each RPC
+THREADED = True
 
 
 # Substitute eg "openflow//stanford"
@@ -201,8 +206,17 @@ class Clearinghouse(object):
         debug = False
         if self.config.has_key('debug'):
             debug = self.config['debug']
-        return SecureXMLRPCServer(addr, logRequests=debug, keyfile=keyfile, certfile=certfile,
-                                  ca_certs=ca_certs)
+        if THREADED:
+            return SecureThreadedXMLRPCServer(addr, logRequests=debug, \
+                                                  keyfile=keyfile, \
+                                                  certfile=certfile, \
+                                                  ca_certs=ca_certs)
+        else:
+            return SecureXMLRPCServer(addr, logRequests=debug, \
+                                          keyfile=keyfile, \
+                                          certfile=certfile, \
+                                          ca_certs=ca_certs)
+
 
     def _naiveUTC(self, dt):
         """Converts dt to a naive datetime in UTC.
@@ -295,7 +309,10 @@ class Clearinghouse(object):
         # as trusted by this CH for some reason) called this method,
         # that user would be used here - and can still get a valid slice
         try:
-            user_gid = gid.GID(string=self._server.pem_cert)
+            if THREADED:
+                user_gid = gid.GID(string=SecureThreadedXMLRPCRequestHandler.get_pem_cert())
+            else:
+                user_gid = gid.GID(string=self._server.pem_cert)
         except Exception, exc:
             self.logger.error("CreateSlice failed to create user_gid from SSL client cert: %s", traceback.format_exc())
             raise Exception("Failed to create slice %s. Cant get user GID from SSL client certificate." % urn, exc)
@@ -341,7 +358,11 @@ class Clearinghouse(object):
                                 expire_str)
             return False
         # Everything checks out, so create a new slice cred and tuck it away.
-        user_gid = gid.GID(string=self._server.pem_cert)
+        if THREADED:
+            user_gid = gid.GID(string=SecureThreadedXMLRPCRequestHandler.get_pem_cert())
+        else:
+            user_gid = gid.GID(string=self._server.pem_cert)
+
         slice_cred = self.slices[slice_urn]
         slice_gid = slice_cred.get_gid_object()
         # if original slice' privileges were all delegatable,

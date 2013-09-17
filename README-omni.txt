@@ -40,15 +40,53 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
-New in v2.4:
-  - Add nicknames for RSpecs; includes ability to specify a default location (#265)
-  - Make `allocate` accept rspecs loaded from a url (#287)
-  - Make framework_pgch not require a project if slice URN is given (#293)
-  - Log messages: include timestamp, make clearer (#296)
 
-New in v2.3.3:
-  - Make framework_pgch not require a project if slice URN is given (#293)
-  - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
+New in v2.4:
+ - Add nicknames for RSpecs; includes ability to specify a default
+ location. See the sample omni_config for details. (#265,#360,#361)
+ - Make `allocate` accept rspecs loaded from a url (#287)
+ - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
+ - Split aggregate nicknames into a separate file from `omni_config`. (#352)
+   Omni periodically downloads a config file of standard aggregate
+   nicknames so you don't have to define these, and can get such
+   nicknames as soon as new aggregates are available.
+ - New option `--speaksfor` to specify a user urn for the speaks for option. (#339) 
+   See http://groups.geni.net/geni/wiki/GAPI_AM_API_DRAFT#ChangeSetP:SupportproxyclientsthatSpeakForanexperimenter
+ - New option `--cred` to specify a file containing a credential to
+   send to any call that takes a list of credentials. Supply this
+   argument as many times as desired. (#46)
+ - New option `--optionsfile` takes the name of a JSON format file
+   listing additional named options to supply to calls that take
+   options. (#327)
+   Sample options file content:
+{{{
+{
+ "option_name_1": "value",
+ "option_name_2": {"complicated_dict" : 37},
+ "option_name_3": 67
+}
+}}}
+ - Log messages: include timestamp, make clearer (#296)
+ - Renew to now or past raises an exception (#337)
+ - Re-organize Omni help message for readability (#350)
+ - When renewing a slice using a saved slice credential, save the new
+   slice credential and avoid printing the old slice expiration (#314)
+ - Clean up logs and error messages when an aggregate is unreachable. Clients are cached 
+   for a given Omni invocation. `CreateSliver` now gets its aggregate similar to other methods. (#275,#311)
+ - Add Utah DDC rack (#347)
+ - Refactor chhandler credential saving methods into `handler_utils.py` (#309)
+ - Explicitly import framework files to support packaging (#322)
+ - Ignore unicode vs string in comparing AM URNs (#333)
+ - Document omni command line options (#329)
+ - Fix parsing of cache ages (#362)
+ - Check for 0 sliver expirations in parsing `Provision` results (#364)
+ - Allow scripts to use the omni `parse_args` with a supplied parser 
+   (one that the script modified from the omni base). (#368)
+
+New in v2.3.2:
+ - Make framework_pgch not require a project if slice URN is given (#293)
+ - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
+ - `clear-passphrases.py`: fix bug when omni_config is in certain directories (#304) 
 
 New in v2.3.1:
  - Added a new script to do GENI VLAN stitching: stitcher.py
@@ -261,98 +299,7 @@ Detailed changes:
  - Clean up createsliver output (ticket #139)
  - Listresources notes if supplied slice credential is expired (ticket #162)
 
-New in v1.6.2:
- * Added omni-configure.py script to autogenerate the omni_config (#127)
- * Log malformed sliverstatus (#128)
- * Better missing file error messages in delegateSliceCred (#129)
- * Update to SFA codebase as of 4/13/12
- * Bug fix: Handle AM down when !ListResources calls !GetVersion and
-   gets a null (#131)
- * Implement list my slices for SFA/PlanetLab (#137)
- * Allow listing public keys installed by / known by the CH (#136)
-
-New in v1.6:
- * Fix bug in printout of !CreateSliver error (ticket #95)
- * Make getversion AM API v2 implementation be consistent with other commands (#109)
- * Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
- * Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
- * libstitch example scripts handle V2 AMs in some cases (#119)
- * Updated get_aggregates() call due to changes in SFA (#94)
- * Fix bug in _get_advertised_rspec() (#114)
- * Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
- * readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
- * Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
-
-New in v1.5.2:
-  * validate the API version argument (#92)
-
-New in v1.5.1:
-  * Incorporated latest SFA library changes (tag sfa-2.0-4)
-  * Complete support of AM API v2 (ticket #69)
-    - Default is AM API v1
-    - Use -V 2 or --api-version 2 to cause omni to use AM APIv2 to speak to aggregates
-   * Added --available to have listresources filter calls to only include available nodes (ticket #74)
-   * Added --no-compress to allow the user to specify that AM API call returns should not be compressed (ticket #73)
-
-New in v1.5:
-  * Remove AM specific URL validation checks; they were confusing. (ticket #66)
-  * Incorporated SFA library fixes
-  * Updated readyToLogin script to filter out nodes that aren't ready
-    and handle if !PlanetLab has no resources
-  * Improved check of manifest RSpec returned by !CreateSliver
-  * Added --usercredfile to allow the user to provide their user credential as a file
-  * Implemented preliminary (but incomplete) support of AM API v2
-
-New in v1.4:
- * Omni logging is configurable with a -l option, or from a
- script by calling applyLogConfig(). (ticket #61)
- * Omni aborts if it detects your slice has expired (ticket #51)
- * Omni config can define aggregate nicknames, to use instead
- of a URL in the -a argument. (ticket #62)
- * Solved a thread safety bug in omni - copy options list. (ticket #63)
- * SFA logger handles log file conflicts (ticket #48)
- * Handle expired user certs nicely in Omni (ticket #52)
- * Write output filename when !ListResources or !GetVersion saves
- results to a file. (ticket #53)
- * Warn on common AM URL typos. (ticket #54)
- * Pause 10sec and retry (max 3x) if server says it is busy, 
- as PG often does. (ticket #55)
- * SFA library updates (eg slices declare an XML namespace)
- * SFA library bug fixes
- * Added a "--no-tz" option for renewing slivers at older SFA-based
- aggregates. (ticket #65)
-
-New in v1.3.2:
- * Fixed user-is-a-slice bug (ticket #49)
-
-New in v1.3.1:
- * Correctly verify delegated slice credentials
- * Ensure the root error is reported to the user when there are
-   problems.
- * Once the user has failed to enter their passphrase twice,
-   exit - don't bury it in later errors. (ticket #43)
- * Clean up timezone handling, correctly handling credentials that
- specify a timezone. (ticket #47)
- * examples directory contains simple scripting examples
- * New delegateSliceCred script allowing off-line delegation of
-   slice credentials.
-   Run src/delegateSliceCred.py -h for usage. (ticket #44)
-
-New in v1.3:
- * Omnispecs are deprecated, and native RSpecs are the default
- * Many commands take a '-o' option getting output saved to a
- file. Specifically, use that with 'listresources' and 'createsliver'
- to save advertisement and manifest RSpecs. See Handling Omni Output below.
- * Slice credentials can be saved to a file and re-used.
- * Added support for GENI AM API Draft Revisions.
- * You can specify a particular RSpec format, at aggregates that speak
- more than one format (eg both SFA and GENI V3).
- * New functions 'listmyslices' and 'print_slice_expiration'
- * All commands return a tuple: text result description and a
- command-specific object, suitable for use by calling scripts
- * Log and output messages are clearer.
-
-Full changes are listed in the CHANGES file.
+Older changes are listed in the CHANGES file.
 
 == Handling Omni Output ==
 Omni supports the `-o` option to have Omni save the output of Omni to
@@ -401,6 +348,10 @@ use the `omni.call` function.
   text, returnStruct = omni.call( ['listmyslices', username], options )  
 }}}
 
+The return from `omni.call` is a list of 2 items: a human readable string summarizing the result 
+(possibly an error message), and the result object (may be `None` on error). The result 
+object type varies by the underlying command called.
+
 Omni scripting allows a script to:
  * Have its own private options
  * Programmatically set other omni options (like inferring the "-a")
@@ -413,6 +364,10 @@ Or [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingExpiration Omni Scripting E
 and
 [http://trac.gpolab.bbn.com/gcf/wiki/OmniScriptingWithOptions Omni Scripting with Options] 
 on the gcf wiki.
+
+'''NOTE''': Omni uses multiple command line options, and creates its
+own option names internally. Be sure not to pick the same option names. See omni.py and the
+getParser() function, around line 781 for all the option names.
 
 == Extending Omni ==
 
@@ -570,151 +525,207 @@ Omni supports the following command-line options.
 {{{
 
 $ ~/gcf/src/omni.py -h                            
-Usage:                                                                                        
+Usage: 
 GENI Omni Command Line Aggregate Manager Tool Version 2.4
 Copyright (c) 2013 Raytheon BBN Technologies
 
-omni.py [options] <command and arguments> 
+omni.py [options] [--project <proj_name>] <command and arguments> 
 
-         Commands and their arguments are: 
-                AM API functions:          
-                         getversion        
-                         listresources [In AM API V1 and V2 optional: slicename] 
-                         describe slicename [AM API V3 only]                     
-                         createsliver <slicename> <rspec filename or URL> [AM API V1&2 only]
-                         allocate <slicename> <rspec filename or URL> [AM API V3 only]
-                         provision <slicename> [AM API V3 only]                   
-                         performoperationalaction <slicename> <action> [AM API V3 only] 
-                         poa <slicename> <action>                                       
-                                 [alias for 'performoperationalaction'; AM API V3 only] 
-                         sliverstatus <slicename> [AMAPI V1&2 only]                     
-                         status <slicename> [AMAPI V3 only]                             
-                         renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only]                                                                                            
-                         renew <slicename> <new expiration time in UTC> [AM API V3 only]      
-                         deletesliver <slicename> [AM API V1&2 only]                          
-                         delete <slicename> [AM API V3 only]                                  
-                         shutdown <slicename>                                                 
+ 	 Commands and their arguments are: 
+ 		AM API functions: 
+ 			 getversion 
+ 			 listresources [In AM API V1 and V2 optional: slicename] 
+ 			 describe slicename [AM API V3 only] 
+ 			 createsliver <slicename> <rspec URL, filename, or nickname> [AM API V1&2 only] 
+ 			 allocate <slicename> <rspec URL, filename, or nickname> [AM API V3 only] 
+ 			 provision <slicename> [AM API V3 only] 
+ 			 performoperationalaction <slicename> <action> [AM API V3 only] 
+ 			 poa <slicename> <action> 
+ 				 [alias for 'performoperationalaction'; AM API V3 only] 
+ 			 sliverstatus <slicename> [AMAPI V1&2 only]
+ 			 status <slicename> [AMAPI V3 only]
+ 			 renewsliver <slicename> <new expiration time in UTC> [AM API V1&2 only] 
+ 			 renew <slicename> <new expiration time in UTC> [AM API V3 only] 
+ 			 deletesliver <slicename> [AM API V1&2 only] 
+ 			 delete <slicename> [AM API V3 only] 
+ 			 shutdown <slicename> 
  		Non AM API aggregate functions (supported by some aggregates): 
  			 createimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  			 snapshotimage <slicename> <imagename> [optional: false (keep image private)] -u <sliver urn> [ProtoGENI/InstaGENI only] 
  				 [alias for 'createimage'] 
-			 deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only]
-			 listimages [optional: creatorurn] [ProtoGENI/InstaGENI only]
-                Clearinghouse / Slice Authority functions:                                    
-                         get_ch_version
-                         listaggregates
-                         createslice <slicename>
-                         getslicecred <slicename>
-                         renewslice <slicename> <new expiration time in UTC>                  
-                         deleteslice <slicename>                                              
-			 listslices [optional: username] [Alias for listmyslices]
-			 listmyslices [optional: username]
-                         listmykeys                                                           
-                         getusercred                                                          
-                         print_slice_expiration <slicename>                                   
+ 			 deleteimage <imageurn> [optional: creatorurn] [ProtoGENI/InstaGENI only] 
+ 			 listimages [optional: creatorurn] [ProtoGENI/InstaGENI only] 
+ 		Clearinghouse / Slice Authority functions: 
+ 			 get_ch_version 
+ 			 listaggregates 
+ 			 createslice <slicename> 
+ 			 getslicecred <slicename> 
+ 			 renewslice <slicename> <new expiration time in UTC> 
+ 			 deleteslice <slicename> 
+ 			 listslices [optional: username] [Alias for listmyslices]
+ 			 listmyslices [optional: username] 
+ 			 listmykeys 
+ 			 getusercred 
+ 			 print_slice_expiration <slicename> 
+ 		Other functions: 
+ 			 nicknames 
 
-         See README-omni.txt for details.
-         And see the Omni website at http://trac.gpolab.bbn.com/gcf
+	 See README-omni.txt for details.
+	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
 
 Options:
   --version             show program's version number and exit
-  -h, --help            show this help message and exit       
-  -c FILE, --configfile=FILE                                  
-                        Config file name                      
-  -f FRAMEWORK, --framework=FRAMEWORK                         
+  -h, --help            show this help message and exit
+
+  Basic and Most Used Options:
+    -a AGGREGATE_URL, --aggregate=AGGREGATE_URL
+                        Communicate with a specific aggregate
+    --available         Only return available resources
+    -c FILE, --configfile=FILE
+                        Config file name (aka `omni_config`)
+    -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework to use for creation/deletion of
-                        slices                                           
-  -V API_VERSION, --api-version=API_VERSION                              
-                        Specify version of AM API to use (default 2)     
-  -a AGGREGATE_URL, --aggregate=AGGREGATE_URL                            
-                        Communicate with a specific
-			aggregate. Multiple options allowed.
-  -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
+                        slices
+    -r PROJECT, --project=PROJECT
+                        Name of project. (For use with pgch framework.)
+    -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
                         RSpec type and version to return, default 'GENI 3'
-  --debug               Enable debugging output. If multiple loglevel are set
+    -V API_VERSION, --api-version=API_VERSION
+                        Specify version of AM API to use (default 2)
+
+  AM API v3+:
+    Options used in AM API v3 or later
+
+    --best-effort       Should AMs attempt to complete the operation on only
+                        some slivers, if others fail
+    --cred=CRED_FILENAME
+                        Send credential in given filename with any call that
+                        takes a list of credentials
+    --end-time=GENI_END_TIME
+                        Requested end time for any newly allocated or
+                        provisioned slivers - may be ignored by the AM
+    --optionsfile=JSON_OPTIONS_FILENAME
+                        Send all options defined in named JSON format file to
+                        methods that take options
+    --speaksfor=USER_URN
+                        Supply given URN as user we are speaking for in Speaks
+                        For option
+    -u SLIVERS, --sliver-urn=SLIVERS
+                        Sliver URN (not name) on which to act. Supply this
+                        option multiple times for multiple slivers, or not at
+                        all to apply to the entire slice
+
+  Logging and Verboseness:
+    Control the amount of output to the screen and/or to a log
+
+    -q, --quiet         Turn off verbose command summary for omni commandline
+                        tool
+    -v, --verbose       Turn on verbose command summary for omni commandline
+                        tool
+    --debug             Enable debugging output. If multiple loglevel are set
                         from commandline (e.g. --debug, --info) the more
                         verbose one will be preferred.
-  --info                Set logging to INFO.If multiple loglevel are set from
+    --info              Set logging to INFO.If multiple loglevel are set from
                         commandline (e.g. --debug, --info) the more verbose
                         one will be preferred.
-  --warn                Set log level to WARN. This won't print the command
+    --warn              Set log level to WARN. This won't print the command
                         outputs, e.g. manifest rspec, so use the -o or the
                         --outputfile options to save it to a file. If multiple
                         loglevel are set from commandline (e.g. --debug,
                         --info) the more verbose one will be preferred.
-  --error               Set log level to ERROR. This won't print the command
+    --error             Set log level to ERROR. This won't print the command
                         outputs, e.g. manifest rspec, so use the -o or the
                         --outputfile options to save it to a file.If multiple
                         loglevel are set from commandline (e.g. --debug,
                         --info) the more verbose one will be preferred.
-  -o, --output          Write output of many functions (getversion,            
-                        listresources, allocate, status, getslicecred,...) ,   
-                        to a file (Omni picks the name)                        
-  --outputfile=OUTPUT_FILENAME                                                 
-                        Name of file to write output to (instead of Omni       
-                        picked name). '%a' will be replaced by servername,     
-                        '%s' by slicename if any. Implies -o. Note that for    
-                        multiple aggregates, without a '%a' in the name, only  
-                        the last aggregate output will remain in the file.     
-                        Will ignore -p.                                        
-  -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX                                 
-                        Filename prefix when saving results (used with -o, not 
-                        --usercredfile, --slicecredfile, or --outputfile)      
-  --usercredfile=USER_CRED_FILENAME                                            
-                        Name of user credential file to read from if it        
-                        exists, or save to when running like '--usercredfile   
+    --verbosessl        Turn on verbose SSL / XMLRPC logging
+    -l LOGCONFIG, --logconfig=LOGCONFIG
+                        Python logging config file
+    --logoutput=LOGOUTPUT
+                        Python logging output file [use %(logfilename)s in
+                        logging config file]
+    --tostdout          Print results like rspecs to STDOUT instead of to log
+                        stream
+
+  File Output:
+    Control name of output file and whether to output to a file
+
+    -o, --output        Write output of many functions (getversion,
+                        listresources, allocate, status, getslicecred,...) ,
+                        to a file (Omni picks the name)
+    -p FILENAME_PREFIX, --prefix=FILENAME_PREFIX
+                        Filename prefix when saving results (used with -o, not
+                        --usercredfile, --slicecredfile, or --outputfile)
+    --outputfile=OUTPUT_FILENAME
+                        Name of file to write output to (instead of Omni
+                        picked name). '%a' will be replaced by servername,
+                        '%s' by slicename if any. Implies -o. Note that for
+                        multiple aggregates, without a '%a' in the name, only
+                        the last aggregate output will remain in the file.
+                        Will ignore -p.
+    --usercredfile=USER_CRED_FILENAME
+                        Name of user credential file to read from if it
+                        exists, or save to when running like '--usercredfile
                         myUserCred.xml -o getusercred'
-  --slicecredfile=SLICE_CRED_FILENAME
+    --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
                         mySliceCred.xml -o getslicecred mySliceName'
-  --tostdout            Print results like rspecs to STDOUT instead of to log
-                        stream
-  --no-compress         Do not compress returned values
-  --available           Only return available resources
-  --best-effort         Should AMs attempt to complete the operation on only
-                        some slivers, if others fail
-  -u SLIVERS, --sliver-urn=SLIVERS
-                        Sliver URN (not name) on which to act. Supply this
-                        option multiple times for multiple slivers, or not at
-                        all to apply to the entire slice
-  --end-time=GENI_END_TIME
-                        Requested end time for any newly allocated or
-                        provisioned slivers - may be ignored by the AM
-  -v, --verbose         Turn on verbose command summary for omni commandline
-                        tool
-  --verbosessl          Turn on verbose SSL / XMLRPC logging
-  -q, --quiet           Turn off verbose command summary for omni commandline
-                        tool
-  -l LOGCONFIG, --logconfig=LOGCONFIG
-                        Python logging config file
-  --logoutput=LOGOUTPUT
-                        Python logging output file [use %(logfilename)s in
-                        logging config file]
-  --NoGetVersionCache   Disable using cached GetVersion results (forces
+
+  GetVersion Cache:
+    Control GetVersion Cache
+
+    --NoGetVersionCache
+                        Disable using cached GetVersion results (forces
                         refresh of cache)
-  --ForceUseGetVersionCache
+    --ForceUseGetVersionCache
                         Require using the GetVersion cache if possible
                         (default false)
-  --GetVersionCacheAge=GETVERSIONCACHEAGE
+    --GetVersionCacheAge=GETVERSIONCACHEAGE
                         Age in days of GetVersion cache info before refreshing
                         (default is 7)
-  --GetVersionCacheName=GETVERSIONCACHENAME
+    --GetVersionCacheName=GETVERSIONCACHENAME
                         File where GetVersion info will be cached, default is
                         ~/.gcf/get_version_cache.json
-  --devmode             Run in developer mode: more verbose, less error
-                        checking of inputs
-  --arbitrary-option    Add an arbitrary option to ListResources (for testing
+
+  Aggregate Nickname Cache:
+    Control Aggregate Nickname Cache
+
+    --NoAggNickCache    Disable using cached AggNick results and force refresh
+                        of cache (default is False)
+    --ForceUseAggNickCache
+                        Require using the AggNick cache if possible (default
+                        False)
+    --AggNickCacheAge=AGGNICKCACHEAGE
+                        Age in days of AggNick cache info before refreshing
+                        (default is 1)
+    --AggNickCacheName=AGGNICKCACHENAME
+                        File where AggNick info will be cached, default is
+                        ~/.gcf/agg_nick_cache
+    --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
+                        Website with latest agg_nick_cache, default is
+                        http://trac.gpolab.bbn.com/gcf/raw-
+                        attachment/wiki/Omni/agg_nick_cache. To force Omni to
+                        read this cache, delete your local AggNickCache or use
+                        --NoAggNickCache.
+
+  For Developers:
+    Features only needed by developers
+
+    --abac              Use ABAC authorization
+    --arbitrary-option  Add an arbitrary option to ListResources (for testing
                         purposes)
-  --raise-error-on-v2-amapi-error
+    --devmode           Run in developer mode: more verbose, less error
+                        checking of inputs
+    --no-compress       Do not compress returned values
+    --no-ssl            do not use ssl
+    --no-tz             Do not send timezone on RenewSliver
+    --orca-slice-id=ORCA_SLICE_ID
+                        Use the given Orca slice id
+    --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default False. For
                         use by scripts.
-  --no-tz               Do not send timezone on RenewSliver
-  --no-ssl              do not use ssl
-  --orca-slice-id=ORCA_SLICE_ID
-                        Use the given Orca slice id
-  --abac                Use ABAC authorization
 }}}
 
 === Supported commands ===
@@ -1110,7 +1121,7 @@ The GENI AM API `CreateSliver()` call: reserve resources at GENI aggregates.
 For use in AM API v1+2 only. 
 For AM API v3+, use this sequence of three commands: `allocate`, `provision`, and `performoperationalaction`.
 
-Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL>`
+Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL or nickname>`
 
 Sample Usage:
  * Reserve the resources defined in an RSpec file:
@@ -1142,6 +1153,15 @@ availability information from a previous call to `listresources`
 (e.g. `omni.py -o listresources`). The file can be local or a remote URL.
 Warning: request RSpecs are often very different from advertisement
 RSpecs.
+
+When you call
+     omni.py createsliver myslice myrspec
+omni will try to read 'myrspec' by interpreting it in the following order:
+1. a URL or a file on the local filesystem
+2. an RSpec nickname specified in the omni_config
+3. a file in a location (file or url) defined as: 
+   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
           http://www.protogeni.net/trac/protogeni/wiki/RSpec.
@@ -1861,3 +1881,27 @@ Aggregates queried:
    nickname in `omni_config`, if provided, ELSE
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+=== nicknames ===
+Print / return the known Aggregate and RSpec nicknames, as defined in
+the Omni config file(s). 
+
+Sample Output:
+{{{
+....
+  Result Summary: Omni knows the following Aggregate Nicknames:
+
+        Nickname | URL                                                                    | URN
+=============================================================================================================
+          pg-bbn | https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0             | urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm
+....
+Omni knows the following RSpec Nicknames:
+
+  Nickname | Location
+====================================================================================
+ hellogeni | http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rspec
+
+(Default RSpec location: http://www.gpolab.bbn.com/experiment-support )
+
+(Default RSpec extension: rspec )
+}}}
