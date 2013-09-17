@@ -1253,12 +1253,12 @@ class PGClearinghouse(Clearinghouse):
             self.logger.warn("GetKeys couldnt get uuid for user from cert with urn %s" % user_urn)
         else:
             self.logger.info("GetKeys called for user with uuid %s" % user_uuid)
-        # Use new MA lookup_public_ssh_keys method
+        # Use new MA lookup_private_ssh_keys method
         inside_key, inside_certs = self.getInsideKeys(user_uuid)
         argsdict=dict(member_id=user_uuid);
-        keys_triple=invokeCH(self.ma_url, "lookup_public_ssh_keys", self.logger,
+        keys_triple=invokeCH(self.ma_url, "lookup_private_ssh_keys", self.logger,
                              argsdict, inside_certs, inside_key)
-        self.logger.info("lookup_public_ssh_keys: " + str(keys_triple));
+        self.logger.info("lookup_private_ssh_keys: " + str(keys_triple));
         if not keys_triple['value']:
             self.logger.error("No SSH key structure. Return the triple with error");
             return keys_triple;
