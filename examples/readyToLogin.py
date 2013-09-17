@@ -123,7 +123,7 @@ def getInfoFromManifest(manifestStr):
     sys.exit(-1)
 
   setNSPrefix(re.findall(r'\{.*\}', dom.tag)[0])
-  gsiNS = "{http://groups.geni.net/exogeni/attachment/wiki/RspecExtensions/sliver-info/1}" # FIXME: Pull from RSpec?
+  gsiNS = "{http://groups.geni.net/exogeni/attachment/wiki/RspecExtensions/sliver-info/1}" # Use to look up sliverstatus in RSpec for EG
   loginInfo = []
   for node_el in dom.findall(tag("node")):
     # Try to get the per node status from the EG specific geni_sliver_info RSpec extension
@@ -139,12 +139,12 @@ def getInfoFromManifest(manifestStr):
            loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
          except AttributeError, ae:
            print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
-#           print "Error: %s" % ae
+           print "Error: %s" % ae
            sys.exit(-1)
          if not loginInfo[-1].has_key("geni_status"):
-             loginInfo[-1]["geni_status"] = geni_status # FIXME: From sliver status? From the geni_sliver_info sub element?
+             loginInfo[-1]["geni_status"] = geni_status #From the geni_sliver_info sub element
          if not loginInfo[-1].has_key("am_status"):
-             loginInfo[-1]["am_status"] = geni_status # FIXME: From sliver status? From the geni_sliver_info sub element?
+             loginInfo[-1]["am_status"] = geni_status #From the geni_sliver_info sub element
   return loginInfo
 
 def findUsersAndKeys( ):
@@ -324,7 +324,7 @@ def getInfoFromSliverStatusPL( sliverStat ):
     return loginInfo
 
 def getInfoFromSliverStatusOrca( sliverStat ):
-
+    # NOTE: not currently used
     loginInfo = []
     if not sliverStat or not sliverStat.has_key('geni_resources'):
       print "ERROR: Empty Sliver Status, or no geni_resources listed"
@@ -369,8 +369,8 @@ def getInfoFromSliverStatus( amUrl, amType ) :
       loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
     if amType == 'protogeni' : 
       loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
-    if amType == 'orca' : 
-      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
+#    if amType == 'orca' : 
+#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
       
     return loginInfo
 
@@ -496,10 +496,6 @@ def printLoginInfo( loginInfoDict, keyList ) :
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
     for item in amInfo["info"] :
-      #if not item.has_key('client_id'):
-      #    print "item in amInfo has no client_id"
-      #elif item['client_id'] == "":
-      #    print "item client_id was empty"
       if not firstTime.has_key( item['client_id'] ):
           firstTime[ item['client_id'] ] = True
       #    print "This is first time for %s" % item['client_id']
@@ -522,7 +518,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 amsOut = "am_status: %s" % item['am_status']
             if gsOut:
                 if amsOut:
-                    output += "\n%s's geni_status is: %s (am_status: %s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
                 else:
                     output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
             elif amsOut:
