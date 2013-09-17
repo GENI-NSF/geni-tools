@@ -1121,7 +1121,7 @@ The GENI AM API `CreateSliver()` call: reserve resources at GENI aggregates.
 For use in AM API v1+2 only. 
 For AM API v3+, use this sequence of three commands: `allocate`, `provision`, and `performoperationalaction`.
 
-Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL>`
+Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL or nickname>`
 
 Sample Usage:
  * Reserve the resources defined in an RSpec file:
@@ -1153,6 +1153,15 @@ availability information from a previous call to `listresources`
 (e.g. `omni.py -o listresources`). The file can be local or a remote URL.
 Warning: request RSpecs are often very different from advertisement
 RSpecs.
+
+When you call
+     omni.py createsliver myslice myrspec
+omni will try to read 'myrspec' by interpreting it in the following order:
+1. a URL or a file on the local filesystem
+2. an RSpec nickname specified in the omni_config
+3. a file in a location (file or url) defined as: 
+   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
           http://www.protogeni.net/trac/protogeni/wiki/RSpec.
