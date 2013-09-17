@@ -405,6 +405,10 @@ def call(argv, options=None, verbose=False):
     Verbose option allows printing the command and summary, or suppressing it.
     Callers can control omni logs (suppressing console printing for example) using python logging.
 
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
+
     Can call functions like this:
      User does:    myscript.py -f my_sfa --myScriptPrivateOption describe ahtest-describe-emulab-net.json
 
@@ -446,7 +450,7 @@ def main(argv=None):
                     help="A non-omni option added by %s"%sys.argv[0],
                     action="store_true", default=False)
   # options is an optparse.Values object, and args is a list
-  options, args = parser.parse_args(sys.argv[1:])
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
   if options.myScriptPrivateOption:
     # do something special for your private script's options
     print "Got myScriptOption"
@@ -578,7 +582,9 @@ def API_call( framework, config, args, opts, verbose=False ):
     """Call the function from the given args list. 
     Apply the options from the given optparse.Values opts argument
     If verbose, print the command and the summary.
-    Return the summary and the result object.
+    Return is a list of 2 items: a human readable string summarizing the result 
+    (possibly an error message), and the result object (may be None on error). The result 
+    object type varies by underlying command called.
     """
 
     logger = config['logger']
@@ -943,7 +949,7 @@ def getParser():
                       help="File where AggNick info will be cached, default is %default")
     angroup.add_option("--AggNickDefinitiveLocation", dest='aggNickDefinitiveLocation',
                       default="http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache",
-                      help="Website with latest agg_nick_cache, default is %default")
+                      help="Website with latest agg_nick_cache, default is %default. To force Omni to read this cache, delete your local AggNickCache or use --NoAggNickCache.")
     parser.add_option_group( angroup )
 
     # Development related
@@ -971,9 +977,9 @@ def getParser():
     parser.add_option_group( devgroup )
     return parser
 
-def parse_args(argv, options=None):
-    """Parse the given argv list using the Omni optparse.OptionParser.
-    Fill options into the given option optparse.Values object
+def parse_args(argv, options=None, parser=None):
+    """Parse the given argv list using the Omni optparse.OptionParser, or the parser supplied if given.
+    Fill options into the given option optparse.Values object if supplied.
     """
     if options is not None and not options.__class__==optparse.Values:
         raise OmniError("Invalid options argument to parse_args: must be an optparse.Values object")
@@ -985,11 +991,14 @@ def parse_args(argv, options=None):
         # Make a deep copy
         options = deepcopy(options)
 
-    parser = getParser()
+    if parser is not None and not isinstance(parser, optparse.OptionParser):
+        raise OmniError("parse_args got invalid parser: %s." % parser)
+    if parser is None:
+        parser = getParser()
     if argv is None:
         # prints to stderr
         parser.print_help()
-        return
+        return None, []
 
     (options, args) = parser.parse_args(argv, options)
 
@@ -1013,7 +1022,12 @@ def parse_args(argv, options=None):
                      % (options.api_version, supported_versions))
 
     # From GetVersionCacheAge (int days) produce options.GetVersionCacheOldestDate as a datetime.datetime
-    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.GetVersionCacheAge)
+    indays = -1
+    try:
+        indays = int(options.GetVersionCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse GetVersionCacheAge: %s" % e 
+    options.GetVersionCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.getversionCacheName = os.path.normcase(os.path.expanduser(options.getversionCacheName))
 
@@ -1021,7 +1035,12 @@ def parse_args(argv, options=None):
         parser.error("Cannot both force not using the GetVersion cache and force TO use it.")
 
     # From AggNickCacheAge (int days) produce options.AggNickCacheOldestDate as a datetime.datetime
-    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=options.AggNickCacheAge)
+    indays = -1
+    try:
+        indays = int(options.AggNickCacheAge)
+    except Exception, e:
+        raise OmniError, "Failed to parse AggNickCacheAge: %s" % e 
+    options.AggNickCacheOldestDate = datetime.datetime.utcnow() - datetime.timedelta(days=indays)
 
     options.aggNickCacheName = os.path.normcase(os.path.expanduser(options.aggNickCacheName))
 

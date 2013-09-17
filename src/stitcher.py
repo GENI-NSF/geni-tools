@@ -129,22 +129,17 @@ def call(argv, options=None):
     # Put our logs in a different file by default
     parser.set_defaults(logoutput='stitcher.log')
 
-    # options is an optparse.Values object, and args is a list
-    options, args = parser.parse_args(argv)
-
-    # Set an option indicating if the user explicitly requested the RSpec version
-    options.ensure_value('explicitRSpecVersion', False)
-    options.explicitRSpecVersion = ('-t' in argv or '--rspectype' in argv)
-
-    if options.outputfile:
-        options.output = True
+    # Have omni use our parser to parse the args, manipulating options as needed
+    options, args = omni.parse_args(argv, parser=parser)
 
     # Set up the logger
     omni.configure_logging(options)
     logger = logging.getLogger("stitcher")
 
     # We use the omni config file
-    config = omni.load_config(options, logger)
+    # First load the agg nick cache
+    config = omni.load_agg_nick_config(options, logger)
+    config = omni.load_config(options, logger, config)
 
     #logger.info("Using AM API version %d", options.api_version)
 

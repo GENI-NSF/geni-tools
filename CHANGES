@@ -3,7 +3,7 @@
 gcf 2.4:
  * omni
   - Add nicknames for RSpecs; includes ability to specify a default
-  location. See the sample omni_config for details. (#265)
+  location. See the sample omni_config for details. (#265,#360,#361)
   - Make `allocate` accept rspecs loaded from a url (#287)
   - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
   - Split aggregate nicknames into a separate file from `omni_config`. (#352)
@@ -38,10 +38,14 @@ gcf 2.4:
   - Explicitly import framework files to support packaging (#322)
   - Ignore unicode vs string in comparing AM URNs (#333)
   - Document omni command line options (#329)
+  - Fix parsing of cache ages (#362)
+  - Check for 0 sliver expirations in parsing `Provision` results (#364)
+  - Allow scripts to use the omni `parse_args` with a supplied parser 
+    (one that the script modified from the omni base). (#368)
 
  * gcf
   - Add timestamps to pgch logs (#297)
-  - Make ch optionally multi-threaded (#313)
+  - Make ch optionally multi-threaded, default True (#313,#359)
   - Credential verifier logs when a credential is unparseable but
     moves on to try others (#46)
 
@@ -76,6 +80,9 @@ gcf 2.4:
   - Be sure to use distinct tags when 2 paths go across the same
     hop. Generally clean up code to pick a new VLAN tag locally (#353)
   - Fix up use of minidom Document (#358)
+  - Bail out more completely if a transit aggregate has a fatal error (#365)
+  - Be sure `--noExoSM` option is honored: load the AM nickname cache, 
+    and make sure we do all the usual omni option post processing. (#367)
  
  * omni-configure.py
   - Add support for rspec nicknames and default rspec locations (#326)
@@ -89,15 +96,20 @@ gcf 2.4:
   - Fix bug if call `readyToLogin` against multiple AMs where not all of
     them have resources allocated to the indicated slice (#330)
   - Fix bug when `readyToLogin.py` reports ready when some node has failed (#343)
+  - Add support for ExoGENI multi-user slices to readyToLogin.py (#366)
 
  * remote-execute
   - Fixed bug handling multi-user slices (#349)
+
+ * expirationofmyslices
+  - Allow calling without a username (#370)
 
  * acceptance tests
   - Added test for `get_ch_version` (#316)
   - `test_getusercred_nagios()` downloads a user credential and
     validates its format for use with monitoring (#338)
   - Added `am_api_accept_scaling.py` which contains a scaling test (#324)
+  - Don't try to renew a slice shorter (#363)
 
 gcf 2.3.2:
  * omni

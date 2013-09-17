@@ -1395,9 +1395,13 @@ class Test(ut.OmniUnittest):
         now = ut.OmniUnittest.now_in_seconds()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
-        fivedays = (now + datetime.timedelta(days=5)).isoformat()           
-        sixdays = (now + datetime.timedelta(days=6)).isoformat()
-        self.subtest_RenewSlice( slicename, sixdays )
+        fivedays = (now + datetime.timedelta(days=5)).isoformat()
+        sixDaysRaw = now + datetime.timedelta(days=6)
+        # If the slice already expires >= 6 days from now, do not try to renew the slice - it will fail and isn't needed
+        sliceExpiration = self.getSliceExpiration( slicename )
+        if sliceExpiration < sixDaysRaw:
+            sixdays = sixDaysRaw.isoformat()
+            self.subtest_RenewSlice( slicename, sixdays )
         time.sleep(self.options_copy.sleep_time)
 #        self.subtest_RenewSliver( slicename, fivemin )
 #        time.sleep(self.options_copy.sleep_time)
@@ -1414,8 +1418,12 @@ class Test(ut.OmniUnittest):
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()           
-        sixdays = (now + datetime.timedelta(days=6)).isoformat()            
-        self.subtest_RenewSlice( slicename, sixdays )
+        sixDaysRaw = now + datetime.timedelta(days=6)
+        # If the slice already expires >= 6 days from now, do not try to renew the slice - it will fail and isn't needed
+        sliceExpiration = self.getSliceExpiration( slicename )
+        if sliceExpiration < sixDaysRaw:
+            sixdays = sixDaysRaw.isoformat()
+            self.subtest_RenewSlice( slicename, sixdays )
         time.sleep(self.options_copy.sleep_time)
 #        self.subtest_RenewSliver( slicename, fivemin )
 #        time.sleep(self.options_copy.sleep_time)

@@ -80,9 +80,9 @@ def _derefRSpecNick( handler, rspecNickname ):
             try:
                 contentstr = readFile( handler.config['rspec_nicknames'][rspecNickname] )
             except:
-                pass
+                raise ValueError, "Could not read RSpec '%s' (from nickname '%s')" % (handler.config['rspec_nicknames'][rspecNickname], rspecNickname)
         elif handler.config.has_key('default_rspec_location') and handler.config.has_key('default_rspec_extension'):
-            handler.logger.info("Looking for RSpec '%s' is in the default rspec location" % (rspecNickname))
+            handler.logger.info("Looking for RSpec '%s' in the default rspec location" % (rspecNickname))
             try:
                 remoteurl = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
                 handler.logger.info("... which is '%s'" % (remoteurl))

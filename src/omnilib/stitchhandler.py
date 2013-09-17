@@ -70,6 +70,7 @@ class StitchingHandler(object):
         self.omni_config = config['omni']
         self.config = config
         self.parsedSCSRSpec = None
+        self.lastException = None
         self.ams_to_process = []
         self.opts = opts # command line options as parsed
         self.framework = omni.load_framework(self.config, self.opts)
@@ -115,10 +116,13 @@ class StitchingHandler(object):
         if request:
             try:
                 # read the rspec into a string, and add it to the rspecs dict
-                requestString = readFile(request)
+                requestString = handler_utils._derefRSpecNick(self, request)
             except Exception, exc:
-                msg = 'Unable to read rspec file %s: %s' % (request, str(exc))
-                raise OmniError(msg)
+                msg = "Unable to read rspec file '%s': %s" % (request, str(exc))
+                if self.opts.devmode:
+                    self.logger.warn(msg)
+                else:
+                    raise OmniError(msg)
 
             #    # Test if the rspec is really json containing an RSpec, and pull out the right thing
             #    requestString = amhandler.self._maybeGetRSpecFromStruct(requestString)
@@ -200,7 +204,11 @@ class StitchingHandler(object):
         except StitchingError, se:
             # FIXME: Return anything different for stitching error?
             # Do we want to return a geni triple struct?
-            raise
+            if self.lastException:
+                self.logger.error("Root cause error: %s", self.lastException)
+                newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
+                se = newError
+            raise se
         finally:
             # Save a file with the aggregates used in this slice
             self.saveAggregateList(sliceurn)
@@ -275,6 +283,7 @@ class StitchingHandler(object):
                 self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
         scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
+        self.lastException = None # Clear any last exception from the last run through
 
         if self.scsCalls > 1 and existingAggs:
             # We are doing another call.
@@ -362,6 +371,7 @@ class StitchingHandler(object):
 #            raise StitchingCircuitFailedError("testing")
 
         except StitchingCircuitFailedError, se:
+            self.lastException = se
             if self.scsCalls == self.maxSCSCalls:
                 self.logger.error("Stitching max circuit failures reached - will delete and exit.")
                 self.deleteAllReservations(launcher)
@@ -385,6 +395,10 @@ class StitchingHandler(object):
             lastAM = self.mainStitchingLoop(sliceurn, requestDOM, aggs)
         except StitchingError, se:
             self.logger.error("Stitching failed with an error: %s", se)
+            if self.lastException:
+                self.logger.error("Root cause error: %s", self.lastException)
+                newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
+                se = newError
             self.deleteAllReservations(launcher)
             raise se
         return lastAM
@@ -777,6 +791,7 @@ class StitchingHandler(object):
             # FIXME: Better way to detect this?
             if "geni.renci.org:11443" in str(agg.url):
                 agg.isExoSM = True
+#                self.logger.debug("%s is the ExoSM cause URL is %s", agg, agg.url)
 
             # EG AMs in particular have 2 URLs in some sense - ExoSM and local
             # So note the other one, since VMs are split between the 2
@@ -786,7 +801,14 @@ class StitchingHandler(object):
                         agg.alt_url = amURL
                         break
 #                    else:
-#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s", agg, agg.url, amURL)
+#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, agg.url, amURL, amURN)
+#                elif "exogeni" in amURN and "exogeni" in agg.urn:
+#                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, amURL, agg)
+
+#            if "exogeni" in agg.urn and not agg.alt_url:
+#                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
+#                for urn in agg.urn_syns:
+#                    self.logger.debug(urn)
 
             # Try to get a URL from the CH? Do we want/need this
             # expense? This is a call to the CH....

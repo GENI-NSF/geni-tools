@@ -43,7 +43,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
- location. See the sample omni_config for deatils. (#265)
+ location. See the sample omni_config for details. (#265,#360,#361)
  - Make `allocate` accept rspecs loaded from a url (#287)
  - New command `nicknames` lists the known aggregate and rspec nicknames (#146)
  - Split aggregate nicknames into a separate file from `omni_config`. (#352)
@@ -78,6 +78,10 @@ New in v2.4:
  - Explicitly import framework files to support packaging (#322)
  - Ignore unicode vs string in comparing AM URNs (#333)
  - Document omni command line options (#329)
+ - Fix parsing of cache ages (#362)
+ - Check for 0 sliver expirations in parsing `Provision` results (#364)
+ - Allow scripts to use the omni `parse_args` with a supplied parser 
+   (one that the script modified from the omni base). (#368)
 
 New in v2.3.2:
  - Make framework_pgch not require a project if slice URN is given (#293)
@@ -344,6 +348,10 @@ use the `omni.call` function.
   text, returnStruct = omni.call( ['listmyslices', username], options )  
 }}}
 
+The return from `omni.call` is a list of 2 items: a human readable string summarizing the result 
+(possibly an error message), and the result object (may be `None` on error). The result 
+object type varies by the underlying command called.
+
 Omni scripting allows a script to:
  * Have its own private options
  * Programmatically set other omni options (like inferring the "-a")
@@ -359,7 +367,7 @@ on the gcf wiki.
 
 '''NOTE''': Omni uses multiple command line options, and creates its
 own option names internally. Be sure not to pick the same option names. See omni.py and the
-getParser() function, around line 719 for all the option names.
+getParser() function, around line 781 for all the option names.
 
 == Extending Omni ==
 
@@ -697,7 +705,9 @@ Options:
     --AggNickDefinitiveLocation=AGGNICKDEFINITIVELOCATION
                         Website with latest agg_nick_cache, default is
                         http://trac.gpolab.bbn.com/gcf/raw-
-                        attachment/wiki/Omni/agg_nick_cache
+                        attachment/wiki/Omni/agg_nick_cache. To force Omni to
+                        read this cache, delete your local AggNickCache or use
+                        --NoAggNickCache.
 
   For Developers:
     Features only needed by developers
@@ -1111,7 +1121,7 @@ The GENI AM API `CreateSliver()` call: reserve resources at GENI aggregates.
 For use in AM API v1+2 only. 
 For AM API v3+, use this sequence of three commands: `allocate`, `provision`, and `performoperationalaction`.
 
-Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL>`
+Format:  `omni.py [-a AM_URL_or_nickname] createsliver <slice-name> <rspec filename or URL or nickname>`
 
 Sample Usage:
  * Reserve the resources defined in an RSpec file:
@@ -1143,6 +1153,15 @@ availability information from a previous call to `listresources`
 (e.g. `omni.py -o listresources`). The file can be local or a remote URL.
 Warning: request RSpecs are often very different from advertisement
 RSpecs.
+
+When you call
+     omni.py createsliver myslice myrspec
+omni will try to read 'myrspec' by interpreting it in the following order:
+1. a URL or a file on the local filesystem
+2. an RSpec nickname specified in the omni_config
+3. a file in a location (file or url) defined as: 
+   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
           http://www.protogeni.net/trac/protogeni/wiki/RSpec.

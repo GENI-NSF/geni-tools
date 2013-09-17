@@ -1687,7 +1687,7 @@ class AMCallHandler(object):
             rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
 #--- Should dev mode allow this?
-            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            msg = "Unable to read rspec file '%s': %s" % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
                 self.logger.warn(msg)
@@ -1857,7 +1857,7 @@ class AMCallHandler(object):
             # read the rspec into a string, and add it to the rspecs dict
             rspec = _derefRSpecNick(self, rspecfile)
         except Exception, exc:
-            msg = 'Unable to read rspec file %s: %s' % (rspecfile, str(exc))
+            msg = "Unable to read rspec file '%s': %s" % (rspecfile, str(exc))
             if self.opts.devmode:
                 rspec = ""
                 self.logger.warn(msg)
@@ -2215,7 +2215,8 @@ class AMCallHandler(object):
                     retVal += msg
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
-                retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+                if len(orderedDates) > 0:
+                    retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
