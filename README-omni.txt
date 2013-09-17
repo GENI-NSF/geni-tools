@@ -40,6 +40,12 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+New in v2.4:
+  - Add nicknames for RSpecs; includes ability to specify a default location (#265)
+  - Make `allocate` accept rspecs loaded from a url (#287)
+  - Make framework_pgch not require a project if slice URN is given (#293)
+  - Log messages: include timestamp, make clearer (#296)
+
 New in v2.3.3:
   - Make framework_pgch not require a project if slice URN is given (#293)
   - Stop common errors in framework_pgch.py from throwing a stacktrace (#306)
@@ -565,7 +571,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage:                                                                                        
-GENI Omni Command Line Aggregate Manager Tool Version 2.3.1
+GENI Omni Command Line Aggregate Manager Tool Version 2.4
 Copyright (c) 2013 Raytheon BBN Technologies
 
 omni.py [options] <command and arguments> 

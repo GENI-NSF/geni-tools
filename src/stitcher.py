@@ -67,6 +67,9 @@ import omni
 from omnilib.util import OmniError, AMAPIError
 from omnilib.stitchhandler import StitchingHandler
 from omnilib.stitch.utils import StitchingError
+from omnilib.stitch.objects import Aggregate
+import omnilib.stitch.objects
+#from omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
@@ -107,6 +110,12 @@ def call(argv, options=None):
                       help="Hop URN to exclude from any path")
     parser.add_option("--includehop", metavar="HOP_INCLUDE", action="append",
                       help="Hop URN to include on every path - use with caution")
+    parser.add_option("--ionRetryIntervalSecs", type="int", 
+                      help="Seconds to sleep before retrying at ION (default 10*60)",
+                      default=omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+    parser.add_option("--ionStatusIntervalSecs", type="int", 
+                      help="Seconds to sleep between sliverstatus calls at ION (default 30)",
+                      default=30)
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -139,6 +148,9 @@ def call(argv, options=None):
             raise StitchingError("Fake Mod path not a directory: %s" % options.fakeModeDir)
         else:
             logger.info("Running with Fake Mode Dir %s", options.fakeModeDir)
+
+    Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = options.ionRetryIntervalSecs
+    Aggregate.SLIVERSTATUS_POLL_INTERVAL_SEC = options.ionStatusIntervalSecs
 
     if options.debug:
         logger.info(omni.getSystemInfo())

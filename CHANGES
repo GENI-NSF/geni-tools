@@ -1,5 +1,23 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.4:
+ * omni
+  - Add nicknames for RSpecs; includes ability to specify a default location (#265)
+  - Make `allocate` accept rspecs loaded from a url (#287)
+  - Make framework_pgch not require a project if slice URN is given (#293)
+  - Log messages: include timestamp, make clearer (#296)
+
+ * gcf
+  - Add timestamps to pgch logs (#297)
+
+ * stitcher
+  - Support SCS !GetVersion for testing (#295)
+  - Pause longer before retrying ION circuits (#298, #299)
+  - Link with 2 identical AMs has only 1 AM - use Omni (#300)
+  - Give up on fatal mapper errors from ProtoGENI based AMs (#301)
+  - Add 2 new options to change sleep between sliverstatus calls at
+ ION AMs and reservation attempts (#299)
+
 gcf 2.3.3:
  * omni
   - Make framework_pgch not require a project if slice URN is given (#293)
