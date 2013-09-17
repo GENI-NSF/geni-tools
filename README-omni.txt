@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.5:
+
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
  location. See the sample omni_config for details. (#265,#360,#361)
@@ -526,7 +528,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.4
+GENI Omni Command Line Aggregate Manager Tool Version 2.5
 Copyright (c) 2013 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
