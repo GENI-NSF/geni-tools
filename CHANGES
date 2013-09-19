@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.5:
+ * omni
+  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
 
 gcf 2.4:
  * omni

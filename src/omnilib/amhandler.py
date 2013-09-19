@@ -367,7 +367,10 @@ class AMCallHandler(object):
                 failMsg = "Check AM properties at %s" % (str(client.url))
             if self.opts.api_version >= 2:
                 options = self._build_options("GetVersion", None, None)
-                (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion, options)
+                if len(options.keys()) == 0:
+                    (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion)
+                else:
+                    (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion, options)
             else:
                 (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion)
 
@@ -1724,7 +1727,6 @@ class AMCallHandler(object):
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
         if self.opts.api_version >= 2:
-            options = dict()
             # Add the options dict
             args.append(options)
 #---
@@ -2501,7 +2503,6 @@ class AMCallHandler(object):
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = dict()
             args.append(options)
 
         self.logger.debug("Doing renewsliver with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
