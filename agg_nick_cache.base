@@ -43,12 +43,40 @@ plc=urn:publicid:IDN+plc+authority+cm,https://www.planet-lab.org:12346/
 plcv3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
 plc3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
 
-# OpenFlow AMs
-of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
-of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
-of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
-of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
-of-uen=,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
+# ============================================
+# GPO OpenFlow
+# ============================================
+gpo-of=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/2
+gpo-of1=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/1
+gpo-of2=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/2
+of-gpo=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/2
+of-bbn=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/2
+
+# ============================================
+# NLR OpenFlow
+# ============================================
+nlr-of=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
+nlr-of1=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/1
+nlr-of2=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
+of-nlr=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
+
+# ============================================
+# Internet2 OpenFlow
+# ============================================
+i2-of=urn:publicid:IDN+openflow:foam:foam.net.internet2.edu+authority+am,https://foam.net.internet2.edu:3626/foam/gapi/2
+i2-of1=urn:publicid:IDN+openflow:foam:foam.net.internet2.edu+authority+am,https://foam.net.internet2.edu:3626/foam/gapi/1
+i2-of2=urn:publicid:IDN+openflow:foam:foam.net.internet2.edu+authority+am,https://foam.net.internet2.edu:3626/foam/gapi/2
+of-i2=urn:publicid:IDN+openflow:foam:foam.net.internet2.edu+authority+am,https://foam.net.internet2.edu:3626/foam/gapi/2
+
+# ============================================
+# Utah Education Network OpenFlow
+# ============================================
+uen-of=urn:publicid:IDN+openflow:foam:foamyflow.chpc.utah.edu+authority+am,https://foamyflow.chpc.utah.edu:3626/foam/gapi/2
+uen-of1=urn:publicid:IDN+openflow:foam:foamyflow.chpc.utah.edu+authority+am,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
+uen-of2=urn:publicid:IDN+openflow:foam:foamyflow.chpc.utah.edu+authority+am,https://foamyflow.chpc.utah.edu:3626/foam/gapi/2
+of-uen=urn:publicid:IDN+openflow:foam:foamyflow.chpc.utah.edu+authority+am,https://foamyflow.chpc.utah.edu:3626/foam/gapi/2
+
+
 
 # ExoGENI AMs, including OpenFlow ExoGENI AMs
 # On URNs, note that each EG rack has xxxvmsite and xxxNet
