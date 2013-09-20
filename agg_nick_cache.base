@@ -43,22 +43,9 @@ plc=urn:publicid:IDN+plc+authority+cm,https://www.planet-lab.org:12346/
 plcv3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
 plc3=urn:publicid:IDN+plc+authority+cm,https://sfav3.planet-lab.org:12346/
 
-# Private myplc installations
-pl-gpo=,https://myplc.gpolab.bbn.com:12346/
-pl-bbn=,https://myplc.gpolab.bbn.com:12346/
-pl-clemson=,https://myplc.clemson.edu:12346/
-pl-stanford=,https://myplc.stanford.edu:12346/
-pl-indiana=,https://myplc.grnoc.iu.edu:12346/
-pl-gatech=,https://myplc.cip.gatech.edu:12346/
-
 # OpenFlow AMs
 of-gpo=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
 of-bbn=,https://foam.gpolab.bbn.com:3626/foam/gapi/1
-of-stanford=,https://openflow4.stanford.edu:3626/foam/gapi/1
-of-clemson=,https://foam.clemson.edu:3626/foam/gapi/1
-of-rutgers=,https://nox.orbit-lab.org:3626/foam/gapi/1
-of-indiana=,https://foam.noc.iu.edu:3626/foam/gapi/1
-of-gatech=,https://foam.oflow.cip.gatech.edu:3626/foam/gapi/1
 of-nlr=,https://foam.nlr.net:3626/foam/gapi/1
 of-i2=,https://foam.net.internet2.edu:3626/foam/gapi/1
 of-uen=,https://foamyflow.chpc.utah.edu:3626/foam/gapi/1
