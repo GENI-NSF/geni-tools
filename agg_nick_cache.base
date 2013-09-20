@@ -209,3 +209,17 @@ nysernet-ig3=urn:publicid:IDN+instageni.nysernet.org+authority+cm,https://instag
 nysernet-of-ig=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
 nysernet-of-ig1=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/1
 nysernet-of-ig2=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
+
+# ============================================
+# Southern Crossroads (SoX) OpenFlow
+# ============================================
+sox-of=urn:publicid:IDN+openflow:foam:foam.sox.net+authority+am,https://foam.sox.net:3626/foam/gapi/2
+sox-of1=urn:publicid:IDN+openflow:foam:foam.sox.net+authority+am,https://foam.sox.net:3626/foam/gapi/1
+sox-of2=urn:publicid:IDN+openflow:foam:foam.sox.net+authority+am,https://foam.sox.net:3626/foam/gapi/2
+
+# ============================================
+# NYSERNet OpenFlow
+# ============================================
+nysernet-of=urn:publicid:IDN+openflow:foam:foam.nysernet.org+authority+am,https://foam.nysernet.org:3626/foam/gapi/2
+nysernet-of1=urn:publicid:IDN+openflow:foam:foam.nysernet.org+authority+am,https://foam.nysernet.org:3626/foam/gapi/1
+nysernet-of2=urn:publicid:IDN+openflow:foam:foam.nysernet.org+authority+am,https://foam.nysernet.org:3626/foam/gapi/2
