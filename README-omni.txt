@@ -43,6 +43,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 New in v2.5:
  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+ - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

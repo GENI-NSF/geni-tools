@@ -3,6 +3,7 @@
 gcf 2.5:
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
 
 gcf 2.4:
  * omni
