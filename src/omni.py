@@ -178,6 +178,10 @@ def load_agg_nick_config(opts, logger):
     if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
         update_agg_nick_cache( opts, logger )
 
+    # aggNickCacheName may now exist. If so, add it to the front of the list.
+    if os.path.exists( opts.aggNickCacheName ):
+        configfiles.insert(0, opts.aggNickCacheName)
+
     # Find the first valid config file
     for cf in configfiles:         
         filename = os.path.expanduser(cf)
@@ -370,8 +374,12 @@ def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
     store in the specified place."""
     try:
+        # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
+        directory = os.path.dirname(opts.aggNickCacheName)
+        if not os.path.exists( directory ):
+            os.makedirs( directory )
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
         logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
     except:
