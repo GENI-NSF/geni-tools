@@ -283,13 +283,9 @@ def getInfoFromSliverStatusPG( sliverStat ):
           geni_status = ""
           if resourceDict.has_key("geni_status"):
             geni_status = resourceDict["geni_status"]
-          #else:
-          #    print "Got no geni_status for resource"
           am_status = ""
           if resourceDict.has_key("pg_status"):
             am_status = resourceDict["pg_status"]
-          #else:
-          #    print "Got no pg_status"
           for user, keys in pgKeyList.items():
             loginInfo.append({'authentication':'ssh-keys', 
                               'hostname':hostname,
@@ -340,7 +336,7 @@ def getInfoFromSliverStatusOrca( sliverStat ):
 
     return loginInfo
 
-def getInfoFromSliverStatus( amUrl, amType ) :
+def getSliverStatus( amUrl, amType ) :
     tmpoptions = copy.deepcopy(options)
     tmpoptions.aggregate = [amUrl]
         
@@ -364,7 +360,9 @@ def getInfoFromSliverStatus( amUrl, amType ) :
       else:
         print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
         sys.exit(-1)
-
+    return sliverStatus
+def getInfoFromSliverStatus( amUrl, amType ) :
+    sliverStatus = getSliverStatus( amUrl, amType )
     if amType == 'sfa' : 
       loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
     if amType == 'protogeni' : 
@@ -447,7 +445,37 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
   case the login information comes from the manifest rspec that does not contain
   status information
   '''
-  print "NOT IMPLEMENTED YET"
+  # Call SliverStatus
+  sliverStatus = getSliverStatus( amUrl, amType )
+  if not sliverStatus:
+      print "ERROR: empty sliver status!"
+      return amLoginInfo
+  try:
+      amSliverStat = sliverStatus[ amUrl ]
+  except:
+      print "ERROR: empty aggregate sliver status!"
+      return amLoginInfo      
+  if amType == "protogeni":
+    for resourceDict in amSliverStat['geni_resources']:
+      if not resourceDict.has_key("pg_manifest"):
+        print "No pg_manifest in this entry"
+        continue
+      client_id = ""
+      if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
+         client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+      geni_status = ""
+      if resourceDict.has_key("geni_status"):
+         geni_status = resourceDict["geni_status"]
+      am_status = ""
+      if resourceDict.has_key("pg_status"):
+         am_status = resourceDict["pg_status"]
+      for userLoginInfo in amLoginInfo:
+         if userLoginInfo['client_id'] != client_id:
+            continue
+         userLoginInfo['geni_status'] = geni_status
+         userLoginInfo['am_status'] = am_status
+  else:
+      print "NOT IMPLEMENTED YET"
   return amLoginInfo
 
 def getKeysForUser( amType, username, keyList ):
@@ -663,19 +691,19 @@ def main_no_print(argv=None, opts=None, slicen=None):
     # XXX Although ProtoGENI returns the service tag in the manifest
     # it does not contain information for all the users, so we will 
     # stick with the sliverstatus until this is fixed
-    if amType == "sfa" or (amType == "protogeni" and options.api_version< 3) :
+    if amType == "sfa": 
       amLoginInfo = getInfoFromSliverStatus(amUrl, amType)
       if len(amLoginInfo) > 0 :
         loginInfoDict[amUrl] = {'amType' : amType,
                                 'info' : amLoginInfo
                                }
       continue
-    if amType == "orca" or (amType == "protogeni" and options.api_version>= 3):
+    if amType == "orca" or (amType == "protogeni"): 
       #print "Getting login info from manifest for %s" % amUrl
       amLoginInfo = getInfoFromSliceManifest(amUrl)
       # Get the status only if we care
       if len(amLoginInfo) > 0 :
-        if options.readyonly:
+        if options.readyonly or (amType == "protogeni"):
           amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
         loginInfoDict[amUrl] = {'amType':amType,
                                 'info':amLoginInfo
