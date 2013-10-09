@@ -66,16 +66,19 @@ class Service(object):
     def __init__(self, url):
         self.url = url
 
-    def GetVersion(self):
+    def GetVersion(self, printResult=True):
         server = xmlrpclib.ServerProxy(self.url)
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
-            print "ERROR", v
+            if printResult:
+                print "ERROR", v
             raise
-        print "GetVersion said:"
-        pp = pprint.PrettyPrinter(indent=4)
-        print pp.pformat(result)
+        if printResult:
+            print "GetVersion said:"
+            pp = pprint.PrettyPrinter(indent=4)
+            print pp.pformat(result)
+        return result
 
     def ComputePath(self, slice_urn, request_rspec, options):
         """Invoke the XML-RPC service with the request rspec.
@@ -174,9 +177,32 @@ class Link(object):
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
-        SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    
+    ind = -1
+    printR = True
+    for arg in argv:
+        ind = ind + 1
+        if "--scs_url" == arg and (ind+1) < len(argv):
+            SCS_URL = argv[ind+1]
+        if "--monitoring" == arg:
+            printR = False
+    try:
         scsI = Service(SCS_URL)
-        scsI.GetVersion()
+        result = scsI.GetVersion(printR)
+        tag = ""
+        try:
+            verStruct = result
+            if verStruct and verStruct.has_key("value") and verStruct["value"].has_key("code_tag"):
+                tag = verStruct["value"]["code_tag"]
+        except:
+            print "ERROR: SCS return not parsable"
+            raise
+        print "SUCCESS: SCS at ",SCS_URL, " is running version: ",tag
+        return 0
+    except Exception, e:
+        print "ERROR: SCS at ",SCS_URL, " is down: ",e
+        return 1
 
 # To run this main, be sure to do:
 # export PYTHONPATH=$PYTHONPATH:/path/to/gcf

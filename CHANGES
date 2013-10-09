@@ -9,6 +9,11 @@ gcf 2.5:
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Eliminated a repetitive log message (#384)
 
+ * stitcher
+  - scs.py supports monitoring style invocation. Invoke scs.py directly. 
+    `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
+    Return 0 if SCS is up, 1 on error. (#394)
+
 gcf 2.4:
  * omni
   - Add nicknames for RSpecs; includes ability to specify a default
