@@ -4,6 +4,10 @@ gcf 2.5:
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
+  - Create any directories need in the path to the agg_nick_cache (#383)
+  - If use --AggNickCacheName and can't read/write to the specified
+    file, omni should fall back to reading `agg_nick_cach.base` (#384)
+  - Eliminated a repetitive log message (#384)
 
 gcf 2.4:
  * omni

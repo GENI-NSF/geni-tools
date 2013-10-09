@@ -141,10 +141,6 @@ def load_agg_nick_config(opts, logger):
     """Load the agg_nick_cache file.
     Search path:
     - filename from commandline
-      - in current directory
-      - in ~/.gcf
-    - agg_nick_cache in current directory
-    - agg_nick_cache in ~/.gcf
     """
 
     # the directory of this file
@@ -152,54 +148,53 @@ def load_agg_nick_config(opts, logger):
     parent_dir = curr_dir.rsplit("/",1)[0]
 
     # Load up the config file
-    configfiles = ['agg_nick_cache','~/.gcf/agg_nick_cache', os.path.join(parent_dir, 'agg_nick_cache.base')]
+    configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
     
     aggNickCacheExists = False
-    if opts.aggNickCacheName:
-        # if aggNickCacheName defined on commandline does not exist, fail
-        if os.path.exists( opts.aggNickCacheName ):
-            configfiles.insert(0, opts.aggNickCacheName)
-            aggNickCacheExists = True
-        else:
-            # Check maybe the default directory for the file
-            configfile = os.path.join( '~/.gcf', opts.aggNickCacheName )
-            configfile = os.path.expanduser( configfile )
-            if os.path.exists( configfile ):
-                configfiles.insert(0, configfile)
-            else:
-                logger.info("Config file '%s' or '%s' does not exist"
-                     % (opts.aggNickCacheName, configfile))
+    # if aggNickCacheName defined on commandline exists, check it first
+    if os.path.exists( opts.aggNickCacheName ):
+        configfiles.insert(0, opts.aggNickCacheName)
+        aggNickCacheExists = True
+
+    # get date of current file
     if aggNickCacheExists:
         aggNickCacheDate = os.path.getmtime(opts.aggNickCacheName)
         aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
     else:
         aggNickCacheTimestamp = None
-
+    # update the file if necessary
     if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
         update_agg_nick_cache( opts, logger )
 
+    # aggNickCacheName may now exist. If so, add it to the front of the list.
+    if not aggNickCacheExists and os.path.exists( opts.aggNickCacheName ):
+        configfiles.insert(0, opts.aggNickCacheName)
+
+    readConfigFile = False
     # Find the first valid config file
     for cf in configfiles:         
         filename = os.path.expanduser(cf)
         if os.path.exists(filename):
-            break
-    config = {}       
-    
-    # Did we find a valid config file?
-    if not os.path.exists(filename):
-        prtStr = """Could not find an agg_nick_cache file in local directory or in ~/.gcf/agg_nick_cache"""
-        logger.info( prtStr )
-        return config
+            config = {}       
 
+            # Did we find a valid config file?
+            if not os.path.exists(filename):
+                prtStr = "Could not find agg_nick_cache file: %s"%filename
+                logger.info( prtStr )
+                continue
+#                return config
 
-    logger.info("Loading agg_nick_cache file '%s'", filename)
-    
-    confparser = ConfigParser.RawConfigParser()
-    try:
-        confparser.read(filename)
-    except ConfigParser.Error as exc:
-        logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
-        raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
+            logger.info("Loading agg_nick_cache file '%s'", filename)
+
+            confparser = ConfigParser.RawConfigParser()
+            try:
+                confparser.read(filename)
+                readConfigFile = True
+                break
+            except ConfigParser.Error as exc:
+                logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
+    if not readConfigFile:
+        raise OmniError, "Failed to read any possible agg_nick_cache file."
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     return config
@@ -370,8 +365,12 @@ def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
     store in the specified place."""
     try:
+        # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
+        directory = os.path.dirname(opts.aggNickCacheName)
+        if not os.path.exists( directory ):
+            os.makedirs( directory )
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
         logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
     except:
