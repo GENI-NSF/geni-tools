@@ -1171,7 +1171,8 @@ class StitchingHandler(object):
             # Also find all links and add an interface_ref
             for child in rspec.childNodes:
                 if child.localName == RSpecParser.LINK_TAG:
-                    # add and interface_ref
+                    # FIXME: If this link has > 1 interface_ref so far, then maybe it doesn't want this fake one? Ticket #392
+                    # add an interface_ref
                     self.logger.info("Adding fake iref endpoint on link " + str(child))
                     child.appendChild(fakeiRef)
 #        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())
