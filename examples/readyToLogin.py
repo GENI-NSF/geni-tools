@@ -621,6 +621,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
     f = sys.stdout
 
   firstTime = {}
+
   for amUrl, amInfo in loginInfoDict.items() :
     f.write("\n")
     f.write("="*80+"\n")
@@ -629,57 +630,64 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
-    for item in amInfo["info"] :
-      if not firstTime.has_key( item['client_id'] ):
-          firstTime[ item['client_id'] ] = True
-      #    print "This is first time for %s" % item['client_id']
-      output = ""
-      if options.readyonly :
-        try:
-          if item['geni_status'] != "ready" :
-              #print "%s is not ready: %s" % (item['client_id'], item['geni_status'])
-              continue
-        except KeyError:
-          sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
-      # If there are status info print it, if not just skip it
-      try:
-        if firstTime[ item['client_id'] ]:
-            gsOut = ""
-            amsOut = ""
-            if item.has_key('geni_status'):
-                gsOut = "geni_status is: %s" % item['geni_status']
-            if item.has_key('am_status'):
-                amsOut = "am_status: %s" % item['am_status']
-            if gsOut:
-                if amsOut:
-                    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+    sortedAMInfo = {}
+    for item in amInfo['info']:
+      if not sortedAMInfo.has_key( item['client_id'] ):
+          sortedAMInfo[ item['client_id'] ] = []
+      sortedAMInfo[ item['client_id'] ].append(item)
+
+    for client_id, itemList in sortedAMInfo.items():
+      for item in itemList:
+          if not firstTime.has_key( item['client_id'] ):
+              firstTime[ item['client_id'] ] = True
+          #    print "This is first time for %s" % item['client_id']
+          output = ""
+          if options.readyonly :
+            try:
+              if item['geni_status'] != "ready" :
+                  #print "%s is not ready: %s" % (item['client_id'], item['geni_status'])
+                  continue
+            except KeyError:
+              sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
+          # If there are status info print it, if not just skip it
+          try:
+            if firstTime[ item['client_id'] ]:
+                gsOut = ""
+                amsOut = ""
+                if item.has_key('geni_status'):
+                    gsOut = "geni_status is: %s" % item['geni_status']
+                if item.has_key('am_status'):
+                    amsOut = "am_status: %s" % item['am_status']
+                if gsOut:
+                    if amsOut:
+                        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    else:
+                        output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+                elif amsOut:
+                        output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
                 else:
-                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
-            elif amsOut:
-                    output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
-            else:
-                    output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
-            # Check if node is in ready state
-        firstTime[ item['client_id'] ]=False
-      except KeyError as ke:
-          #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
-          pass
+                        output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
+                # Check if node is in ready state
+            firstTime[ item['client_id'] ]=False
+          except KeyError as ke:
+              #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
+              pass
 
-      keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
-      usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
-      if options.include_keys:
-          if len(keys)>0:
+          keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
+          usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
+          if options.include_keys:
+              if len(keys)>0:
+                  output += usrLoginMsg
+              #else:
+              #    print "User %s has no keys" % item['username']
+              for key in keys: 
+                  output += printLoginInfoForOneUser( item, key=key )
+
+          else:
               output += usrLoginMsg
-          #else:
-          #    print "User %s has no keys" % item['username']
-          for key in keys: 
-              output += printLoginInfoForOneUser( item, key=key )
+              output += printLoginInfoForOneUser( item )
 
-      else:
-          output += usrLoginMsg
-          output += printLoginInfoForOneUser( item )
-          
-      f.write(output)
+          f.write(output)
     if options.include_keys:
         f.write("\nNOTE: If your user is not listed, try using the --no-keys option.\n")
 
@@ -824,6 +832,10 @@ def main(argv=None):
         argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
+#    for am, amInfo in loginInfoDict.items():
+#        print "+++ "+am+" +++"
+#        for info in amInfo["info"]:
+#            print "+++ "+ info['username']+" on "+ info['hostname']+":"+info['port'] +" +++"
     printLoginInfo(loginInfoDict, keyList) 
     if not loginInfoDict:
       print "No login information found!!"
