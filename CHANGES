@@ -14,6 +14,10 @@ gcf 2.5:
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
 
+gcf 2.4.1:
+ * Modify readyToLogin.py to work with new login info in InstaGENI
+   manifests (#389)
+
 gcf 2.4:
  * omni
   - Add nicknames for RSpecs; includes ability to specify a default
