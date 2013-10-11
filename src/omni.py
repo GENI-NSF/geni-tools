@@ -117,7 +117,7 @@ import omnilib.frameworks.framework_pg
 import omnilib.frameworks.framework_pgch
 import omnilib.frameworks.framework_sfa
 
-OMNI_VERSION="2.4.1"
+OMNI_VERSION="2.4.2"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
