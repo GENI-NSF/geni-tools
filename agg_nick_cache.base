@@ -206,9 +206,9 @@ nysernet-ig=urn:publicid:IDN+instageni.nysernet.org+authority+cm,https://instage
 nysernet-ig1=urn:publicid:IDN+instageni.nysernet.org+authority+cm,https://instageni.nysernet.org:12369/protogeni/xmlrpc/am/1.0
 nysernet-ig2=urn:publicid:IDN+instageni.nysernet.org+authority+cm,https://instageni.nysernet.org:12369/protogeni/xmlrpc/am/2.0
 nysernet-ig3=urn:publicid:IDN+instageni.nysernet.org+authority+cm,https://instageni.nysernet.org:12369/protogeni/xmlrpc/am/3.0
-nysernet-of-ig=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
-nysernet-of-ig1=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/1
-nysernet-of-ig2=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
+nysernet-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
+nysernet-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/1
+nysernet-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.nysernet.org+authority+am,https://foam.instageni.nysernet.org:3626/foam/gapi/2
 
 # ============================================
 # Southern Crossroads (SoX) OpenFlow

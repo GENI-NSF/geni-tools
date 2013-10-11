@@ -129,11 +129,11 @@ def getInfoFromManifest(manifestStr):
     # Try to get the per node status from the EG specific geni_sliver_info RSpec extension
     geni_status = ""
     for gsi_el in node_el.findall("%s%s" % (gsiNS, "geni_sliver_info")):
-#        print "Got a geni_sliver_info that says state is: %s" % (gsi_el.attrib['state'])
+        # print "Got a geni_sliver_info that says state is: %s" % (gsi_el.attrib['state'])
         geni_status = gsi_el.attrib['state']
     for serv_el in node_el.findall(tag("services")):
       for login_el in serv_el.findall(tag("login")):
-#         print "Looking in login tag: %s with attribute %s in node %s" % (login_el, login_el.attrib, node_el.attrib["client_id"])
+         # print "Looking in login tag: %s with attribute %s in node %s" % (login_el, login_el.attrib, node_el.attrib["client_id"])
          try:
            loginInfo.append(login_el.attrib)
            loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
@@ -416,6 +416,10 @@ def getParser() :
                     dest="include_keys",
                     help="Do not include ssh keys in output",
                     action="store_false", default=True)
+  parser.add_option("--noFallbackToStatusForPG", 
+                    dest="fallback_status_PG",
+                    help="For ProtoGENI/InstaGENI nodes, do not fallback to querying login info from SliverStatus if it contains login info not found in the manifest.",
+                    action="store_false", default=True)
   return parser
 
 
@@ -456,6 +460,16 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
       print "ERROR: empty aggregate sliver status!"
       return amLoginInfo      
   if amType == "protogeni":
+    amLoginInfo = addNodeStatusPG( amLoginInfo, amSliverStat )
+    # 10/9/13 PG code is switching to include login info in manifest
+    # a future release should remove the following line so that we don't fall back to SliverStatus
+    if options.fallback_status_PG:
+        amLoginInfo = addNodeStatusCheckForPGFallback( amLoginInfo, amSliverStat )
+  else:
+      print "NOT IMPLEMENTED YET"
+  return amLoginInfo
+
+def addNodeStatusPG( amLoginInfo, amSliverStat ):
     for resourceDict in amSliverStat['geni_resources']:
       if not resourceDict.has_key("pg_manifest"):
         print "No pg_manifest in this entry"
@@ -474,9 +488,101 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
-  else:
-      print "NOT IMPLEMENTED YET"
-  return amLoginInfo
+    return amLoginInfo
+
+def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
+    '''Not all PG AMs may provide login info in the manifest until they update their code.
+    If this is the case, fall back to looking in SliverStatus.
+    10/9/13 PG code is switching to include login info in manifest.
+    A future release should remove the following line so that we don't fall back to SliverStatus.
+    '''
+    loginInfo = []
+    pgKeyList = {}
+    if not sliverStat:
+      print "ERROR: empty sliver status!"
+      return loginInfo
+
+    if not sliverStat.has_key("users"):
+      print "ERROR: No 'users' key in sliver status!"
+      return loginInfo
+
+    if not sliverStat.has_key('geni_resources'):
+      print "ERROR: Sliver Status lists no resources"
+      return loginInfo
+
+    for userDict in sliverStat['users'] :
+      if not userDict.has_key('login'):
+        print "User entry had no 'login' key"
+        continue
+      pgKeyList[userDict['login']] = [] 
+      if not userDict.has_key("keys"):
+        print "User entry for %s had no keys" % userDict['login']
+        continue
+      for k in userDict['keys']:
+          #XXX nriga Keep track of keys, in the future we can verify what key goes with
+          # which private key
+          pgKeyList[userDict['login']].append(k['key'])  
+    for resourceDict in sliverStat['geni_resources']: 
+      if not resourceDict.has_key("pg_manifest"):
+        print "No pg_manifest in this entry"
+        continue
+      if not resourceDict['pg_manifest'].has_key('children'):
+        print "pg_manifest entry has no children"
+        continue
+      for children1 in resourceDict['pg_manifest']['children']:
+        if not children1.has_key('children'):
+          #print "No child in resource[pg_man][children]"
+          continue
+        for children2 in children1['children']:
+          if not children2.has_key("attributes"):
+            #print "No attributes on child under pg_man/children"
+            continue
+          child = children2['attributes']
+          port = ""
+          hostname = ""
+          if child.has_key("hostname"):
+            hostname = child["hostname"]
+          else:
+            #print "No hostname"
+            continue
+          if child.has_key("port"):
+            port = child["port"]
+          client_id = ""
+          if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
+            client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+          #else:
+          #    print "Got no client_id from pg_man/attribs"
+          geni_status = ""
+          if resourceDict.has_key("geni_status"):
+            geni_status = resourceDict["geni_status"]
+          am_status = ""
+          if resourceDict.has_key("pg_status"):
+            am_status = resourceDict["pg_status"]
+
+          ## Fallback to getting login info from SliverStatus ##
+          # Keep track of which usernames we already have info for
+          userLoginInfo_usernames = set()
+          for item in userLoginInfo:
+              if item['client_id'] != client_id :
+                  continue
+              userLoginInfo_usernames.add(item['username'])
+
+          for user, keys in pgKeyList.items():
+            if user in userLoginInfo_usernames:
+                # skip users for whom we already have login info
+                continue
+            # add info for users not listed in the manifest
+            userLoginInfo.append({'authentication':'ssh-keys', 
+                              'hostname':hostname,
+                              'client_id': client_id,
+                              'port':port,
+                              'username':user,
+                              'keys' : keys,
+                              'geni_status':geni_status,
+                              'am_status':am_status
+                             })
+    return userLoginInfo  
+  
 
 def getKeysForUser( amType, username, keyList ):
   '''Returns a list of keys for the provided user based on the
@@ -515,6 +621,7 @@ def printLoginInfo( loginInfoDict, keyList ) :
     f = sys.stdout
 
   firstTime = {}
+
   for amUrl, amInfo in loginInfoDict.items() :
     f.write("\n")
     f.write("="*80+"\n")
@@ -523,57 +630,64 @@ def printLoginInfo( loginInfoDict, keyList ) :
 
     f.write( "\nFor more login info, see the section entitled:\n\t 'Providing a private key to ssh' in 'readyToLogin.py -h'\n")
 
-    for item in amInfo["info"] :
-      if not firstTime.has_key( item['client_id'] ):
-          firstTime[ item['client_id'] ] = True
-      #    print "This is first time for %s" % item['client_id']
-      output = ""
-      if options.readyonly :
-        try:
-          if item['geni_status'] != "ready" :
-              #print "%s is not ready: %s" % (item['client_id'], item['geni_status'])
-              continue
-        except KeyError:
-          sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
-      # If there are status info print it, if not just skip it
-      try:
-        if firstTime[ item['client_id'] ]:
-            gsOut = ""
-            amsOut = ""
-            if item.has_key('geni_status'):
-                gsOut = "geni_status is: %s" % item['geni_status']
-            if item.has_key('am_status'):
-                amsOut = "am_status: %s" % item['am_status']
-            if gsOut:
-                if amsOut:
-                    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+    sortedAMInfo = {}
+    for item in amInfo['info']:
+      if not sortedAMInfo.has_key( item['client_id'] ):
+          sortedAMInfo[ item['client_id'] ] = []
+      sortedAMInfo[ item['client_id'] ].append(item)
+
+    for client_id, itemList in sortedAMInfo.items():
+      for item in itemList:
+          if not firstTime.has_key( item['client_id'] ):
+              firstTime[ item['client_id'] ] = True
+          #    print "This is first time for %s" % item['client_id']
+          output = ""
+          if options.readyonly :
+            try:
+              if item['geni_status'] != "ready" :
+                  #print "%s is not ready: %s" % (item['client_id'], item['geni_status'])
+                  continue
+            except KeyError:
+              sys.stderr.write("There is no status information for node %s. Print login info." % item['client_id'])
+          # If there are status info print it, if not just skip it
+          try:
+            if firstTime[ item['client_id'] ]:
+                gsOut = ""
+                amsOut = ""
+                if item.has_key('geni_status'):
+                    gsOut = "geni_status is: %s" % item['geni_status']
+                if item.has_key('am_status'):
+                    amsOut = "am_status: %s" % item['am_status']
+                if gsOut:
+                    if amsOut:
+                        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    else:
+                        output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+                elif amsOut:
+                        output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
                 else:
-                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
-            elif amsOut:
-                    output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
-            else:
-                    output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
-            # Check if node is in ready state
-        firstTime[ item['client_id'] ]=False
-      except KeyError as ke:
-          #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
-          pass
+                        output += "\n%s's geni_status is: unknown \n" % (item['client_id'])
+                # Check if node is in ready state
+            firstTime[ item['client_id'] ]=False
+          except KeyError as ke:
+              #print "Got error looking in firstTime for %s: %s" % (item['client_id'], ke)
+              pass
 
-      keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
-      usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
-      if options.include_keys:
-          if len(keys)>0:
+          keys = getKeysForUser(amInfo["amType"], item["username"], keyList)
+          usrLoginMsg = "User %s logs in to %s using:\n" % (item['username'], item['client_id'])      
+          if options.include_keys:
+              if len(keys)>0:
+                  output += usrLoginMsg
+              #else:
+              #    print "User %s has no keys" % item['username']
+              for key in keys: 
+                  output += printLoginInfoForOneUser( item, key=key )
+
+          else:
               output += usrLoginMsg
-          #else:
-          #    print "User %s has no keys" % item['username']
-          for key in keys: 
-              output += printLoginInfoForOneUser( item, key=key )
+              output += printLoginInfoForOneUser( item )
 
-      else:
-          output += usrLoginMsg
-          output += printLoginInfoForOneUser( item )
-          
-      f.write(output)
+          f.write(output)
     if options.include_keys:
         f.write("\nNOTE: If your user is not listed, try using the --no-keys option.\n")
 
@@ -718,6 +832,10 @@ def main(argv=None):
         argv = sys.argv[1:]
     loginInfoDict, keyList = main_no_print(argv=argv)
     printSSHConfigInfo(loginInfoDict, keyList)
+#    for am, amInfo in loginInfoDict.items():
+#        print "+++ "+am+" +++"
+#        for info in amInfo["info"]:
+#            print "+++ "+ info['username']+" on "+ info['hostname']+":"+info['port'] +" +++"
     printLoginInfo(loginInfoDict, keyList) 
     if not loginInfoDict:
       print "No login information found!!"
