@@ -1,5 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.4.2:
+ * acceptance tests
+  - Use crossplatform `getpass` module instead of UNIX-only `pwd`
+    modules in omni_unittest.py (#397)
+
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
    manifests (#389)
