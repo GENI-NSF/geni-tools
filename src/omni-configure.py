@@ -40,6 +40,7 @@ from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
 import logging
+import M2Crypto
 from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
@@ -386,21 +387,17 @@ def get_pub_keys_from_bundle(omnizip) :
 
 
 def generatePublicKey(private_key_file):
-    """ This function generates a public key using ssh-keygen 
-        shell command. The public key is based on the 
+    """ This function generates a public key based on the 
         the private key in the 'private_key_file'
         The function returns the name of the public key file
         or None if the creation failed
     """
-    args = ['ssh-keygen', '-y', '-f']
-    args.append(private_key_file)
-    logger.debug("Create public key using ssh-keygen: '%s'", args)
-
+    logger.debug("Create public key based on private key.")
     succ = False
     for i in range(0,3) :
-        p = Popen(args, stdout=PIPE)
-        public_key = p.communicate()[0]
-        if p.returncode != 0:
+        try:
+            private_key = M2Crypto.RSA.load_key( private_key_file )
+        except:
             logger.warning("Error creating public key, passphrase might be wrong.")
             continue
         succ = True
@@ -410,12 +407,22 @@ def generatePublicKey(private_key_file):
         logger.warning("Unable to create public key.")
         return None
     public_key_file = private_key_file + '.pub'
+    # generate a public key based on the passed in private key
+#    public_key = M2Crypto.RSA.new_pub_key( private_key.pub() )
+    from base64 import urlsafe_b64encode
+    public_key2 = M2Crypto.RSA.new_pub_key( private_key.pub() )
+    print public_key2
+#    public_key = b64encode(public_key2.pub()[0])
+    public_key = urlsafe_b64encode(private_key.pub()[1])
+    
+    print public_key
     try :
         f = open(public_key_file,'w')
+        #        public_key.save_pub_key( public_key_file )
     except :
         logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % public_key_file)
         return None
-    f.write("%s" % public_key)
+    f.write("ssh-rsa %s" % public_key)
     f.close()
     logger.info("Public key stored at: %s", public_key_file)
     return public_key_file
@@ -688,7 +695,9 @@ def configureSSHKeys(opts):
 
     private_key_file = copyPrivateKeyFile(pkey, private_key_file)
 
+    print "Make a PUBLIC key"
     public_key_file = generatePublicKey(private_key_file)
+    print "DONE: Make a PUBLIC key"
     if not public_key_file:
         #we failed at generating a public key, remove the private key and exit
         os.remove(private_key_file)
