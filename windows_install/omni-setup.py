@@ -3,7 +3,7 @@ from distutils.core import setup
 import py2exe
 import sys
 
-setup(console=['C:\Program Files\gcf\gcf-2.4\src\omni.py'],
+setup(console=['..\src\omni.py'],
       name="omni",
 
       options={
