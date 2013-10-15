@@ -32,7 +32,7 @@
     configuration is needed (multiple users, etc) this should still be done
     manually by editing the omni configuration file. 
 """
-
+from base64 import b64encode
 import string, re
 import sys, os, platform, shutil
 import zipfile
@@ -40,6 +40,7 @@ from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
 import logging
+import M2Crypto
 from sfa.trust.certificate import Certificate, Keypair
 
 logger = None
@@ -386,21 +387,17 @@ def get_pub_keys_from_bundle(omnizip) :
 
 
 def generatePublicKey(private_key_file):
-    """ This function generates a public key using ssh-keygen 
-        shell command. The public key is based on the 
+    """ This function generates a public key based on the 
         the private key in the 'private_key_file'
         The function returns the name of the public key file
         or None if the creation failed
     """
-    args = ['ssh-keygen', '-y', '-f']
-    args.append(private_key_file)
-    logger.debug("Create public key using ssh-keygen: '%s'", args)
-
+    logger.debug("Create public key based on private key.")
     succ = False
     for i in range(0,3) :
-        p = Popen(args, stdout=PIPE)
-        public_key = p.communicate()[0]
-        if p.returncode != 0:
+        try:
+            private_key = M2Crypto.RSA.load_key( private_key_file )
+        except:
             logger.warning("Error creating public key, passphrase might be wrong.")
             continue
         succ = True
@@ -410,12 +407,25 @@ def generatePublicKey(private_key_file):
         logger.warning("Unable to create public key.")
         return None
     public_key_file = private_key_file + '.pub'
+
+    # generate a public key based on the passed in private key
+    public_key = M2Crypto.RSA.new_pub_key( private_key.pub() )
+    # Output key in format:
+    # ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB <snip>
+    # The following is base64 encoding of three pairs of (len, string) where len is the length of the string:
+    #  * the string "rsa" (so this is "\x00\x00\x00\x07ssh-rsa")
+    #  * public_key.pub()[0] aka 'e' the "RSA public exponent"
+    #  * public_key.pub()[1] aka 'n' the "RSA composite of primes"
+    # .pub() generates the tuple (e,n) in the appropriate format.  See: 
+    #    http://nullege.com/codes/search/M2Crypto.RSA.new_pub_key
+    # The following line of code is from: http://stackoverflow.com/a/3939477/1804086
+    key_output = b64encode('\x00\x00\x00\x07ssh-rsa%s%s' % (public_key.pub()[0], public_key.pub()[1]))
     try :
         f = open(public_key_file,'w')
     except :
         logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % public_key_file)
         return None
-    f.write("%s" % public_key)
+    f.write("ssh-rsa %s" % key_output)
     f.close()
     logger.info("Public key stored at: %s", public_key_file)
     return public_key_file
@@ -687,7 +697,6 @@ def configureSSHKeys(opts):
         os.makedirs(ssh_dir)
 
     private_key_file = copyPrivateKeyFile(pkey, private_key_file)
-
     public_key_file = generatePublicKey(private_key_file)
     if not public_key_file:
         #we failed at generating a public key, remove the private key and exit
