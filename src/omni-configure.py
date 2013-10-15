@@ -564,6 +564,11 @@ def parseArgs(argv, options=None):
         return
 
     (opts, args) = parser.parse_args(argv, options)
+    opts.configfile = os.path.normcase(os.path.expanduser(opts.configfile))    
+    opts.cert = os.path.normcase(os.path.expanduser(opts.cert))    
+    opts.prcertkey = os.path.normcase(os.path.expanduser(opts.prcertkey))    
+    opts.sshdir = os.path.normcase(os.path.expanduser(opts.sshdir))    
+    opts.portal_bundle = os.path.normcase(os.path.expanduser(opts.portal_bundle))    
     return opts, args
 
 def initialize(opts):
@@ -578,7 +583,7 @@ def initialize(opts):
     if not os.path.exists(configdir):
       # If the directory does not exist but it is the 
       # default directory, create it, if not print an error
-      if not cmp(os.path.expanduser('~/.gcf'), configdir):
+      if not cmp(os.path.normcase(os.path.expanduser('~/.gcf')), configdir):
         logger.info("Creating directory: %s", configdir)
         os.makedirs(configdir)
       else:
