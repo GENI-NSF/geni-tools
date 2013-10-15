@@ -526,7 +526,12 @@ def parseArgs(argv, options=None):
     """
 
     usage = "\n Script for automatically configuring Omni."
-
+    
+    if platform.system().lower().find('windows') != -1 and  platform.release().lower().find('xp') != -1:
+        DEFAULT_DOWNLOADS_FLDR = "~/My Documents/Downloads"
+    else:
+        DEFAULT_DOWNLOADS_FLDR = "~/Downloads" 
+    DEFAULT_DOWNLOADS = DEFAULT_DOWNLOADS_FLDR+"/omni-bundle.zip"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
                       help="Config file location [DEFAULT: %default]", 
@@ -544,7 +549,7 @@ def parseArgs(argv, options=None):
                       help="Directory for the location of SSH keys for "+ \
                       "logging in to compute resources, [DEFAULT: %default]" ,
                       metavar="FILE")
-    parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
+    parser.add_option("-z", "--portal-bundle", default=DEFAULT_DOWNLOADS,
                       help="Bundle downloaded from the portal for "+ \
                       "configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="portal", type='choice',
