@@ -53,6 +53,7 @@ import omnilib.xmlrpc.client
 from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
+import sfa.trust.gid as sfa_gid
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
@@ -1748,6 +1749,31 @@ class AMCallHandler(object):
             if filename:
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
+
+            # register sliver in the database
+            gid = sfa_gid.GID(string = file(self.framework.cert).read())
+            creator = gid.get_urn()
+            agg_urn = clienturn
+            if not agg_urn or agg_urn == "unspecified_AM_URN":
+                idx1 = result.find('component_manager_id=')
+                idx2 = result.find('"', idx1) + 1
+                agg_urn = result[idx2 : result.find('"', idx2)]
+            idx1 = result.find('sliver_id=')
+            idx2 = result.find('"', idx1) + 1
+            sliver_urn = result[idx2 : result.find('"', idx2)]
+            idx2 = urn.find('IDN') + 4
+            the_ma = 'https://' + urn[idx2 : urn.find(':', idx2)] + '/MA'
+
+            config = {'cert' : self.framework.cert, 'key' : self.framework.key}
+            framework2 = MAClientFramework(config, {})
+            client2 = framework2.make_client(the_ma, self.framework.key, \
+                                   self.framework.cert, verbose=False)
+            fields = {"SLIVER_INFO_URN": sliver_urn,
+                      "SLIVER_INFO_SLICE_URN": urn,
+                      "SLIVER_INFO_AGGREGATE_URN": agg_urn,
+                      "SLIVER_INFO_CREATOR_URN": creator}
+            _do_ssl(framework2, None, "Recording sliver creation", \
+                 client2.create_sliver_info, [], json.load({'fields': fields}))
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
