@@ -425,7 +425,7 @@ def generatePublicKey(private_key_file):
     except :
         logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % public_key_file)
         return None
-    f.write("ssh-rsa %s" % key_output)
+    f.write("ssh-rsa %s\n" % key_output)
     f.close()
     logger.info("Public key stored at: %s", public_key_file)
     return public_key_file
@@ -597,8 +597,6 @@ def initialize(opts):
     # Validate that the sshdir does not conflict with the tmp
     # folders used for the portal
     if opts.framework is 'portal':
-      print "PORTAL"
-      print opts.sshdir
       if opts.sshdir.startswith('/tmp/omni_bundle') :
             sys.exit("\n\nExit!\nYou can't use as your ssh directory "+\
                      opts.sshdir + ". It is used internally by the script, rerun "+\
