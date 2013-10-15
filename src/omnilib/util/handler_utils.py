@@ -84,9 +84,13 @@ def _derefRSpecNick( handler, rspecNickname ):
         elif handler.config.has_key('default_rspec_location') and handler.config.has_key('default_rspec_extension'):
             handler.logger.info("Looking for RSpec '%s' in the default rspec location" % (rspecNickname))
             try:
-                remoteurl = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
-                handler.logger.info("... which is '%s'" % (remoteurl))
-                contentstr = readFile( remoteurl )            
+                URL_PREFIXES = ("http://", "https://", "ftp://")
+                if handler.config['default_rspec_location'].startswith(URL_PREFIXES):
+                    location = handler.config['default_rspec_location']+"/"+rspecNickname+"."+handler.config['default_rspec_extension']
+                else:
+                    location = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
+                handler.logger.info("... which is '%s'" % (location))
+                contentstr = readFile( location )            
             except:
                 raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)
         else:
