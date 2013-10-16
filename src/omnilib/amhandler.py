@@ -1781,7 +1781,8 @@ class AMCallHandler(object):
             fields = {"SLIVER_INFO_URN": sliver_urn,
                       "SLIVER_INFO_SLICE_URN": urn,
                       "SLIVER_INFO_AGGREGATE_URN": agg_urn,
-                      "SLIVER_INFO_CREATOR_URN": creator}
+                      "SLIVER_INFO_CREATOR_URN": creator,
+                      "SLIVER_INFO_EXPIRATION": str(slice_exp)}
             _do_ssl(framework2, None, "Recording sliver creation", \
                  client2.create_sliver_info, [], {'fields': fields})
 
