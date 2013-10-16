@@ -7,6 +7,7 @@ gcf 2.5:
   - Create any directories need in the path to the agg_nick_cache (#383)
   - If use --AggNickCacheName and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
+  - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
 
  * stitcher
