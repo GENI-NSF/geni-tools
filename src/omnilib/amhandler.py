@@ -54,12 +54,22 @@ from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
 import sfa.trust.gid as sfa_gid
+from omnilib.frameworks.framework_base import Framework_Base
+
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
     def __init__(self, client, msg):
         self.client = client
         self.validMsg = msg
+
+class SAClientFramework(Framework_Base):
+    def __init__(self, config, opts):
+        Framework_Base.__init__(self, config)
+        self.config = config
+        self.logger = None
+        self.fwtype = "SA Client"
+        self.opts = opts
 
 class AMCallHandler(object):
     '''Dispatch AM API calls to aggregates'''
@@ -1762,18 +1772,18 @@ class AMCallHandler(object):
             idx2 = result.find('"', idx1) + 1
             sliver_urn = result[idx2 : result.find('"', idx2)]
             idx2 = urn.find('IDN') + 4
-            the_ma = 'https://' + urn[idx2 : urn.find(':', idx2)] + '/MA'
+            the_sa = 'https://' + urn[idx2 : urn.find(':', idx2)] + '/SA'
 
             config = {'cert' : self.framework.cert, 'key' : self.framework.key}
-            framework2 = MAClientFramework(config, {})
-            client2 = framework2.make_client(the_ma, self.framework.key, \
+            framework2 = SAClientFramework(config, {})
+            client2 = framework2.make_client(the_sa, self.framework.key, \
                                    self.framework.cert, verbose=False)
             fields = {"SLIVER_INFO_URN": sliver_urn,
                       "SLIVER_INFO_SLICE_URN": urn,
                       "SLIVER_INFO_AGGREGATE_URN": agg_urn,
                       "SLIVER_INFO_CREATOR_URN": creator}
             _do_ssl(framework2, None, "Recording sliver creation", \
-                 client2.create_sliver_info, [], json.load({'fields': fields}))
+                 client2.create_sliver_info, [], {'fields': fields})
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
