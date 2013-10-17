@@ -2571,6 +2571,17 @@ class AMCallHandler(object):
             else:
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
+                if hasattr(self.framework, 'config') and \
+                         self.framework.config['type'] == 'chapi':
+                    res2 = _do_ssl(self.framework, None, "Lookup sliver urn",
+                                   self.framework.sa.lookup_sliver_info, [],
+                                   {'match': {'SLIVER_INFO_SLICE_URN': urn},
+                                    'filter': []})
+                    fields = {'SLIVER_INFO_EXPIRATION': str(slice_exp)}
+                    for sliver_urn in res2[0]['value']:
+                        _do_ssl(self.framework, None, "Recording sliver deletion",
+                                self.framework.sa.update_sliver_info,
+                                sliver_urn, [], {'fields': fields})
                 if numClients == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
