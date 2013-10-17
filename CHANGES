@@ -14,6 +14,7 @@ gcf 2.5:
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
+  - Fix call to delete reservation at an EG AM on allocate error (#406)
 
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
