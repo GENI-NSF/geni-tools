@@ -516,8 +516,8 @@ def copyPrivateKeyFile(src_file, dst_file):
     logger.info("Private key stored at: %s", dst_file)
     # Change the permission to something appropriate for keys
     logger.debug("Changing permission on private key to 600")
-    os.chmod(dst_file, 0600)
-    os.chmod(src_file, 0600)
+    os.chmod(dst_file, 0o600)
+    os.chmod(src_file, 0o600)
     return dst_file
 
 def parseArgs(argv, options=None):
