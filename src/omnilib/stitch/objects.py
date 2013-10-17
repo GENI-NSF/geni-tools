@@ -1237,7 +1237,7 @@ class Aggregate(object):
                     omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
                 try:
                     # FIXME: right counter?
-                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
                     self.logger.debug("doAMAPICall on EG AM where res had Exception: %s %s at %s got: %s", opName, slicename, self, text)
                 except Exception, e:
                     self.logger.warn("Failed to delete failed (Exception) reservation at EG AM %s: %s", self, e)
