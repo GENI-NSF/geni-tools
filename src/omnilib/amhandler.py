@@ -45,7 +45,7 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
-    _derefRSpecNick, \
+    _derefRSpecNick, _get_user_urn, \
     _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
     _getRSpecOutput, _writeRSpec, _printResults, _load_cred
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
@@ -62,14 +62,6 @@ class BadClientException(Exception):
     def __init__(self, client, msg):
         self.client = client
         self.validMsg = msg
-
-class SAClientFramework(Framework_Base):
-    def __init__(self, config, opts):
-        Framework_Base.__init__(self, config)
-        self.config = config
-        self.logger = None
-        self.fwtype = "SA Client"
-        self.opts = opts
 
 class AMCallHandler(object):
     '''Dispatch AM API calls to aggregates'''
@@ -1760,31 +1752,28 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
-            # register sliver in the database
-            gid = sfa_gid.GID(string = file(self.framework.cert).read())
-            creator = gid.get_urn()
-            agg_urn = clienturn
-            if not agg_urn or agg_urn == "unspecified_AM_URN":
-                idx1 = result.find('component_manager_id=')
+            # register sliver in the database if using chapi
+            if hasattr(self.framework, 'config') and \
+                     self.framework.config['type'] == 'chapi':
+                creator = _get_user_urn(self)
+                idx1 = result.find('sliver_id=')
                 idx2 = result.find('"', idx1) + 1
-                agg_urn = result[idx2 : result.find('"', idx2)]
-            idx1 = result.find('sliver_id=')
-            idx2 = result.find('"', idx1) + 1
-            sliver_urn = result[idx2 : result.find('"', idx2)]
-            idx2 = urn.find('IDN') + 4
-            the_sa = 'https://' + urn[idx2 : urn.find(':', idx2)] + '/SA'
-
-            config = {'cert' : self.framework.cert, 'key' : self.framework.key}
-            framework2 = SAClientFramework(config, {})
-            client2 = framework2.make_client(the_sa, self.framework.key, \
-                                   self.framework.cert, verbose=False)
-            fields = {"SLIVER_INFO_URN": sliver_urn,
-                      "SLIVER_INFO_SLICE_URN": urn,
-                      "SLIVER_INFO_AGGREGATE_URN": agg_urn,
-                      "SLIVER_INFO_CREATOR_URN": creator,
-                      "SLIVER_INFO_EXPIRATION": str(slice_exp)}
-            _do_ssl(framework2, None, "Recording sliver creation", \
-                 client2.create_sliver_info, [], {'fields': fields})
+                sliver_urn = result[idx2 : result.find('"', idx2)]
+                agg_urn = clienturn
+                if not agg_urn or agg_urn == "unspecified_AM_URN":
+                    # idx1 = result.find('component_manager_id=')
+                    # idx2 = result.find('"', idx1) + 1
+                    # agg_urn = result[idx2 : result.find('"', idx2)]
+                    idx1 = sliver_urn.find('sliver+')
+                    agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                fields = {"SLIVER_INFO_URN": sliver_urn,
+                          "SLIVER_INFO_SLICE_URN": urn,
+                          "SLIVER_INFO_AGGREGATE_URN": agg_urn,
+                          "SLIVER_INFO_CREATOR_URN": creator,
+                          "SLIVER_INFO_EXPIRATION": str(slice_exp)}
+                _do_ssl(self.framework, None, "Recording sliver creation",
+                        self.framework.sa.create_sliver_info, [],
+                        {'fields': fields})
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -3258,6 +3247,10 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
+                if hasattr(self.framework, 'config') and \
+                         self.framework.config['type'] == 'chapi':
+                    _do_ssl(self.framework, None, "Recording sliver deletion",
+                            self.framework.sa.delete_sliver_info, urn, [], {})
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)
