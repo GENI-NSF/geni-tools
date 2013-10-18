@@ -1,0 +1,44 @@
+
+OMNI EXECUTABLES (BETA RELEASE) FOR WINDOWS AND MAC OS: SOFTWARE DISCLAIMER
+------------------------------------------------------------------------
+
+RAYTHEON BBN grants you the following GENI Public Licence to the BETA
+versions of the Omni experimenter tool executables for Microsoft
+Windows and Mac OS:
+
+Copyright (c) 2010 Raytheon BBN Technologies
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and/or hardware specification (the “Work”) to
+deal in the Work without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Work, and to permit persons to whom the Work
+is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Work.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE WORK.
+
+This permission is conditioned on your keeping intact all copyright,
+trademark, and other proprietary notices, and your acceptance of any
+terms, conditions, and notices accompanying the Content or otherwise
+set forth in this site.
+
+The Work includes the following software:
+1. Python language libraries distributed under the Python Software
+Foundation Licence Verstion 2
+(http://opensource.org/licenses/Python-2.0).
+2. Python M2Crypto distributed under the licence at
+http://svn.osafoundation.org/m2crypto/tags/0.20.2/LICENCE
+3. Python dateutil distributed under the BSD 2-Clause License
+(Simplified BSD License) at
+http://opensource.org/licenses/BSD-2-Clause
+4. pyOpenSSL distributed under Apache License 2.0 at
+http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/head:/LICENSE.
