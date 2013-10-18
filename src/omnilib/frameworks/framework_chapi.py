@@ -319,3 +319,8 @@ class Framework(Framework_Base):
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
         _do_ssl(self, None, "Recording sliver update",
                 self.sa.update_sliver_info, sliver_urn, [], {'fields': fields})
+        
+    # update the expiration time on a sliver
+    def chapi_delete_sliver_info(self, sliver_urn):
+        _do_ssl(self, None, "Recording sliver delete",
+                self.sa.delete_sliver_info, sliver_urn, [], {})
