@@ -1753,8 +1753,7 @@ class AMCallHandler(object):
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
             # register sliver in the database if using chapi
-            if hasattr(self.framework, 'config') and \
-                     self.framework.config['type'] == 'chapi':
+            if hasattr(self.framework, 'chapi_create_sliver_info'):
                 creator = _get_user_urn(self)
                 idx1 = result.find('sliver_id=')
                 idx2 = result.find('"', idx1) + 1
@@ -1766,14 +1765,8 @@ class AMCallHandler(object):
                     # agg_urn = result[idx2 : result.find('"', idx2)]
                     idx1 = sliver_urn.find('sliver+')
                     agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                fields = {"SLIVER_INFO_URN": sliver_urn,
-                          "SLIVER_INFO_SLICE_URN": urn,
-                          "SLIVER_INFO_AGGREGATE_URN": agg_urn,
-                          "SLIVER_INFO_CREATOR_URN": creator,
-                          "SLIVER_INFO_EXPIRATION": str(slice_exp)}
-                _do_ssl(self.framework, None, "Recording sliver creation",
-                        self.framework.sa.create_sliver_info, [],
-                        {'fields': fields})
+                self.framework.chapi_create_sliver_info(sliver_urn, urn, \
+                                    creator, agg_urn, slice_exp)
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -2571,17 +2564,14 @@ class AMCallHandler(object):
             else:
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
-                if hasattr(self.framework, 'config') and \
-                         self.framework.config['type'] == 'chapi':
-                    res2 = _do_ssl(self.framework, None, "Lookup sliver urn",
-                                   self.framework.sa.lookup_sliver_info, [],
-                                   {'match': {'SLIVER_INFO_SLICE_URN': urn},
-                                    'filter': []})
-                    fields = {'SLIVER_INFO_EXPIRATION': str(slice_exp)}
-                    for sliver_urn in res2[0]['value']:
-                        _do_ssl(self.framework, None, "Recording sliver deletion",
-                                self.framework.sa.update_sliver_info,
-                                sliver_urn, [], {'fields': fields})
+                if hasattr(self.framework, 'chapi_update_sliver_info'):
+                    agg_urn = client.urn
+                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    if sliver_urn:
+                        self.framework.chapi_update_sliver_info(sliver_urn,
+                                                                slice_exp)
+                    else:
+                        self.logger.error("Could not find sliver in database")
                 if numClients == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
@@ -3258,6 +3248,13 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
+                if hasattr(self.framework, 'chapi_delete_sliver_info'):
+                    agg_urn = client.urn
+                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    if sliver_urn:
+                        self.framework.chapi_delete_sliver_info(sliver_urn)
+                    else:
+                        self.logger.error("Could not find sliver in database")
                 if hasattr(self.framework, 'config') and \
                          self.framework.config['type'] == 'chapi':
                     res2 = _do_ssl(self.framework, None, "Lookup sliver urn",

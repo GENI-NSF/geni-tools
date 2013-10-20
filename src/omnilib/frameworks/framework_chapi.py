@@ -299,20 +299,22 @@ class Framework(Framework_Base):
                   "SLIVER_INFO_AGGREGATE_URN": aggregate_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
         if (expiration):
-            fields["SLIVER_INFO_EXPIRATION"] = str(slice_exp)
+            fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
         _do_ssl(self, None, "Recording sliver creation",
                 self.sa.create_sliver_info, [], {'fields': fields})
 
     # given the slice urn and aggregate urn, find the slice urn from the db
     def chapi_find_sliver_urn(self, slice_urn, aggregate_urn):
         options = {'filter': [],
-                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
-                             "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
+# put back in real match once resolve the aggregate_urn issue
+#                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
+#                             "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
+                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn}}
         res = _do_ssl(self, None, "Lookup sliver urn",
                       self.sa.lookup_sliver_info, [], options)
-        if len(res) == 0:
+        if len(res[0]['value']) == 0:
             return None
-        return res[0]['value']
+        return res[0]['value'].keys()[0]
         
     # update the expiration time on a sliver
     def chapi_update_sliver_info(self, sliver_urn, expiration):
