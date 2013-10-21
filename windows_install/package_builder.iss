@@ -1,22 +1,25 @@
 [Setup]
 OutputDir=C:\Program Files\gcf\executables
 OutputBaseFilename=omni-tools-2.4.2-setup
-AppCopyright=2011-2013
+AppCopyright=2010-2013
 AppName=Omni Tools
 AppVerName=Omni Tools v2.4.2
 InfoAfterFile=C:\gcf\windows_install\infoAfterFile.rtf
 LicenseFile=C:\gcf\windows_install\OMNI-EXECUTABLES-DISCLAIMER.TXT
 DefaultDirName={pf}\omniTools
-DefaultGroupName=omni
+DefaultGroupName=Omni Tools
 ShowLanguageDialog=no
+UsePreviousAppDir=false
 [Run]
 Filename: {app}\install.vbs; Flags: shellexec
 [Icons]
 Name: {group}\Documentation; Filename: http://trac.gpolab.bbn.com/gcf/wiki; Comment: omni wiki
-Name: {group}\How To Configure Omni; Filename: http://groups.geni.net/syseng/wiki/SwReleaseGcf/Windows; Comment: Instructions for configuring omni
+Name: {group}\How To Configure Omni; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omni
 Name: {group}\Disclaimer; Filename: {app}\OMNI-EXECUTABLES-DISCLAIMER.TXT
 Name: {group}\{cm:UninstallProgram, omni}; Filename: {uninstallexe}
 [Files]
+Source: ..\src\dist\_ctypes.pyd; DestDir: {app}
+Source: ..\src\dist\_hashlib.pyd; DestDir: {app}
 Source: ..\src\dist\_socket.pyd; DestDir: {app}
 Source: ..\src\dist\_ssl.pyd; DestDir: {app}
 Source: ..\src\dist\_tkinter.pyd; DestDir: {app}
@@ -990,8 +993,7 @@ Source: ..\src\dist\tcl\tk8.5\tk.tcl; DestDir: {app}\tcl\tk8.5
 Source: ..\src\dist\tcl\tk8.5\tkfbox.tcl; DestDir: {app}\tcl\tk8.5
 Source: ..\src\dist\tcl\tk8.5\unsupported.tcl; DestDir: {app}\tcl\tk8.5
 Source: ..\src\dist\tcl\tk8.5\xmfbox.tcl; DestDir: {app}\tcl\tk8.5
-Source: ..\src\dist\_ctypes.pyd; DestDir: {app}
-Source: ..\src\dist\_hashlib.pyd; DestDir: {app}
+Source: install.vbs; DestDir: {app}
 Source: OMNI-EXECUTABLES-DISCLAIMER.TXT; DestDir: {app}
 [Dirs]
 Name: {app}\tcl
