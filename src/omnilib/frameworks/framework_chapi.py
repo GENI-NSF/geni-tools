@@ -26,6 +26,7 @@ from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+import sfa.trust.gid as gid
 
 import os
 import string
@@ -56,7 +57,10 @@ class Framework(Framework_Base):
         self.sa = self.make_client(config['ch']+'/SA', self.key, self.cert,
                                    verbose=config['verbose'])
 
-        self.cert_string = file(config['cert'],'r').read()
+        self.cert = config['cert']
+        self.cert_string = file(self.cert, 'r').read()
+        self.cert_gid = gid.GID(filename=self.cert)
+        self.user_urn = self.cert_gid.get_urn()
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
 
@@ -64,10 +68,12 @@ class Framework(Framework_Base):
         message = ""
         if self.user_cred == None:
             self.logger.debug("Getting user credential from CHAPI MA %s", self.config['ch'])
-            (res, message) = _do_ssl(self, None, ("lookup public member info on CHAPI CH %s" % self.config['ch']),
-                                     self.ma.lookup_public_member_info, 
-                                     self.cert_string,
-                                     {'match':{'USER_URN':[]}})
+            (res, message) = _do_ssl(self, None, ("Create user credential on CHAPI MA %s" % self.ma),
+                                     self.ma.get_credentials,
+                                     self.user_urn,
+                                     [],
+                                     {})
+
         if res is not None:
             if res['output'] is not None:
                 message = res['output']
@@ -126,7 +132,7 @@ class Framework(Framework_Base):
     def list_aggregates(self):
         # TODO: list of field names from getVersion - should we get all or assume we have URN and URL
         (res, message) = _do_ssl(self, None, ("List Aggregates at CHAPI CH %s" % self.config['ch']), 
-                                 self.ch.get_aggregates,
+                                 self.ch.lookup_aggregates,
                                  {'filter':['SERVICE_URN', 'SERVICE_URL']})
         if message:
             self.logger.warn(message)
