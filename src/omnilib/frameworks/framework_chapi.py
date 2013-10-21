@@ -101,7 +101,6 @@ class Framework(Framework_Base):
         return cred
     
     def create_slice(self, urn):
-        # TODO: cred is user's for create?
         self.get_user_cred()
         scred = ''
         if self.user_cred is not None:
