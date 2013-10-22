@@ -30,7 +30,7 @@ trademark, and other proprietary notices, and your acceptance of any
 terms, conditions, and notices accompanying the Content or otherwise
 set forth in this site.
 
-The Work includes the following software:
+The Work includes software covered by the following licenses:
 I. Python 2.7.5 License
 II. M2Crypto 0.20.2 License
 III. OpenSSL Dual License
