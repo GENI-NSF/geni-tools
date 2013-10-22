@@ -45,7 +45,7 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
-    _derefRSpecNick, \
+    _derefRSpecNick, _get_user_urn, \
     _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
     _getRSpecOutput, _writeRSpec, _printResults, _load_cred
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
@@ -53,6 +53,9 @@ import omnilib.xmlrpc.client
 from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
+import sfa.trust.gid as sfa_gid
+from omnilib.frameworks.framework_base import Framework_Base
+
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
@@ -1751,6 +1754,22 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
+            # register sliver in the database if using chapi
+            if hasattr(self.framework, 'chapi_create_sliver_info'):
+                creator = _get_user_urn(self)
+                idx1 = result.find('sliver_id=')
+                idx2 = result.find('"', idx1) + 1
+                sliver_urn = result[idx2 : result.find('"', idx2)]
+                agg_urn = clienturn
+                if not agg_urn or agg_urn == "unspecified_AM_URN":
+                    # idx1 = result.find('component_manager_id=')
+                    # idx2 = result.find('"', idx1) + 1
+                    # agg_urn = result[idx2 : result.find('"', idx2)]
+                    idx1 = sliver_urn.find('sliver+')
+                    agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                self.framework.chapi_create_sliver_info(sliver_urn, urn, \
+                                    creator, agg_urn, slice_exp)
+
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
                 # Figure out the login name
@@ -2546,6 +2565,14 @@ class AMCallHandler(object):
             else:
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
+                if hasattr(self.framework, 'chapi_update_sliver_info'):
+                    agg_urn = client.urn
+                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    if sliver_urn:
+                        self.framework.chapi_update_sliver_info(sliver_urn,
+                                                                slice_exp)
+                    else:
+                        self.logger.error("Could not find sliver in database")
                 if numClients == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
@@ -2745,6 +2772,16 @@ class AMCallHandler(object):
                         firstCount = len(sliverExps[time])
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
+
+                # record results in chapi database
+                if hasattr(self.framework, 'chapi_update_sliver_info'):
+                    slivers = self._getSliverResultList(res)
+                    for sliver in slivers:
+                        if isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn') and \
+                           sliver.has_key('geni_expires'):
+                            self.framework.chapi_update_sliver_info \
+                             (sliver['geni_sliver_urn'], sliver['geni_expires'])
 
                 # Save results
                 if isinstance(res, dict):
@@ -3222,6 +3259,23 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
+                if hasattr(self.framework, 'chapi_delete_sliver_info'):
+                    agg_urn = client.urn
+                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    if sliver_urn:
+                        self.framework.chapi_delete_sliver_info(sliver_urn)
+                    else:
+                        self.logger.error("Could not find sliver in database")
+                if hasattr(self.framework, 'config') and \
+                         self.framework.config['type'] == 'chapi':
+                    res2 = _do_ssl(self.framework, None, "Lookup sliver urn",
+                                   self.framework.sa.lookup_sliver_info, [],
+                                   {'match': {'SLIVER_INFO_SLICE_URN': urn},
+                                    'filter': []})
+                    for sliver_urn in res2[0]['value']:
+                        _do_ssl(self.framework, None, "Recording sliver deletion",
+                                self.framework.sa.delete_sliver_info,
+                                sliver_urn, [], {})
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)

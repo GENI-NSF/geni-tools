@@ -116,6 +116,7 @@ import omnilib.frameworks.framework_of
 import omnilib.frameworks.framework_pg
 import omnilib.frameworks.framework_pgch
 import omnilib.frameworks.framework_sfa
+import omnilib.frameworks.framework_chapi
 
 OMNI_VERSION="2.5"
 

@@ -91,7 +91,6 @@ default_rspec_extension = rspec
 # At least one framework section (sfa/pg/gcf) needs to be filled out
 # and pointed to by default_cf
 
-
 [my_sfa]
 # Most of these fields can be found in an SFI configuration
 # See: http://svn.planet-lab.org/wiki/SFAConfigurationGuide#ConfiguringSFITools
@@ -117,8 +116,18 @@ key=~/.gcf/id_rsa_planetlab
 registry=http://www.planet-lab.org:12345
 slicemgr=http://www.planet-lab.org:12347
 
+[my_chapi]
+type=chapi
 
+# Authority part of the control frameworks URN
+authority=geni:gpo:gcf
 
+# Where the CH API server is listening.
+#  Connection points will have '/CH', '/MA', or '/SA' appended
+ch=https://ch.gpolab.bbn.com
+
+cert=~/.gcf/alice-cert.pem
+key=~/.gcf/alice-key.pem
 
 [my_gcf]
 type=gcf
@@ -131,8 +140,6 @@ ch=https://localhost:8000
 
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
-
-
 
 [my_pg]
 type=pg
