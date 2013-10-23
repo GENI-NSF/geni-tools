@@ -192,6 +192,11 @@ class Framework(Framework_Base):
     def list_my_slices(self, user):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
+        self.get_user_cred()
+        scred = ''
+        if self.user_cred is not None:
+            scred = self.user_cred
+
         if user is None or user.strip() == '':
             raise Exception('Empty user name')
 
@@ -206,27 +211,30 @@ class Framework(Framework_Base):
             auth = self.config['authority']
             userurn = URN(auth, "user", user).urn_string()
 
-        # TODO: sa.lookup_slices (username), then ma.lookup_public/private_member_info 
-        # TODO: can we filter lookup_slices with username directly, or do we need to go back to MA?
+        options = {}
 
-        # invoke ListMySlices(urn)
-        (slices, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
-                                    self.sa.ListMySlices, userurn)
-        # FIXME: use any message?
-        _ = message #Appease eclipse
+        (res, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
+                                    self.sa.lookup_slices_for_member, userurn, scred, options)
 
-#        # Return is a urn. Strip out the name
-#        slicenames = list()
-#        if slices and isinstance(slices, list):
-#            for slice in slices:
-#                slicelower = string.lower(slice)
-#                if not string.find(slicelower, "+slice+"):
-#                    continue
-#                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
-#                slicenames.append(slicename)
-#        return slicenames
+        slices = None
+        if res is not None:
+            if res['code'] == 0:
+                slices = res['value']
+            else:
+                message = res['output']
+        if message is not None:
+            self.logger.error(message)
 
-        return slices
+        # Return is a urn. Strip out the name
+        slicenames = list()
+        if slices and isinstance(slices, list):
+            for slice in [tup['SLICE_URN'] for tup in slices]:
+                slicelower = string.lower(slice)
+                if not string.find(slicelower, "+slice+"):
+                    continue
+                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
+                slicenames.append(slicename)
+        return slicenames
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
