@@ -77,10 +77,10 @@ class Framework(Framework_Base):
                                      [],
                                      {})
 
-        if res is not None:
-            if res['output'] is not None:
-                message = res['output']
-            self.user_cred = res['value']
+            if res is not None:
+                if res['output'] is not None:
+                    message = res['output']
+                    self.user_cred = res['value']
 
         return self.user_cred, message
     
@@ -257,10 +257,17 @@ class Framework(Framework_Base):
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
         """
-        expiration = expiration_dt.isoformat()
-        cred = self.get_slice_cred(urn)
+        self.get_user_cred()
+        scred = ''
+        if self.user_cred is not None:
+            scred = self.user_cred
+
+        #expiration = expiration_dt.isoformat()
+        expiration = expiration_dt.strftime("%Y-%m-%d %H:%M:%S")
+        options = {'fields':{'SLICE_EXPIRATION':expiration}}
+        res = None
         (res, message) = _do_ssl(self, None, ("Renew slice %s on CHAPI SA %s until %s" % (urn, self.config['ch'], expiration_dt)), 
-                                  self.sa.update_slice, urn, cred, {'SLICE_EXPIRATION':expiration})
+                                  self.sa.update_slice, urn, scred, options)
 
         b = False
         if res is not None:
