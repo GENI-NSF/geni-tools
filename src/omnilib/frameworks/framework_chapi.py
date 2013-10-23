@@ -84,25 +84,34 @@ class Framework(Framework_Base):
 
         return self.user_cred, message
     
-    def get_slice_cred(self, urn):
+    def get_slice_cred(self, slice_urn):
         self.get_user_cred()
         scred = ''
-        if self.user_cred:
+        if self.user_cred is not None:
             scred = self.user_cred
-        (res, message) = _do_ssl(self, None, ("Get slice credentials  %s on CHAPI SA %s" % (urn, self.config['ch'])),
-                                  self.sa.lookup_slices,
-                                  scred,
-                                  {'match':{'SLICE_URN':[urn]},
-                                   'filter':['SLICE_CREDENTIAL']})
+
+        slice_name = nameFromURN(slice_urn)
+        # how do we get this information into options?
+
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_urn, self.config['ch'])),
+                                 self.sa.get_credentials, slice_urn, scred, {})
+
         cred = None
         if res is not None:
-            if res['output'] is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    cred = self._select_cred(d)
+            else:
                 message = res['output']
-                cred = res['value']
-        if message is not None:
-            self.logger.error(message)
+                self.logger.error(message)
         return cred
-    
+
+    def _select_cred(self, creds):
+        for cred in creds:
+            if cred['geni_type'] == 'geni_sfa':
+                return cred
+
     # arg was previously named 'urn' which seems to be wrong
     def create_slice(self, urn):
         self.get_user_cred()
@@ -155,7 +164,7 @@ class Framework(Framework_Base):
             if res['code'] == 0:
                 d = res['value']
                 if d is not None:
-                    cred = d
+                    cred = self._select_cred(d)
             else:
                 message = res['output']
                 self.logger.error(message)
