@@ -1760,11 +1760,8 @@ class AMCallHandler(object):
                 idx1 = result.find('sliver_id=')
                 idx2 = result.find('"', idx1) + 1
                 sliver_urn = result[idx2 : result.find('"', idx2)]
-                agg_urn = clienturn
-                if not agg_urn or agg_urn == "unspecified_AM_URN":
-                    # idx1 = result.find('component_manager_id=')
-                    # idx2 = result.find('"', idx1) + 1
-                    # agg_urn = result[idx2 : result.find('"', idx2)]
+                agg_urn = self.framework.chapi_agg_url_to_urn(url)
+                if not agg_urn:
                     idx1 = sliver_urn.find('sliver+')
                     agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
                 self.framework.chapi_create_sliver_info(sliver_urn, urn, \
@@ -2566,7 +2563,9 @@ class AMCallHandler(object):
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if hasattr(self.framework, 'chapi_update_sliver_info'):
-                    agg_urn = client.urn
+                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
                     sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
                         self.framework.chapi_update_sliver_info(sliver_urn,
@@ -2772,16 +2771,6 @@ class AMCallHandler(object):
                         firstCount = len(sliverExps[time])
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
-
-                # record results in chapi database
-                if hasattr(self.framework, 'chapi_update_sliver_info'):
-                    slivers = self._getSliverResultList(res)
-                    for sliver in slivers:
-                        if isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn') and \
-                           sliver.has_key('geni_expires'):
-                            self.framework.chapi_update_sliver_info \
-                             (sliver['geni_sliver_urn'], sliver['geni_expires'])
 
                 # Save results
                 if isinstance(res, dict):
@@ -3260,22 +3249,14 @@ class AMCallHandler(object):
                                                            client.urn,
                                                            client.url)
                 if hasattr(self.framework, 'chapi_delete_sliver_info'):
-                    agg_urn = client.urn
+                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
                     sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
                         self.framework.chapi_delete_sliver_info(sliver_urn)
                     else:
                         self.logger.error("Could not find sliver in database")
-                if hasattr(self.framework, 'config') and \
-                         self.framework.config['type'] == 'chapi':
-                    res2 = _do_ssl(self.framework, None, "Lookup sliver urn",
-                                   self.framework.sa.lookup_sliver_info, [],
-                                   {'match': {'SLIVER_INFO_SLICE_URN': urn},
-                                    'filter': []})
-                    for sliver_urn in res2[0]['value']:
-                        _do_ssl(self.framework, None, "Recording sliver deletion",
-                                self.framework.sa.delete_sliver_info,
-                                sliver_urn, [], {})
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)

@@ -402,18 +402,25 @@ class Framework(Framework_Base):
         _do_ssl(self, None, "Recording sliver creation",
                 self.sa.create_sliver_info, [], {'fields': fields})
 
+    def chapi_agg_url_to_urn(self, agg_url):
+        options = {'filter': ['SERVICE_URN'],
+                   'match': {'SERVICE_URL': agg_url}}
+        res, mess = _do_ssl(self, None, "Lookup aggregate urn",
+                            self.ch.lookup_aggregates, options)
+        if len(res['value']) == 0:
+            return None
+        return res['value'][0]['SERVICE_URN']
+
     # given the slice urn and aggregate urn, find the slice urn from the db
     def chapi_find_sliver_urn(self, slice_urn, aggregate_urn):
         options = {'filter': [],
-# put back in real match once resolve the aggregate_urn issue
-#                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
-#                             "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
-                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn}}
-        res = _do_ssl(self, None, "Lookup sliver urn",
-                      self.sa.lookup_sliver_info, [], options)
-        if len(res[0]['value']) == 0:
+                   'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
+                             "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
+        res, mess = _do_ssl(self, None, "Lookup sliver urn",
+                            self.sa.lookup_sliver_info, [], options)
+        if len(res['value']) == 0:
             return None
-        return res[0]['value'].keys()[0]
+        return res['value'].keys()[0]
         
     # update the expiration time on a sliver
     def chapi_update_sliver_info(self, sliver_urn, expiration):
