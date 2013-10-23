@@ -2198,6 +2198,22 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
+                # record results in chapi database
+                if hasattr(self.framework, 'chapi_create_sliver_info'):
+                    creator = _get_user_urn(self)
+                    slivers = self._getSliverResultList(realresult)
+                    for sliver in slivers:
+                        if not (isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn')):
+                            continue
+                        sliver_urn = sliver['geni_sliver_urn']
+                        agg_urn = self.framework.chapi_agg_url_to_urn(url)
+                        if not agg_urn:
+                            idx1 = sliver_urn.find('sliver+')
+                            agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                        self.framework.chapi_create_sliver_info(sliver_urn, \
+                              urn, creator, agg_urn, sliver['geni_expires'])
+
                 # Print out the result
                 if isinstance(realresult, dict):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
@@ -3427,6 +3443,16 @@ class AMCallHandler(object):
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             if realres is not None:
+
+                # record results in chapi database
+                if hasattr(self.framework, 'chapi_delete_sliver_info'):
+                    slivers = self._getSliverResultList(realRes)
+                    for sliver in slivers:
+                        if isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn'):
+                            self.framework.chapi_update_sliver_info \
+                                (sliver['geni_sliver_urn'])
+
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
