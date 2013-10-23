@@ -76,19 +76,21 @@ class Framework(Framework_Base):
                                      self.user_urn,
                                      [],
                                      {})
-
             if res is not None:
-                if res['output'] is not None:
+                if res['code'] == 0:
+                    self.user_cred = self._select_cred(res['value'])
+                else:
                     message = res['output']
-                    self.user_cred = res['value']
-
+                    self.logger.error(message)
+                    
         return self.user_cred, message
     
     def get_slice_cred(self, slice_urn):
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
         slice_name = nameFromURN(slice_urn)
         # how do we get this information into options?
@@ -108,10 +110,11 @@ class Framework(Framework_Base):
         return cred
 
     def list_my_ssh_keys(self):
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
         options = {'match': {'MEMBER_URN': self.user_urn}}
         self.logger.debug("Getting my SSH keys from CHAPI MA %s", self.config['ch'])
@@ -141,10 +144,11 @@ class Framework(Framework_Base):
 
     # arg was previously named 'urn' which seems to be wrong
     def create_slice(self, urn):
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
         if self.opts.project:
             # use the command line option --project
@@ -219,10 +223,11 @@ class Framework(Framework_Base):
     def list_my_slices(self, user):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
         if user is None or user.strip() == '':
             raise Exception('Empty user name')
@@ -292,10 +297,11 @@ class Framework(Framework_Base):
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
         """
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
         expiration = expiration_dt.strftime("%Y-%m-%d %H:%M:%S")
         options = {'fields':{'SLICE_EXPIRATION':expiration}}
