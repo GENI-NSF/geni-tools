@@ -2772,16 +2772,6 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
-                # record results in chapi database
-                if hasattr(self.framework, 'chapi_update_sliver_info'):
-                    slivers = self._getSliverResultList(res)
-                    for sliver in slivers:
-                        if isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn') and \
-                           sliver.has_key('geni_expires'):
-                            self.framework.chapi_update_sliver_info \
-                             (sliver['geni_sliver_urn'], sliver['geni_expires'])
-
                 # Save results
                 if isinstance(res, dict):
                     prettyResult = json.dumps(res, ensure_ascii=True, indent=2)
