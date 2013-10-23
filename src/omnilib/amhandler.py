@@ -1760,11 +1760,8 @@ class AMCallHandler(object):
                 idx1 = result.find('sliver_id=')
                 idx2 = result.find('"', idx1) + 1
                 sliver_urn = result[idx2 : result.find('"', idx2)]
-                agg_urn = clienturn
-                if not agg_urn or agg_urn == "unspecified_AM_URN":
-                    # idx1 = result.find('component_manager_id=')
-                    # idx2 = result.find('"', idx1) + 1
-                    # agg_urn = result[idx2 : result.find('"', idx2)]
+                agg_urn = self.framework.chapi_agg_url_to_urn(url)
+                if not agg_urn:
                     idx1 = sliver_urn.find('sliver+')
                     agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
                 self.framework.chapi_create_sliver_info(sliver_urn, urn, \
@@ -2566,7 +2563,9 @@ class AMCallHandler(object):
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
                 if hasattr(self.framework, 'chapi_update_sliver_info'):
-                    agg_urn = client.urn
+                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
                     sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
                         self.framework.chapi_update_sliver_info(sliver_urn,
@@ -3260,7 +3259,9 @@ class AMCallHandler(object):
                                                            client.urn,
                                                            client.url)
                 if hasattr(self.framework, 'chapi_delete_sliver_info'):
-                    agg_urn = client.urn
+                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
                     sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
                         self.framework.chapi_delete_sliver_info(sliver_urn)
