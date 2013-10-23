@@ -107,6 +107,33 @@ class Framework(Framework_Base):
                 self.logger.error(message)
         return cred
 
+    def list_my_ssh_keys(self):
+        self.get_user_cred()
+        scred = ''
+        if self.user_cred is not None:
+            scred = self.user_cred
+
+        options = {'match': {'MEMBER_URN': self.user_urn}}
+        self.logger.debug("Getting my SSH keys from CHAPI MA %s", self.config['ch'])
+        (res, message) = _do_ssl(self, None, ("Get public SSH keys MA %s" % self.ma),
+                                 self.ma.lookup_public_member_info,
+                                 scred,
+                                 options)
+
+        keys = []
+        message = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                for uid, tup in d.items():
+                    if 'KEY_PUBLIC' in tup:
+                        keys.append(tup['KEY_PUBLIC'])
+            else:
+                message = res['output']
+                self.logger.error(message)
+
+        return keys
+
     def _select_cred(self, creds):
         for cred in creds:
             if cred['geni_type'] == 'geni_sfa':
@@ -270,7 +297,6 @@ class Framework(Framework_Base):
         if self.user_cred is not None:
             scred = self.user_cred
 
-        #expiration = expiration_dt.isoformat()
         expiration = expiration_dt.strftime("%Y-%m-%d %H:%M:%S")
         options = {'fields':{'SLICE_EXPIRATION':expiration}}
         res = None
