@@ -3267,16 +3267,6 @@ class AMCallHandler(object):
                         self.framework.chapi_delete_sliver_info(sliver_urn)
                     else:
                         self.logger.error("Could not find sliver in database")
-                if hasattr(self.framework, 'config') and \
-                         self.framework.config['type'] == 'chapi':
-                    res2 = _do_ssl(self.framework, None, "Lookup sliver urn",
-                                   self.framework.sa.lookup_sliver_info, [],
-                                   {'match': {'SLIVER_INFO_SLICE_URN': urn},
-                                    'filter': []})
-                    for sliver_urn in res2[0]['value']:
-                        _do_ssl(self.framework, None, "Recording sliver deletion",
-                                self.framework.sa.delete_sliver_info,
-                                sliver_urn, [], {})
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)
