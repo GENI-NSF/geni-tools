@@ -25,7 +25,8 @@ from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 
-from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
+    nameFromURN
 import sfa.trust.gid as gid
 
 import os
@@ -37,6 +38,8 @@ class Framework(Framework_Base):
     def __init__(self, config, opts):
         Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
+        self.fwtype = "GENI Clearinghouse"
+        self.opts = opts
         if not os.path.exists(config['cert']):
             sys.exit('CHAPI Framework certfile %s doesnt exist' % config['cert'])
         if not os.path.getsize(config['cert']) > 0:
@@ -100,28 +103,63 @@ class Framework(Framework_Base):
             self.logger.error(message)
         return cred
     
+    # arg was previously named 'urn' which seems to be wrong
     def create_slice(self, urn):
         self.get_user_cred()
         scred = ''
         if self.user_cred is not None:
             scred = self.user_cred
 
+        if self.opts.project:
+            # use the command line option --project
+            project = self.opts.project
+        elif self.config.has_key('default_project'):
+            # otherwise, default to 'default_project' in 'omni_config'
+            project = self.config['default_project']
+        else:
+            # None means there was no project defined
+            # name better be a urn (which is checked below)
+            project = None
+
+        if not self.config.has_key('authority'):
+            raise Exception("Invalid configuration: no authority defined")
+        auth = self.config['authority']
+
+        project_urn = URN(authority = auth,
+                          type = 'project',
+                          name = project).urn_string()
+        slice_name = nameFromURN(urn)
         # how do we get this information into options?
-        options = {'SLICE_NAME': urn,
-                   'SLICE_DESCRIPTION': "",
-                   'SLICE_EMAIL': "",
-                   'PROJECT_URN': urn}
-        (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (urn, self.config['ch'])),
-                                 self.sa.create_slice, scred, options)
-        cred = None
+        options = {'fields': 
+                   {'SLICE_NAME': slice_name,
+                    # 'SLICE_DESCRIPTION': "",  # not provided
+                    'SLICE_PROJECT_URN': project_urn,
+                    }}
+        (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
+                                     self.sa.create_slice, scred, options)
         if res is not None:
-            if res['output'] is not None:
-                message = res['output']
+            if res['code'] == 0:
                 d = res['value']
                 if d is not None:
-                    cred = d['SLICE_CREDENTIAL']
-        if message is not None:
-            self.logger.error(message)
+                    slice_urn = d['SLICE_URN']
+            else:
+                message = res['output']
+                self.logger.error(message)
+                return None
+
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),
+                                 self.sa.get_credentials, slice_urn, scred, {})
+
+        cred = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    cred = d
+            else:
+                message = res['output']
+                self.logger.error(message)
+
         return cred
     
     def delete_slice(self, urn):
