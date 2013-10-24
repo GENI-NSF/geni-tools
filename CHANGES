@@ -9,6 +9,8 @@ gcf 2.5:
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
 
  * stitcher
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 

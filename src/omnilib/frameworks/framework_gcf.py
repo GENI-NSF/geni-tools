@@ -49,7 +49,7 @@ class Framework(Framework_Base):
         self.config = config
         
         self.ch = self.make_client(config['ch'], self.key, self.cert,
-                                   verbose=config['verbose'])
+                                   verbose=config['verbose'], timeout=opts.ssltimeout)
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']

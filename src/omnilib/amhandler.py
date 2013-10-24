@@ -4766,7 +4766,7 @@ def make_client(url, framework, opts):
             raise OmniError(err)
 
     if opts.ssl:
-        tmp_client =  omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert, opts.verbosessl)
+        tmp_client =  omnilib.xmlrpc.client.make_client(url, framework.key, framework.cert, opts.verbosessl, opts.ssltimeout)
     else:
         tmp_client = omnilib.xmlrpc.client.make_client(url, None, None)
     tmp_client.url = str(url)

@@ -44,6 +44,13 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.5:
  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
+ - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+   allows changing this. (#407)
+ - Create any directories need in the path to the agg_nick_cache (#383)
+ - If use --AggNickCacheName and can't read/write to the specified
+   file, omni should fall back to reading `agg_nick_cach.base` (#384)
+ - Look up AM URN by URL in the defined aggregate nicknames (#404)
+ - Eliminated a repetitive log message (#384)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -730,6 +737,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default False. For
                         use by scripts.
+    --ssltimeout=SSLTIMEOUT
+                        Seconds to wait before timing out AM and CH calls.
+                        Default is 360 seconds.
 }}}
 
 === Supported commands ===
