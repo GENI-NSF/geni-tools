@@ -3056,7 +3056,7 @@ class AMCallHandler(object):
                 self.logger.warn(msg)
             else:
                 firstTime = orderedDates[0]
-                firstCount = len(sliverExps[time])
+                firstCount = len(sliverExps[firstTime])
                 msg = "Slivers expire on %d times, next is %d at %r, and others at %d other times." % (len(orderedDates), firstCount, firstTime.isoformat(), len(orderedDates) - 1)
                 self.logger.info(msg)
             retVal += "  " + msg + "\n"

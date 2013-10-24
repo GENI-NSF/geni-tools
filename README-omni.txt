@@ -51,6 +51,7 @@ New in v2.5:
    file, omni should fall back to reading `agg_nick_cach.base` (#384)
  - Look up AM URN by URL in the defined aggregate nicknames (#404)
  - Eliminated a repetitive log message (#384)
+ - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
