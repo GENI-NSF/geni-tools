@@ -142,7 +142,6 @@ class Framework(Framework_Base):
             if cred['geni_type'] == 'geni_sfa':
                 return cred
 
-    # arg was previously named 'urn' which seems to be wrong
     def create_slice(self, urn):
         # self.get_user_cred()
         # scred = ''
@@ -291,7 +290,21 @@ class Framework(Framework_Base):
         if not self.config.has_key('authority'):
             raise Exception("Invalid configuration: no authority defined")
 
+        # only require a project if name isn't a URN
+        if self.opts.project:
+            # use the command line option --project
+            project = self.opts.project
+        elif self.config.has_key('default_project'):
+            # otherwise, default to 'default_project' in 'omni_config'
+            project = self.config['default_project']
+        else:
+            # None means there was no project defined
+            # name better be a urn (which is checked below)
+            project = None
+
         auth = self.config['authority']
+        if project:
+            auth = auth + ':' + project
         return URN(auth, "slice", name).urn_string()
 
     def renew_slice(self, urn, expiration_dt):
