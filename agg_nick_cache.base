@@ -267,3 +267,14 @@ nyu-ig3=urn:publicid:IDN+genirack.nyu.edu+authority+cm,https://genirack.nyu.edu:
 nyu-ig-of=urn:publicid:IDN+openflow:foam:foam.genirack.nyu.edu+authority+am,https://foam.genirack.nyu.edu:3626/foam/gapi/2
 nyu-ig-of1=urn:publicid:IDN+openflow:foam:foam.genirack.nyu.edu+authority+am,https://foam.genirack.nyu.edu:3626/foam/gapi/1
 nyu-ig-of2=urn:publicid:IDN+openflow:foam:foam.genirack.nyu.edu+authority+am,https://foam.genirack.nyu.edu:3626/foam/gapi/2
+
+# ============================================
+# Illinois InstaGENI Rack
+# ============================================
+illinois-ig=urn:publicid:IDN+instageni.illinois.edu+authority+cm,https://instageni.illinois.edu:12369/protogeni/xmlrpc/am/2.0
+illinois-ig1=urn:publicid:IDN+instageni.illinois.edu+authority+cm,https://instageni.illinois.edu:12369/protogeni/xmlrpc/am/1.0
+illinois-ig2=urn:publicid:IDN+instageni.illinois.edu+authority+cm,https://instageni.illinois.edu:12369/protogeni/xmlrpc/am/2.0
+illinois-ig3=urn:publicid:IDN+instageni.illinois.edu+authority+cm,https://instageni.illinois.edu:12369/protogeni/xmlrpc/am/3.0
+illinois-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/2
+illinois-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/1
+illinois-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/2
