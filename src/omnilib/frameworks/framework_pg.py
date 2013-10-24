@@ -74,10 +74,10 @@ class Framework(Framework_Base):
         
         self.logger.debug('Using clearinghouse %s', self.config['ch'])
         self.ch = self.make_client(self.config['ch'], self.key, self.cert,
-                                   self.config['verbose'])
+                                   self.config['verbose'], opts.ssltimeout)
         self.logger.debug('Using slice authority %s', self.config['sa'])
         self.sa = self.make_client(self.config['sa'], self.key, self.cert,
-                                   self.config['verbose'])
+                                   self.config['verbose'], opts.ssltimeout)
         self.user_cred = self.init_user_cred( opts )
         
         # For now, no override aggregates.

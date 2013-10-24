@@ -172,7 +172,7 @@ class Framework(Framework_Base):
                 try:
                     # use the self signed cert to get the gid
                     self.registry = self.make_client(config['registry'], config['key'], config['cert'],
-                                                     verbose=config['verbose'])
+                                                     verbose=config['verbose'], timeout=opts.ssltimeout)
                     self.user_cred = self.init_user_cred( opts )
 
                     self.cert_string = file(config['cert'],'r').read()
@@ -208,10 +208,10 @@ class Framework(Framework_Base):
 
         self.logger.info('SFA Registry: %s', config['registry'])
         self.registry = self.make_client(config['registry'], self.key, self.cert,
-                                         allow_none=True, verbose=self.config['verbose'])
+                                         allow_none=True, verbose=self.config['verbose'], timeout=opts.ssltimeout)
         self.logger.info('SFA Slice Manager: %s', config['slicemgr'])
         self.slicemgr = self.make_client(config['slicemgr'], self.key, self.cert,
-                                         verbose=self.config['verbose'])
+                                         verbose=self.config['verbose'], timeout=opts.ssltimeout)
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
 
