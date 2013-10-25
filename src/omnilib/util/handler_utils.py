@@ -218,6 +218,8 @@ def _get_slice_cred(handler, urn):
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
     (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
+    if type(cred) is dict:
+        return (cred, message)
     if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
         #elif slice_cred is not XML that looks like a credential, assume
         # assume it's an error message, and raise an omni_error

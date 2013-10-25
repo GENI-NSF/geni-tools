@@ -25,7 +25,8 @@ from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 
-from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
+    nameFromURN
 import sfa.trust.gid as gid
 
 import os
@@ -37,6 +38,8 @@ class Framework(Framework_Base):
     def __init__(self, config, opts):
         Framework_Base.__init__(self,config)        
         config['cert'] = os.path.expanduser(config['cert'])
+        self.fwtype = "GENI Clearinghouse"
+        self.opts = opts
         if not os.path.exists(config['cert']):
             sys.exit('CHAPI Framework certfile %s doesnt exist' % config['cert'])
         if not os.path.getsize(config['cert']) > 0:
@@ -73,55 +76,129 @@ class Framework(Framework_Base):
                                      self.user_urn,
                                      [],
                                      {})
-
-        if res is not None:
-            if res['output'] is not None:
-                message = res['output']
-            self.user_cred = res['value']
-
+            if res is not None:
+                if res['code'] == 0:
+                    self.user_cred = self._select_cred(res['value'])
+                else:
+                    message = res['output']
+                    self.logger.error(message)
+                    
         return self.user_cred, message
     
-    def get_slice_cred(self, urn):
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred:
-            scred = self.user_cred
-        (res, message) = _do_ssl(self, None, ("Get slice credentials  %s on CHAPI SA %s" % (urn, self.config['ch'])),
-                                  self.sa.lookup_slices,
-                                  scred,
-                                  {'match':{'SLICE_URN':[urn]},
-                                   'filter':['SLICE_CREDENTIAL']})
-        cred = None
-        if res is not None:
-            if res['output'] is not None:
-                message = res['output']
-                cred = res['value']
-        if message is not None:
-            self.logger.error(message)
-        return cred
-    
-    def create_slice(self, urn):
-        self.get_user_cred()
-        scred = ''
-        if self.user_cred is not None:
-            scred = self.user_cred
+    def get_slice_cred(self, slice_urn):
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
 
+        slice_name = nameFromURN(slice_urn)
         # how do we get this information into options?
-        options = {'SLICE_NAME': urn,
-                   'SLICE_DESCRIPTION': "",
-                   'SLICE_EMAIL': "",
-                   'PROJECT_URN': urn}
-        (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (urn, self.config['ch'])),
-                                 self.sa.create_slice, scred, options)
+
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_urn, self.config['ch'])),
+                                 self.sa.get_credentials, slice_urn, scred, {})
+
         cred = None
         if res is not None:
-            if res['output'] is not None:
-                message = res['output']
+            if res['code'] == 0:
                 d = res['value']
                 if d is not None:
-                    cred = d['SLICE_CREDENTIAL']
-        if message is not None:
-            self.logger.error(message)
+                    cred = self._select_cred(d)
+            else:
+                message = res['output']
+                self.logger.error(message)
+        return cred
+
+    def list_my_ssh_keys(self):
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
+
+        options = {'match': {'MEMBER_URN': self.user_urn}}
+        self.logger.debug("Getting my SSH keys from CHAPI MA %s", self.config['ch'])
+        (res, message) = _do_ssl(self, None, ("Get public SSH keys MA %s" % self.ma),
+                                 self.ma.lookup_public_member_info,
+                                 scred,
+                                 options)
+
+        keys = []
+        message = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                for uid, tup in d.items():
+                    if 'KEY_PUBLIC' in tup:
+                        keys.append(tup['KEY_PUBLIC'])
+            else:
+                message = res['output']
+                self.logger.error(message)
+
+        return keys
+
+    def _select_cred(self, creds):
+        for cred in creds:
+            if cred['geni_type'] == 'geni_sfa':
+                return cred
+
+    def create_slice(self, urn):
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
+
+        if self.opts.project:
+            # use the command line option --project
+            project = self.opts.project
+        elif self.config.has_key('default_project'):
+            # otherwise, default to 'default_project' in 'omni_config'
+            project = self.config['default_project']
+        else:
+            # None means there was no project defined
+            # name better be a urn (which is checked below)
+            project = None
+
+        if not self.config.has_key('authority'):
+            raise Exception("Invalid configuration: no authority defined")
+        auth = self.config['authority']
+
+        project_urn = URN(authority = auth,
+                          type = 'project',
+                          name = project).urn_string()
+        slice_name = nameFromURN(urn)
+        # how do we get this information into options?
+        options = {'fields': 
+                   {'SLICE_NAME': slice_name,
+                    # 'SLICE_DESCRIPTION': "",  # not provided
+                    'SLICE_PROJECT_URN': project_urn,
+                    }}
+        (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
+                                     self.sa.create_slice, scred, options)
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    slice_urn = d['SLICE_URN']
+            else:
+                message = res['output']
+                self.logger.error(message)
+                return None
+
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),
+                                 self.sa.get_credentials, slice_urn, scred, {})
+
+        cred = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    cred = self._select_cred(d)
+            else:
+                message = res['output']
+                self.logger.error(message)
+
         return cred
     
     def delete_slice(self, urn):
@@ -145,6 +222,12 @@ class Framework(Framework_Base):
     def list_my_slices(self, user):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
+
         if user is None or user.strip() == '':
             raise Exception('Empty user name')
 
@@ -159,27 +242,30 @@ class Framework(Framework_Base):
             auth = self.config['authority']
             userurn = URN(auth, "user", user).urn_string()
 
-        # TODO: sa.lookup_slices (username), then ma.lookup_public/private_member_info 
-        # TODO: can we filter lookup_slices with username directly, or do we need to go back to MA?
+        options = {}
 
-        # invoke ListMySlices(urn)
-        (slices, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
-                                    self.sa.ListMySlices, userurn)
-        # FIXME: use any message?
-        _ = message #Appease eclipse
+        (res, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
+                                    self.sa.lookup_slices_for_member, userurn, scred, options)
 
-#        # Return is a urn. Strip out the name
-#        slicenames = list()
-#        if slices and isinstance(slices, list):
-#            for slice in slices:
-#                slicelower = string.lower(slice)
-#                if not string.find(slicelower, "+slice+"):
-#                    continue
-#                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
-#                slicenames.append(slicename)
-#        return slicenames
+        slices = None
+        if res is not None:
+            if res['code'] == 0:
+                slices = res['value']
+            else:
+                message = res['output']
+        if message is not None:
+            self.logger.error(message)
 
-        return slices
+        # Return is a urn. Strip out the name
+        slicenames = list()
+        if slices and isinstance(slices, list):
+            for slice in [tup['SLICE_URN'] for tup in slices]:
+                slicelower = string.lower(slice)
+                if not string.find(slicelower, "+slice+"):
+                    continue
+                slicename = slice[string.index(slicelower,"+slice+") + len("+slice+"):]
+                slicenames.append(slicename)
+        return slicenames
     
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
@@ -204,16 +290,37 @@ class Framework(Framework_Base):
         if not self.config.has_key('authority'):
             raise Exception("Invalid configuration: no authority defined")
 
+        # only require a project if name isn't a URN
+        if self.opts.project:
+            # use the command line option --project
+            project = self.opts.project
+        elif self.config.has_key('default_project'):
+            # otherwise, default to 'default_project' in 'omni_config'
+            project = self.config['default_project']
+        else:
+            # None means there was no project defined
+            # name better be a urn (which is checked below)
+            project = None
+
         auth = self.config['authority']
+        if project:
+            auth = auth + ':' + project
         return URN(auth, "slice", name).urn_string()
 
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
         """
-        expiration = expiration_dt.isoformat()
-        cred = self.get_slice_cred(urn)
+        # self.get_user_cred()
+        # scred = ''
+        # if self.user_cred is not None:
+        #     scred = self.user_cred
+        scred = []
+
+        expiration = expiration_dt.strftime("%Y-%m-%d %H:%M:%S")
+        options = {'fields':{'SLICE_EXPIRATION':expiration}}
+        res = None
         (res, message) = _do_ssl(self, None, ("Renew slice %s on CHAPI SA %s until %s" % (urn, self.config['ch'], expiration_dt)), 
-                                  self.sa.update_slice, urn, cred, {'SLICE_EXPIRATION':expiration})
+                                  self.sa.update_slice, urn, scred, options)
 
         b = False
         if res is not None:
