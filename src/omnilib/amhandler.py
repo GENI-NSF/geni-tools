@@ -2207,7 +2207,7 @@ class AMCallHandler(object):
                            sliver.has_key('geni_sliver_urn')):
                             continue
                         sliver_urn = sliver['geni_sliver_urn']
-                        agg_urn = self.framework.chapi_agg_url_to_urn(url)
+                        agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
                         if not agg_urn:
                             idx1 = sliver_urn.find('sliver+')
                             agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
@@ -3446,11 +3446,11 @@ class AMCallHandler(object):
 
                 # record results in chapi database
                 if hasattr(self.framework, 'chapi_delete_sliver_info'):
-                    slivers = self._getSliverResultList(realRes)
+                    slivers = self._getSliverResultList(realres)
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn'):
-                            self.framework.chapi_update_sliver_info \
+                            self.framework.chapi_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
 
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
