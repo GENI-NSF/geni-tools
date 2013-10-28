@@ -403,45 +403,62 @@ class Framework(Framework_Base):
         return versionstruct, message
 
 
+    # handle logging or results for db functions
+    def log_results(self, results, action):
+        (res, message) = results
+        if res is not None:
+            if res['code'] == 0:
+                self.logger.debug('Successfully completed ' + action)
+            else:
+                self.logger.error(action + ' failed, message: ' + res['output'])
+        else:
+            self.logger.error(action + ' failed for unknown reason')
+
     # write new sliver_info to the database using chapi
-    def chapi_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
-                                 aggregate_urn, expiration):
+    def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
+                              aggregate_urn, expiration):
         fields = {"SLIVER_INFO_URN": sliver_urn,
                   "SLIVER_INFO_SLICE_URN": slice_urn,
                   "SLIVER_INFO_AGGREGATE_URN": aggregate_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
         if (expiration):
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
-        _do_ssl(self, None, "Recording sliver creation",
-                self.sa.create_sliver_info, [], {'fields': fields})
+        res = _do_ssl(self, None, "Recording sliver creation",
+                      self.sa.create_sliver_info, [], {'fields': fields})
+        self.log_results(res, "Create sliver info")
 
-    def chapi_agg_url_to_urn(self, agg_url):
+    # use the database to convert an aggregate url to the corresponding urn
+    def db_agg_url_to_urn(self, agg_url):
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
         res, mess = _do_ssl(self, None, "Lookup aggregate urn",
                             self.ch.lookup_aggregates, options)
+        self.log_results((res, mess), 'Convert agg url to urn')
         if len(res['value']) == 0:
             return None
         return res['value'][0]['SERVICE_URN']
 
     # given the slice urn and aggregate urn, find the slice urn from the db
-    def chapi_find_sliver_urn(self, slice_urn, aggregate_urn):
+    def db_find_sliver_urn(self, slice_urn, aggregate_urn):
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
         res, mess = _do_ssl(self, None, "Lookup sliver urn",
                             self.sa.lookup_sliver_info, [], options)
+        self.log_results((res, mess), 'Find sliver urn')
         if len(res['value']) == 0:
             return None
         return res['value'].keys()[0]
         
     # update the expiration time on a sliver
-    def chapi_update_sliver_info(self, sliver_urn, expiration):
+    def db_update_sliver_info(self, sliver_urn, expiration):
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
-        _do_ssl(self, None, "Recording sliver update",
+        res = _do_ssl(self, None, "Recording sliver update", \
                 self.sa.update_sliver_info, sliver_urn, [], {'fields': fields})
+        self.log_results(res, "Update sliver info")
         
     # delete the sliver from the chapi database
-    def chapi_delete_sliver_info(self, sliver_urn):
-        _do_ssl(self, None, "Recording sliver delete",
-                self.sa.delete_sliver_info, sliver_urn, [], {})
+    def db_delete_sliver_info(self, sliver_urn):
+        res = _do_ssl(self, None, "Recording sliver delete",
+                      self.sa.delete_sliver_info, sliver_urn, [], {})
+        self.log_results(res, "Delete sliver info")

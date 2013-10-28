@@ -1754,18 +1754,22 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
-            # register sliver in the database if using chapi
-            if hasattr(self.framework, 'chapi_create_sliver_info'):
+            # register sliver in the SA database if able to do so
+            try:
+                agg_urn = self.framework.db_agg_url_to_urn(url)
                 creator = _get_user_urn(self)
                 idx1 = result.find('sliver_id=')
                 idx2 = result.find('"', idx1) + 1
                 sliver_urn = result[idx2 : result.find('"', idx2)]
-                agg_urn = self.framework.chapi_agg_url_to_urn(url)
                 if not agg_urn:
                     idx1 = sliver_urn.find('sliver+')
                     agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                self.framework.chapi_create_sliver_info(sliver_urn, urn, \
+                self.framework.db_create_sliver_info(sliver_urn, urn, \
                                     creator, agg_urn, slice_exp)
+            except NotImplementedError, nie:
+                self.logger.debug('Framework doesnt handle slivers in SA database')
+            except Exception, e:
+                self.logger.info('Error writing sliver to SA database')
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -2198,8 +2202,8 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-                # record results in chapi database
-                if hasattr(self.framework, 'chapi_create_sliver_info'):
+                # record results in SA database
+                try:
                     creator = _get_user_urn(self)
                     slivers = self._getSliverResultList(realresult)
                     for sliver in slivers:
@@ -2207,12 +2211,16 @@ class AMCallHandler(object):
                            sliver.has_key('geni_sliver_urn')):
                             continue
                         sliver_urn = sliver['geni_sliver_urn']
-                        agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
                         if not agg_urn:
                             idx1 = sliver_urn.find('sliver+')
                             agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                        self.framework.chapi_create_sliver_info(sliver_urn, \
+                        self.framework.db_create_sliver_info(sliver_urn, \
                               urn, creator, agg_urn, sliver['geni_expires'])
+                except NotImplementedError, nie:
+                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.info('Error writing sliver to SA database')
 
                 # Print out the result
                 if isinstance(realresult, dict):
@@ -2578,16 +2586,22 @@ class AMCallHandler(object):
             else:
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
                 self.logger.info(prStr)
-                if hasattr(self.framework, 'chapi_update_sliver_info'):
-                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+
+                try:
+                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
                     if not agg_urn:
                         self.logger.error("Could not find aggregate in database")
-                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    sliver_urn = self.framework.db_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
-                        self.framework.chapi_update_sliver_info(sliver_urn,
-                                                                slice_exp)
+                        self.framework.db_update_sliver_info(sliver_urn,
+                                                             slice_exp)
                     else:
                         self.logger.error("Could not find sliver in database")
+                except NotImplementedError, nie:
+                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.info('Error updating sliver in SA database')
+
                 if numClients == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
@@ -2788,15 +2802,19 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
-                # record results in chapi database
-                if hasattr(self.framework, 'chapi_update_sliver_info'):
+                # record results in SA database
+                try:
                     slivers = self._getSliverResultList(res)
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn') and \
                            sliver.has_key('geni_expires'):
-                            self.framework.chapi_update_sliver_info \
+                            self.framework.db_update_sliver_info \
                              (sliver['geni_sliver_urn'], sliver['geni_expires'])
+                except NotImplementedError, nie:
+                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.info('Error updating sliver in SA database')
 
                 # Save results
                 if isinstance(res, dict):
@@ -3274,15 +3292,22 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
-                if hasattr(self.framework, 'chapi_delete_sliver_info'):
-                    agg_urn = self.framework.chapi_agg_url_to_urn(client.url)
+
+                # delete sliver info from SA database
+                try:
+                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
                     if not agg_urn:
                         self.logger.error("Could not find aggregate in database")
-                    sliver_urn = self.framework.chapi_find_sliver_urn(urn, agg_urn)
+                    sliver_urn = self.framework.db_find_sliver_urn(urn, agg_urn)
                     if sliver_urn:
-                        self.framework.chapi_delete_sliver_info(sliver_urn)
+                        self.framework.db_delete_sliver_info(sliver_urn)
                     else:
                         self.logger.error("Could not find sliver in database")
+                except NotImplementedError, nie:
+                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.info('Error deleting sliver in SA database')
+
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)
@@ -3444,14 +3469,18 @@ class AMCallHandler(object):
 
             if realres is not None:
 
-                # record results in chapi database
-                if hasattr(self.framework, 'chapi_delete_sliver_info'):
+                # record results in SA database
+                try:
                     slivers = self._getSliverResultList(realres)
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn'):
-                            self.framework.chapi_delete_sliver_info \
+                            self.framework.db_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
+                except NotImplementedError, nie:
+                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.info('Error deleting sliver in SA database')
 
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,

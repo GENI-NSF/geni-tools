@@ -246,3 +246,24 @@ class Framework_Base():
         Wrap the given cred in the appropriate struct for this framework.
         """
         raise NotImplementedError('wrap_cred')
+
+    # write new sliver_info to the database using chapi
+    def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
+                              aggregate_urn, expiration):
+        raise NotImplementedError('db_create_sliver_info')
+
+    # use the database to convert an aggregate url to the corresponding urn
+    def db_agg_url_to_urn(self, agg_url):
+        raise NotImplementedError('db_agg_url_to_urn')
+
+    # given the slice urn and aggregate urn, find the slice urn from the db
+    def db_find_sliver_urn(self, slice_urn, aggregate_urn):
+        raise NotImplementedError('db_find_sliver_urn')
+        
+    # update the expiration time on a sliver
+    def db_update_sliver_info(self, sliver_urn, expiration):
+        raise NotImplementedError('db_update_sliver_info')
+        
+    # delete the sliver from the chapi database
+    def db_delete_sliver_info(self, sliver_urn):
+        raise NotImplementedError('db_delete_sliver_info')
