@@ -656,13 +656,13 @@ def API_call( framework, config, args, opts, verbose=False ):
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
-        logger.info( " " + "-"*60 )
+        logger.info( " " + "-"*54 )
         logger.info( header )
         # printed not logged so can redirect output to a file
         #logger.info(retVal)
-#        logger.info( " " + "="*60 )
+#        logger.info( " " + "="*54 )
 #        print retItem
-        logger.info( " " + "="*60 )
+        logger.info( " " + "="*54 )
     # end of if verbose
     
     return retVal, retItem

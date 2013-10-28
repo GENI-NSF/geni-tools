@@ -11,7 +11,9 @@ gcf 2.5:
   - Eliminated a repetitive log message (#384)
   - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
     allows changing this. (#407)
-  - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
+  - Fix bug in APIv3 calling status with slivers with different
+    expiration times (#408)
+  - Fit Omni result summaries in 80 character wide terminals (#409)
 
  * stitcher
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 
