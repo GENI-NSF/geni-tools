@@ -53,6 +53,8 @@ New in v2.5:
  - Eliminated a repetitive log message (#384)
  - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
  - Fit Omni result summaries in 80 character wide terminals (#409)
+ - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+   nick cache is old (#391)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
