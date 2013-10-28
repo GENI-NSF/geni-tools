@@ -2212,7 +2212,8 @@ class AMCallHandler(object):
                             idx1 = sliver_urn.find('sliver+')
                             agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
                         self.framework.chapi_create_sliver_info(sliver_urn, \
-                              urn, creator, agg_urn, sliver['geni_expires'])
+                              urn, creator, agg_urn, \
+                              dateutil.parser(sliver['geni_expires']))
 
                 # Print out the result
                 if isinstance(realresult, dict):
@@ -2796,7 +2797,8 @@ class AMCallHandler(object):
                            sliver.has_key('geni_sliver_urn') and \
                            sliver.has_key('geni_expires'):
                             self.framework.chapi_update_sliver_info \
-                             (sliver['geni_sliver_urn'], sliver['geni_expires'])
+                             (sliver['geni_sliver_urn'], \
+                              dateutil.parser(sliver['geni_expires']))
 
                 # Save results
                 if isinstance(res, dict):
