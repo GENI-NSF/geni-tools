@@ -162,8 +162,9 @@ def load_agg_nick_config(opts, logger):
         aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
     else:
         aggNickCacheTimestamp = None
+
     # update the file if necessary
-    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate and not opts.useAggNickCache):
         update_agg_nick_cache( opts, logger )
 
     # aggNickCacheName may now exist. If so, add it to the front of the list.
