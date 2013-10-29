@@ -1767,9 +1767,9 @@ class AMCallHandler(object):
                 self.framework.db_create_sliver_info(sliver_urn, urn, \
                                     creator, agg_urn, slice_exp)
             except NotImplementedError, nie:
-                self.logger.debug('Framework doesnt handle slivers in SA database')
+                self.logger.info('Framework doesnt handle slivers in SA database')
             except Exception, e:
-                self.logger.info('Error writing sliver to SA database')
+                self.logger.warn('Error writing sliver to SA database')
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -2218,9 +2218,9 @@ class AMCallHandler(object):
                         self.framework.db_create_sliver_info(sliver_urn, \
                               urn, creator, agg_urn, sliver['geni_expires'])
                 except NotImplementedError, nie:
-                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                    self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
-                    self.logger.info('Error writing sliver to SA database')
+                    self.logger.warn('Error writing sliver to SA database')
 
                 # Print out the result
                 if isinstance(realresult, dict):
@@ -2598,9 +2598,9 @@ class AMCallHandler(object):
                     else:
                         self.logger.error("Could not find sliver in database")
                 except NotImplementedError, nie:
-                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                    self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
-                    self.logger.info('Error updating sliver in SA database')
+                    self.logger.warn('Error updating sliver in SA database')
 
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2812,9 +2812,9 @@ class AMCallHandler(object):
                             self.framework.db_update_sliver_info \
                              (sliver['geni_sliver_urn'], sliver['geni_expires'])
                 except NotImplementedError, nie:
-                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                    self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
-                    self.logger.info('Error updating sliver in SA database')
+                    self.logger.warn('Error updating sliver in SA database')
 
                 # Save results
                 if isinstance(res, dict):
@@ -3304,9 +3304,9 @@ class AMCallHandler(object):
                     else:
                         self.logger.error("Could not find sliver in database")
                 except NotImplementedError, nie:
-                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                    self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
-                    self.logger.info('Error deleting sliver in SA database')
+                    self.logger.warn('Error deleting sliver in SA database')
 
                 if numClients == 1:
                     retVal = prStr
@@ -3478,9 +3478,9 @@ class AMCallHandler(object):
                             self.framework.db_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
                 except NotImplementedError, nie:
-                    self.logger.debug('Framework doesnt handle slivers in SA database')
+                    self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
-                    self.logger.info('Error deleting sliver in SA database')
+                    self.logger.warn('Error deleting sliver in SA database')
 
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
