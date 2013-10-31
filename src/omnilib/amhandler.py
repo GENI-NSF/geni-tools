@@ -2473,6 +2473,9 @@ class AMCallHandler(object):
         --devmode: Continue on error if possible
         -l to specify a logging config file
         --logoutput <filename> to specify a logging output filename
+        --alap: Renew slivers as long as possible (up to the slice
+        expiration / time requested). Default is False - either renew
+        to the requested time, or fail.
         """
 
         if self.opts.api_version >= 3:
@@ -2528,6 +2531,13 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nRenewSliver failed: " + retVal)
                 continue
 
+            outputstr = None
+            if self.opts.alap:
+                # Get the output from the res - it will have the new
+                # sliver expiration
+                if isinstance(res, dict) and res.has_key('output') and res['output'] is not None and str(res['output']).strip() != "":
+                    outputstr = str(res['output']).strip()
+
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -2544,7 +2554,12 @@ class AMCallHandler(object):
                 self.logger.warn(prStr)
                 failList.append( client.url )
             else:
-                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
+                newExp = time_with_tz.isoformat()
+                if self.opts.alap and outputstr:
+                    newExp = outputstr
+                    # FIXME: Compare outputstr with time_with_tz, and
+                    # note in the prStr if it was different
+                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, newExp)
                 self.logger.info(prStr)
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2553,7 +2568,11 @@ class AMCallHandler(object):
         if numClients == 0:
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif numClients > 1:
-            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
+            if self.opts.alap:
+                # FIXME: Say more about where / how long it was renewed?
+                retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC) or as long as possible\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
+            else:
+                retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
         return retVal, (successList, failList)
     # End of renewsliver
 
@@ -2618,6 +2637,9 @@ class AMCallHandler(object):
         --devmode: Continue on error if possible
         -l to specify a logging config file
         --logoutput <filename> to specify a logging output filename
+        --alap: Renew slivers as long as possible (up to the slice
+        expiration / time requested). Default is False - either renew
+        to the requested time, or fail.
 
         Sample usage:
         Renew slivers in slice myslice to the given time; fail the call if all slivers cannot be renewed to this time
@@ -4398,6 +4420,13 @@ class AMCallHandler(object):
         # the tool is speaking for. 
         if self.opts.speaksfor:
             options["geni_experimenter_urn"] = self.opts.speaksfor
+
+        if self.opts.api_version > 1 and self.opts.alap:
+            if op in ('Renew', 'RenewSliver'):
+                options["geni_extend_alap"] = self.opts.alap
+            elif self.opts.devmode:
+                self.logger.warn("Got geni_extend_alap option for method %s that doesn't take it, but using anyhow", op)
+                options["geni_extend_alap"] = self.opts.alap
 
         # To support all the methods that take arbitrary options,
         # allow specifying a JSON format file that specifies

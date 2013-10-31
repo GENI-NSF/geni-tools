@@ -839,6 +839,8 @@ def getParser():
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
+    basicgroup.add_option("--alap", action="store_true", default=False,
+                          help="Request slivers be renewed as close to the requested time as possible, instead of failing if the requested time is not possible. Default is False.")
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
     basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
