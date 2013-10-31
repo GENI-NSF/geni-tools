@@ -16,12 +16,20 @@ gcf 2.5:
   - Fit Omni result summaries in 80 character wide terminals (#409)
   - `ForceUseAggNickCache` avoids fetching new cache even if the agg
     nick cache is old (#391)
+  - Support `geni_extend_alap` with new `--alap` option, allowing you to
+    request that slivers be renewed as long as possible, if your
+    requested time is not permitted by local AM policy. (#415)
 
  * stitcher
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
+
+ * gcf
+  - AM API v2 GCF AM now has a local policy limiting renewals to
+    MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
+    renew any slivers as long as possible, reporting the new expiration. (#414)
 
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
