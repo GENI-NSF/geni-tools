@@ -26,6 +26,11 @@ gcf 2.5:
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
 
+ * gcf
+  - AM API v2 GCF AM now has a local policy limiting renewals to
+    MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
+    renew any slivers as long as possible, reporting the new expiration. (#414)
+
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
    manifests (#389)
