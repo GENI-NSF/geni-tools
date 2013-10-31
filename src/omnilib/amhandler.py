@@ -2555,11 +2555,18 @@ class AMCallHandler(object):
                 failList.append( client.url )
             else:
                 newExp = time_with_tz.isoformat()
+                gotALAP = False
                 if self.opts.alap and outputstr:
                     newExp = outputstr
+                    newExpO = dateutil.parser.parse(str(newExp))
+                    if time - newExpO > datetime.timedelta.resolution:
+                        gotALAP = True
+                        #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
                     # FIXME: Compare outputstr with time_with_tz, and
                     # note in the prStr if it was different
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, newExp)
+                if gotALAP:
+                    prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
                 self.logger.info(prStr)
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2761,7 +2768,7 @@ class AMCallHandler(object):
                     else:
                         expectedCount = 0
                     for time in orderedDates:
-                        if time == requestedExpiration or time - requestedExpiration < timedelta.resolution:
+                        if time == requestedExpiration or time - requestedExpiration < datetime.timedelta.resolution:
                             continue
                         firstTime = time
                         firstCount = len(sliverExps[time])
