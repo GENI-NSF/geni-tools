@@ -2557,13 +2557,16 @@ class AMCallHandler(object):
                 newExp = time_with_tz.isoformat()
                 gotALAP = False
                 if self.opts.alap and outputstr:
-                    newExp = outputstr
-                    newExpO = dateutil.parser.parse(str(newExp))
-                    if time - newExpO > datetime.timedelta.resolution:
-                        gotALAP = True
-                        #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
-                    # FIXME: Compare outputstr with time_with_tz, and
-                    # note in the prStr if it was different
+                    try:
+                        newExpO = dateutil.parser.parse(str(outputstr))
+                        newExpO = naiveUTC(newExpO)
+                        newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
+                        newExp = newExpO_tz.isoformat()
+                        if time - newExpO > datetime.timedelta.resolution:
+                            gotALAP = True
+                            #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
+                    except:
+                        self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: %s", outputstr)
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, newExp)
                 if gotALAP:
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
