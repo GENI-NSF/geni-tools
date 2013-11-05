@@ -408,7 +408,7 @@ class Framework(Framework_Base):
         res, mess = _do_ssl(self, None, "Looking up member email",
                             self.ma.lookup_identifying_member_info, [], options)
         self.log_results((res, mess), 'Lookup member email')
-        if len(res['value']) == 0:
+        if not res['value']:
             return None
         return res['value'][0]['MEMBER_EMAIL']
 
@@ -417,6 +417,8 @@ class Framework(Framework_Base):
         res, mess = _do_ssl(self, None, "Looking up member keys",
                             self.ma.lookup_keys, [], options)
         self.log_results((res, mess), 'Lookup member keys')
+        if not res['value']:
+            return None
         return [val['KEY_PUBLIC'] for val in res['value']]
 
     # get the members (urn, email) and their ssh keys
@@ -435,7 +437,12 @@ class Framework(Framework_Base):
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
-        pass
+        options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
+                                       'SLICE_ROLE': role}]}
+        res, mess = _do_ssl(self, None, "Adding member to slice",
+                            self.sa.modify_slice_membership,
+                            slice_urn, [], options)
+        self.log_results((res, mess), 'Add member to slice')
 
 
     # handle logging or results for db functions
