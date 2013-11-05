@@ -44,6 +44,20 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.5:
  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
+ - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+   allows changing this. (#407)
+ - Create any directories need in the path to the agg_nick_cache (#383)
+ - If use --AggNickCacheName and can't read/write to the specified
+   file, omni should fall back to reading `agg_nick_cach.base` (#384)
+ - Look up AM URN by URL in the defined aggregate nicknames (#404)
+ - Eliminated a repetitive log message (#384)
+ - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
+ - Fit Omni result summaries in 80 character wide terminals (#409)
+ - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+   nick cache is old (#391)
+ - Support `geni_extend_alap` with new `--alap` option, allowing you to
+   request that slivers be renewed as long as possible, if your
+   requested time is not permitted by local AM policy. (#415)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -592,6 +606,9 @@ Options:
                         slices
     -r PROJECT, --project=PROJECT
                         Name of project. (For use with pgch framework.)
+    --alap              Request slivers be renewed as close to the requested
+                        time as possible, instead of failing if the requested
+                        time is not possible. Default is False.
     -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
                         RSpec type and version to return, default 'GENI 3'
     -V API_VERSION, --api-version=API_VERSION
@@ -730,6 +747,9 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default False. For
                         use by scripts.
+    --ssltimeout=SSLTIMEOUT
+                        Seconds to wait before timing out AM and CH calls.
+                        Default is 360 seconds.
 }}}
 
 === Supported commands ===
@@ -1495,6 +1515,13 @@ Note that the expiration time cannot be past your slice expiration
 time (see `print_slice_expiration` and `renewslice`). Some aggregates will
 not allow you to _shorten_ your sliver expiration time.
 
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
+
 Note that older SFA-based aggregates (like the MyPLC aggregates in the
 GENI mesoscale deployment) fail to renew slivers when a timezone is
 present in the call from omni. If you see an error from the aggregate
@@ -1547,6 +1574,13 @@ Unqualified times are assumed to be in UTC.  Note that the expiration
 time cannot be past your slice expiration time (see
 `print_slice_expiration` and `renewslice`). Some aggregates will not
 allow you to _shorten_ your sliver expiration time.
+
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
 
  - `--sliver-urn <urn>` / -u option: each specifies a sliver URN to renew. If specified,
    only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.

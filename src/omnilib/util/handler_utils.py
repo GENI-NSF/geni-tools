@@ -61,9 +61,17 @@ def _derefAggNick(handler, aggregateNickname):
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
     else:
         # if we got here, we are assuming amNick is actually a URL
-        # Print a warning now if it doesn't look a URL
-        if validate_url( amNick ):
-            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)            
+        # Print a warning now if amNick (url) doesn't look like a URL
+        # validate_url returns None if it appears to be a valid URL
+        if validate_url( url ):
+            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)
+        else:
+            # See if we can find the correct URN by finding the supplied URL in the aggregate nicknames
+            for (amURN, amURL) in handler.config['aggregate_nicknames'].values():
+                if amURL.startswith(url) and amURN.strip() != '':
+                    urn = amURN.strip()
+                    handler.logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", url, urn, amURL)
+                    break
 
     return url,urn
 
