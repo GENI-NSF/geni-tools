@@ -412,6 +412,13 @@ class Framework(Framework_Base):
             return None
         return res['value'][0]['MEMBER_EMAIL']
 
+    def get_member_keys(self, urn):
+        options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
+        res, mess = _do_ssl(self, None, "Looking up member keys",
+                            self.ma.lookup_keys, [], options)
+        self.log_results((res, mess), 'Lookup member keys')
+        return [val['KEY_PUBLIC'] for val in res['value']]
+
     # get the members (urn, email) and their ssh keys
     def get_members_for_slice(self, slice_urn):
         res, mess = _do_ssl(self, None, "Looking up slice member",
