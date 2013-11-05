@@ -34,7 +34,7 @@ import sys
 import unittest
 import omni
 import os.path
-import pwd
+import getpass
 import dateutil.parser
 from omnilib.util import OmniError, naiveUTC, AMAPIError
 
@@ -148,7 +148,7 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            user = pwd.getpwuid(os.getuid())[0]
+            user = getpass.getuser()
             pre = prefix+user[:3]
             return datetime.datetime.strftime(datetime.datetime.utcnow(), pre+"-%H%M%S")
 #            return prefix+pwd.getpwuid(os.getuid())[0]

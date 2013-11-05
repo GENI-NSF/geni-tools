@@ -161,9 +161,10 @@ def findUsersAndKeys( ):
         # private keys (foo)
         username = user['urn'].split('+')[-1]
         keyList[username] = []
-        privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
+        privuserkeys = string.replace(user['keys'], ".pub","")
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
+            key = key.strip()
             if not os.path.exists(os.path.expanduser(key)):
                 if options.include_keys:
                     print "Key file [%s] does NOT exist." % key

@@ -31,6 +31,24 @@ gcf 2.5:
     MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
     renew any slivers as long as possible, reporting the new expiration. (#414)
 
+gcf 2.4.2:
+ v2.4.2 contains changes to support running omni on Windows.
+ * omni
+  - On Windows, fix bug in construction of urls from
+    `default_rspec_location` (#401)
+ * readyToLogin.py
+  - Better handle whitespaces between users' keys specified in the
+    omni_config (#396)
+ * omni-configure.py
+  - Remove dependences on outside call to ssh-keygen (#400)
+  - Set the default location of the omni-bundle.zip specified with the
+    -z option on Windows XP (#402)
+  - Fix bug that caused .gcf directory to not get created on Windows
+    (#403)
+ * acceptance tests
+  - Use crossplatform `getpass` module instead of UNIX-only `pwd`
+    modules in omni_unittest.py (#397)
+
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
    manifests (#389)
