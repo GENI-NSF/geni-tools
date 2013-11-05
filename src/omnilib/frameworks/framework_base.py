@@ -247,6 +247,14 @@ class Framework_Base():
         """
         raise NotImplementedError('wrap_cred')
 
+    # get the members (urn, email) and their ssh keys
+    def get_members_for_slice(self, slice_urn):
+        raise NotImplementedError('get_members_for_slice')
+
+    # add a new member to a slice
+    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+        raise NotImplementedError('add_member_to_slice')
+
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
                               aggregate_urn, expiration):

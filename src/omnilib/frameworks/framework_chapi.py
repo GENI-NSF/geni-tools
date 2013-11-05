@@ -403,6 +403,34 @@ class Framework(Framework_Base):
         return versionstruct, message
 
 
+    def get_member_email(self, urn):
+        options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
+        res, mess = _do_ssl(self, None, "Looking up member email",
+                            self.ma.lookup_identifying_member_info, [], options)
+        self.log_results((res, mess), 'Lookup member email')
+        if len(res['value']) == 0:
+            return None
+        return res['value'][0]['MEMBER_EMAIL']
+
+    # get the members (urn, email) and their ssh keys
+    def get_members_for_slice(self, slice_urn):
+        res, mess = _do_ssl(self, None, "Looking up slice member",
+                            self.sa.lookup_slice_members, slice_urn, [], {})
+        self.log_results((res, mess), 'Get members for slice')
+        members = []
+        for member_vals in res['value']:
+            member_urn = member_vals['SLICE_MEMBER']
+            member = {'URN': member_urn}
+            member['EMAIL'] = self.get_member_email(member_urn)
+            member['KEYS'] = self.get_member_keys(member_urn)
+            members.append(member)
+        return members
+
+    # add a new member to a slice
+    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+        pass
+
+
     # handle logging or results for db functions
     def log_results(self, results, action):
         (res, message) = results
@@ -410,9 +438,9 @@ class Framework(Framework_Base):
             if res['code'] == 0:
                 self.logger.debug('Successfully completed ' + action)
             else:
-                self.logger.error(action + ' failed, message: ' + res['output'])
+                self.logger.warn(action + ' failed, message: ' + res['output'])
         else:
-            self.logger.error(action + ' failed for unknown reason')
+            self.logger.warn(action + ' failed for unknown reason')
 
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
