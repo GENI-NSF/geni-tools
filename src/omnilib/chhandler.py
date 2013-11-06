@@ -527,6 +527,39 @@ class CHCallHandler(object):
         retVal = _print_slice_expiration(self, urn, cred)
         return retVal, retVal
 
+        
+    def addmembertoslice(self, args):
+        """Add a member to a slice
+        Args: slicename and membername, optional role
+        Return summary string and whether successful
+        """
+        if len(args) != 2 or len(args) != 3:
+            self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
+        slice_name = args[0]
+        member_name = args[1]
+        if len(args) == 3:
+            role = args[2]
+        else:
+            role = 'MEMBER'
+
+        # convert the slice and member name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+        member_urn = self.framework.member_name_to_urn(member_name)
+
+        # Try to add the member to the slice
+        (success, message) = _do_ssl(self.framework, None, "Add member %s" % member_name, self.framework.add_member_to_slice, slice_urn, member_urn, role)
+
+        if success:
+            prtStr = "Member %s now in slice %s" % (member_name, slice_name)
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to renew slice %s" % (name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', success
+
 #########
 ## Helper functions follow
 
