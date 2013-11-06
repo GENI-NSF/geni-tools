@@ -545,8 +545,13 @@ class CHCallHandler(object):
         # Try to get all the members of this slice
         (members, message) = _do_ssl(self.framework, None, "List members of slice %s" % slice_name, self.framework.get_members_of_slice, slice_urn)
 
-        if members:
-            prtStr = "Members in slice %s are:\n%s" % (slice_name, str(members))
+        if members[0]:
+            prtStr = "Members in slice %s are:\n" % (slice_name)
+            for i, member in enumerate(members[0]):
+                prtStr += 'Member ' + str(i + 1) + ':\n'
+                prtStr += '   URN = ' + member['URN'] + '\n'
+                prtStr += '   Email = ' + member['EMAIL'] + '\n'
+                prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
             self.logger.info(prtStr)
         else:
             prtStr = "Failed to find members of slice %s" % (slice_name)
