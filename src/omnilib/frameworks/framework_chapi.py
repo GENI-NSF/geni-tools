@@ -306,6 +306,30 @@ class Framework(Framework_Base):
         if project:
             auth = auth + ':' + project
         return URN(auth, "slice", name).urn_string()
+    
+    def member_name_to_urn(self, name):
+        """Convert a member name to a member urn."""
+
+        if name is None or name.strip() == '':
+            raise Exception('Empty member name')
+
+        if is_valid_urn(name):
+            urn = URN(None, None, None, name)
+            if not urn.getType() == "user":
+                raise Exception("Invalid member name: got a non member URN %s", name)
+            # if config has an authority, make sure it matches
+            if self.config.has_key('authority'):
+                auth = self.config['authority']
+                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+                if urn_fmt_auth != auth:
+                    self.logger.warn("CAREFUL: member's authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+            return name
+
+        if not self.config.has_key('authority'):
+            raise Exception("Invalid configuration: no authority defined")
+
+        auth = self.config['authority']
+        return URN(auth, "user", name).urn_string()
 
     def renew_slice(self, urn, expiration_dt):
         """See framework_base for doc.
