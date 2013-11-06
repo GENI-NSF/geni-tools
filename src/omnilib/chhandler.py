@@ -528,6 +528,33 @@ class CHCallHandler(object):
         return retVal, retVal
 
         
+    def listmembersofslice(self, args):
+        """list all the members of a slice
+        Args: slicename
+        Side effect: prints out via logger the members and their info
+        Return summary string and success
+        """
+        if len(args) != 1:
+            self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
+        slice_name = args[0]
+
+        # convert the slice name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        # Try to get all the members of this slice
+        (members, message) = _do_ssl(self.framework, None, "List members of slice %s" % slice_name, self.framework.get_members_of_slice, slice_urn)
+
+        if members:
+            prtStr = "Members in slice %s are:\n%s" % (slice_name, str(members))
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to find members of slice %s" % (slice_name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', members
+        
     def addmembertoslice(self, args):
         """Add a member to a slice
         Args: slicename and membername, optional role
@@ -554,7 +581,7 @@ class CHCallHandler(object):
             prtStr = "Member %s now in slice %s" % (member_name, slice_name)
             self.logger.info(prtStr)
         else:
-            prtStr = "Failed to renew slice %s" % (name)
+            prtStr = "Failed to renew slice %s" % (slice_name)
             if message != "":
                 prtStr += ". " + message
             self.logger.warn(prtStr)

@@ -457,7 +457,7 @@ class Framework(Framework_Base):
             member['EMAIL'] = self.get_member_email(member_urn)
             member['KEYS'] = self.get_member_keys(member_urn)
             members.append(member)
-        return members
+        return members, mess
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
@@ -466,8 +466,8 @@ class Framework(Framework_Base):
         res, mess = _do_ssl(self, None, "Adding member to slice",
                             self.sa.modify_slice_membership,
                             slice_urn, [], options)
-        self.log_results((res, mess), 'Add member to slice')
-
+        success = self.log_results((res, mess), 'Add member to slice')
+        return success, mess
 
     # handle logging or results for db functions
     def log_results(self, results, action):
@@ -475,10 +475,12 @@ class Framework(Framework_Base):
         if res is not None:
             if res['code'] == 0:
                 self.logger.debug('Successfully completed ' + action)
+                return true
             else:
                 self.logger.warn(action + ' failed, message: ' + res['output'])
         else:
             self.logger.warn(action + ' failed for unknown reason')
+        return false
 
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
