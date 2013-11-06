@@ -581,7 +581,7 @@ class CHCallHandler(object):
             prtStr = "Member %s now in slice %s" % (member_name, slice_name)
             self.logger.info(prtStr)
         else:
-            prtStr = "Failed to renew slice %s" % (slice_name)
+            prtStr = "Failed to add member %s" % (member_name)
             if message != "":
                 prtStr += ". " + message
             self.logger.warn(prtStr)
