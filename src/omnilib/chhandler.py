@@ -560,7 +560,7 @@ class CHCallHandler(object):
         Args: slicename and membername, optional role
         Return summary string and whether successful
         """
-        if len(args) != 2 or len(args) != 3:
+        if len(args) != 2 and len(args) != 3:
             self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
         slice_name = args[0]
         member_name = args[1]
@@ -575,7 +575,7 @@ class CHCallHandler(object):
         member_urn = self.framework.member_name_to_urn(member_name)
 
         # Try to add the member to the slice
-        (success, message) = _do_ssl(self.framework, None, "Add member %s" % member_name, self.framework.add_member_to_slice, slice_urn, member_urn, role)
+        ((success, message), m2) = _do_ssl(self.framework, None, "Add member %s" % member_name, self.framework.add_member_to_slice, slice_urn, member_urn, role)
 
         if success:
             prtStr = "Member %s now in slice %s" % (member_name, slice_name)

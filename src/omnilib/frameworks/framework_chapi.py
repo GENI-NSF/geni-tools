@@ -467,7 +467,7 @@ class Framework(Framework_Base):
                             self.sa.modify_slice_membership,
                             slice_urn, [], options)
         success = self.log_results((res, mess), 'Add member to slice')
-        return success, mess
+        return (success, mess)
 
     # handle logging or results for db functions
     def log_results(self, results, action):
