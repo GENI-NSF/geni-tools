@@ -446,7 +446,7 @@ class Framework(Framework_Base):
         return [val['KEY_PUBLIC'] for val in res['value']]
 
     # get the members (urn, email) and their ssh keys
-    def get_members_for_slice(self, slice_urn):
+    def get_members_of_slice(self, slice_urn):
         res, mess = _do_ssl(self, None, "Looking up slice member",
                             self.sa.lookup_slice_members, slice_urn, [], {})
         self.log_results((res, mess), 'Get members for slice')
@@ -475,12 +475,12 @@ class Framework(Framework_Base):
         if res is not None:
             if res['code'] == 0:
                 self.logger.debug('Successfully completed ' + action)
-                return true
+                return True
             else:
                 self.logger.warn(action + ' failed, message: ' + res['output'])
         else:
             self.logger.warn(action + ' failed for unknown reason')
-        return false
+        return False
 
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
