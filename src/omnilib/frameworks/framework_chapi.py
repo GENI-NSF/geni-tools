@@ -434,7 +434,7 @@ class Framework(Framework_Base):
         self.log_results((res, mess), 'Lookup member email')
         if not res['value']:
             return None
-        return res['value'][0]['MEMBER_EMAIL']
+        return res['value'].values()[0]['MEMBER_EMAIL']
 
     def get_member_keys(self, urn):
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
@@ -443,7 +443,7 @@ class Framework(Framework_Base):
         self.log_results((res, mess), 'Lookup member keys')
         if not res['value']:
             return None
-        return [val['KEY_PUBLIC'] for val in res['value']]
+        return [val['KEY_PUBLIC'] for val in res['value'].values()[0]]
 
     # get the members (urn, email) and their ssh keys
     def get_members_of_slice(self, slice_urn):
