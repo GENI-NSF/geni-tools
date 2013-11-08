@@ -21,6 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+import datetime
 import logging
 import os
 import sys
@@ -403,10 +404,15 @@ class Framework(Framework_Base):
                 if log:
                     self.logger.debug("%s RenewSlice log: %s", self.fwtype, log)
 
-                # FIXME: response['value'] is the new slice
-                # cred. Could parse the new expiration date out of
-                # that and return that instead
-                return expiration_dt
+                # response['value'] is the new slice
+                # cred. parse the new expiration date out of
+                # that and return that
+                sliceexp = credutils.get_cred_exp(self.logger, response['value'])
+
+                # If request is diff from sliceexp then log a warning
+                if sliceexp - expiration_dt > datetime.timedelta.resolution:
+                    self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
+                return sliceexp
 
     # def _get_slices(self):
     #     """Gets the ProtoGENI slices from the ProtoGENI

@@ -58,6 +58,8 @@ New in v2.5:
  - Support `geni_extend_alap` with new `--alap` option, allowing you to
    request that slivers be renewed as long as possible, if your
    requested time is not permitted by local AM policy. (#415)
+ - Renew Slice returns actual new expiration (checks the SA, not just
+   assuming success means you got what you asked for) (#428)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

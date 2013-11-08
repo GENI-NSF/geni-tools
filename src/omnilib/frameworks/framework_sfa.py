@@ -26,6 +26,8 @@ import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
+import datetime
+import dateutil
 import logging
 import os
 import pprint
@@ -409,7 +411,35 @@ class Framework(Framework_Base):
             return None
 
         if res == 1:
-            return requested_expiration
+            records = None
+            message = ""
+            try:
+                (records, message) = _do_ssl(self, None, ("Lookup renewed SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
+            except Exception, exc:
+                self.logger.warning("Failed to look up renewed SFA slice %s: %s" , urn, exc)
+                return None
+
+            slice_record = self.get_record_from_resolve_by_type(records, 'slice')
+            if slice_record is None:
+                self.logger.warning("Failed to find renewed SFA slice record. Error renewing slice %s: %s", urn, message)
+                return None
+
+            if not slice_record.has_key('expires'):
+                self.logger.warning("Renewed SFA slice record doesn't indicate expiration")
+                return None
+
+            out_expiration = slice_record['expires']
+            try:
+                out_expiration = dateutil.parser.parse(out_expiration)
+                # If request is diff from sliceexp then log a warning
+                # Make requested_expiration have the UTC TZ
+                req_exp_tz = requested_expiration.replace(tzinfo=dateutil.tz.tzutc())
+                if out_expiration - req_exp_tz > datetime.timedelta.resolution:
+                    self.logger.warn("Renewed SFA Slice %s expiration %s is different than request %s", urn, out_expiration, req_exp_tz)
+            except Exception, e:
+                self.logger.info('Unable to parse renewed slice expiration: "%s": %s.'% (out_expiration, e))
+
+            return out_expiration
         else:
             # FIXME: Use message?
             self.logger.warning("Failed to renew slice %s" % urn)
