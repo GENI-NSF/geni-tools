@@ -528,11 +528,20 @@ class Framework(Framework_Base):
             return slice_names
         record = self.get_record_from_resolve_by_type(res, 'user')
 
-        if record is None or not isinstance(record, dict) or not record.has_key('slices'):
+        self.logger.debug("Resolve returned user record: %r", record)
+        if record is None:
             self.logger.error("No user record for user %s found in SFA registry %s", user, self.config['registry'])
             return slice_names
+        elif not isinstance(record, dict):
+            self.logger.error("User record for user %s malformed (not a dictionary) in SFA registry %s", user, self.config['registry'])
+            self.logger.debug("Resolve returned user record: %r", record)
+            return slice_names
+        elif not record.has_key('slices'):
+            self.logger.error("User record for user %s malformed (no slices entry) in SFA registry %s", user, self.config['registry'])
+            self.logger.debug("Resolve returned user record: %r", record)
+            return slice_names
 
-        self.logger.debug("Resolve returned %r", record)
+#        self.logger.debug("Resolve returned user record: %r", record)
 
         # Resolve has 2 relevant keys: slices, slice_ids
         self.logger.debug("Slices: %r", record['slices'])
