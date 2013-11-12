@@ -561,7 +561,8 @@ class Framework(Framework_Base):
         (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (self.config['user'], self.config['registry'])), self.registry.Resolve, self.config['user'], user_cred)
         record = self.get_record_from_resolve_by_type(res, 'user')
         self.logger.debug("Resolve returned %r", record)
-        self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
+        if record.has_key('key_ids'):
+            self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
         # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
         return record['keys']
 
