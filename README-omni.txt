@@ -60,6 +60,7 @@ New in v2.5:
    requested time is not permitted by local AM policy. (#415)
  - Renew Slice returns actual new expiration (checks the SA, not just
    assuming success means you got what you asked for) (#428)
+ - SFA slice and user records changed: keys and slices moved (#429)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

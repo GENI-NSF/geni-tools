@@ -535,18 +535,27 @@ class Framework(Framework_Base):
         elif not isinstance(record, dict):
             self.logger.error("User record for user %s malformed (not a dictionary) in SFA registry %s", user, self.config['registry'])
             return slice_names
-        elif not record.has_key('slices'):
+
+        slcs = None
+        if record.has_key('slices'):
+            self.logger.debug("Found slices in field 'slices'")
+            slcs = record['slices']
+        elif record.has_key('reg-slices'):
+            self.logger.debug("Found slices in field 'reg-slices'")
+            slcs = record['reg-slices']
+        else:
             self.logger.error("User record for user %s malformed (no slices entry) in SFA registry %s", user, self.config['registry'])
             return slice_names
 
 #        self.logger.debug("Resolve returned user record: %r", record)
 
         # Resolve has 2 relevant keys: slices, slice_ids
-        self.logger.debug("Slices: %r", record['slices'])
-        self.logger.debug("Slice_ids: %r", record['slice_ids'])
+        self.logger.debug("Slices: %r", slcs)
+        if record.has_key('slice_ids'):
+            self.logger.debug("Slice_ids: %r", record['slice_ids'])
 
         # These are slice HRNs. Supposed to be names. No wait - URNs
-        slice_hrns = record['slices']
+        slice_hrns = slcs
         for hrn in slice_hrns:
 #            slice_names.append(get_leaf(hrn))
             slice_names.append(hrn_to_urn(hrn, 'slice'))
@@ -561,10 +570,24 @@ class Framework(Framework_Base):
         (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (self.config['user'], self.config['registry'])), self.registry.Resolve, self.config['user'], user_cred)
         record = self.get_record_from_resolve_by_type(res, 'user')
         self.logger.debug("Resolve returned %r", record)
+        if record is None:
+            self.logger.error("Cannot get SFA SSH keys - result is None");
+            return None
+        if not isinstance(record, dict):
+            self.logger.error("Cannot get SFA SSH keys - malformed result not a dict: %s", str(record)[:50])
+            return None
+        # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
         if record.has_key('key_ids'):
             self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
-        # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
-        return record['keys']
+        if record.has_key("keys"):
+            self.logger.debug("Found keys in field 'keys'")
+            return record['keys']
+        elif record.has_key('reg-keys'):
+            self.logger.debug("Found keys in field 'reg-keys'")
+            return record['reg-keys']
+        else:
+            self.logger.error("Cannot get SFA SSH keys - malformed return (missing keys entry)")
+            return None
 
     def get_user_cred_struct(self):
         """
