@@ -26,6 +26,8 @@ import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
+import datetime
+import dateutil
 import logging
 import os
 import pprint
@@ -172,7 +174,7 @@ class Framework(Framework_Base):
                 try:
                     # use the self signed cert to get the gid
                     self.registry = self.make_client(config['registry'], config['key'], config['cert'],
-                                                     verbose=config['verbose'])
+                                                     verbose=config['verbose'], timeout=opts.ssltimeout)
                     self.user_cred = self.init_user_cred( opts )
 
                     self.cert_string = file(config['cert'],'r').read()
@@ -208,10 +210,10 @@ class Framework(Framework_Base):
 
         self.logger.info('SFA Registry: %s', config['registry'])
         self.registry = self.make_client(config['registry'], self.key, self.cert,
-                                         allow_none=True, verbose=self.config['verbose'])
+                                         allow_none=True, verbose=self.config['verbose'], timeout=opts.ssltimeout)
         self.logger.info('SFA Slice Manager: %s', config['slicemgr'])
         self.slicemgr = self.make_client(config['slicemgr'], self.key, self.cert,
-                                         verbose=self.config['verbose'])
+                                         verbose=self.config['verbose'], timeout=opts.ssltimeout)
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
 
@@ -409,7 +411,35 @@ class Framework(Framework_Base):
             return None
 
         if res == 1:
-            return requested_expiration
+            records = None
+            message = ""
+            try:
+                (records, message) = _do_ssl(self, None, ("Lookup renewed SFA slice %s at registry %s" % (urn, self.config['registry'])), self.registry.Resolve, urn, user_cred)
+            except Exception, exc:
+                self.logger.warning("Failed to look up renewed SFA slice %s: %s" , urn, exc)
+                return None
+
+            slice_record = self.get_record_from_resolve_by_type(records, 'slice')
+            if slice_record is None:
+                self.logger.warning("Failed to find renewed SFA slice record. Error renewing slice %s: %s", urn, message)
+                return None
+
+            if not slice_record.has_key('expires'):
+                self.logger.warning("Renewed SFA slice record doesn't indicate expiration")
+                return None
+
+            out_expiration = slice_record['expires']
+            try:
+                out_expiration = dateutil.parser.parse(out_expiration)
+                # If request is diff from sliceexp then log a warning
+                # Make requested_expiration have the UTC TZ
+                req_exp_tz = requested_expiration.replace(tzinfo=dateutil.tz.tzutc())
+                if out_expiration - req_exp_tz > datetime.timedelta.resolution:
+                    self.logger.warn("Renewed SFA Slice %s expiration %s is different than request %s", urn, out_expiration, req_exp_tz)
+            except Exception, e:
+                self.logger.info('Unable to parse renewed slice expiration: "%s": %s.'% (out_expiration, e))
+
+            return out_expiration
         else:
             # FIXME: Use message?
             self.logger.warning("Failed to renew slice %s" % urn)
@@ -498,18 +528,34 @@ class Framework(Framework_Base):
             return slice_names
         record = self.get_record_from_resolve_by_type(res, 'user')
 
-        if record is None or not isinstance(record, dict) or not record.has_key('slices'):
+        self.logger.debug("Resolve returned user record: %r", record)
+        if record is None:
             self.logger.error("No user record for user %s found in SFA registry %s", user, self.config['registry'])
             return slice_names
+        elif not isinstance(record, dict):
+            self.logger.error("User record for user %s malformed (not a dictionary) in SFA registry %s", user, self.config['registry'])
+            return slice_names
 
-        self.logger.debug("Resolve returned %r", record)
+        slcs = None
+        if record.has_key('slices'):
+            self.logger.debug("Found slices in field 'slices'")
+            slcs = record['slices']
+        elif record.has_key('reg-slices'):
+            self.logger.debug("Found slices in field 'reg-slices'")
+            slcs = record['reg-slices']
+        else:
+            self.logger.error("User record for user %s malformed (no slices entry) in SFA registry %s", user, self.config['registry'])
+            return slice_names
+
+#        self.logger.debug("Resolve returned user record: %r", record)
 
         # Resolve has 2 relevant keys: slices, slice_ids
-        self.logger.debug("Slices: %r", record['slices'])
-        self.logger.debug("Slice_ids: %r", record['slice_ids'])
+        self.logger.debug("Slices: %r", slcs)
+        if record.has_key('slice_ids'):
+            self.logger.debug("Slice_ids: %r", record['slice_ids'])
 
         # These are slice HRNs. Supposed to be names. No wait - URNs
-        slice_hrns = record['slices']
+        slice_hrns = slcs
         for hrn in slice_hrns:
 #            slice_names.append(get_leaf(hrn))
             slice_names.append(hrn_to_urn(hrn, 'slice'))
@@ -524,9 +570,24 @@ class Framework(Framework_Base):
         (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (self.config['user'], self.config['registry'])), self.registry.Resolve, self.config['user'], user_cred)
         record = self.get_record_from_resolve_by_type(res, 'user')
         self.logger.debug("Resolve returned %r", record)
-        self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
+        if record is None:
+            self.logger.error("Cannot get SFA SSH keys - result is None");
+            return None
+        if not isinstance(record, dict):
+            self.logger.error("Cannot get SFA SSH keys - malformed result not a dict: %s", str(record)[:50])
+            return None
         # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
-        return record['keys']
+        if record.has_key('key_ids'):
+            self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
+        if record.has_key("keys"):
+            self.logger.debug("Found keys in field 'keys'")
+            return record['keys']
+        elif record.has_key('reg-keys'):
+            self.logger.debug("Found keys in field 'reg-keys'")
+            return record['reg-keys']
+        else:
+            self.logger.error("Cannot get SFA SSH keys - malformed return (missing keys entry)")
+            return None
 
     def get_user_cred_struct(self):
         """

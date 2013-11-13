@@ -27,6 +27,7 @@ import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 
+import datetime
 import os
 import string
 import sys
@@ -49,7 +50,7 @@ class Framework(Framework_Base):
         self.config = config
         
         self.ch = self.make_client(config['ch'], self.key, self.cert,
-                                   verbose=config['verbose'])
+                                   verbose=config['verbose'], timeout=opts.ssltimeout)
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
@@ -156,7 +157,17 @@ class Framework(Framework_Base):
         expiration = expiration_dt.isoformat()
         (bool, message) = _do_ssl(self, None, ("Renew slice %s on GCF CH %s until %s" % (urn, self.config['ch'], expiration_dt)), self.ch.RenewSlice, urn, expiration)
         if bool:
-            return expiration_dt
+            slicecred = self.get_slice_cred(urn)
+            if slicecred:
+                sliceexp = credutils.get_cred_exp(self.logger, slicecred)
+
+                # If request is diff from sliceexp then log a warning
+                if sliceexp - expiration_dt > datetime.timedelta.resolution:
+                    self.logger.warn("Renewed GCF slice %s expiration %s different than request %s", urn, sliceexp, expiration_dt)
+                return sliceexp
+            else:
+                self.logger.debug("Failed to get renewd GCF slice cred. Use request.")
+                return expiration_dt
         else:
             # FIXME: use any message?
             _ = message #Appease eclipse

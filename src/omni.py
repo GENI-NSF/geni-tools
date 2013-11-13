@@ -163,8 +163,9 @@ def load_agg_nick_config(opts, logger):
         aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
     else:
         aggNickCacheTimestamp = None
+
     # update the file if necessary
-    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate and not opts.useAggNickCache):
         update_agg_nick_cache( opts, logger )
 
     # aggNickCacheName may now exist. If so, add it to the front of the list.
@@ -657,13 +658,13 @@ def API_call( framework, config, args, opts, verbose=False ):
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
-        logger.info( " " + "-"*60 )
+        logger.info( " " + "-"*54 )
         logger.info( header )
         # printed not logged so can redirect output to a file
         #logger.info(retVal)
-#        logger.info( " " + "="*60 )
+#        logger.info( " " + "="*54 )
 #        print retItem
-        logger.info( " " + "="*60 )
+        logger.info( " " + "="*54 )
     # end of if verbose
     
     return retVal, retItem
@@ -839,6 +840,8 @@ def getParser():
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
+    basicgroup.add_option("--alap", action="store_true", default=False,
+                          help="Request slivers be renewed as close to the requested time as possible, instead of failing if the requested time is not possible. Default is False.")
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
     basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
@@ -974,6 +977,8 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
+    devgroup.add_option("--ssltimeout", default=360, action="store", type="int",
+                        help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
     parser.add_option_group( devgroup )
     return parser
 

@@ -9,12 +9,48 @@ gcf 2.5:
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
+  - Fix bug in APIv3 calling status with slivers with different
+    expiration times (#408)
+  - Fit Omni result summaries in 80 character wide terminals (#409)
+  - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+    nick cache is old (#391)
+  - Support `geni_extend_alap` with new `--alap` option, allowing you to
+    request that slivers be renewed as long as possible, if your
+    requested time is not permitted by local AM policy. (#415)
+  - Renew Slice returns actual new expiration (checks the SA, not just
+    assuming success means you got what you asked for) (#428)
+  - SFA slice and user records changed: keys and slices moved (#429)
 
  * stitcher
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
+
+ * gcf
+  - AM API v2 GCF AM now has a local policy limiting renewals to
+    MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
+    renew any slivers as long as possible, reporting the new expiration. (#414)
+
+gcf 2.4.2:
+ v2.4.2 contains changes to support running omni on Windows.
+ * omni
+  - On Windows, fix bug in construction of urls from
+    `default_rspec_location` (#401)
+ * readyToLogin.py
+  - Better handle whitespaces between users' keys specified in the
+    omni_config (#396)
+ * omni-configure.py
+  - Remove dependences on outside call to ssh-keygen (#400)
+  - Set the default location of the omni-bundle.zip specified with the
+    -z option on Windows XP (#402)
+  - Fix bug that caused .gcf directory to not get created on Windows
+    (#403)
+ * acceptance tests
+  - Use crossplatform `getpass` module instead of UNIX-only `pwd`
+    modules in omni_unittest.py (#397)
 
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
