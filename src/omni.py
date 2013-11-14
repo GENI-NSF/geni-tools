@@ -976,7 +976,7 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
-    devgroup.add_option("--ssltimeout", default=360, action="store", type="int",
+    devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
                         help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
     parser.add_option_group( devgroup )
     return parser
