@@ -24,6 +24,7 @@ gcf 2.5:
   - SFA slice and user records changed: keys and slices moved (#429)
 
  * stitcher
+  - Completely parse workflows 3+ hops deep (#432)
   - scs.py supports monitoring style invocation. Invoke scs.py directly. 
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)

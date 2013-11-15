@@ -511,6 +511,7 @@ class Aggregate(object):
             if not hop.import_vlans:
                 if not hop._hop_link.vlan_suggested_manifest:
                     alreadyDone = False
+#                    self.logger.debug("%s hop %s does not import vlans, and has no manifest yet. So AM is not done.", self, hop)
                 continue
 
             # Calculate the new suggested/avail for this hop
@@ -1522,6 +1523,7 @@ class Aggregate(object):
         for hop in self.hops:
             if hop._hop_link.vlan_suggested_manifest and len(hop._hop_link.vlan_suggested_manifest) > 0 and \
                     hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest:
+                self.logger.debug("handleSuggVLANNotRequest: On %s adding last request %s to unavailable VLANs", hop, hop._hop_link.vlan_suggested_request)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 #      find an AM to redo
@@ -1631,10 +1633,12 @@ class Aggregate(object):
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in self.hops:
             if not failedHop or hop==failedHop or (hop.path==failedHop.path and not hop._hop_link.vlan_xlate):
+                self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Mark sugg unavail", hop)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                 # Find other failed hops with same URN. Those should also avoid this failed tag
                 for hop2 in self.hops:
                     if hop.urn == hop2.urn and hop != hop2 and (not failedHop or hop2==failedHop or (hop2.path==failedHop.path and not hop2._hop_link.vlan_xlate)):
+                        self.logger.debug("%s is same URN but diff hop and this hop failed or is on failed path and doesnt xlate. Mark sugg unavail", hop2)
                         hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
@@ -1714,6 +1718,7 @@ class Aggregate(object):
                                 thisAM = True
                                 # depHop is the local hop that hop imports from / depends on
                                 if failedHop and failedHop != depHop:
+                                    self.logger.debug("%s is dependency for a hop (%s) that depends on a hop at this AM (%s), but that hop it depends on is not the single failed hop. So is this OK? Treating it as OK for local redo", self, depHop, hop)
                                     # But it isn't the failed hop that is a problem. Does this mean this is OK?
                                     # FIXME FIXME
                                     pass

@@ -571,7 +571,7 @@ class StitchingHandler(object):
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
-        # If you append '=<VLANRange>' to the hop URN, that means to exlude
+        # If you append '=<VLANRange>' to the hop URN, that means to exclude
         # that set of VLANs from consideration on that hop, but don't entirely exclude
         # the hop.
 
@@ -1011,7 +1011,7 @@ class StitchingHandler(object):
         # ./$slicehrn-amlist.txt
         fname = "%s-amlist.txt" % slicehrn
         if not self.ams_to_process or len(self.ams_to_process) == 0:
-            self.logger.debug("No AMs in AM list")
+            self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
         # URL,URN
