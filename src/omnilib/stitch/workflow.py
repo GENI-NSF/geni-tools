@@ -113,14 +113,22 @@ class WorkflowParser(object):
         if len(hop.dependsOn) == 0:
             self.logger.warn("%s says it imports vlans but has no dependencies!", hop)
 
-            # if this hop does VLAN translation then there is nowhere to import form I think
+            # If this hops does VLAN translation then the VLAN import is not automatic, but we can do it
             if hop._hop_link.vlan_xlate:
-                # we're doomed I think. print something and exit
-                self.logger.warn("%s does VLAN translation and imports vlans and has no dependencies. Huh?", hop)
-                return
+                self.logger.debug("%s also does VLAN translation, but we'll have to import from another hop at its AM anyhow if possible", hop)
+
+#            # if this hop does VLAN translation then there is nowhere to import from I think
+#            if hop._hop_link.vlan_xlate:
+#                # we're doomed I think. print something and exit
+#                self.logger.warn("%s does VLAN translation and imports vlans and has no dependencies. Huh?", hop)
+#                return
 
             # Otherwise Look for another hop in the same AM in this path - idx 1 higher or 1 lower
             prevHop = hop.path.find_hop_idx(hop.idx - 1)
+            if prevHop and not prevHop.aggregate:
+                raise StitchingError("Workflow / parsing error: %s's previous hop is %s which has no AM set!", hop, prevHop)
+            if not hop.aggregate:
+                raise StitchingError("Workflow / parsing error: %s has no AM set!", hop)
             if prevHop and prevHop.aggregate.urn == hop.aggregate.urn:
                 if not prevHop.import_vlans:
                     self.logger.warn("%s imports vlans, has no dependencies. Previous hop is on same AM, but it does not import_vlans. So got nowhere to import from!", hop)
@@ -163,6 +171,7 @@ class WorkflowParser(object):
             import_vlans = info_dict[self.IMP_VLANS_KEY]
             # Find the corresponding aggregate
             agg = self._get_agg(agg_url, agg_urn)
+            #self.logger.debug("Found AM %s for Hop %s", agg, hop)
             # Add the info to the hop
             hop.aggregate = agg
             hop.path.aggregates.add(agg)
@@ -180,6 +189,7 @@ class WorkflowParser(object):
             # find the relevant hop.
             hop_urn = d[self.HOP_URN_KEY]
             hop = path.find_hop(hop_urn)
+            #self.logger.debug("Found hop %s from URN %s", hop, hop_urn)
             if not hop:
                 msg = "No hop found with id %r on rspec path element %r" % (hop_urn,
                                                               path.id)
@@ -199,7 +209,16 @@ class WorkflowParser(object):
                 msg = "No dependent hop found with id %r on rspec path element %r"
                 msg = msg % (hop_urn, path.id)
                 raise StitchingError(msg)
+            #self.logger.debug("For hop %s found dependency hop %s from URN %s", hop, dep_hop, hop_urn)
             self._add_hop_info(dep_hop, d)
+
+            dephop_deps = []
+            if d.has_key(self.DEPENDENCIES_KEY):
+                dephop_deps = d[self.DEPENDENCIES_KEY]
+                if len(dephop_deps) > 0:
+                    self.logger.debug("Recursing to parse %d dependencies of %s!", len(dephop_deps), dep_hop)
+                    self._parse_hop_deps(dephop_deps, dep_hop, path)
+
             hop.add_dependency(dep_hop)
             # TODO: Add a reverse pointer?
 
@@ -212,6 +231,7 @@ class WorkflowParser(object):
         for hop in path.hops:
             hop_agg = hop.aggregate
             for hd in hop.dependsOn:
+                self.logger.debug("%s has dependency %s, so their AMs are dependencies", hop, hd)
                 self._add_dependency(hop_agg, hd.aggregate)
 
     def _add_dependency(self, agg, dependencyAgg):
