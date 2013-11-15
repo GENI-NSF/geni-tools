@@ -1173,6 +1173,11 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
 
                             pass
+                        elif self.dcn:
+                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 2:
+                                # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
+                                self.inProcess = False
+                                raise StitchingRetryAggregateNewVlanError("SFA based %s had not seen your project before. Try again. (Error was %s)" % (self, msg))
 
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
