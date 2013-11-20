@@ -95,8 +95,12 @@ class AMCallHandler(object):
 
         # Try to auto-correct API version
         msg = self._correctAPIVersion(args)
+        if msg is None:
+            msg = ""
 
         (message, val) = getattr(self,call)(args[1:])
+        if message is None:
+            message = ""
         return (msg+message, val)
 
     def _correctAPIVersion(self, args):
@@ -3734,15 +3738,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot deleteimage: Could not get user credential')
+            self.logger.error('Cannot deleteimage: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3841,15 +3846,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given by SA)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot listimages: Could not get user credential')
+            self.logger.error('Cannot listimages: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3895,7 +3901,7 @@ class AMCallHandler(object):
             creator_authority = urn_util.string_to_urn_format(urn.getAuthority())
             if creator_authority != invoker_authority:
                 if not self.opts.devmode:
-                    return (None, "Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
+                    return ("Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority), dict())
                 else:
                     self.logger.warn("Cannot listimages but continuing: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
 
