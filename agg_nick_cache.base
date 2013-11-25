@@ -278,3 +278,14 @@ illinois-ig3=urn:publicid:IDN+instageni.illinois.edu+authority+cm,https://instag
 illinois-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/2
 illinois-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/1
 illinois-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.illinois.edu+authority+am,https://foam.instageni.illinois.edu:3626/foam/gapi/2
+
+# ============================================
+# Wisconsin InstaGENI Rack
+# ============================================
+wisconsin-ig=urn:publicid:IDN+instageni.wisc.edu+authority+cm,https://instageni.wisc.edu:12369/protogeni/xmlrpc/am/2.0
+wisconsin-ig1=urn:publicid:IDN+instageni.wisc.edu+authority+cm,https://instageni.wisc.edu:12369/protogeni/xmlrpc/am/1.0
+wisconsin-ig2=urn:publicid:IDN+instageni.wisc.edu+authority+cm,https://instageni.wisc.edu:12369/protogeni/xmlrpc/am/2.0
+wisconsin-ig3=urn:publicid:IDN+instageni.wisc.edu+authority+cm,https://instageni.wisc.edu:12369/protogeni/xmlrpc/am/3.0
+wisconsin-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/2
+wisconsin-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/1
+wisconsin-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/2
