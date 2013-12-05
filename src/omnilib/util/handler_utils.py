@@ -441,7 +441,7 @@ def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
         if rspec is not None:
             # FIXME: Diff for dev here?
             logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
-            content += "\n<!-- \n" + rspec + "\n -->"
+            content += "\n<!-- \n" + str(rspec) + "\n -->"
             if slicename:
                 retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
             else:
