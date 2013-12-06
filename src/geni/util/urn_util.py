@@ -139,10 +139,13 @@ def nameFromURN(instr):
 # Note that this is not sufficient but it is necessary
 def is_valid_urn_string(instr):
     '''Could this string be part of a URN'''
-    if instr is None or not isinstance(instr, str):
+    if instr is None or not (isinstance(instr, str) or
+                             isinstance(instr, unicode)):
         return False
     #No whitespace
     # no # or ? or /
+    if isinstance(instr, unicode):
+        instr = instr.encode('utf8')
     if re.search("[\s|\?\/\#]", instr) is None:
         return True
     return False
