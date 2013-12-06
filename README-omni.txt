@@ -47,7 +47,7 @@ New in v2.5:
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
    allows changing this. (#407)
  - Create any directories need in the path to the agg_nick_cache (#383)
- - If use --AggNickCacheName and can't read/write to the specified
+ - If using `--AggNickCacheName` and can't read/write to the specified
    file, omni should fall back to reading `agg_nick_cach.base` (#384)
  - Look up AM URN by URL in the defined aggregate nicknames (#404)
  - Eliminated a repetitive log message (#384)
@@ -62,6 +62,7 @@ New in v2.5:
    assuming success means you got what you asked for) (#428)
  - SFA slice and user records changed: keys and slices moved (#429)
  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+ - Support unicode urns (#448)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

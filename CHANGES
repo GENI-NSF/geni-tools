@@ -5,7 +5,7 @@ gcf 2.5:
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
   - Create any directories need in the path to the agg_nick_cache (#383)
-  - If use --AggNickCacheName and can't read/write to the specified
+  - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
@@ -23,6 +23,7 @@ gcf 2.5:
     assuming success means you got what you asked for) (#428, #447)
   - SFA slice and user records changed: keys and slices moved (#429)
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+  - Support unicode urns (#448)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
