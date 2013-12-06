@@ -20,7 +20,7 @@ gcf 2.5:
     request that slivers be renewed as long as possible, if your
     requested time is not permitted by local AM policy. (#415)
   - Renew Slice returns actual new expiration (checks the SA, not just
-    assuming success means you got what you asked for) (#428)
+    assuming success means you got what you asked for) (#428, #447)
   - SFA slice and user records changed: keys and slices moved (#429)
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
 
