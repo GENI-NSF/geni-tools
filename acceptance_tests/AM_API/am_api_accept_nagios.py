@@ -237,7 +237,9 @@ class NagiosTest(accept.Test):
                        "but instead returned empty dictionary. ")
 
         value = self.assertReturnKeyValueType( 'get_ch_version', None, ret_dict, 
-                                                   'api', float )
+                                                   'api', int )
+        # Note that old gcf-pgch return a float here, new one is int,
+        # and the PG spec uses int
 
         self.success = True
 
