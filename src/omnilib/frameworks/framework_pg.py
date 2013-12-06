@@ -28,6 +28,7 @@ import sys
 from urlparse import urlparse
 
 from omnilib.frameworks.framework_base import Framework_Base
+from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
@@ -379,7 +380,7 @@ class Framework(Framework_Base):
             if log:
                 self.logger.debug("%s slice GetCredential log: %s", self.fwtype, log)
             slice_cred = response['value']
-            expiration = expiration_dt.isoformat()
+            expiration = naiveUTC(expiration_dt).isoformat()
             self.logger.info('Requesting new slice expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
@@ -407,10 +408,9 @@ class Framework(Framework_Base):
                 # response['value'] is the new slice
                 # cred. parse the new expiration date out of
                 # that and return that
-                sliceexp = credutils.get_cred_exp(self.logger, response['value'])
-
+                sliceexp = naiveUTC(credutils.get_cred_exp(self.logger, response['value']))
                 # If request is diff from sliceexp then log a warning
-                if sliceexp - expiration_dt > datetime.timedelta.resolution:
+                if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
                     self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
                 return sliceexp
 
