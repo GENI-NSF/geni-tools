@@ -69,7 +69,7 @@ import gcf.oscript as omni
 from gcf.omnilib.util import OmniError, AMAPIError
 from gcf.omnilib.stitchhandler import StitchingHandler
 from gcf.omnilib.stitch.utils import StitchingError
-from gcf.gcf.omnilib.stitch.objects import Aggregate
+from gcf.omnilib.stitch.objects import Aggregate
 import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
 

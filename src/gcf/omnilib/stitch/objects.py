@@ -38,7 +38,7 @@ import string
 import time
 from xml.dom.minidom import parseString, Node as XMLNode
 
-from . import RSpecParser
+from . import defs
 from .GENIObject import *
 from .VLANRange import *
 from .utils import *
@@ -54,8 +54,8 @@ from ...geni.util import rspec_schema, rspec_util
 # Seconds to pause between calls to a DCN AM (ie ION)
 DCN_AM_RETRY_INTERVAL_SECS = 10 * 60 # Xi and Chad say ION routers take a long time to reset
 
-# FIXME: As in RSpecParser, check use of getAttribute vs getAttributeNS and localName vs nodeName
-# FIXME: Merge RSpec element/attribute name constants into RSpecParser
+# FIXME: As in defs, check use of getAttribute vs getAttributeNS and localName vs nodeName
+# FIXME: Merge RSpec element/attribute name constants into defs
 
 class Path(GENIObject):
     '''Path in stitching aka a Link'''
@@ -658,9 +658,9 @@ class Aggregate(object):
 #        # "expiration is greater then the maximum number of minutes 7200"
 #        # FIXME: Need a check for isPG to do this!
 #        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
-#            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
-#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-#                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+#            rspecs = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(defs.EXPIRES_ATTRIBUTE):
+#                expires = rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE)
 #                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
 #                now = naiveUTC(datetime.datetime.utcnow())
 #                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
@@ -675,17 +675,17 @@ class Aggregate(object):
 #                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
 #                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
-#                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+#                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
-        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
-        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, RSpecParser.PATH_TAG)
+        domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, defs.PATH_TAG)
         for path in self.paths:
             #self.logger.debug("Looking for node for path %s", path)
             domNode = None
@@ -724,14 +724,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -740,7 +740,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -837,14 +837,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -853,7 +853,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -2415,9 +2415,9 @@ class HopLink(object):
                     if capability.firstChild:
                         cap = str(capability.firstChild.nodeValue).strip().lower()
                         hoplink.capabilities.append(cap)
-                        if cap == RSpecParser.PRODUCER_VALUE or cap == RSpecParser.VLANPRODUCER_VALUE:
+                        if cap == defs.PRODUCER_VALUE or cap == defs.VLANPRODUCER_VALUE:
                             hoplink.vlan_producer = True
-                        elif cap == RSpecParser.CONSUMER_VALUE or cap == RSpecParser.VLANCONSUMER_VALUE:
+                        elif cap == defs.CONSUMER_VALUE or cap == defs.VLANCONSUMER_VALUE:
                             hoplink.vlan_consumer = True
         return hoplink
 
@@ -2488,3 +2488,4 @@ class HopLink(object):
             l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
             if l2scNodes and len(l2scNodes) > 0:
                 l2scNodes[0].appendChild(vlanSuggestedNode)
+

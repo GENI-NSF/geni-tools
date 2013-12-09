@@ -31,19 +31,7 @@ from xml.dom.minidom import parseString, getDOMImplementation
 
 from . import objects
 from .utils import StitchingError
-
-# XML tag constants
-RSPEC_TAG = 'rspec'
-LINK_TAG = 'link'
-NODE_TAG = 'node'
-STITCHING_TAG = 'stitching'
-PATH_TAG = 'path'
-EXPIRES_ATTRIBUTE = 'expires'
-# Capabilities element names
-CONSUMER_VALUE = 'consumer'
-PRODUCER_VALUE = 'producer'
-VLANCONSUMER_VALUE = 'vlanconsumer'
-VLANPRODUCER_VALUE = 'vlanproducer'
+from .defs import *
 
 # see geni.util.rspec_schema for namespaces
 

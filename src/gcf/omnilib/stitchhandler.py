@@ -33,11 +33,11 @@ import os
 import string
 import time
 
-import ..oscript as omni
+from .. import oscript as omni
 from .util import OmniError, naiveUTC
 from .util import credparsing as credutils
 from .util.files import readFile
-from ..util import handler_utils
+from .util import handler_utils
 
 from . import stitch
 from .stitch.ManifestRSpecCombiner import combineManifestRSpecs
