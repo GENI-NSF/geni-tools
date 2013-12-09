@@ -24,6 +24,7 @@ gcf 2.5:
   - SFA slice and user records changed: keys and slices moved (#429)
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
   - Support unicode urns (#448)
+  - Return any error message from a CH on getusercred (#452)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)

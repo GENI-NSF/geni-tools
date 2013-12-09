@@ -125,6 +125,10 @@ class Framework(Framework_Base):
                 self.logger.error("Failed to get a %s user credential: Received error code: %d", self.fwtype, code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
+                if message is None or message == "":
+                    message = output
+                else:
+                    message = message + "; " + output
                 if log:
                     self.logger.error("See log: %s", log)
                 #return None

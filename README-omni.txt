@@ -63,6 +63,7 @@ New in v2.5:
  - SFA slice and user records changed: keys and slices moved (#429)
  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
  - Support unicode urns (#448)
+ - Return any error message from a CH on getusercred (#452)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
