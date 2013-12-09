@@ -64,6 +64,8 @@ New in v2.5:
  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
  - Support unicode urns (#448)
  - Return any error message from a CH on getusercred (#452)
+ - If set, `GENI_FRAMEWORK` environment variable is the default for
+   the `--framework` option (#315)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -757,6 +759,11 @@ Options:
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
 }}}
+
+Notes:
+ - If set, the `GENI_FRAMEWORK` environment variable will be the
+ default for the `--framework` option, over-riding any default from
+ your Omni config file.
 
 === Supported commands ===
 Omni supports the following commands.

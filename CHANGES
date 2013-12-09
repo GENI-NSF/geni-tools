@@ -25,6 +25,8 @@ gcf 2.5:
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
   - Support unicode urns (#448)
   - Return any error message from a CH on getusercred (#452)
+  - If set, `GENI_FRAMEWORK` environment variable is the default for
+    the `--framework` option (#315)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)

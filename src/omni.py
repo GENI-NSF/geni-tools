@@ -835,7 +835,7 @@ def getParser():
                       help="Only return available resources")
     basicgroup.add_option("-c", "--configfile",
                       help="Config file name (aka `omni_config`)", metavar="FILE")
-    basicgroup.add_option("-f", "--framework", default="",
+    basicgroup.add_option("-f", "--framework", default=os.getenv("GENI_FRAMEWORK", ""),
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
