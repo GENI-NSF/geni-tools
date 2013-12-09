@@ -108,17 +108,6 @@ from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
 from .omnilib.util.handler_utils import validate_url, printNicknames
 
-# Explicitly import framework files so py2exe is happy
-import gcf.omnilib.frameworks.framework_apg
-import gcf.omnilib.frameworks.framework_base
-import gcf.omnilib.frameworks.framework_gcf
-import gcf.omnilib.frameworks.framework_gch
-import gcf.omnilib.frameworks.framework_gib
-import gcf.omnilib.frameworks.framework_of
-import gcf.omnilib.frameworks.framework_pg
-import gcf.omnilib.frameworks.framework_pgch
-import gcf.omnilib.frameworks.framework_sfa
-
 OMNI_VERSION="2.4.1"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
@@ -363,7 +352,11 @@ def load_framework(config, opts):
     cf_type = config['selected_framework']['type']
     config['logger'].debug('Using framework type %s', cf_type)
 
-    framework_mod = __import__('gcf.omnilib.frameworks.framework_%s' % cf_type, fromlist=['gcf.omnilib.frameworks'])
+    # Compute the module path leading up to where we will find frameworks, so that we can live
+    # inside the standard omni/gcf distribution, or deeper inside a larger package
+    prefix = ".".join(__name__.split(".")[:-1])
+
+    framework_mod = __import__('%s.omnilib.frameworks.framework_%s' % (prefix, cf_type), fromlist=['%s.omnilib.frameworks' % (prefix)])
     config['selected_framework']['logger'] = config['logger']
     framework = framework_mod.Framework(config['selected_framework'], opts)
     return framework    
