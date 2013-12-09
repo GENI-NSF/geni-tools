@@ -65,13 +65,13 @@ import optparse
 import os
 import sys
 
-import omni
-from omnilib.util import OmniError, AMAPIError
-from omnilib.stitchhandler import StitchingHandler
-from omnilib.stitch.utils import StitchingError
-from omnilib.stitch.objects import Aggregate
-import omnilib.stitch.objects
-#from omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
+import gcf.oscript as omni
+from gcf.omnilib.util import OmniError, AMAPIError
+from gcf.omnilib.stitchhandler import StitchingHandler
+from gcf.omnilib.stitch.utils import StitchingError
+from gcf.gcf.omnilib.stitch.objects import Aggregate
+import gcf.omnilib.stitch.objects
+#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
@@ -114,7 +114,7 @@ def call(argv, options=None):
                       help="Hop URN to include on every path - use with caution")
     parser.add_option("--ionRetryIntervalSecs", type="int", 
                       help="Seconds to sleep before retrying at ION (default 10*60)",
-                      default=omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+                      default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
     parser.add_option("--ionStatusIntervalSecs", type="int", 
                       help="Seconds to sleep between sliverstatus calls at ION (default 30)",
                       default=30)

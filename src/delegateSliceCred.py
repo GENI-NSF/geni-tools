@@ -60,12 +60,12 @@ import string
 import sys
 from xml.dom.minidom import Document, parseString
 
-import sfa.trust.credential as cred
-import sfa.trust.rights as privs
-from sfa.trust.gid import GID
-from sfa.trust.certificate import Keypair, Certificate
-import omnilib.util.credparsing as credutils
-import omnilib.util.json_encoding as json_encoding
+import gcf.sfa.trust.credential as cred
+import gcf.sfa.trust.rights as privs
+from gcf.sfa.trust.gid import GID
+from gcf.sfa.trust.certificate import Keypair, Certificate
+import gcf.omnilib.util.credparsing as credutils
+import gcf.omnilib.util.json_encoding as json_encoding
 
 def configure_logging(opts):
     """Configure logging. INFO level by defult, DEBUG level if opts.debug"""

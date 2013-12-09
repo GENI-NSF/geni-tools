@@ -46,9 +46,9 @@ import logging
 import optparse
 import os
 
-import geni
-from geni.gch import GENIClearinghouse
-from geni.config import read_config
+from gcf import geni
+from gcf.geni.gch import GENIClearinghouse
+from gcf.geni.config import read_config
 
 config = None
 

@@ -50,12 +50,12 @@ import os.path
 import string
 import uuid
 
-import geni
-import sfa.trust.gid as gid
-import sfa.trust.certificate as cert
-from geni.util.cert_util import create_cert
-from geni.util.urn_util import is_valid_urn_bytype
-from geni.config import read_config
+import gcf.geni as geni
+import gcf.sfa.trust.gid as gid
+import gcf.sfa.trust.certificate as cert
+from gcf.geni.util.cert_util import create_cert
+from gcf.geni.util.urn_util import is_valid_urn_bytype
+from gcf.geni.config import read_config
 
 # Default paths to files. Overridden by values in gcf_config
 CH_CERT_FILE = 'ch-cert.pem'

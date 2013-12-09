@@ -40,7 +40,7 @@ from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
 import logging
-from sfa.trust.certificate import Certificate, Keypair
+from gcf.sfa.trust.certificate import Certificate, Keypair
 
 logger = None
 
