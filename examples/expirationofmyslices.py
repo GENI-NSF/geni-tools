@@ -24,7 +24,7 @@
 #----------------------------------------------------------------------
 
 import sys
-import omni
+import gcf.oscript as omni
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your

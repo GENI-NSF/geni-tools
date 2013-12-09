@@ -26,10 +26,12 @@
 import copy
 import string
 import sys
-import omni
 import os.path
 import time
+
 import readyToLogin
+
+import gcf.oscript as omni
 
 ################################################################################
 # Requires that you have omni installed and add the paths to gcf/src and
