@@ -159,7 +159,7 @@ class Framework(Framework_Base):
             self.logger.debug("%s resolve slice log: %s", self.fwtype, log)
         if response['code']:
             # Unable to resolve, slice does not exist
-            raise Exception('%s Slice %s does not exist.' % (self.fwtype, urn))
+            raise Exception('Cannot access %s slice %s (does not exist or you are not a member).' % (self.fwtype, urn))
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
