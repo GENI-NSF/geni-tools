@@ -910,10 +910,12 @@ def getParser():
     # If this next is set, then options.output is also set
     filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    filegroup.add_option("--usercredfile", default=os.getenv("GENI_USERCRED", None), metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " + 
+                         "myUserCred.xml -o getusercred'. Defaults to value of 'GENI_USERCRED' environment variable if defined.")
+    filegroup.add_option("--slicecredfile", default=os.getenv("GENI_SLICECRED", None), metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
+                         "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
     # GetVersion
     gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",

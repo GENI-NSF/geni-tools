@@ -66,6 +66,8 @@ New in v2.5:
  - Return any error message from a CH on getusercred (#452)
  - If set, `GENI_FRAMEWORK` environment variable is the default for
    the `--framework` option (#315)
+ - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+   set the default path to your saved user and slice credentials (#434)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -695,11 +697,14 @@ Options:
     --usercredfile=USER_CRED_FILENAME
                         Name of user credential file to read from if it
                         exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'
+                        myUserCred.xml -o getusercred'. Defaults to value of
+                        'GENI_USERCRED' environment variable if defined.
     --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'
+                        mySliceCred.xml -o getslicecred mySliceName'. Defaults
+                        to value of 'GENI_SLICECRED' environment variable if
+                        defined.
 
   GetVersion Cache:
     Control GetVersion Cache
@@ -841,9 +846,11 @@ Sample Usage:
 
 If you specify the -o option, the credential is saved to a file.
 The filename is `<slicename>-cred.xml`
-But you can specify the filename using the `--slicecredfile` option.
+But you can specify the filename using the `--slicecredfile` option or
+by defining the `GENI_SLICECRED` environment variable to the desired path.
 
-Additionally, if you specify the `--slicecredfile` option and that
+Additionally, if you specify the `--slicecredfile` option or define the
+`GENI_SLICECRED` environment variable, and that
 references a file that is not empty, then we do not query the Slice
 Authority for this credential, but instead read it from this file.
 
@@ -930,7 +937,8 @@ Sample Usage:
 This is primarily useful for debugging.
 
 If you specify the `-o` option, the credential is saved to a file.
-  If you specify `--usercredfile`:
+  If you specify `--usercredfile` or define the `GENI_USERCRED`
+  environment variable:
     First, it tries to read the user credential from that file.
     Second, it saves the user credential to a file by that name (but
     with the appropriate extension).
@@ -939,8 +947,8 @@ If you specify the `-o` option, the credential is saved to a file.
   If you specify the `--prefix` option then that string starts the filename.
 
 If instead of the `-o` option, you supply the `--tostdout` option, then
-the usercred is printed to STDOUT.  
-Otherwise the usercred is logged.
+the user credential is printed to STDOUT.  
+Otherwise the user credential is logged.
 
 ==== print_slice_expiration ====
 Print the expiration time of the given slice, and a warning if it is
@@ -1047,7 +1055,7 @@ create a reservation RSpec, suitable for use in a call to
 If a slice name is supplied, then resources for that slice only 
 will be displayed.  In this case, the slice credential is usually
 retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it
+with the `--slicecredfile` option it is read from the specified file, if it
 exists. Note that the slice name argument is only valid in AM API v1
 or v2; for v3, see `describe`.
 
@@ -1075,7 +1083,8 @@ Other options:
  is returned. Use `getversion` to see available types at that AM. Type
  and version are case-insensitive strings. This argument defaults to
  'GENI 3' if not supplied.
- - `--slicecredfile <filename>` says to use the given slicecredfile if it exists.
+ - `--slicecredfile <filename>` says to use the given slice credential
+ file if it exists.
  - `--no-compress`: Request the returned RSpec not be compressed (default is to compress)
  - `--available`: Return Advertisement consisting of only available resources
  - `-l <config file>` to specify a logging config file
@@ -1192,12 +1201,12 @@ Warning: request RSpecs are often very different from advertisement
 RSpecs.
 
 When you call
-     omni.py createsliver myslice myrspec
+     `omni.py createsliver myslice myrspec`
 omni will try to read 'myrspec' by interpreting it in the following order:
 1. a URL or a file on the local filesystem
 2. an RSpec nickname specified in the omni_config
 3. a file in a location (file or url) defined as: 
-   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+   `<default_rspec_server>/<rspec_nickname>.<default_rspec_extension>` 
 where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
@@ -1239,7 +1248,7 @@ Options for development and testing:
 Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
-omni_config users section is used to get a set of SSH keys that
+The omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
 remote resource and aggregate support this.
 
@@ -1513,7 +1522,7 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it exists.
+with the `--slicecredfile` option it is read from the specified file, if it exists.
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
