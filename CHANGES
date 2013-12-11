@@ -27,6 +27,8 @@ gcf 2.5:
   - Return any error message from a CH on getusercred (#452)
   - If set, `GENI_FRAMEWORK` environment variable is the default for
     the `--framework` option (#315)
+  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+    set the default path to your saved user and slice credentials (#434)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
