@@ -69,6 +69,7 @@ New in v2.5:
  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
    set the default path to your saved user and slice credentials (#434)
  - Handle ~ in `usercredfile` and `slicecredfile` (#455)
+ - Return error on SA error in listslices (#456)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

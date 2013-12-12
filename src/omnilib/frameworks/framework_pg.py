@@ -446,7 +446,8 @@ class Framework(Framework_Base):
         (pg_response, message) = _do_ssl(self, None, "Resolve user %s at %s SA %s" % (user, self.fwtype, self.config['sa']), self.sa.Resolve, {'credential': cred, 'type': 'User', 'hrn': user})
         if pg_response is None:
             self.logger.error("Cannot list slices: %s", message)
-            return list()
+            raise Exception(message)
+#            return list()
 
         log = self._get_log_url(pg_response)
         code = pg_response['code']
@@ -454,10 +455,12 @@ class Framework(Framework_Base):
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
             self.logger.error("Received error message from %s: %s", self.fwtype, output)
+            msg = "Error %d: %s" % (code, output)
             if log:
                 self.logger.error("%s log url: %s", self.fwtype, log)
-            # Return an empty list.
-            return list()
+            raise Exception(msg)
+#           # Return an empty list.
+#            return list()
 
         # Resolve keys include uuid, slices, urn, subauthorities, name, hrn, gid, pubkeys, email, uid
 
