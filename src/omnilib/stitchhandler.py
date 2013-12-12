@@ -253,8 +253,11 @@ class StitchingHandler(object):
         if os.path.exists(Aggregate.FAKEMODESCSFILENAME):
             os.unlink(Aggregate.FAKEMODESCSFILENAME)
 
-        if self.savedSliceCred and os.path.exists(self.opts.slicecredfile):
-            os.unlink(self.opts.slicecredfile)
+        normscf = None
+        if self.opts.slicecredfile:
+            normscf = os.path.normcase(os.path.expanduser(self.opts.slicecredfile))
+        if self.savedSliceCred and normscf and os.path.exists(normscf):
+            os.unlink(normscf)
 
         if not self.ams_to_process:
             return
