@@ -169,7 +169,7 @@ class Framework(Framework_Base):
 
             log = self._get_log_url(response)
 
-            # When the CM is busy, it return error 14: 'slice is busy; try again later'
+            # When the CM is busy, it returns error 14: 'slice is busy; try again later'
             # FIXME: All server calls should check for that 'try again later' and retry,
             # as dossl does when the AM raises that message in an XMLRPC fault
             if response['code']:
