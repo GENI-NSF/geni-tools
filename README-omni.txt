@@ -68,7 +68,6 @@ New in v2.5:
    the `--framework` option (#315)
  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
    set the default path to your saved user and slice credentials (#434)
- - Handle ~ in `usercredfile` and `slicecredfile` (#455)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

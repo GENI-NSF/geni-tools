@@ -23,7 +23,6 @@
 import json
 import logging
 import os
-import os.path
 import sys
 
 import M2Crypto.SSL
@@ -77,26 +76,23 @@ class Framework_Base():
         
         # read the usercred from supplied file
         cred = None
-        normucfile = None
-        if opts.usercredfile:
-            normucfile = os.path.normcase(os.path.expanduser(opts.usercredfile))
-        if normucfile and os.path.exists(normucfile) and os.path.isfile(normucfile) and os.path.getsize(normucfile) > 0:
+        if opts.usercredfile and os.path.exists(opts.usercredfile) and os.path.isfile(opts.usercredfile) and os.path.getsize(opts.usercredfile) > 0:
             # read the user cred from the given file
             if hasattr(self, 'logger'):
                 logger = self.logger
             else:
                 logger = logging.getLogger("omni.framework")
-            logger.info("Getting user credential from file %s", normucfile)
+            logger.info("Getting user credential from file %s", opts.usercredfile)
 #            cred = _load_cred(logger, opts.usercredfile)
-            with open(normucfile, 'r') as f:
+            with open(opts.usercredfile, 'r') as f:
                 cred = f.read()
             try:
                 cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
             except Exception, e:
-                logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", normucfile, e)
+                logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
             cred2 = credutils.get_cred_xml(cred)
             if cred2 is None or cred2 == "":
-                logger.info("Did NOT get valid user cred from %s", normucfile)
+                logger.info("Did NOT get valid user cred from %s", opts.usercredfile)
                 if opts.devmode:
                     logger.info(" ... but using it anyhow")
                 else:
@@ -108,7 +104,7 @@ class Framework_Base():
                 except:
                     if not opts.devmode:
                         logger.warn("Failed to parse target URN from user cred?")
-                logger.info("Read user %s credential from file %s", target, normucfile)
+                logger.info("Read user %s credential from file %s", target, opts.usercredfile)
         elif opts.usercredfile:
             if hasattr(self, 'logger'):
                 logger = self.logger

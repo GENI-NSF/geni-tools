@@ -33,7 +33,6 @@ import dateutil.parser
 import json
 import logging
 import os
-import os.path
 import pprint
 import re
 
@@ -233,10 +232,10 @@ class CHCallHandler(object):
             self.logger.info( prtStr )
             retVal = prtStr+"\n"
             retTime = out_expiration
-            if self.opts.slicecredfile and os.path.exists(os.path.normcase(os.path.expanduser(self.opts.slicecredfile))):
+            if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile):
                 (dirname, fname) = os.path.split(self.opts.slicecredfile)
                 newslicecredfile = "renewed-%s-%s" % (out_expiration, fname)
-                newslicecredfile = os.path.normcase(os.path.expanduser(os.path.join(dirname, newslicecredfile)))
+                newslicecredfile = os.path.join(dirname, newslicecredfile)
                 scwarn = "Saved slice credential %s is now wrong; new slice credential will be saved in %s. " % (self.opts.slicecredfile, newslicecredfile)
                 self.logger.info(scwarn)
                 retVal += scwarn +"\n"
@@ -383,7 +382,7 @@ class CHCallHandler(object):
             user = usermatch.group(1)
         if self.opts.output:
             if self.opts.usercredfile and self.opts.usercredfile.strip() != "":
-                fname = os.path.normcase(os.path.expanduser(self.opts.usercredfile))
+                fname = self.opts.usercredfile
             else:
                 fname = self.opts.framework + "-usercred"
                 if user != "":

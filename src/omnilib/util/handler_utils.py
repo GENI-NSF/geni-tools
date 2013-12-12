@@ -26,7 +26,6 @@ import datetime
 import json
 import logging
 import os
-import os.path
 import string
 
 from dossl import _do_ssl
@@ -197,11 +196,10 @@ def _get_slice_cred(handler, urn):
 
     cred = _load_cred(handler, handler.opts.slicecredfile)
     if cred is not None:
-        normscfile = os.path.normcase(os.path.expanduser(handler.opts.slicecredfile))
-        msg = "Read slice cred from %s" % normscfile
+        msg = "Read slice cred from %s" % handler.opts.slicecredfile
         # We support reading cred from file without supplying a URN
         if not urn or urn.strip() == "":
-            handler.logger.info("Got slice credential from file %s", normscfile)
+            handler.logger.info("Got slice credential from file %s", handler.opts.slicecredfile)
         else:
             target_urn = credutils.get_cred_target_urn(handler.logger, cred)
             if target_urn != urn:
@@ -587,7 +585,7 @@ def _maybe_save_slicecred(handler, name, slicecred):
     filename = None
     if handler.opts.output:
         if handler.opts.slicecredfile:
-            filename = os.path.normcase(os.path.expanduser(handler.opts.slicecredfile))
+            filename = handler.opts.slicecredfile
         else:
             filename = name + "-cred"
             if handler.opts.prefix and handler.opts.prefix.strip() != "":
