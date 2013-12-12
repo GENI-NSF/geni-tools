@@ -1056,6 +1056,11 @@ def parse_args(argv, options=None, parser=None):
     if options.outputfile:
         options.output = True
 
+    if options.usercredfile:
+        options.usercredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.usercredfile)))
+    if options.slicecredfile:
+        options.slicecredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.slicecredfile)))
+
     return options, args
 
 def main(argv=None):
