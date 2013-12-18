@@ -31,6 +31,7 @@ gcf 2.5:
     set the default path to your saved user and slice credentials (#434)
   - Handle ~ in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in listslices (#456)
+  - Allow PerformOperationalAction on v2 AMs (#412)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)

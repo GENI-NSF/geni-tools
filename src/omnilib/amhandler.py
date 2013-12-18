@@ -2312,7 +2312,9 @@ class AMCallHandler(object):
         omni.py -V3 -a http://myaggregate poa --best-effort -o --outputfile %s-start-%a.json -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 myslice geni_start
         """
         if self.opts.api_version < 3:
-            if self.opts.devmode:
+            if self.opts.api_version == 2:
+                self.logger.info("Running PerformOperationalAction even though you are using AM API v2 - will fail at most AMs.")
+            elif self.opts.devmode:
                 self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
