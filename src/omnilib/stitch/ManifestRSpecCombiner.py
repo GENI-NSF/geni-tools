@@ -32,7 +32,7 @@ import sys
 from xml.dom.minidom import getDOMImplementation, parseString, Node
 
 import objects
-import RSpecParser
+import defs
 from utils import stripBlankLines
 
 # Constants for RSpec parsing -- FIXME: Merge into RSpecParser
@@ -83,7 +83,7 @@ class ManifestRSpecCombiner:
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.localName == RSpecParser.NODE_TAG:
+                    child.localName == defs.NODE_TAG:
                 cmid = child.getAttribute(COMPONENT_MGR_ID)
                 if not template_nodes_by_cmid.has_key(cmid):
                     template_nodes_by_cmid[cmid] = []
@@ -103,7 +103,7 @@ class ManifestRSpecCombiner:
                         template_client_id = template_node.getAttribute(CLIENT_ID)
                         for child in am_doc_root.childNodes:
                             if child.nodeType == Node.ELEMENT_NODE and \
-                                    child.localName == RSpecParser.NODE_TAG:
+                                    child.localName == defs.NODE_TAG:
                                 child_cmid = child.getAttribute(COMPONENT_MGR_ID)
                                 child_client_id = child.getAttribute(CLIENT_ID)
                                 if child_cmid == urn and child_client_id == template_client_id:
@@ -121,7 +121,7 @@ class ManifestRSpecCombiner:
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.localName == RSpecParser.LINK_TAG:
+                    child.localName == defs.LINK_TAG:
                 link = child
                 # Get first 'component_manager' child element
 #                print "LINK = " + str(link) + " " + cmid
@@ -187,7 +187,7 @@ class ManifestRSpecCombiner:
 #                        self.logger.debug("Looking at AM %s for link %s", agg.urn, client_id)
 
                     man = agg.manifestDom
-                    link_elements = man.getElementsByTagName(RSpecParser.LINK_TAG)
+                    link_elements = man.getElementsByTagName(defs.LINK_TAG)
                     for link2 in link_elements:
                         # If this is a manifest link and all irefs have
                         # manifest info, then this link is done. Move on.
@@ -478,7 +478,7 @@ class ManifestRSpecCombiner:
         path = None
         for child in stitching.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.localName == RSpecParser.PATH_TAG and \
+                    child.localName == defs.PATH_TAG and \
                     child.getAttribute(PATH_ID) == path_id:
                 path = child
                 break
@@ -488,13 +488,13 @@ class ManifestRSpecCombiner:
         rspec_node = None
         for child in manifest_dom.childNodes:
             if child.nodeType == Node.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == Node.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     return child
         return None
 

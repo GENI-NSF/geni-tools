@@ -32,6 +32,7 @@ gcf 2.5:
   - Handle ~ in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in listslices (#456)
   - Allow PerformOperationalAction on v2 AMs (#412)
+  - Fix circular imports in RSpecParser and objects (#459)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
