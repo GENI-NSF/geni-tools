@@ -33,6 +33,7 @@ gcf 2.5:
   - Return error on SA error in listslices (#456)
   - Allow PerformOperationalAction on v2 AMs (#412)
   - Fix circular imports in RSpecParser and objects (#459)
+  - Omni cred_util uses an omni logger (#460)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)

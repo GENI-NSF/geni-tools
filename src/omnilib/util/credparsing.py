@@ -36,7 +36,7 @@ import xml.dom.minidom as md
 def is_valid_v3(logger, credString):
     '''Is the given credential a valid geni_sfa style v3 credential?'''
     if not logger:
-        logger = logging.getLogger("omnilib.credparsing")
+        logger = logging.getLogger("omni.credparsing")
 
     if not credString:
         logger.warn("None credString - not geni_sfa v3")
