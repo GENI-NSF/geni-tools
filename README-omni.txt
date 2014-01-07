@@ -557,7 +557,7 @@ Omni supports the following command-line options.
 $ ~/gcf/src/omni.py -h                            
 Usage: 
 GENI Omni Command Line Aggregate Manager Tool Version 2.5
-Copyright (c) 2013 Raytheon BBN Technologies
+Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
