@@ -116,10 +116,10 @@ class Framework(Framework_Base):
         #     scred = self.user_cred
         scred = []
 
-        options = {'match': {'MEMBER_URN': self.user_urn}}
+        options = {'match': {'KEY_MEMBER': self.user_urn}}
         self.logger.debug("Getting my SSH keys from CHAPI MA %s", self.config['ch'])
         (res, message) = _do_ssl(self, None, ("Get public SSH keys MA %s" % self.ma),
-                                 self.ma.lookup_public_member_info,
+                                 self.ma.lookup_keys,
                                  scred,
                                  options)
 
@@ -128,9 +128,10 @@ class Framework(Framework_Base):
         if res is not None:
             if res['code'] == 0:
                 d = res['value']
-                for uid, tup in d.items():
-                    if 'KEY_PUBLIC' in tup:
-                        keys.append(tup['KEY_PUBLIC'])
+                for uid, key_tups in d.items():
+                    for key_tup in key_tups:
+                        if 'KEY_PUBLIC' in key_tup:
+                            keys.append(key_tup['KEY_PUBLIC'])
             else:
                 message = res['output']
                 self.logger.error(message)
