@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -237,7 +237,9 @@ class NagiosTest(accept.Test):
                        "but instead returned empty dictionary. ")
 
         value = self.assertReturnKeyValueType( 'get_ch_version', None, ret_dict, 
-                                                   'api', float )
+                                                   'api', int )
+        # Note that old gcf-pgch return a float here, new one is int,
+        # and the PG spec uses int
 
         self.success = True
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -38,7 +38,7 @@ from xml.dom.minidom import parseString, Node as XMLNode
 
 from GENIObject import *
 from VLANRange import *
-import RSpecParser
+import defs
 from utils import *
 
 import omni
@@ -511,6 +511,7 @@ class Aggregate(object):
             if not hop.import_vlans:
                 if not hop._hop_link.vlan_suggested_manifest:
                     alreadyDone = False
+#                    self.logger.debug("%s hop %s does not import vlans, and has no manifest yet. So AM is not done.", self, hop)
                 continue
 
             # Calculate the new suggested/avail for this hop
@@ -656,9 +657,9 @@ class Aggregate(object):
 #        # "expiration is greater then the maximum number of minutes 7200"
 #        # FIXME: Need a check for isPG to do this!
 #        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
-#            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
-#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-#                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+#            rspecs = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(defs.EXPIRES_ATTRIBUTE):
+#                expires = rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE)
 #                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
 #                now = naiveUTC(datetime.datetime.utcnow())
 #                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
@@ -673,17 +674,17 @@ class Aggregate(object):
 #                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
 #                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
-#                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+#                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
-        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
-        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, RSpecParser.PATH_TAG)
+        domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, defs.PATH_TAG)
         for path in self.paths:
             #self.logger.debug("Looking for node for path %s", path)
             domNode = None
@@ -722,14 +723,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -738,7 +739,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -835,14 +836,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -851,7 +852,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -1172,6 +1173,11 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
 
                             pass
+                        elif self.dcn:
+                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 2:
+                                # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
+                                self.inProcess = False
+                                raise StitchingRetryAggregateNewVlanError("SFA based %s had not seen your project before. Try again. (Error was %s)" % (self, msg))
 
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
@@ -1522,6 +1528,7 @@ class Aggregate(object):
         for hop in self.hops:
             if hop._hop_link.vlan_suggested_manifest and len(hop._hop_link.vlan_suggested_manifest) > 0 and \
                     hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest:
+                self.logger.debug("handleSuggVLANNotRequest: On %s adding last request %s to unavailable VLANs", hop, hop._hop_link.vlan_suggested_request)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 #      find an AM to redo
@@ -1631,10 +1638,12 @@ class Aggregate(object):
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in self.hops:
             if not failedHop or hop==failedHop or (hop.path==failedHop.path and not hop._hop_link.vlan_xlate):
+                self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Mark sugg unavail", hop)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                 # Find other failed hops with same URN. Those should also avoid this failed tag
                 for hop2 in self.hops:
                     if hop.urn == hop2.urn and hop != hop2 and (not failedHop or hop2==failedHop or (hop2.path==failedHop.path and not hop2._hop_link.vlan_xlate)):
+                        self.logger.debug("%s is same URN but diff hop and this hop failed or is on failed path and doesnt xlate. Mark sugg unavail", hop2)
                         hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
@@ -1714,6 +1723,7 @@ class Aggregate(object):
                                 thisAM = True
                                 # depHop is the local hop that hop imports from / depends on
                                 if failedHop and failedHop != depHop:
+                                    self.logger.debug("%s is dependency for a hop (%s) that depends on a hop at this AM (%s), but that hop it depends on is not the single failed hop. So is this OK? Treating it as OK for local redo", self, depHop, hop)
                                     # But it isn't the failed hop that is a problem. Does this mean this is OK?
                                     # FIXME FIXME
                                     pass
@@ -2413,9 +2423,9 @@ class HopLink(object):
                     if capability.firstChild:
                         cap = str(capability.firstChild.nodeValue).strip().lower()
                         hoplink.capabilities.append(cap)
-                        if cap == RSpecParser.PRODUCER_VALUE or cap == RSpecParser.VLANPRODUCER_VALUE:
+                        if cap == defs.PRODUCER_VALUE or cap == defs.VLANPRODUCER_VALUE:
                             hoplink.vlan_producer = True
-                        elif cap == RSpecParser.CONSUMER_VALUE or cap == RSpecParser.VLANCONSUMER_VALUE:
+                        elif cap == defs.CONSUMER_VALUE or cap == defs.VLANCONSUMER_VALUE:
                             hoplink.vlan_consumer = True
         return hoplink
 

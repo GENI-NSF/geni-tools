@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -28,6 +28,7 @@ import sys
 from urlparse import urlparse
 
 from omnilib.frameworks.framework_base import Framework_Base
+from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
@@ -124,6 +125,10 @@ class Framework(Framework_Base):
                 self.logger.error("Failed to get a %s user credential: Received error code: %d", self.fwtype, code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
+                if message is None or message == "":
+                    message = output
+                else:
+                    message = message + "; " + output
                 if log:
                     self.logger.error("See log: %s", log)
                 #return None
@@ -154,7 +159,7 @@ class Framework(Framework_Base):
             self.logger.debug("%s resolve slice log: %s", self.fwtype, log)
         if response['code']:
             # Unable to resolve, slice does not exist
-            raise Exception('%s Slice %s does not exist.' % (self.fwtype, urn))
+            raise Exception('Cannot access %s slice %s (does not exist or you are not a member).' % (self.fwtype, urn))
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
@@ -164,7 +169,7 @@ class Framework(Framework_Base):
 
             log = self._get_log_url(response)
 
-            # When the CM is busy, it return error 14: 'slice is busy; try again later'
+            # When the CM is busy, it returns error 14: 'slice is busy; try again later'
             # FIXME: All server calls should check for that 'try again later' and retry,
             # as dossl does when the AM raises that message in an XMLRPC fault
             if response['code']:
@@ -379,7 +384,7 @@ class Framework(Framework_Base):
             if log:
                 self.logger.debug("%s slice GetCredential log: %s", self.fwtype, log)
             slice_cred = response['value']
-            expiration = expiration_dt.isoformat()
+            expiration = naiveUTC(expiration_dt).isoformat()
             self.logger.info('Requesting new slice expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
@@ -407,10 +412,9 @@ class Framework(Framework_Base):
                 # response['value'] is the new slice
                 # cred. parse the new expiration date out of
                 # that and return that
-                sliceexp = credutils.get_cred_exp(self.logger, response['value'])
-
+                sliceexp = naiveUTC(credutils.get_cred_exp(self.logger, response['value']))
                 # If request is diff from sliceexp then log a warning
-                if sliceexp - expiration_dt > datetime.timedelta.resolution:
+                if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
                     self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
                 return sliceexp
 
@@ -442,7 +446,8 @@ class Framework(Framework_Base):
         (pg_response, message) = _do_ssl(self, None, "Resolve user %s at %s SA %s" % (user, self.fwtype, self.config['sa']), self.sa.Resolve, {'credential': cred, 'type': 'User', 'hrn': user})
         if pg_response is None:
             self.logger.error("Cannot list slices: %s", message)
-            return list()
+            raise Exception(message)
+#            return list()
 
         log = self._get_log_url(pg_response)
         code = pg_response['code']
@@ -450,10 +455,12 @@ class Framework(Framework_Base):
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
             self.logger.error("Received error message from %s: %s", self.fwtype, output)
+            msg = "Error %d: %s" % (code, output)
             if log:
                 self.logger.error("%s log url: %s", self.fwtype, log)
-            # Return an empty list.
-            return list()
+            raise Exception(msg)
+#           # Return an empty list.
+#            return list()
 
         # Resolve keys include uuid, slices, urn, subauthorities, name, hrn, gid, pubkeys, email, uid
 

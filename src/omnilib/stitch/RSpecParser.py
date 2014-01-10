@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -29,24 +29,8 @@ from xml.dom.minidom import parseString, getDOMImplementation
 
 import objects
 from utils import StitchingError
+import defs
 
-# XML tag constants
-RSPEC_TAG = 'rspec'
-LINK_TAG = 'link'
-NODE_TAG = 'node'
-STITCHING_TAG = 'stitching'
-PATH_TAG = 'path'
-EXPIRES_ATTRIBUTE = 'expires'
-# Capabilities element names
-CONSUMER_VALUE = 'consumer'
-PRODUCER_VALUE = 'producer'
-VLANCONSUMER_VALUE = 'vlanconsumer'
-VLANPRODUCER_VALUE = 'vlanproducer'
-
-# see geni.util.rspec_schema for namespaces
-
-# This should go away, its value is no longer used
-LAST_UPDATE_TIME_TAG = "lastUpdateTime"
 
 class RSpecParser:
 
@@ -59,7 +43,7 @@ class RSpecParser:
         except Exception, e:
             self.logger.error("Failed to parse rspec: %s", e)
             raise StitchingError("Failed to parse rspec: %s" % e)
-        rspecs = dom.getElementsByTagName(RSPEC_TAG)
+        rspecs = dom.getElementsByTagName(defs.RSPEC_TAG)
         if len(rspecs) != 1:
             raise StitchingError("Expected 1 rspec tag, got %d" % (len(rspecs)))
         rspec = self.parseRSpec(rspecs[0])
@@ -70,21 +54,21 @@ class RSpecParser:
         '''Parse the rspec element. Extract only stitching important elements.
         Return an RSpec object for use in driving stitching.'''
         # FIXME: Here we use localName, ignoring the namespace. What's the right thing?
-        if rspec_element.localName != RSPEC_TAG:
+        if rspec_element.localName != defs.RSPEC_TAG:
             msg = "parseRSpec got unexpected tag %s" % (rspec_element.tagName)
             raise StitchingError(msg)
         links = []
         nodes = []
         stitching = None
         for child in rspec_element.childNodes:
-            if child.localName == LINK_TAG:
+            if child.localName == defs.LINK_TAG:
                 #self.logger.debug("Parsing Link")
                 link = objects.Link.fromDOM(child)
                 links.append(link)
-            elif child.localName == NODE_TAG:
+            elif child.localName == defs.NODE_TAG:
                 #self.logger.debug("Parsing Node")
                 nodes.append(objects.Node.fromDOM(child))
-            elif child.localName == STITCHING_TAG:
+            elif child.localName == defs.STITCHING_TAG:
                 #self.logger.debug("Parsing Stitching")
                 stitching = self.parseStitching(child)
             else:
@@ -109,10 +93,10 @@ class RSpecParser:
     def parseStitching(self, stitching_element):
         '''Parse the stitching element of an RSpec'''
         # FIXME: Do we need getAttributeNS?
-        last_update_time = stitching_element.getAttribute(LAST_UPDATE_TIME_TAG)
+        last_update_time = stitching_element.getAttribute(defs.LAST_UPDATE_TIME_TAG)
         paths = []
         for child in stitching_element.childNodes:
-            if child.localName == PATH_TAG:
+            if child.localName == defs.PATH_TAG:
                 path = objects.Path.fromDOM(child)
                 paths.append(path)
         stitching = objects.Stitching(last_update_time, paths)

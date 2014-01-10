@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -41,6 +41,7 @@ import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
 from omnilib.stitch.objects import Aggregate, Link, Node
 from omnilib.stitch import RSpecParser
+import omnilib.stitch.defs as defs
 import omnilib.stitch.scs as scs
 from omnilib.stitch.workflow import WorkflowParser
 from omnilib.stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
@@ -571,7 +572,7 @@ class StitchingHandler(object):
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
-        # If you append '=<VLANRange>' to the hop URN, that means to exlude
+        # If you append '=<VLANRange>' to the hop URN, that means to exclude
         # that set of VLANs from consideration on that hop, but don't entirely exclude
         # the hop.
 
@@ -628,7 +629,7 @@ class StitchingHandler(object):
         # Exclude any hops given as an option from _all_ hops
         links = None
         if (self.opts.excludehop and len(self.opts.excludehop) > 0) or (self.opts.includehop and len(self.opts.includehop) > 0):
-            links = requestDOM.getElementsByTagName(RSpecParser.LINK_TAG)
+            links = requestDOM.getElementsByTagName(defs.LINK_TAG)
         if links and len(links) > 0:
             if not self.opts.excludehop:
                 self.opts.excludehop = []
@@ -1011,7 +1012,7 @@ class StitchingHandler(object):
         # ./$slicehrn-amlist.txt
         fname = "%s-amlist.txt" % slicehrn
         if not self.ams_to_process or len(self.ams_to_process) == 0:
-            self.logger.debug("No AMs in AM list")
+            self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
         # URL,URN
@@ -1102,12 +1103,12 @@ class StitchingHandler(object):
         if not sliceexp or str(sliceexp).strip() == "":
             return
 
-        rspecs = rspecDOM.getElementsByTagName(RSpecParser.RSPEC_TAG)
+        rspecs = rspecDOM.getElementsByTagName(defs.RSPEC_TAG)
         if not rspecs or len(rspecs) < 1:
             return
 
-        if rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-            self.logger.debug("Not over-riding expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
+        if rspecs[0].hasAttribute(defs.EXPIRES_ATTRIBUTE):
+            self.logger.debug("Not over-riding expires %s", rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE))
             return
 
         # Some PG based AMs cannot handle fractional seconds, and
@@ -1116,8 +1117,8 @@ class StitchingHandler(object):
         # So this is sliceexp.isoformat() except without the
         # microseconds and with the Z. Note that PG requires exactly
         # this format.
-        rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
-        self.logger.debug("Added expires %s", rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE))
+        rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, sliceexp.strftime('%Y-%m-%dT%H:%M:%SZ'))
+        self.logger.debug("Added expires %s", rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE))
  
     def confirmSafeRequest(self):
         '''Confirm this request is not asking for a loop. Bad things should
@@ -1152,7 +1153,7 @@ class StitchingHandler(object):
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
     # doesn't try to do anything with it
     def addFakeNode(self):
-        fakeNode = self.parsedSCSRSpec.dom.createElement(RSpecParser.NODE_TAG)
+        fakeNode = self.parsedSCSRSpec.dom.createElement(defs.NODE_TAG)
         fakeInterface = self.parsedSCSRSpec.dom.createElement("interface")
         fakeInterface.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
         fakeNode.setAttribute(Node.CLIENT_ID_TAG, "fake")
@@ -1161,7 +1162,7 @@ class StitchingHandler(object):
         fakeiRef = self.parsedSCSRSpec.dom.createElement(Link.INTERFACE_REF_TAG)
         fakeiRef.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
         # Find the rspec element from parsedSCSRSpec.dom
-        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(RSpecParser.RSPEC_TAG)
+        rspecs = self.parsedSCSRSpec.dom.getElementsByTagName(defs.RSPEC_TAG)
         if rspecs and len(rspecs):
             rspec = rspecs[0]
             # Add a node to the dom
@@ -1170,7 +1171,7 @@ class StitchingHandler(object):
 
             # Also find all links and add an interface_ref
             for child in rspec.childNodes:
-                if child.localName == RSpecParser.LINK_TAG:
+                if child.localName == defs.LINK_TAG:
                     # FIXME: If this link has > 1 interface_ref so far, then maybe it doesn't want this fake one? Ticket #392
                     # add an interface_ref
                     self.logger.info("Adding fake iref endpoint on link " + str(child))

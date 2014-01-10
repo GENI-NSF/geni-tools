@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -98,8 +98,12 @@ class AMCallHandler(object):
 
         # Try to auto-correct API version
         msg = self._correctAPIVersion(args)
+        if msg is None:
+            msg = ""
 
         (message, val) = getattr(self,call)(args[1:])
+        if message is None:
+            message = ""
         return (msg+message, val)
 
     def _correctAPIVersion(self, args):
@@ -2348,7 +2352,9 @@ class AMCallHandler(object):
         omni.py -V3 -a http://myaggregate poa --best-effort -o --outputfile %s-start-%a.json -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 myslice geni_start
         """
         if self.opts.api_version < 3:
-            if self.opts.devmode:
+            if self.opts.api_version == 2:
+                self.logger.info("Running PerformOperationalAction even though you are using AM API v2 - will fail at most AMs.")
+            elif self.opts.devmode:
                 self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
@@ -3834,15 +3840,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot deleteimage: Could not get user credential')
+            self.logger.error('Cannot deleteimage: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3941,15 +3948,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given by SA)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot listimages: Could not get user credential')
+            self.logger.error('Cannot listimages: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3995,7 +4003,7 @@ class AMCallHandler(object):
             creator_authority = urn_util.string_to_urn_format(urn.getAuthority())
             if creator_authority != invoker_authority:
                 if not self.opts.devmode:
-                    return (None, "Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
+                    return ("Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority), dict())
                 else:
                     self.logger.warn("Cannot listimages but continuing: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
 

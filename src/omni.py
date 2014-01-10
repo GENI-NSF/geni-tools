@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -776,7 +776,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
-    version +="\nCopyright (c) 2013 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
 def getParser():
@@ -836,7 +836,7 @@ def getParser():
                       help="Only return available resources")
     basicgroup.add_option("-c", "--configfile",
                       help="Config file name (aka `omni_config`)", metavar="FILE")
-    basicgroup.add_option("-f", "--framework", default="",
+    basicgroup.add_option("-f", "--framework", default=os.getenv("GENI_FRAMEWORK", ""),
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
@@ -911,10 +911,12 @@ def getParser():
     # If this next is set, then options.output is also set
     filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    filegroup.add_option("--usercredfile", default=os.getenv("GENI_USERCRED", None), metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " + 
+                         "myUserCred.xml -o getusercred'. Defaults to value of 'GENI_USERCRED' environment variable if defined.")
+    filegroup.add_option("--slicecredfile", default=os.getenv("GENI_SLICECRED", None), metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
+                         "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
     # GetVersion
     gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
@@ -977,7 +979,7 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
-    devgroup.add_option("--ssltimeout", default=360, action="store", type="int",
+    devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
                         help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
     parser.add_option_group( devgroup )
     return parser
@@ -1054,6 +1056,11 @@ def parse_args(argv, options=None, parser=None):
 
     if options.outputfile:
         options.output = True
+
+    if options.usercredfile:
+        options.usercredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.usercredfile)))
+    if options.slicecredfile:
+        options.slicecredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.slicecredfile)))
 
     return options, args
 

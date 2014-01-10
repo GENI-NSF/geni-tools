@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -367,7 +367,7 @@ class CHCallHandler(object):
             (cred, message) = self.framework.get_user_cred()
         credxml = credutils.get_cred_xml(cred)
         if cred is None or credxml is None or credxml == "":
-            msg = "Got no valid user credential from framework: %s" % message
+            msg = "Got no valid user credential from clearinghouse: %s" % message
             if self.opts.devmode:
                 self.logger.warn(msg + " ... but continuing")
                 credxml = cred

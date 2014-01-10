@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -443,7 +443,7 @@ def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
         if rspec is not None:
             # FIXME: Diff for dev here?
             logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
-            content += "\n<!-- \n" + rspec + "\n -->"
+            content += "\n<!-- \n" + str(rspec) + "\n -->"
             if slicename:
                 retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
             else:

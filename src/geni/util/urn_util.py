@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2013 Raytheon BBN Technologies
+# Copyright (c) 2010-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -139,10 +139,13 @@ def nameFromURN(instr):
 # Note that this is not sufficient but it is necessary
 def is_valid_urn_string(instr):
     '''Could this string be part of a URN'''
-    if instr is None or not isinstance(instr, str):
+    if instr is None or not (isinstance(instr, str) or
+                             isinstance(instr, unicode)):
         return False
     #No whitespace
     # no # or ? or /
+    if isinstance(instr, unicode):
+        instr = instr.encode('utf8')
     if re.search("[\s|\?\/\#]", instr) is None:
         return True
     return False
