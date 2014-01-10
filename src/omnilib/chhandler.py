@@ -41,7 +41,7 @@ from sfa.util.xrn import get_leaf
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
-from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn
+from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick
 
 class CHCallHandler(object):
     """
@@ -536,11 +536,17 @@ class CHCallHandler(object):
         if len(slivers_by_agg) == 0:
             result_string = "No slivers found for slice %s" % slice_urn
         else:
-            result_string = "Slivers by aggregate for slice %s\n" % slice_urn
+            result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
             for agg_urn in slivers_by_agg:
-                result_string += "AGG: " + agg_urn + "\n"
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                result_string += "Aggregate: " + agg_urn
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                if agg_nickname:
+                    result_string += " ( %s )" % agg_nickname
+                result_string += "\n"
                 for sliver_urn in slivers_by_agg[agg_urn]:
-                    result_string += "    SLIVER: " + sliver_urn + "\n"
+                    result_string += "    Sliver: " + sliver_urn + "\n"
+                result_string += "\n"
 
         return result_string
         

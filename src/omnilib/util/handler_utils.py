@@ -75,6 +75,13 @@ def _derefAggNick(handler, aggregateNickname):
 
     return url,urn
 
+# Lookup aggregate nickname by aggregate_urn or aggregate_url
+def _lookupAggNick(handler, aggregate_urn_or_url):
+    for nick, agg_data in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url in agg_data:
+            return nick
+    return None
+
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
     try:
