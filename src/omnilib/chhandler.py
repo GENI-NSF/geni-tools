@@ -527,6 +527,22 @@ class CHCallHandler(object):
         retVal = _print_slice_expiration(self, urn, cred)
         return retVal, retVal
 
+    def listslivers(self, args):
+        """list all sliver URN's by aggregate URN of a slice"""
+        slice_name = args[0]
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+        slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
+
+        if len(slivers_by_agg) == 0:
+            result_string = "No slivers found for slice %s" % slice_urn
+        else:
+            result_string = "Slivers by aggregate for slice %s\n" % slice_urn
+            for agg_urn in slivers_by_agg:
+                result_string += "AGG: " + agg_urn + "\n"
+                for sliver_urn in slivers_by_agg[agg_urn]:
+                    result_string += "    SLIVER: " + sliver_urn + "\n"
+
+        return result_string
         
     def listmembersofslice(self, args):
         """list all the members of a slice

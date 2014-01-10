@@ -818,6 +818,7 @@ def getParser():
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
+ \t\t\t listslivers \n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\

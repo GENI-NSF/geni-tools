@@ -264,8 +264,8 @@ class Framework_Base():
     def db_agg_url_to_urn(self, agg_url):
         raise NotImplementedError('db_agg_url_to_urn')
 
-    # given the slice urn and aggregate urn, find the slice urn from the db
-    def db_find_sliver_urn(self, slice_urn, aggregate_urn):
+    # given the slice urn and aggregate urn, find the associated slice urns from the db
+    def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         raise NotImplementedError('db_find_sliver_urn')
         
     # update the expiration time on a sliver
@@ -275,3 +275,8 @@ class Framework_Base():
     # delete the sliver from the chapi database
     def db_delete_sliver_info(self, sliver_urn):
         raise NotImplementedError('db_delete_sliver_info')
+
+    # Return a dictionary of all slivers for a given slice indexed by aggregate_urn
+    def db_find_slivers_for_slice(self, slice_urn):
+        return {}
+        

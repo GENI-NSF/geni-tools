@@ -1762,14 +1762,19 @@ class AMCallHandler(object):
             try:
                 agg_urn = self.framework.db_agg_url_to_urn(url)
                 creator = _get_user_urn(self)
-                idx1 = result.find('sliver_id=')
-                idx2 = result.find('"', idx1) + 1
-                sliver_urn = result[idx2 : result.find('"', idx2)]
-                if not agg_urn:
-                    idx1 = sliver_urn.find('sliver+')
-                    agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                self.framework.db_create_sliver_info(sliver_urn, urn, \
-                                    creator, agg_urn, slice_exp)
+                manifest = result
+                while True:
+                    idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
+                    if idx1 < 0: break # No more slivers
+                    idx2 = manifest.find('"', idx1) + 1 # Start of URN
+                    idx3 = manifest.find('"', idx2) # End of URN
+                    sliver_urn = manifest[idx2 : idx3]
+                    manifest = manifest[idx3+1:]
+                    if not agg_urn:
+                        idx1 = sliver_urn.find('sliver+')
+                        agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                    self.framework.db_create_sliver_info(sliver_urn, urn, \
+                                                             creator, agg_urn, slice_exp)
             except NotImplementedError, nie:
                 self.logger.info('Framework doesnt handle slivers in SA database')
             except Exception, e:
@@ -2215,7 +2220,8 @@ class AMCallHandler(object):
                            sliver.has_key('geni_sliver_urn')):
                             continue
                         sliver_urn = sliver['geni_sliver_urn']
-                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                        agg_urn = client.urn
+#                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
                         if not agg_urn:
                             idx1 = sliver_urn.find('sliver+')
                             agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
@@ -2619,15 +2625,14 @@ class AMCallHandler(object):
                 self.logger.info(prStr)
 
                 try:
-                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                    agg_urn = client.urn
+#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
                     if not agg_urn:
                         self.logger.error("Could not find aggregate in database")
-                    sliver_urn = self.framework.db_find_sliver_urn(urn, agg_urn)
-                    if sliver_urn:
+                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                    for sliver_urn in sliver_urns:
                         self.framework.db_update_sliver_info(sliver_urn,
-                                                             slice_exp)
-                    else:
-                        self.logger.error("Could not find sliver in database")
+                                                             newExp)
                 except NotImplementedError, nie:
                     self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:
@@ -3333,14 +3338,13 @@ class AMCallHandler(object):
 
                 # delete sliver info from SA database
                 try:
-                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                    agg_urn = client.urn
+#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
                     if not agg_urn:
                         self.logger.error("Could not find aggregate in database")
-                    sliver_urn = self.framework.db_find_sliver_urn(urn, agg_urn)
-                    if sliver_urn:
+                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                    for sliver_urn in sliver_urns:
                         self.framework.db_delete_sliver_info(sliver_urn)
-                    else:
-                        self.logger.error("Could not find sliver in database")
                 except NotImplementedError, nie:
                     self.logger.info('Framework doesnt handle slivers in SA database')
                 except Exception, e:

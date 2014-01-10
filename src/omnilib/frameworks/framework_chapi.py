@@ -508,16 +508,14 @@ class Framework(Framework_Base):
         return res['value'][0]['SERVICE_URN']
 
     # given the slice urn and aggregate urn, find the slice urn from the db
-    def db_find_sliver_urn(self, slice_urn, aggregate_urn):
+    def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
         res, mess = _do_ssl(self, None, "Lookup sliver urn",
                             self.sa.lookup_sliver_info, [], options)
         self.log_results((res, mess), 'Find sliver urn')
-        if len(res['value']) == 0:
-            return None
-        return res['value'].keys()[0]
+        return res['value'].keys()
         
     # update the expiration time on a sliver
     def db_update_sliver_info(self, sliver_urn, expiration):
@@ -531,3 +529,22 @@ class Framework(Framework_Base):
         res = _do_ssl(self, None, "Recording sliver delete",
                       self.sa.delete_sliver_info, sliver_urn, [], {})
         self.log_results(res, "Delete sliver info")
+
+    def db_find_slivers_for_slice(self, slice_urn):
+        slivers_by_agg = {}
+        options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
+        res, mess = _do_ssl(self, None, "Find slivers for slice", \
+                          self.sa.lookup_sliver_info, [], options)
+        
+        if res['code'] == 0:
+            for sliver_urn, sliver_info in res['value'].items():
+                agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
+                if agg_urn not in slivers_by_agg:
+                    slivers_by_agg[agg_urn] = []
+                slivers_by_agg[agg_urn].append(sliver_urn)
+
+        self.log_results((res, mess), "Find slivers for slice")
+
+        return slivers_by_agg
+        
+
