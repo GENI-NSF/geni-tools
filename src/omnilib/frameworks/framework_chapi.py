@@ -141,7 +141,7 @@ class Framework(Framework_Base):
     def _select_cred(self, creds):
         for cred in creds:
             if cred['geni_type'] == 'geni_sfa':
-                return cred
+                return cred['geni_value']
 
     def create_slice(self, urn):
         # self.get_user_cred()
