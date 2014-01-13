@@ -35,6 +35,7 @@ import sfa.trust.credential as cred
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
 from sfa.util.xrn import hrn_authfor_hrn
+from speaksfor_util import determine_speaks_for
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -137,6 +138,15 @@ class CredentialVerifier(object):
             except Exception, e:
                 self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
             return credO
+
+        # Potentially, change gid_string to be the cert of the actual user 
+        # if this is a 'speaks-for' invocation                     
+        gid_string = \
+            determine_speaks_for( \
+            cred_strings, // May include ABAC speaks_for credential
+            gid_string, // Caller cert (may be the tool 'speaking for' user)
+            options // May include 'speaking_for' option with user URN
+            )
 
         return self.verify(gid.GID(string=gid_string),
                            map(make_cred, cred_strings),
