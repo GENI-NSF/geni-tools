@@ -117,6 +117,8 @@ def grab_toplevel_cert(cert):
 #      was signed by the user associated with the speaking_for_urn
 #      must say U.speaks_for(U)<-T ("user says that T may speak for user")
 #  String user certificate of speaking_for user if the above tests succeed
+#      (None otherwise)
+#  Error message indicating why the speaks_for call failed ("" otherwise)
 def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
                           trusted_roots):
 
@@ -127,7 +129,7 @@ def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
     # Extract signer cert from the credential
     cert_nodes = root.getElementsByTagName('X509Certificate')
     if len(cert_nodes) == 0:
-        return False, ''
+        return False, None, "Invalid ABAC credential: No X509 cert"
     user_cert_text = findTextChildValue(cert_nodes[0])
     user_cert = \
         '-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----\n' % \
@@ -141,39 +143,31 @@ def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
 
     head_elts = root.getElementsByTagName('head')
     if len(head_elts) != 1: 
-        return False, ''
+        return False, None, "Invalid ABAC credential: No head element"
     head_elt = head_elts[0]
 
     principal_keyid_elts = head_elt.getElementsByTagName('keyid')
     if len(principal_keyid_elts) != 1: 
-        return False, ''
+        return False, None, "Invalid ABAC credential: No head principal element"
     principal_keyid_elt = principal_keyid_elts[0]
     principal_keyid = findTextChildValue(principal_keyid_elt)
 
     role_elts = head_elt.getElementsByTagName('role')
     if len(role_elts) != 1: 
-        return False, ''
+        return False, None, "Invalid ABAC credential: No role element"
     role = findTextChildValue(role_elts[0])
 
     tail_elts = root.getElementsByTagName('tail')
     if len(tail_elts) != 1: 
-        return False, ''
+        return False, None, "Invalid ABAC credential: No tail element" 
     subject_keyid_elts = tail_elts[0].getElementsByTagName('keyid')
     if len(subject_keyid_elts) != 1: 
-        return False, ''
+        return False, None, "Invalid ABAC credential: No tail subject element"
     subject_keyid = findTextChildValue(subject_keyid_elts[0])
 
     credential_elt = findChildNamed(root, 'credential')
     cred_type_elt = findChildNamed(credential_elt, 'type')
     cred_type = findTextChildValue(cred_type_elt)
-
-    cert_elts = root.getElementsByTagName('X509Certificate')
-    if len(cert_elts) != 1: 
-        return False, ''
-    cert_text_elt = cert_elts[0].childNodes[0]
-    cert_text = cert_text_elt.nodeValue
-    pieces = cert_text.split('\n')
-    cert_text = "".join(pieces)
 
     expiration = root.getElementsByTagName('expires')[0]
     expiration_value = expiration.childNodes[0].nodeValue
@@ -184,7 +178,7 @@ def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
 
     # Credential has not expired
     if expiration_time < current_time:
-        return False, ''
+        return False, None, "ABAC Credential expired"
 
     # Credential must pass xmlsec1 verify
     cred_file = write_to_tempfile(cred)
@@ -194,31 +188,28 @@ def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
     output = proc.returncode
     os.unlink(cred_file)
     if output != 0:
-        return False, ''
+        return False, None, "ABAC credentaial failed to xmlsec1 verify"
 
     # Must be ABAC
     if cred_type != 'abac':
-        return False, ''
-    # Must be signed by user
-    if cert_text != grab_toplevel_cert(user_cert):
-        return False, ''
+        return False, None, "Credential not of type ABAC"
     # Must say U.speaks_for(U)<-T
     if user_keyid != principal_keyid or \
             tool_keyid != subject_keyid or \
             role != ('speaks_for_%s' % user_keyid):
-        return False, ''
+        return False, None, "ABAC statement doesn't assert U.speaks_for(U)<-T"
 
     # URN of signer from cert must match URN of 'speaking-for' argument
     if user_urn != speaking_for_urn:
-        return False, ''
+        return False, None, "User URN doesn't match speaking_for URN"
 
     # User certificate must validate against trusted roots
     try:
         user_cert_object.verify_chain(trusted_roots)
     except Exception:
-        return False, ''
+        return False, None, "User cert doesn't validaate against trusted roots"
 
-    return True, user_cert
+    return True, user_cert, ""
 
 # Determine if this is a speaks-for context. If so, validate
 # And return either the tool_cert (not speaks-for or not validated)
@@ -237,7 +228,7 @@ def determine_speaks_for(credentials, caller_cert, options, \
         speaking_for_urn = options['speaking_for']
         for cred in credentials:
             if cred['geni_type'] != 'geni_abac': continue
-            is_valid_speaks_for, user_cert = \
+            is_valid_speaks_for, user_cert, msg = \
                 verify_speaks_for(cred['geni_value'], \
                                       caller_cert, speaking_for_urn, \
                                       trusted_roots)
@@ -269,7 +260,7 @@ if __name__ == "__main__":
     cred = open(cred_file).read()
     tool_cert = open(tool_cert_file).read()
 
-    vsf, user_cert = verify_speaks_for(cred, tool_cert, user_urn, \
+    vsf, user_cert,msg = verify_speaks_for(cred, tool_cert, user_urn, \
                                 trusted_roots)
     print 'VERIFY_SPEAKS_FOR = %s' % vsf
     if vsf:

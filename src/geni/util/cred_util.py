@@ -32,10 +32,11 @@ import datetime
 import dateutil
 
 import sfa.trust.credential as cred
+import sfa.trust.certificate
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
 from sfa.util.xrn import hrn_authfor_hrn
-from speaksfor_util import determine_speaks_for
+from speaksfor_util import determine_speaks_for, extract_urn_from_cert
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -141,12 +142,18 @@ class CredentialVerifier(object):
 
         # Potentially, change gid_string to be the cert of the actual user 
         # if this is a 'speaks-for' invocation                     
-        gid_string = \
+        speaksfor_gid_string = \
             determine_speaks_for( \
-            cred_strings, // May include ABAC speaks_for credential
-            gid_string, // Caller cert (may be the tool 'speaking for' user)
-            options // May include 'speaking_for' option with user URN
+            cred_strings, # May include ABAC speaks_for credential
+            gid_string, # Caller cert (may be the tool 'speaking for' user)
+            options # May include 'speaking_for' option with user URN
             )
+        if speaksfor_gid_string != gid_string:
+            speaksfor_certificate = \
+                sfa.trust.certificate.Certificate(string=speaksfor_gid_string)
+            speaksfor_urn = extract_urn_from_cert(speaksfor_certificate)
+            self.logger.info("Speaks-for Invocation: Changing to cert for spoken for user : %s" % speaksfor_urn)
+            gid_string = speaksfor_git_string
 
         return self.verify(gid.GID(string=gid_string),
                            map(make_cred, cred_strings),
