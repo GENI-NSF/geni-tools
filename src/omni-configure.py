@@ -1011,7 +1011,10 @@ def getPGConfig(opts, public_key_list, cert) :
           if user_urn.find('loni.org') != -1 :
             sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
           else:
-            raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-2]) 
+             if user_urn.find('uky.emulab.net') != -1 :
+              sa = 'https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa'
+             else:
+               raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-2]) 
     logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
 
     cf_section = """
