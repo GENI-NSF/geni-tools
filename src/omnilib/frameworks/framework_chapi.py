@@ -67,15 +67,38 @@ class Framework(Framework_Base):
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
 
+    # Add new options and credentials based on provided opts 
+    def _augment_credentials_and_options(self, credentials, options):
+        self.logger.info("GSC self.opts.speaksfor = %s" % self.opts.speaksfor)
+        self.logger.info("GSC self.opts.cred = %s" % self.opts.cred)
+        new_credentials = credentials
+        new_options = options
+        if self.opts.speaksfor:
+            options['speaking_for'] = self.opts.speaksfor
+        if self.opts.cred:
+            for cred_filename in self.opts.cred:
+                cred_contents = open(cred_filename).read()
+                new_cred = {'geni_type' : 'geni_abac',
+                            'geni_value' : cred_contents,
+                            'geni_version' : '1.0'}
+                new_credentials.append(new_cred)
+        self.logger.info("GSC new_creds = %s new_options = %s" % (new_credentials, new_options))
+        return new_credentials, new_options
+
     def get_user_cred(self):
         message = ""
+        creds = []
+        options = {}
+
+        creds, options = self._augment_credentials_and_options(creds, options)
+
         if self.user_cred == None:
             self.logger.debug("Getting user credential from CHAPI MA %s", self.config['ch'])
             (res, message) = _do_ssl(self, None, ("Create user credential on CHAPI MA %s" % self.ma),
                                      self.ma.get_credentials,
                                      self.user_urn,
-                                     [],
-                                     {})
+                                     creds,
+                                     options)
             if res is not None:
                 if res['code'] == 0:
                     self.user_cred = self._select_cred(res['value'])
@@ -91,12 +114,16 @@ class Framework(Framework_Base):
         # if self.user_cred is not None:
         #     scred = self.user_cred
         scred = []
+        options = {}
+
+        scred, options = self._augment_credentials_and_options(scred, options)
 
         slice_name = nameFromURN(slice_urn)
         # how do we get this information into options?
 
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_urn, self.config['ch'])),
-                                 self.sa.get_credentials, slice_urn, scred, {})
+                                 self.sa.get_credentials, slice_urn, scred, 
+                                 options)
 
         cred = None
         if res is not None:
@@ -188,7 +215,8 @@ class Framework(Framework_Base):
                 return None
 
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),
-                                 self.sa.get_credentials, slice_urn, scred, {})
+                                 self.sa.get_credentials, slice_urn, scred, 
+                                 options)
 
         cred = None
         if res is not None:
@@ -429,18 +457,20 @@ class Framework(Framework_Base):
 
 
     def get_member_email(self, urn):
+        creds = []
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
         res, mess = _do_ssl(self, None, "Looking up member email",
-                            self.ma.lookup_identifying_member_info, [], options)
+                            self.ma.lookup_identifying_member_info, creds, options)
         self.log_results((res, mess), 'Lookup member email')
         if not res['value']:
             return None
         return res['value'].values()[0]['MEMBER_EMAIL']
 
     def get_member_keys(self, urn):
+        creds = []
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
         res, mess = _do_ssl(self, None, "Looking up member keys",
-                            self.ma.lookup_keys, [], options)
+                            self.ma.lookup_keys, creds, options)
         self.log_results((res, mess), 'Lookup member keys')
         if not res['value']:
             return None
@@ -448,8 +478,11 @@ class Framework(Framework_Base):
 
     # get the members (urn, email) and their ssh keys
     def get_members_of_slice(self, slice_urn):
+        creds = []
+        options = {}
         res, mess = _do_ssl(self, None, "Looking up slice member",
-                            self.sa.lookup_slice_members, slice_urn, [], {})
+                            self.sa.lookup_slice_members, slice_urn, 
+                            creds, options)
         self.log_results((res, mess), 'Get members for slice')
         members = []
         for member_vals in res['value']:
@@ -462,11 +495,12 @@ class Framework(Framework_Base):
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+        creds = []
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
         res, mess = _do_ssl(self, None, "Adding member to slice",
                             self.sa.modify_slice_membership,
-                            slice_urn, [], options)
+                            slice_urn, creds, options)
         success = self.log_results((res, mess), 'Add member to slice')
         return (success, mess)
 
@@ -486,14 +520,16 @@ class Framework(Framework_Base):
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
                               aggregate_urn, expiration):
+        creds = []
         fields = {"SLIVER_INFO_URN": sliver_urn,
                   "SLIVER_INFO_SLICE_URN": slice_urn,
                   "SLIVER_INFO_AGGREGATE_URN": aggregate_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
+        options = {'fields' : fields}
         if (expiration):
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
         res = _do_ssl(self, None, "Recording sliver creation",
-                      self.sa.create_sliver_info, [], {'fields': fields})
+                      self.sa.create_sliver_info, creds, options)
         self.log_results(res, "Create sliver info")
 
     # use the database to convert an aggregate url to the corresponding urn
@@ -509,32 +545,38 @@ class Framework(Framework_Base):
 
     # given the slice urn and aggregate urn, find the slice urn from the db
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
+        creds = []
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
         res, mess = _do_ssl(self, None, "Lookup sliver urn",
-                            self.sa.lookup_sliver_info, [], options)
+                            self.sa.lookup_sliver_info, creds, options)
         self.log_results((res, mess), 'Find sliver urn')
         return res['value'].keys()
         
     # update the expiration time on a sliver
     def db_update_sliver_info(self, sliver_urn, expiration):
+        creds = []
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
+        options = {'fields' : fields}
         res = _do_ssl(self, None, "Recording sliver update", \
-                self.sa.update_sliver_info, sliver_urn, [], {'fields': fields})
+                self.sa.update_sliver_info, sliver_urn, creds, options)
         self.log_results(res, "Update sliver info")
         
     # delete the sliver from the chapi database
     def db_delete_sliver_info(self, sliver_urn):
+        creds = []
+        options = {}
         res = _do_ssl(self, None, "Recording sliver delete",
-                      self.sa.delete_sliver_info, sliver_urn, [], {})
+                      self.sa.delete_sliver_info, sliver_urn, creds, options)
         self.log_results(res, "Delete sliver info")
 
     def db_find_slivers_for_slice(self, slice_urn):
         slivers_by_agg = {}
+        creds = []
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
         res, mess = _do_ssl(self, None, "Find slivers for slice", \
-                          self.sa.lookup_sliver_info, [], options)
+                          self.sa.lookup_sliver_info, creds, options)
         
         if res['code'] == 0:
             for sliver_urn, sliver_info in res['value'].items():
