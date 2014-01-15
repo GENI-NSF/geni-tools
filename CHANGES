@@ -42,6 +42,7 @@ gcf 2.5:
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
+  - Handle empty range of VLANs in VLANRange (#471)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
