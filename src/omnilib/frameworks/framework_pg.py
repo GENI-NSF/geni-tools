@@ -31,7 +31,9 @@ from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
+from omnilib.util.handler_utils import _get_user_urn
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from sfa.util.xrn import get_leaf
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded
@@ -334,9 +336,13 @@ class Framework(Framework_Base):
         slice_list = self._list_my_slices( user )
         return slice_list
 
-    def list_my_ssh_keys(self):
-        key_list = self._list_my_ssh_keys()
-        return key_list
+    def list_ssh_keys(self, username=None):
+        if username is not None and username.strip() != "":
+            name = get_leaf(_get_user_urn(self.logger, self.config))
+            if name != get_leaf(username):
+                return None, "%s can get SSH keys for current user (%s) only, not %s" % (self.fwtype, name, username)
+        key_list, message = self._list_ssh_keys()
+        return key_list, message
 
     def list_aggregates(self):
         if self.aggs:
@@ -467,31 +473,37 @@ class Framework(Framework_Base):
         # value is a dict, containing a list of slice URNs
         return pg_response['value']['slices']
 
-    def _list_my_ssh_keys(self):
+    def _list_ssh_keys(self, userurn = None):
         """Gets the ProtoGENI stored SSH public keys from the ProtoGENI Slice Authority. """
         cred, message = self.get_user_cred()
         if not cred:
             raise Exception("No user credential available. %s" % message)
-        (pg_response, message) = _do_ssl(self, None, "Get SSH Keys at %s SA %s" % (self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred})
+        usr = 'current user'
+        if userurn is not None:
+            usr = 'user ' + get_leaf(userurn)
+            (pg_response, message) = _do_ssl(self, None, "Get %s SSH Keys at %s SA %s" % (usr, self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred, 'member_urn': userurn})
+        else:
+            (pg_response, message) = _do_ssl(self, None, "Get %s SSH Keys at %s SA %s" % (usr, self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred})
         if pg_response is None:
-            self.logger.error("Cannot get user's public SSH keys: %s", message)
-            return list()
+            msg = "Cannot get %s's public SSH keys: %s" % (usr, message)
+            self.logger.error(msg)
+            return list(), msg
 
         log = self._get_log_url(pg_response)
         code = pg_response['code']
         if code:
-            self.logger.error("Received error code: %d", code)
             output = pg_response['output']
-            self.logger.error("Received error message from %s: %s", self.fwtype, output)
+            msg = "%s Server error %d: %s" % (self.fwtype, code, output)
             if log:
-                self.logger.error("%s log url: %s", self.fwtype, log)
+                msg += " (log url: %s)" % log
+            self.logger.error(msg)
             # Return an empty list.
-            return list()
+            return list(), msg
 
         # value is an array. For each entry, type=ssh, key=<key>
         if not isinstance(pg_response['value'], list):
             self.logger.error("Non list response for value: %r" % pg_response['value']);
-            return pg_response['value'];
+            return pg_response['value'], None
 
         keys = list()
         for key in pg_response['value']:
@@ -499,7 +511,7 @@ class Framework(Framework_Base):
                 self.logger.error("GetKeys list missing key value?");
                 continue
             keys.append(key['key'])
-        return keys
+        return keys, None
         
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI
