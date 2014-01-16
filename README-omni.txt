@@ -69,7 +69,11 @@ New in v2.5:
  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
    set the default path to your saved user and slice credentials (#434)
  - Handle ~ in `usercredfile` and `slicecredfile` (#455)
- - Return error on SA error in listslices (#456)
+ - Return error on SA error in `listslices` (#456)
+ - Allow `PerformOperationalAction` on v2 AMs (#412)
+ - Fix circular imports in RSpecParser and objects (#459)
+ - Omni cred_util uses an omni logger (#460)
+ - Support querying for other users' SSH keys where the CH supports it (#472)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -594,7 +598,8 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys 
+ 			 listmykeys
+ 			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename> 
  		Other functions: 
@@ -918,11 +923,19 @@ With no `username` supplied, it will look up slices registered to you
 (the user whose certificate is supplied).
 
 ==== listmykeys ====
-Provides a list of SSH public keys registered at the configured
-control framework for the current user.
+Provides a list of the SSH public keys registered at the confiigured
+clearinghouse for the current user. 
 Not supported by all frameworks.
 
 Sample Usage: `omni.py listmykeys`
+
+==== listkeys ====
+Provides a list of SSH public keys registered at the configured
+control framework for the specified user, or current user if not defined.
+Not supported by all frameworks. Some frameworks only support querying
+the current user.
+
+Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from

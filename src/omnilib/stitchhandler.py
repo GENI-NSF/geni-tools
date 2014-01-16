@@ -159,7 +159,7 @@ class StitchingHandler(object):
         # FIXME: Maybe use threading to parallelize confirmSliceOK and the 1st SCS call?
 
         # Get username for slicecred filename
-        self.username = get_leaf(handler_utils._get_user_urn(self))
+        self.username = get_leaf(handler_utils._get_user_urn(self.logger, self.framework.config))
         if not self.username:
             raise OmniError("Failed to find your username to name your slice credential")
 

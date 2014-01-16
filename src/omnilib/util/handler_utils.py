@@ -649,14 +649,14 @@ def _is_user_cert_expired(handler):
         return True
     return False
 
-def _get_user_urn(handler):
+def _get_user_urn(logger, config):
     # create a gid
     usergid = None
     try:
-        usergid = GID(filename=handler.framework.config['cert'])
+        usergid = GID(filename=config['cert'])
     except Exception, e:
-        handler.logger.debug("Failed to create GID from %s: %s",
-                             handler.framework.config['cert'], e)
+        logger.debug("Failed to create GID from %s: %s",
+                             config['cert'], e)
     # do get_urn
     if usergid:
         return usergid.get_urn()
