@@ -24,8 +24,9 @@
 from omnilib.frameworks.framework_pg import Framework as pg_framework
 from omnilib.util.dossl import _do_ssl
 from omnilib.util import OmniError
+from omnilib.util.handler_utils import _get_user_urn
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
-from sfa.util.xrn import urn_to_hrn
+from sfa.util.xrn import urn_to_hrn, hrn_to_urn
 
 import logging
 from urlparse import urlparse
@@ -208,3 +209,14 @@ class Framework(pg_framework):
 #                versionstruct['sa-version'] = sa_response
 
         return versionstruct, message
+
+    def list_ssh_keys(self, username=None):
+        if username is None or username.strip() == "":
+            username = _get_user_urn(self.logger, self.config)
+        if not is_valid_urn(username):
+            hrn = self.user_name_to_hrn(username)
+            username = hrn_to_urn(hrn, 'user')
+        self.logger.debug("Looking up user %s" % username)
+        key_list, message = self._list_ssh_keys(username)
+        return key_list, message
+

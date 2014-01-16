@@ -83,8 +83,10 @@
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
        On fail: [string None] = omni.py renewslice SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
+       [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
+       [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
@@ -817,6 +819,7 @@ def getParser():
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
+ \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\
