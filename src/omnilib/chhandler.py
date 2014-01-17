@@ -549,7 +549,9 @@ class CHCallHandler(object):
         return retVal, retVal
 
     def listslivers(self, args):
-        """list all sliver URN's by aggregate URN of a slice"""
+        """List all slivers of the given slice by aggregate"""
+        if len(args) == 0 or args[0] is None or args[0].strip() == "":
+            self._raise_omni_error("listslivers requires a slice name argument")
         slice_name = args[0]
         slice_urn = self.framework.slice_name_to_urn(slice_name)
         slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
@@ -569,15 +571,15 @@ class CHCallHandler(object):
                     result_string += "    Sliver: " + sliver_urn + "\n"
                 result_string += "\n"
 
-        return result_string
-        
+        return result_string, slivers_by_agg
+
     def listmembersofslice(self, args):
-        """list all the members of a slice
+        """List all the members of a slice
         Args: slicename
         Side effect: prints out via logger the members and their info
         Return summary string and success
         """
-        if len(args) != 1:
+        if len(args) != 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
         slice_name = args[0]
 
@@ -588,7 +590,7 @@ class CHCallHandler(object):
         # Try to get all the members of this slice
         (members, message) = _do_ssl(self.framework, None, "List members of slice %s" % slice_name, self.framework.get_members_of_slice, slice_urn)
 
-        if members[0]:
+        if members and members[0]:
             prtStr = "Members in slice %s are:\n" % (slice_name)
             for i, member in enumerate(members[0]):
                 prtStr += 'Member ' + str(i + 1) + ':\n'
@@ -602,18 +604,18 @@ class CHCallHandler(object):
                 prtStr += ". " + message
             self.logger.warn(prtStr)
         return prtStr + '\n', members
-        
+
     def addmembertoslice(self, args):
         """Add a member to a slice
-        Args: slicename and membername, optional role
+        Args: slicename membername [optional: role name, default 'MEMBER']
         Return summary string and whether successful
         """
         if len(args) != 2 and len(args) != 3:
             self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
-        slice_name = args[0]
-        member_name = args[1]
+        slice_name = args[0].strip()
+        member_name = args[1].strip()
         if len(args) == 3:
-            role = args[2]
+            role = args[2].strip()
         else:
             role = 'MEMBER'
 
@@ -623,15 +625,17 @@ class CHCallHandler(object):
         member_urn = self.framework.member_name_to_urn(member_name)
 
         # Try to add the member to the slice
-        ((success, message), m2) = _do_ssl(self.framework, None, "Add member %s" % member_name, self.framework.add_member_to_slice, slice_urn, member_urn, role)
+        ((success, message), m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_urn, role)
 
         if success:
-            prtStr = "Member %s now in slice %s" % (member_name, slice_name)
+            prtStr = "Member %s is now a %s in slice %s" % (member_name, role, slice_name)
             self.logger.info(prtStr)
         else:
-            prtStr = "Failed to add member %s" % (member_name)
-            if message != "":
+            prtStr = "Failed to add member %s to slice %s" % (member_name, slice_name)
+            if message and message.strip() != "":
                 prtStr += ". " + message
+            if m2 and m2.strip() != "":
+                prtStr += ". " + m2
             self.logger.warn(prtStr)
         return prtStr + '\n', success
 
