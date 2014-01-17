@@ -74,6 +74,12 @@ class Framework_Base():
         Returns the usercred - in XML string format.
         """
         
+        try:
+            if self.user_cred_struct is not None:
+                pass
+        except:
+            self.user_cred_struct = None
+
         # read the usercred from supplied file
         cred = None
         if opts.usercredfile and os.path.exists(opts.usercredfile) and os.path.isfile(opts.usercredfile) and os.path.getsize(opts.usercredfile) > 0:
