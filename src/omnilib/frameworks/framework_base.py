@@ -88,6 +88,12 @@ class Framework_Base():
                 cred = f.read()
             try:
                 cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+                if cred and isinstance(cred, dict) and \
+                        cred.has_key('geni_type') and \
+                        cred.has_key('geni_value') and \
+                        cred['geni_type'] == 'geni_sfa' and \
+                        cred['geni_value'] is not None:
+                    self.user_cred_struct = cred
             except Exception, e:
                 logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
             cred2 = credutils.get_cred_xml(cred)
@@ -247,32 +253,32 @@ class Framework_Base():
         """
         raise NotImplementedError('wrap_cred')
 
-    # get the members (urn, email) and their ssh keys
+    # get the slice members (urn, email) and their public ssh keys
     def get_members_for_slice(self, slice_urn):
         raise NotImplementedError('get_members_for_slice')
 
-    # add a new member to a slice
+    # add a new member to a slice (giving them rights to get a slice credential)
     def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
         raise NotImplementedError('add_member_to_slice')
 
-    # write new sliver_info to the database using chapi
+    # Record new slivers at the CH database 
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
                               aggregate_urn, expiration):
         raise NotImplementedError('db_create_sliver_info')
 
-    # use the database to convert an aggregate url to the corresponding urn
+    # use the CH database to convert an aggregate url to the corresponding urn
     def db_agg_url_to_urn(self, agg_url):
         raise NotImplementedError('db_agg_url_to_urn')
 
-    # given the slice urn and aggregate urn, find the associated slice urns from the db
+    # given the slice urn and aggregate urn, find the associated sliver urns from the CH db
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         raise NotImplementedError('db_find_sliver_urn')
-        
-    # update the expiration time on a sliver
+
+    # update the expiration time on a sliver at the CH
     def db_update_sliver_info(self, sliver_urn, expiration):
         raise NotImplementedError('db_update_sliver_info')
-        
-    # delete the sliver from the chapi database
+
+    # delete the sliver from the CH database of slivers in a slice
     def db_delete_sliver_info(self, sliver_urn):
         raise NotImplementedError('db_delete_sliver_info')
 
