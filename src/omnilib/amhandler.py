@@ -53,8 +53,6 @@ import omnilib.xmlrpc.client
 from omnilib.util.files import *
 
 from geni.util import rspec_util, urn_util
-import sfa.trust.gid as sfa_gid
-from omnilib.frameworks.framework_base import Framework_Base
 
 
 class BadClientException(Exception):
@@ -1761,7 +1759,7 @@ class AMCallHandler(object):
             # register sliver in the SA database if able to do so
             try:
                 agg_urn = self.framework.db_agg_url_to_urn(url)
-                creator = _get_user_urn(self)
+                creator = _get_user_urn(self.logger, self.framework.config)
                 manifest = result
                 while True:
                     idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
@@ -2213,7 +2211,7 @@ class AMCallHandler(object):
 
                 # record results in SA database
                 try:
-                    creator = _get_user_urn(self)
+                    creator = _get_user_urn(self.logger, self.framework.config)
                     slivers = self._getSliverResultList(realresult)
                     for sliver in slivers:
                         if not (isinstance(sliver, dict) and \
@@ -4392,6 +4390,13 @@ class AMCallHandler(object):
 
         # Get a slice cred, handle it being None
         (slice_cred, message) = _get_slice_cred(self, urn)
+
+        # Unwrap the slice cred if it is wrapped and this is an API < 3
+        if self.opts.api_version < 3 and slice_cred is not None:
+            slice_cred = get_cred_xml(slice_cred)
+            if slice_cred is None:
+                message = "No valid SFA slice credential returned"
+
         if slice_cred is None:
             msg = 'Cannot do %s for %s: Could not get slice credential: %s' % (methodname, urn, message)
             if self.opts.devmode:
