@@ -230,6 +230,24 @@ def _get_slice_cred(handler, urn):
     # Callers handle None - usually by raising an error
     (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
     if type(cred) is dict:
+        # Validate the cred inside the struct
+        if not cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa':
+            handler.logger.error("Non SFA slice credential returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        elif not cred.has_key('geni_value'):
+            handler.logger.error("Malformed slice credential struct returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        if cred is not None:
+            icred = cred['geni_value']
+            if icred is not None and (not (type(icred) is str and icred.startswith("<"))):
+                handler.logger.error("Got invalid SFA slice credential for slice %s: %s" % (urn, icred))
+                cred = None
+                message = "Invalid slice credential returned"
+
+        # FIXME: If this is API v2, unwrap the cred? I _think_ all callers handle this appropriately without doing so
+
         return (cred, message)
     if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
         #elif slice_cred is not XML that looks like a credential, assume
