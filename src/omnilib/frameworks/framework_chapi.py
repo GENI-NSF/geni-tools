@@ -81,6 +81,7 @@ class Framework(Framework_Base):
             sys.exit('CHAPI Framework failed to parse cert read from %s: %s' % (self.cert, e))
 
         self.user_urn = self.cert_gid.get_urn()
+        if self.opts.speaksfor: self.user_urn = self.opts.speaksfor
         self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
 
@@ -203,6 +204,9 @@ class Framework(Framework_Base):
                 return [], "%s is not a valid user name or urn" % username
 
         options = {'match': {'KEY_MEMBER': fetch_urn}, 'filter': ['KEY_PUBLIC']}
+
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
         self.logger.debug("Getting %s SSH keys from CHAPI MA %s", username, self.config['ch'])
         (res, message) = _do_ssl(self, None, ("Get %s public SSH keys MA %s" % (username, self.ma)),
                                  self.ma.lookup_keys,
@@ -310,6 +314,8 @@ class Framework(Framework_Base):
 #            options['fields']['SLICE_URN'] = slice_urn
         self.logger.debug("Submitting with options %s", options)
 
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
         (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
                                      self.sa.create_slice, scred, options)
         if res is not None:
@@ -343,6 +349,8 @@ class Framework(Framework_Base):
                 msg = msg + ". %s" % message
             self.logger.error(msg)
             return None
+
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),
                                  self.sa.get_credentials, slice_urn, scred, 
@@ -431,6 +439,8 @@ class Framework(Framework_Base):
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
         self.logger.debug("Submitting with options %s", options)
 
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
         (res, message) = _do_ssl(self, None, ("Lookup slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
                                      self.sa.lookup_slices, scred, options)
         slice_expiration = None
@@ -472,9 +482,11 @@ class Framework(Framework_Base):
 
     def list_aggregates(self):
         # TODO: list of field names from getVersion - should we get all or assume we have URN and URL
+        options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
         (res, message) = _do_ssl(self, None, ("List Aggregates at CHAPI CH %s" % self.config['ch']), 
                                  self.ch.lookup_aggregates,
-                                 {'filter':['SERVICE_URN', 'SERVICE_URL']})
+                                 options
+                                 )
         if message:
             self.logger.warn(message)
         aggs = dict()
@@ -511,6 +523,8 @@ class Framework(Framework_Base):
             userurn = URN(auth, "user", user).urn_string()
 
         options = {}
+
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         (res, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
                                     self.sa.lookup_slices_for_member, userurn, scred, options)
@@ -626,6 +640,9 @@ class Framework(Framework_Base):
         self.logger.info('Requesting new slice expiration %r', expiration)
         options = {'fields':{'SLICE_EXPIRATION':expiration}}
         res = None
+
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
         (res, message) = _do_ssl(self, None, ("Renew slice %s on CHAPI SA %s until %s" % (urn, self.config['ch'], expiration_dt)), 
                                   self.sa.update_slice, urn, scred, options)
 
@@ -647,6 +664,9 @@ class Framework(Framework_Base):
                         }}
             options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
             self.logger.debug("Submitting with options %s", options)
+
+            scred, options = \
+                self._add_credentials_and_speaksfor(scred, options)
 
             (res, message) = _do_ssl(self, None, ("Lookup slice %s on CHAPI SA %s" % (urn, self.config['ch'])),\
                                          self.sa.lookup_slices, scred, options)
@@ -779,6 +799,9 @@ class Framework(Framework_Base):
         # error checking
         creds = []
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
+
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
+
         res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
                             self.ma.lookup_keys, creds, options)
         self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
@@ -790,6 +813,7 @@ class Framework(Framework_Base):
     def get_members_of_slice(self, slice_urn):
         creds = []
         options = {}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Looking up slice member",
                             self.sa.lookup_slice_members, slice_urn, 
                             creds, options)
@@ -808,6 +832,7 @@ class Framework(Framework_Base):
         creds = []
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Adding member to slice",
                             self.sa.modify_slice_membership,
                             slice_urn, creds, options)
@@ -838,6 +863,7 @@ class Framework(Framework_Base):
         options = {'fields' : fields}
         if (expiration):
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver creation",
                       self.sa.create_sliver_info, creds, options)
         self._log_results(res, "Create sliver info")
@@ -859,6 +885,7 @@ class Framework(Framework_Base):
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Lookup sliver urn",
                             self.sa.lookup_sliver_info, creds, options)
         self._log_results((res, mess), 'Find sliver urn')
@@ -869,6 +896,7 @@ class Framework(Framework_Base):
         creds = []
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
         options = {'fields' : fields}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver update", \
                 self.sa.update_sliver_info, sliver_urn, creds, options)
         self._log_results(res, "Update sliver info")
@@ -877,6 +905,7 @@ class Framework(Framework_Base):
     def db_delete_sliver_info(self, sliver_urn):
         creds = []
         options = {}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver delete",
                       self.sa.delete_sliver_info, sliver_urn, creds, options)
         self._log_results(res, "Delete sliver info")
@@ -885,6 +914,7 @@ class Framework(Framework_Base):
         slivers_by_agg = {}
         creds = []
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Find slivers for slice", \
                           self.sa.lookup_sliver_info, creds, options)
 
