@@ -51,6 +51,7 @@ from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 from omnilib.util.files import *
+from omnilib.util.credparsing import *
 
 from geni.util import rspec_util, urn_util
 
