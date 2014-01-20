@@ -296,6 +296,8 @@ class CHCallHandler(object):
         Not supported by all frameworks."""
         if len(args) > 0:
             username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
         else:
             username = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not username:
@@ -319,6 +321,7 @@ class CHCallHandler(object):
         return retStr, slices
 
     def listkeys(self, args):
+
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
         Not supported by all frameworks, and some frameworks insist on only the current user."""
@@ -327,6 +330,8 @@ class CHCallHandler(object):
             username = args[0].strip()
             if username == "":
                 username = None
+        if username is None and self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
         if username is None:
             printusername = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not printusername:
