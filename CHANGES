@@ -42,6 +42,7 @@ gcf 2.5:
     `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
+  - Handle empty range of VLANs in VLANRange (#471)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
@@ -50,6 +51,9 @@ gcf 2.5:
 
  * acceptance tests
   - `get_ch_version` should return an `int` for `api`, not a `float` (#449)
+ 
+ * omni-configure
+  - added Kentucky as a CH/SA authority (#453)
 
 gcf 2.4.2:
  v2.4.2 contains changes to support running omni on Windows.
