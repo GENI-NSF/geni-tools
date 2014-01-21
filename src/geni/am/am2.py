@@ -596,17 +596,24 @@ class ReferenceAggregateManager(object):
         return header
 
     def manifest_slice(self, slice_urn):
-        tmpl = '<node client_id="%s"/>'
+        tmpl = '<node client_id="%s" sliver_uuid="%s" sliver_id="%s"/>'
         result = ""
-        for cid in self._slices[slice_urn].resources.keys():
-            result = result + tmpl % (cid)
+        for cid, sliver_uuid in self._slices[slice_urn].resources.items():
+            resource = None
+            sliver_urn = None
+            for res in self._agg.resources:
+                if res.id == sliver_uuid:
+                    sliver_urn = res.urn()
+            result = result + tmpl % (cid, sliver_uuid, sliver_urn)
         return result
 
     def manifest_footer(self):
         return '</rspec>'
 
     def manifest_rspec(self, slice_urn):
-        return self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer()
+        return self.manifest_header() + \
+            self.manifest_slice(slice_urn) + \
+            self.manifest_footer()
 
     def resource_urn(self, resource):
         urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
