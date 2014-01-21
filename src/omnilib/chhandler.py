@@ -41,7 +41,7 @@ from sfa.util.xrn import get_leaf
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
-from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn
+from omnilib.util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick
 
 class CHCallHandler(object):
     """
@@ -296,8 +296,10 @@ class CHCallHandler(object):
         Not supported by all frameworks."""
         if len(args) > 0:
             username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
         else:
-            username = get_leaf(_get_user_urn(self))
+            username = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not username:
                 self._raise_omni_error("listmyslices failed to find your username")
 
@@ -318,26 +320,50 @@ class CHCallHandler(object):
 
         return retStr, slices
 
+    def listkeys(self, args):
+
+        """Provides a list of SSH public keys registered at the CH for the specified user,
+        or the current user if not specified.
+        Not supported by all frameworks, and some frameworks insist on only the current user."""
+        username = None
+        if len(args) > 0:
+            username = args[0].strip()
+            if username == "":
+                username = None
+        if username is None and self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
+        if username is None:
+            printusername = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not printusername:
+                self._raise_omni_error("listkeys failed to find your username")
+        else:
+            printusername = username
+
+        retStr = ""
+        (keys, message) = self.framework.list_ssh_keys(username)
+        if keys is None or (len(keys) == 0 and message is not None):
+            keys = []
+            self.logger.error("Failed to list keys for you")
+            if message and message.strip() != "":
+                retStr += "Failed to list keys - Server error: %s. " % message
+            else:
+                retStr += "Failed to list keys - Server error. "
+
+        elif len(keys) > 0:
+            self.logger.info("User %s has key(s): \n\t%s"%(printusername, "\n\t".join(keys)))
+        else:
+            self.logger.info("User %s has NO keys.", printusername)
+
+        # summary
+        retStr += "Found %d key(s) for user %s.\n"%(len(keys), printusername)
+
+        return retStr, keys
+
+
     def listmykeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the current user.
         Not supported by all frameworks."""
-
-        retStr = ""
-        (keys, message) = _do_ssl(self.framework, None, "List Keys from Slice Authority", self.framework.list_my_ssh_keys)
-        if keys is None:
-            # only end up here if call to _do_ssl failed
-            keys = []
-            self.logger.error("Failed to list keys for you")
-            retStr += "Server error: %s. " % message
-        elif len(keys) > 0:
-            self.logger.info("User has key(s): \n\t%s"%("\n\t".join(keys)))
-        else:
-            self.logger.info("User has NO keys.")
-
-        # summary
-        retStr += "Found %d key(s) for user.\n"%(len(keys))
-
-        return retStr, keys
+        return self.listkeys(args)
 
     def getusercred(self, args):
         """Retrieve your user credential. Useful for debugging.
@@ -526,6 +552,97 @@ class CHCallHandler(object):
         # Log if the slice expires soon
         retVal = _print_slice_expiration(self, urn, cred)
         return retVal, retVal
+
+    def listslivers(self, args):
+        """List all slivers of the given slice by aggregate"""
+        if len(args) == 0 or args[0] is None or args[0].strip() == "":
+            self._raise_omni_error("listslivers requires a slice name argument")
+        slice_name = args[0]
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+        slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
+
+        if len(slivers_by_agg) == 0:
+            result_string = "No slivers found for slice %s" % slice_urn
+        else:
+            result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
+            for agg_urn in slivers_by_agg:
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                result_string += "Aggregate: " + agg_urn
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                if agg_nickname:
+                    result_string += " ( %s )" % agg_nickname
+                result_string += "\n"
+                for sliver_urn in slivers_by_agg[agg_urn]:
+                    result_string += "    Sliver: " + sliver_urn + "\n"
+                result_string += "\n"
+
+        return result_string, slivers_by_agg
+
+    def listmembersofslice(self, args):
+        """List all the members of a slice
+        Args: slicename
+        Side effect: prints out via logger the members and their info
+        Return summary string and success
+        """
+        if len(args) != 1 or args[0] is None or args[0].strip() == "":
+            self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
+        slice_name = args[0]
+
+        # convert the slice name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        # Try to get all the members of this slice
+        (members, message) = _do_ssl(self.framework, None, "List members of slice %s" % slice_name, self.framework.get_members_of_slice, slice_urn)
+
+        if members and members[0]:
+            prtStr = "Members in slice %s are:\n" % (slice_name)
+            for i, member in enumerate(members[0]):
+                prtStr += 'Member ' + str(i + 1) + ':\n'
+                prtStr += '   URN = ' + member['URN'] + '\n'
+                prtStr += '   Email = ' + member['EMAIL'] + '\n'
+                prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to find members of slice %s" % (slice_name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', members
+
+    def addmembertoslice(self, args):
+        """Add a member to a slice
+        Args: slicename membername [optional: role name, default 'MEMBER']
+        Return summary string and whether successful
+        """
+        if len(args) != 2 and len(args) != 3:
+            self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
+        slice_name = args[0].strip()
+        member_name = args[1].strip()
+        if len(args) == 3:
+            role = args[2].strip()
+        else:
+            role = 'MEMBER'
+
+        # convert the slice and member name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+        member_urn = self.framework.member_name_to_urn(member_name)
+
+        # Try to add the member to the slice
+        ((success, message), m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_urn, role)
+
+        if success:
+            prtStr = "Member %s is now a %s in slice %s" % (member_name, role, slice_name)
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to add member %s to slice %s" % (member_name, slice_name)
+            if message and message.strip() != "":
+                prtStr += ". " + message
+            if m2 and m2.strip() != "":
+                prtStr += ". " + m2
+            self.logger.warn(prtStr)
+        return prtStr + '\n', success
 
 #########
 ## Helper functions follow

@@ -75,6 +75,13 @@ def _derefAggNick(handler, aggregateNickname):
 
     return url,urn
 
+# Lookup aggregate nickname by aggregate_urn or aggregate_url
+def _lookupAggNick(handler, aggregate_urn_or_url):
+    for nick, agg_data in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url in agg_data:
+            return nick
+    return None
+
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
     try:
@@ -222,6 +229,26 @@ def _get_slice_cred(handler, urn):
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
     (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
+    if type(cred) is dict:
+        # Validate the cred inside the struct
+        if not cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa':
+            handler.logger.error("Non SFA slice credential returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        elif not cred.has_key('geni_value'):
+            handler.logger.error("Malformed slice credential struct returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        if cred is not None:
+            icred = cred['geni_value']
+            if icred is not None and (not (type(icred) is str and icred.startswith("<"))):
+                handler.logger.error("Got invalid SFA slice credential for slice %s: %s" % (urn, icred))
+                cred = None
+                message = "Invalid slice credential returned"
+
+        # FIXME: If this is API v2, unwrap the cred? I _think_ all callers handle this appropriately without doing so
+
+        return (cred, message)
     if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
         #elif slice_cred is not XML that looks like a credential, assume
         # assume it's an error message, and raise an omni_error
@@ -640,14 +667,14 @@ def _is_user_cert_expired(handler):
         return True
     return False
 
-def _get_user_urn(handler):
+def _get_user_urn(logger, config):
     # create a gid
     usergid = None
     try:
-        usergid = GID(filename=handler.framework.config['cert'])
+        usergid = GID(filename=config['cert'])
     except Exception, e:
-        handler.logger.debug("Failed to create GID from %s: %s",
-                             handler.framework.config['cert'], e)
+        logger.debug("Failed to create GID from %s: %s",
+                             config['cert'], e)
     # do get_urn
     if usergid:
         return usergid.get_urn()

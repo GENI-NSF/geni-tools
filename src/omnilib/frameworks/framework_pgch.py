@@ -24,8 +24,9 @@
 from omnilib.frameworks.framework_pg import Framework as pg_framework
 from omnilib.util.dossl import _do_ssl
 from omnilib.util import OmniError
+from omnilib.util.handler_utils import _get_user_urn
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
-from sfa.util.xrn import urn_to_hrn
+from sfa.util.xrn import urn_to_hrn, hrn_to_urn
 
 import logging
 from urlparse import urlparse
@@ -208,3 +209,41 @@ class Framework(pg_framework):
 #                versionstruct['sa-version'] = sa_response
 
         return versionstruct, message
+
+    def list_ssh_keys(self, username=None):
+        if username is None or username.strip() == "":
+            username = _get_user_urn(self.logger, self.config)
+        if not is_valid_urn(username):
+            hrn = self.user_name_to_hrn(username)
+            username = hrn_to_urn(hrn, 'user')
+        self.logger.debug("Looking up user %s" % username)
+        key_list, message = self._list_ssh_keys(username)
+        return key_list, message
+
+    def _find_geni_ams(self, cm_dicts):
+        """Finds ComponentManagers that also support the GENI AM API.
+        Returns a list of dicts containing those CMs that implement the AM API.
+        The AM URL is included in the dict in the key 'am_url'.
+        """
+        result = list()
+        for cm_dict in cm_dicts:
+            if cm_dict.has_key("url"):
+                cm_url = cm_dict['url']
+            else:
+                self.logger.error("Missing url key for CM %s", cm_dict)
+                continue
+            if not cm_dict.has_key("urn"):
+                self.logger.error("Missing urn key for CM %s", cm_dict)
+                cm_dict["urn"] = ''
+            self.logger.debug('Checking for AM at %s', cm_url)
+            am_url = self._cm_to_am(cm_url)
+            self.logger.debug('AM URL = %s', am_url)
+
+            # Removed code to test that the URL is something that
+            # speaks the AM API - expensive and at our portal
+            # shouldn't be necessary
+
+            cm_dict['am_url'] = am_url
+            result.append(cm_dict)
+        return result
+

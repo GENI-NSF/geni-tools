@@ -74,6 +74,12 @@ class Framework_Base():
         Returns the usercred - in XML string format.
         """
         
+        try:
+            if self.user_cred_struct is not None:
+                pass
+        except:
+            self.user_cred_struct = None
+
         # read the usercred from supplied file
         cred = None
         if opts.usercredfile and os.path.exists(opts.usercredfile) and os.path.isfile(opts.usercredfile) and os.path.getsize(opts.usercredfile) > 0:
@@ -88,6 +94,12 @@ class Framework_Base():
                 cred = f.read()
             try:
                 cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+                if cred and isinstance(cred, dict) and \
+                        cred.has_key('geni_type') and \
+                        cred.has_key('geni_value') and \
+                        cred['geni_type'] == 'geni_sfa' and \
+                        cred['geni_value'] is not None:
+                    self.user_cred_struct = cred
             except Exception, e:
                 logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
             cred2 = credutils.get_cred_xml(cred)
@@ -158,12 +170,12 @@ class Framework_Base():
         """
         raise NotImplementedError('list_my_slices')
 
-    def list_my_ssh_keys(self):
+    def list_ssh_keys(self, username=None):
         """
-        Get a list of SSH public keys for this user.
+        Get a list of SSH public keys for the given user or the configured current user if not specified.
         Returns: a list of SSH public keys
         """
-        raise NotImplementedError('list_my_ssh_keys')
+        raise NotImplementedError('list_ssh_keys')
 
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
@@ -246,3 +258,37 @@ class Framework_Base():
         Wrap the given cred in the appropriate struct for this framework.
         """
         raise NotImplementedError('wrap_cred')
+
+    # get the slice members (urn, email) and their public ssh keys
+    def get_members_for_slice(self, slice_urn):
+        raise NotImplementedError('get_members_for_slice')
+
+    # add a new member to a slice (giving them rights to get a slice credential)
+    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+        raise NotImplementedError('add_member_to_slice')
+
+    # Record new slivers at the CH database 
+    def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
+                              aggregate_urn, expiration):
+        raise NotImplementedError('db_create_sliver_info')
+
+    # use the CH database to convert an aggregate url to the corresponding urn
+    def db_agg_url_to_urn(self, agg_url):
+        raise NotImplementedError('db_agg_url_to_urn')
+
+    # given the slice urn and aggregate urn, find the associated sliver urns from the CH db
+    def db_find_sliver_urns(self, slice_urn, aggregate_urn):
+        raise NotImplementedError('db_find_sliver_urn')
+
+    # update the expiration time on a sliver at the CH
+    def db_update_sliver_info(self, sliver_urn, expiration):
+        raise NotImplementedError('db_update_sliver_info')
+
+    # delete the sliver from the CH database of slivers in a slice
+    def db_delete_sliver_info(self, sliver_urn):
+        raise NotImplementedError('db_delete_sliver_info')
+
+    # Return a dictionary of all slivers for a given slice indexed by aggregate_urn
+    def db_find_slivers_for_slice(self, slice_urn):
+        return {}
+        

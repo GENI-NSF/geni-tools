@@ -48,7 +48,6 @@ def main(argv=None):
     username = args[0].strip()
   else:
     username = None
-#    username = sfa.util.xrn.get_leaf(omnilib.util.handler_utils._get_user_urn(self))
 #    if not username:
 #      sys.exit( "Must provide a username as the first argument of script" )
 

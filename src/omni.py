@@ -83,8 +83,12 @@
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
        On fail: [string None] = omni.py renewslice SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
+       [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
+       [string listOfSSHPublicKeys] = omni.py listkeys USER
+       [string dictionary AM URN->list of sliver URNs] = omni.py listslivers SLICENAME
+       [string FIXME] = omni.py listmembersofslice SLICENAME
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
@@ -116,6 +120,7 @@ import omnilib.frameworks.framework_of
 import omnilib.frameworks.framework_pg
 import omnilib.frameworks.framework_pgch
 import omnilib.frameworks.framework_sfa
+import omnilib.frameworks.framework_chapi
 
 OMNI_VERSION="2.5"
 
@@ -817,6 +822,9 @@ def getParser():
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
+ \t\t\t listkeys [optional: username]\n\
+ \t\t\t listslivers <slicename>\n\
+ \t\t\t listmembersofslice <slicename>\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\

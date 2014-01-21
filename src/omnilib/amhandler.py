@@ -45,14 +45,16 @@ from omnilib.util.abac import get_abac_creds, save_abac_creds, save_proof, \
         is_ABAC_framework
 import omnilib.util.credparsing as credutils
 from omnilib.util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
-    _derefRSpecNick, \
+    _derefRSpecNick, _get_user_urn, \
     _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
     _getRSpecOutput, _writeRSpec, _printResults, _load_cred
 from omnilib.util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 import omnilib.xmlrpc.client
 from omnilib.util.files import *
+from omnilib.util.credparsing import *
 
 from geni.util import rspec_util, urn_util
+
 
 class BadClientException(Exception):
     ''' Internal only exception thrown if AM speaks wrong AM API version'''
@@ -1755,6 +1757,28 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
+            # register sliver in the SA database if able to do so
+            try:
+                agg_urn = self.framework.db_agg_url_to_urn(url)
+                creator = _get_user_urn(self.logger, self.framework.config)
+                manifest = result
+                while True:
+                    idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
+                    if idx1 < 0: break # No more slivers
+                    idx2 = manifest.find('"', idx1) + 1 # Start of URN
+                    idx3 = manifest.find('"', idx2) # End of URN
+                    sliver_urn = manifest[idx2 : idx3]
+                    manifest = manifest[idx3+1:]
+                    if not agg_urn:
+                        idx1 = sliver_urn.find('sliver+')
+                        agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                    self.framework.db_create_sliver_info(sliver_urn, urn, \
+                                                             creator, agg_urn, slice_exp)
+            except NotImplementedError, nie:
+                self.logger.info('Framework doesnt handle slivers in SA database')
+            except Exception, e:
+                self.logger.warn('Error writing sliver to SA database')
+
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
                 # Figure out the login name
@@ -2186,6 +2210,27 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
+                # record results in SA database
+                try:
+                    creator = _get_user_urn(self.logger, self.framework.config)
+                    slivers = self._getSliverResultList(realresult)
+                    for sliver in slivers:
+                        if not (isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn')):
+                            continue
+                        sliver_urn = sliver['geni_sliver_urn']
+                        agg_urn = client.urn
+#                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                        if not agg_urn:
+                            idx1 = sliver_urn.find('sliver+')
+                            agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
+                        self.framework.db_create_sliver_info(sliver_urn, \
+                              urn, creator, agg_urn, sliver['geni_expires'])
+                except NotImplementedError, nie:
+                    self.logger.info('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.warn('Error writing sliver to SA database')
+
                 # Print out the result
                 if isinstance(realresult, dict):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
@@ -2577,6 +2622,21 @@ class AMCallHandler(object):
                 if gotALAP:
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
                 self.logger.info(prStr)
+
+                try:
+                    agg_urn = client.urn
+#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
+                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                    for sliver_urn in sliver_urns:
+                        self.framework.db_update_sliver_info(sliver_urn,
+                                                             newExp)
+                except NotImplementedError, nie:
+                    self.logger.info('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.warn('Error updating sliver in SA database')
+
                 if numClients == 1:
                     retVal += prStr + "\n"
                 successCnt += 1
@@ -2783,6 +2843,20 @@ class AMCallHandler(object):
                         firstCount = len(sliverExps[time])
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
+
+                # record results in SA database
+                try:
+                    slivers = self._getSliverResultList(res)
+                    for sliver in slivers:
+                        if isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn') and \
+                           sliver.has_key('geni_expires'):
+                            self.framework.db_update_sliver_info \
+                             (sliver['geni_sliver_urn'], sliver['geni_expires'])
+                except NotImplementedError, nie:
+                    self.logger.info('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.warn('Error updating sliver in SA database')
 
                 # Save results
                 if isinstance(res, dict):
@@ -3260,6 +3334,21 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s on %s at %s" % (urn,
                                                            client.urn,
                                                            client.url)
+
+                # delete sliver info from SA database
+                try:
+                    agg_urn = client.urn
+#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
+                    if not agg_urn:
+                        self.logger.error("Could not find aggregate in database")
+                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                    for sliver_urn in sliver_urns:
+                        self.framework.db_delete_sliver_info(sliver_urn)
+                except NotImplementedError, nie:
+                    self.logger.info('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.warn('Error deleting sliver in SA database')
+
                 if numClients == 1:
                     retVal = prStr
                 self.logger.info(prStr)
@@ -3420,6 +3509,20 @@ class AMCallHandler(object):
                 self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
             if realres is not None:
+
+                # record results in SA database
+                try:
+                    slivers = self._getSliverResultList(realres)
+                    for sliver in slivers:
+                        if isinstance(sliver, dict) and \
+                           sliver.has_key('geni_sliver_urn'):
+                            self.framework.db_delete_sliver_info \
+                                (sliver['geni_sliver_urn'])
+                except NotImplementedError, nie:
+                    self.logger.info('Framework doesnt handle slivers in SA database')
+                except Exception, e:
+                    self.logger.warn('Error deleting sliver in SA database')
+
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
                                                            client.url)
@@ -4288,6 +4391,13 @@ class AMCallHandler(object):
 
         # Get a slice cred, handle it being None
         (slice_cred, message) = _get_slice_cred(self, urn)
+
+        # Unwrap the slice cred if it is wrapped and this is an API < 3
+        if self.opts.api_version < 3 and slice_cred is not None:
+            slice_cred = get_cred_xml(slice_cred)
+            if slice_cred is None:
+                message = "No valid SFA slice credential returned"
+
         if slice_cred is None:
             msg = 'Cannot do %s for %s: Could not get slice credential: %s' % (methodname, urn, message)
             if self.opts.devmode:

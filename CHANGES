@@ -30,10 +30,11 @@ gcf 2.5:
   - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
     set the default path to your saved user and slice credentials (#434)
   - Handle ~ in `usercredfile` and `slicecredfile` (#455)
-  - Return error on SA error in listslices (#456)
-  - Allow PerformOperationalAction on v2 AMs (#412)
+  - Return error on SA error in `listslices` (#456)
+  - Allow `PerformOperationalAction` on v2 AMs (#412)
   - Fix circular imports in RSpecParser and objects (#459)
   - Omni cred_util uses an omni logger (#460)
+  - Support querying for other users' SSH keys where the CH supports it (#472)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
