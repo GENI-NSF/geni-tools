@@ -1777,7 +1777,7 @@ class AMCallHandler(object):
             except NotImplementedError, nie:
                 self.logger.info('Framework doesnt handle slivers in SA database')
             except Exception, e:
-                self.logger.warn('Error writing sliver to SA database')
+                self.logger.warn('Error writing sliver to SA database %s' % e)
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
