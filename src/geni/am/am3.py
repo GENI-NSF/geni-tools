@@ -100,7 +100,7 @@ def isGeniCred(cred):
         msg = msg % (type(cred))
         raise ApiErrorException(AM_API.BAD_ARGS, msg)
     return ('geni_type' in cred
-            and str(cred['geni_type']).lower() == 'geni_sfa')
+            and str(cred['geni_type']).lower() in ['geni_sfa', 'geni_abac'])
 
 class AM_API(object):
     BAD_ARGS = 1
@@ -317,7 +317,8 @@ class ReferenceAggregateManager(object):
             self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                     credentials,
                                                     None,
-                                                    privileges)
+                                                    privileges,
+                                                    options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -413,7 +414,8 @@ class ReferenceAggregateManager(object):
             creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                             credentials,
                                                             slice_urn,
-                                                            privileges)
+                                                            privileges,
+                                                            options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -509,7 +511,8 @@ class ReferenceAggregateManager(object):
             creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                             credentials,
                                                             the_slice.urn,
-                                                            privileges)
+                                                            privileges,
+                                                            options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -570,7 +573,8 @@ class ReferenceAggregateManager(object):
             self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                     credentials,
                                                     the_slice.urn,
-                                                    privileges)
+                                                    privileges,
+                                                    options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -613,7 +617,8 @@ class ReferenceAggregateManager(object):
             _ = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                         credentials,
                                                         the_slice.urn,
-                                                        privileges)
+                                                        privileges,
+                                                        options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -692,7 +697,8 @@ class ReferenceAggregateManager(object):
             self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                     credentials,
                                                     the_slice.urn,
-                                                    privileges)
+                                                    privileges,
+                                                    options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -734,7 +740,8 @@ class ReferenceAggregateManager(object):
             self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                     credentials,
                                                     the_slice.urn,
-                                                    privileges)
+                                                    privileges,
+                                                    options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -802,7 +809,8 @@ class ReferenceAggregateManager(object):
             creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                             credentials,
                                                             the_slice.urn,
-                                                            privileges)
+                                                            privileges,
+                                                            options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
@@ -847,7 +855,8 @@ class ReferenceAggregateManager(object):
             self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                     credentials,
                                                     slice_urn,
-                                                    privileges)
+                                                    privileges,
+                                                    options)
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 

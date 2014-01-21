@@ -90,6 +90,21 @@ def is_valid_v3(logger, credString):
         logger.warn("Exception parsing cred to get target_urn: %s", exc)
         return False
 
+# Determine if cred is geni_sfa or geni_abac based on type
+# return cred_type and cred_version
+# Currently we only recognize two types: SFA (version 3) and ABAC (version 1)
+def get_cred_type(cred):
+    is_abac = False
+    doc = md.parseString(cred)
+    type_elts = doc.getElementsByTagName('type')
+    if len(type_elts)  == 1 and type_elts[0].childNodes[0].nodeValue == 'abac':
+        is_abac = True
+    if is_abac:
+        return 'geni_abac', 1
+    else:
+        return 'geni_sfa', 3
+
+
 # Want to rule out ABAC
 # Want to rule out geni_sfa v2 if possible
 
@@ -290,10 +305,8 @@ def is_cred_xml(cred):
         else:
             return False
 
-        targetnode = credEle.getElementsByTagName("target_urn")[0]
-        if len(targetnode.childNodes) > 0:
-            urn = str(targetnode.childNodes[0].nodeValue)
-        else:
+        targetnode = credEle.getElementsByTagName("target_gid")[0]
+        if not targetnode:
             return False
     except Exception, exc:
         return False

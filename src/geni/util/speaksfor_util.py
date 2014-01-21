@@ -227,10 +227,15 @@ def determine_speaks_for(credentials, caller_cert, options, \
     if 'speaking_for' in options:
         speaking_for_urn = options['speaking_for']
         for cred in credentials:
-            if cred['geni_type'] != 'geni_abac': continue
+            if type(cred) == 'dict':
+                if cred['geni_type'] != 'geni_abac': continue
+                cred_value = cred['geni_value']
+            else:
+                if cred.find('abac') < 0: continue
+                cred_value = cred
             is_valid_speaks_for, user_cert, msg = \
-                verify_speaks_for(cred['geni_value'], \
-                                      caller_cert, speaking_for_urn, \
+                verify_speaks_for(cred_value,
+                                  caller_cert, speaking_for_urn, \
                                       trusted_roots)
             if is_valid_speaks_for:
                 return user_cert # speaks-for

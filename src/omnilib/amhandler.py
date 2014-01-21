@@ -1861,7 +1861,6 @@ class AMCallHandler(object):
         using the slice credential saved in the given file
         omni.py -V3 -a http://myaggregate/url -a http://myother/aggregate --end-time 20120909 -o --outputfile myslice-manifest-%a.json --slicecredfile mysaved-myslice-slicecred.xml allocate myslice my-request-rspec.xml
         """
-
         if self.opts.api_version < 3:
             if self.opts.devmode:
                 self.logger.warn("Trying Allocation with AM API v%d...", self.opts.api_version)
@@ -4547,7 +4546,7 @@ class AMCallHandler(object):
         # To support Speaks For, allow specifying the URN of the user
         # the tool is speaking for. 
         if self.opts.speaksfor:
-            options["geni_experimenter_urn"] = self.opts.speaksfor
+            options["speaking_for"] = self.opts.speaksfor
 
         if self.opts.api_version > 1 and self.opts.alap:
             if op in ('Renew', 'RenewSliver'):

@@ -749,9 +749,9 @@ class Framework(Framework_Base):
         elif not isinstance(cred, str):
             self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
             cred = str(cred)
-        ret = dict(geni_type="geni_sfa", geni_version="2", geni_value=cred)
-        if credutils.is_valid_v3(self.logger, cred):
-            ret["geni_version"] = "3"
+        cred_type, cred_version = credutils.get_cred_type(cred)
+        ret = dict(geni_type=cred_type, geni_version=cred_version, \
+                       geni_value=cred)
         return ret
 
     def get_version(self):
