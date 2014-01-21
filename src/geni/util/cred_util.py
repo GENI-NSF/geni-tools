@@ -151,7 +151,7 @@ class CredentialVerifier(object):
             determine_speaks_for( \
             cred_strings, # May include ABAC speaks_for credential
             gid_string, # Caller cert (may be the tool 'speaking for' user)
-            options, # May include 'speaking_for' option with user URN
+            options, # May include 'geni_speaking_for' option with user URN
             root_certs
             )
         if speaksfor_gid_string != gid_string:

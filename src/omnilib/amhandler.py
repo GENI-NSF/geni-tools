@@ -4546,7 +4546,7 @@ class AMCallHandler(object):
         # To support Speaks For, allow specifying the URN of the user
         # the tool is speaking for. 
         if self.opts.speaksfor:
-            options["speaking_for"] = self.opts.speaksfor
+            options["geni_speaking_for"] = self.opts.speaksfor
 
         if self.opts.api_version > 1 and self.opts.alap:
             if op in ('Renew', 'RenewSliver'):

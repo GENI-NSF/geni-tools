@@ -224,8 +224,8 @@ def verify_speaks_for(cred, tool_cert, speaking_for_urn, \
 #   trusted_root directory
 def determine_speaks_for(credentials, caller_cert, options, \
                              trusted_roots):
-    if 'speaking_for' in options:
-        speaking_for_urn = options['speaking_for']
+    if 'geni_speaking_for' in options:
+        speaking_for_urn = options['geni_speaking_for']
         for cred in credentials:
             if type(cred) == 'dict':
                 if cred['geni_type'] != 'geni_abac': continue
@@ -276,7 +276,7 @@ if __name__ == "__main__":
               'geni_version' : '1'}]
     cert = determine_speaks_for(creds, \
                                     tool_cert, \
-                                    {'speaking_for' : user_urn}, \
+                                    {'geni_speaking_for' : user_urn}, \
                                     trusted_roots)
     print "CERT URN = %s" % extract_urn_from_cert(sfa.trust.certificate.Certificate(string=cert))
 
