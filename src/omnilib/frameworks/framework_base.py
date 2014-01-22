@@ -260,8 +260,8 @@ class Framework_Base():
         raise NotImplementedError('wrap_cred')
 
     # get the slice members (urn, email) and their public ssh keys
-    def get_members_for_slice(self, slice_urn):
-        raise NotImplementedError('get_members_for_slice')
+    def get_members_of_slice(self, slice_urn):
+        raise NotImplementedError('get_members_of_slice')
 
     # add a new member to a slice (giving them rights to get a slice credential)
     def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
