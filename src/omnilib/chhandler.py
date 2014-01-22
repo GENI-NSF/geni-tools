@@ -583,7 +583,7 @@ class CHCallHandler(object):
         Args: slicename
         Return summary string and dictionary of members
         """
-        if len(args) != 1 or args[0] is None or args[0].strip() == "":
+        if len(args) < 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
         slice_name = args[0]
 
