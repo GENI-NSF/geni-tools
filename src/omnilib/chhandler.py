@@ -581,8 +581,7 @@ class CHCallHandler(object):
     def listmembersofslice(self, args):
         """List all the members of a slice
         Args: slicename
-        Side effect: prints out via logger the members and their info
-        Return summary string and success
+        Return summary string and dictionary of members
         """
         if len(args) != 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
@@ -593,16 +592,16 @@ class CHCallHandler(object):
         slice_urn = self.framework.slice_name_to_urn(slice_name)
 
         # Try to get all the members of this slice
-        (members, message) = _do_ssl(self.framework, None, "List members of slice %s" % slice_name, self.framework.get_members_of_slice, slice_urn)
+        members, message = self.framework.get_members_of_slice(slice_urn)
 
-        if members and members[0]:
+        if members and len(members) > 0:
             prtStr = "Members in slice %s are:\n" % (slice_name)
-            for i, member in enumerate(members[0]):
+            for i, member in enumerate(members):
                 prtStr += 'Member ' + str(i + 1) + ':\n'
                 prtStr += '   URN = ' + member['URN'] + '\n'
                 prtStr += '   Email = ' + member['EMAIL'] + '\n'
                 prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
-            self.logger.info(prtStr)
+#            self.logger.info(prtStr)
         else:
             prtStr = "Failed to find members of slice %s" % (slice_name)
             if message != "":
@@ -630,7 +629,12 @@ class CHCallHandler(object):
         member_urn = self.framework.member_name_to_urn(member_name)
 
         # Try to add the member to the slice
-        ((success, message), m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_urn, role)
+        (res, m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_urn, role)
+        if res is None:
+            success = False
+            message = None
+        else:
+            (success, message) = res
 
         if success:
             prtStr = "Member %s is now a %s in slice %s" % (member_name, role, slice_name)
