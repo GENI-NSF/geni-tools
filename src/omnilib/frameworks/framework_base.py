@@ -264,7 +264,7 @@ class Framework_Base():
         raise NotImplementedError('get_members_of_slice')
 
     # add a new member to a slice (giving them rights to get a slice credential)
-    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+    def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         raise NotImplementedError('add_member_to_slice')
 
     # Record new slivers at the CH database 

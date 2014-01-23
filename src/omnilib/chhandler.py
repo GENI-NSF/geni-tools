@@ -559,7 +559,11 @@ class CHCallHandler(object):
             self._raise_omni_error("listslivers requires a slice name argument")
         slice_name = args[0]
         slice_urn = self.framework.slice_name_to_urn(slice_name)
-        slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
+
+        try:
+            slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listslivers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 
         if len(slivers_by_agg) == 0:
             result_string = "No slivers found for slice %s" % slice_urn
@@ -578,21 +582,24 @@ class CHCallHandler(object):
 
         return result_string, slivers_by_agg
 
-    def listmembersofslice(self, args):
+    def listslicemembers(self, args):
         """List all the members of a slice
         Args: slicename
         Return summary string and dictionary of members
         """
         if len(args) < 1 or args[0] is None or args[0].strip() == "":
-            self._raise_omni_error('listmembersofslice missing args: Supply <slice name>')
+            self._raise_omni_error('listslicemembers missing args: Supply <slice name>')
         slice_name = args[0]
 
         # convert the slice name to a framework urn
         # FIXME: catch errors getting URN's to give prettier error msg?
         slice_urn = self.framework.slice_name_to_urn(slice_name)
 
-        # Try to get all the members of this slice
-        members, message = self.framework.get_members_of_slice(slice_urn)
+        try:
+            # Try to get all the members of this slice
+            members, message = self.framework.get_members_of_slice(slice_urn)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listslicemembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 
         if members and len(members) > 0:
             prtStr = "Members in slice %s are:\n" % (slice_name)
@@ -626,10 +633,9 @@ class CHCallHandler(object):
         # convert the slice and member name to a framework urn
         # FIXME: catch errors getting URN's to give prettier error msg?
         slice_urn = self.framework.slice_name_to_urn(slice_name)
-        member_urn = self.framework.member_name_to_urn(member_name)
 
         # Try to add the member to the slice
-        (res, m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_urn, role)
+        (res, m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_name, role)
         if res is None:
             success = False
             message = None
@@ -644,7 +650,10 @@ class CHCallHandler(object):
             if message and message.strip() != "":
                 prtStr += ". " + message
             if m2 and m2.strip() != "":
-                prtStr += ". " + m2
+                if "NotImplementedError" in m2:
+                    prtStr += ". Framework type %s does not support add_member_to_slice." % self.config['selected_framework']['type']
+                else:
+                    prtStr += ". " + m2
             self.logger.warn(prtStr)
         return prtStr + '\n', success
 

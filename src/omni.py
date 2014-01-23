@@ -88,7 +88,7 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string dictionary AM URN->list of sliver URNs] = omni.py listslivers SLICENAME
-       [string FIXME] = omni.py listmembersofslice SLICENAME
+       [string FIXME] = omni.py listslicemembers SLICENAME
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
@@ -825,7 +825,7 @@ def getParser():
  \t\t\t listmykeys \n\
  \t\t\t listkeys [optional: username]\n\
  \t\t\t listslivers <slicename>\n\
- \t\t\t listmembersofslice <slicename>\n\
+ \t\t\t listslicemembers <slicename>\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\

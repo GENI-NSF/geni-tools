@@ -33,6 +33,8 @@ from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
 import sfa.trust.gid as gid
 
+import datetime
+import dateutil
 import os
 import string
 import sys
@@ -656,6 +658,58 @@ class Framework(Framework_Base):
         auth = self.config['authority']
         return URN(auth, "user", name).urn_string()
 
+    def get_slice_expiration(self, urn):
+        scred = []
+        options = {'match': 
+                   {'SLICE_URN': urn,
+#                    'SLICE_EXPIRED': 'f',
+                    }}
+        options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
+        self.logger.debug("Submitting with options %s", options)
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+        res = None
+        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.ch_url)),\
+                                     self.sa.lookup_slices, scred, options)
+        slice_expiration = None
+        msg = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    if d.has_key(urn):
+                        if d[urn].has_key('SLICE_EXPIRED'):
+                            expired = d[urn]['SLICE_EXPIRED']
+                        if d[urn].has_key('SLICE_EXPIRATION'):
+                            slice_expiration = d[urn]['SLICE_EXPIRATION']
+                            exp = dateutil.parser.parse(slice_expiration)
+                            if exp < datetime.datetime.utcnow():
+#                                if not expired:
+#                                    self.logger.debug('CH says it is not expired, but expiration is in past?')
+                                self.logger.warn("Slice %s expired at %s", urn, slice_expiration)
+#                            elif expired:
+#                                self.logger.debug('CH says slice expired, but expiration %s is not in past?', slice_expiration)
+                            return exp
+                    else:
+                        self.logger.error("Slice %s was not found - has it already expired?" % urn)
+                else:
+                    self.logger.error("Malformed response from lookup slice: %s", d)
+            else:
+                msg = "Server Error looking up slice %s" % urn
+                if res['code'] == 3 and "Unknown slice urns" in res['output']:
+                    msg += " - unknown slice"
+                else:
+                    msg += ". Code %d: %s" % ( res['code'], res['output'])
+                    if message and message.strip() != "":
+                        msg = msg + " (%s)" % message
+                self.logger.error(msg)
+        else:
+            msg = "Server Error looking up slice %s" % urn
+            if message is not None and message.strip() != "":
+                msg = msg + ". %s" % message
+            self.logger.error(msg)
+
+        return None
+
     def renew_slice(self, urn, expiration_dt):
         """Renew a slice.
 
@@ -692,53 +746,11 @@ class Framework(Framework_Base):
 
         if b:
             # Fetch new expiration and make sure it is what was requested
-
-            options = {'match': 
-                       {'SLICE_URN': urn,
-                        'SLICE_EXPIRED': 'f',
-                        }}
-            options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
-            self.logger.debug("Submitting with options %s", options)
-
-            scred, options = \
-                self._add_credentials_and_speaksfor(scred, options)
-
-            (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.ch_url)),\
-                                         self.sa.lookup_slices, scred, options)
-            slice_expiration = None
-            msg = None
-            if res is not None:
-                if res['code'] == 0:
-                    d = res['value']
-                    if d is not None:
-                        if d.has_key(urn) and \
-                                d[urn].has_key('SLICE_EXPIRATION'):
-                            slice_expiration = d[urn]['SLICE_EXPIRATION']
-                            exp = dateutils.parser.parse(slice_expiration)
-                            if exp < datetime.datetime.utcnow():
-                                self.logger.warn("Slice %s appears expired at %s", urn, slice_expiration)
-                        else:
-                            self.logger.error("Slice %s was not found - has it already expired?" % urn)
-                    else:
-                        self.logger.error("Malformed response from lookup slice: %s", d)
-                else:
-                    msg = "Server Error looking up slice %s" % urn
-                    if res['code'] == 3 and "Unknown slice urns" in res['output']:
-                        msg += " - unknown slice"
-                    else:
-                        msg += ". Code %d: %s" % ( res['code'], res['output'])
-                        if message and message.strip() != "":
-                            msg = msg + " (%s)" % message
-                    self.logger.error(msg)
-            else:
-                msg = "Server Error looking up slice %s" % urn
-                if message is not None and message.strip() != "":
-                    msg = msg + ". %s" % message
-                self.logger.error(msg)
+            slice_expiration = self.get_slice_expiration(urn)
 
             if slice_expiration is not None:
                 try:
-                    sliceexp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                    sliceexp = naiveUTC(slice_expiration)
                     # If request is diff from sliceexp then log a warning
                     if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
                         self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
@@ -871,6 +883,17 @@ class Framework(Framework_Base):
 
         creds = []
         slice_urn = self.slice_name_to_urn(urn)
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
         options = {'match': 
                    {'SLICE_URN': slice_urn,
                     'SLICE_EXPIRED': 'f',  # FIXME: This gets ignored
@@ -881,7 +904,7 @@ class Framework(Framework_Base):
                             self.sa.lookup_slice_members, slice_urn, 
                             creds, options)
         members = []
-        logr = self._log_results((res, mess), 'Get members for %s slice %s' % (self.fwtype, slice_urn))
+        logr = self._log_results((res, mess), 'Get members for %s slice %s%s' % (self.fwtype, slice_urn, expmess))
         if logr == True:
             if res['value']:
                 for member_vals in res['value']:
@@ -894,16 +917,18 @@ class Framework(Framework_Base):
                     members.append(member)
         else:
             mess = logr
+        if (not mess or mess.strip() == "") and expmess != "":
+            mess = expmess
         return members, mess
 
     # add a new member to a slice
-    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+    def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         # FIXME: SA should not allow modifying the membership of an
         # expired slice
 
         creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
-        member_urn = self.member_name_to_urn(member_urn)
+        member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
 #        options['match'] = {'SLICE_URN': slice_urn,
@@ -1012,14 +1037,25 @@ class Framework(Framework_Base):
         if not is_valid_urn(aggregate_urn):
             self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
             return []
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Lookup slivers in %s at %s" % (slice_urn, aggregate_urn),
+        res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
                             self.sa.lookup_sliver_info, creds, options)
-        logr = self._log_results((res, mess), 'Lookup slivers in %s at %s' % (slice_urn, aggregate_urn))
+        logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
         if logr == True:
             return res['value'].keys()
         else:
@@ -1064,13 +1100,24 @@ class Framework(Framework_Base):
         slivers_by_agg = {}
         creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Find slivers for slice %s" % slice_urn, \
+        res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
                           self.sa.lookup_sliver_info, creds, options)
 
-        logr = self._log_results((res, mess), "Find slivers for slice %s" % slice_urn)
+        logr = self._log_results((res, mess), "Find slivers for slice %s%s" % (slice_urn,expmess))
  
         if logr == True:
             for sliver_urn, sliver_info in res['value'].items():
