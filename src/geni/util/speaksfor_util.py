@@ -56,6 +56,7 @@ def get_certs_in_directory(dir):
 
 # Pull the keyid (sha1 hash of the bits of the cert public key) from given cert
 def get_cert_keyid(cert):
+    
     # Write cert to tempfile
     cert_file = write_to_tempfile(cert)
 
@@ -227,7 +228,7 @@ def determine_speaks_for(credentials, caller_cert, options, \
     if 'geni_speaking_for' in options:
         speaking_for_urn = options['geni_speaking_for']
         for cred in credentials:
-            if type(cred) == 'dict':
+            if type(cred) == dict:
                 if cred['geni_type'] != 'geni_abac': continue
                 cred_value = cred['geni_value']
             else:
@@ -303,10 +304,16 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
         '</credential>\n' + \
         signature_block + \
         '</signed-credential>\n'
-    expiration = "EXP"
+
+
+    credential_duration = datetime.timedelta(days=365)
+    expiration = datetime.datetime.now(du_tz.tzutc()) + credential_duration
     version = "1.1"
-    user_keyid = "USER"
-    tool_keyid = "TOOL"
+
+    user_cert = open(user_cert_file).read()
+    tool_cert = open(tool_cert_file).read()
+    user_keyid = get_cert_keyid(user_cert)
+    tool_keyid = get_cert_keyid(tool_cert)
     unsigned_cred = template % (expiration, version, \
                                     user_keyid, user_keyid, tool_keyid)
     unsigned_cred_fd, unsigned_cred_filename = tempfile.mkstemp()
@@ -330,7 +337,7 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
     else:
         print "Created ABAC creadential %s speaks_for %s in file %s" % \
             (tool_urn, user_urn, cred_filename)
-#    os.unlink(unsigned_cred_filename)
+    os.unlink(unsigned_cred_filename)
 
 # Test procedure
 if __name__ == "__main__":
