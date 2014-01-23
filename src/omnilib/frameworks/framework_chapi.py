@@ -923,10 +923,12 @@ class Framework(Framework_Base):
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
-        # FIXME: SA should not allow modifying the membership of an
-        # expired slice
-
         creds = []
+        role2 = str(role).upper()
+        if role2 == 'LEAD':
+            raise Exception("Cannot add a lead to a slice. Try role 'ADMIN'")
+        if role2 not in ['LEAD','ADMIN', 'MEMBER', 'AUDITOR']:
+            raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
         slice_urn = self.slice_name_to_urn(slice_urn)
         member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
@@ -938,6 +940,9 @@ class Framework(Framework_Base):
         res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s" %  (member_urn, self.fwtype, slice_urn),
                             self.sa.modify_slice_membership,
                             slice_urn, creds, options)
+
+        # FIXME: do own result checking to detect DUPLICATE
+
         logr = self._log_results((res, mess), 'Add member %s to %s slice %s' % (member_urn, self.fwtype, slice_urn))
         if logr == True:
             success = logr
