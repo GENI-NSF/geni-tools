@@ -590,10 +590,16 @@ class ReferenceAggregateManager(object):
         return header
 
     def manifest_slice(self, slice_urn):
-        tmpl = '<node client_id="%s"/>'
+        tmpl = '<node client_id="%s" component_id="%s" component_manager_id="%s" sliver_id="%s"/>' 
         result = ""
-        for cid in self._slices[slice_urn].resources.keys():
-            result = result + tmpl % (cid)
+        for cid, sliver_uuid in self._slices[slice_urn].resources.items():
+            resource = None
+            sliver_urn = None
+            for res in self._agg.resources:
+                if res.id == sliver_uuid:
+                    sliver_urn = res.urn() 
+                    resource_urn = self.resource_urn(res)
+            result = result + tmpl % (cid, resource_urn, self._my_urn, sliver_urn)
         return result
 
     def manifest_footer(self):
