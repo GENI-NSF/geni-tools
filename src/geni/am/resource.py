@@ -60,7 +60,7 @@ class Resource(object):
         # User in SliverStatus
         # NAMESPACE has no business here. The URN should be at an upper level, not here.
         RESOURCE_NAMESPACE = 'geni//gpo//gcf'
-        publicid = 'IDN %s sliver %s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
+        publicid = 'IDN %s sliver %s-%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
