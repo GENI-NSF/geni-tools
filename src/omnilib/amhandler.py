@@ -1757,27 +1757,15 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
-            # register sliver in the SA database if able to do so
+            # record new slivers in the SA database if able to do so
             try:
-                agg_urn = self.framework.db_agg_url_to_urn(url)
-                creator = _get_user_urn(self.logger, self.framework.config)
-                manifest = result
-                while True:
-                    idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
-                    if idx1 < 0: break # No more slivers
-                    idx2 = manifest.find('"', idx1) + 1 # Start of URN
-                    idx3 = manifest.find('"', idx2) # End of URN
-                    sliver_urn = manifest[idx2 : idx3]
-                    manifest = manifest[idx3+1:]
-                    if not agg_urn:
-                        idx1 = sliver_urn.find('sliver+')
-                        agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                    self.framework.db_create_sliver_info(sliver_urn, urn, \
-                                                             creator, agg_urn, slice_exp)
+                self.framework.db_create_sliver_info(result, urn, 
+                                                     url, slice_exp, None, client.urn)
             except NotImplementedError, nie:
-                self.logger.info('Framework doesnt handle slivers in SA database')
+                self.logger.debug('Framework %s doesnt record slivers in SA database', self.config['selected_framework']['type'])
             except Exception, e:
-                self.logger.warn('Error writing sliver to SA database')
+                self.logger.warn('Error recording new slivers in SA database')
+                self.logger.debug(e)
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -2210,26 +2198,17 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-                # record results in SA database
+                # record new slivers in SA database if possible
                 try:
-                    creator = _get_user_urn(self.logger, self.framework.config)
-                    slivers = self._getSliverResultList(realresult)
-                    for sliver in slivers:
-                        if not (isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn')):
-                            continue
-                        sliver_urn = sliver['geni_sliver_urn']
-                        agg_urn = client.urn
-#                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
-                        if not agg_urn:
-                            idx1 = sliver_urn.find('sliver+')
-                            agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                        self.framework.db_create_sliver_info(sliver_urn, \
-                              urn, creator, agg_urn, sliver['geni_expires'])
+                    self.framework.db_create_sliver_info(None, urn, 
+                                                         client.url,
+                                                         slice_exp,
+                                                         slivers, client.urn)
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt record slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error writing sliver to SA database')
+                    self.logger.warn('Error recording new slivers in SA database')
+                    self.logger.debug(e)
 
                 # Print out the result
                 if isinstance(realresult, dict):
