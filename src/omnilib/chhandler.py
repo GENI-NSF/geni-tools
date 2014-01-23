@@ -585,7 +585,8 @@ class CHCallHandler(object):
     def listslicemembers(self, args):
         """List all the members of a slice
         Args: slicename
-        Return summary string and dictionary of members
+        Return summary string and list of member dictionaries
+        containing KEYS (list), URN, EMAIL
         """
         if len(args) < 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listslicemembers missing args: Supply <slice name>')

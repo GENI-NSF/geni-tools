@@ -88,7 +88,7 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string dictionary AM URN->list of sliver URNs] = omni.py listslivers SLICENAME
-       [string FIXME] = omni.py listslicemembers SLICENAME
+       [string listOfMemberDictionaries] = omni.py listslicemembers SLICENAME
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
