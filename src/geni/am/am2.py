@@ -32,13 +32,14 @@ import datetime
 import dateutil.parser
 import logging
 import os
+import string
 import uuid
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 
 import geni
-from geni.util.urn_util import publicid_to_urn
+from geni.util.urn_util import publicid_to_urn, URN
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from resource import Resource
 from aggregate import Aggregate
@@ -403,16 +404,22 @@ class ReferenceAggregateManager(object):
             theSlice = self._slices[slice_urn]
             # Now calculate the status of the sliver
             res_status = list()
-            resources = self._agg.catalog(slice_urn)
-            for res in resources:
-                self.logger.debug('Resource = %s', str(res))
-                # Gather the status of all the resources
-                # in the sliver. This could be actually
-                # communicating with the resources, or simply
-                # reporting the state of initialized, started, stopped, ...
-                res_status.append(dict(geni_urn=self.resource_urn(res),
-                                       geni_status=res.status,
-                                       geni_error=''))
+            resources = list()
+            for cid, sliver_uuid in theSlice.resources.items():
+                resource = None
+                sliver_urn = None
+                for res in self._agg.resources:
+                    if res.id == sliver_uuid:
+                        self.logger.debug('Resource = %s', str(res))
+                        resources.append(res)
+                        sliver_urn = res.sliver_urn(self._urn_authority, sliver_uuid) 
+                        # Gather the status of all the resources
+                        # in the sliver. This could be actually
+                        # communicating with the resources, or simply
+                        # reporting the state of initialized, started, stopped, ...
+                        res_status.append(dict(geni_urn=sliver_urn,
+                                               geni_status=res.status,
+                                               geni_error=''))
             self.logger.info("Calculated and returning slice %s status", slice_urn)
             result = dict(geni_urn=slice_urn,
                           geni_status=theSlice.status(resources),
@@ -563,7 +570,7 @@ class ReferenceAggregateManager(object):
         resource_id = str(resource.id)
         resource_exclusive = str(False).lower()
         resource_available = str(resource.available).lower()
-        resource_urn = self.resource_urn(resource)
+        resource_urn = resource.urn(self._urn_authority)
         return tmpl % (self._my_urn,
                        resource_id,
                        resource_urn,
@@ -590,15 +597,26 @@ class ReferenceAggregateManager(object):
         return header
 
     def manifest_slice(self, slice_urn):
+        sliceurn = URN(urn=slice_urn)
+        sliceauth = sliceurn.getAuthority()
+        slicename = sliceurn.getName()
+        slivername = sliceauth + slicename # FIXME: really
+        # this should have a timestamp of when reserved to be unique over time
+
+        # Translate any slivername illegal punctation
+        other = '-.:/'
+        table = string.maketrans(other, '-' * len(other))
+        slivername = slivername.translate(table)
+
         tmpl = '<node client_id="%s" component_id="%s" component_manager_id="%s" sliver_id="%s"/>' 
         result = ""
-        for cid, sliver_uuid in self._slices[slice_urn].resources.items():
+        for cid, res_uuid in self._slices[slice_urn].resources.items():
             resource = None
             sliver_urn = None
             for res in self._agg.resources:
-                if res.id == sliver_uuid:
-                    sliver_urn = res.urn() 
-                    resource_urn = self.resource_urn(res)
+                if res.id == res_uuid:
+                    sliver_urn = res.sliver_urn(self._urn_authority, slivername) 
+                    resource_urn = res.urn(self._urn_authority)
             result = result + tmpl % (cid, resource_urn, self._my_urn, sliver_urn)
         return result
 
@@ -607,12 +625,6 @@ class ReferenceAggregateManager(object):
 
     def manifest_rspec(self, slice_urn):
         return self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer()
-
-    def resource_urn(self, resource):
-        urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
-                                            str(resource.type),
-                                            str(resource.id)))
-        return urn
 
 
 class AggregateManager(object):
