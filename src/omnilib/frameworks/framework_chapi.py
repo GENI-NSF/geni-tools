@@ -33,6 +33,8 @@ from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
 import sfa.trust.gid as gid
 
+import datetime
+import dateutil
 import os
 import string
 import sys
@@ -69,6 +71,10 @@ class Framework(Framework_Base):
         self.sa = self.make_client(self.sa_url, self.key, self.cert,
                                    verbose=config['verbose'])
 
+        if not config.has_key('useProjects'):
+            config['useProjects'] = True
+        self.useProjects = config['useProjects']
+
         self.cert = config['cert']
         try:
             self.cert_string = file(self.cert, 'r').read()
@@ -88,23 +94,28 @@ class Framework(Framework_Base):
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
         # FIXME: Tune log messages
-        self.logger.info("GSC self.opts.speaksfor = %s" % self.opts.speaksfor)
-        self.logger.info("GSC self.opts.cred = %s" % self.opts.cred)
+        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = %s" % self.opts.speaksfor)
+        self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
+        if credentials is None:
+            credentials = []
+        if options is None:
+            options = {}
         new_credentials = credentials
         new_options = options
         if self.opts.speaksfor:
-            options['speaking_for'] = self.opts.speaksfor
+            options['speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
         if self.opts.cred:
             for cred_filename in self.opts.cred:
                 try:
                     cred_contents = open(cred_filename).read()
+                    # FIXME: Infer cred type and wrap only as necessary
                     new_cred = {'geni_type' : 'geni_abac',
                                 'geni_value' : cred_contents,
                                 'geni_version' : '1'}
                     new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
-        self.logger.info("GSC new_creds = %s new_options = %s" % (new_credentials, new_options))
+        self.logger.debug("add_c_n_spkfor new_creds = %s new_options = %s" % (new_credentials, new_options))
         return new_credentials, new_options
 
     def get_user_cred(self, struct=False):
@@ -116,11 +127,11 @@ class Framework(Framework_Base):
         if struct==True and self.user_cred_struct is not None:
             return self.user_cred_struct, msg
 
-        creds, options = self._add_credentials_and_speaksfor(creds, options)
-
         if self.user_cred == None:
-            self.logger.debug("Getting user credential from CHAPI MA %s", self.config['ch'])
-            (res, message) = _do_ssl(self, None, ("Get user credential from CHAPI MA %s" % self.ma),
+            creds, options = self._add_credentials_and_speaksfor(creds, options)
+            self.logger.debug("Getting user credential from %s MA %s",
+                              self.fwtype, self.ma_url)
+            (res, message) = _do_ssl(self, None, ("Get user credential from %s %s" % (self.fwtype, self.ch_url)),
                                      self.ma.get_credentials,
                                      self.user_urn,
                                      creds,
@@ -154,11 +165,15 @@ class Framework(Framework_Base):
 
     def get_slice_cred(self, slice_urn, struct=False):
         scred = []
-        options = {}
+        options = {'match': 
+                   {'SLICE_URN': slice_urn,
+                    'SLICE_EXPIRED': 'f',
+                    }}
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_urn, self.config['ch'])),
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s SA %s" % (slice_urn,
+                                                                                            self.fwtype, self.sa_url)),
                                  self.sa.get_credentials, slice_urn, scred, 
                                  options)
 
@@ -191,6 +206,7 @@ class Framework(Framework_Base):
 
     def list_ssh_keys(self, username=None):
         scred = []
+        # FIXME: Use member_name_to_urn?
         fetch_urn = self.user_urn
         if username is None or username.strip() == "":
             username = nameFromURN(self.user_urn)
@@ -207,8 +223,9 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        self.logger.debug("Getting %s SSH keys from CHAPI MA %s", username, self.config['ch'])
-        (res, message) = _do_ssl(self, None, ("Get %s public SSH keys MA %s" % (username, self.ma)),
+        self.logger.debug("Getting %s SSH keys from %s MA %s",
+                          username, self.fwtype, self.ma_url)
+        (res, message) = _do_ssl(self, None, ("Get %s public SSH keys from %s %s" % (username, self.fwtype, self.ch_url)),
                                  self.ma.lookup_keys,
                                  scred,
                                  options)
@@ -255,24 +272,22 @@ class Framework(Framework_Base):
     def create_slice(self, urn):
         scred = []
 
-        if urn is None or urn.strip() == "":
-            self.logger.error("No slice name specified")
+        try:
+            slice_urn = self.slice_name_to_urn(urn)
+        except Exception, e:
+            self.logger.error(e)
             return None
 
         project = None
         auth = None
-        slice_urn = None
-        if is_valid_urn(urn):
-            sURNObj = URN(urn=urn)
-            slice_name = sURNObj.getName()
-            auth = sURNObj.getAuthority()
-            s_auths = string_to_urn_format(auth).split(':')
-            auth = s_auths[0]
+        sURNObj = URN(urn=slice_urn)
+        slice_name = sURNObj.getName()
+        auth = sURNObj.getAuthority()
+        s_auths = string_to_urn_format(auth).split(':')
+        auth = s_auths[0]
+        if len(s_auths) > 1:
             project = s_auths[-1]
             self.logger.debug("From slice URN extracted project %s", project)
-            slice_urn = urn
-        else:
-            slice_name = urn
 
         if project is None:
             if self.opts.project:
@@ -291,13 +306,6 @@ class Framework(Framework_Base):
             auth = self.config['authority'].strip()
             self.logger.debug("From config got authority %s", auth)
 
-        if slice_urn is None:
-            slice_urn = URN(authority=auth + ":" + project, type='slice', name=slice_name).urn_string()
-            self.logger.debug("Constructed urn %s", slice_urn)
-
-        if not is_valid_urn_bytype(slice_urn, 'slice', self.logger):
-            return None
-
         project_urn = None
         if project is not None:
             project_urn = URN(authority = auth,
@@ -310,13 +318,12 @@ class Framework(Framework_Base):
                     }}
         if project_urn is not None:
             options['fields']['SLICE_PROJECT_URN'] = project_urn
-#        if slice_urn is not None:
-#            options['fields']['SLICE_URN'] = slice_urn
+
         self.logger.debug("Submitting with options %s", options)
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Create slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
+        (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.ch_url)),\
                                      self.sa.create_slice, scred, options)
         if res is not None:
             if res['code'] == 0:
@@ -350,9 +357,13 @@ class Framework(Framework_Base):
             self.logger.error(msg)
             return None
 
+        options['match'] = {'SLICE_URN': slice_urn,
+                            'SLICE_EXPIRED': 'f',
+                            }
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),
+        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s %s" % (slice_name,
+                                                                                         self.fwtype, self.ch_url)),
                                  self.sa.get_credentials, slice_urn, scred, 
                                  options)
 
@@ -383,7 +394,7 @@ class Framework(Framework_Base):
         # and print the slice expiration. We could of course skip all that.
 
         if urn is None or urn.strip() == "":
-            return "CHAPI SA does not support deleting slices. No slice name specified"
+            return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
 
@@ -396,8 +407,9 @@ class Framework(Framework_Base):
             auth = sURNObj.getAuthority()
             s_auths = string_to_urn_format(auth).split(':')
             auth = s_auths[0]
-            project = s_auths[-1]
-            self.logger.debug("From slice URN extracted project %s", project)
+            if len(s_auths) > 1:
+                project = s_auths[-1]
+                self.logger.debug("From slice URN extracted project %s", project)
             slice_urn = urn
         else:
             slice_name = urn
@@ -410,11 +422,11 @@ class Framework(Framework_Base):
                 # otherwise, default to 'default_project' in 'omni_config'
                 project = self.config['default_project']
             else:
-                return "CHAPI SA does not support deleting slices. No project specified"
+                return "%s does not support deleting slices. (And no project was specified)" % self.fwtype
 
         if auth is None:
             if not self.config.has_key('authority'):
-                return "CHAPI SA does not support deleting slices. Invalid configuration: no authority defined to construct slice urn"
+                return "%s does not support deleting slices. (And invalid configuration: no authority defined to construct slice urn)" % self.fwtype
             auth = self.config['authority'].strip()
             self.logger.debug("From config got authority %s", auth)
 
@@ -423,14 +435,7 @@ class Framework(Framework_Base):
             self.logger.debug("Constructed urn %s", slice_urn)
 
         if not is_valid_urn_bytype(slice_urn, 'slice', self.logger):
-            return "CHAPI SA does not support deleting slices. Slice urn %s invalid" % slice_urn
-
-        project_urn = None
-        if project is not None:
-            project_urn = URN(authority = auth,
-                              type = 'project',
-                              name = project).urn_string()
-            self.logger.debug("Built project_urn %s", project_urn)
+            return "%s does not support deleting slices. (And slice urn %s invalid)" % (self.fwtype, slice_urn)
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
@@ -441,7 +446,7 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Lookup slice %s on CHAPI SA %s" % (slice_name, self.config['ch'])),\
+        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.ch_url)),\
                                      self.sa.lookup_slices, scred, options)
         slice_expiration = None
         msg = None
@@ -452,15 +457,18 @@ class Framework(Framework_Base):
                     if d.has_key(slice_urn) and \
                                      d[slice_urn].has_key('SLICE_EXPIRATION'):
                         slice_expiration = d[slice_urn]['SLICE_EXPIRATION']
+                        exp = dateutil.parser.parse(slice_expiration)
+                        if exp < dattime.datetime.utcnow():
+                            self.logger.warn("Got expired slice %s at %s?", slice_urn, slice_expiration)
                     else:
                         # Likely the slice is already expired
-                        msg = "CHAPI SA does not support deleting slices. Slice %s was not found - has it already expired?" % slice_name
+                        msg = "%s does not support deleting slices. And Slice %s was not found - has it already expired?" % (self.fwtype, slice_name)
                 else:
                     self.logger.error("Malformed response from lookup slice: %s", d)
-                    msg = "CHAPI SA does not support deleting slices. Server Error looking up slice %s" % slice_name
+                    msg = "%s does not support deleting slices. (And server error looking up slice %s)" % (self.fwtype, slice_name)
             else:
                 # This includes if the slice already exists.
-                msg = "CHAPI SA does not support deleting slices. Server Error looking up slice %s" % slice_name
+                msg = "%s does not support deleting slices. (And server error looking up slice %s)" % (self.fwtype, slice_name)
                 if res['code'] == 3 and "Unknown slice urns" in res['output']:
                     msg += " - unknown slice"
                 else:
@@ -468,12 +476,13 @@ class Framework(Framework_Base):
                     if message and message.strip() != "":
                         msg = msg + " (%s)" % message
         else:
-            msg = "CHAPI SA does not support deleting slices. Server Error looking up slice %s" % slice_name
+            msg = "%s does not support deleting slices. (And server error looking up slice %s)" % (self.fwtype, slice_name)
             if message is not None and message.strip() != "":
                 msg = msg + ". %s" % message
 
         if msg is None:
-            msg = "CHAPI SA does not support deleting slices - delete your resources and let slice %s expire instead" % slice_name
+            msg = "%s does not support deleting slices - delete your resources and let slice %s expire instead" % (self.fwtype,
+                                                                                                                   slice_name)
             if slice_expiration is not None:
                 msg = msg + " at %s UTC." % slice_expiration
             else:
@@ -483,15 +492,15 @@ class Framework(Framework_Base):
     def list_aggregates(self):
         # TODO: list of field names from getVersion - should we get all or assume we have URN and URL
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
-        (res, message) = _do_ssl(self, None, ("List Aggregates at CHAPI CH %s" % self.config['ch']), 
+        (res, message) = _do_ssl(self, None, ("List Aggregates at %s %s" % (self.fwtype, self.ch_url)), 
                                  self.ch.lookup_aggregates,
                                  options
                                  )
-        if message:
+        if message and message.strip() != "":
             self.logger.warn(message)
         aggs = dict()
         if res is not None:
-            if res['value'] is not None:
+            if res['value'] is not None and res['code'] == 0:
                 for d in res['value']:
                     aggs[d['SERVICE_URN']] = d['SERVICE_URL']
             else:
@@ -506,27 +515,14 @@ class Framework(Framework_Base):
 
         scred = []
 
-        if user is None or user.strip() == '':
-            raise Exception('Empty user name')
+        userurn = self.member_name_to_urn(user)
 
-        # construct a urn from that user
-        if is_valid_urn(user):
-            if is_valid_urn_bytype(user, 'user'):
-                userurn = user
-            else:
-                raise Exception("Invalid user urn: %s" % user)
-        else:
-            if not self.config.has_key('authority'):
-                raise Exception("Invalid configuration: no authority defined")
-
-            auth = self.config['authority']
-            userurn = URN(auth, "user", user).urn_string()
-
-        options = {}
-
+        options = {'match': 
+                   {'SLICE_EXPIRED': 'f', # Seems to be ignored
+                        }}
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("List Slices for %s at CHAPI SA %s" % (user, self.config['ch'])), 
+        (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.ch_url)), 
                                     self.sa.lookup_slices_for_member, userurn, scred, options)
 
         slices = None
@@ -535,7 +531,7 @@ class Framework(Framework_Base):
                 slices = res['value']
             else:
                 msg = "Failed to list slices for %s" % user
-                msg += ". %s" % res['output']
+                msg += ". Server said: %s" % res['output']
                 raise Exception(msg)
         else:
             msg = "Failed to list slices for %s" % user
@@ -546,14 +542,17 @@ class Framework(Framework_Base):
         # Return is a struct with the URN
         slicenames = list()
         if slices and isinstance(slices, list):
-            for slice in [tup['SLICE_URN'] for tup in slices]:
+            for tup in slices:
+                slice = tup['SLICE_URN']
                 slicelower = string.lower(slice)
                 if not string.find(slicelower, "+slice+"):
                     self.logger.debug("Skipping non slice URN %s", slice)
                     continue
-#                slicename = slice[string.index(slicelower,"+slice+")
-#                + len("+slice+"):]
                 slicename = slice
+                exp = tup['EXPIRED']
+                if exp == True:
+                    self.logger.debug("Skipping expired slice %s", slice)
+                    continue
                 slicenames.append(slicename)
         return slicenames
 
@@ -563,39 +562,73 @@ class Framework(Framework_Base):
         if name is None or name.strip() == '':
             raise Exception('Empty slice name')
 
+        project = None
+        auth = None
+
         if is_valid_urn(name):
             urn = URN(None, None, None, name)
             if not urn.getType() == "slice":
                 raise Exception("Invalid Slice name: got a non Slice URN %s" % name)
             if not is_valid_urn_bytype(name, 'slice', self.logger):
                 raise Exception("Invalid slice name %s" % name)
+
+            urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+
             # if config has an authority, make sure it matches
             if self.config.has_key('authority'):
                 auth = self.config['authority']
-                urn_fmt_auth = string_to_urn_format(urn.getAuthority())
                 if not urn_fmt_auth.startswith(auth):
                     self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
                     self.logger.info("This may be OK though if you are using delegated slice credentials...")
 #                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
-            return name
 
-        if not self.config.has_key('authority'):
-            raise Exception("Invalid configuration: no authority defined")
+            if self.useProjects:
+                # Make sure the auth has a project
+                s_auths = urn_fmt_auth.split(':')
+                auth = s_auths[0]
+                if len(s_auths) > 1 and s_auths[-1].strip() != "":
+                    project = s_auths[-1]
+                    # FIXME: Validate the project
+                    self.logger.debug("From slice URN extracted project %s", project)
+                    return name
+                else:
+                    # Can we get a project from options or config?
+                    if self.opts.project:
+                        # use the command line option --project
+                        project = self.opts.project
+                        self.logger.warn("Invalid slice URN - no project. Using project from commandline.")
+                    elif self.config.has_key('default_project'):
+                        # otherwise, default to 'default_project' in 'omni_config'
+                        project = self.config['default_project']
+                        self.logger.warn("Invalid slice URN - no project specified. Will use default from config")
+                    else:
+                        raise Exception("Invalid slice URN missing project. Specify a project with --project or a default_project in your omni_config")
 
-        # only require a project if name isn't a URN
-        if self.opts.project:
-            # use the command line option --project
-            project = self.opts.project
-        elif self.config.has_key('default_project'):
-            # otherwise, default to 'default_project' in 'omni_config'
-            project = self.config['default_project']
-        else:
-            # None means there was no project defined
-            # This SA better not use projects!
-            project = None
+                    # Fall through so we can produce a new URN
+                    name = urn.getName()
+            else:
+                # Valid slice URN (not using projects) - use it
+                return name
 
-        auth = self.config['authority']
-        if project:
+        # No valid slice urn provided
+
+        if not auth:
+            if not self.config.has_key('authority'):
+                raise Exception("Invalid configuration: no authority defined")
+            else:
+                auth = self.config['authority']
+        if self.useProjects:
+            if not project:
+                if self.opts.project:
+                    # use the command line option --project
+                    project = self.opts.project
+                    self.logger.debug("Using project from commandline.")
+                elif self.config.has_key('default_project'):
+                    # otherwise, default to 'default_project' in 'omni_config'
+                    project = self.config['default_project']
+                    self.logger.debug("Will use default_project from config")
+                else:
+                    raise Exception("Project name required. Specify a project with --project or a default_project in your omni_config")
             auth = auth + ':' + project
         return URN(auth, "slice", name).urn_string()
 
@@ -625,6 +658,58 @@ class Framework(Framework_Base):
         auth = self.config['authority']
         return URN(auth, "user", name).urn_string()
 
+    def get_slice_expiration(self, urn):
+        scred = []
+        options = {'match': 
+                   {'SLICE_URN': urn,
+#                    'SLICE_EXPIRED': 'f',
+                    }}
+        options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
+        self.logger.debug("Submitting with options %s", options)
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+        res = None
+        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.ch_url)),\
+                                     self.sa.lookup_slices, scred, options)
+        slice_expiration = None
+        msg = None
+        if res is not None:
+            if res['code'] == 0:
+                d = res['value']
+                if d is not None:
+                    if d.has_key(urn):
+                        if d[urn].has_key('SLICE_EXPIRED'):
+                            expired = d[urn]['SLICE_EXPIRED']
+                        if d[urn].has_key('SLICE_EXPIRATION'):
+                            slice_expiration = d[urn]['SLICE_EXPIRATION']
+                            exp = dateutil.parser.parse(slice_expiration)
+                            if exp < datetime.datetime.utcnow():
+#                                if not expired:
+#                                    self.logger.debug('CH says it is not expired, but expiration is in past?')
+                                self.logger.warn("Slice %s expired at %s", urn, slice_expiration)
+#                            elif expired:
+#                                self.logger.debug('CH says slice expired, but expiration %s is not in past?', slice_expiration)
+                            return exp
+                    else:
+                        self.logger.error("Slice %s was not found - has it already expired?" % urn)
+                else:
+                    self.logger.error("Malformed response from lookup slice: %s", d)
+            else:
+                msg = "Server Error looking up slice %s" % urn
+                if res['code'] == 3 and "Unknown slice urns" in res['output']:
+                    msg += " - unknown slice"
+                else:
+                    msg += ". Code %d: %s" % ( res['code'], res['output'])
+                    if message and message.strip() != "":
+                        msg = msg + " (%s)" % message
+                self.logger.error(msg)
+        else:
+            msg = "Server Error looking up slice %s" % urn
+            if message is not None and message.strip() != "":
+                msg = msg + ". %s" % message
+            self.logger.error(msg)
+
+        return None
+
     def renew_slice(self, urn, expiration_dt):
         """Renew a slice.
 
@@ -639,11 +724,15 @@ class Framework(Framework_Base):
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
         options = {'fields':{'SLICE_EXPIRATION':expiration}}
+        options['match'] = {'SLICE_URN': urn,
+                            'SLICE_EXPIRED': 'f',
+                            }
         res = None
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Renew slice %s on CHAPI SA %s until %s" % (urn, self.config['ch'], expiration_dt)), 
+        (res, message) = _do_ssl(self, None, ("Renew slice %s on %s %s until %s" % (urn, 
+                                                                                    self.fwtype, self.ch_url, expiration_dt)), 
                                   self.sa.update_slice, urn, scred, options)
 
         b = False
@@ -656,51 +745,12 @@ class Framework(Framework_Base):
             self.logger.error(message)
 
         if b:
-            # FIXME: Fetch new expiration and make sure it is what was requested
-
-            options = {'match': 
-                       {'SLICE_URN': urn,
-                        'SLICE_EXPIRED': 'f',
-                        }}
-            options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
-            self.logger.debug("Submitting with options %s", options)
-
-            scred, options = \
-                self._add_credentials_and_speaksfor(scred, options)
-
-            (res, message) = _do_ssl(self, None, ("Lookup slice %s on CHAPI SA %s" % (urn, self.config['ch'])),\
-                                         self.sa.lookup_slices, scred, options)
-            slice_expiration = None
-            msg = None
-            if res is not None:
-                if res['code'] == 0:
-                    d = res['value']
-                    if d is not None:
-                        if d.has_key(urn) and \
-                                d[urn].has_key('SLICE_EXPIRATION'):
-                            slice_expiration = d[urn]['SLICE_EXPIRATION']
-                        else:
-                            self.logger.error("Slice %s was not found - has it already expired?" % urn)
-                    else:
-                        self.logger.error("Malformed response from lookup slice: %s", d)
-                else:
-                    msg = "Server Error looking up slice %s" % urn
-                    if res['code'] == 3 and "Unknown slice urns" in res['output']:
-                        msg += " - unknown slice"
-                    else:
-                        msg += ". Code %d: %s" % ( res['code'], res['output'])
-                        if message and message.strip() != "":
-                            msg = msg + " (%s)" % message
-                    self.logger.error(msg)
-            else:
-                msg = "Server Error looking up slice %s" % urn
-                if message is not None and message.strip() != "":
-                    msg = msg + ". %s" % message
-                self.logger.error(msg)
+            # Fetch new expiration and make sure it is what was requested
+            slice_expiration = self.get_slice_expiration(urn)
 
             if slice_expiration is not None:
                 try:
-                    sliceexp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                    sliceexp = naiveUTC(slice_expiration)
                     # If request is diff from sliceexp then log a warning
                     if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
                         self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
@@ -763,15 +813,15 @@ class Framework(Framework_Base):
                  'sa': ('Slice Authority', self.sa_url, self.sa)}
 
         for service in types.keys():
-            (response, message) = _do_ssl(self, None, ("GetVersion of CHAPI %s %s using cert %s" % (types[service][0], types[service][2], self.config['cert'])), types[service][2].get_version)
+            (response, message) = _do_ssl(self, None, ("GetVersion of %s %s %s using cert %s" % (self.fwtype,types[service][0], types[service][2], self.config['cert'])), types[service][2].get_version)
             _ = message #Appease eclipse
             if response is None:
-                self.logger.error("Failed to get version of CHAPI %s: %s", types[service][0], message)
+                self.logger.error("Failed to get version of %s %s: %s", self.fwtype,types[service][0], message)
                 continue
             if isinstance(response, dict) and response.has_key('code'):
                 code = response['code']
                 if code:
-                    self.logger.error("Failed to get version of CHAPI %s: Received error code: %d: %s", types[service][0], code,
+                    self.logger.error("Failed to get version of %s %s: Received error code: %d: %s", self.fwtype,types[service][0], code,
                                       response['output'])
                 else:
                     versionstruct[types[service][0]] = response['value']
@@ -785,16 +835,25 @@ class Framework(Framework_Base):
 
 
     def _get_member_email(self, urn):
+        if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
+            return None
         creds = []
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
         res, mess = _do_ssl(self, None, "Looking up member email",
                             self.ma.lookup_identifying_member_info, creds, options)
-        self._log_results((res, mess), 'Lookup member email')
-        if not res['value']:
+
+        logr = self._log_results((res, mess), 'Lookup member email')
+        if logr == True:
+            if not res['value']:
+                return None
+            else:
+                return res['value'].values()[0]['MEMBER_EMAIL']
+        else:
             return None
-        return res['value'].values()[0]['MEMBER_EMAIL']
 
     def _get_member_keys(self, urn):
+        if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
+            return None
         # FIXME: Duplicates logic in list_ssh_keys, which has more
         # error checking
         creds = []
@@ -804,127 +863,272 @@ class Framework(Framework_Base):
 
         res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
                             self.ma.lookup_keys, creds, options)
-        self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
-        if not res['value']:
+
+        logr = self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
+        if logr == True:
+            if not res['value']:
+                return None
+            else:
+                # FIXME: Check we got answer for requested user
+                # FIXME: Handle a user has no public key
+                return [val['KEY_PUBLIC'] for val in res['value'].values()[0]]
+        else:
             return None
-        return [val['KEY_PUBLIC'] for val in res['value'].values()[0]]
 
     # get the members (urn, email) and their ssh keys
-    def get_members_of_slice(self, slice_urn):
+    def get_members_of_slice(self, urn):
+        # FIXME: This seems to list members even of an expired slice,
+        # if that is the most recent slice by this name
+        # Shouldn't the SA check this?
+
         creds = []
-        options = {}
+        slice_urn = self.slice_name_to_urn(urn)
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
+        options = {'match': 
+                   {'SLICE_URN': slice_urn,
+                    'SLICE_EXPIRED': 'f',  # FIXME: This gets ignored
+                    }}
+
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Looking up slice member",
+        res, mess = _do_ssl(self, None, "Looking up %s slice %s members" % (self.fwtype, slice_urn),
                             self.sa.lookup_slice_members, slice_urn, 
                             creds, options)
-        self._log_results((res, mess), 'Get members for slice')
         members = []
-        for member_vals in res['value']:
-            member_urn = member_vals['SLICE_MEMBER']
-            member = {'URN': member_urn}
-            member['EMAIL'] = self._get_member_email(member_urn)
-            member['KEYS'] = self._get_member_keys(member_urn)
-            members.append(member)
+        logr = self._log_results((res, mess), 'Get members for %s slice %s%s' % (self.fwtype, slice_urn, expmess))
+        if logr == True:
+            if res['value']:
+                for member_vals in res['value']:
+                    member_urn = member_vals['SLICE_MEMBER']
+                    # FIXME: Return this too?
+#                    member_role = member_vals['SLICE_ROLE']
+                    member = {'URN': member_urn}
+                    member['EMAIL'] = self._get_member_email(member_urn)
+                    member['KEYS'] = self._get_member_keys(member_urn)
+                    members.append(member)
+        else:
+            mess = logr
+        if (not mess or mess.strip() == "") and expmess != "":
+            mess = expmess
         return members, mess
 
     # add a new member to a slice
-    def add_member_to_slice(self, slice_urn, member_urn, role = 'MEMBER'):
+    def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         creds = []
+        role2 = str(role).upper()
+        if role2 == 'LEAD':
+            raise Exception("Cannot add a lead to a slice. Try role 'ADMIN'")
+        if role2 not in ['LEAD','ADMIN', 'MEMBER', 'AUDITOR']:
+            raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
+#        options['match'] = {'SLICE_URN': slice_urn,
+#                            'SLICE_EXPIRED': 'f',
+#                            }
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Adding member to slice",
+        res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s" %  (member_urn, self.fwtype, slice_urn),
                             self.sa.modify_slice_membership,
                             slice_urn, creds, options)
-        success = self._log_results((res, mess), 'Add member to slice')
+
+        # FIXME: do own result checking to detect DUPLICATE
+
+        logr = self._log_results((res, mess), 'Add member %s to %s slice %s' % (member_urn, self.fwtype, slice_urn))
+        if logr == True:
+            success = logr
+        else:
+            success = False
+            mess = logr
         return (success, mess)
 
     # handle logging or results for db functions
     def _log_results(self, results, action):
         (res, message) = results
         if res is not None:
-            if res['code'] == 0:
+            if res.has_key('code') and res.has_key('value') and res['code'] == 0:
                 self.logger.debug('Successfully completed ' + action)
                 return True
             else:
-                self.logger.warn(action + ' failed, message: ' + res['output'])
+                msg = action + ' failed'
+                if message and message.strip() != "":
+                    msg += ". " + message
+                if res.has_key('output') and res['output'].strip() !=  "":
+                    msg += ". Server said: " + res['output']
+                self.logger.warn(msg)
+                return msg
         else:
-            self.logger.warn(action + ' failed for unknown reason')
+            msg = action + ' failed'
+            if message and message.strip() != "":
+                msg += ". Server said: " + message
+            else:
+                msg += " for unknown reason"
+            self.logger.warn(msg)
+            return msg
         return False
 
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
                               aggregate_urn, expiration):
         creds = []
+        if sliver_urn is None or sliver_urn.strip() == "":
+            self.logger.warn("Empty sliver_urn to record")
+            return
+        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+            return
+        if aggregate_urn is None or aggregate_urn.strip() == "":
+            self.logger.warn("Empty aggregate for recording new sliver %s" % sliver_urn)
+            # FIXME: Extract from sliver_urn
+            return
+        if not is_valid_urn(aggregate_urn):
+            self.logger.warn("Invalid aggregate URN %s for recording new sliver %s", aggregate_urn, sliver_urn)
+            return
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        if creator_urn is None or creator_urn.strip() == "":
+            creator_urn = self.user_urn
+        creator_urn = self.member_name_to_urn(creator_urn)
         fields = {"SLIVER_INFO_URN": sliver_urn,
                   "SLIVER_INFO_SLICE_URN": slice_urn,
                   "SLIVER_INFO_AGGREGATE_URN": aggregate_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
         options = {'fields' : fields}
         if (expiration):
+            # FIXME: put in naiveUTC? Format as ISO8601 or RFC3339?
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver creation",
+        res = _do_ssl(self, None, "Recording sliver %s creation at %s" % (sliver_urn, self.fwtype),
                       self.sa.create_sliver_info, creds, options)
-        self._log_results(res, "Create sliver info")
+        return self._log_results(res, "Record sliver %s creation at %s" % (sliver_urn, self.fwtype))
 
     # use the database to convert an aggregate url to the corresponding urn
     def db_agg_url_to_urn(self, agg_url):
+        if agg_url is None or agg_url.strip() == "":
+            self.logger.warn("Empty Aggregate URL to look up")
+            return None
+
+        # FIXME: Use the agg nick cache first?
+
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
-        res, mess = _do_ssl(self, None, "Lookup aggregate urn",
+        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s" % (self.fwtype),
                             self.ch.lookup_aggregates, options)
-        self._log_results((res, mess), 'Convert agg url to urn')
-        if len(res['value']) == 0:
+        logr = self._log_results((res, mess), 'Convert aggregate url to urn using %s DB' % (self.fwtype))
+        if logr == True:
+            if len(res['value']) == 0:
+                return None
+            else:
+                return res['value'][0]['SERVICE_URN']
+        else:
             return None
-        return res['value'][0]['SERVICE_URN']
 
-    # given the slice urn and aggregate urn, find the slice urn from the db
+    # given the slice urn and aggregate urn, find the sliver urns from the db
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         creds = []
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        if aggregate_urn is None or aggregate_urn.strip() == "":
+            self.logger.warn("Empty aggregate for querying slivers")
+            # FIXME: Extract from sliver_urn
+            return []
+        if not is_valid_urn(aggregate_urn):
+            self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
+            return []
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
+        # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Lookup sliver urn",
+        res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
                             self.sa.lookup_sliver_info, creds, options)
-        self._log_results((res, mess), 'Find sliver urn')
-        return res['value'].keys()
+        logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
+        if logr == True:
+            return res['value'].keys()
+        else:
+            return []
 
     # update the expiration time on a sliver
     def db_update_sliver_info(self, sliver_urn, expiration):
         creds = []
+        if expiration is None:
+            self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
+            return None
+        # FIXME: put in naiveUTC? Format as ISO8601 or RFC3339?
+        if sliver_urn is None or sliver_urn.strip() == "":
+            self.logger.warn("Empty sliver_urn to update expiration")
+            return
+        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+            return
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
         options = {'fields' : fields}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver update", \
+        res = _do_ssl(self, None, "Recording sliver %s updated expiration" % sliver_urn, \
                 self.sa.update_sliver_info, sliver_urn, creds, options)
-        self._log_results(res, "Update sliver info")
+        return self._log_results(res, "Update sliver %s expiration" % sliver_urn)
 
     # delete the sliver from the chapi database
     def db_delete_sliver_info(self, sliver_urn):
         creds = []
         options = {}
+        if sliver_urn is None or sliver_urn.strip() == "":
+            self.logger.warn("Empty sliver_urn to record deletion")
+            return
+        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver delete",
+        res = _do_ssl(self, None, "Recording sliver %s deleted" % sliver_urn,
                       self.sa.delete_sliver_info, sliver_urn, creds, options)
-        self._log_results(res, "Delete sliver info")
+        return self._log_results(res, "Record sliver %s deleted" % sliver_urn)
 
     def db_find_slivers_for_slice(self, slice_urn):
         slivers_by_agg = {}
         creds = []
+        slice_urn = self.slice_name_to_urn(slice_urn)
+
+        slice_expiration = self.get_slice_expiration(slice_urn)
+
+        expired = False
+        expmess = ""
+        if slice_expiration is not None:
+            exp = naiveUTC(slice_expiration)
+            if exp < naiveUTC(datetime.datetime.utcnow()):
+                expired = True
+                expmess = " (EXPIRED at %s)" % slice_expiration
+
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
+        # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Find slivers for slice", \
+        res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
                           self.sa.lookup_sliver_info, creds, options)
 
-        if res['code'] == 0:
+        logr = self._log_results((res, mess), "Find slivers for slice %s%s" % (slice_urn,expmess))
+ 
+        if logr == True:
             for sliver_urn, sliver_info in res['value'].items():
                 agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
                 if agg_urn not in slivers_by_agg:
                     slivers_by_agg[agg_urn] = []
                 slivers_by_agg[agg_urn].append(sliver_urn)
-
-        self._log_results((res, mess), "Find slivers for slice")
 
         return slivers_by_agg

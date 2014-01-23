@@ -88,7 +88,7 @@
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string dictionary AM URN->list of sliver URNs] = omni.py listslivers SLICENAME
-       [string FIXME] = omni.py listmembersofslice SLICENAME
+       [string listOfMemberDictionaries] = omni.py listslicemembers SLICENAME
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
@@ -379,8 +379,9 @@ def update_agg_nick_cache( opts, logger ):
             os.makedirs( directory )
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
         logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
-    except:
+    except Exception, e:
         logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
+        logger.debug(e)
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
@@ -824,7 +825,7 @@ def getParser():
  \t\t\t listmykeys \n\
  \t\t\t listkeys [optional: username]\n\
  \t\t\t listslivers <slicename>\n\
- \t\t\t listmembersofslice <slicename>\n\
+ \t\t\t listslicemembers <slicename>\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\
