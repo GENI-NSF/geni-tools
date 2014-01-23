@@ -242,7 +242,7 @@ def determine_speaks_for(credentials, caller_cert, options, \
     return caller_cert # Not speaks-for
 
 def create_speaks_for(tool_cert_file, user_cert_file, \
-                          user_key_file, cred_filename):
+                          user_key_file, ma_cert_file, cred_filename):
     tool_cert = \
         sfa.trust.certificate.Certificate(filename=tool_cert_file)
     tool_urn = extract_urn_from_cert(tool_cert)
@@ -264,21 +264,18 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
         '<DigestValue/>\n' + \
         '</Reference>\n' + \
         '</SignedInfo>\n' + \
-        '<SignatureValue></SignatureValue>\n' + \
+        '<SignatureValue/>\n' + \
         '<KeyInfo>\n' + \
         '<KeyValue>\n' + \
         '<RSAKeyValue>\n' + \
-        '<Modulus></Modulus>\n' + \
-        '<Exponent></Exponent>\n' + \
+        '<Modulus/>\n' + \
+        '<Exponent/>\n' + \
         '</RSAKeyValue>\n' + \
         '</KeyValue>\n' + \
         '<X509Data>\n' + \
-        '<X509Certificate></X509Certificate>\n' + \
-        '<X509SubjectName></X509SubjectName>\n' + \
-        '<X509IssuerSerial>\n' + \
-        '<X509IssuerName></X509IssuerName>\n' + \
-        '<X509SerialNumber></X509SerialNumber>\n' + \
-        '</X509IssuerSerial>\n' + \
+        '<X509Certificate/>\n' + \
+        '<X509SubjectName/>\n' + \
+        '<X509IssuerSerial/>\n' + \
         '</X509Data>\n' + \
         '</KeyInfo>\n' + \
 	'</Signature>\n'
@@ -313,15 +310,18 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
     unsigned_cred = template % (expiration, version, \
                                     user_keyid, user_keyid, tool_keyid)
     unsigned_cred_fd, unsigned_cred_filename = tempfile.mkstemp()
-    print "UCF = %s" % unsigned_cred_filename
+#    print "UCF = %s" % unsigned_cred_filename
     os.write(unsigned_cred_fd, unsigned_cred)
     os.close(unsigned_cred_fd)
 
     # Now sign the file with xmlsec1
     # xmlsec1 --sign --privkey-pem privkey.pem,cert.pem 
     # --output signed.xml tosign.xml
-    cmd = ['xmlsec1',  '--sign',  '--privkey-pem', user_key_file, \
-               '--output', cred_filename, unsigned_cred_filename]
+    pems = "%s,%s,%s" % (user_key_file, user_cert_file, ma_cert_file)
+    cmd = ['xmlsec1',  '--sign',  '--privkey-pem', pems, 
+           '--output', cred_filename, unsigned_cred_filename]
+
+#    print " ".join(cmd)
     sign_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     sign_proc.wait()
     sign_proc_output = sign_proc.stdout.read()
@@ -344,6 +344,8 @@ if __name__ == "__main__":
                       help='URN of speaks-for user')
     parser.add_option('--user_cert_file', 
                       help="filename of x509 certificate of signing user")
+    parser.add_option('--ma_cert_file', 
+                      help="filename of x509 certificate of MA that created user cert")
     parser.add_option('--user_key_file', 
                       help="filename of private key of signing user")
     parser.add_option('--trusted_roots_directory', 
@@ -354,9 +356,11 @@ if __name__ == "__main__":
     options, args = parser.parse_args(sys.argv)
 
 
-    if options.create and options.user_cert_file and options.user_key_file:
+    if options.create and options.user_cert_file and options.user_key_file \
+            and options.ma_cert_file:
         create_speaks_for(options.tool_cert_file, options.user_cert_file, \
-                              options.user_key_file, options.create)
+                              options.user_key_file, options.ma_cert_file, \
+                              options.create)
         sys.exit()
 
 
