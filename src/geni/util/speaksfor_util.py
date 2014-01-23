@@ -241,6 +241,97 @@ def determine_speaks_for(credentials, caller_cert, options, \
                 return user_cert # speaks-for
     return caller_cert # Not speaks-for
 
+def create_speaks_for(tool_cert_file, user_cert_file, \
+                          user_key_file, cred_filename):
+    tool_cert = \
+        sfa.trust.certificate.Certificate(filename=tool_cert_file)
+    tool_urn = extract_urn_from_cert(tool_cert)
+    user_cert = \
+        sfa.trust.certificate.Certificate(filename=user_cert_file)
+    user_urn = extract_urn_from_cert(user_cert)
+
+    header = '<?xml version="1.0" encoding="UTF-8"?>'
+    signature_block = \
+	'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">\n' + \
+        '<SignedInfo>\n' + \
+        '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>\n' + \
+        '<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>\n' + \
+        '<Reference URI="#ref0">\n' + \
+        '<Transforms>\n' + \
+        '<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>\n' + \
+        '</Transforms>\n' + \
+        '<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>\n' + \
+        '<DigestValue/>\n' + \
+        '</Reference>\n' + \
+        '</SignedInfo>\n' + \
+        '<SignatureValue></SignatureValue>\n' + \
+        '<KeyInfo>\n' + \
+        '<KeyValue>\n' + \
+        '<RSAKeyValue>\n' + \
+        '<Modulus></Modulus>\n' + \
+        '<Exponent></Exponent>\n' + \
+        '</RSAKeyValue>\n' + \
+        '</KeyValue>\n' + \
+        '<X509Data>\n' + \
+        '<X509Certificate></X509Certificate>\n' + \
+        '<X509SubjectName></X509SubjectName>\n' + \
+        '<X509IssuerSerial>\n' + \
+        '<X509IssuerName></X509IssuerName>\n' + \
+        '<X509SerialNumber></X509SerialNumber>\n' + \
+        '</X509IssuerSerial>\n' + \
+        '</X509Data>\n' + \
+        '</KeyInfo>\n' + \
+	'</Signature>\n'
+    template = header + '\n' + \
+        '<signed-credential>\n' + \
+        '<credential xml:id="ref0">\n' + \
+        '<type>abac</type>\n' + \
+        '<serial/>\n' +\
+        '<owner_gid/>\n' + \
+        '<target_gid/>\n' + \
+        '<uuid/>\n' + \
+        '<expires>%s</expires>' +\
+        '<abac>\n' + \
+        '<rt0>\n' + \
+        '<version>%s</version>\n' + \
+        '<head>\n' + \
+        '<ABACprincipal><keyid>%s</keyid></ABACprincipal>\n' +\
+        '<role>speaks_for_%s</role>\n' + \
+        '</head>\n' + \
+        '<tail>\n' +\
+        '<ABACprincipal><keyid>%s</keyid></ABACprincipal>\n' +\
+        '</tail>\n' +\
+        '</rt0>\n' + \
+        '</abac>\n' + \
+        '</credential>\n' + \
+        signature_block + \
+        '</signed-credential>\n'
+    expiration = "EXP"
+    version = "1.1"
+    user_keyid = "USER"
+    tool_keyid = "TOOL"
+    unsigned_cred = template % (expiration, version, \
+                                    user_keyid, user_keyid, tool_keyid)
+    unsigned_cred_fd, unsigned_cred_filename = tempfile.mkstemp()
+    print "UCF = %s" % unsigned_cred_filename
+    os.write(unsigned_cred_fd, unsigned_cred)
+    os.close(unsigned_cred_fd)
+
+    # Now sign the file with xmlsec1
+    # xmlsec1 --sign --privkey-pem privkey.pem,cert.pem 
+    # --output signed.xml tosign.xml
+    cmd = ['xmlsec1',  '--sign',  '--privkey-pem', user_key_file, \
+               '--output', cred_filename, unsigned_cred_filename]
+    sign_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    sign_proc.wait()
+    sign_proc_output = sign_proc.stdout.read()
+    if sign_proc_output == None:
+        print "OUTPUT = %s" % sign_proc_output
+    else:
+        print "Created ABAC creadential %s speaks_for %s in file %s" % \
+            (tool_urn, user_urn, cred_filename)
+#    os.unlink(unsigned_cred_filename)
+
 # Test procedure
 if __name__ == "__main__":
 
@@ -251,9 +342,25 @@ if __name__ == "__main__":
                       help='Name of file containing tool certificate')
     parser.add_option('--user_urn', 
                       help='URN of speaks-for user')
+    parser.add_option('--user_cert_file', 
+                      help="filename of x509 certificate of signing user")
+    parser.add_option('--user_key_file', 
+                      help="filename of private key of signing user")
     parser.add_option('--trusted_roots_directory', 
                       help='Directory of trusted root certs')
+    parser.add_option('--create',
+                      help="name of file of ABAC speaksfor cred to create")
+                      
     options, args = parser.parse_args(sys.argv)
+
+
+    if options.create and options.user_cert_file and options.user_key_file:
+        create_speaks_for(options.tool_cert_file, options.user_cert_file, \
+                              options.user_key_file, options.create)
+        sys.exit()
+
+
+
     cred_file = options.cred_file
     tool_cert_file = options.tool_cert_file
     user_urn = options.user_urn
