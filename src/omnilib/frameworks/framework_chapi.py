@@ -976,39 +976,108 @@ class Framework(Framework_Base):
             return msg
         return False
 
-    # write new sliver_info to the database using chapi
-    def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
-                              aggregate_urn, expiration):
+    # Helper for actually recording a new sliver with the given expiration
+    def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
+                               creator_urn, expiration):
         creds = []
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record")
-            return
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+            return ""
+        if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
             self.logger.warn("Invalid sliver urn %s", sliver_urn)
-            return
-        if aggregate_urn is None or aggregate_urn.strip() == "":
-            self.logger.warn("Empty aggregate for recording new sliver %s" % sliver_urn)
-            # FIXME: Extract from sliver_urn
-            return
-        if not is_valid_urn(aggregate_urn):
-            self.logger.warn("Invalid aggregate URN %s for recording new sliver %s", aggregate_urn, sliver_urn)
-            return
-        slice_urn = self.slice_name_to_urn(slice_urn)
-        if creator_urn is None or creator_urn.strip() == "":
-            creator_urn = self.user_urn
-        creator_urn = self.member_name_to_urn(creator_urn)
+#                   return ""
+        idx1 = sliver_urn.find('sliver+')
+        auth = sliver_urn[0 : idx1]
+        if not agg_urn:
+            agg_urn = auth + 'authority+cm'
+            if not is_valid_urn(agg_urn):
+                self.logger.warn("Invalid aggregate URN %s for recording new sliver from sliver urn %s", agg_urn, sliver_urn)
+                return ""
+        else:
+            if not agg_urn.startswith(auth):
+                self.logger.debug("Skipping sliver %s that doesn't appear to come from the specified AM %s", sliver_urn,
+                                  agg_urn)
+                return ""
         fields = {"SLIVER_INFO_URN": sliver_urn,
                   "SLIVER_INFO_SLICE_URN": slice_urn,
-                  "SLIVER_INFO_AGGREGATE_URN": aggregate_urn,
+                  "SLIVER_INFO_AGGREGATE_URN": agg_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
         options = {'fields' : fields}
         if (expiration):
             # FIXME: put in naiveUTC? Format as ISO8601 or RFC3339?
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
+        self.logger.debug("Recording new slivers with options %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver %s creation at %s" % (sliver_urn, self.fwtype),
                       self.sa.create_sliver_info, creds, options)
         return self._log_results(res, "Record sliver %s creation at %s" % (sliver_urn, self.fwtype))
+
+    # write new sliver_info to the database using chapi
+    # Manifest is the XML when using APIv1&2 and none otherwise
+    # expiration is the slice expiration
+    # slivers is the return struct from APIv3+ or None
+    # If am_urn is not provided, infer it from the url
+    # If both are not provided, infer the AM from the sliver URNs
+    def db_create_sliver_info(self, manifest, slice_urn,
+                              aggregate_url, expiration, slivers, am_urn):
+        if am_urn and is_valid_urn(am_urn):
+            self.logger.debug("Using AM URN %s", am_urn)
+            agg_urn = am_urn
+        elif aggregate_url is None or aggregate_url.strip() == "":
+            self.logger.warn("Empty aggregate for recording new slivers")
+            # Just get the URN from the manifest?
+            agg_urn = None
+        else:
+            # FIXME: Use agg nick cache
+            agg_urn = self.db_agg_url_to_urn(aggregate_url)
+            if agg_urn and not is_valid_urn(agg_urn):
+                self.logger.warn("Invalid aggregate URN %s for recording new sliver from url %s", agg_urn, aggregate_url)
+                return
+        creator_urn = self.user_urn
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        msg = ""
+
+        if manifest and manifest.strip() != "" and (slivers is None or len(slivers) == 0):
+            # APIv1/2: find slivers in manifest
+            self.logger.debug("Finding new slivers to record in manfiest")
+            # Loop through manifest finding all slivers to record
+            while True:
+                idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
+                if idx1 < 0: break # No more slivers
+                idx2 = manifest.find('"', idx1) + 1 # Start of URN
+                if idx2 == 0:
+                    # didn't find start of sliver id?
+                    self.logger.warn("Malformed sliver_id in rspec? %s", manifest[:30])
+                    manifest = manifest[9:]
+                    continue
+                idx3 = manifest.find('"', idx2) # End of URN
+                if idx3 == 0:
+                    # didn't find end of sliver id?
+                    self.logger.warn("Malformed sliver_id in rspec? %s", manifest[idx2-15:idx2+80])
+                    manifest = manifest[idx2:]
+                    continue
+                sliver_urn = manifest[idx2 : idx3]
+                manifest = manifest[idx3+1:]
+                msg = msg + str(self._record_one_new_sliver(sliver_urn,
+                                                        slice_urn, agg_urn, creator_urn, expiration))
+            # End of while loop over slivers in manifest
+        elif slivers and len(slivers) > 0:
+            # APIv3 style sliver to record
+            self.logger.debug("Recording new slivers in struct")
+            for sliver in slivers:
+                if not (isinstance(sliver, dict) and \
+                            sliver.has_key('geni_sliver_urn')):
+                    continue
+                sliver_urn = sliver['geni_sliver_urn']
+                exp = None
+                if sliver.has_key('geni_expires'):
+                    exp = sliver['geni_expires']
+                msg = msg + str(self._record_one_new_sliver(sliver_urn,
+                                                        slice_urn, agg_urn, creator_urn, exp))
+            # End of loop over slivers
+        # End of if/else block for API Version
+        return msg
 
     # use the database to convert an aggregate url to the corresponding urn
     def db_agg_url_to_urn(self, agg_url):
