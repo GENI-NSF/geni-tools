@@ -1161,10 +1161,12 @@ class Framework(Framework_Base):
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record deletion")
-            return
+# Delete it anyway
+#            return
         if not is_valid_urn_bytype(sliver_urn, 'sliver'):
             self.logger.warn("Invalid sliver urn %s", sliver_urn)
-            return
+# Delete it anyway
+#            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver %s deleted" % sliver_urn,
                       self.sa.delete_sliver_info, sliver_urn, creds, options)
