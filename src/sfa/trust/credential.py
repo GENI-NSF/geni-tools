@@ -229,6 +229,8 @@ def filter_creds_by_caller(creds, caller_hrn_list):
 
 class Credential(object):
 
+    SFA_CREDENTIAL_TYPE = "geni_sfa"
+
     ##
     # Create a Credential object
     #
@@ -250,6 +252,7 @@ class Credential(object):
         self.xml = None
         self.refid = None
         self.legacy = None
+        self.cred_type = Credential.SFA_CREDENTIAL_TYPE
 
         # Check if this is a legacy credential, translate it if so
         if string or filename:
@@ -274,6 +277,8 @@ class Credential(object):
                 break
         if not self.xmlsec_path:
             logger.warn("Could not locate binary for xmlsec1 - SFA will be unable to sign stuff !!")
+
+    def get_cred_type(self): return self.cred_type
 
     def get_subject(self):
         if not self.gidObject:
@@ -713,23 +718,24 @@ class Credential(object):
         self.gidCaller = GID(string=getTextNode(cred, "owner_gid"))
         self.gidObject = GID(string=getTextNode(cred, "target_gid"))   
 
-
         # Process privileges
-        privs = cred.getElementsByTagName("privileges")[0]
         rlist = Rights()
-        for priv in privs.getElementsByTagName("privilege"):
-            kind = getTextNode(priv, "name")
-            deleg = str2bool(getTextNode(priv, "can_delegate"))
-            if kind == '*':
-                # Convert * into the default privileges for the credential's type
-                # Each inherits the delegatability from the * above
-                _ , type = urn_to_hrn(self.gidObject.get_urn())
-                rl = determine_rights(type, self.gidObject.get_urn())
-                for r in rl.rights:
-                    r.delegate = deleg
-                    rlist.add(r)
-            else:
-                rlist.add(Right(kind.strip(), deleg))
+        priv_nodes = cred.getElementsByTagName("privileges")
+        if len(priv_nodes) > 0:
+            privs = priv_nodes[0]
+            for priv in privs.getElementsByTagName("privilege"):
+                kind = getTextNode(priv, "name")
+                deleg = str2bool(getTextNode(priv, "can_delegate"))
+                if kind == '*':
+                    # Convert * into the default privileges for the credential's type
+                    # Each inherits the delegatability from the * above
+                    _ , type = urn_to_hrn(self.gidObject.get_urn())
+                    rl = determine_rights(type, self.gidObject.get_urn())
+                    for r in rl.rights:
+                        r.delegate = deleg
+                        rlist.add(r)
+                    else:
+                        rlist.add(Right(kind.strip(), deleg))
         self.set_privileges(rlist)
 
 

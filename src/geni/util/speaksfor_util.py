@@ -1,3 +1,26 @@
+#----------------------------------------------------------------------
+# Copyright (c) 2014 Raytheon BBN Technologies
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+#
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+# IN THE WORK.
+#----------------------------------------------------------------------
+
 import datetime
 from dateutil import parser as du_parser, tz as du_tz
 import optparse
@@ -6,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 import sfa.trust.certificate
+import sfa.trust.credential
 from xml.dom.minidom import *
 
 # Routine to validate that a speaks-for credential 
@@ -231,6 +255,11 @@ def determine_speaks_for(credentials, caller_cert, options, \
             if type(cred) == dict:
                 if cred['geni_type'] != 'geni_abac': continue
                 cred_value = cred['geni_value']
+            elif isinstance(cred, sfa.trust.credential.Credential):
+                if isinstance(cred, sfa.trust.credential.ABACCredential):
+                    cred_value = cred.get_xml()
+                else:
+                    continue
             else:
                 if cred.find('abac') < 0: continue
                 cred_value = cred
@@ -253,7 +282,8 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
 
     header = '<?xml version="1.0" encoding="UTF-8"?>'
     signature_block = \
-	'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">\n' + \
+        '<signatures>\n' + \
+	'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#" xml:id="Sig_ref0">\n' + \
         '<SignedInfo>\n' + \
         '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>\n' + \
         '<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>\n' + \
@@ -279,7 +309,8 @@ def create_speaks_for(tool_cert_file, user_cert_file, \
         '<X509IssuerSerial/>\n' + \
         '</X509Data>\n' + \
         '</KeyInfo>\n' + \
-	'</Signature>\n'
+	'</Signature>\n' + \
+        '</signatures>'
     template = header + '\n' + \
         '<signed-credential>\n' + \
         '<credential xml:id="ref0">\n' + \
