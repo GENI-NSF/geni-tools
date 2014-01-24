@@ -1010,7 +1010,7 @@ class Framework(Framework_Base):
                   "SLIVER_INFO_CREATOR_URN": creator_urn}
         options = {'fields' : fields}
         if (expiration):
-            # FIXME: put in naiveUTC? Format as ISO8601 or RFC3339?
+            # Note that if no TZ specified, UTC is assumed
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
         self.logger.debug("Recording new slivers with options %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
@@ -1147,19 +1147,31 @@ class Framework(Framework_Base):
         if expiration is None:
             self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
             return None
-        # FIXME: put in naiveUTC? Format as ISO8601 or RFC3339?
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to update expiration")
             return
         if not is_valid_urn_bytype(sliver_urn, 'sliver'):
             self.logger.warn("Invalid sliver urn %s", sliver_urn)
             return
+        # Note that if no TZ is specified, UTC is assumed
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
         options = {'fields' : fields}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
+        self.logger.debug("Passing options %s", options)
         res = _do_ssl(self, None, "Recording sliver %s updated expiration" % sliver_urn, \
                 self.sa.update_sliver_info, sliver_urn, creds, options)
         return self._log_results(res, "Update sliver %s expiration" % sliver_urn)
+
+# Note: Valid 'match' fields for lookup_sliver_info are the same as is
+# passed in create_sliver_info. However, you can only look up by
+# sliver/slice if you are a member of the relevant slice, and only by
+# creator for yourself. Not by the times. These are also the columns returned
+# SLIVER_INFO_URN
+# SLIVER_INFO_SLICE_URN
+# SLIVER_INFO_AGGREGATE_URN
+# SLIVER_INFO_CREATOR_URN
+# SLIVER_INFO_EXPIRATION
+# SLIVER_INFO_CREATION
 
     # delete the sliver from the chapi database
     def db_delete_sliver_info(self, sliver_urn):
@@ -1194,6 +1206,7 @@ class Framework(Framework_Base):
                 expmess = " (EXPIRED at %s)" % slice_expiration
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
+
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
