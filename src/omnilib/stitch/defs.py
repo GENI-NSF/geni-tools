@@ -1,5 +1,7 @@
+#!/usr/bin/env python
+
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -20,18 +22,23 @@
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
 #----------------------------------------------------------------------
+'''Stitching related constants'''
 
-from __future__ import absolute_import
 
-import uuid
+# XML tag constants
+RSPEC_TAG = 'rspec'
+LINK_TAG = 'link'
+NODE_TAG = 'node'
+STITCHING_TAG = 'stitching'
+PATH_TAG = 'path'
+EXPIRES_ATTRIBUTE = 'expires'
+# Capabilities element names
+CONSUMER_VALUE = 'consumer'
+PRODUCER_VALUE = 'producer'
+VLANCONSUMER_VALUE = 'vlanconsumer'
+VLANPRODUCER_VALUE = 'vlanproducer'
 
-from .resource import Resource
+# see geni.util.rspec_schema for namespaces
 
-class FakeVM(Resource):
-    def __init__(self, agg):
-        super(FakeVM, self).__init__(str(uuid.uuid4()), "fakevm")
-        self._agg = agg
-
-    def deprovision(self):
-        """Deprovision this resource at the resource provider."""
-        self._agg.deallocate(container=None, resources=[self])
+# This should go away, its value is no longer used
+LAST_UPDATE_TIME_TAG = "lastUpdateTime"

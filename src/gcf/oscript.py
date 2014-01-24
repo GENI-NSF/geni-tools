@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -85,8 +85,10 @@ from __future__ import absolute_import
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
        On fail: [string None] = omni.py renewslice SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
+       [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
+       [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
 
@@ -108,7 +110,7 @@ from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
 from .omnilib.util.handler_utils import validate_url, printNicknames
 
-OMNI_VERSION="2.4.1"
+OMNI_VERSION="2.5"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -132,10 +134,6 @@ def load_agg_nick_config(opts, logger):
     """Load the agg_nick_cache file.
     Search path:
     - filename from commandline
-      - in current directory
-      - in ~/.gcf
-    - agg_nick_cache in current directory
-    - agg_nick_cache in ~/.gcf
     """
 
     # the directory of this file
@@ -143,54 +141,54 @@ def load_agg_nick_config(opts, logger):
     parent_dir = curr_dir.rsplit("/",1)[0]
 
     # Load up the config file
-    configfiles = ['agg_nick_cache','~/.gcf/agg_nick_cache', os.path.join(parent_dir, 'agg_nick_cache.base')]
+    configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
     
     aggNickCacheExists = False
-    if opts.aggNickCacheName:
-        # if aggNickCacheName defined on commandline does not exist, fail
-        if os.path.exists( opts.aggNickCacheName ):
-            configfiles.insert(0, opts.aggNickCacheName)
-            aggNickCacheExists = True
-        else:
-            # Check maybe the default directory for the file
-            configfile = os.path.join( '~/.gcf', opts.aggNickCacheName )
-            configfile = os.path.expanduser( configfile )
-            if os.path.exists( configfile ):
-                configfiles.insert(0, configfile)
-            else:
-                logger.info("Config file '%s' or '%s' does not exist"
-                     % (opts.aggNickCacheName, configfile))
+    # if aggNickCacheName defined on commandline exists, check it first
+    if os.path.exists( opts.aggNickCacheName ):
+        configfiles.insert(0, opts.aggNickCacheName)
+        aggNickCacheExists = True
+
+    # get date of current file
     if aggNickCacheExists:
         aggNickCacheDate = os.path.getmtime(opts.aggNickCacheName)
         aggNickCacheTimestamp = datetime.datetime.fromtimestamp(aggNickCacheDate)
     else:
         aggNickCacheTimestamp = None
 
-    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate):
+    # update the file if necessary
+    if opts.noAggNickCache or (not aggNickCacheTimestamp and not opts.useAggNickCache) or (aggNickCacheTimestamp and aggNickCacheTimestamp < opts.AggNickCacheOldestDate and not opts.useAggNickCache):
         update_agg_nick_cache( opts, logger )
 
+    # aggNickCacheName may now exist. If so, add it to the front of the list.
+    if not aggNickCacheExists and os.path.exists( opts.aggNickCacheName ):
+        configfiles.insert(0, opts.aggNickCacheName)
+
+    readConfigFile = False
     # Find the first valid config file
     for cf in configfiles:         
         filename = os.path.expanduser(cf)
         if os.path.exists(filename):
-            break
-    config = {}       
-    
-    # Did we find a valid config file?
-    if not os.path.exists(filename):
-        prtStr = """Could not find an agg_nick_cache file in local directory or in ~/.gcf/agg_nick_cache"""
-        logger.info( prtStr )
-        return config
+            config = {}       
 
+            # Did we find a valid config file?
+            if not os.path.exists(filename):
+                prtStr = "Could not find agg_nick_cache file: %s"%filename
+                logger.info( prtStr )
+                continue
+#                return config
 
-    logger.info("Loading agg_nick_cache file '%s'", filename)
-    
-    confparser = ConfigParser.RawConfigParser()
-    try:
-        confparser.read(filename)
-    except ConfigParser.Error as exc:
-        logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
-        raise OmniError, "agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc))
+            logger.info("Loading agg_nick_cache file '%s'", filename)
+
+            confparser = ConfigParser.RawConfigParser()
+            try:
+                confparser.read(filename)
+                readConfigFile = True
+                break
+            except ConfigParser.Error as exc:
+                logger.error("agg_nick_cache file %s could not be parsed: %s"% (filename, str(exc)))
+    if not readConfigFile:
+        raise OmniError, "Failed to read any possible agg_nick_cache file."
 
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     return config
@@ -365,8 +363,12 @@ def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
     store in the specified place."""
     try:
+        # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
+        directory = os.path.dirname(opts.aggNickCacheName)
+        if not os.path.exists( directory ):
+            os.makedirs( directory )
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
         logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
     except:
@@ -652,13 +654,13 @@ def API_call( framework, config, args, opts, verbose=False ):
         headerLen = (70 - (len(s) + 2)) / 4
         header = "- "*headerLen+" "+s+" "+"- "*headerLen
 
-        logger.info( " " + "-"*60 )
+        logger.info( " " + "-"*54 )
         logger.info( header )
         # printed not logged so can redirect output to a file
         #logger.info(retVal)
-#        logger.info( " " + "="*60 )
+#        logger.info( " " + "="*54 )
 #        print retItem
-        logger.info( " " + "="*60 )
+        logger.info( " " + "="*54 )
     # end of if verbose
     
     return retVal, retItem
@@ -770,7 +772,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
-    version +="\nCopyright (c) 2013 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
 def getParser():
@@ -812,6 +814,7 @@ def getParser():
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
+ \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\tOther functions: \n\
@@ -830,10 +833,12 @@ def getParser():
                       help="Only return available resources")
     basicgroup.add_option("-c", "--configfile",
                       help="Config file name (aka `omni_config`)", metavar="FILE")
-    basicgroup.add_option("-f", "--framework", default="",
+    basicgroup.add_option("-f", "--framework", default=os.getenv("GENI_FRAMEWORK", ""),
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
+    basicgroup.add_option("--alap", action="store_true", default=False,
+                          help="Request slivers be renewed as close to the requested time as possible, instead of failing if the requested time is not possible. Default is False.")
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
     basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
@@ -903,10 +908,12 @@ def getParser():
     # If this next is set, then options.output is also set
     filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    filegroup.add_option("--usercredfile", default=os.getenv("GENI_USERCRED", None), metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " + 
+                         "myUserCred.xml -o getusercred'. Defaults to value of 'GENI_USERCRED' environment variable if defined.")
+    filegroup.add_option("--slicecredfile", default=os.getenv("GENI_SLICECRED", None), metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
+                         "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
     # GetVersion
     gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
@@ -969,6 +976,8 @@ def getParser():
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
+    devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
+                        help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
     parser.add_option_group( devgroup )
     return parser
 
@@ -1044,6 +1053,11 @@ def parse_args(argv, options=None, parser=None):
 
     if options.outputfile:
         options.output = True
+
+    if options.usercredfile:
+        options.usercredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.usercredfile)))
+    if options.slicecredfile:
+        options.slicecredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.slicecredfile)))
 
     return options, args
 

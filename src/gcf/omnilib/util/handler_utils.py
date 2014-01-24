@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -63,9 +63,17 @@ def _derefAggNick(handler, aggregateNickname):
         handler.logger.info("Substituting AM nickname %s with URL %s, URN %s", aggregateNickname, url, urn)
     else:
         # if we got here, we are assuming amNick is actually a URL
-        # Print a warning now if it doesn't look a URL
-        if validate_url( amNick ):
-            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)            
+        # Print a warning now if amNick (url) doesn't look like a URL
+        # validate_url returns None if it appears to be a valid URL
+        if validate_url( url ):
+            handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)
+        else:
+            # See if we can find the correct URN by finding the supplied URL in the aggregate nicknames
+            for (amURN, amURL) in handler.config['aggregate_nicknames'].values():
+                if amURL.startswith(url) and amURN.strip() != '':
+                    urn = amURN.strip()
+                    handler.logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", url, urn, amURL)
+                    break
 
     return url,urn
 
@@ -86,9 +94,13 @@ def _derefRSpecNick( handler, rspecNickname ):
         elif handler.config.has_key('default_rspec_location') and handler.config.has_key('default_rspec_extension'):
             handler.logger.info("Looking for RSpec '%s' in the default rspec location" % (rspecNickname))
             try:
-                remoteurl = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
-                handler.logger.info("... which is '%s'" % (remoteurl))
-                contentstr = readFile( remoteurl )            
+                URL_PREFIXES = ("http://", "https://", "ftp://")
+                if handler.config['default_rspec_location'].startswith(URL_PREFIXES):
+                    location = handler.config['default_rspec_location']+"/"+rspecNickname+"."+handler.config['default_rspec_extension']
+                else:
+                    location = os.path.join(handler.config['default_rspec_location'], rspecNickname+"."+handler.config['default_rspec_extension'])
+                handler.logger.info("... which is '%s'" % (location))
+                contentstr = readFile( location )            
             except:
                 raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)
         else:
@@ -431,7 +443,7 @@ def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
         if rspec is not None:
             # FIXME: Diff for dev here?
             logger.warn("No valid RSpec returned: Invalid RSpec? Starts: %s...", str(rspec)[:min(40, len(rspec))])
-            content += "\n<!-- \n" + rspec + "\n -->"
+            content += "\n<!-- \n" + str(rspec) + "\n -->"
             if slicename:
                 retVal = "Invalid RSpec returned for slice %s from %s that starts: %s..." % (slicename, server, str(rspec)[:min(40, len(rspec))])
             else:
@@ -630,14 +642,14 @@ def _is_user_cert_expired(handler):
         return True
     return False
 
-def _get_user_urn(handler):
+def _get_user_urn(logger, config):
     # create a gid
     usergid = None
     try:
-        usergid = GID(filename=handler.framework.config['cert'])
+        usergid = GID(filename=config['cert'])
     except Exception, e:
-        handler.logger.debug("Failed to create GID from %s: %s",
-                             handler.framework.config['cert'], e)
+        logger.debug("Failed to create GID from %s: %s",
+                             config['cert'], e)
     # do get_urn
     if usergid:
         return usergid.get_urn()

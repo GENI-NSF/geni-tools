@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -162,9 +162,10 @@ def findUsersAndKeys( ):
         # private keys (foo)
         username = user['urn'].split('+')[-1]
         keyList[username] = []
-        privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
+        privuserkeys = string.replace(user['keys'], ".pub","")
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
+            key = key.strip()
             if not os.path.exists(os.path.expanduser(key)):
                 if options.include_keys:
                     print "Key file [%s] does NOT exist." % key

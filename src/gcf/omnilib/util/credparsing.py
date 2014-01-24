@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -36,7 +36,7 @@ import xml.dom.minidom as md
 def is_valid_v3(logger, credString):
     '''Is the given credential a valid geni_sfa style v3 credential?'''
     if not logger:
-        logger = logging.getLogger("omnilib.credparsing")
+        logger = logging.getLogger("omni.credparsing")
 
     if not credString:
         logger.warn("None credString - not geni_sfa v3")

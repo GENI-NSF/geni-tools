@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -81,8 +81,12 @@ class CallHandler(object):
         elif hasattr(self.amhandler, call):
             # Try to auto-correct API version
             msg = self.amhandler._correctAPIVersion(args)
+            if msg is None:
+                msg = ""
 
             (message, val) = getattr(self.amhandler,call)(args[1:])
+            if message is None:
+                message = ""
             return (msg+message, val)
         else:
             self._raise_omni_error('Unknown function: %s' % call)

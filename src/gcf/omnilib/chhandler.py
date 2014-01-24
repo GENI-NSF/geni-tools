@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -299,7 +299,7 @@ class CHCallHandler(object):
         if len(args) > 0:
             username = args[0].strip()
         else:
-            username = get_leaf(_get_user_urn(self))
+            username = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not username:
                 self._raise_omni_error("listmyslices failed to find your username")
 
@@ -320,26 +320,47 @@ class CHCallHandler(object):
 
         return retStr, slices
 
+    def listkeys(self, args):
+        """Provides a list of SSH public keys registered at the CH for the specified user,
+        or the current user if not specified.
+        Not supported by all frameworks, and some frameworks insist on only the current user."""
+        username = None
+        if len(args) > 0:
+            username = args[0].strip()
+            if username == "":
+                username = None
+        if username is None:
+            printusername = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not printusername:
+                self._raise_omni_error("listkeys failed to find your username")
+        else:
+            printusername = username
+
+        retStr = ""
+        (keys, message) = self.framework.list_ssh_keys(username)
+        if keys is None or (len(keys) == 0 and message is not None):
+            keys = []
+            self.logger.error("Failed to list keys for you")
+            if message and message.strip() != "":
+                retStr += "Failed to list keys - Server error: %s. " % message
+            else:
+                retStr += "Failed to list keys - Server error. "
+
+        elif len(keys) > 0:
+            self.logger.info("User %s has key(s): \n\t%s"%(printusername, "\n\t".join(keys)))
+        else:
+            self.logger.info("User %s has NO keys.", printusername)
+
+        # summary
+        retStr += "Found %d key(s) for user %s.\n"%(len(keys), printusername)
+
+        return retStr, keys
+
+
     def listmykeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the current user.
         Not supported by all frameworks."""
-
-        retStr = ""
-        (keys, message) = _do_ssl(self.framework, None, "List Keys from Slice Authority", self.framework.list_my_ssh_keys)
-        if keys is None:
-            # only end up here if call to _do_ssl failed
-            keys = []
-            self.logger.error("Failed to list keys for you")
-            retStr += "Server error: %s. " % message
-        elif len(keys) > 0:
-            self.logger.info("User has key(s): \n\t%s"%("\n\t".join(keys)))
-        else:
-            self.logger.info("User has NO keys.")
-
-        # summary
-        retStr += "Found %d key(s) for user.\n"%(len(keys))
-
-        return retStr, keys
+        return self.listkeys(args)
 
     def getusercred(self, args):
         """Retrieve your user credential. Useful for debugging.
@@ -369,7 +390,7 @@ class CHCallHandler(object):
             (cred, message) = self.framework.get_user_cred()
         credxml = credutils.get_cred_xml(cred)
         if cred is None or credxml is None or credxml == "":
-            msg = "Got no valid user credential from framework: %s" % message
+            msg = "Got no valid user credential from clearinghouse: %s" % message
             if self.opts.devmode:
                 self.logger.warn(msg + " ... but continuing")
                 credxml = cred

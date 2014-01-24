@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -95,8 +95,12 @@ class AMCallHandler(object):
 
         # Try to auto-correct API version
         msg = self._correctAPIVersion(args)
+        if msg is None:
+            msg = ""
 
         (message, val) = getattr(self,call)(args[1:])
+        if message is None:
+            message = ""
         return (msg+message, val)
 
     def _correctAPIVersion(self, args):
@@ -367,7 +371,10 @@ class AMCallHandler(object):
                 failMsg = "Check AM properties at %s" % (str(client.url))
             if self.opts.api_version >= 2:
                 options = self._build_options("GetVersion", None, None)
-                (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion, options)
+                if len(options.keys()) == 0:
+                    (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion)
+                else:
+                    (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion, options)
             else:
                 (thisVersion, message) = _do_ssl(self.framework, None, failMsg, client.GetVersion)
 
@@ -1724,7 +1731,6 @@ class AMCallHandler(object):
         args = [urn, creds, rspec, slice_users]
 #--- API version diff:
         if self.opts.api_version >= 2:
-            options = dict()
             # Add the options dict
             args.append(options)
 #---
@@ -2306,7 +2312,9 @@ class AMCallHandler(object):
         omni.py -V3 -a http://myaggregate poa --best-effort -o --outputfile %s-start-%a.json -u urn:publicid:IDN+myam+sliver+1 -u urn:publicid:IDN+myam+sliver+2 myslice geni_start
         """
         if self.opts.api_version < 3:
-            if self.opts.devmode:
+            if self.opts.api_version == 2:
+                self.logger.info("Running PerformOperationalAction even though you are using AM API v2 - will fail at most AMs.")
+            elif self.opts.devmode:
                 self.logger.warn("Trying PerformOperationalAction with AM API v%d...", self.opts.api_version)
             else:
                 self._raise_omni_error("PerformOperationalAction is only available in AM API v3+. Use CreateSliver with AM API v%d, or specify -V3 to use AM API v3." % self.opts.api_version)
@@ -2471,6 +2479,9 @@ class AMCallHandler(object):
         --devmode: Continue on error if possible
         -l to specify a logging config file
         --logoutput <filename> to specify a logging output filename
+        --alap: Renew slivers as long as possible (up to the slice
+        expiration / time requested). Default is False - either renew
+        to the requested time, or fail.
         """
 
         if self.opts.api_version >= 3:
@@ -2501,7 +2512,6 @@ class AMCallHandler(object):
 #--- AM API version specific
         if self.opts.api_version >= 2:
             # Add the options dict
-            options = dict()
             args.append(options)
 
         self.logger.debug("Doing renewsliver with urn %s, %d creds, time %s, options %r", urn, len(creds), time_string, options)
@@ -2527,6 +2537,13 @@ class AMCallHandler(object):
                     self._raise_omni_error("\nRenewSliver failed: " + retVal)
                 continue
 
+            outputstr = None
+            if self.opts.alap:
+                # Get the output from the res - it will have the new
+                # sliver expiration
+                if isinstance(res, dict) and res.has_key('output') and res['output'] is not None and str(res['output']).strip() != "":
+                    outputstr = str(res['output']).strip()
+
             # Get the boolean result out of the result (accounting for API version diffs, ABAC)
             (res, message) = self._retrieve_value(res, message, self.framework)
 
@@ -2543,7 +2560,22 @@ class AMCallHandler(object):
                 self.logger.warn(prStr)
                 failList.append( client.url )
             else:
-                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, time_with_tz.isoformat())
+                newExp = time_with_tz.isoformat()
+                gotALAP = False
+                if self.opts.alap and outputstr:
+                    try:
+                        newExpO = dateutil.parser.parse(str(outputstr))
+                        newExpO = naiveUTC(newExpO)
+                        newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
+                        newExp = newExpO_tz.isoformat()
+                        if time - newExpO > datetime.timedelta.resolution:
+                            gotALAP = True
+                            #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
+                    except:
+                        self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: %s", outputstr)
+                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.url, newExp)
+                if gotALAP:
+                    prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
                 self.logger.info(prStr)
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2552,7 +2584,11 @@ class AMCallHandler(object):
         if numClients == 0:
             retVal += "No aggregates on which to renew slivers for slice %s. %s\n" % (urn, message)
         elif numClients > 1:
-            retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
+            if self.opts.alap:
+                # FIXME: Say more about where / how long it was renewed?
+                retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC) or as long as possible\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
+            else:
+                retVal += "Renewed slivers on %d out of %d aggregates for slice %s until %s (UTC)\n" % (successCnt, self.numOrigClients, urn, time_with_tz)
         return retVal, (successList, failList)
     # End of renewsliver
 
@@ -2617,6 +2653,9 @@ class AMCallHandler(object):
         --devmode: Continue on error if possible
         -l to specify a logging config file
         --logoutput <filename> to specify a logging output filename
+        --alap: Renew slivers as long as possible (up to the slice
+        expiration / time requested). Default is False - either renew
+        to the requested time, or fail.
 
         Sample usage:
         Renew slivers in slice myslice to the given time; fail the call if all slivers cannot be renewed to this time
@@ -2738,7 +2777,7 @@ class AMCallHandler(object):
                     else:
                         expectedCount = 0
                     for time in orderedDates:
-                        if time == requestedExpiration or time - requestedExpiration < timedelta.resolution:
+                        if time == requestedExpiration or time - requestedExpiration < datetime.timedelta.resolution:
                             continue
                         firstTime = time
                         firstCount = len(sliverExps[time])
@@ -3055,7 +3094,7 @@ class AMCallHandler(object):
                 self.logger.warn(msg)
             else:
                 firstTime = orderedDates[0]
-                firstCount = len(sliverExps[time])
+                firstCount = len(sliverExps[firstTime])
                 msg = "Slivers expire on %d times, next is %d at %r, and others at %d other times." % (len(orderedDates), firstCount, firstTime.isoformat(), len(orderedDates) - 1)
                 self.logger.info(msg)
             retVal += "  " + msg + "\n"
@@ -3701,15 +3740,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot deleteimage: Could not get user credential')
+            self.logger.error('Cannot deleteimage: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3808,15 +3848,16 @@ class AMCallHandler(object):
 
         # get the user credential
         cred = None
+        message = "(no reason given by SA)"
         if self.opts.api_version >= 3:
             (cred, message) = self.framework.get_user_cred_struct()
         else:
             (cred, message) = self.framework.get_user_cred()
         if cred is None:
             # Dev mode allow doing the call anyhow
-            self.logger.error('Cannot listimages: Could not get user credential')
+            self.logger.error('Cannot listimages: Could not get user credential: %s', message)
             if not self.opts.devmode:
-                return (None, "Could not get user credential: %s" % message)
+                return ("Could not get user credential: %s" % message, dict())
             else:
                 self.logger.info('... but continuing')
                 cred = ""
@@ -3862,7 +3903,7 @@ class AMCallHandler(object):
             creator_authority = urn_util.string_to_urn_format(urn.getAuthority())
             if creator_authority != invoker_authority:
                 if not self.opts.devmode:
-                    return (None, "Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
+                    return ("Cannot listimages: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority), dict())
                 else:
                     self.logger.warn("Cannot listimages but continuing: Given creator %s not from same SA as you (%s)" % (creator_urn, invoker_authority))
 
@@ -4398,6 +4439,13 @@ class AMCallHandler(object):
         if self.opts.speaksfor:
             options["geni_experimenter_urn"] = self.opts.speaksfor
 
+        if self.opts.api_version > 1 and self.opts.alap:
+            if op in ('Renew', 'RenewSliver'):
+                options["geni_extend_alap"] = self.opts.alap
+            elif self.opts.devmode:
+                self.logger.warn("Got geni_extend_alap option for method %s that doesn't take it, but using anyhow", op)
+                options["geni_extend_alap"] = self.opts.alap
+
         # To support all the methods that take arbitrary options,
         # allow specifying a JSON format file that specifies
         # name/value pairs, with values of various types.
@@ -4765,7 +4813,7 @@ def make_client(url, framework, opts):
             raise OmniError(err)
 
     if opts.ssl:
-        tmp_client =  xmlrpcclient.make_client(url, framework.key, framework.cert, opts.verbosessl)
+        tmp_client =  xmlrpcclient.make_client(url, framework.key, framework.cert, opts.verbosessl, opts.ssltimeout)
     else:
         tmp_client = xmlrpcclient.make_client(url, None, None)
     tmp_client.url = str(url)

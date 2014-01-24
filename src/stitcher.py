@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -93,7 +93,7 @@ def call(argv, options=None):
     parser = omni.getParser()
     # update usage for help message
     omni_usage = parser.get_usage()
-    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2013 Raytheon BBN Technologies\n" + 
+    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
                      omni_usage+
                      "\nstitcher.py does stitching if the call is createsliver or allocate, else it just calls Omni.\n")
 

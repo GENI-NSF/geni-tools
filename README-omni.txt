@@ -41,6 +41,40 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.5:
+ - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+ - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
+ - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+   allows changing this. (#407)
+ - Create any directories need in the path to the agg_nick_cache (#383)
+ - If using `--AggNickCacheName` and can't read/write to the specified
+   file, omni should fall back to reading `agg_nick_cach.base` (#384)
+ - Look up AM URN by URL in the defined aggregate nicknames (#404)
+ - Eliminated a repetitive log message (#384)
+ - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
+ - Fit Omni result summaries in 80 character wide terminals (#409)
+ - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+   nick cache is old (#391)
+ - Support `geni_extend_alap` with new `--alap` option, allowing you to
+   request that slivers be renewed as long as possible, if your
+   requested time is not permitted by local AM policy. (#415)
+ - Renew Slice returns actual new expiration (checks the SA, not just
+   assuming success means you got what you asked for) (#428)
+ - SFA slice and user records changed: keys and slices moved (#429)
+ - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+ - Support unicode urns (#448)
+ - Return any error message from a CH on getusercred (#452)
+ - If set, `GENI_FRAMEWORK` environment variable is the default for
+   the `--framework` option (#315)
+ - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+   set the default path to your saved user and slice credentials (#434)
+ - Handle ~ in `usercredfile` and `slicecredfile` (#455)
+ - Return error on SA error in `listslices` (#456)
+ - Allow `PerformOperationalAction` on v2 AMs (#412)
+ - Fix circular imports in RSpecParser and objects (#459)
+ - Omni cred_util uses an omni logger (#460)
+ - Support querying for other users' SSH keys where the CH supports it (#472)
+
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
  location. See the sample omni_config for details. (#265,#360,#361)
@@ -526,8 +560,8 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.4
-Copyright (c) 2013 Raytheon BBN Technologies
+GENI Omni Command Line Aggregate Manager Tool Version 2.5
+Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
@@ -564,7 +598,8 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys 
+ 			 listmykeys
+ 			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename> 
  		Other functions: 
@@ -588,6 +623,9 @@ Options:
                         slices
     -r PROJECT, --project=PROJECT
                         Name of project. (For use with pgch framework.)
+    --alap              Request slivers be renewed as close to the requested
+                        time as possible, instead of failing if the requested
+                        time is not possible. Default is False.
     -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
                         RSpec type and version to return, default 'GENI 3'
     -V API_VERSION, --api-version=API_VERSION
@@ -666,11 +704,14 @@ Options:
     --usercredfile=USER_CRED_FILENAME
                         Name of user credential file to read from if it
                         exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'
+                        myUserCred.xml -o getusercred'. Defaults to value of
+                        'GENI_USERCRED' environment variable if defined.
     --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'
+                        mySliceCred.xml -o getslicecred mySliceName'. Defaults
+                        to value of 'GENI_SLICECRED' environment variable if
+                        defined.
 
   GetVersion Cache:
     Control GetVersion Cache
@@ -726,7 +767,15 @@ Options:
                         In AM API v2, if an AM returns a non-0 (failure)
                         result code, raise an AMAPIError. Default False. For
                         use by scripts.
+    --ssltimeout=SSLTIMEOUT
+                        Seconds to wait before timing out AM and CH calls.
+                        Default is 360 seconds.
 }}}
+
+Notes:
+ - If set, the `GENI_FRAMEWORK` environment variable will be the
+ default for the `--framework` option, over-riding any default from
+ your Omni config file.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -804,9 +853,11 @@ Sample Usage:
 
 If you specify the -o option, the credential is saved to a file.
 The filename is `<slicename>-cred.xml`
-But you can specify the filename using the `--slicecredfile` option.
+But you can specify the filename using the `--slicecredfile` option or
+by defining the `GENI_SLICECRED` environment variable to the desired path.
 
-Additionally, if you specify the `--slicecredfile` option and that
+Additionally, if you specify the `--slicecredfile` option or define the
+`GENI_SLICECRED` environment variable, and that
 references a file that is not empty, then we do not query the Slice
 Authority for this credential, but instead read it from this file.
 
@@ -872,11 +923,19 @@ With no `username` supplied, it will look up slices registered to you
 (the user whose certificate is supplied).
 
 ==== listmykeys ====
-Provides a list of SSH public keys registered at the configured
-control framework for the current user.
+Provides a list of the SSH public keys registered at the confiigured
+clearinghouse for the current user. 
 Not supported by all frameworks.
 
 Sample Usage: `omni.py listmykeys`
+
+==== listkeys ====
+Provides a list of SSH public keys registered at the configured
+control framework for the specified user, or current user if not defined.
+Not supported by all frameworks. Some frameworks only support querying
+the current user.
+
+Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -893,7 +952,8 @@ Sample Usage:
 This is primarily useful for debugging.
 
 If you specify the `-o` option, the credential is saved to a file.
-  If you specify `--usercredfile`:
+  If you specify `--usercredfile` or define the `GENI_USERCRED`
+  environment variable:
     First, it tries to read the user credential from that file.
     Second, it saves the user credential to a file by that name (but
     with the appropriate extension).
@@ -902,8 +962,8 @@ If you specify the `-o` option, the credential is saved to a file.
   If you specify the `--prefix` option then that string starts the filename.
 
 If instead of the `-o` option, you supply the `--tostdout` option, then
-the usercred is printed to STDOUT.  
-Otherwise the usercred is logged.
+the user credential is printed to STDOUT.  
+Otherwise the user credential is logged.
 
 ==== print_slice_expiration ====
 Print the expiration time of the given slice, and a warning if it is
@@ -1010,7 +1070,7 @@ create a reservation RSpec, suitable for use in a call to
 If a slice name is supplied, then resources for that slice only 
 will be displayed.  In this case, the slice credential is usually
 retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it
+with the `--slicecredfile` option it is read from the specified file, if it
 exists. Note that the slice name argument is only valid in AM API v1
 or v2; for v3, see `describe`.
 
@@ -1038,7 +1098,8 @@ Other options:
  is returned. Use `getversion` to see available types at that AM. Type
  and version are case-insensitive strings. This argument defaults to
  'GENI 3' if not supplied.
- - `--slicecredfile <filename>` says to use the given slicecredfile if it exists.
+ - `--slicecredfile <filename>` says to use the given slice credential
+ file if it exists.
  - `--no-compress`: Request the returned RSpec not be compressed (default is to compress)
  - `--available`: Return Advertisement consisting of only available resources
  - `-l <config file>` to specify a logging config file
@@ -1155,12 +1216,12 @@ Warning: request RSpecs are often very different from advertisement
 RSpecs.
 
 When you call
-     omni.py createsliver myslice myrspec
+     `omni.py createsliver myslice myrspec`
 omni will try to read 'myrspec' by interpreting it in the following order:
 1. a URL or a file on the local filesystem
 2. an RSpec nickname specified in the omni_config
 3. a file in a location (file or url) defined as: 
-   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+   `<default_rspec_server>/<rspec_nickname>.<default_rspec_extension>` 
 where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
@@ -1202,7 +1263,7 @@ Options for development and testing:
 Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
-omni_config users section is used to get a set of SSH keys that
+The omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
 remote resource and aggregate support this.
 
@@ -1476,7 +1537,7 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it exists.
+with the `--slicecredfile` option it is read from the specified file, if it exists.
 
 Aggregates queried:
  - Each URL given in an -a argument or URL listed under that given
@@ -1490,6 +1551,13 @@ Unqualified times are assumed to be in UTC. See below for an exception.
 Note that the expiration time cannot be past your slice expiration
 time (see `print_slice_expiration` and `renewslice`). Some aggregates will
 not allow you to _shorten_ your sliver expiration time.
+
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
 
 Note that older SFA-based aggregates (like the MyPLC aggregates in the
 GENI mesoscale deployment) fail to renew slivers when a timezone is
@@ -1543,6 +1611,13 @@ Unqualified times are assumed to be in UTC.  Note that the expiration
 time cannot be past your slice expiration time (see
 `print_slice_expiration` and `renewslice`). Some aggregates will not
 allow you to _shorten_ your sliver expiration time.
+
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
 
  - `--sliver-urn <urn>` / -u option: each specifies a sliver URN to renew. If specified,
    only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.

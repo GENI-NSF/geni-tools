@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -33,7 +33,7 @@ import inspect
 import sys
 import unittest
 import os.path
-import pwd
+import getpass
 import dateutil.parser
 
 from gcf.omnilib.util import OmniError, naiveUTC, AMAPIError
@@ -149,7 +149,7 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            user = pwd.getpwuid(os.getuid())[0]
+            user = getpass.getuser()
             pre = prefix+user[:3]
             return datetime.datetime.strftime(datetime.datetime.utcnow(), pre+"-%H%M%S")
 #            return prefix+pwd.getpwuid(os.getuid())[0]

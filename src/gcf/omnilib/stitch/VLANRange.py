@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -92,6 +92,8 @@ class VLANRange( set ):
         newObj = VLANRange()
 
         inputs = str(stringIn).strip()
+        if inputs == "":
+            return newObj
         items = inputs.split(",")
         for item in items:
             splitItem = item.split("-")
@@ -126,6 +128,8 @@ class VLANRange( set ):
 
     def __str__( self ):
         out = ""
+        if len(self) == 0:
+            return out
         hasNum = False
         min = VLAN.maxvlan()+1
         max = VLAN.minvlan()-1

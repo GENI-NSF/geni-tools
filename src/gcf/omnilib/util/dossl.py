@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -152,7 +152,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
                 framework.logger.debug(traceback.format_exc())
                 return (None, msg)
             else:
-                msg = "Unknown SSL error %s" % exc
+                msg = "Unknown SSL error: %s" % exc
                 framework.logger.error("%s: %s" % (failMsg, msg))
                 if not framework.logger.isEnabledFor(logging.DEBUG):
                     framework.logger.error('    ..... Run with --debug for more information')

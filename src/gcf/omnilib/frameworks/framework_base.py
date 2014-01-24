@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -161,12 +161,12 @@ class Framework_Base():
         """
         raise NotImplementedError('list_my_slices')
 
-    def list_my_ssh_keys(self):
+    def list_ssh_keys(self, username=None):
         """
-        Get a list of SSH public keys for this user.
+        Get a list of SSH public keys for the given user or the configured current user if not specified.
         Returns: a list of SSH public keys
         """
-        raise NotImplementedError('list_my_ssh_keys')
+        raise NotImplementedError('list_ssh_keys')
 
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
