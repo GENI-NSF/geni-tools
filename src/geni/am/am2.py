@@ -405,6 +405,18 @@ class ReferenceAggregateManager(object):
             # Now calculate the status of the sliver
             res_status = list()
             resources = list()
+
+            sliceurn = URN(urn=slice_urn)
+            sliceauth = sliceurn.getAuthority()
+            slicename = sliceurn.getName()
+            slivername = sliceauth + slicename # FIXME: really
+            # this should have a timestamp of when reserved to be unique over time
+
+            # Translate any slivername illegal punctation
+            other = '-.:/'
+            table = string.maketrans(other, '-' * len(other))
+            slivername = slivername.translate(table)
+
             for cid, sliver_uuid in theSlice.resources.items():
                 resource = None
                 sliver_urn = None
@@ -412,7 +424,7 @@ class ReferenceAggregateManager(object):
                     if res.id == sliver_uuid:
                         self.logger.debug('Resource = %s', str(res))
                         resources.append(res)
-                        sliver_urn = res.sliver_urn(self._urn_authority, sliver_uuid) 
+                        sliver_urn = res.sliver_urn(self._urn_authority, slivername) 
                         # Gather the status of all the resources
                         # in the sliver. This could be actually
                         # communicating with the resources, or simply
@@ -560,7 +572,7 @@ class ReferenceAggregateManager(object):
         return dt
 
     def advert_resource(self, resource):
-        tmpl = '''  <node component_manager_id="%s"
+        tmpl = '''<node component_manager_id="%s"
         component_name="%s"
         component_id="%s"
         exclusive="%s">
@@ -582,18 +594,18 @@ class ReferenceAggregateManager(object):
 <rspec xmlns="http://www.geni.net/resources/rspec/3"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/ad.xsd"
-       type="advertisement">'''
+       type="advertisement">\n'''
         return header
 
     def advert_footer(self):
-        return '</rspec>'
+        return '</rspec>\n'
 
     def manifest_header(self):
         header = '''<?xml version="1.0" encoding="UTF-8"?>
 <rspec xmlns="http://www.geni.net/resources/rspec/3"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd"
-       type="manifest">'''
+       type="manifest">\n'''
         return header
 
     def manifest_slice(self, slice_urn):
@@ -608,7 +620,10 @@ class ReferenceAggregateManager(object):
         table = string.maketrans(other, '-' * len(other))
         slivername = slivername.translate(table)
 
-        tmpl = '<node client_id="%s" component_id="%s" component_manager_id="%s" sliver_id="%s"/>' 
+        tmpl = '''  <node client_id="%s"
+        component_id="%s"
+        component_manager_id="%s"
+        sliver_id="%s"/>\n'''
         result = ""
         for cid, res_uuid in self._slices[slice_urn].resources.items():
             resource = None
@@ -621,7 +636,7 @@ class ReferenceAggregateManager(object):
         return result
 
     def manifest_footer(self):
-        return '</rspec>'
+        return '</rspec>\n'
 
     def manifest_rspec(self, slice_urn):
         return self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer()
