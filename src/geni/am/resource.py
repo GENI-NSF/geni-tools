@@ -66,6 +66,8 @@ class Resource(object):
         # Used in SliverStatus
         publicid = 'IDN %s sliver %s%s-%s' % (auth, self.type,
                                               str(self.id), str(sliver_id))
+# If I knew that sliver_id was real, I'd do this:
+#        publicid = 'IDN %s sliver %s%s-%s' % (auth, str(sliver_id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):
