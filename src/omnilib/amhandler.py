@@ -2830,6 +2830,17 @@ class AMCallHandler(object):
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn') and \
                            sliver.has_key('geni_expires'):
+                            # Exclude slivers with
+                            # geni_allocation_status of geni_allocated - they
+                            # are not yet in the DB
+                            if sliver.has_key('geni_allocation_status') and \
+                                    sliver['geni_allocation_status'] == 'geni_allocated':
+                                continue
+
+                            # FIXME: Exclude slivers in sliverFails (had errors)?
+                            if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                continue
+
                             self.framework.db_update_sliver_info \
                              (sliver['geni_sliver_urn'], sliver['geni_expires'])
                 except NotImplementedError, nie:
@@ -3495,6 +3506,14 @@ class AMCallHandler(object):
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn'):
+                            # Exclude slivers only allocated - they
+                            # are not yet in the DB.
+                            if sliver.has_key('geni_operational_status') and \
+                                    sliver['geni_operational_status'] == 'geni_pending_allocation':
+                                continue
+                            # FIXME: Exclude slivers in sliverFails (had errors)?
+                            #if sliver['geni_sliver_urn'] in sliverFails.keys():
+                            #    continue
                             self.framework.db_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
                 except NotImplementedError, nie:

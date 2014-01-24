@@ -964,7 +964,13 @@ class Framework(Framework_Base):
                     msg += ". " + message
                 if res.has_key('output') and res['output'].strip() !=  "":
                     msg += ". Server said: " + res['output']
-                self.logger.warn(msg)
+                # In APIv3 if you renew while allocated then the slice
+                # has not yet been recorded and will be unknown
+                if self.opts.api_version > 2 and "ARGUMENT_ERROR (Unknown slice urns: [[None]])" in msg and ("Update sliver" in msg or "Record sliver" in msg):
+                    msg = msg + " ... renewing or deleting a slice only allocated causes this. Expected & harmless."
+                    self.logger.debug(msg)
+                else:
+                    self.logger.warn(msg)
                 return msg
         else:
             msg = action + ' failed'
