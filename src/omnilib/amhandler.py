@@ -2203,10 +2203,12 @@ class AMCallHandler(object):
                 # record new slivers in SA database if possible
                 try:
                     agg_urn = self._getURNForClient(client)
+                    # Get the slivers actually returned
+                    ret_slivers = self._getSliverResultList(realresult)
                     self.framework.db_create_sliver_info(None, urn, 
                                                          client.url,
                                                          slice_exp,
-                                                         slivers, agg_urn)
+                                                         ret_slivers, agg_urn)
                 except NotImplementedError, nie:
                     self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:

@@ -1091,6 +1091,8 @@ class Framework(Framework_Base):
                 msg = msg + str(self._record_one_new_sliver(sliver_urn,
                                                         slice_urn, agg_urn, creator_urn, exp))
             # End of loop over slivers
+        else:
+            self.logger.debug("Got no manifest AND no slivers to record")
         # End of if/else block for API Version
         return msg
 
