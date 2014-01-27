@@ -283,8 +283,9 @@ class Framework_Base():
         raise NotImplementedError('db_agg_url_to_urn')
 
     # given the slice urn and aggregate urn, find the associated sliver urns from the CH db
+    # Return an empty list if none found
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
-        raise NotImplementedError('db_find_sliver_urn')
+        raise NotImplementedError('db_find_sliver_urns')
 
     # update the expiration time on a sliver at the CH
     def db_update_sliver_info(self, sliver_urn, expiration):

@@ -1000,7 +1000,10 @@ class Framework(Framework_Base):
                 self.logger.warn("Invalid aggregate URN %s for recording new sliver from sliver urn %s", agg_urn, sliver_urn)
                 return ""
         else:
-            if not agg_urn.startswith(auth):
+            # The authority of the agg_urn should be the start of the authority of the sliver auth
+            # this allows a sliver at exogeni.net:bbn to be recorded under the AM exogeni.net
+            agg_auth = agg_urn[0 : agg_urn.find('authority+')]
+            if not auth.startswith(agg_auth):
                 self.logger.debug("Skipping sliver %s that doesn't appear to come from the specified AM %s", sliver_urn,
                                   agg_urn)
                 return ""
@@ -1026,21 +1029,27 @@ class Framework(Framework_Base):
     # If both are not provided, infer the AM from the sliver URNs
     def db_create_sliver_info(self, manifest, slice_urn,
                               aggregate_url, expiration, slivers, am_urn):
-        if am_urn and is_valid_urn(am_urn):
+        if is_valid_urn(am_urn):
             self.logger.debug("Using AM URN %s", am_urn)
             agg_urn = am_urn
         elif aggregate_url is None or aggregate_url.strip() == "":
             self.logger.warn("Empty aggregate for recording new slivers")
-            # Just get the URN from the manifest?
+            # Just get the URN from the manifest or slivers
             agg_urn = None
         else:
-            # FIXME: Use agg nick cache
-            agg_urn = self.db_agg_url_to_urn(aggregate_url)
-            if agg_urn and not is_valid_urn(agg_urn):
-                self.logger.warn("Invalid aggregate URN %s for recording new sliver from url %s", agg_urn, aggregate_url)
-                return
+            turn = _lookupAggURNFromURLInNicknames(self.logger, self.config, aggregate_url)
+            if is_valid_urn(turn):
+                agg_urn = turn
+            else:
+                agg_urn = self.db_agg_url_to_urn(aggregate_url)
+#            if not is_valid_urn(agg_urn):
+#                self.logger.warn("Invalid aggregate URN %s for recording new sliver from url %s", agg_urn, aggregate_url)
+#                return
         creator_urn = self.user_urn
         slice_urn = self.slice_name_to_urn(slice_urn)
+        if not is_valid_urn(slice_urn):
+            self.logger.warn("Invalid slice URN %s for recording new slivers", slice_urn)
+            return
         creds = []
         msg = ""
 
@@ -1086,12 +1095,11 @@ class Framework(Framework_Base):
         return msg
 
     # use the database to convert an aggregate url to the corresponding urn
+    # FIXME: other CHs do similar things - implement this elsewhere
     def db_agg_url_to_urn(self, agg_url):
         if agg_url is None or agg_url.strip() == "":
             self.logger.warn("Empty Aggregate URL to look up")
             return None
-
-        # FIXME: Use the agg nick cache first?
 
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
@@ -1107,12 +1115,12 @@ class Framework(Framework_Base):
             return None
 
     # given the slice urn and aggregate urn, find the sliver urns from the db
+    # Return an empty list if none found
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
-        if aggregate_urn is None or aggregate_urn.strip() == "":
-            self.logger.warn("Empty aggregate for querying slivers")
-            # FIXME: Extract from sliver_urn
+        if not is_valid_urn(slice_urn):
+            self.logger.warn("No slice to lookup slivers")
             return []
         if not is_valid_urn(aggregate_urn):
             self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
@@ -1137,6 +1145,7 @@ class Framework(Framework_Base):
                             self.sa.lookup_sliver_info, creds, options)
         logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
         if logr == True:
+            self.logger.debug("Slice %s AM %s found slivers %s", slice_urn, aggregate_urn, res['value'])
             return res['value'].keys()
         else:
             return []
@@ -1216,6 +1225,7 @@ class Framework(Framework_Base):
  
         if logr == True:
             for sliver_urn, sliver_info in res['value'].items():
+                self.logger.debug("Slice %s found sliver %s: %s", slice_urn, sliver_urn, sliver_info)
                 agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
                 if agg_urn not in slivers_by_agg:
                     slivers_by_agg[agg_urn] = []
