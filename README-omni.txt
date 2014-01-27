@@ -74,6 +74,7 @@ New in v2.5:
  - Fix circular imports in RSpecParser and objects (#459)
  - Omni cred_util uses an omni logger (#460)
  - Support querying for other users' SSH keys where the CH supports it (#472)
+ - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
