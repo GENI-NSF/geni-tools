@@ -1138,6 +1138,7 @@ class Framework(Framework_Base):
                 expired = True
                 expmess = " (EXPIRED at %s)" % slice_expiration
 
+        # FIXME: Query the sliver expiration and skip expired slivers?
         options = {'filter': [],
                    'match': {'SLIVER_INFO_SLICE_URN': slice_urn,
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
@@ -1228,6 +1229,7 @@ class Framework(Framework_Base):
         if logr == True:
             for sliver_urn, sliver_info in res['value'].items():
                 self.logger.debug("Slice %s found sliver %s: %s", slice_urn, sliver_urn, sliver_info)
+                # FIXME: If the sliver seems to have expired, skip it?
                 agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
                 if agg_urn not in slivers_by_agg:
                     slivers_by_agg[agg_urn] = []
