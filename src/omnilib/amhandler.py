@@ -3519,16 +3519,17 @@ class AMCallHandler(object):
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn'):
-                            # Exclude slivers only allocated - they
-                            # are not yet in the DB.
-                            if sliver.has_key('geni_operational_status') and \
-                                    sliver['geni_operational_status'] == 'geni_pending_allocation':
-                                continue
+                            # Note that the sliver may not be in the DB if you delete after allocate
+
                             # FIXME: Exclude slivers in sliverFails (had errors)?
                             if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                self.logger.debug("Skipping noting delete of failed sliver %s", sliver)
                                 continue
+                            self.logger.debug("Recording sliver %s deleted", sliver)
                             self.framework.db_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
+                        else:
+                            self.logger.debug("Skipping noting delete of malformed sliver %s", sliver)
                 except NotImplementedError, nie:
                     self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
