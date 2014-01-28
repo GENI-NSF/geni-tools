@@ -36,7 +36,7 @@ import sfa.trust.certificate
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
 from sfa.util.xrn import hrn_authfor_hrn
-from speaksfor_util import determine_speaks_for, extract_urn_from_cert
+from speaksfor_util import determine_speaks_for
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -145,26 +145,26 @@ class CredentialVerifier(object):
             [sfa.trust.certificate.Certificate(filename=root_cert_file) \
                  for root_cert_file in self.root_cert_files]
 
+        caller_gid = gid.GID(string=gid_string)
+
         # Potentially, change gid_string to be the cert of the actual user 
         # if this is a 'speaks-for' invocation                     
-        speaksfor_gid_string = \
+        speaksfor_gid = \
             determine_speaks_for( \
             cred_strings, # May include ABAC speaks_for credential
-            gid_string, # Caller cert (may be the tool 'speaking for' user)
+            caller_gid, # Caller cert (may be the tool 'speaking for' user)
             options, # May include 'geni_speaking_for' option with user URN
             root_certs
             )
-        if speaksfor_gid_string != gid_string:
-            speaksfor_certificate = \
-                sfa.trust.certificate.Certificate(string=speaksfor_gid_string)
-            speaksfor_urn = extract_urn_from_cert(speaksfor_certificate)
+        if caller_gid.get_subject() != speaksfor_gid.get_subject():
+            speaksfor_urn = extract_urn_from_cert(speaksfor_gid.get_urn())
             self.logger.info("Speaks-for Invocation: Changing to cert for spoken for user : %s" % speaksfor_urn)
-            gid_string = speaksfor_gid_string
+            caller_gid = speaksfor_gid
             # Remove the 'speaks-for' credential
             cred_strings = [cred_string for cred_string in cred_strings \
                                 if cred_string.find('abac') < 0]
 
-        return self.verify(gid.GID(string=gid_string),
+        return self.verify(caller_gid,
                            map(make_cred, cred_strings),
                            target_urn,
                            privileges)
