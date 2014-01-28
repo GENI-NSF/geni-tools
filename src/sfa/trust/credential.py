@@ -63,7 +63,7 @@ signature_template = \
 '''
 <Signature xml:id="Sig_%s" xmlns="http://www.w3.org/2000/09/xmldsig#">
   <SignedInfo>
-    <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+    <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
     <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
     <Reference URI="#%s">
       <Transforms>
@@ -187,7 +187,15 @@ class Signature(object):
             logger.log_exc ("Failed to parse credential, %s"%self.xml)
             raise
         sig = doc.getElementsByTagName("Signature")[0]
-        self.set_refid(sig.getAttribute("xml:id").strip("Sig_"))
+        ref_id = sig.getAttribute("xml:id").strip("Sig_")
+        # The xml:id tag is optional, and could be in a 
+        # Reference xml:id or Reference UID sub element instead
+        if not ref_id or ref_id == '':
+            reference = sig.getElementsByTagName('Reference')[0]
+            ref_id = reference.getAttribute('xml:id').strip('Sig_')
+            if not ref_id or ref_id == '':
+                ref_id = reference.getAttribute('URI').strip('#')
+        self.set_refid(ref_id)
         keyinfo = sig.getElementsByTagName("X509Data")[0]
         szgid = getTextNode(keyinfo, "X509Certificate")
         szgid = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----" % szgid
@@ -734,8 +742,8 @@ class Credential(object):
                     for r in rl.rights:
                         r.delegate = deleg
                         rlist.add(r)
-                    else:
-                        rlist.add(Right(kind.strip(), deleg))
+                else:
+                    rlist.add(Right(kind.strip(), deleg))
         self.set_privileges(rlist)
 
 
