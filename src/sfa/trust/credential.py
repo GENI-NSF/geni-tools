@@ -198,6 +198,7 @@ class Signature(object):
         self.set_refid(ref_id)
         keyinfo = sig.getElementsByTagName("X509Data")[0]
         szgid = getTextNode(keyinfo, "X509Certificate")
+        szgid = szgid.strip()
         szgid = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----" % szgid
         self.set_issuer_gid(GID(string=szgid))        
         
