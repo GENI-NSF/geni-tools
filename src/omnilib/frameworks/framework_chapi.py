@@ -31,7 +31,9 @@ import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
+from geni.util.speaksfor_util import determine_speaks_for
 import sfa.trust.gid as gid
+from sfa.trust.credential_factory import CredentialFactory
 
 import datetime
 import dateutil
@@ -86,10 +88,25 @@ class Framework(Framework_Base):
         except Exception, e:
             sys.exit('CHAPI Framework failed to parse cert read from %s: %s' % (self.cert, e))
 
-        self.user_urn = self.cert_gid.get_urn()
-        if self.opts.speaksfor: self.user_urn = self.opts.speaksfor
-        self.user_cred = self.init_user_cred( opts )
         self.logger = config['logger']
+
+        # ***
+        # Do the whole speaksfor test here
+        # ***
+        if self.opts.speaksfor:
+            creds = [CredentialFactory.createCred(credFile=cred_file) \
+                         for cred_file in self.opts.cred]
+            options = {'geni_speaking_for' : opts.speaksfor}
+            speaker_gid = \
+                determine_speaks_for(creds, self.cert_gid, options, None)
+            self.logger.info("Speaks-for invocation: %s speaking for %s" % \
+                                 (self.cert_gid.get_urn(), \
+                                      speaker_gid.get_urn()))
+            if speaker_gid != self.cert_gid:
+                self.cert_gid = speaker_gid
+
+        self.user_urn = self.cert_gid.get_urn()
+        self.user_cred = self.init_user_cred( opts )
 
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
@@ -979,6 +996,7 @@ class Framework(Framework_Base):
     # write new sliver_info to the database using chapi
     def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
                               aggregate_urn, expiration):
+        import pdb; pdb.set_trace()
         creds = []
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record")

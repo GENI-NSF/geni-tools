@@ -176,17 +176,20 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
     if user_urn != speaking_for_urn:
         return False, None, "User URN doesn't match speaking_for URN"
 
-    # User certificate must validate against trusted roots
-    try:
-        user_gid.verify_chain(trusted_roots)
-    except Exception:
-        return False, None, "User cert doesn't validate against trusted roots"
+    if trusted_roots:
+        # User certificate must validate against trusted roots
+        try:
+            user_gid.verify_chain(trusted_roots)
+        except Exception:
+            return False, None, \
+                "User cert doesn't validate against trusted roots"
 
-    # Tool certificate must validate against trusted roots
-    try:
-        tool_gid.verify_chain(trusted_roots)
-    except Exception:
-        return False, None, "Tool cert doesn't validate against trusted roots"
+        # Tool certificate must validate against trusted roots
+        try:
+            tool_gid.verify_chain(trusted_roots)
+        except Exception:
+            return False, None, \
+                "Tool cert doesn't validate against trusted roots"
 
     return True, user_gid, ""
 

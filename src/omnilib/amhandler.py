@@ -1760,7 +1760,7 @@ class AMCallHandler(object):
             # register sliver in the SA database if able to do so
             try:
                 agg_urn = self.framework.db_agg_url_to_urn(url)
-                creator = _get_user_urn(self.logger, self.framework.config)
+                creator = self.framework.user_urn
                 manifest = result
                 while True:
                     idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
