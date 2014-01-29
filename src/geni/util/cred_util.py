@@ -157,7 +157,7 @@ class CredentialVerifier(object):
             root_certs
             )
         if caller_gid.get_subject() != speaksfor_gid.get_subject():
-            speaksfor_urn = extract_urn_from_cert(speaksfor_gid.get_urn())
+            speaksfor_urn = speaksfor_gid.get_urn()
             self.logger.info("Speaks-for Invocation: Changing to cert for spoken for user : %s" % speaksfor_urn)
             caller_gid = speaksfor_gid
             # Remove the 'speaks-for' credential

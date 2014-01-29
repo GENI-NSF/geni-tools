@@ -217,8 +217,9 @@ def determine_speaks_for(credentials, caller_gid, options, \
             else:
                 if cred.find('abac') < 0: continue
                 cred_value = cred
+            cred = CredentialFactory.createCred(cred_value)
             is_valid_speaks_for, user_gid, msg = \
-                verify_speaks_for(cred_value,
+                verify_speaks_for(cred,
                                   caller_gid, speaking_for_urn, \
                                       trusted_roots)
             if is_valid_speaks_for:
