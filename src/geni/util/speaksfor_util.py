@@ -264,11 +264,12 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
 
     credential_duration = datetime.timedelta(days=365)
     expiration = datetime.datetime.now(du_tz.tzutc()) + credential_duration
+    expiration_str = expiration.strftime('%Y-%m-%dT%H:%M:%SZ')
     version = "1.1"
 
     user_keyid = get_cert_keyid(user_gid)
     tool_keyid = get_cert_keyid(tool_gid)
-    unsigned_cred = template % (reference, expiration, version, \
+    unsigned_cred = template % (reference, expiration_str, version, \
                                     user_keyid, user_keyid, tool_keyid, \
                                     reference, reference)
     unsigned_cred_filename = write_to_tempfile(unsigned_cred)
