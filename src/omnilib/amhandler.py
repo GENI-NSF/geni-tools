@@ -1757,27 +1757,17 @@ class AMCallHandler(object):
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, url, filename)
                 retVal += '\n   Saved createsliver results to %s. ' % (filename)
 
-            # register sliver in the SA database if able to do so
+            # record new slivers in the SA database if able to do so
             try:
-                agg_urn = self.framework.db_agg_url_to_urn(url)
-                creator = self.framework.user_urn
-                manifest = result
-                while True:
-                    idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
-                    if idx1 < 0: break # No more slivers
-                    idx2 = manifest.find('"', idx1) + 1 # Start of URN
-                    idx3 = manifest.find('"', idx2) # End of URN
-                    sliver_urn = manifest[idx2 : idx3]
-                    manifest = manifest[idx3+1:]
-                    if not agg_urn:
-                        idx1 = sliver_urn.find('sliver+')
-                        agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                    self.framework.db_create_sliver_info(sliver_urn, urn, \
-                                                             creator, agg_urn, slice_exp)
+                agg_urn = self._getURNForClient(client)
+                self.framework.db_create_sliver_info(result, urn, 
+                                                     url, slice_exp, None, agg_urn)
             except NotImplementedError, nie:
-                self.logger.info('Framework doesnt handle slivers in SA database')
+                self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
             except Exception, e:
-                self.logger.warn('Error writing sliver to SA database %s' % e)
+                # FIXME: Info only?
+                self.logger.warn('Error recording new slivers in SA database')
+                self.logger.debug(e)
 
             # FIXME: When Tony revises the rspec, fix this test
             if result and '<RSpec' in result and 'type="SFA"' in result:
@@ -2209,26 +2199,21 @@ class AMCallHandler(object):
                 for sliver in sliverFails.keys():
                     self.logger.warn("Sliver %s reported error: %s", sliver, sliverFails[sliver])
 
-                # record results in SA database
+                # record new slivers in SA database if possible
                 try:
-                    creator = _get_user_urn(self.logger, self.framework.config)
-                    slivers = self._getSliverResultList(realresult)
-                    for sliver in slivers:
-                        if not (isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn')):
-                            continue
-                        sliver_urn = sliver['geni_sliver_urn']
-                        agg_urn = client.urn
-#                        agg_urn = self.framework.db_agg_url_to_urn(client.url)
-                        if not agg_urn:
-                            idx1 = sliver_urn.find('sliver+')
-                            agg_urn = sliver_urn[0 : idx1] + 'authority+cm'
-                        self.framework.db_create_sliver_info(sliver_urn, \
-                              urn, creator, agg_urn, sliver['geni_expires'])
+                    agg_urn = self._getURNForClient(client)
+                    # Get the slivers actually returned
+                    ret_slivers = self._getSliverResultList(realresult)
+                    self.framework.db_create_sliver_info(None, urn, 
+                                                         client.url,
+                                                         slice_exp,
+                                                         ret_slivers, agg_urn)
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error writing sliver to SA database')
+                    # FIXME: Info only?
+                    self.logger.warn('Error recording new slivers in SA database')
+                    self.logger.debug(e)
 
                 # Print out the result
                 if isinstance(realresult, dict):
@@ -2623,18 +2608,20 @@ class AMCallHandler(object):
                 self.logger.info(prStr)
 
                 try:
-                    agg_urn = client.urn
-#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
-                    if not agg_urn:
-                        self.logger.error("Could not find aggregate in database")
-                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
-                    for sliver_urn in sliver_urns:
-                        self.framework.db_update_sliver_info(sliver_urn,
-                                                             newExp)
+                    agg_urn = self._getURNForClient(client)
+                    if urn_util.is_valid_urn(agg_urn):
+                        sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                        for sliver_urn in sliver_urns:
+                            self.framework.db_update_sliver_info(sliver_urn,
+                                                                 newExp)
+                    else:
+                        self.logger.info("Not updating recorded sliver expirations - no valid AM URN known")
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error updating sliver in SA database')
+                    # FIXME: Only info?
+                    self.logger.warn('Error updating sliver record in SA database')
+                    self.logger.debug(e)
 
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2850,12 +2837,25 @@ class AMCallHandler(object):
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn') and \
                            sliver.has_key('geni_expires'):
+                            # Exclude slivers with
+                            # geni_allocation_status of geni_allocated - they
+                            # are not yet in the DB
+                            if sliver.has_key('geni_allocation_status') and \
+                                    sliver['geni_allocation_status'] == 'geni_allocated':
+                                continue
+
+                            # FIXME: Exclude slivers in sliverFails (had errors)?
+                            if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                continue
+
                             self.framework.db_update_sliver_info \
                              (sliver['geni_sliver_urn'], sliver['geni_expires'])
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error updating sliver in SA database')
+                    # FIXME: Info only?
+                    self.logger.warn('Error updating sliver record in SA database')
+                    self.logger.debug(e)
 
                 # Save results
                 if isinstance(res, dict):
@@ -3336,17 +3336,20 @@ class AMCallHandler(object):
 
                 # delete sliver info from SA database
                 try:
-                    agg_urn = client.urn
-#                    agg_urn = self.framework.db_agg_url_to_urn(client.url)
-                    if not agg_urn:
-                        self.logger.error("Could not find aggregate in database")
-                    sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
-                    for sliver_urn in sliver_urns:
-                        self.framework.db_delete_sliver_info(sliver_urn)
+                    # Get the Agg URN for this client
+                    agg_urn = self._getURNForClient(client)
+                    if urn_util.is_valid_urn(agg_urn):
+                        sliver_urns = self.framework.db_find_sliver_urns(urn, agg_urn)
+                        for sliver_urn in sliver_urns:
+                            self.framework.db_delete_sliver_info(sliver_urn)
+                    else:
+                        self.logger.info("Cannot tell CH slivers were deleted - no valid AM URN known")
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error deleting sliver in SA database')
+                    # FIXME: info only?
+                    self.logger.warn('Error noting sliver deleted in SA database')
+                    self.logger.debug(e)
 
                 if numClients == 1:
                     retVal = prStr
@@ -3515,12 +3518,23 @@ class AMCallHandler(object):
                     for sliver in slivers:
                         if isinstance(sliver, dict) and \
                            sliver.has_key('geni_sliver_urn'):
+                            # Note that the sliver may not be in the DB if you delete after allocate
+
+                            # FIXME: Exclude slivers in sliverFails (had errors)?
+                            if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                self.logger.debug("Skipping noting delete of failed sliver %s", sliver)
+                                continue
+                            self.logger.debug("Recording sliver %s deleted", sliver)
                             self.framework.db_delete_sliver_info \
                                 (sliver['geni_sliver_urn'])
+                        else:
+                            self.logger.debug("Skipping noting delete of malformed sliver %s", sliver)
                 except NotImplementedError, nie:
-                    self.logger.info('Framework doesnt handle slivers in SA database')
+                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
-                    self.logger.warn('Error deleting sliver in SA database')
+                    # FIXME Info?
+                    self.logger.warn('Error noting sliver deleted in SA database')
+                    self.logger.debug(e)
 
                 prStr = "Deleted %s on %s at %s" % (descripMsg,
                                                            client.urn,
@@ -3540,7 +3554,7 @@ class AMCallHandler(object):
                 if not isinstance(realres, list):
                     # malformed describe return
                     self.logger.warn('Malformed delete result from AM %s. Expected list, got type %s.' % (client.url, realres.__class__.__name__))
-                    # FIXME: Add something to retVal that the result was malformed?
+                    # FIXME: Add something to retVal saying that the result was malformed?
                     if isinstance(realres, str):
                         prettyResult = str(realres)
                     else:
@@ -3970,7 +3984,7 @@ class AMCallHandler(object):
         invoker_authority = None
         if cred:
             invoker_urn = credutils.get_cred_owner_urn(self.logger, cred)
-            if invoker_urn and urn_util.is_valid_urn(invoker_urn):
+            if urn_util.is_valid_urn(invoker_urn):
                 iURN = urn_util.URN(None, None, None, invoker_urn)
                 invoker_authority = urn_util.string_to_urn_format(iURN.getAuthority())
                 self.logger.debug("Got invoker %s with authority %s", invoker_urn, invoker_authority)
@@ -3999,7 +4013,7 @@ class AMCallHandler(object):
                 else:
                     self.logger.warn("Creator URN invalid but continuing: %s", creator_urn)
 
-        if creator_urn and urn_util.is_valid_urn(creator_urn) and cred:
+        if urn_util.is_valid_urn(creator_urn) and cred:
             urn = urn_util.URN(None, None, None, creator_urn)
             # Compare creator_urn with invoker urn: must be same SA
             creator_authority = urn_util.string_to_urn_format(urn.getAuthority())
@@ -4901,6 +4915,26 @@ class AMCallHandler(object):
                     self.logger.info("Adding credential %s to arguments", credfile)
                     creds.append(cred)
         return creds
+
+
+    def _getURNForClient(self, client):
+        if client is None or client.url is None:
+            return None
+        agg_urn = client.urn
+        if not urn_util.is_valid_urn(agg_urn):
+            # Check if get_version has a geni_urn and use that?
+            (gvurn, gvmess) = self._get_getversion_key(client, 'geni_urn', helper=True)
+            if urn_util.is_valid_urn(gvurn):
+                agg_urn = gvurn
+            else:
+                # Else, ask the CH
+                try:
+                    turn = self.framework.db_agg_url_to_urn(client.url)
+                    if urn_util.is_valid_urn(turn):
+                        return turn
+                except Exception, e:
+                    self.logger.debug("Error asking CH for URN to match URL %s: %s", client.url, e)
+        return agg_urn
 
 # End of AMHandler
 

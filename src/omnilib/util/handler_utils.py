@@ -67,11 +67,9 @@ def _derefAggNick(handler, aggregateNickname):
             handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)
         else:
             # See if we can find the correct URN by finding the supplied URL in the aggregate nicknames
-            for (amURN, amURL) in handler.config['aggregate_nicknames'].values():
-                if amURL.startswith(url) and amURN.strip() != '':
-                    urn = amURN.strip()
-                    handler.logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", url, urn, amURL)
-                    break
+            turn = _lookupAggURNFromURLInNicknames(handler.logger, handler.config, url)
+            if turn and turn != "":
+                urn = turn
 
     return url,urn
 
@@ -81,6 +79,16 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         if aggregate_urn_or_url in agg_data:
             return nick
     return None
+
+def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
+    urn = ""
+    if agg_url:
+        for (amURN, amURL) in config['aggregate_nicknames'].values():
+            if amURL.startswith(agg_url) and amURN.strip() != '':
+                urn = amURN.strip()
+                logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", agg_url, urn, amURL)
+                break
+    return urn
 
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
@@ -146,7 +154,21 @@ def _listaggregates(handler):
         for url in handler.omni_config['aggregates'].strip().split(','):
             url = url.strip()
             if url != '':
-                aggs[url] = url
+                # Try treating that as a nickname
+                # otherwise it is the url directly
+                # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
+                nurl, urn = _derefAggNick(handler, url)
+                nurl = nurl.strip()
+                urn = urn.strip()
+                if nurl != '':
+                    # Avoid duplicate aggregate entries
+                    if nurl in aggs.values() and ((aggs.has_key(urn) and aggs[urn]==nurl) or urn == "unspecified_AM_URN"):
+                        continue
+                    while urn in aggs:
+                        urn += "+"
+                    aggs[urn] = nurl
+                else:
+                    aggs[url] = url
         return (aggs, "")
     else:
         (aggs, message) =  _do_ssl(handler.framework, None, "List Aggregates from control framework", handler.framework.list_aggregates)

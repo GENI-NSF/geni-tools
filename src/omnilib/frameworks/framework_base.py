@@ -268,8 +268,14 @@ class Framework_Base():
         raise NotImplementedError('add_member_to_slice')
 
     # Record new slivers at the CH database 
-    def db_create_sliver_info(self, sliver_urn, slice_urn, creator_urn,
-                              aggregate_urn, expiration):
+    # write new sliver_info to the database using chapi
+    # Manifest is the XML when using APIv1&2 and none otherwise
+    # expiration is the slice expiration
+    # slivers is the return struct from APIv3+ or None
+    # If am_urn is not provided, infer it from the url
+    # If both are not provided, infer the AM from the sliver URNs
+    def db_create_sliver_info(self, manifest, slice_urn,
+                              aggregate_url, expiration, slivers, am_urn):
         raise NotImplementedError('db_create_sliver_info')
 
     # use the CH database to convert an aggregate url to the corresponding urn
@@ -277,8 +283,9 @@ class Framework_Base():
         raise NotImplementedError('db_agg_url_to_urn')
 
     # given the slice urn and aggregate urn, find the associated sliver urns from the CH db
+    # Return an empty list if none found
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
-        raise NotImplementedError('db_find_sliver_urn')
+        raise NotImplementedError('db_find_sliver_urns')
 
     # update the expiration time on a sliver at the CH
     def db_update_sliver_info(self, sliver_urn, expiration):

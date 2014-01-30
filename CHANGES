@@ -35,6 +35,7 @@ gcf 2.5:
   - Fix circular imports in RSpecParser and objects (#459)
   - Omni cred_util uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
+  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
