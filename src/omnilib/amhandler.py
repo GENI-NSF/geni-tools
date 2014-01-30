@@ -3520,6 +3520,15 @@ class AMCallHandler(object):
                            sliver.has_key('geni_sliver_urn'):
                             # Note that the sliver may not be in the DB if you delete after allocate
 
+                            # FIXME: Exclude any slivers that are not geni_unallocated?
+                            # That is, what happens if you call delete only with specific slivers, 
+                            # and do not delete all the slivers. Will the others be returned?
+                            # I think the others are not _supposed to be returned....
+
+                            # FIXME: If the user asked to delete everything in this slice
+                            # at this AM, should I use list_slivers to delete everything
+                            # the CH knows in this slice at this AM, in case something got missed?
+
                             # FIXME: Exclude slivers in sliverFails (had errors)?
                             if sliver['geni_sliver_urn'] in sliverFails.keys():
                                 self.logger.debug("Skipping noting delete of failed sliver %s", sliver)
