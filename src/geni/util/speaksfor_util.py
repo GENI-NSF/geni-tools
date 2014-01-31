@@ -174,7 +174,8 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
     cred_file = write_to_tempfile(cred.save_to_string())
     cert_args = []
     if trusted_roots:
-        cert_args = ['--trusted-pem %s' % x for x in trusted_roots]
+        for x in trusted_roots:
+            cert_args += ['--trusted-pem', x.filename]
     xmlsec1_args = ['xmlsec1', '--verify'] + cert_args + [ cred_file]
     output = run_subprocess(xmlsec1_args, stdout=None, stderr=subprocess.PIPE)
     os.unlink(cred_file)
@@ -188,7 +189,7 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
         return False, None, "ABAC statement doesn't assert U.speaks_for(U)<-T"
 
     # If schema provided, validate against schema
-    if HAVEXML and schema and os.path.exists(schema):
+    if HAVELXML and schema and os.path.exists(schema):
         from lxml import etree
         tree = etree.parse(StringIO(cred.xml))
         schema_doc = etree.parse(schema)
@@ -364,16 +365,16 @@ if __name__ == "__main__":
              for file in os.listdir(trusted_roots_directory) \
              if file.endswith('.pem') and file != 'CATedCACerts.pem']
 
-    cred = CredentialFactory.createCred(credFile=options.cred_file)
+    cred = open(options.cred_file).read()
 
-    vsf, user_cert,msg = verify_speaks_for(cred, tool_gid, user_urn, \
-                                trusted_roots)
-    print 'VERIFY_SPEAKS_FOR = %s' % vsf
     creds = [{'geni_type' : ABACCredential.ABAC_CREDENTIAL_TYPE, 'geni_value' : cred, 
               'geni_version' : '1'}]
     gid = determine_speaks_for(creds, tool_gid, \
                                    {'geni_speaking_for' : user_urn}, \
                                    trusted_roots)
+
+
+    print 'SPEAKS_FOR = %s' % (gid != tool_gid)
     print "CERT URN = %s" % gid.get_urn()
 
                                  
