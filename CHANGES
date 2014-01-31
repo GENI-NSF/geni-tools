@@ -3,8 +3,8 @@
 gcf 2.5:
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
-  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
-  - Create any directories need in the path to the agg_nick_cache (#383)
+  - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+  - Create any directories need in the path to the `agg_nick_cache` (#383)
   - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
@@ -29,7 +29,7 @@ gcf 2.5:
     the `--framework` option (#315)
   - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
     set the default path to your saved user and slice credentials (#434)
-  - Handle ~ in `usercredfile` and `slicecredfile` (#455)
+  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in `listslices` (#456)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
   - Fix circular imports in RSpecParser and objects (#459)
