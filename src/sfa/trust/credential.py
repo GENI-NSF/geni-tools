@@ -287,7 +287,8 @@ class Credential(object):
         if not self.xmlsec_path:
             logger.warn("Could not locate binary for xmlsec1 - SFA will be unable to sign stuff !!")
 
-    def get_cred_type(self): return self.cred_type
+    def get_cred_type(self): 
+        return self.cred_type
 
     def get_subject(self):
         if not self.gidObject:
