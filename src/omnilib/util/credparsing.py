@@ -104,8 +104,9 @@ def get_cred_type(cred):
     if is_abac:
         return ABACCredential.ABAC_CREDENTIAL_TYPE, 1
     else:
-        return Credential.CREDENTIAL_TYPE, 3
-
+        sfa_version = 3
+        if not is_valid_v3(None, cred): sfa_version = 2
+        return Credential.SFA_CREDENTIAL_TYPE, sfa_version
 
 # Want to rule out ABAC
 # Want to rule out geni_sfa v2 if possible
