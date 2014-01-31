@@ -87,8 +87,15 @@ class ABACCredential(Credential):
                                              filename=filename)
         self.cred_type = ABACCredential.ABAC_CREDENTIAL_TYPE
 
-    def get_head(self) : return self.head
-    def get_tails(self) : return self.tails
+    def get_head(self) : 
+        if not self.head: 
+            self.decode()
+        return self.head
+
+    def get_tails(self) : 
+        if not self.tails:
+            self.decode()
+        return self.tails
 
 
     def decode(self):
@@ -128,9 +135,12 @@ class ABACCredential(Credential):
         return abac_elements
 
     def dump_string(self, dump_parents=False, show_xml=False):
-        result = ""
-        result += "Head: %s" % self.get_head() + "\n"
+        result = "ABAC Credential\n"
+        if self.expiration:
+            result +=  "\texpiration: %s \n" % self.expiration.isoformat()
+
+        result += "\tHead: %s\n" % self.get_head() 
         for tail in self.get_tails():
-            result += "Tail: %s" % tail
+            result += "\tTail: %s\n" % tail
         return result
 
