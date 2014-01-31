@@ -1321,6 +1321,7 @@ class Aggregate(object):
 
             dcnErrors = dict() # geni_error by geni_urn of individual resource
             circuitIDs = dict() # DCN circuit ID by geni_urn (one parse from the other)
+            statuses = dict() # per sliver status
 
             # Parse out sliver status / status
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
@@ -1356,6 +1357,13 @@ class Aggregate(object):
                                 else:
                                     self.logger.debug("Malformed sliverstatus missing geni_error tag: %s", str(resource))
                                     dcnErrors[urn] = None
+
+                                if resource.has_key("geni_status"):
+                                    statuses[urn] = resource["geni_status"]
+                                    self.logger.debug("Found status '%s' for sliver %s (circuit %s)", statuses[urn], urn, circuitid)
+                                else:
+                                    self.logger.debug("Malformed sliverstatus missing geni_status: %s", str(resource))
+                                    statuses[urn] = status
                             else:
                                 self.logger.debug("Malformed sliverstatus has empty geni_urn: %s", str(resource))
                 else:
@@ -1371,6 +1379,7 @@ class Aggregate(object):
                                     urn = sliver["geni_sliver_urn"]
                                     if urn:
                                         import re
+                                        statuses[urn] = status
                                         circuitid = None
                                         match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
                                         if match:
@@ -1412,6 +1421,7 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
+                status = statuses[entry]
                 if dcnerror and dcnerror.strip() != '':
                     if circuitid:
                         self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
@@ -1423,12 +1433,14 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
-                if circuitid:
-                    self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
-                else:
-                    self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
-                if dcnerror and dcnerror.strip() != '':
-                    self.logger.warn("  Status had error message: %s", dcnerror)
+                status = statuses[entry]
+                if (status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready') or dcnerror is not None):
+                    if circuitid:
+                        self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
+                    else:
+                        self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
+                    if dcnerror and dcnerror.strip() != '':
+                        self.logger.warn("  Status had error message: %s", dcnerror)
 
             # deleteReservation
             opName = 'deletesliver'
@@ -1450,6 +1462,7 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
+                status = statuses[entry]
                 if msg == None:
                     msg = ""
                 else:
