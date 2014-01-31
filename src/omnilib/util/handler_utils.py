@@ -35,6 +35,7 @@ import json_encoding
 from geni.util import rspec_util
 from omnilib.util.files import *
 from sfa.trust.gid import GID
+from sfa.trust.credential import Credential
 
 def _derefAggNick(handler, aggregateNickname):
     """Check if the given aggregate string is a nickname defined
@@ -253,7 +254,8 @@ def _get_slice_cred(handler, urn):
     (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
     if type(cred) is dict:
         # Validate the cred inside the struct
-        if not cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa':
+        if not cred.has_key('geni_type') \
+                and cred['geni_type'] == Credential.SFA_CREDENTIAL_TYPE:
             handler.logger.error("Non SFA slice credential returned for slice %s: %s" % (urn, cred))
             cred = None
             message = "Invalid slice credential returned"

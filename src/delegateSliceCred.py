@@ -334,7 +334,8 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         dcred.save_to_file(newname)
     else:
         dcredstr = dcred.save_to_string()
-        dcredStruct = dict(geni_type="geni_sfa", geni_version="3", geni_value=dcredstr)
+        dcredStruct = dict(geni_type=cred.Credential.SFA_CREDENTIAL_TYPE, 
+                           geni_version="3", geni_value=dcredstr)
         credout = json.dumps(dcredStruct, cls=json_encoding.DateTimeAwareJSONEncoder)
         with open(newname, 'w') as file:
             file.write(credout + "\n")

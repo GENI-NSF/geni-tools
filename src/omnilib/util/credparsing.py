@@ -31,6 +31,8 @@ import dateutil.parser
 import logging
 import traceback
 import xml.dom.minidom as md
+from sfa.trust.credential import Credential
+from sfa.trust.abac_credential import ABACCredential
 
 # FIXME: Doesn't distinguish v2 vs v3 yet
 def is_valid_v3(logger, credString):
@@ -100,9 +102,9 @@ def get_cred_type(cred):
     if len(type_elts)  == 1 and type_elts[0].childNodes[0].nodeValue == 'abac':
         is_abac = True
     if is_abac:
-        return 'geni_abac', 1
+        return ABACCredential.ABAC_CREDENTIAL_TYPE, 1
     else:
-        return 'geni_sfa', 3
+        return Credential.CREDENTIAL_TYPE, 3
 
 
 # Want to rule out ABAC

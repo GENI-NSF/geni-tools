@@ -34,6 +34,8 @@ from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
 from geni.util.speaksfor_util import determine_speaks_for
 import sfa.trust.gid as gid
 from sfa.trust.credential_factory import CredentialFactory
+from sfa.trust.credential import Credential
+from sfa.trust.abac_credential import ABACCredential
 
 import datetime
 import dateutil
@@ -126,7 +128,7 @@ class Framework(Framework_Base):
                 try:
                     cred_contents = open(cred_filename).read()
                     # FIXME: Infer cred type and wrap only as necessary
-                    new_cred = {'geni_type' : 'geni_abac',
+                    new_cred = {'geni_type' : ABACCredential.ABAC_CREDENTIAL_TYPE,
                                 'geni_value' : cred_contents,
                                 'geni_version' : '1'}
                     new_credentials.append(new_cred)
@@ -281,7 +283,9 @@ class Framework(Framework_Base):
         if creds is None:
             return None
         for cred in creds:
-            if cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa' and cred.has_key('geni_value'):
+            if cred.has_key('geni_type') \
+                    and cred['geni_type'] == Credential.SFA_CREDENTIAL_TYPE \
+                    and cred.has_key('geni_value'):
                 if struct:
                     return cred
                 return cred['geni_value']

@@ -32,6 +32,7 @@ from omnilib.util import OmniError
 import omnilib.util.credparsing as credutils
 import omnilib.util.json_encoding as json_encoding
 import omnilib.xmlrpc.client
+from sfa.trust.credential import Credential
 
 class Framework_Base():
     """
@@ -97,7 +98,7 @@ class Framework_Base():
                 if cred and isinstance(cred, dict) and \
                         cred.has_key('geni_type') and \
                         cred.has_key('geni_value') and \
-                        cred['geni_type'] == 'geni_sfa' and \
+                        cred['geni_type'] == Credential.SFA_CREDENTIAL_TYPE and \
                         cred['geni_value'] is not None:
                     self.user_cred_struct = cred
             except Exception, e:
