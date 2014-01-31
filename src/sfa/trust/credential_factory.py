@@ -24,8 +24,12 @@
 from sfa.util.sfalogging import logger
 from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
+import re
 
 # Factory for creating credentials of different sorts by type
+# Specifically, this factory can create standard SFA credentials
+# and ABAC credentials from XML strings based on their identifying content
+
 class CredentialFactory:
 
 
@@ -35,7 +39,7 @@ class CredentialFactory:
     # string depending on its contents
     @staticmethod
     def getType(credString):
-        credString_nowhitespace = credString.replace(" ", "")
+        credString_nowhitespace = re.sub('\s', '', credString)
         if credString_nowhitespace.find('<type>abac</type>') > -1:
             return ABACCredential.ABAC_CREDENTIAL_TYPE
         elif credString_nowhitespace.find('<type>privilege</type>') > -1:
