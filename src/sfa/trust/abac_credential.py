@@ -1,6 +1,55 @@
+#----------------------------------------------------------------------
+# Copyright (c) 2014 Raytheon BBN Technologies
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+#
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
+# IN THE WORK.
+#----------------------------------------------------------------------
+
 from sfa.trust.credential import Credential
 from sfa.util.sfalogging import logger
 from xml.dom.minidom import Document, parseString
+
+# This module defines a subtype of sfa.trust,credential.Credential
+# called an ABACCredential. An ABAC credential is a signed statement
+# asserting a role representing the relationship between a subject and target
+# or between a subject and a class of targets (all those satisfying a role).
+#
+# An ABAC credential is like a normal SFA credential in that it is has
+# a validated signature block and is checked for expiration. 
+# It does not, however, hove 'privileges'. Rather it contains a 'head' and
+# list of 'tails' of elements, each of which repersents a principal and
+# role.
+
+# A special case of an ABAC credential is a speaks_for credential. Such
+# a credential is simply an ABAC credential in form, but has a single 
+# tail and fixed role speaks_for. In ABAC notiation, it asserts
+# AGENT.speaks_for(AGENT)<-CLIENT, or "AGENT asserts that CLIENT may speak
+# for AGENT". The AGENT in this case is the head and the CLIENT is the
+# tail and 'speaks_for_AGENT' is the role on the head. These speaks-for
+# Credentials are used to allow a tool to 'speak as' itself but be recognized
+# as speaking for an individual and be authorized to the rights of that
+# individual and not to the rights of the tool itself.
+
+# For more detail on the semantics and syntax and expected usage patterns
+# of ABAC credentials, see http://groups.geni.net/geni/wiki/TIEDABACCredential.
+
+# 
 
 # An ABAC element contains a principal (keyid and optional mnemonic)
 # and optional role and linking_role element
@@ -38,8 +87,15 @@ class ABACCredential(Credential):
                                              filename=filename)
         self.cred_type = ABACCredential.ABAC_CREDENTIAL_TYPE
 
-    def get_head(self) : return self.head
-    def get_tails(self) : return self.tails
+    def get_head(self) : 
+        if not self.head: 
+            self.decode()
+        return self.head
+
+    def get_tails(self) : 
+        if not self.tails:
+            self.decode()
+        return self.tails
 
 
     def decode(self):
@@ -79,9 +135,12 @@ class ABACCredential(Credential):
         return abac_elements
 
     def dump_string(self, dump_parents=False, show_xml=False):
-        result = ""
-        result += "Head: %s" % self.get_head() + "\n"
+        result = "ABAC Credential\n"
+        if self.expiration:
+            result +=  "\texpiration: %s \n" % self.expiration.isoformat()
+
+        result += "\tHead: %s\n" % self.get_head() 
         for tail in self.get_tails():
-            result += "Tail: %s" % tail
+            result += "\tTail: %s\n" % tail
         return result
 

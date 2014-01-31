@@ -128,7 +128,7 @@ class CredentialVerifier(object):
         return comboFullPath
 
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
-                            privileges, options):
+                            privileges, options=None):
 
         '''Create Credential and GID objects from the given strings,
         and then verify the GID has the right privileges according 

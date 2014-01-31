@@ -206,7 +206,7 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
 #   trusted_root directory
 def determine_speaks_for(credentials, caller_gid, options, \
                              trusted_roots):
-    if 'geni_speaking_for' in options:
+    if options and 'geni_speaking_for' in options:
         speaking_for_urn = options['geni_speaking_for']
         for cred in credentials:
             if type(cred) == dict:
