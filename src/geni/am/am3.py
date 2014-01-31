@@ -44,7 +44,7 @@ from geni.util.urn_util import publicid_to_urn
 import geni.util.urn_util as urn
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from aggregate import Aggregate
-from sfa.trust.credential import CCredential
+from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
 from fakevm import FakeVM
 
