@@ -576,8 +576,15 @@ class CHCallHandler(object):
                 if agg_nickname:
                     result_string += " ( %s )" % agg_nickname
                 result_string += "\n"
-                for sliver_urn in slivers_by_agg[agg_urn]:
-                    result_string += "    Sliver: " + sliver_urn + "\n"
+                for sliver_urn in slivers_by_agg[agg_urn].keys():
+                    result_string += "    Sliver: " + sliver_urn
+                    if slivers_by_agg[agg_urn][sliver_urn] is not None and slivers_by_agg[agg_urn][sliver_urn].has_key('SLIVER_INFO_EXPIRATION') and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] is not None and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "" and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "None":
+                        result_string += " expires on " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " UTC\n"
+                    else:
+                        result_string += "\n"
                 result_string += "\n"
 
         return result_string, slivers_by_agg
