@@ -287,15 +287,18 @@ class Framework_Base():
     def db_find_sliver_urns(self, slice_urn, aggregate_urn):
         raise NotImplementedError('db_find_sliver_urns')
 
-    # update the expiration time on a sliver at the CH
-    def db_update_sliver_info(self, sliver_urn, expiration):
+    # update the expiration time for a sliver recorded at the CH,
+    # If we get an argument error indicating the sliver was not yet recorded, try
+    # to record it
+    def db_update_sliver_info(self, aggregate_urn, slice_urn, sliver_urn, expiration):
         raise NotImplementedError('db_update_sliver_info')
 
     # delete the sliver from the CH database of slivers in a slice
     def db_delete_sliver_info(self, sliver_urn):
         raise NotImplementedError('db_delete_sliver_info')
 
-    # Return a dictionary of all slivers for a given slice indexed by aggregate_urn
+    # Find all slivers the SA lists for the given slice
+    # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
     def db_find_slivers_for_slice(self, slice_urn):
         return {}
         
