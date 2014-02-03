@@ -28,6 +28,7 @@ from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
+#from omnilib.util.handler_utils import _lookupAggURNFromURLInNicknames
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
@@ -966,8 +967,16 @@ class Framework(Framework_Base):
                     msg += ". Server said: " + res['output']
                 # In APIv3 if you renew while allocated then the slice
                 # has not yet been recorded and will be unknown
-                if self.opts.api_version > 2 and "ARGUMENT_ERROR (Unknown slice urns: [[None]])" in msg and ("Update sliver" in msg or "Record sliver" in msg):
-                    msg = msg + " ... renewing or deleting a slice only allocated causes this. Expected & harmless."
+                if self.opts.api_version > 2 and "ARGUMENT_ERROR (Unknown slice urns: [[None]])" in msg and "Record sliver" in msg:
+                    msg = msg + " ...  deleting a slice only allocated or never recorded causes this. Expected & harmless."
+                    self.logger.debug(msg)
+                elif "ARGUMENT_ERROR (Unknown sli" in msg and "Update sliver" in action:
+                    # Called update but the sliver is not known
+                    msg = "Cannot update sliver - not registered. Register the sliver. " + msg
+                    self.logger.debug(msg)
+                elif "ARGUMENT_ERROR (Unknown sli" in msg and "Record sliver" in action and "deleted" in action:
+                    # Called delete but the sliver is not known. Harmless.
+                    msg = "Sliver was not registered to delete it. " + msg
                     self.logger.debug(msg)
                 else:
                     self.logger.warn(msg)
@@ -982,20 +991,30 @@ class Framework(Framework_Base):
             return msg
         return False
 
+    # Guess the aggregate URN from the sliver URN
+    def _getAggFromSliverURN(self, sliver_urn):
+        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+            return None
+        idx1 = sliver_urn.find('sliver+')
+        auth = sliver_urn[0 : idx1]
+        return auth + 'authority+am'
+
     # Helper for actually recording a new sliver with the given expiration
     def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
                                creator_urn, expiration):
         creds = []
+        if not is_valid_urn(agg_urn):
+            self.logger.debug("Not a valid AM URN: %s", agg_urn)
+            agg_urn = None
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record")
             return ""
         if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
             self.logger.warn("Invalid sliver urn %s", sliver_urn)
 #                   return ""
-        idx1 = sliver_urn.find('sliver+')
-        auth = sliver_urn[0 : idx1]
+
         if not agg_urn:
-            agg_urn = auth + 'authority+cm'
+            agg_urn = self._getAggFromSliverURN(sliver_urn)
             if not is_valid_urn(agg_urn):
                 self.logger.warn("Invalid aggregate URN %s for recording new sliver from sliver urn %s", agg_urn, sliver_urn)
                 return ""
@@ -1003,14 +1022,19 @@ class Framework(Framework_Base):
             # The authority of the agg_urn should be the start of the authority of the sliver auth
             # this allows a sliver at exogeni.net:bbn to be recorded under the AM exogeni.net
             agg_auth = agg_urn[0 : agg_urn.find('authority+')]
+            idx1 = sliver_urn.find('sliver+')
+            auth = sliver_urn[0 : idx1]
             if not auth.startswith(agg_auth):
                 self.logger.debug("Skipping sliver %s that doesn't appear to come from the specified AM %s", sliver_urn,
                                   agg_urn)
                 return ""
+        # FIXME: This assumes the sliver was created now, which isn't strictly true on create,
+        # and is certainly wrong if we are doing a create because the update failed
         fields = {"SLIVER_INFO_URN": sliver_urn,
                   "SLIVER_INFO_SLICE_URN": slice_urn,
                   "SLIVER_INFO_AGGREGATE_URN": agg_urn,
-                  "SLIVER_INFO_CREATOR_URN": creator_urn}
+                  "SLIVER_INFO_CREATOR_URN": creator_urn,
+                  "SLIVER_INFO_CREATION": datetime.datetime.utcnow().isoformat()}
         options = {'fields' : fields}
         if (expiration):
             # Note that if no TZ specified, UTC is assumed
@@ -1027,6 +1051,8 @@ class Framework(Framework_Base):
     # slivers is the return struct from APIv3+ or None
     # If am_urn is not provided, infer it from the url
     # If both are not provided, infer the AM from the sliver URNs
+    # If the URN is in the agg nicknames or getversion or I think in the service registry,
+    # It should already be filled in here
     def db_create_sliver_info(self, manifest, slice_urn,
                               aggregate_url, expiration, slivers, am_urn):
         if is_valid_urn(am_urn):
@@ -1037,11 +1063,14 @@ class Framework(Framework_Base):
             # Just get the URN from the manifest or slivers
             agg_urn = None
         else:
-            turn = _lookupAggURNFromURLInNicknames(self.logger, self.config, aggregate_url)
-            if is_valid_urn(turn):
-                agg_urn = turn
-            else:
-                agg_urn = self.db_agg_url_to_urn(aggregate_url)
+            # Have a URL but no URN
+
+            # FIXME: I can't actually call this here cause the config here is missing nicknames
+#            turn = _lookupAggURNFromURLInNicknames(self.logger, self.config, aggregate_url)
+#            if is_valid_urn(turn):
+#                agg_urn = turn
+#            else:
+            agg_urn = self.db_agg_url_to_urn(aggregate_url)
 #            if not is_valid_urn(agg_urn):
 #                self.logger.warn("Invalid aggregate URN %s for recording new sliver from url %s", agg_urn, aggregate_url)
 #                return
@@ -1105,9 +1134,9 @@ class Framework(Framework_Base):
 
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
-        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s" % (self.fwtype),
+        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for %s" % (self.fwtype, agg_url),
                             self.ch.lookup_aggregates, options)
-        logr = self._log_results((res, mess), 'Convert aggregate url to urn using %s DB' % (self.fwtype))
+        logr = self._log_results((res, mess), 'Convert aggregate url %s to urn using %s DB' % (agg_url, self.fwtype))
         if logr == True:
             if len(res['value']) == 0:
                 return None
@@ -1154,7 +1183,9 @@ class Framework(Framework_Base):
             return []
 
     # update the expiration time on a sliver
-    def db_update_sliver_info(self, sliver_urn, expiration):
+    # If we get an argument error indicating the sliver was not yet recorded, try
+    # to record it
+    def db_update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
         creds = []
         if expiration is None:
             self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
@@ -1165,14 +1196,31 @@ class Framework(Framework_Base):
         if not is_valid_urn_bytype(sliver_urn, 'sliver'):
             self.logger.warn("Invalid sliver urn %s", sliver_urn)
             return
+        if not is_valid_urn(agg_urn):
+            agg_urn = self._getAggFromSliverURN(sliver_urn)
+
+        slice_urn = self.slice_name_to_urn(slice_urn)
+
         # Note that if no TZ is specified, UTC is assumed
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
+
         options = {'fields' : fields}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         self.logger.debug("Passing options %s", options)
         res = _do_ssl(self, None, "Recording sliver %s updated expiration" % sliver_urn, \
                 self.sa.update_sliver_info, sliver_urn, creds, options)
-        return self._log_results(res, "Update sliver %s expiration" % sliver_urn)
+        msg = self._log_results(res, "Update sliver %s expiration" % sliver_urn)
+        if "Register the sliver" in str(msg) and "ARGUMENT_ERROR" in str(msg) and is_valid_urn(slice_urn) and is_valid_urn(agg_urn):
+            # SA didn't know about this sliver
+
+            msg = str(msg)
+            nm = self._record_one_new_sliver(sliver_urn,
+                                               slice_urn, agg_urn, self.user_urn, expiration)
+            if nm != True:
+                msg += str(msg)
+            else:
+                msg = "Recorded sliver %s with new expiration" % sliver_urn
+        return msg
 
 # Note: Valid 'match' fields for lookup_sliver_info are the same as is
 # passed in create_sliver_info. However, you can only look up by
@@ -1202,6 +1250,8 @@ class Framework(Framework_Base):
                       self.sa.delete_sliver_info, sliver_urn, creds, options)
         return self._log_results(res, "Record sliver %s deleted" % sliver_urn)
 
+    # Find all slivers the SA lists for the given slice
+    # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
     def db_find_slivers_for_slice(self, slice_urn):
         slivers_by_agg = {}
         creds = []
@@ -1232,7 +1282,7 @@ class Framework(Framework_Base):
                 # FIXME: If the sliver seems to have expired, skip it?
                 agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
                 if agg_urn not in slivers_by_agg:
-                    slivers_by_agg[agg_urn] = []
-                slivers_by_agg[agg_urn].append(sliver_urn)
+                    slivers_by_agg[agg_urn] = {}
+                slivers_by_agg[agg_urn][sliver_urn] = sliver_info
 
         return slivers_by_agg
