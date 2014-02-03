@@ -36,9 +36,14 @@ gcf 2.5:
   - Omni cred_util uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
   - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
-  - Add a new framework for talking the uniform federation API 
+  - Speed up listaggregates in `pgch` framework (don't test AM API
+    compliance) (#482)
+  - URN testing requires 4 `+` separated pieces (#483)
+  - Log at debug when downloading the aggregate nickname cache fails (#485)
+  - Add a new framework type `chapi` for talking the uniform federation API 
     to compliant clearinghouses (e.g. GENI Clearinghouse, ProtoGENI Utah).
-    Included in this:
+   - See `omni_config.sample` for config options required
+    Included in this change:
    - When creating or renewing or deleting slivers, tell the Slice Authority.
      This allows the SA to know (non-authoritatively) where your slice
      has resources.
@@ -70,6 +75,11 @@ gcf 2.5:
   - AM API v2 GCF AM now has a local policy limiting renewals to
     MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
     renew any slivers as long as possible, reporting the new expiration. (#414)
+  - Ensure that manifests include `client_id`, `component_id`,
+    `component_manager_id`, and `sliver_id`. Also ensure that the sliver
+    IDs are consistent with `sliverstatus` and between calls. Also clean
+    up manifest formatting. (#484)
+
 
  * acceptance tests
   - `get_ch_version` should return an `int` for `api`, not a `float` (#449)
