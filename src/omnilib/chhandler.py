@@ -561,7 +561,7 @@ class CHCallHandler(object):
         slice_urn = self.framework.slice_name_to_urn(slice_name)
 
         try:
-            slivers_by_agg = self.framework.db_find_slivers_for_slice(slice_urn)
+            slivers_by_agg = self.framework.list_sliver_infos_for_slice(slice_urn)
         except NotImplementedError, nie:
             self._raise_omni_error("listslivers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 

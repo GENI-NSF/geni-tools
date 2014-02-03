@@ -1053,7 +1053,7 @@ class Framework(Framework_Base):
     # If both are not provided, infer the AM from the sliver URNs
     # If the URN is in the agg nicknames or getversion or I think in the service registry,
     # It should already be filled in here
-    def db_create_sliver_info(self, manifest, slice_urn,
+    def create_sliver_info(self, manifest, slice_urn,
                               aggregate_url, expiration, slivers, am_urn):
         if is_valid_urn(am_urn):
             self.logger.debug("Using AM URN %s", am_urn)
@@ -1070,7 +1070,7 @@ class Framework(Framework_Base):
 #            if is_valid_urn(turn):
 #                agg_urn = turn
 #            else:
-            agg_urn = self.db_agg_url_to_urn(aggregate_url)
+            agg_urn = self.lookup_agg_urn_by_url(aggregate_url)
 #            if not is_valid_urn(agg_urn):
 #                self.logger.warn("Invalid aggregate URN %s for recording new sliver from url %s", agg_urn, aggregate_url)
 #                return
@@ -1127,7 +1127,7 @@ class Framework(Framework_Base):
 
     # use the database to convert an aggregate url to the corresponding urn
     # FIXME: other CHs do similar things - implement this elsewhere
-    def db_agg_url_to_urn(self, agg_url):
+    def lookup_agg_urn_ny_url(self, agg_url):
         if agg_url is None or agg_url.strip() == "":
             self.logger.warn("Empty Aggregate URL to look up")
             return None
@@ -1147,7 +1147,7 @@ class Framework(Framework_Base):
 
     # given the slice urn and aggregate urn, find the sliver urns from the db
     # Return an empty list if none found
-    def db_find_sliver_urns(self, slice_urn, aggregate_urn):
+    def list_sliverinfo_urns(self, slice_urn, aggregate_urn):
         creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
         if not is_valid_urn(slice_urn):
@@ -1185,7 +1185,7 @@ class Framework(Framework_Base):
     # update the expiration time on a sliver
     # If we get an argument error indicating the sliver was not yet recorded, try
     # to record it
-    def db_update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
+    def update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
         creds = []
         if expiration is None:
             self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
@@ -1234,7 +1234,7 @@ class Framework(Framework_Base):
 # SLIVER_INFO_CREATION
 
     # delete the sliver from the chapi database
-    def db_delete_sliver_info(self, sliver_urn):
+    def delete_sliver_info(self, sliver_urn):
         creds = []
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
@@ -1252,7 +1252,7 @@ class Framework(Framework_Base):
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
-    def db_find_slivers_for_slice(self, slice_urn):
+    def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
         creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
