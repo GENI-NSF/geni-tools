@@ -4,13 +4,13 @@ gcf 2.5:
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
   - Create any directories need in the path to the `agg_nick_cache` (#383)
   - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
-  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
-    allows changing this. (#407)
   - Fix bug in APIv3 calling status with slivers with different
     expiration times (#408)
   - Fit Omni result summaries in 80 character wide terminals (#409)
@@ -24,7 +24,7 @@ gcf 2.5:
   - SFA slice and user records changed: keys and slices moved (#429)
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
   - Support unicode urns (#448)
-  - Return any error message from a CH on getusercred (#452)
+  - Return any error message from a CH on `getusercred` (#452)
   - If set, `GENI_FRAMEWORK` environment variable is the default for
     the `--framework` option (#315)
   - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
@@ -32,7 +32,6 @@ gcf 2.5:
   - Handle `~` in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in `listslices` (#456)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
-  - Fix circular imports in RSpecParser and objects (#459)
   - Omni cred_util uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
   - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
@@ -41,7 +40,8 @@ gcf 2.5:
   - URN testing requires 4 `+` separated pieces (#483)
   - Log at debug when downloading the aggregate nickname cache fails (#485)
   - Add a new framework type `chapi` for talking the uniform federation API 
-    to compliant clearinghouses (e.g. GENI Clearinghouse, ProtoGENI Utah).
+    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
+    to compliant clearinghouses (e.g. GENI Clearinghouse).
    - See `omni_config.sample` for config options required
     Included in this change:
    - When creating or renewing or deleting slivers, tell the Slice Authority.
@@ -70,6 +70,7 @@ gcf 2.5:
   - Fix call to delete reservation at an EG AM on allocate error (#406)
   - Handle empty range of VLANs in VLANRange (#471)
   - Report per sliver errors at DCN AMs (#481)
+  - Fix circular imports in `RSpecParser` and `objects` (#459)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
