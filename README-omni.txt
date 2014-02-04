@@ -2051,12 +2051,12 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py listimages [CREATORURN]
+Format: `omni.py listimages [CREATORURN]`
 
 List the disk images created by the given user. 
 Takes a user urn or name. If no user is supplied, uses the caller's urn. 
 Returns a list of all images created by that user, including the URN 
-for deleting the image. Return is a list of structs containing the url and urn of the iamge.
+for deleting the image. Return is a list of structs containing the `url` and `urn` of the iamge.
 Note that you should invoke this at the AM where the images were created.
 
 Aggregates queried:
