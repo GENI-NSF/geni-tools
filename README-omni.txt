@@ -1032,9 +1032,11 @@ each of which is a dictionary possibly containing:
 This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
 not authoritative. You may use it to look for reservations, but if you
-require accurate information you must query the aggregates.
+require accurate information you must query the aggregates. Note in
+particular that slivers reserved through Flack are not reported here.
 
-This function is only supported at some `chapi` style clearinghouses.
+This function is only supported at some `chapi` style clearinghouses,
+including the GENI Clearinghouse.
 
 === listslicemembers ===
 List all the members of the given slice, including their registered
@@ -1054,10 +1056,10 @@ clearinghouse. For each member, the return includes:
  - `EMAIL` address of the member
 
 Note that slice membership is only supported at some `chapi` type
-clearinghouses. Slice membership determines who has rights to get a
-slice credential and can act on the named slice. Additionally, all members
-of a slice ''may'' have their public SSH keys installed on reserved
-resources.
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
 
 Note also that just because a slice member has SSH keys registered does not
 mean that those SSH keys have been installed on all reserved compute resources.
@@ -1073,10 +1075,10 @@ Sample Usage: `omni.py addmembertoslice myslice jsmith`
 Return is a boolean indicating success or failure.
 
 Note that slice membership is only supported at some `chapi` type
-clearinghouses. Slice membership determines who has rights to get a
-slice credential and can act on the named slice. Additionally, all members
-of a slice ''may'' have their public SSH keys installed on reserved
-resources.
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
 
 Note also that `role` may be limited to certain values, typically
 `ADMIN`, `MEMBER`, or `AUDITOR`. Typically `AUDITOR` members may not

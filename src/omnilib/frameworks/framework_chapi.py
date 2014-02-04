@@ -23,6 +23,7 @@
 
 # Framework for talking to a CH that speaks the Uniform Federation API
 # http://groups.geni.net/geni/wiki/UniformClearinghouseAPI
+# Specifically, this framework can be used to talk to the GENI Clearinghouse at ch.geni.net
 
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dates import naiveUTC
