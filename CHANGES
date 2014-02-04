@@ -80,6 +80,7 @@ gcf 2.5:
     `component_manager_id`, and `sliver_id`. Also ensure that the sliver
     IDs are consistent with `sliverstatus` and between calls. Also clean
     up manifest formatting. (#484)
+  - AM API v3 GCF AM must respect the gcf_config name of the AM authority (#487)
 
 
  * acceptance tests
