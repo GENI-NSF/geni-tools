@@ -99,6 +99,8 @@ New in v2.5:
     with the given role (or `MEMBER` by default). Note this
     does not change what SSH keys are installed on any existing
     slivers.
+ - `chapi` framework looks up the MA and SA at the clearinghouse,
+   though you can configure where they run. (#490)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default

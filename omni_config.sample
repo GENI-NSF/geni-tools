@@ -122,9 +122,15 @@ type=chapi # For use with the Uniform Federation API
 # Authority part of the control framework's URN
 authority=ch.geni.net
 
-# Where the CH API server is listening.
-#  Connection points will have '/CH', '/MA', or '/SA' appended as needed
-ch=https://ch.geni.net
+# Where the CH API server's Clearinghouse service is listening.
+# This will be used to find the MA and SA
+ch=https://ch.geni.net:8444/CH
+
+# Optionally you may explicitly specify where the MA and SA are
+#  running, in which case the Clearinghouse service is not used 
+#  to find them
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
 
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
