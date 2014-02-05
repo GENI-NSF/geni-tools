@@ -1186,12 +1186,14 @@ class Framework(Framework_Base):
         creds = []
         if self.needcred:
             # FIXME: At PG should this be user or slice cred?
+            # They don't seem to be requiring either one?
 #            uc, msg = self.get_user_cred(True)
 #            if uc is not None:
 #                creds.append(uc)
             sc = self.get_slice_cred_struct(slice_urn)
             if sc is not None:
                 creds.append(sc)
+
         if not is_valid_urn(agg_urn):
             self.logger.debug("Not a valid AM URN: %s", agg_urn)
             agg_urn = None
@@ -1224,10 +1226,12 @@ class Framework(Framework_Base):
                   "SLIVER_INFO_AGGREGATE_URN": agg_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn,
                   "SLIVER_INFO_CREATION": datetime.datetime.utcnow().isoformat()}
+
         options = {'fields' : fields}
         if (expiration):
             # Note that if no TZ specified, UTC is assumed
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
+
         self.logger.debug("Recording new slivers with options %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver %s creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
@@ -1273,7 +1277,7 @@ class Framework(Framework_Base):
 
         if manifest and manifest.strip() != "" and (slivers is None or len(slivers) == 0):
             # APIv1/2: find slivers in manifest
-            self.logger.debug("Finding new slivers to record in manfiest")
+            self.logger.debug("Finding new slivers to record in manifest")
             # Loop through manifest finding all slivers to record
             while True:
                 idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
