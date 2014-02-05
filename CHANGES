@@ -3,14 +3,14 @@
 gcf 2.5:
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
-  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
-  - Create any directories need in the path to the agg_nick_cache (#383)
+  - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
+  - Create any directories need in the path to the `agg_nick_cache` (#383)
   - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
   - Eliminated a repetitive log message (#384)
-  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
-    allows changing this. (#407)
   - Fix bug in APIv3 calling status with slivers with different
     expiration times (#408)
   - Fit Omni result summaries in 80 character wide terminals (#409)
@@ -24,17 +24,44 @@ gcf 2.5:
   - SFA slice and user records changed: keys and slices moved (#429)
   - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
   - Support unicode urns (#448)
-  - Return any error message from a CH on getusercred (#452)
+  - Return any error message from a CH on `getusercred` (#452)
   - If set, `GENI_FRAMEWORK` environment variable is the default for
     the `--framework` option (#315)
   - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
     set the default path to your saved user and slice credentials (#434)
-  - Handle ~ in `usercredfile` and `slicecredfile` (#455)
+  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in `listslices` (#456)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
-  - Fix circular imports in RSpecParser and objects (#459)
   - Omni cred_util uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
+  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
+  - Speed up listaggregates in `pgch` framework (don't test AM API
+    compliance) (#482)
+  - URN testing requires 4 `+` separated pieces (#483)
+  - Log at debug when downloading the aggregate nickname cache fails (#485)
+  - Add a new framework type `chapi` for talking the uniform federation API 
+    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
+    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
+   - See `omni_config.sample` for config options required
+    Included in this change:
+   - When creating or renewing or deleting slivers, tell the Slice Authority.
+     This allows the SA to know (non-authoritatively) where your slice
+     has resources. (#439)
+   - New function `listslivers <slice>` lists the slivers reported to 
+     the slice authority in the given slice, by aggregate (with
+     the sliver expirations). Note that this information is not
+     authoritative - contact the aggregates if you want to be sure
+     not to miss any reservations.
+   - New function `listslicemembers <slice>` lists the members of
+     the given slice, with their email and registered SSH public
+     keys (if any). (#421, #431)
+   - New function `addmembertoslice <slice> <member> [optional: role]`
+     Adds the member with the given username to the named slice,
+     with the given role (or `MEMBER` by default). Note this
+     does not change what SSH keys are installed on any existing
+     slivers. (#422)
+  - `chapi` framework looks up the MA and SA at the clearinghouse,
+    though you can configure where they run. (#490)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -44,11 +71,19 @@ gcf 2.5:
     Return 0 if SCS is up, 1 on error. (#394)
   - Fix call to delete reservation at an EG AM on allocate error (#406)
   - Handle empty range of VLANs in VLANRange (#471)
+  - Report per sliver errors at DCN AMs (#481)
+  - Fix circular imports in `RSpecParser` and `objects` (#459)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
     MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
     renew any slivers as long as possible, reporting the new expiration. (#414)
+  - Ensure that manifests include `client_id`, `component_id`,
+    `component_manager_id`, and `sliver_id`. Also ensure that the sliver
+    IDs are consistent with `sliverstatus` and between calls. Also clean
+    up manifest formatting. (#484)
+  - AM API v3 GCF AM must respect the gcf_config name of the AM authority (#487)
+
 
  * acceptance tests
   - `get_ch_version` should return an `int` for `api`, not a `float` (#449)

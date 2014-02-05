@@ -43,7 +43,7 @@ from ..sfa.util.xrn import get_leaf
 from .util import OmniError
 from .util.dossl import _do_ssl
 from .util import credparsing as credutils
-from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn
+from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick
 
 class CHCallHandler(object):
     """
@@ -298,6 +298,8 @@ class CHCallHandler(object):
         Not supported by all frameworks."""
         if len(args) > 0:
             username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
         else:
             username = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not username:
@@ -321,6 +323,7 @@ class CHCallHandler(object):
         return retStr, slices
 
     def listkeys(self, args):
+
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
         Not supported by all frameworks, and some frameworks insist on only the current user."""
@@ -329,6 +332,8 @@ class CHCallHandler(object):
             username = args[0].strip()
             if username == "":
                 username = None
+        if username is None and self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
         if username is None:
             printusername = get_leaf(_get_user_urn(self.logger, self.framework.config))
             if not printusername:
@@ -549,6 +554,130 @@ class CHCallHandler(object):
         # Log if the slice expires soon
         retVal = _print_slice_expiration(self, urn, cred)
         return retVal, retVal
+
+    def listslivers(self, args):
+        """List all slivers of the given slice by aggregate, as recorded
+        at the clearinghouse. Note this is non-authoritative information.
+        Argument: slice name or URN
+        Return: String printout of slivers by aggregate, with the sliver expiration if known, AND
+        A dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records, 
+        each of which is a dictionary possibly containing:
+         - SLIVER_INFO_URN
+         - SLIVER_INFO_SLICE_URN
+         - SLIVER_INFO_AGGREGATE_URN
+         - SLIVER_INFO_CREATOR_URN
+         - SLIVER_INFO_EXPIRATION
+         - SLIVER_INFO_CREATION
+         """
+        if len(args) == 0 or args[0] is None or args[0].strip() == "":
+            self._raise_omni_error("listslivers requires a slice name argument")
+        slice_name = args[0]
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        try:
+            slivers_by_agg = self.framework.list_sliver_infos_for_slice(slice_urn)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listslivers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
+
+        if len(slivers_by_agg) == 0:
+            result_string = "No slivers found for slice %s" % slice_urn
+        else:
+            result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
+            for agg_urn in slivers_by_agg:
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                result_string += "Aggregate: " + agg_urn
+                agg_nickname = _lookupAggNick(self, agg_urn)
+                if agg_nickname:
+                    result_string += " ( %s )" % agg_nickname
+                result_string += "\n"
+                for sliver_urn in slivers_by_agg[agg_urn].keys():
+                    result_string += "    Sliver: " + sliver_urn
+                    if slivers_by_agg[agg_urn][sliver_urn] is not None and slivers_by_agg[agg_urn][sliver_urn].has_key('SLIVER_INFO_EXPIRATION') and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] is not None and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "" and \
+                            slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "None":
+                        result_string += " expires on " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " UTC\n"
+                    else:
+                        result_string += "\n"
+                result_string += "\n"
+
+        return result_string, slivers_by_agg
+
+    def listslicemembers(self, args):
+        """List all the members of a slice
+        Args: slicename
+        Return summary string and list of member dictionaries
+        containing KEYS (list), URN, EMAIL
+        """
+        if len(args) < 1 or args[0] is None or args[0].strip() == "":
+            self._raise_omni_error('listslicemembers missing args: Supply <slice name>')
+        slice_name = args[0]
+
+        # convert the slice name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        try:
+            # Try to get all the members of this slice
+            members, message = self.framework.get_members_of_slice(slice_urn)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listslicemembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
+
+        if members and len(members) > 0:
+            prtStr = "Members in slice %s are:\n" % (slice_name)
+            for i, member in enumerate(members):
+                prtStr += 'Member ' + str(i + 1) + ':\n'
+                prtStr += '   URN = ' + member['URN'] + '\n'
+                prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
+                prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
+#            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to find members of slice %s" % (slice_name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', members
+
+    def addmembertoslice(self, args):
+        """Add a member to a slice
+        Args: slicename membername [optional: role name, default 'MEMBER']
+        Return summary string and whether successful
+        """
+        if len(args) != 2 and len(args) != 3:
+            self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
+        slice_name = args[0].strip()
+        member_name = args[1].strip()
+        if len(args) == 3:
+            role = args[2].strip()
+        else:
+            role = 'MEMBER'
+
+        # convert the slice and member name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        # Try to add the member to the slice
+        (res, m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_name, role)
+        if res is None:
+            success = False
+            message = None
+        else:
+            (success, message) = res
+
+        if success:
+            prtStr = "Member %s is now a %s in slice %s" % (member_name, role, slice_name)
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to add member %s to slice %s" % (member_name, slice_name)
+            if message and message.strip() != "":
+                prtStr += ". " + message
+            if m2 and m2.strip() != "":
+                if "NotImplementedError" in m2:
+                    prtStr += ". Framework type %s does not support add_member_to_slice." % self.config['selected_framework']['type']
+                else:
+                    prtStr += ". " + m2
+            self.logger.warn(prtStr)
+        return prtStr + '\n', success
 
 #########
 ## Helper functions follow

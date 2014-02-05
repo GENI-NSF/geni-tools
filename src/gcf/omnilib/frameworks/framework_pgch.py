@@ -222,3 +222,30 @@ class Framework(pg_framework):
         key_list, message = self._list_ssh_keys(username)
         return key_list, message
 
+    def _find_geni_ams(self, cm_dicts):
+        """Finds ComponentManagers that also support the GENI AM API.
+        Returns a list of dicts containing those CMs that implement the AM API.
+        The AM URL is included in the dict in the key 'am_url'.
+        """
+        result = list()
+        for cm_dict in cm_dicts:
+            if cm_dict.has_key("url"):
+                cm_url = cm_dict['url']
+            else:
+                self.logger.error("Missing url key for CM %s", cm_dict)
+                continue
+            if not cm_dict.has_key("urn"):
+                self.logger.error("Missing urn key for CM %s", cm_dict)
+                cm_dict["urn"] = ''
+            self.logger.debug('Checking for AM at %s', cm_url)
+            am_url = self._cm_to_am(cm_url)
+            self.logger.debug('AM URL = %s', am_url)
+
+            # Removed code to test that the URL is something that
+            # speaks the AM API - expensive and at our portal
+            # shouldn't be necessary
+
+            cm_dict['am_url'] = am_url
+            result.append(cm_dict)
+        return result
+

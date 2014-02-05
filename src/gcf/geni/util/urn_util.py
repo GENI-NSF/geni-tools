@@ -57,6 +57,8 @@ class URN(object):
                 raise ValueError("Invalid URN %s" % urn)
         
             spl = urn.split('+')
+            if len(spl) < 4:
+                raise ValueError("Invalid URN %s" % urn)
             self.authority = urn_to_string_format(spl[1])
             self.type = urn_to_string_format(spl[2])
             self.name = urn_to_string_format('+'.join(spl[3:]))
@@ -155,7 +157,9 @@ def is_valid_urn(inurn):
     ''' Check that this string is a valid URN'''
     # FIXME: This should pull out the type and do the type specific
     # checks that are currently below
-    return is_valid_urn_string(inurn) and inurn.startswith(publicid_urn_prefix)
+    return is_valid_urn_string(inurn) and \
+        inurn.startswith(publicid_urn_prefix) and \
+        len(inurn.split('+')) > 3
 
 def is_valid_urn_bytype(inurn, urntype, logger=None):
     if not is_valid_urn(inurn):

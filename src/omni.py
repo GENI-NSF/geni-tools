@@ -88,12 +88,14 @@
        [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
+       [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (KEYS, URN, EMAIL)] = omni.py listslicemembers SLICENAME
+       [string Boolean] = omni.py addmembertoslice SLICENAME MEMBER [ROLE]
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
 """
 
-<<<<<<< HEAD
 # Explicitly import framework files so py2exe is happy
 import gcf.omnilib.frameworks.framework_apg
 import gcf.omnilib.frameworks.framework_base
@@ -104,9 +106,9 @@ import gcf.omnilib.frameworks.framework_of
 import gcf.omnilib.frameworks.framework_pg
 import gcf.omnilib.frameworks.framework_pgch
 import gcf.omnilib.frameworks.framework_sfa
+import gcf.omnilib.frameworks.framework_chapi
 
 if __name__ == '__main__':
   import gcf.oscript
   import sys
   sys.exit(gcf.oscript.main())
-

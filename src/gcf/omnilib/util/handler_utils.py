@@ -69,13 +69,28 @@ def _derefAggNick(handler, aggregateNickname):
             handler.logger.info("Failed to find an AM nickname '%s'.  If you think this is an error, try using --NoAggNickCache to force the AM nickname cache to update." % aggregateNickname)
         else:
             # See if we can find the correct URN by finding the supplied URL in the aggregate nicknames
-            for (amURN, amURL) in handler.config['aggregate_nicknames'].values():
-                if amURL.startswith(url) and amURN.strip() != '':
-                    urn = amURN.strip()
-                    handler.logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", url, urn, amURL)
-                    break
+            turn = _lookupAggURNFromURLInNicknames(handler.logger, handler.config, url)
+            if turn and turn != "":
+                urn = turn
 
     return url,urn
+
+# Lookup aggregate nickname by aggregate_urn or aggregate_url
+def _lookupAggNick(handler, aggregate_urn_or_url):
+    for nick, agg_data in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url in agg_data:
+            return nick
+    return None
+
+def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
+    urn = ""
+    if agg_url:
+        for (amURN, amURL) in config['aggregate_nicknames'].values():
+            if amURL.startswith(agg_url) and amURN.strip() != '':
+                urn = amURN.strip()
+                logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", agg_url, urn, amURL)
+                break
+    return urn
 
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
@@ -141,7 +156,21 @@ def _listaggregates(handler):
         for url in handler.omni_config['aggregates'].strip().split(','):
             url = url.strip()
             if url != '':
-                aggs[url] = url
+                # Try treating that as a nickname
+                # otherwise it is the url directly
+                # Either way, if we have no URN, we fill in 'unspecified_AM_URN'
+                nurl, urn = _derefAggNick(handler, url)
+                nurl = nurl.strip()
+                urn = urn.strip()
+                if nurl != '':
+                    # Avoid duplicate aggregate entries
+                    if nurl in aggs.values() and ((aggs.has_key(urn) and aggs[urn]==nurl) or urn == "unspecified_AM_URN"):
+                        continue
+                    while urn in aggs:
+                        urn += "+"
+                    aggs[urn] = nurl
+                else:
+                    aggs[url] = url
         return (aggs, "")
     else:
         (aggs, message) =  _do_ssl(handler.framework, None, "List Aggregates from control framework", handler.framework.list_aggregates)
@@ -224,6 +253,26 @@ def _get_slice_cred(handler, urn):
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
     (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
+    if type(cred) is dict:
+        # Validate the cred inside the struct
+        if not cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa':
+            handler.logger.error("Non SFA slice credential returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        elif not cred.has_key('geni_value'):
+            handler.logger.error("Malformed slice credential struct returned for slice %s: %s" % (urn, cred))
+            cred = None
+            message = "Invalid slice credential returned"
+        if cred is not None:
+            icred = cred['geni_value']
+            if icred is not None and (not (type(icred) is str and icred.startswith("<"))):
+                handler.logger.error("Got invalid SFA slice credential for slice %s: %s" % (urn, icred))
+                cred = None
+                message = "Invalid slice credential returned"
+
+        # FIXME: If this is API v2, unwrap the cred? I _think_ all callers handle this appropriately without doing so
+
+        return (cred, message)
     if cred is not None and (not (type(cred) is str and cred.startswith("<"))):
         #elif slice_cred is not XML that looks like a credential, assume
         # assume it's an error message, and raise an omni_error
