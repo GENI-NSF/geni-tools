@@ -75,6 +75,7 @@ gcf 2.5:
   - Fix circular imports in `RSpecParser` and `objects` (#459)
   - Add option `useExoSM` to force use of the ExoSM for EG racks,
     where possible. Use this if you are reserving bare metal nodes. (#496)
+  - Change filenames to not use bad characters to support Windows (#497)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
