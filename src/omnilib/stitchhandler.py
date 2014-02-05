@@ -790,7 +790,7 @@ class StitchingHandler(object):
                         agg.userRequested = True
 
             # FIXME: Better way to detect this?
-            if "geni.renci.org:11443" in str(agg.url):
+            if handler_utils._extractURL(self.logger, agg.url) in defs.EXOSM_URL:
                 agg.isExoSM = True
 #                self.logger.debug("%s is the ExoSM cause URL is %s", agg, agg.url)
 
@@ -806,10 +806,12 @@ class StitchingHandler(object):
 #                elif "exogeni" in amURN and "exogeni" in agg.urn:
 #                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, amURL, agg)
 
-#            if "exogeni" in agg.urn and not agg.alt_url:
+            if "exogeni" in agg.urn and not agg.alt_url:
 #                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
 #                for urn in agg.urn_syns:
 #                    self.logger.debug(urn)
+                if not agg.isExoSM:
+                    agg.alt_url = defs.EXOSM_URL
 
             # Try to get a URL from the CH? Do we want/need this
             # expense? This is a call to the CH....
@@ -835,13 +837,6 @@ class StitchingHandler(object):
                 agg.url = agg.alt_url
                 agg.alt_url = amURL
                 agg.isExoSM = False
-
-            if agg.isEG and agg.alt_url and self.opts.useExoSM and not agg.isExoSM:
-                self.logger.warn("%s is an EG AM and user asked for ExoSM. Changing to %s", agg, agg.alt_url)
-                amURL = agg.url
-                agg.url = agg.alt_url
-                agg.alt_url = amURL
-                agg.isExoSM = True
 
 # For using the test ION AM
 #            if 'alpha.dragon' in agg.url:
@@ -910,8 +905,21 @@ class StitchingHandler(object):
             finally:
                 logging.disable(logging.NOTSET)
 
+            if agg.isEG and self.opts.useExoSM and not agg.isExoSM:
+                agg.alt_url = defs.EXOSM_URL
+                self.logger.info("%s is an EG AM and user asked for ExoSM. Changing to %s", agg, agg.alt_url)
+                amURL = agg.url
+                agg.url = agg.alt_url
+                agg.alt_url = amURL
+                agg.isExoSM = True
+                aggs.append(agg)
+                continue
+#            else:
+#                self.logger.debug("%s is EG: %s, alt_url: %s, isExo: %s", agg, agg.isEG, agg.alt_url, agg.isExoSM)
+
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
+
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
