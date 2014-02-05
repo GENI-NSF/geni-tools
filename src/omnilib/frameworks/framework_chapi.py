@@ -69,15 +69,21 @@ class Framework(Framework_Base):
         self._ma_url = None
         if config.has_key('ma') and config['ma'].strip() != "":
             self._ma_url = config['ma']
+            self.logger.info("Member Authority is %s (from config)", self._ma_url)
 
         self._sa = None
         self._sa_url = None
         if config.has_key('sa') and config['sa'].strip() != "":
             self._sa_url = config['sa']
+            self.logger.info("Slice Authority is %s (from config)", self._sa_url)
 
-        if not config.has_key('useProjects'):
-            config['useProjects'] = True
-        self.useProjects = config['useProjects']
+        self.logger = config['logger']
+        if not config.has_key('useprojects'):
+            config['useprojects'] = 'True'
+        if config['useprojects'].strip().lower() in ['f', 'false']:
+            self.useProjects = False
+        else:
+            self.useProjects = True
 
         self.cert = config['cert']
         try:
@@ -93,7 +99,6 @@ class Framework(Framework_Base):
         self.user_urn = self.cert_gid.get_urn()
         if self.opts.speaksfor: self.user_urn = self.opts.speaksfor
         self.user_cred = self.init_user_cred( opts )
-        self.logger = config['logger']
 
     def list_slice_authorities(self):
         self.logger.debug("Looking up SAs at %s %s", self.fwtype, self.ch_url)
@@ -122,7 +127,7 @@ class Framework(Framework_Base):
     def list_member_authorities(self):
         self.logger.debug("Looking up MAs at %s %s", self.fwtype, self.ch_url)
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
-        (res, message) = _do_ssl(self, None, ("List slice authorities  at %s %s" % (self.fwtype, self.ch_url)),
+        (res, message) = _do_ssl(self, None, ("List member authorities at %s %s" % (self.fwtype, self.ch_url)),
                                  self.ch.lookup_member_authorities,
                                  options)
         auths = dict()
@@ -159,7 +164,7 @@ class Framework(Framework_Base):
             raise Exception("No member authorities listed at %s %s!" % (self.fwtype, self.ch_url))
         if len(mas.keys()) > 1:
             self.logger.warn("%d member authorities were listed - taking the first: %s (%s)", len(mas.keys()), mas.keys()[0], mas[mas.keys()[0]])
-        self.logger.debug("MA is %s %s", mas.keys()[0], mas[mas.keys()[0]])
+        self.logger.info("Member Authority is %s %s", mas.keys()[0], mas[mas.keys()[0]])
         self._ma_url = mas[mas.keys()[0]]
         return self._ma_url
 
@@ -179,7 +184,7 @@ class Framework(Framework_Base):
             raise Exception("No slice authorities listed at %s %s!" % (self.fwtype, self.ch_url))
         if len(sas.keys()) > 1:
             self.logger.warn("%d slice authorities were listed - taking the first: %s (%s)", len(sas.keys()), sas.keys()[0], sas[sas.keys()[0]])
-        self.logger.debug("SA is %s %s", sas.keys()[0], sas[sas.keys()[0]])
+        self.logger.info("Slice Authority is %s %s", sas.keys()[0], sas[sas.keys()[0]])
         self._sa_url = sas[sas.keys()[0]]
         return self._sa_url
 
@@ -370,6 +375,9 @@ class Framework(Framework_Base):
 
     def create_slice(self, urn):
         scred = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            scred.append(uc)
 
         try:
             slice_urn = self.slice_name_to_urn(urn)
@@ -388,7 +396,7 @@ class Framework(Framework_Base):
             project = s_auths[-1]
             self.logger.debug("From slice URN extracted project %s", project)
 
-        if project is None:
+        if project is None and self.useProjects:
             if self.opts.project:
                 # use the command line option --project
                 project = self.opts.project
@@ -503,6 +511,9 @@ class Framework(Framework_Base):
             return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            scred.append(uc)
 
         project = None
         auth = None
@@ -520,7 +531,7 @@ class Framework(Framework_Base):
         else:
             slice_name = urn
 
-        if project is None:
+        if project is None and self.useProjects:
             if self.opts.project:
                 # use the command line option --project
                 project = self.opts.project
@@ -528,7 +539,7 @@ class Framework(Framework_Base):
                 # otherwise, default to 'default_project' in 'omni_config'
                 project = self.config['default_project']
             else:
-                return "%s does not support deleting slices. (And no project was specified)" % self.fwtype
+                return "%s at %s does not support deleting slices. (And no project was specified)" % (self.fwtype, self.sa_url())
 
         if auth is None:
             if not self.config.has_key('authority'):
@@ -563,8 +574,8 @@ class Framework(Framework_Base):
                     if d.has_key(slice_urn) and \
                                      d[slice_urn].has_key('SLICE_EXPIRATION'):
                         slice_expiration = d[slice_urn]['SLICE_EXPIRATION']
-                        exp = dateutil.parser.parse(slice_expiration)
-                        if exp < dattime.datetime.utcnow():
+                        exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                        if exp < naiveUTC(datetime.datetime.utcnow()):
                             self.logger.warn("Got expired slice %s at %s?", slice_urn, slice_expiration)
                     else:
                         # Likely the slice is already expired
@@ -625,6 +636,9 @@ class Framework(Framework_Base):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         scred = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            scred.append(uc)
 
         userurn = self.member_name_to_urn(user)
 
@@ -662,10 +676,12 @@ class Framework(Framework_Base):
                     self.logger.debug("Skipping non slice URN %s", slice)
                     continue
                 slicename = slice
-                exp = tup['EXPIRED']
-                if exp == True:
-                    self.logger.debug("Skipping expired slice %s", slice)
-                    continue
+                # Returning this key is non-standard..
+                if tup.has_key('EXPIRED'):
+                    exp = tup['EXPIRED']
+                    if exp == True:
+                        self.logger.debug("Skipping expired slice %s", slice)
+                        continue
                 slicenames.append(slicename)
         return slicenames
 
@@ -773,6 +789,9 @@ class Framework(Framework_Base):
 
     def get_slice_expiration(self, urn):
         scred = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
 #                    'SLICE_EXPIRED': 'f',
@@ -794,11 +813,11 @@ class Framework(Framework_Base):
                             expired = d[urn]['SLICE_EXPIRED']
                         if d[urn].has_key('SLICE_EXPIRATION'):
                             slice_expiration = d[urn]['SLICE_EXPIRATION']
-                            exp = dateutil.parser.parse(slice_expiration)
-                            if exp < datetime.datetime.utcnow():
+                            exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                            if exp < naiveUTC(datetime.datetime.utcnow()):
 #                                if not expired:
 #                                    self.logger.debug('CH says it is not expired, but expiration is in past?')
-                                self.logger.warn("Slice %s expired at %s", urn, slice_expiration)
+                                self.logger.warn("CH says slice %s expired at %s UTC", urn, slice_expiration)
 #                            elif expired:
 #                                self.logger.debug('CH says slice expired, but expiration %s is not in past?', slice_expiration)
                             return exp
@@ -835,6 +854,9 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            scred.append(uc)
 
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
@@ -955,13 +977,17 @@ class Framework(Framework_Base):
         if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
             return None
         creds = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
         res, mess = _do_ssl(self, None, "Looking up member email",
                             self.ma().lookup_identifying_member_info, creds, options)
 
         logr = self._log_results((res, mess), 'Lookup member email')
         if logr == True:
-            if not res['value']:
+            if not res['value'] and isinstance(res['value'], dict) and len(res['value'].values()) > 0 and res['value'].values()[0].has_key('MEMBER_EMAIL'):
+                self.logger.debug("Got malformed return looking up member email: %s", res)
                 return None
             else:
                 return res['value'].values()[0]['MEMBER_EMAIL']
@@ -999,6 +1025,9 @@ class Framework(Framework_Base):
         # Shouldn't the SA check this?
 
         creds = []
+        uc, msg = self.get_user_cred(True)
+        if uc is not None:
+            creds.append(uc)
         slice_urn = self.slice_name_to_urn(urn)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
@@ -1009,7 +1038,7 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
@@ -1040,13 +1069,13 @@ class Framework(Framework_Base):
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
-        creds = []
         role2 = str(role).upper()
         if role2 == 'LEAD':
             raise Exception("Cannot add a lead to a slice. Try role 'ADMIN'")
         if role2 not in ['LEAD','ADMIN', 'MEMBER', 'AUDITOR']:
             raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
         slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
         member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
@@ -1283,7 +1312,7 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         # FIXME: Query the sliver expiration and skip expired slivers?
         options = {'filter': [],
@@ -1383,7 +1412,7 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
 
