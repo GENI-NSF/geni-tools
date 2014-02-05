@@ -347,18 +347,21 @@ def _filename_part_from_am_url(url):
         server = server[:(server.index("/gapi"))]
     elif server.endswith(":12346"):
         server = server[:(server.index(":12346"))]
+    server = remove_bad_characters( server )
+    return server
 
+def remove_bad_characters( input ):
     # remove punctuation. Handle both unicode and ascii gracefully
     bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
-    if isinstance(server, unicode):
+    if isinstance(input, unicode):
         table = dict((ord(char), unicode('-')) for char in bad)
     else:
-        assert isinstance(server, str)
+        assert isinstance(input, str)
         table = string.maketrans(bad, '-' * len(bad))
-    server = server.translate(table)
-    if server.endswith('-'):
-        server = server[:-1]
-    return server
+    input = input.translate(table)
+    if input.endswith('-'):
+        input = input[:-1]
+    return input
 
 def _get_server_name(clienturl, clienturn):
     '''Construct a short server name from the AM URL and URN'''
