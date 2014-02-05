@@ -138,6 +138,10 @@ key=~/.gcf/alice-key.pem
 # For debugging
 verbose=false
 
+# Some chapi Clearinghouses do not use projects
+# Uncomment this line for such servers (such as emulab.net)
+#useprojects=false
+
 [my_gcf]
 type=gcf
 
