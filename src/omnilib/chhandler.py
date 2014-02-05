@@ -626,7 +626,7 @@ class CHCallHandler(object):
             for i, member in enumerate(members):
                 prtStr += 'Member ' + str(i + 1) + ':\n'
                 prtStr += '   URN = ' + member['URN'] + '\n'
-                prtStr += '   Email = ' + member['EMAIL'] + '\n'
+                prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
                 prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
 #            self.logger.info(prtStr)
         else:
