@@ -1046,12 +1046,18 @@ class Framework(Framework_Base):
         # if that is the most recent slice by this name
         # Shouldn't the SA check this?
 
+        slice_urn = self.slice_name_to_urn(urn)
+
         creds = []
         if self.needcred:
-            uc, msg = self.get_user_cred(True)
-            if uc is not None:
-                creds.append(uc)
-        slice_urn = self.slice_name_to_urn(urn)
+            # FIXME: At PG both a user cred and a slice cred seem to work
+            # Which is correct?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
@@ -1099,6 +1105,11 @@ class Framework(Framework_Base):
             raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
+        if self.needcred:
+            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
         member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
@@ -1173,6 +1184,14 @@ class Framework(Framework_Base):
     def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
                                creator_urn, expiration):
         creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
         if not is_valid_urn(agg_urn):
             self.logger.debug("Not a valid AM URN: %s", agg_urn)
             agg_urn = None
@@ -1326,6 +1345,14 @@ class Framework(Framework_Base):
         if not is_valid_urn(aggregate_urn):
             self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
             return []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
@@ -1356,7 +1383,6 @@ class Framework(Framework_Base):
     # If we get an argument error indicating the sliver was not yet recorded, try
     # to record it
     def update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
-        creds = []
         if expiration is None:
             self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
             return None
@@ -1370,6 +1396,16 @@ class Framework(Framework_Base):
             agg_urn = self._getAggFromSliverURN(sliver_urn)
 
         slice_urn = self.slice_name_to_urn(slice_urn)
+
+        creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         # Note that if no TZ is specified, UTC is assumed
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
@@ -1406,6 +1442,15 @@ class Framework(Framework_Base):
     # delete the sliver from the chapi database
     def delete_sliver_info(self, sliver_urn):
         creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+            # If slice, then must refactor to get slice urn
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+#            sc = self.get_slice_cred_struct(slice_urn)
+#            if sc is not None:
+#                creds.append(sc)
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record deletion")
@@ -1424,8 +1469,16 @@ class Framework(Framework_Base):
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
     def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
-        creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
