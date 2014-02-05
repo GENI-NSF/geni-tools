@@ -65,6 +65,9 @@ class Framework(Framework_Base):
         self.ch = self.make_client(self.ch_url, self.key, self.cert,
                                    verbose=config['verbose'])
 
+
+        self.logger = config['logger']
+
         self._ma = None
         self._ma_url = None
         if config.has_key('ma') and config['ma'].strip() != "":
@@ -77,13 +80,21 @@ class Framework(Framework_Base):
             self._sa_url = config['sa']
             self.logger.info("Slice Authority is %s (from config)", self._sa_url)
 
-        self.logger = config['logger']
         if not config.has_key('useprojects'):
             config['useprojects'] = 'True'
         if config['useprojects'].strip().lower() in ['f', 'false']:
             self.useProjects = False
         else:
             self.useProjects = True
+
+        # Does this CH need a usercred / slicecred passed to methods
+        # Default False
+        if not config.has_key('needcred'):
+            config['needcred'] = 'False'
+        if config['needcred'].strip().lower() in ['t', 'true']:
+            self.needcred = True
+        else:
+            self.needcred = False
 
         self.cert = config['cert']
         try:
@@ -258,6 +269,11 @@ class Framework(Framework_Base):
                 msg = message
 
         if struct==True:
+            if self.user_cred is not None and self.user_cred_struct is None:
+                if not isinstance(self.user_cred, dict):
+                    self.user_cred_struct = self.wrap_cred(self.user_cred)
+                else:
+                    self.user_cred_struct = self.user_cred
             return self.user_cred_struct, msg
         else:
             return self.user_cred, msg
@@ -375,9 +391,10 @@ class Framework(Framework_Base):
 
     def create_slice(self, urn):
         scred = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            scred.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         try:
             slice_urn = self.slice_name_to_urn(urn)
@@ -511,9 +528,10 @@ class Framework(Framework_Base):
             return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            scred.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         project = None
         auth = None
@@ -636,9 +654,10 @@ class Framework(Framework_Base):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         scred = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            scred.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         userurn = self.member_name_to_urn(user)
 
@@ -789,9 +808,10 @@ class Framework(Framework_Base):
 
     def get_slice_expiration(self, urn):
         scred = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            scred.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
 #                    'SLICE_EXPIRED': 'f',
@@ -854,9 +874,10 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            scred.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
@@ -977,9 +998,10 @@ class Framework(Framework_Base):
         if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
             return None
         creds = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            creds.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
         res, mess = _do_ssl(self, None, "Looking up member email",
                             self.ma().lookup_identifying_member_info, creds, options)
@@ -1025,9 +1047,10 @@ class Framework(Framework_Base):
         # Shouldn't the SA check this?
 
         creds = []
-        uc, msg = self.get_user_cred(True)
-        if uc is not None:
-            creds.append(uc)
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
         slice_urn = self.slice_name_to_urn(urn)
 
         slice_expiration = self.get_slice_expiration(slice_urn)

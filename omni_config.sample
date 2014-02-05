@@ -142,6 +142,10 @@ verbose=false
 # Uncomment this line for such servers (such as emulab.net)
 #useprojects=false
 
+# Some chapi Clearinghouses require you supply a credential in calls
+# Uncomment this line for such servers (such as emulab.net)
+#needcred=true
+
 [my_gcf]
 type=gcf
 
