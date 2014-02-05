@@ -42,3 +42,6 @@ VLANPRODUCER_VALUE = 'vlanproducer'
 
 # This should go away, its value is no longer used
 LAST_UPDATE_TIME_TAG = "lastUpdateTime"
+
+# Need the ExoSM URL, as ugly as that is
+EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"
