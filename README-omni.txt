@@ -80,12 +80,12 @@ New in v2.5:
  - Log at debug when downloading the aggregate nickname cache fails (#485)
  - Add a new framework type `chapi` for talking the uniform federation API 
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
-   to compliant clearinghouses (e.g. GENI Clearinghouse).
+   to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
   - See `omni_config.sample` for config options required
    Included in this change:
   - When creating or renewing or deleting slivers, tell the Slice Authority.
     This allows the SA to know (non-authoritatively) where your slice
-    has resources.
+    has resources. (#439)
   - New function `listslivers <slice>` lists the slivers reported to 
     the slice authority in the given slice, by aggregate (with
     the sliver expirations). Note that this information is not
@@ -93,12 +93,12 @@ New in v2.5:
     not to miss any reservations.
   - New function `listslicemembers <slice>` lists the members of
     the given slice, with their email and registered SSH public
-    keys (if any).
+    keys (if any). (#421, #431)
   - New function `addmembertoslice <slice> <member> [optional: role]`
     Adds the member with the given username to the named slice,
     with the given role (or `MEMBER` by default). Note this
     does not change what SSH keys are installed on any existing
-    slivers.
+    slivers. (#422)
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
 
