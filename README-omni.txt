@@ -101,6 +101,8 @@ New in v2.5:
     slivers. (#422)
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
+ - Warn when acting at all AMs in the clearinghouse - slow (#461)
+
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
