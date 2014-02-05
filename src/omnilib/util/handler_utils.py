@@ -70,21 +70,41 @@ def _derefAggNick(handler, aggregateNickname):
             turn = _lookupAggURNFromURLInNicknames(handler.logger, handler.config, url)
             if turn and turn != "":
                 urn = turn
+#            else:
+#                handler.logger.debug("Didn't find %s in nicknames", url)
 
     return url,urn
 
+def _extractURL(logger, url):
+    if url:
+        orig = url
+        httpsind = url.find("https://")
+        httpind = url.find("http://")
+        if url.startswith("https://"):
+            url = url[len("https://"):]
+        elif url.startswith("http://"):
+            url = url[len("http://"):]
+        if url.startswith("www."):
+            url = url[len("www."):]
+        if url.startswith("boss."):
+            url = url[len("boss."):]
+#        logger.debug("Extracted %s from %s", url, orig)
+    return url
+
 # Lookup aggregate nickname by aggregate_urn or aggregate_url
 def _lookupAggNick(handler, aggregate_urn_or_url):
-    for nick, agg_data in handler.config['aggregate_nicknames'].items():
-        if aggregate_urn_or_url in agg_data:
+    aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
+    for nick, (urn, urn) in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url in urn or aggregate_urn_or_url in url:
             return nick
     return None
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
     urn = ""
-    if agg_url:
+    nagg_url = _extractURL(logger, agg_url)
+    if nagg_url:
         for (amURN, amURL) in config['aggregate_nicknames'].values():
-            if amURL.startswith(agg_url) and amURN.strip() != '':
+            if nagg_url in amURL and amURN.strip() != '':
                 urn = amURN.strip()
                 logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", agg_url, urn, amURL)
                 break
@@ -119,7 +139,6 @@ def _derefRSpecNick( handler, rspecNickname ):
         else:
             raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)            
     return contentstr
-
 
 
 def _listaggregates(handler):
