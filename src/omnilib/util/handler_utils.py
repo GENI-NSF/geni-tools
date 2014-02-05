@@ -190,12 +190,13 @@ def _listaggregates(handler):
                     aggs[url] = url
         return (aggs, "")
     else:
+        handler.logger.debug("Querying clearinghouse for all aggregates")
         (aggs, message) =  _do_ssl(handler.framework, None, "List Aggregates from control framework", handler.framework.list_aggregates)
         if aggs is None:
             # FIXME: Return the message?
             return ({}, message)
         # FIXME: Check that each agg has both a urn and url key?
-        return (aggs, "")
+        return (aggs, "From CH")
 
 def _load_cred(handler, filename):
     '''
