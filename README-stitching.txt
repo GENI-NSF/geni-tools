@@ -162,7 +162,7 @@ Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
 full RSpec stitching extension yourself.
 
-Additionally, these two options are used for some topologies:
+Additionally, these options are used for some topologies:
  - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
  not at a node, but at a switch (E.G. because you have a static VLAN to a
  fixed non-AM controlled host from there.). This option adds a fake
@@ -173,14 +173,20 @@ Additionally, these two options are used for some topologies:
  - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
  ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
  instead use the local rack URL, and therefore only local rack
- allocated VMs and VLANs. For this to work, your `omni_config` must
- have an entry for the local ExoGENI rack that specifies both the
- aggregate URN as well as the URL, EG:
+ allocated VMs and VLANs. For this to work, your `omni_config` or the
+ base aggregate nicknames must have an entry for the local ExoGENI
+ rack that specifies both the aggregate URN as well as the URL, EG:
 {{{
 eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
 eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
 eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 }}}
+ - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
+ reservations. If we get an individual ExoGENI rack URL for an
+ aggregate, then try to use the ExoSM URL. For this to work, your
+ `omni_config`  or the base aggregate nicknames must have an entry for
+ the ExoGENI rack that specifies the URN and URL, as well as an entry
+ for the ExoSM.
 
 Other options you should not need to use:
  - `--fakeModeDir <directory>`: When supplied, does not make any

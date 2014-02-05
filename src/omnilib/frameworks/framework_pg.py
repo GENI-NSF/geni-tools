@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -28,9 +28,12 @@ import sys
 from urlparse import urlparse
 
 from omnilib.frameworks.framework_base import Framework_Base
+from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
+from omnilib.util.handler_utils import _get_user_urn
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from sfa.util.xrn import get_leaf
 
 # The key is a converted pkcs12 file. Start with your ProtoGENI
 # encrypted.p12 file (found in the .ssl directory or downloaded
@@ -124,6 +127,10 @@ class Framework(Framework_Base):
                 self.logger.error("Failed to get a %s user credential: Received error code: %d", self.fwtype, code)
                 output = pg_response['output']
                 self.logger.error("Received error message: %s", output)
+                if message is None or message == "":
+                    message = output
+                else:
+                    message = message + "; " + output
                 if log:
                     self.logger.error("See log: %s", log)
                 #return None
@@ -154,7 +161,7 @@ class Framework(Framework_Base):
             self.logger.debug("%s resolve slice log: %s", self.fwtype, log)
         if response['code']:
             # Unable to resolve, slice does not exist
-            raise Exception('%s Slice %s does not exist.' % (self.fwtype, urn))
+            raise Exception('Cannot access %s slice %s (does not exist or you are not a member).' % (self.fwtype, urn))
         else:
             # Slice exists, get credential and return it
             self.logger.debug("Resolved slice %s, getting credential", urn)
@@ -164,7 +171,7 @@ class Framework(Framework_Base):
 
             log = self._get_log_url(response)
 
-            # When the CM is busy, it return error 14: 'slice is busy; try again later'
+            # When the CM is busy, it returns error 14: 'slice is busy; try again later'
             # FIXME: All server calls should check for that 'try again later' and retry,
             # as dossl does when the AM raises that message in an XMLRPC fault
             if response['code']:
@@ -329,9 +336,13 @@ class Framework(Framework_Base):
         slice_list = self._list_my_slices( user )
         return slice_list
 
-    def list_my_ssh_keys(self):
-        key_list = self._list_my_ssh_keys()
-        return key_list
+    def list_ssh_keys(self, username=None):
+        if username is not None and username.strip() != "":
+            name = get_leaf(_get_user_urn(self.logger, self.config))
+            if name != get_leaf(username):
+                return None, "%s can get SSH keys for current user (%s) only, not %s" % (self.fwtype, name, username)
+        key_list, message = self._list_ssh_keys()
+        return key_list, message
 
     def list_aggregates(self):
         if self.aggs:
@@ -379,7 +390,7 @@ class Framework(Framework_Base):
             if log:
                 self.logger.debug("%s slice GetCredential log: %s", self.fwtype, log)
             slice_cred = response['value']
-            expiration = expiration_dt.isoformat()
+            expiration = naiveUTC(expiration_dt).isoformat()
             self.logger.info('Requesting new slice expiration %r', expiration)
             params = {'credential': slice_cred,
                       'expiration': expiration}
@@ -407,10 +418,9 @@ class Framework(Framework_Base):
                 # response['value'] is the new slice
                 # cred. parse the new expiration date out of
                 # that and return that
-                sliceexp = credutils.get_cred_exp(self.logger, response['value'])
-
+                sliceexp = naiveUTC(credutils.get_cred_exp(self.logger, response['value']))
                 # If request is diff from sliceexp then log a warning
-                if sliceexp - expiration_dt > datetime.timedelta.resolution:
+                if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
                     self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
                 return sliceexp
 
@@ -442,7 +452,8 @@ class Framework(Framework_Base):
         (pg_response, message) = _do_ssl(self, None, "Resolve user %s at %s SA %s" % (user, self.fwtype, self.config['sa']), self.sa.Resolve, {'credential': cred, 'type': 'User', 'hrn': user})
         if pg_response is None:
             self.logger.error("Cannot list slices: %s", message)
-            return list()
+            raise Exception(message)
+#            return list()
 
         log = self._get_log_url(pg_response)
         code = pg_response['code']
@@ -450,41 +461,49 @@ class Framework(Framework_Base):
             self.logger.error("Received error code: %d", code)
             output = pg_response['output']
             self.logger.error("Received error message from %s: %s", self.fwtype, output)
+            msg = "Error %d: %s" % (code, output)
             if log:
                 self.logger.error("%s log url: %s", self.fwtype, log)
-            # Return an empty list.
-            return list()
+            raise Exception(msg)
+#           # Return an empty list.
+#            return list()
 
         # Resolve keys include uuid, slices, urn, subauthorities, name, hrn, gid, pubkeys, email, uid
 
         # value is a dict, containing a list of slice URNs
         return pg_response['value']['slices']
 
-    def _list_my_ssh_keys(self):
+    def _list_ssh_keys(self, userurn = None):
         """Gets the ProtoGENI stored SSH public keys from the ProtoGENI Slice Authority. """
         cred, message = self.get_user_cred()
         if not cred:
             raise Exception("No user credential available. %s" % message)
-        (pg_response, message) = _do_ssl(self, None, "Get SSH Keys at %s SA %s" % (self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred})
+        usr = 'current user'
+        if userurn is not None:
+            usr = 'user ' + get_leaf(userurn)
+            (pg_response, message) = _do_ssl(self, None, "Get %s SSH Keys at %s SA %s" % (usr, self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred, 'member_urn': userurn})
+        else:
+            (pg_response, message) = _do_ssl(self, None, "Get %s SSH Keys at %s SA %s" % (usr, self.fwtype, self.config['sa']), self.sa.GetKeys, {'credential': cred})
         if pg_response is None:
-            self.logger.error("Cannot get user's public SSH keys: %s", message)
-            return list()
+            msg = "Cannot get %s's public SSH keys: %s" % (usr, message)
+            self.logger.error(msg)
+            return list(), msg
 
         log = self._get_log_url(pg_response)
         code = pg_response['code']
         if code:
-            self.logger.error("Received error code: %d", code)
             output = pg_response['output']
-            self.logger.error("Received error message from %s: %s", self.fwtype, output)
+            msg = "%s Server error %d: %s" % (self.fwtype, code, output)
             if log:
-                self.logger.error("%s log url: %s", self.fwtype, log)
+                msg += " (log url: %s)" % log
+            self.logger.error(msg)
             # Return an empty list.
-            return list()
+            return list(), msg
 
         # value is an array. For each entry, type=ssh, key=<key>
         if not isinstance(pg_response['value'], list):
             self.logger.error("Non list response for value: %r" % pg_response['value']);
-            return pg_response['value'];
+            return pg_response['value'], None
 
         keys = list()
         for key in pg_response['value']:
@@ -492,7 +511,7 @@ class Framework(Framework_Base):
                 self.logger.error("GetKeys list missing key value?");
                 continue
             keys.append(key['key'])
-        return keys
+        return keys, None
         
     def _get_components(self):
         """Gets the ProtoGENI component managers from the ProtoGENI

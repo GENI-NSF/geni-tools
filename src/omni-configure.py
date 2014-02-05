@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -1002,9 +1002,13 @@ def getPGConfig(opts, public_key_list, cert) :
 
     (user, user_urn) = getUserInfo(cert)
 
-    if user_urn.find('emulab.net') != -1 :
+    # UKY has to go first because emulab.net is a substring of uky.emulab.net
+    if user_urn.find('uky.emulab.net') != -1 :
+      sa = 'https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa'
+    else:
+      if user_urn.find('emulab.net') != -1 :
         sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
-    else :
+      else :
         if user_urn.find('pgeni.gpolab.bbn.com') != -1 :
             sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
         else : 

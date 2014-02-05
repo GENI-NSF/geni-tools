@@ -1,5 +1,7 @@
+#!/usr/bin/env python
+
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2014 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -19,7 +21,27 @@
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS
 # IN THE WORK.
+#----------------------------------------------------------------------
+'''Stitching related constants'''
 
-from omnierror import OmniError, NoSliceCredError, RefusedError, AMAPIError
-from dates import naiveUTC
-import handler_utils
+
+# XML tag constants
+RSPEC_TAG = 'rspec'
+LINK_TAG = 'link'
+NODE_TAG = 'node'
+STITCHING_TAG = 'stitching'
+PATH_TAG = 'path'
+EXPIRES_ATTRIBUTE = 'expires'
+# Capabilities element names
+CONSUMER_VALUE = 'consumer'
+PRODUCER_VALUE = 'producer'
+VLANCONSUMER_VALUE = 'vlanconsumer'
+VLANPRODUCER_VALUE = 'vlanproducer'
+
+# see geni.util.rspec_schema for namespaces
+
+# This should go away, its value is no longer used
+LAST_UPDATE_TIME_TAG = "lastUpdateTime"
+
+# Need the ExoSM URL, as ugly as that is
+EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"

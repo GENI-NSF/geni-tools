@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -83,10 +83,15 @@
        On success: [string dateTimeRenewedTo] = omni.py renewslice SLICENAME
        On fail: [string None] = omni.py renewslice SLICENAME
        [string Boolean] = omni.py deleteslice SLICENAME
+       [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
+       [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
+       [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (KEYS, URN, EMAIL)] = omni.py listslicemembers SLICENAME
+       [string Boolean] = omni.py addmembertoslice SLICENAME MEMBER [ROLE]
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
@@ -116,6 +121,7 @@ import omnilib.frameworks.framework_of
 import omnilib.frameworks.framework_pg
 import omnilib.frameworks.framework_pgch
 import omnilib.frameworks.framework_sfa
+import omnilib.frameworks.framework_chapi
 
 OMNI_VERSION="2.5"
 
@@ -374,8 +380,9 @@ def update_agg_nick_cache( opts, logger ):
             os.makedirs( directory )
         urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
         logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
-    except:
+    except Exception, e:
         logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
+        logger.debug(e)
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
@@ -775,7 +782,7 @@ def getSystemInfo():
 
 def getOmniVersion():
     version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
-    version +="\nCopyright (c) 2013 Raytheon BBN Technologies"
+    version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
 def getParser():
@@ -817,8 +824,12 @@ def getParser():
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
  \t\t\t listmykeys \n\
+ \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
+ \t\t\t listslivers <slicename>\n\
+ \t\t\t listslicemembers <slicename>\n\
+ \t\t\t addslicemember <slicename> <membername> [optional: role]\n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\
@@ -835,7 +846,7 @@ def getParser():
                       help="Only return available resources")
     basicgroup.add_option("-c", "--configfile",
                       help="Config file name (aka `omni_config`)", metavar="FILE")
-    basicgroup.add_option("-f", "--framework", default="",
+    basicgroup.add_option("-f", "--framework", default=os.getenv("GENI_FRAMEWORK", ""),
                       help="Control framework to use for creation/deletion of slices")
     basicgroup.add_option("-r", "--project", 
                       help="Name of project. (For use with pgch framework.)")
@@ -910,10 +921,12 @@ def getParser():
     # If this next is set, then options.output is also set
     filegroup.add_option("--outputfile",  default=None, metavar="OUTPUT_FILENAME",
                       help="Name of file to write output to (instead of Omni picked name). '%a' will be replaced by servername, '%s' by slicename if any. Implies -o. Note that for multiple aggregates, without a '%a' in the name, only the last aggregate output will remain in the file. Will ignore -p.")
-    filegroup.add_option("--usercredfile", default=None, metavar="USER_CRED_FILENAME",
-                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile myUserCred.xml -o getusercred'")
-    filegroup.add_option("--slicecredfile", default=None, metavar="SLICE_CRED_FILENAME",
-                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile mySliceCred.xml -o getslicecred mySliceName'")
+    filegroup.add_option("--usercredfile", default=os.getenv("GENI_USERCRED", None), metavar="USER_CRED_FILENAME",
+                      help="Name of user credential file to read from if it exists, or save to when running like '--usercredfile " + 
+                         "myUserCred.xml -o getusercred'. Defaults to value of 'GENI_USERCRED' environment variable if defined.")
+    filegroup.add_option("--slicecredfile", default=os.getenv("GENI_SLICECRED", None), metavar="SLICE_CRED_FILENAME",
+                      help="Name of slice credential file to read from if it exists, or save to when running like '--slicecredfile " + 
+                         "mySliceCred.xml -o getslicecred mySliceName'. Defaults to value of 'GENI_SLICECRED' environment variable if defined.")
     parser.add_option_group( filegroup )
     # GetVersion
     gvgroup = optparse.OptionGroup( parser, "GetVersion Cache",
@@ -1053,6 +1066,11 @@ def parse_args(argv, options=None, parser=None):
 
     if options.outputfile:
         options.output = True
+
+    if options.usercredfile:
+        options.usercredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.usercredfile)))
+    if options.slicecredfile:
+        options.slicecredfile = os.path.normpath(os.path.normcase(os.path.expanduser(options.slicecredfile)))
 
     return options, args
 

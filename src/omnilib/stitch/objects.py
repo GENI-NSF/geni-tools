@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -38,7 +38,7 @@ from xml.dom.minidom import parseString, Node as XMLNode
 
 from GENIObject import *
 from VLANRange import *
-import RSpecParser
+import defs
 from utils import *
 
 import omni
@@ -657,9 +657,9 @@ class Aggregate(object):
 #        # "expiration is greater then the maximum number of minutes 7200"
 #        # FIXME: Need a check for isPG to do this!
 #        if self.urn == "urn:publicid:IDN+emulab.net+authority+cm":
-#            rspecs = requestRSpecDom.getElementsByTagName(RSpecParser.RSPEC_TAG)
-#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(RSpecParser.EXPIRES_ATTRIBUTE):
-#                expires = rspecs[0].getAttribute(RSpecParser.EXPIRES_ATTRIBUTE)
+#            rspecs = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+#            if rspecs and len(rspecs) > 0 and rspecs[0].hasAttribute(defs.EXPIRES_ATTRIBUTE):
+#                expires = rspecs[0].getAttribute(defs.EXPIRES_ATTRIBUTE)
 #                expiresDT = naiveUTC(dateutil.parser.parse(expires)) # produce a datetime
 #                now = naiveUTC(datetime.datetime.utcnow())
 #                pgmax = datetime.timedelta(minutes=(7200-20)) # allow 20 minutes slop time to get the request RSpec to the AM
@@ -674,17 +674,17 @@ class Aggregate(object):
 #                    newExpires = naiveUTC(newExpiresDT).strftime('%Y-%m-%dT%H:%M:%SZ')
 #                    self.logger.warn("Slivers at PG Utah may not be requested initially for > 5 days. PG Utah slivers " +
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
-#                    rspecs[0].setAttribute(RSpecParser.EXPIRES_ATTRIBUTE, newExpires)
+#                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
-        stitchNodes = requestRSpecDom.getElementsByTagName(RSpecParser.STITCHING_TAG)
+        stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
-        domPaths = stitchNode.getElementsByTagName(RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, RSpecParser.PATH_TAG)
-#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, RSpecParser.PATH_TAG)
+        domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)
+#        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V2, defs.PATH_TAG)
         for path in self.paths:
             #self.logger.debug("Looking for node for path %s", path)
             domNode = None
@@ -723,14 +723,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -739,7 +739,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -836,14 +836,14 @@ class Aggregate(object):
 
         for child in manifest.childNodes:
             if child.nodeType == XMLNode.ELEMENT_NODE and \
-                    child.localName == RSpecParser.RSPEC_TAG:
+                    child.localName == defs.RSPEC_TAG:
                 rspec_node = child
                 break
 
         if rspec_node:
             for child in rspec_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.STITCHING_TAG:
+                        child.localName == defs.STITCHING_TAG:
                     stitching_node = child
                     break
         else:
@@ -852,7 +852,7 @@ class Aggregate(object):
         if stitching_node:
             for child in stitching_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
-                        child.localName == RSpecParser.PATH_TAG:
+                        child.localName == defs.PATH_TAG:
                     this_path_id = child.getAttribute(Path.ID_TAG)
                     if this_path_id == path_id:
                         path_node = child
@@ -1321,6 +1321,7 @@ class Aggregate(object):
 
             dcnErrors = dict() # geni_error by geni_urn of individual resource
             circuitIDs = dict() # DCN circuit ID by geni_urn (one parse from the other)
+            statuses = dict() # per sliver status
 
             # Parse out sliver status / status
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
@@ -1356,6 +1357,13 @@ class Aggregate(object):
                                 else:
                                     self.logger.debug("Malformed sliverstatus missing geni_error tag: %s", str(resource))
                                     dcnErrors[urn] = None
+
+                                if resource.has_key("geni_status"):
+                                    statuses[urn] = resource["geni_status"]
+                                    self.logger.debug("Found status '%s' for sliver %s (circuit %s)", statuses[urn], urn, circuitid)
+                                else:
+                                    self.logger.debug("Malformed sliverstatus missing geni_status: %s", str(resource))
+                                    statuses[urn] = status
                             else:
                                 self.logger.debug("Malformed sliverstatus has empty geni_urn: %s", str(resource))
                 else:
@@ -1371,6 +1379,7 @@ class Aggregate(object):
                                     urn = sliver["geni_sliver_urn"]
                                     if urn:
                                         import re
+                                        statuses[urn] = status
                                         circuitid = None
                                         match = re.match("^urn:publicid:IDN\+[^\+]+\+sliver\+.+_vlan_[^\-]+\-(\d+)$", urn)
                                         if match:
@@ -1412,6 +1421,7 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
+                status = statuses[entry]
                 if dcnerror and dcnerror.strip() != '':
                     if circuitid:
                         self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
@@ -1423,12 +1433,14 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
-                if circuitid:
-                    self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
-                else:
-                    self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
-                if dcnerror and dcnerror.strip() != '':
-                    self.logger.warn("  Status had error message: %s", dcnerror)
+                status = statuses[entry]
+                if (status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready') or dcnerror is not None):
+                    if circuitid:
+                        self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
+                    else:
+                        self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
+                    if dcnerror and dcnerror.strip() != '':
+                        self.logger.warn("  Status had error message: %s", dcnerror)
 
             # deleteReservation
             opName = 'deletesliver'
@@ -1450,6 +1462,7 @@ class Aggregate(object):
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
+                status = statuses[entry]
                 if msg == None:
                     msg = ""
                 else:
@@ -2423,9 +2436,9 @@ class HopLink(object):
                     if capability.firstChild:
                         cap = str(capability.firstChild.nodeValue).strip().lower()
                         hoplink.capabilities.append(cap)
-                        if cap == RSpecParser.PRODUCER_VALUE or cap == RSpecParser.VLANPRODUCER_VALUE:
+                        if cap == defs.PRODUCER_VALUE or cap == defs.VLANPRODUCER_VALUE:
                             hoplink.vlan_producer = True
-                        elif cap == RSpecParser.CONSUMER_VALUE or cap == RSpecParser.VLANCONSUMER_VALUE:
+                        elif cap == defs.CONSUMER_VALUE or cap == defs.VLANCONSUMER_VALUE:
                             hoplink.vlan_consumer = True
         return hoplink
 

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2013 Raytheon BBN Technologies
+# Copyright (c) 2010-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -57,6 +57,8 @@ class URN(object):
                 raise ValueError("Invalid URN %s" % urn)
         
             spl = urn.split('+')
+            if len(spl) < 4:
+                raise ValueError("Invalid URN %s" % urn)
             self.authority = urn_to_string_format(spl[1])
             self.type = urn_to_string_format(spl[2])
             self.name = urn_to_string_format('+'.join(spl[3:]))
@@ -139,10 +141,13 @@ def nameFromURN(instr):
 # Note that this is not sufficient but it is necessary
 def is_valid_urn_string(instr):
     '''Could this string be part of a URN'''
-    if instr is None or not isinstance(instr, str):
+    if instr is None or not (isinstance(instr, str) or
+                             isinstance(instr, unicode)):
         return False
     #No whitespace
     # no # or ? or /
+    if isinstance(instr, unicode):
+        instr = instr.encode('utf8')
     if re.search("[\s|\?\/\#]", instr) is None:
         return True
     return False
@@ -152,7 +157,9 @@ def is_valid_urn(inurn):
     ''' Check that this string is a valid URN'''
     # FIXME: This should pull out the type and do the type specific
     # checks that are currently below
-    return is_valid_urn_string(inurn) and inurn.startswith(publicid_urn_prefix)
+    return is_valid_urn_string(inurn) and \
+        inurn.startswith(publicid_urn_prefix) and \
+        len(inurn.split('+')) > 3
 
 def is_valid_urn_bytype(inurn, urntype, logger=None):
     if not is_valid_urn(inurn):

@@ -1,5 +1,5 @@
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -561,33 +561,44 @@ class Framework(Framework_Base):
             slice_names.append(hrn_to_urn(hrn, 'slice'))
         return slice_names
 
-    def list_my_ssh_keys(self):
+    def list_ssh_keys(self, username=None):
+        if not username or username == "":
+            username = self.config['user']
+        elif username.find('.') < 0:
+            baseuser = self.config['user']
+            lastdotIdx = baseuser.rfind('.')
+            if lastdotIdx > 0:
+                site = baseuser[:lastdotIdx+1]
+                username = site + username
+
         user_cred, message = self.get_user_cred()
         if user_cred is None:
             self.logger.error("Cannot get SFA SSH keys - could not get your user credential. %s", message)
-            return None
+            return None, message
 
-        (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (self.config['user'], self.config['registry'])), self.registry.Resolve, self.config['user'], user_cred)
+        (res, message) = _do_ssl(self, None, ("Get user %s SSH keys from SFA registry %s" % (username, self.config['registry'])), self.registry.Resolve, username, user_cred)
         record = self.get_record_from_resolve_by_type(res, 'user')
         self.logger.debug("Resolve returned %r", record)
         if record is None:
             self.logger.error("Cannot get SFA SSH keys - result is None");
-            return None
+            return None, message
         if not isinstance(record, dict):
-            self.logger.error("Cannot get SFA SSH keys - malformed result not a dict: %s", str(record)[:50])
-            return None
+            msg = "Cannot get SFA SSH keys - malformed result not a dict: %s" % str(record)[:50]
+            self.logger.error(msg)
+            return None, msg
         # Resolve has an entry 'keys' which is a list of the SSH keys. There is also key_ids - list of ints
         if record.has_key('key_ids'):
             self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
         if record.has_key("keys"):
             self.logger.debug("Found keys in field 'keys'")
-            return record['keys']
+            return record['keys'], None
         elif record.has_key('reg-keys'):
             self.logger.debug("Found keys in field 'reg-keys'")
-            return record['reg-keys']
+            return record['reg-keys'], None
         else:
-            self.logger.error("Cannot get SFA SSH keys - malformed return (missing keys entry)")
-            return None
+            msg = "Cannot get SFA SSH keys - malformed return (missing keys entry)"
+            self.logger.error(msg)
+            return None, msg
 
     def get_user_cred_struct(self):
         """
