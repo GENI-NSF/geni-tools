@@ -836,6 +836,13 @@ class StitchingHandler(object):
                 agg.alt_url = amURL
                 agg.isExoSM = False
 
+            if agg.isEG and agg.alt_url and self.opts.useExoSM and not agg.isExoSM:
+                self.logger.warn("%s is an EG AM and user asked for ExoSM. Changing to %s", agg, agg.alt_url)
+                amURL = agg.url
+                agg.url = agg.alt_url
+                agg.alt_url = amURL
+                agg.isExoSM = True
+
 # For using the test ION AM
 #            if 'alpha.dragon' in agg.url:
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
