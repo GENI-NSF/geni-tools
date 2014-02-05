@@ -61,6 +61,11 @@ MAX_SCS_CALLS = 5
 # Valid substitutions: %username, %slicename, %slicehrn
 SLICECRED_FILENAME = '/tmp/slice-%slicehrn-for-%username-cred.xml'
 
+def urn_to_clean_hrn( urn ):
+    hrn, type = urn_to_hrn( urn )
+    hrn = handler_utils.remove_bad_characters( hrn )
+    return hrn, type
+
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
     '''Workhorse class to do stitching. See doStitching().'''
@@ -458,7 +463,7 @@ class StitchingHandler(object):
             self.logger.error("Could not determine slice URN from name %s: %s", self.slicename, e)
             raise StitchingError(e)
 
-        self.slicehrn = urn_to_hrn(sliceurn)[0]
+        self.slicehrn = urn_to_clean_hrn(sliceurn)[0]
 
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
@@ -1019,7 +1024,7 @@ class StitchingHandler(object):
         '''Save a file with the list of aggregates used. Used as input
         to later stitcher calls, e.g. to delete from all AMs.'''
         # URN to hrn
-        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        (slicehrn, stype) = urn_to_clean_hrn(sliceurn)
         if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
             self.logger.warn("Couldn't parse slice HRN from URN %s",
                              sliceurn)
@@ -1065,7 +1070,7 @@ class StitchingHandler(object):
             return
 
         # get slice HRN
-        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        (slicehrn, stype) = urn_to_clean_hrn(sliceurn)
         if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
             self.logger.warn("Couldn't parse slice HRN from URN %s",
                              sliceurn)
