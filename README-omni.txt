@@ -63,17 +63,44 @@ New in v2.5:
  - SFA slice and user records changed: keys and slices moved (#429)
  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
  - Support unicode urns (#448)
- - Return any error message from a CH on getusercred (#452)
+ - Return any error message from a CH on `getusercred` (#452)
  - If set, `GENI_FRAMEWORK` environment variable is the default for
    the `--framework` option (#315)
  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
    set the default path to your saved user and slice credentials (#434)
- - Handle ~ in `usercredfile` and `slicecredfile` (#455)
+ - Handle `~` in `usercredfile` and `slicecredfile` (#455)
  - Return error on SA error in `listslices` (#456)
  - Allow `PerformOperationalAction` on v2 AMs (#412)
- - Fix circular imports in RSpecParser and objects (#459)
  - Omni cred_util uses an omni logger (#460)
  - Support querying for other users' SSH keys where the CH supports it (#472)
+ - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
+ - Speed up listaggregates in `pgch` framework (don't test AM API
+   compliance) (#482)
+ - URN testing requires 4 `+` separated pieces (#483)
+ - Log at debug when downloading the aggregate nickname cache fails (#485)
+ - Add a new framework type `chapi` for talking the uniform federation API 
+   (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
+   to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
+  - See `omni_config.sample` for config options required
+   Included in this change:
+  - When creating or renewing or deleting slivers, tell the Slice Authority.
+    This allows the SA to know (non-authoritatively) where your slice
+    has resources. (#439)
+  - New function `listslivers <slice>` lists the slivers reported to 
+    the slice authority in the given slice, by aggregate (with
+    the sliver expirations). Note that this information is not
+    authoritative - contact the aggregates if you want to be sure
+    not to miss any reservations.
+  - New function `listslicemembers <slice>` lists the members of
+    the given slice, with their email and registered SSH public
+    keys (if any). (#421, #431)
+  - New function `addmembertoslice <slice> <member> [optional: role]`
+    Adds the member with the given username to the named slice,
+    with the given role (or `MEMBER` by default). Note this
+    does not change what SSH keys are installed on any existing
+    slivers. (#422)
+ - `chapi` framework looks up the MA and SA at the clearinghouse,
+   though you can configure where they run. (#490)
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -313,7 +340,7 @@ Detailed changes:
    (ticket #183)
  - A couple utility methods can take no slice name, just a slice
    credential filename, and read the slice name/urn from the
-   credential. See print_slice_expiration
+   credential. See `print_slice_expiration`
  - When reading a credential from a file, make sure it matches the
    expected slice.
  - Log clearly when a supplied credential filename was not used,
@@ -602,6 +629,9 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename> 
+			 listslivers <slicename>
+			 listslicemembers <slicename>
+			 addslicemember <slicename> <membername> [optional: role]
  		Other functions: 
  			 nicknames 
 
@@ -980,6 +1010,88 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 
 With the `--slicecredfile` option the slice's credential is read from
 that file, if it exists. Otherwise the Slice Authority is queried.
+
+=== listslivers ===
+List all slivers of the given slice by aggregate, as recorded at the
+clearinghouse. Note that this is non-authoritative information.
+
+Format: `omni.py listslivers <slice name>`
+
+Sample usage: `omni.py listslivers myslices`
+
+Return: String printout of slivers by aggregate, with the sliver expiration if known, AND
+a dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records, 
+each of which is a dictionary possibly containing:
+ - `SLIVER_INFO_URN`: URN of the sliver
+ - `SLIVER_INFO_SLICE_URN`: Slice URN
+ - `SLIVER_INFO_AGGREGATE_URN`: Aggregate URN
+ - `SLIVER_INFO_CREATOR_URN`: URN of the user who reserved the sliver,
+ or who first reported the sliver if not known
+ - `SLIVER_INFO_EXPIRATION`: When the sliver expires, if known
+ - `SLIVER_INFO_CREATION`: When the sliver was created if known (or
+ sometimes when it was first reported to the clearinghouse)
+
+This is purely advisory information, that is voluntarily reported by
+some tools and some aggregates to the clearinghouse. As such, it is
+not authoritative. You may use it to look for reservations, but if you
+require accurate information you must query the aggregates. Note in
+particular that slivers reserved through Flack are not reported here.
+
+This function is only supported at some `chapi` style clearinghouses,
+including the GENI Clearinghouse.
+
+=== listslicemembers ===
+List all the members of the given slice, including their registered
+public SSH keys.
+
+Format: `omni.py listslicemembers <slicename>`
+
+Sample usage: `omni.py listslicemembers myslice>`
+
+Output prints out the slice members and their SSH keys, URN, and
+email.
+
+Return is a list of the members of the slice as registered at the
+clearinghouse. For each member, the return includes:
+ - `KEYS`: a list of all public SSH keys registered at the clearinghouse
+ - `URN` identifier of the member
+ - `EMAIL` address of the member
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+Note also that just because a slice member has SSH keys registered does not
+mean that those SSH keys have been installed on all reserved compute resources.
+
+=== addmembertoslice ===
+Add the named member to the named slice. The member's role in the
+slice will be `MEMBER` if not specified.
+
+Format: `omni.py addmembertoslice <slice name> <member username> [role]`
+
+Sample Usage: `omni.py addmembertoslice myslice jsmith`
+
+Return is a boolean indicating success or failure.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+Note also that `role` may be limited to certain values, typically
+`ADMIN`, `MEMBER`, or `AUDITOR`. Typically `AUDITOR` members may not
+get a slice credential and so may not act on slices, but may only see them.
+
+This function is typically a privileged operation at the
+clearinghouse, limited to slice members with the role `LEAD` or
+`ADMIN`.
+
+Note also that adding a member to a slice does not automatically add
+their public SSH keys to resources that have already been reserved.
 
 ==== getversion ====
 Call the AM API !GetVersion function at each aggregate.
@@ -1943,12 +2055,12 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py listimages [CREATORURN]
+Format: `omni.py listimages [CREATORURN]`
 
 List the disk images created by the given user. 
 Takes a user urn or name. If no user is supplied, uses the caller's urn. 
 Returns a list of all images created by that user, including the URN 
-for deleting the image. Return is a list of structs containing the url and urn of the iamge.
+for deleting the image. Return is a list of structs containing the `url` and `urn` of the iamge.
 Note that you should invoke this at the AM where the images were created.
 
 Aggregates queried:

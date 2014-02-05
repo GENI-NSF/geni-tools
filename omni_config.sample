@@ -33,7 +33,7 @@ default_cf = my_gcf
 # Omni will by default contact every Aggregate Manager listed
 # by your control framework's registry/clearinghouse.  If you would
 # like to provide a specific list of aggregates to contact, do so 
-# here in a comma delimited list of of urls.
+# here in a comma delimited list of of urls or nicknames defined later.
 # e.g., a PL in Princeton AM, a PG in Utah AM, a test GCF AM, and 
 #  an OpenFlow/Expedient AM in the GPO lab would be: 
 # aggregates = http://www.planet-lab.org:12347/, \
@@ -91,12 +91,11 @@ default_rspec_extension = rspec
 # At least one framework section (sfa/pg/gcf) needs to be filled out
 # and pointed to by default_cf
 
-
 [my_sfa]
 # Most of these fields can be found in an SFI configuration
 # See: http://svn.planet-lab.org/wiki/SFAConfigurationGuide#ConfiguringSFITools
 
-# The framework type (either sfa, pg, or gcf)
+# The framework type (either sfa, pg, gcf, or chapi)
 type=sfa
 
 # HRN of your MyPLC or PLC (e.g., plc.princeton) site
@@ -117,8 +116,31 @@ key=~/.gcf/id_rsa_planetlab
 registry=http://www.planet-lab.org:12345
 slicemgr=http://www.planet-lab.org:12347
 
+[my_chapi]
+type=chapi # For use with the Uniform Federation API
 
+# Authority part of the control framework's URN
+authority=ch.geni.net
 
+# Where the CH API server's Clearinghouse service is listening.
+# This will be used to find the MA and SA
+ch=https://ch.geni.net:8444/CH
+
+# Optionally you may explicitly specify where the MA and SA are
+#  running, in which case the Clearinghouse service is not used 
+#  to find them
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
+
+cert=~/.gcf/alice-cert.pem
+key=~/.gcf/alice-key.pem
+
+# For debugging
+verbose=false
+
+# Some chapi Clearinghouses do not use projects
+# Uncomment this line for such servers (such as emulab.net)
+#useprojects=false
 
 [my_gcf]
 type=gcf
@@ -131,8 +153,6 @@ ch=https://localhost:8000
 
 cert=~/.gcf/alice-cert.pem
 key=~/.gcf/alice-key.pem
-
-
 
 [my_pg]
 type=pg

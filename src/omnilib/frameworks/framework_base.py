@@ -74,6 +74,12 @@ class Framework_Base():
         Returns the usercred - in XML string format.
         """
         
+        try:
+            if self.user_cred_struct is not None:
+                pass
+        except:
+            self.user_cred_struct = None
+
         # read the usercred from supplied file
         cred = None
         if opts.usercredfile and os.path.exists(opts.usercredfile) and os.path.isfile(opts.usercredfile) and os.path.getsize(opts.usercredfile) > 0:
@@ -88,6 +94,12 @@ class Framework_Base():
                 cred = f.read()
             try:
                 cred = json.loads(cred, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+                if cred and isinstance(cred, dict) and \
+                        cred.has_key('geni_type') and \
+                        cred.has_key('geni_value') and \
+                        cred['geni_type'] == 'geni_sfa' and \
+                        cred['geni_value'] is not None:
+                    self.user_cred_struct = cred
             except Exception, e:
                 logger.debug("Failed to get a JSON struct from cred in file %s. Treat as a string: %s", opts.usercredfile, e)
             cred2 = credutils.get_cred_xml(cred)
@@ -246,3 +258,47 @@ class Framework_Base():
         Wrap the given cred in the appropriate struct for this framework.
         """
         raise NotImplementedError('wrap_cred')
+
+    # get the slice members (urn, email) and their public ssh keys
+    def get_members_of_slice(self, slice_urn):
+        raise NotImplementedError('get_members_of_slice')
+
+    # add a new member to a slice (giving them rights to get a slice credential)
+    def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
+        raise NotImplementedError('add_member_to_slice')
+
+    # Record new slivers at the CH database 
+    # write new sliver_info to the database using chapi
+    # Manifest is the XML when using APIv1&2 and none otherwise
+    # expiration is the slice expiration
+    # slivers is the return struct from APIv3+ or None
+    # If am_urn is not provided, infer it from the url
+    # If both are not provided, infer the AM from the sliver URNs
+    def create_sliver_info(self, manifest, slice_urn,
+                              aggregate_url, expiration, slivers, am_urn):
+        raise NotImplementedError('create_sliver_info')
+
+    # use the CH database to convert an aggregate url to the corresponding urn
+    def lookup_agg_urn_by_url(self, agg_url):
+        raise NotImplementedError('lookup_agg_urn_by_url')
+
+    # given the slice urn and aggregate urn, find the associated sliver urns from the CH db
+    # Return an empty list if none found
+    def list_sliverinfo_urns(self, slice_urn, aggregate_urn):
+        raise NotImplementedError('list_sliverinfo_urns')
+
+    # update the expiration time for a sliver recorded at the CH,
+    # If we get an argument error indicating the sliver was not yet recorded, try
+    # to record it
+    def update_sliver_info(self, aggregate_urn, slice_urn, sliver_urn, expiration):
+        raise NotImplementedError('update_sliver_info')
+
+    # delete the sliver from the CH database of slivers in a slice
+    def delete_sliver_info(self, sliver_urn):
+        raise NotImplementedError('delete_sliver_info')
+
+    # Find all slivers the SA lists for the given slice
+    # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
+    def list_sliver_infos_for_slice(self, slice_urn):
+        return {}
+        

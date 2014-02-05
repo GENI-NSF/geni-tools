@@ -23,6 +23,8 @@
 
 import geni
 
+import uuid
+
 class Resource(object):
     """A Resource has an id, a type, and a boolean indicating availability."""
 
@@ -56,11 +58,16 @@ class Resource(object):
         self.state = Resource.STATE_GENI_UNALLOCATED
         self.operational_state = None
 
-    def urn(self):
-        # User in SliverStatus
-        # NAMESPACE has no business here. The URN should be at an upper level, not here.
-        RESOURCE_NAMESPACE = 'geni//gpo//gcf'
-        publicid = 'IDN %s sliver %s_%s' % (RESOURCE_NAMESPACE, self.type, str(self.id))
+    def urn(self, auth="geni//gpo//gcf"):
+        publicid = 'IDN %s %s %s' % (auth, self.type, str(self.id))
+        return geni.publicid_to_urn(publicid)
+
+    def sliver_urn(self, auth="geni//gpo//gcf", sliver_id=uuid.uuid4()):
+        # Used in SliverStatus
+        publicid = 'IDN %s sliver %s%s-%s' % (auth, self.type,
+                                              str(self.id), str(sliver_id))
+# If I knew that sliver_id was real, I'd do this:
+#        publicid = 'IDN %s sliver %s%s-%s' % (auth, str(sliver_id))
         return geni.publicid_to_urn(publicid)
 
     def toxml(self):

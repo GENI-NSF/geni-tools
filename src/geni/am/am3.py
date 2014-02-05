@@ -131,13 +131,16 @@ class Sliver(object):
     """
 
     def __init__(self, parent_slice, resource):
+        self._id = str(uuid.uuid4())
         self._resource = resource
         self._slice = parent_slice
         self._expiration = None
         self._allocation_state = STATE_GENI_UNALLOCATED
         self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
-        self._setUrnFromParent(parent_slice.urn)
+        global RESOURCE_NAMESPACE
+        self._base = RESOURCE_NAMESPACE
+        self._setUrnFromParent(resource.urn(self._base))
         self._shutdown = False
 
     def resource(self):
@@ -168,13 +171,13 @@ class Sliver(object):
 
     def _setUrnFromParent(self, parent_urn):
         authority = urn.URN(urn=parent_urn).getAuthority()
-        # What should the name be?
-        name = str(uuid.uuid4())
         self._urn = str(urn.URN(authority=authority,
                                 type='sliver',
-                                name=name))
+                                name=self._id))
 
     def urn(self):
+        if self._urn is None:
+            self._setUrnFromParent(self._resource.urn(self._base))
         return self._urn
 
     def delete(self):
@@ -898,18 +901,18 @@ class ReferenceAggregateManager(object):
         return dt
 
     def advert_resource(self, resource):
-        tmpl = '''  <node component_manager_id="%s"
-        component_name="%s"
-        component_id="%s"
+        tmpl = '''  <node component_manager_id="%s" 
+        component_name="%s" 
+        component_id="%s" 
         exclusive="%s">
     <sliver_type name="fake-vm"/>
     <available now="%s"/>
   </node>
-  '''
+'''
         resource_id = str(resource.id)
         resource_exclusive = str(False).lower()
         resource_available = str(resource.available).lower()
-        resource_urn = self.resource_urn(resource)
+        resource_urn = resource.urn(self._urn_authority)
         return tmpl % (self._my_urn,
                        resource_id,
                        resource_urn,
@@ -959,31 +962,31 @@ class ReferenceAggregateManager(object):
 <rspec xmlns="http://www.geni.net/resources/rspec/3"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.geni.net/resources/rspec/3 http://www.geni.net/resources/rspec/3/manifest.xsd"
-       type="manifest">'''
+       type="manifest">
+'''
         return header
 
     def manifest_sliver(self, sliver):
-        tmpl = '<node client_id="%s"/>'
-        return tmpl % (sliver.resource().external_id)
+        tmpl = '''<node client_id="%s"
+        component_id="%s"
+        component_manager_id="%s"
+        sliver_id="%s"/>
+'''
+        return tmpl % (sliver.resource().external_id,
+                       sliver.resource().urn(self._urn_authority),
+                       self._my_urn, sliver.urn())
 
     def manifest_slice(self, slice_urn):
-        tmpl = '<node client_id="%s"/>'
-        result = ""
-        for resource in self._slices[slice_urn].resources():
-            result = result + tmpl % (resource.external_id)
-        return result
+        res = ''
+        for sliver in self._slices[slice_urn].slivers():
+            res = res + self.manifest_sliver(sliver)
+        return res
 
     def manifest_footer(self):
-        return '</rspec>'
+        return '</rspec>\n'
 
     def manifest_rspec(self, slice_urn):
         return self.manifest_header() + self.manifest_slice(slice_urn) + self.manifest_footer()
-
-    def resource_urn(self, resource):
-        urn = publicid_to_urn("%s %s %s" % (self._urn_authority,
-                                            str(resource.type),
-                                            str(resource.id)))
-        return urn
 
     def resources(self, available=None):
         """Get the list of managed resources. If available is not None,
