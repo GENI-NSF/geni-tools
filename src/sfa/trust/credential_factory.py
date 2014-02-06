@@ -60,9 +60,24 @@ class CredentialFactory:
                 return None
         cred_type = CredentialFactory.getType(credString)
         if cred_type == Credential.SFA_CREDENTIAL_TYPE:
-            return Credential(string=credString)
+            try:
+                cred = Credential(string=credString)
+                return cred
+            except Exception, e:
+                if credFile:
+                    raise Exception("%s not a parsable SFA credential: %s" % (credFile, e))
+                else:
+                    raise Exception("SFA Credential not parsable: %s. Cred start: %s..." % (e, credString[:50]))
+
         elif cred_type == ABACCredential.ABAC_CREDENTIAL_TYPE:
-            return ABACCredential(string=credString)
+            try:
+                cred = ABACCredential(string=credString)
+                return cred
+            except Exception, e:
+                if credFile:
+                    raise Exception("%s not a parsable ABAC credential: %s" % (credFile, e))
+                else:
+                    raise Exception("ABAC Credential not parsable: %s. Cred start: %s..." % (e, credString[:50]))
         else:
             raise Exception("Unknown credential type %s" % cred_type)
 
