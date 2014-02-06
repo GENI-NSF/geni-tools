@@ -30,15 +30,15 @@ from xml.dom.minidom import Document, parseString
 # asserting a role representing the relationship between a subject and target
 # or between a subject and a class of targets (all those satisfying a role).
 #
-# An ABAC credential is like a normal SFA credential in that it is has
+# An ABAC credential is like a normal SFA credential in that it has
 # a validated signature block and is checked for expiration. 
-# It does not, however, hove 'privileges'. Rather it contains a 'head' and
-# list of 'tails' of elements, each of which repersents a principal and
+# It does not, however, have 'privileges'. Rather it contains a 'head' and
+# list of 'tails' of elements, each of which represents a principal and
 # role.
 
 # A special case of an ABAC credential is a speaks_for credential. Such
 # a credential is simply an ABAC credential in form, but has a single 
-# tail and fixed role speaks_for. In ABAC notiation, it asserts
+# tail and fixed role 'speaks_for'. In ABAC notation, it asserts
 # AGENT.speaks_for(AGENT)<-CLIENT, or "AGENT asserts that CLIENT may speak
 # for AGENT". The AGENT in this case is the head and the CLIENT is the
 # tail and 'speaks_for_AGENT' is the role on the head. These speaks-for
@@ -49,7 +49,6 @@ from xml.dom.minidom import Document, parseString
 # For more detail on the semantics and syntax and expected usage patterns
 # of ABAC credentials, see http://groups.geni.net/geni/wiki/TIEDABACCredential.
 
-# 
 
 # An ABAC element contains a principal (keyid and optional mnemonic)
 # and optional role and linking_role element
@@ -80,7 +79,7 @@ class ABACCredential(Credential):
     def __init__(self, create=False, subject=None, 
                  string=None, filename=None):
         self.head = None # An ABACElemenet
-        self.tails = [] # List of ABACElement
+        self.tails = [] # List of ABACElements
         super(ABACCredential, self).__init__(create=create, 
                                              subject=subject, 
                                              string=string, 
@@ -93,17 +92,22 @@ class ABACCredential(Credential):
         return self.head
 
     def get_tails(self) : 
-        if not self.tails:
+        if len(self.tails) == 0:
             self.decode()
         return self.tails
-
 
     def decode(self):
         super(ABACCredential, self).decode()
         # Pull out the ABAC-specific info
         doc = parseString(self.xml)
-        rt0_root = doc.getElementsByTagName('rt0')[0]
+        rt0s = doc.getElementsByTagName('rt0')
+        if len(rt0s) != 1:
+            raise CredentialNotVerifiable("ABAC credential had no rt0 element")
+        rt0_root = rt0s[0]
         heads = self._get_abac_elements(rt0_root, 'head')
+        if len(heads) != 1:
+            raise CredentialNotVerifiable("ABAC credential should have exactly 1 head element, had %d" % len(heads))
+
         self.head = heads[0]
         self.tails = self._get_abac_elements(rt0_root, 'tail')
 
@@ -111,23 +115,26 @@ class ABACCredential(Credential):
         abac_elements = []
         elements = root.getElementsByTagName(label)
         for elt in elements:
-            keyid_elt = elt.getElementsByTagName('keyid')[0]
-            keyid = keyid_elt.childNodes[0].nodeValue
+            keyids = elt.getElementsByTagName('keyid')
+            if len(keyids) != 1:
+                raise CredentialNotVerifiable("ABAC credential element '%s' should have exactly 1 keyid, had %d." % (label, len(keyids)))
+            keyid_elt = keyids[0]
+            keyid = keyid_elt.childNodes[0].nodeValue.strip()
 
             mnemonic = None
             mnemonic_elts = elt.getElementsByTagName('mnemonic')
             if len(mnemonic_elts) > 0:
-                mnemonic = mnemonic_elts[0].childNodes[0].nodeValue
+                mnemonic = mnemonic_elts[0].childNodes[0].nodeValue.strip()
 
             role = None
             role_elts = elt.getElementsByTagName('role')
             if len(role_elts) > 0:
-                role = role_elts[0].childNodes[0].nodeValue
+                role = role_elts[0].childNodes[0].nodeValue.strip()
 
             linking_role = None
             linking_role_elts = elt.getElementsByTagName('linking_role')
             if len(linking_role_elts) > 0:
-                linking_role = linking_role_elts[0].childNodes[0].nodeValue
+                linking_role = linking_role_elts[0].childNodes[0].nodeValue.strip()
 
             abac_element = ABACElement(keyid, mnemonic, role, linking_role)
             abac_elements.append(abac_element)
@@ -136,11 +143,46 @@ class ABACCredential(Credential):
 
     def dump_string(self, dump_parents=False, show_xml=False):
         result = "ABAC Credential\n"
+        filename=self.get_filename()
+        if filename: result += "Filename %s\n"%filename
         if self.expiration:
             result +=  "\texpiration: %s \n" % self.expiration.isoformat()
 
         result += "\tHead: %s\n" % self.get_head() 
         for tail in self.get_tails():
             result += "\tTail: %s\n" % tail
+        if self.get_signature():
+            print "  gidIssuer:"
+            self.get_signature().get_issuer_gid().dump(8, dump_parents)
+        if show_xml:
+            try:
+                tree = etree.parse(StringIO(self.xml))
+                aside = etree.tostring(tree, pretty_print=True)
+                result += "\nXML\n"
+                result += aside
+                result += "\nEnd XML\n"
+            except:
+                import traceback
+                print "exc. Credential.dump_string / XML"
+                traceback.print_exc()
         return result
 
+    # sounds like this should be __repr__ instead ??
+    def get_summary_tostring(self):
+        # FIXME: return a short string of this cred
+        # head-mnemomnicorkey.role(<-linking role)*(tail)+
+
+        result = "[ABAC assertion: Head: %s" % self.get_head() 
+        for tail in self.get_tails():
+            result += "; Tail: %s" % tail
+        result += "]"
+        return result
+
+# FIXME: implement sign, encode
+    def sign(self):
+        logger.warn("sign not implemented for ABAC credentials")
+        return
+
+    def encode(self):
+        logger.warn("encode not implemented for ABAC credentials")
+        return
