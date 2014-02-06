@@ -48,6 +48,8 @@ from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
 from fakevm import FakeVM
 
+from omnilib.util import credparsing as credutils
+
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -1087,21 +1089,17 @@ class ReferenceAggregateManager(object):
         else:
             raise Exception('Objects specify multiple slices')
 
-    def normalize_credential(self, cred, ctype='geni', cversion='3'):
+    def normalize_credential(self, cred, ctype=Credential.SFA_CREDENTIAL_TYPE, cversion='3'):
         """This is a temporary measure to play nice with omni
         until it supports the v3 credential arg (list of dicts)."""
         # Play nice...
-        cversion = str(cversion)
-        if isinstance(cred, str):
-            return dict(geni_type=ctype,
-                        geni_version=cversion,
-                        geni_value=cred)
-        elif isinstance(cred, dict):
+        if isinstance(cred, dict):
             return cred
-        else:
-            msg = "Bad Arguments: Received credential of unknown type %r"
-            msg = msg % (type(cred))
-            raise ApiErrorException(AM_API.BAD_ARGS, msg)
+        elif not isinstance(cred, str):
+            cred = str(cred)
+        cred_type, cred_version = credutils.get_cred_type(cred)
+        return dict(geni_type=cred_type, geni_version=cred_version, \
+                       geni_value=cred)
 
     def min_expire(self, creds, max_duration=None, requested=None):
         """Compute the expiration time from the supplied credentials,
