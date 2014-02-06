@@ -148,7 +148,7 @@ class CredentialVerifier(object):
         caller_gid = gid.GID(string=gid_string)
 
         # Potentially, change gid_string to be the cert of the actual user 
-        # if this is a 'speaks-for' invocation                     
+        # if this is a 'speaks-for' invocation
         speaksfor_gid = \
             determine_speaks_for( \
             cred_strings, # May include ABAC speaks_for credential
@@ -158,7 +158,7 @@ class CredentialVerifier(object):
             )
         if caller_gid.get_subject() != speaksfor_gid.get_subject():
             speaksfor_urn = speaksfor_gid.get_urn()
-            self.logger.info("Speaks-for Invocation: Changing to cert for spoken for user : %s" % speaksfor_urn)
+            self.logger.info("Speaks-for Invocation: %s speaking for %s" % (caller_gid.get_urn(), speaksfor_urn))
             caller_gid = speaksfor_gid
             # Remove the 'speaks-for' credential
             cred_strings = [cred_string for cred_string in cred_strings \
