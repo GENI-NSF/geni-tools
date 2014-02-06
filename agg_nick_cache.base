@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on September 20, 2013
+# Last updated on January 31, 2014
 
 #------AM nicknames
 # Format :
@@ -289,3 +289,19 @@ wisconsin-ig3=urn:publicid:IDN+instageni.wisc.edu+authority+cm,https://instageni
 wisconsin-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/2
 wisconsin-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/1
 wisconsin-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authority+am,https://foam.instageni.wisc.edu:3626/foam/gapi/2
+
+# ============================================
+# Internet2 ION Aggregate for stitching
+# ============================================
+ion=urn:publicid:IDN+ion.internet2.edu+authority+am,https://geni-am.net.internet2.edu:12346
+
+# ============================================
+# Cornell InstaGENI Rack
+# ============================================
+cornell-ig=urn:publicid:IDN+geni.it.cornell.edu+authority+cm,https://geni.it.cornell.edu:12369/protogeni/xmlrpc/am/2.0
+cornell-ig1=urn:publicid:IDN+geni.it.cornell.edu+authority+cm,https://geni.it.cornell.edu:12369/protogeni/xmlrpc/am/1.0
+cornell-ig2=urn:publicid:IDN+geni.it.cornell.edu+authority+cm,https://geni.it.cornell.edu:12369/protogeni/xmlrpc/am/2.0
+cornell-ig3=urn:publicid:IDN+geni.it.cornell.edu+authority+cm,https://geni.it.cornell.edu:12369/protogeni/xmlrpc/am/3.0
+cornell-ig-of=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/2
+cornell-ig-of1=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/1
+cornell-ig-of2=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/2

@@ -44,6 +44,8 @@ from geni.util.urn_util import publicid_to_urn
 import geni.util.urn_util as urn
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
 from aggregate import Aggregate
+from sfa.trust.credential import Credential
+from sfa.trust.abac_credential import ABACCredential
 from fakevm import FakeVM
 
 
@@ -100,7 +102,8 @@ def isGeniCred(cred):
         msg = msg % (type(cred))
         raise ApiErrorException(AM_API.BAD_ARGS, msg)
     return ('geni_type' in cred
-            and str(cred['geni_type']).lower() in ['geni_sfa', 'geni_abac'])
+            and str(cred['geni_type']).lower() in [Credential.SFA_CREDENTIAL_TYPE, 
+                                                   ABACCredential.ABAC_CREDENTIAL_TYPE])
 
 class AM_API(object):
     BAD_ARGS = 1
@@ -276,7 +279,7 @@ class ReferenceAggregateManager(object):
                       extensions=[])]
         api_versions = dict()
         api_versions[str(self._api_version)] = self._url
-        credential_types = [dict(geni_type = "geni_sfa",
+        credential_types = [dict(geni_type = Credential.SFA_CREDENTIAL_TYPE,
                                  geni_version = "3")]
         versions = dict(geni_api=self._api_version,
                         geni_api_versions=api_versions,

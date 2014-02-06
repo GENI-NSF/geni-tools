@@ -29,11 +29,12 @@ import subprocess
 import sys
 import tempfile
 from sfa.trust.certificate import Certificate
-from sfa.trust.credential import Credential, signature_template
+from sfa.trust.credential import Credential, signature_template, HAVELXML
 from sfa.trust.abac_credential import ABACCredential
 from sfa.trust.credential_factory import CredentialFactory
 from sfa.trust.gid import GID
 from xml.dom.minidom import *
+from StringIO import StringIO
 
 # Routine to validate that a speaks-for credential 
 # says what it claims to say:
@@ -66,13 +67,17 @@ def write_to_tempfile(str):
 
 # Run a subprocess and return output
 def run_subprocess(cmd, stdout, stderr):
-    proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
-    proc.wait()
-    if stdout:
-        output = proc.stdout.read()
-    else:
-        output = proc.returncode
-    return output
+    try:
+        proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
+        proc.wait()
+        if stdout:
+            output = proc.stdout.read()
+        else:
+            output = proc.returncode
+        return output
+    except Exception as e:
+        raise Exception("Failed call to subprocess: %s" % " ".join(cmd))
+        
 
 # Pull the keyid (sha1 hash of the bits of the cert public key) from given cert
 def get_cert_keyid(gid):
@@ -130,9 +135,10 @@ def grab_toplevel_cert(cert):
 #      must say U.speaks_for(U)<-T ("user says that T may speak for user")
 #  String user certificate of speaking_for user if the above tests succeed
 #      (None otherwise)
+#  If schema provided, validate against schema
 #  Error message indicating why the speaks_for call failed ("" otherwise)
 def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
-                          trusted_roots):
+                          trusted_roots, schema=None):
 
     user_gid = cred.signature.gid
     user_urn = user_gid.get_urn()
@@ -153,28 +159,43 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
 
     # Credential has not expired
     if cred.expiration and cred.expiration < datetime.datetime.utcnow():
-        return False, None, "ABAC Credential expired"
+        return False, None, "ABAC Credential expired" % cred.expiration.isoformat()
+
+    # Must be ABAC
+    if cred.get_cred_type() != ABACCredential.ABAC_CREDENTIAL_TYPE:
+        return False, None, "Credential not of type ABAC: " % cred.get_cred_type
+
+    # URN of signer from cert must match URN of 'speaking-for' argument
+    if user_urn != speaking_for_urn:
+        return False, None, "User URN doesn't match speaking_for URN: %s %s" % \
+            (user_urn, speaking_for_urn)
 
     # Credential must pass xmlsec1 verify
     cred_file = write_to_tempfile(cred.save_to_string())
-    xmlsec1_args = ['xmlsec1', '--verify', cred_file]
+    cert_args = []
+    if trusted_roots:
+        for x in trusted_roots:
+            cert_args += ['--trusted-pem', x.filename]
+    xmlsec1_args = ['xmlsec1', '--verify'] + cert_args + [ cred_file]
     output = run_subprocess(xmlsec1_args, stdout=None, stderr=subprocess.PIPE)
     os.unlink(cred_file)
     if output != 0:
-        return False, None, "ABAC credentaial failed to xmlsec1 verify"
+        return False, None, "ABAC credential failed to xmlsec1 verify %s"  % output
 
-    # Must be ABAC
-    if cred.get_cred_type() != 'geni_abac':
-        return False, None, "Credential not of type ABAC"
     # Must say U.speaks_for(U)<-T
     if user_keyid != principal_keyid or \
             tool_keyid != subject_keyid or \
             role != ('speaks_for_%s' % user_keyid):
         return False, None, "ABAC statement doesn't assert U.speaks_for(U)<-T"
 
-    # URN of signer from cert must match URN of 'speaking-for' argument
-    if user_urn != speaking_for_urn:
-        return False, None, "User URN doesn't match speaking_for URN"
+    # If schema provided, validate against schema
+    if HAVELXML and schema and os.path.exists(schema):
+        from lxml import etree
+        tree = etree.parse(StringIO(cred.xml))
+        schema_doc = etree.parse(schema)
+        xmlschema = etree.XMLSchema(schema_doc)
+        if not xmlschema.validate(tree):
+            return False, None, "XML Credential not validated against XML schema"
 
     if trusted_roots:
         # User certificate must validate against trusted roots
@@ -204,13 +225,14 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
 # options is the dictionary of API-provided options
 # trusted_roots is a list of Certificate objects from the system
 #   trusted_root directory
+# Optionally, provide an XML schema against which to validate the credential
 def determine_speaks_for(credentials, caller_gid, options, \
-                             trusted_roots):
+                             trusted_roots, schema=None):
     if options and 'geni_speaking_for' in options:
         speaking_for_urn = options['geni_speaking_for']
         for cred in credentials:
             if type(cred) == dict:
-                if cred['geni_type'] != 'geni_abac': continue
+                if cred['geni_type'] != ABACCredential.ABAC_CREDENTIAL_TYPE: continue
                 cred_value = cred['geni_value']
             elif isinstance(cred, Credential):
                 if isinstance(cred, ABACCredential):
@@ -224,7 +246,7 @@ def determine_speaks_for(credentials, caller_gid, options, \
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
                                   caller_gid, speaking_for_urn, \
-                                      trusted_roots)
+                                      trusted_roots, schema)
             if is_valid_speaks_for:
                 return user_gid # speaks-for
     return caller_gid # Not speaks-for
@@ -343,16 +365,16 @@ if __name__ == "__main__":
              for file in os.listdir(trusted_roots_directory) \
              if file.endswith('.pem') and file != 'CATedCACerts.pem']
 
-    cred = CredentialFactory.createCred(credFile=options.cred_file)
+    cred = open(options.cred_file).read()
 
-    vsf, user_cert,msg = verify_speaks_for(cred, tool_gid, user_urn, \
-                                trusted_roots)
-    print 'VERIFY_SPEAKS_FOR = %s' % vsf
-    creds = [{'geni_type' : 'geni_abac', 'geni_value' : cred, 
+    creds = [{'geni_type' : ABACCredential.ABAC_CREDENTIAL_TYPE, 'geni_value' : cred, 
               'geni_version' : '1'}]
     gid = determine_speaks_for(creds, tool_gid, \
                                    {'geni_speaking_for' : user_urn}, \
                                    trusted_roots)
+
+
+    print 'SPEAKS_FOR = %s' % (gid != tool_gid)
     print "CERT URN = %s" % gid.get_urn()
 
                                  

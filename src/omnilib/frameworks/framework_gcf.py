@@ -26,6 +26,7 @@ from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
+from sfa.trust.credential import Credential
 
 import datetime
 import os
@@ -211,7 +212,8 @@ class Framework(Framework_Base):
         elif not isinstance(cred, str):
             self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
             cred = str(cred)
-        ret = dict(geni_type="geni_sfa", geni_version="2", geni_value=cred)
+        ret = dict(geni_type=Credential.SFA_CREDENTIAL_TYPE, 
+                   geni_version="2", geni_value=cred)
         if credutils.is_valid_v3(self.logger, cred):
             ret["geni_version"] = "3"
         return ret
