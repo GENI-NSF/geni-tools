@@ -26,12 +26,11 @@ from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
 import re
 
-# Factory for creating credentials of different sorts by type
+# Factory for creating credentials of different sorts by type.
 # Specifically, this factory can create standard SFA credentials
 # and ABAC credentials from XML strings based on their identifying content
 
 class CredentialFactory:
-
 
     UNKNOWN_CREDENTIAL_TYPE = 'geni_unknown'
 
@@ -56,8 +55,8 @@ class CredentialFactory:
         if credFile:
             try:
                 credString = open(credFile).read()
-            except:
-                logger.info("Error opening credential file %s" % credFile)
+            except Exception, e:
+                logger.info("Error opening credential file %s: %s" % credFile, e)
                 return None
         cred_type = CredentialFactory.getType(credString)
         if cred_type == Credential.SFA_CREDENTIAL_TYPE:
