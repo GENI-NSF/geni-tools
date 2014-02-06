@@ -233,10 +233,7 @@ class Framework(Framework_Base):
             for cred_filename in self.opts.cred:
                 try:
                     cred_contents = open(cred_filename).read()
-                    # FIXME: Infer cred type and wrap only as necessary
-                    new_cred = {'geni_type' : ABACCredential.ABAC_CREDENTIAL_TYPE,
-                                'geni_value' : cred_contents,
-                                'geni_version' : '1'}
+                    new_cred = self.wrap_cred(cred_contents)
                     new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
