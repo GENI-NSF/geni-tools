@@ -65,9 +65,26 @@ class ABACElement:
     def get_role(self): return self._role
     def get_linking_role(self): return self._linking_role
 
+    # Produce a string like: Me.linkingRole.Role
+    def get_assert():
+        ret = self._principal_keyid
+        if self._principal_mnemonic:
+            ret = self._principal_mnemonic
+        if self._linking_role:
+            ret += ".%s" % self._linking_role
+        if self._role:
+            ret += ".%s" % self._role
+        return ret
+
     def __str__(self):
-        return "%s %s %s %s" % (self._principal_keyid, self._principal_mnemonic, \
-                                    self._role, self._linking_role)
+        ret = self._principal_keyid
+        if self._principal_mnemonic:
+            ret += " (%s)" % self._principal_mnemonic
+        if self._linking_role:
+            ret += ".%s" % self._linking_role
+        if self._role:
+            ret += ".%s" % self._role
+        return ret
 
 # Subclass of Credential for handling ABAC credentials
 # They have a different cred_type (geni_abac vs. geni_sfa)
@@ -168,21 +185,97 @@ class ABACCredential(Credential):
         return result
 
     # sounds like this should be __repr__ instead ??
+    # Produce the ABAC assertion. Something like [ABAC cred: Me.role<-You] or similar
     def get_summary_tostring(self):
         # FIXME: return a short string of this cred
         # head-mnemomnicorkey.role(<-linking role)*(tail)+
 
-        result = "[ABAC assertion: Head: %s" % self.get_head() 
+        result = "[ABAC cred: " + self.get_head().get_assert()
         for tail in self.get_tails():
-            result += "; Tail: %s" % tail
+            result += "<-%s" % tail.get_assert()
         result += "]"
         return result
 
-# FIXME: implement sign, encode
-    def sign(self):
-        logger.warn("sign not implemented for ABAC credentials")
-        return
+    def createABACElement(self, doc, tagName, abacObj):
+        kid = abacObj.get_principal_keyid()
+        mnem = abacObj.get_principal_mnemonic() # may be None
+        role = abacObj.get_role() # may be None
+        link = abacObj.get_linking_role() # may be None
+        ele = doc.createElement(tagName)
+        prin = doc.createElement('ABACprincipal')
+        ele.appendChild(prin)
+        appendSub(doc, prin, "keyid", kid)
+        if mnem:
+            appendSub(doc, prin, "mnemonic", mnem)
+        if role:
+            appendSub(doc, ele, "role", role)
+        if link:
+            appendSub(doc, ele, "linking_role", link)
+        return ele
+
+    ##
+    # Encode the attributes of the credential into an XML string
+    # This should be done immediately before signing the credential.
+    # WARNING:
+    # In general, a signed credential obtained externally should
+    # not be changed else the signature is no longer valid.  So, once
+    # you have loaded an existing signed credential, do not call encode() or sign() on it.
 
     def encode(self):
-        logger.warn("encode not implemented for ABAC credentials")
-        return
+        # Create the XML document
+        doc = Document()
+        signed_cred = doc.createElement("signed-credential")
+
+# Declare namespaces
+# Note that credential/policy.xsd are really the PG schemas
+# in a PL namespace.
+# Note that delegation of credentials between the 2 only really works
+# cause those schemas are identical.
+# Also note these PG schemas talk about PG tickets and CM policies.
+        signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        # FIXME: See v2 schema at www.geni.net/resources/credential/2/credential.xsd
+        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.geni.net/resources/credential/2/credential.xsd")
+        signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
+
+# PG says for those last 2:
+#        signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.protogeni.net/resources/credential/credential.xsd")
+#        signed_cred.setAttribute("xsi:schemaLocation", "http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd")
+
+        doc.appendChild(signed_cred)
+
+        # Fill in the <credential> bit
+        cred = doc.createElement("credential")
+        cred.setAttribute("xml:id", self.get_refid())
+        signed_cred.appendChild(cred)
+        append_sub(doc, cred, "type", "abac")
+
+        # Stub fields
+        append_sub(doc, cred, "serial", "8")
+        append_sub(doc, cred, "owner_gid", '')
+        append_sub(doc, cred, "owner_urn", '')
+        append_sub(doc, cred, "target_gid", '')
+        append_sub(doc, cred, "target_urn", '')
+        append_sub(doc, cred, "uuid", "")
+
+        if not self.expiration:
+            self.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(seconds=DEFAULT_CREDENTIAL_LIFETIME))
+        self.expiration = self.expiration.replace(microsecond=0)
+        append_sub(doc, cred, "expires", self.expiration.isoformat())
+
+        abac = doc.createElement("abac")
+        rt0 = doc.createElement("rt0")
+        abac.appendChild(rt0)
+        doc.appendChild(abac)
+        append_sub(doc, rt0, "version", "1.1")
+        head = self.createABACElement(doc, "head", self.get_head())
+        rt0.appendChild(head)
+        for tail in self.get_tails():
+            tailEle = self.createABACElement(doc, "tail", abacelement)
+            rt0.appendChild(tailEle)
+
+        # Create the <signatures> tag
+        signatures = doc.createElement("signatures")
+        signed_cred.appendChild(signatures)
+
+        # Get the finished product
+        self.xml = doc.toxml()
