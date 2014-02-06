@@ -99,7 +99,7 @@ def get_cred_type(cred):
     is_abac = False
     doc = md.parseString(cred)
     type_elts = doc.getElementsByTagName('type')
-    if len(type_elts)  == 1 and type_elts[0].childNodes[0].nodeValue == 'abac':
+    if len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'abac':
         is_abac = True
     if is_abac:
         return ABACCredential.ABAC_CREDENTIAL_TYPE, 1
