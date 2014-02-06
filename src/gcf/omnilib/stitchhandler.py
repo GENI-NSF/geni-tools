@@ -62,6 +62,11 @@ MAX_SCS_CALLS = 5
 # Valid substitutions: %username, %slicename, %slicehrn
 SLICECRED_FILENAME = '/tmp/slice-%slicehrn-for-%username-cred.xml'
 
+def urn_to_clean_hrn( urn ):
+    hrn, type = urn_to_hrn( urn )
+    hrn = handler_utils.remove_bad_characters( hrn )
+    return hrn, type
+
 # The main stitching class. Holds all the state about our attempt at doing stitching.
 class StitchingHandler(object):
     '''Workhorse class to do stitching. See doStitching().'''
@@ -459,7 +464,7 @@ class StitchingHandler(object):
             self.logger.error("Could not determine slice URN from name %s: %s", self.slicename, e)
             raise StitchingError(e)
 
-        self.slicehrn = urn_to_hrn(sliceurn)[0]
+        self.slicehrn = urn_to_clean_hrn(sliceurn)[0]
 
         if self.opts.fakeModeDir:
             self.logger.info("Fake mode: not checking slice credential")
@@ -791,7 +796,7 @@ class StitchingHandler(object):
                         agg.userRequested = True
 
             # FIXME: Better way to detect this?
-            if "geni.renci.org:11443" in str(agg.url):
+            if handler_utils._extractURL(self.logger, agg.url) in defs.EXOSM_URL:
                 agg.isExoSM = True
 #                self.logger.debug("%s is the ExoSM cause URL is %s", agg, agg.url)
 
@@ -807,10 +812,12 @@ class StitchingHandler(object):
 #                elif "exogeni" in amURN and "exogeni" in agg.urn:
 #                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, amURL, agg)
 
-#            if "exogeni" in agg.urn and not agg.alt_url:
+            if "exogeni" in agg.urn and not agg.alt_url:
 #                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
 #                for urn in agg.urn_syns:
 #                    self.logger.debug(urn)
+                if not agg.isExoSM:
+                    agg.alt_url = defs.EXOSM_URL
 
             # Try to get a URL from the CH? Do we want/need this
             # expense? This is a call to the CH....
@@ -904,8 +911,21 @@ class StitchingHandler(object):
             finally:
                 logging.disable(logging.NOTSET)
 
+            if agg.isEG and self.opts.useExoSM and not agg.isExoSM:
+                agg.alt_url = defs.EXOSM_URL
+                self.logger.info("%s is an EG AM and user asked for ExoSM. Changing to %s", agg, agg.alt_url)
+                amURL = agg.url
+                agg.url = agg.alt_url
+                agg.alt_url = amURL
+                agg.isExoSM = True
+                aggs.append(agg)
+                continue
+#            else:
+#                self.logger.debug("%s is EG: %s, alt_url: %s, isExo: %s", agg, agg.isEG, agg.alt_url, agg.isExoSM)
+
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
+
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
@@ -1005,7 +1025,7 @@ class StitchingHandler(object):
         '''Save a file with the list of aggregates used. Used as input
         to later stitcher calls, e.g. to delete from all AMs.'''
         # URN to hrn
-        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        (slicehrn, stype) = urn_to_clean_hrn(sliceurn)
         if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
             self.logger.warn("Couldn't parse slice HRN from URN %s",
                              sliceurn)
@@ -1051,7 +1071,7 @@ class StitchingHandler(object):
             return
 
         # get slice HRN
-        (slicehrn, stype) = urn_to_hrn(sliceurn)
+        (slicehrn, stype) = urn_to_clean_hrn(sliceurn)
         if not slicehrn or slicehrn.strip() == '' or not stype=='slice':
             self.logger.warn("Couldn't parse slice HRN from URN %s",
                              sliceurn)

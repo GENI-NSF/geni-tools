@@ -62,6 +62,7 @@ gcf 2.5:
      slivers. (#422)
   - `chapi` framework looks up the MA and SA at the clearinghouse,
     though you can configure where they run. (#490)
+  - Warn when acting at all AMs in the clearinghouse - slow (#461)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -73,6 +74,9 @@ gcf 2.5:
   - Handle empty range of VLANs in VLANRange (#471)
   - Report per sliver errors at DCN AMs (#481)
   - Fix circular imports in `RSpecParser` and `objects` (#459)
+  - Add option `useExoSM` to force use of the ExoSM for EG racks,
+    where possible. Use this if you are reserving bare metal nodes. (#496)
+  - Change filenames to not use bad characters to support Windows (#497)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

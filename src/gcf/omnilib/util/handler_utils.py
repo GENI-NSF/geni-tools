@@ -72,21 +72,41 @@ def _derefAggNick(handler, aggregateNickname):
             turn = _lookupAggURNFromURLInNicknames(handler.logger, handler.config, url)
             if turn and turn != "":
                 urn = turn
+#            else:
+#                handler.logger.debug("Didn't find %s in nicknames", url)
 
     return url,urn
 
+def _extractURL(logger, url):
+    if url:
+        orig = url
+        httpsind = url.find("https://")
+        httpind = url.find("http://")
+        if url.startswith("https://"):
+            url = url[len("https://"):]
+        elif url.startswith("http://"):
+            url = url[len("http://"):]
+        if url.startswith("www."):
+            url = url[len("www."):]
+        if url.startswith("boss."):
+            url = url[len("boss."):]
+#        logger.debug("Extracted %s from %s", url, orig)
+    return url
+
 # Lookup aggregate nickname by aggregate_urn or aggregate_url
 def _lookupAggNick(handler, aggregate_urn_or_url):
-    for nick, agg_data in handler.config['aggregate_nicknames'].items():
-        if aggregate_urn_or_url in agg_data:
+    aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
+    for nick, (urn, urn) in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url in urn or aggregate_urn_or_url in url:
             return nick
     return None
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
     urn = ""
-    if agg_url:
+    nagg_url = _extractURL(logger, agg_url)
+    if nagg_url:
         for (amURN, amURL) in config['aggregate_nicknames'].values():
-            if amURL.startswith(agg_url) and amURN.strip() != '':
+            if nagg_url in amURL and amURN.strip() != '':
                 urn = amURN.strip()
                 logger.debug("Supplied AM URL %s is URN %s according to configured aggregate nicknames (matches %s)", agg_url, urn, amURL)
                 break
@@ -121,7 +141,6 @@ def _derefRSpecNick( handler, rspecNickname ):
         else:
             raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)            
     return contentstr
-
 
 
 def _listaggregates(handler):
@@ -173,12 +192,13 @@ def _listaggregates(handler):
                     aggs[url] = url
         return (aggs, "")
     else:
+        handler.logger.debug("Querying clearinghouse for all aggregates")
         (aggs, message) =  _do_ssl(handler.framework, None, "List Aggregates from control framework", handler.framework.list_aggregates)
         if aggs is None:
             # FIXME: Return the message?
             return ({}, message)
         # FIXME: Check that each agg has both a urn and url key?
-        return (aggs, "")
+        return (aggs, "From CH")
 
 def _load_cred(handler, filename):
     '''
@@ -398,18 +418,21 @@ def _filename_part_from_am_url(url):
         server = server[:(server.index("/gapi"))]
     elif server.endswith(":12346"):
         server = server[:(server.index(":12346"))]
+    server = remove_bad_characters( server )
+    return server
 
+def remove_bad_characters( input ):
     # remove punctuation. Handle both unicode and ascii gracefully
     bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
-    if isinstance(server, unicode):
+    if isinstance(input, unicode):
         table = dict((ord(char), unicode('-')) for char in bad)
     else:
-        assert isinstance(server, str)
+        assert isinstance(input, str)
         table = string.maketrans(bad, '-' * len(bad))
-    server = server.translate(table)
-    if server.endswith('-'):
-        server = server[:-1]
-    return server
+    input = input.translate(table)
+    if input.endswith('-'):
+        input = input[:-1]
+    return input
 
 def _get_server_name(clienturl, clienturn):
     '''Construct a short server name from the AM URL and URN'''

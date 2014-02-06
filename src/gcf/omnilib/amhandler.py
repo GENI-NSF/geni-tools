@@ -4532,7 +4532,8 @@ class AMCallHandler(object):
         if aggs == {} and message != "":
             self.logger.warn('No aggregates found: %s', message)
             return (self.clients, message)
-
+        if message == "From CH":
+            self.logger.info("Acting on all aggregates from the clearinghouse - this may take time")
         for (urn, url) in aggs.items():
             client = make_client(url, self.framework, self.opts)
             client.urn = urn
