@@ -119,10 +119,10 @@ class Framework(Framework_Base):
             options = {'geni_speaking_for' : opts.speaksfor}
             speaker_gid = \
                 determine_speaks_for(creds, self.cert_gid, options, None)
-            self.logger.info("Speaks-for invocation: %s speaking for %s" % \
-                                 (self.cert_gid.get_urn(), \
-                                      speaker_gid.get_urn()))
             if speaker_gid != self.cert_gid:
+                self.logger.info("Speaks-for Invocation: %s speaking for %s" % \
+                                     (self.cert_gid.get_urn(), \
+                                          speaker_gid.get_urn()))
                 self.cert_gid = speaker_gid
 
         self.user_urn = self.cert_gid.get_urn()
@@ -967,21 +967,6 @@ class Framework(Framework_Base):
         }
         """
         return self.get_slice_cred(urn, struct=True)
-
-    def wrap_cred(self, cred):
-        """
-        Wrap the given cred in the appropriate struct for this framework.
-        """
-        if isinstance(cred, dict):
-            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
-            return cred
-        elif not isinstance(cred, str):
-            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
-            cred = str(cred)
-        cred_type, cred_version = credutils.get_cred_type(cred)
-        ret = dict(geni_type=cred_type, geni_version=cred_version, \
-                       geni_value=cred)
-        return ret
 
     def get_version(self):
         # Do getversion at the CH (service registry), MA, and SA

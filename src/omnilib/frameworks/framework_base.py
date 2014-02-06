@@ -246,7 +246,10 @@ class Framework_Base():
            geni_value: <the credential as a string>
         }
         """
-        raise NotImplementedError('get_user_cred_struct')
+        cred, message = self.get_user_cred()
+        if cred:
+            cred = self.wrap_cred(cred)
+        return cred, message
 
     def get_slice_cred_struct(self, urn):
         """
@@ -258,13 +261,27 @@ class Framework_Base():
            geni_value: <the credential as a string>
         }
         """
-        raise NotImplementedError('get_slice_cred_struct')
+        cred = self.get_slice_cred(urn)
+        return self.wrap_cred(cred)
 
     def wrap_cred(self, cred):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
-        raise NotImplementedError('wrap_cred')
+        if hasattr(self, 'logger'):
+            logger = self.logger
+        else:
+            logger = logging.getLogger("omni.framework")
+        if isinstance(cred, dict):
+            logger.warn("Called wrap on a cred that's already a dict? %s", cred)
+            return cred
+        elif not isinstance(cred, str):
+            logger.warn("Called wrap on non string cred? Stringify. %s", cred)
+            cred = str(cred)
+        cred_type, cred_version = credutils.get_cred_type(cred)
+        ret = dict(geni_type=cred_type, geni_version=cred_version, \
+                       geni_value=cred)
+        return ret
 
     # get the slice members (urn, email) and their public ssh keys
     def get_members_of_slice(self, slice_urn):
