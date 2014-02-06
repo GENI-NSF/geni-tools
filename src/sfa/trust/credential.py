@@ -187,14 +187,14 @@ class Signature(object):
             logger.log_exc ("Failed to parse credential, %s"%self.xml)
             raise
         sig = doc.getElementsByTagName("Signature")[0]
-        ref_id = sig.getAttribute("xml:id").strip("Sig_")
+        ref_id = sig.getAttribute("xml:id").strip().strip("Sig_")
         # The xml:id tag is optional, and could be in a 
         # Reference xml:id or Reference UID sub element instead
         if not ref_id or ref_id == '':
             reference = sig.getElementsByTagName('Reference')[0]
-            ref_id = reference.getAttribute('xml:id').strip('Sig_')
+            ref_id = reference.getAttribute('xml:id').strip().strip('Sig_')
             if not ref_id or ref_id == '':
-                ref_id = reference.getAttribute('URI').strip('#')
+                ref_id = reference.getAttribute('URI').strip().strip('#')
         self.set_refid(ref_id)
         keyinfo = sig.getElementsByTagName("X509Data")[0]
         szgid = getTextNode(keyinfo, "X509Certificate")
@@ -231,6 +231,8 @@ def filter_creds_by_caller(creds, caller_hrn_list):
         for cred in creds:
             try:
                 tmp_cred = Credential(string=cred)
+                if tmp_cred.get_cred_type() != Credential.SFA_CREDENTIAL_TYPE:
+                    continue
                 if tmp_cred.get_gid_caller().get_hrn() in caller_hrn_list:
                     caller_creds.append(cred)
             except: pass
