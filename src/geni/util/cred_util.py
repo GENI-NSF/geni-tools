@@ -238,10 +238,13 @@ class CredentialVerifier(object):
         result = list()
         failure = ""
         tried_creds = ""
+        if len(credentials) == 0:
+            failure = "No credentials found"
         for cred in credentials:
             if cred is None:
                 failure = "Credential was unparseable"
                 continue
+
             if tried_creds != "":
                 tried_creds = "%s, %s" % (tried_creds, cred.get_gid_caller().get_urn())
             else:
