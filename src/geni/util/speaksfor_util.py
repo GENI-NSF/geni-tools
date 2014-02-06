@@ -380,7 +380,7 @@ if __name__ == "__main__":
                       help='Directory of trusted root certs')
     parser.add_option('--create',
                       help="name of file of ABAC speaksfor cred to create")
-                      
+
     options, args = parser.parse_args(sys.argv)
 
     tool_gid = GID(filename=options.tool_cert_file)
