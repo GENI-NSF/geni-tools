@@ -28,19 +28,23 @@ import os
 import subprocess
 import sys
 import tempfile
+from xml.dom.minidom import *
+from StringIO import StringIO
+
 from sfa.trust.certificate import Certificate
 from sfa.trust.credential import Credential, signature_template, HAVELXML
 from sfa.trust.abac_credential import ABACCredential
 from sfa.trust.credential_factory import CredentialFactory
 from sfa.trust.gid import GID
-from xml.dom.minidom import *
-from StringIO import StringIO
 
 # Routine to validate that a speaks-for credential 
 # says what it claims to say:
 # It is a signed credential wherein the signer S is attesting to the
 # ABAC statement:
 # S.speaks_for(S)<-T Or "S says that T speaks for S"
+
+# Requires that openssl be installed and in the path
+# create_speaks_for requires that xmlsec1 be on the path
 
 # Simple XML helper functions
 
@@ -76,10 +80,11 @@ def run_subprocess(cmd, stdout, stderr):
             output = proc.returncode
         return output
     except Exception as e:
-        raise Exception("Failed call to subprocess: %s" % " ".join(cmd))
-        
+        raise Exception("Failed call to subprocess '%s': %s" % (" ".join(cmd), e))
 
 # Pull the keyid (sha1 hash of the bits of the cert public key) from given cert
+# Requires openssl be installed and in the path
+# Fixme: are there pyopenssl or m2crypto ways of doing some of these things?
 def get_cert_keyid(gid):
 
     # Write cert to tempfile
@@ -114,7 +119,10 @@ def get_cert_keyid(gid):
 # Pull the cert out of a list of certs in a PEM formatted cert string
 def grab_toplevel_cert(cert):
     start_label = '-----BEGIN CERTIFICATE-----'
-    start_index = cert.find(start_label) + len(start_label)
+    if cert.find(start_label) > -1:
+        start_index = cert.find(start_label) + len(start_label)
+    else:
+        start_index = 0
     end_label = '-----END CERTIFICATE-----'
     end_index = cert.find(end_label)
     first_cert = cert[start_index:end_index]
@@ -128,47 +136,46 @@ def grab_toplevel_cert(cert):
 # Return: 
 #   Boolean indicating whether the given credential 
 #      is not expired 
-#      is verified by xmlsec1
-#      is trusted by given set of trusted roots
 #      is an ABAC credential
 #      was signed by the user associated with the speaking_for_urn
-#      must say U.speaks_for(U)<-T ("user says that T may speak for user")
-#  String user certificate of speaking_for user if the above tests succeed
+#      is verified by xmlsec1
+#      asserts U.speaks_for(U)<-T ("user says that T may speak for user")
+#      If schema provided, validate against schema
+#      is trusted by given set of trusted roots (both user cert and tool cert)
+#   String user certificate of speaking_for user if the above tests succeed
 #      (None otherwise)
-#  If schema provided, validate against schema
-#  Error message indicating why the speaks_for call failed ("" otherwise)
+#   Error message indicating why the speaks_for call failed ("" otherwise)
 def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
                           trusted_roots, schema=None):
+
+    # Credential has not expired
+    if cred.expiration and cred.expiration < datetime.datetime.utcnow():
+        return False, None, "ABAC Credential expired at %s (%s)" % (cred.expiration.isoformat(), cred.get_summary_tostring())
+
+    # Must be ABAC
+    if cred.get_cred_type() != ABACCredential.ABAC_CREDENTIAL_TYPE:
+        return False, None, "Credential not of type ABAC but %s" % cred.get_cred_type
 
     user_gid = cred.signature.gid
     user_urn = user_gid.get_urn()
 
+    # URN of signer from cert must match URN of 'speaking-for' argument
+    if user_urn != speaking_for_urn:
+        return False, None, "User URN from cred doesn't match speaking_for URN: %s != %s (cred %s)" % \
+            (user_urn, speaking_for_urn, cred.get_summary_tostring())
+
+    tails = cred.get_tails()
+    if len(tails) != 1: 
+        return False, None, "Invalid ABAC-SF credential: Need exactly 1 tail element, got %d (%s)" % \
+            (len(tails), cred.get_summary_tostring())
+
     user_keyid = get_cert_keyid(user_gid)
     tool_keyid = get_cert_keyid(tool_gid)
+    subject_keyid = tails[0].get_principal_keyid()
 
     head = cred.get_head()
     principal_keyid = head.get_principal_keyid()
     role = head.get_role()
-
-    tails = cred.get_tails()
-    if len(tails) != 1: 
-        return False, None, "Invalid ABAC-SF credential: Need 1 tail element" 
-    subject_keyid = tails[0].get_principal_keyid()
-
-    # Now tests that this is a valid credential
-
-    # Credential has not expired
-    if cred.expiration and cred.expiration < datetime.datetime.utcnow():
-        return False, None, "ABAC Credential expired" % cred.expiration.isoformat()
-
-    # Must be ABAC
-    if cred.get_cred_type() != ABACCredential.ABAC_CREDENTIAL_TYPE:
-        return False, None, "Credential not of type ABAC: " % cred.get_cred_type
-
-    # URN of signer from cert must match URN of 'speaking-for' argument
-    if user_urn != speaking_for_urn:
-        return False, None, "User URN doesn't match speaking_for URN: %s %s" % \
-            (user_urn, speaking_for_urn)
 
     # Credential must pass xmlsec1 verify
     cred_file = write_to_tempfile(cred.save_to_string())
@@ -176,17 +183,29 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
     if trusted_roots:
         for x in trusted_roots:
             cert_args += ['--trusted-pem', x.filename]
-    xmlsec1_args = ['xmlsec1', '--verify'] + cert_args + [ cred_file]
+    # FIXME: Why do we not need to specify the --node-id option as credential.py does?
+    xmlsec1_args = [cred.xmlsec_path, '--verify'] + cert_args + [ cred_file]
     output = run_subprocess(xmlsec1_args, stdout=None, stderr=subprocess.PIPE)
     os.unlink(cred_file)
     if output != 0:
-        return False, None, "ABAC credential failed to xmlsec1 verify %s"  % output
+        # FIXME
+        # xmlsec errors have a msg= which is the interesting bit.
+        # But does this go to stderr or stdout? Do we have it here?
+        mstart = verified.find("msg=")
+        msg = ""
+        if mstart > -1 and len(verified) > 4:
+            mstart = mstart + 4
+            mend = verified.find('\\', mstart)
+            msg = verified[mstart:mend]
+        if msg == "":
+            msg = output
+        return False, None, "ABAC credential failed to xmlsec1 verify: %s" % msg
 
     # Must say U.speaks_for(U)<-T
     if user_keyid != principal_keyid or \
             tool_keyid != subject_keyid or \
             role != ('speaks_for_%s' % user_keyid):
-        return False, None, "ABAC statement doesn't assert U.speaks_for(U)<-T"
+        return False, None, "ABAC statement doesn't assert U.speaks_for(U)<-T (%s)" % cred.get_summary_tostring()
 
     # If schema provided, validate against schema
     if HAVELXML and schema and os.path.exists(schema):
@@ -195,30 +214,33 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
         schema_doc = etree.parse(schema)
         xmlschema = etree.XMLSchema(schema_doc)
         if not xmlschema.validate(tree):
-            return False, None, "XML Credential not validated against XML schema"
+            error = xmlschema.error_log.last_error
+            message = "%s: %s (line %s)" % (cred.get_summary_tostring(), error.message, error.line)
+            return False, None, ("XML Credential schema invalid: %s" % message)
 
     if trusted_roots:
         # User certificate must validate against trusted roots
         try:
             user_gid.verify_chain(trusted_roots)
-        except Exception:
+        except Exception, e:
             return False, None, \
-                "User cert doesn't validate against trusted roots"
+                "Cred signer (user) cert not trusted: %s" % e
 
         # Tool certificate must validate against trusted roots
         try:
             tool_gid.verify_chain(trusted_roots)
-        except Exception:
+        except Exception, e:
             return False, None, \
-                "Tool cert doesn't validate against trusted roots"
+                "Tool cert not trusted: %s" % e
 
     return True, user_gid, ""
 
 # Determine if this is a speaks-for context. If so, validate
 # And return either the tool_cert (not speaks-for or not validated)
 # or the user cert (validated speaks-for)
+#
 # credentials is a list of GENI-style credentials:
-# Either a cred string xml string, or Credential object of a tuple
+#  Either a cred string xml string, or Credential object of a tuple
 #    [{'geni_type' : geni_type, 'geni_value : cred_value, 
 #      'geni_version' : version}]
 # caller_gid is the raw X509 cert gid
@@ -229,32 +251,51 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
 def determine_speaks_for(credentials, caller_gid, options, \
                              trusted_roots, schema=None):
     if options and 'geni_speaking_for' in options:
-        speaking_for_urn = options['geni_speaking_for']
+        speaking_for_urn = options['geni_speaking_for'].strip()
         for cred in credentials:
+            # Skip things that aren't ABAC credentials
             if type(cred) == dict:
                 if cred['geni_type'] != ABACCredential.ABAC_CREDENTIAL_TYPE: continue
                 cred_value = cred['geni_value']
             elif isinstance(cred, Credential):
-                if isinstance(cred, ABACCredential):
-                    cred_value = cred.get_xml()
-                else:
+                if not isinstance(cred, ABACCredential):
                     continue
+                else:
+                    cred_value = cred
             else:
                 if cred.find('abac') < 0: continue
                 cred_value = cred
-            cred = CredentialFactory.createCred(cred_value)
+
+            # If the cred_value is xml, create the object
+            if not isinstance(cred_value, ABACCredential):
+                cred = CredentialFactory.createCred(cred_value)
+
+            # See if this is a valid speaks_for
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
                                   caller_gid, speaking_for_urn, \
                                       trusted_roots, schema)
+
+            # FIXME: Log or return the error message in some way?
+
             if is_valid_speaks_for:
                 return user_gid # speaks-for
     return caller_gid # Not speaks-for
 
+# FIXME: Redo this as encode and sign in ABACCredential
+# FIXME: Leaves out namespace declarations on resulting cred
+# FIXME: Assumes xmlsec1 is on path
+# FIXME: Assumes signer is itself signed by an 'ma_gid' that can be trusted
 def create_speaks_for(tool_gid, user_gid, ma_gid, \
-                          user_key_file, cred_filename):
+                          user_key_file, cred_filename, dur_days=365):
     tool_urn = tool_gid.get_urn()
     user_urn = user_gid.get_urn()
+
+    # FIXME: What about setting xmlns:xsi, xsi:noNamespace, xsi:schemaLocation, etc
+# These should be attributes o the signed-credential element
+#    signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+#    signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.geni.net/resources/credential/2/credential.xsd")
+#    signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
 
     header = '<?xml version="1.0" encoding="UTF-8"?>'
     reference = "ref0"
@@ -288,9 +329,9 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
         '</signed-credential>\n'
 
 
-    credential_duration = datetime.timedelta(days=365)
+    credential_duration = datetime.timedelta(days=dur_days)
     expiration = datetime.datetime.now(du_tz.tzutc()) + credential_duration
-    expiration_str = expiration.strftime('%Y-%m-%dT%H:%M:%SZ')
+    expiration_str = expiration.strftime('%Y-%m-%dT%H:%M:%SZ') # FIXME: libabac can't handle .isoformat()
     version = "1.1"
 
     user_keyid = get_cert_keyid(user_gid)
@@ -305,6 +346,7 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
     # --output signed.xml tosign.xml
     pems = "%s,%s,%s" % (user_key_file, user_gid.get_filename(),
                          ma_gid.get_filename())
+    # FIXME: assumes xmlsec1 is on path
     cmd = ['xmlsec1',  '--sign',  '--privkey-pem', pems, 
            '--output', cred_filename, unsigned_cred_filename]
 
@@ -313,9 +355,10 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
     if sign_proc_output == None:
         print "OUTPUT = %s" % sign_proc_output
     else:
-        print "Created ABAC creadential %s speaks_for %s in file %s" % \
+        print "Created ABAC credential: '%s speaks_for %s' in file %s" % \
             (tool_urn, user_urn, cred_filename)
     os.unlink(unsigned_cred_filename)
+
 
 # Test procedure
 if __name__ == "__main__":
@@ -376,8 +419,3 @@ if __name__ == "__main__":
 
     print 'SPEAKS_FOR = %s' % (gid != tool_gid)
     print "CERT URN = %s" % gid.get_urn()
-
-                                 
-
-
-
