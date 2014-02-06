@@ -187,9 +187,6 @@ class ABACCredential(Credential):
     # sounds like this should be __repr__ instead ??
     # Produce the ABAC assertion. Something like [ABAC cred: Me.role<-You] or similar
     def get_summary_tostring(self):
-        # FIXME: return a short string of this cred
-        # head-mnemomnicorkey.role(<-linking role)*(tail)+
-
         result = "[ABAC cred: " + self.get_head().get_assert()
         for tail in self.get_tails():
             result += "<-%s" % tail.get_assert()
@@ -233,7 +230,6 @@ class ABACCredential(Credential):
 # cause those schemas are identical.
 # Also note these PG schemas talk about PG tickets and CM policies.
         signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-        # FIXME: See v2 schema at www.geni.net/resources/credential/2/credential.xsd
         signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.geni.net/resources/credential/2/credential.xsd")
         signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
 
