@@ -466,6 +466,7 @@ class Credential(object):
 # cause those schemas are identical.
 # Also note these PG schemas talk about PG tickets and CM policies.
         signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        # FIXME: See v2 schema at www.geni.net/resources/credential/2/credential.xsd
         signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.planet-lab.org/resources/sfa/credential.xsd")
         signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
 
@@ -696,7 +697,7 @@ class Credential(object):
         # Update signatures
         self.decode()       
 
-        
+
     ##
     # Retrieve the attributes of the credential from the XML.
     # This is automatically called by the various get_* methods of
