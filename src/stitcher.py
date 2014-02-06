@@ -122,6 +122,8 @@ def call(argv, options=None):
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
                       help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")
+    parser.add_option("--useExoSM", default=False, action="store_true",
+                      help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default False)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)

@@ -23,6 +23,7 @@
 
 # Framework for talking to a CH that speaks the Uniform Federation API
 # http://groups.geni.net/geni/wiki/UniformClearinghouseAPI
+# Specifically, this framework can be used to talk to the GENI Clearinghouse at ch.geni.net
 
 from omnilib.frameworks.framework_base import Framework_Base
 from omnilib.util.dates import naiveUTC
@@ -64,21 +65,39 @@ class Framework(Framework_Base):
             config['verbose'] = False
         self.config = config
 
-        # FIXME: We should configure this framework type with the URL of the CH, and use
-        # that to look up the MA and SA URLs
-        self.ch_url = config['ch'] + ':8444/CH'
+        self.ch_url = config['ch']
         self.ch = self.make_client(self.ch_url, self.key, self.cert,
                                    verbose=config['verbose'])
-        self.ma_url = config['ch'] + '/MA'
-        self.ma = self.make_client(self.ma_url, self.key, self.cert,
-                                   verbose=config['verbose'])
-        self.sa_url = config['ch'] + '/SA'
-        self.sa = self.make_client(self.sa_url, self.key, self.cert,
-                                   verbose=config['verbose'])
 
-        if not config.has_key('useProjects'):
-            config['useProjects'] = True
-        self.useProjects = config['useProjects']
+        self.logger = config['logger']
+
+        self._ma = None
+        self._ma_url = None
+        if config.has_key('ma') and config['ma'].strip() != "":
+            self._ma_url = config['ma']
+            self.logger.info("Member Authority is %s (from config)", self._ma_url)
+
+        self._sa = None
+        self._sa_url = None
+        if config.has_key('sa') and config['sa'].strip() != "":
+            self._sa_url = config['sa']
+            self.logger.info("Slice Authority is %s (from config)", self._sa_url)
+
+        if not config.has_key('useprojects'):
+            config['useprojects'] = 'True'
+        if config['useprojects'].strip().lower() in ['f', 'false']:
+            self.useProjects = False
+        else:
+            self.useProjects = True
+
+        # Does this CH need a usercred / slicecred passed to methods
+        # Default False
+        if not config.has_key('needcred'):
+            config['needcred'] = 'False'
+        if config['needcred'].strip().lower() in ['t', 'true']:
+            self.needcred = True
+        else:
+            self.needcred = False
 
         self.cert = config['cert']
         try:
@@ -90,8 +109,6 @@ class Framework(Framework_Base):
             self.cert_gid = gid.GID(filename=self.cert)
         except Exception, e:
             sys.exit('CHAPI Framework failed to parse cert read from %s: %s' % (self.cert, e))
-
-        self.logger = config['logger']
 
         # ***
         # Do the whole speaksfor test here
@@ -110,6 +127,94 @@ class Framework(Framework_Base):
 
         self.user_urn = self.cert_gid.get_urn()
         self.user_cred = self.init_user_cred( opts )
+
+    def list_slice_authorities(self):
+        self.logger.debug("Looking up SAs at %s %s", self.fwtype, self.ch_url)
+        options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
+        (res, message) = _do_ssl(self, None, ("List slice authorities at %s %s" % (self.fwtype, self.ch_url)),
+                                 self.ch.lookup_slice_authorities,
+                                 options)
+        auths = dict()
+        if res is not None:
+            if res['value'] is not None and res['code'] == 0:
+                for d in res['value']:
+                    auths[d['SERVICE_URN']] = d['SERVICE_URL']
+            else:
+                msg = "Server Error listing SAs %d: %s" % (res['code'], res['output'])
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.warn(msg)
+        else:
+            msg = "Server Error listing SAs - no results"
+            if message and message.strip() != "":
+                msg += "- " + message
+            self.logger.warn(msg)
+
+        return auths
+
+    def list_member_authorities(self):
+        self.logger.debug("Looking up MAs at %s %s", self.fwtype, self.ch_url)
+        options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
+        (res, message) = _do_ssl(self, None, ("List member authorities at %s %s" % (self.fwtype, self.ch_url)),
+                                 self.ch.lookup_member_authorities,
+                                 options)
+        auths = dict()
+        if res is not None:
+            if res['value'] is not None and res['code'] == 0:
+                for d in res['value']:
+                    auths[d['SERVICE_URN']] = d['SERVICE_URL']
+            else:
+                msg = "Server Error listing MAs %d: %s" % (res['code'], res['output'])
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.warn(msg)
+        else:
+            msg = "Server Error listing MAs - no results"
+            if message and message.strip() != "":
+                msg += "- " + message
+            self.logger.warn(msg)
+
+        return auths
+
+    def ma(self):
+        if self._ma is not None:
+            return self._ma
+        url = self.ma_url()
+        self._ma = self.make_client(url, self.key, self.cert,
+                                   verbose=self.config['verbose'])
+        return self._ma
+
+    def ma_url(self):
+        if self._ma_url is not None:
+            return self._ma_url
+        mas = self.list_member_authorities()
+        if len(mas.keys()) == 0:
+            raise Exception("No member authorities listed at %s %s!" % (self.fwtype, self.ch_url))
+        if len(mas.keys()) > 1:
+            self.logger.warn("%d member authorities were listed - taking the first: %s (%s)", len(mas.keys()), mas.keys()[0], mas[mas.keys()[0]])
+        self.logger.info("Member Authority is %s %s", mas.keys()[0], mas[mas.keys()[0]])
+        self._ma_url = mas[mas.keys()[0]]
+        return self._ma_url
+
+    def sa(self):
+        if self._sa is not None:
+            return self._sa
+        url = self.sa_url()
+        self._sa = self.make_client(url, self.key, self.cert,
+                                   verbose=self.config['verbose'])
+        return self._sa
+
+    def sa_url(self):
+        if self._sa_url is not None:
+            return self._sa_url
+        sas = self.list_slice_authorities()
+        if len(sas.keys()) == 0:
+            raise Exception("No slice authorities listed at %s %s!" % (self.fwtype, self.ch_url))
+        if len(sas.keys()) > 1:
+            self.logger.warn("%d slice authorities were listed - taking the first: %s (%s)", len(sas.keys()), sas.keys()[0], sas[sas.keys()[0]])
+        self.logger.info("Slice Authority is %s %s", sas.keys()[0], sas[sas.keys()[0]])
+        self._sa_url = sas[sas.keys()[0]]
+        return self._sa_url
 
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
@@ -150,9 +255,9 @@ class Framework(Framework_Base):
         if self.user_cred == None:
             creds, options = self._add_credentials_and_speaksfor(creds, options)
             self.logger.debug("Getting user credential from %s MA %s",
-                              self.fwtype, self.ma_url)
-            (res, message) = _do_ssl(self, None, ("Get user credential from %s %s" % (self.fwtype, self.ch_url)),
-                                     self.ma.get_credentials,
+                              self.fwtype, self.ma_url())
+            (res, message) = _do_ssl(self, None, ("Get user credential from %s %s" % (self.fwtype, self.ma_url())),
+                                     self.ma().get_credentials,
                                      self.user_urn,
                                      creds,
                                      options)
@@ -174,11 +279,18 @@ class Framework(Framework_Base):
                         msg = "Error %d" % res['code']
                     if message is not None and message.strip() != "":
                         msg = msg + ". %s" % message
+                    if res.has_key('protogeni_error_url'):
+                        msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                     self.logger.error(msg)
             else:
                 msg = message
 
         if struct==True:
+            if self.user_cred is not None and self.user_cred_struct is None:
+                if not isinstance(self.user_cred, dict):
+                    self.user_cred_struct = self.wrap_cred(self.user_cred)
+                else:
+                    self.user_cred_struct = self.user_cred
             return self.user_cred_struct, msg
         else:
             return self.user_cred, msg
@@ -193,8 +305,8 @@ class Framework(Framework_Base):
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s SA %s" % (slice_urn,
-                                                                                            self.fwtype, self.sa_url)),
-                                 self.sa.get_credentials, slice_urn, scred, 
+                                                                                            self.fwtype, self.sa_url())),
+                                 self.sa().get_credentials, slice_urn, scred, 
                                  options)
 
         # FIXME: Handle typical error return codes with special messages
@@ -216,7 +328,10 @@ class Framework(Framework_Base):
                     self.logger.debug("Malformed slice cred return. Got %s", res)
                     raise Exception("Malformed return getting slice credential")
             else:
-                raise Exception("Server Error getting slice %s credential: %d: %s (%s)" % (slice_urn, res['code'], res['output'], message))
+                msg = "Server Error getting slice %s credential: %d: %s (%s)" % (slice_urn, res['code'], res['output'], message)
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                raise Exception(msg)
         else:
             msg = "Server Error getting slice %s credential" % slice_urn
             if message is not None and message.strip() != "":
@@ -244,9 +359,9 @@ class Framework(Framework_Base):
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         self.logger.debug("Getting %s SSH keys from %s MA %s",
-                          username, self.fwtype, self.ma_url)
-        (res, message) = _do_ssl(self, None, ("Get %s public SSH keys from %s %s" % (username, self.fwtype, self.ch_url)),
-                                 self.ma.lookup_keys,
+                          username, self.fwtype, self.ma_url())
+        (res, message) = _do_ssl(self, None, ("Get %s public SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
+                                 self.ma().lookup_keys,
                                  scred,
                                  options)
 
@@ -272,6 +387,8 @@ class Framework(Framework_Base):
                 msg = "Server Error getting SSH keys: %d: %s" % (res['code'], res['output'])
                 if message is not None and message.strip() != "":
                     msg = msg + " (%s)" % message
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                 self.logger.error(msg)
         else:
             msg = "Server error getting SSH keys"
@@ -293,6 +410,10 @@ class Framework(Framework_Base):
 
     def create_slice(self, urn):
         scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         try:
             slice_urn = self.slice_name_to_urn(urn)
@@ -311,7 +432,7 @@ class Framework(Framework_Base):
             project = s_auths[-1]
             self.logger.debug("From slice URN extracted project %s", project)
 
-        if project is None:
+        if project is None and self.useProjects:
             if self.opts.project:
                 # use the command line option --project
                 project = self.opts.project
@@ -345,8 +466,8 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.ch_url)),\
-                                     self.sa.create_slice, scred, options)
+        (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),\
+                                     self.sa().create_slice, scred, options)
         if res is not None:
             if res['code'] == 0:
                 d = res['value']
@@ -361,6 +482,8 @@ class Framework(Framework_Base):
                         res['output'].startswith("[DUPLICATE] DUPLICATE_ERROR"):
                     # duplicate
                     self.logger.info("Slice %s already existed - returning existing slice", slice_name)
+                    if res.has_key('protogeni_error_url'):
+                        self.logger.debug(" (Log url - look here for details on any failures: %s)" % res['protogeni_error_url'])
                     # Here we preserve current functionality -
                     # continue and pretend we created the slice. We
                     # could of course instead return an error
@@ -370,6 +493,8 @@ class Framework(Framework_Base):
                     msg = "Error from server creating slice. Code %d: %s" % ( res['code'], res['output'])
                     if message and message.strip() != "":
                         msg = msg + " (%s)" % message
+                    if res.has_key('protogeni_error_url'):
+                        msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                     self.logger.error(msg)
                     return None
         else:
@@ -385,8 +510,8 @@ class Framework(Framework_Base):
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s %s" % (slice_name,
-                                                                                         self.fwtype, self.ch_url)),
-                                 self.sa.get_credentials, slice_urn, scred, 
+                                                                                         self.fwtype, self.sa_url())),
+                                 self.sa().get_credentials, slice_urn, scred, 
                                  options)
 
         cred = None
@@ -402,7 +527,10 @@ class Framework(Framework_Base):
                     self.logger.error("Malformed return getting slice credential for new slice %s" % slice_name)
                     self.logger.debug("Got %s", res)
             else:
-                self.logger.error("Error from server getting credential for new slice %s: %d: %s (%s)", slice_name, res['code'], res['output'], message)
+                msg = "Error from server getting credential for new slice %s: %d: %s (%s)" % (slice_name, res['code'], res['output'], message)
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.error(msg)
         else:
             msg = "Error getting credential for new slice %s" % slice_name
             if message is not None and message.strip() != "":
@@ -419,6 +547,10 @@ class Framework(Framework_Base):
             return "%s does not support deleting slices. (And no slice name was specified)" % self.fwtype
 
         scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         project = None
         auth = None
@@ -436,7 +568,7 @@ class Framework(Framework_Base):
         else:
             slice_name = urn
 
-        if project is None:
+        if project is None and self.useProjects:
             if self.opts.project:
                 # use the command line option --project
                 project = self.opts.project
@@ -444,7 +576,7 @@ class Framework(Framework_Base):
                 # otherwise, default to 'default_project' in 'omni_config'
                 project = self.config['default_project']
             else:
-                return "%s does not support deleting slices. (And no project was specified)" % self.fwtype
+                return "%s at %s does not support deleting slices. (And no project was specified)" % (self.fwtype, self.sa_url())
 
         if auth is None:
             if not self.config.has_key('authority'):
@@ -468,8 +600,8 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.ch_url)),\
-                                     self.sa.lookup_slices, scred, options)
+        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),\
+                                     self.sa().lookup_slices, scred, options)
         slice_expiration = None
         msg = None
         if res is not None:
@@ -479,8 +611,8 @@ class Framework(Framework_Base):
                     if d.has_key(slice_urn) and \
                                      d[slice_urn].has_key('SLICE_EXPIRATION'):
                         slice_expiration = d[slice_urn]['SLICE_EXPIRATION']
-                        exp = dateutil.parser.parse(slice_expiration)
-                        if exp < dattime.datetime.utcnow():
+                        exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                        if exp < naiveUTC(datetime.datetime.utcnow()):
                             self.logger.warn("Got expired slice %s at %s?", slice_urn, slice_expiration)
                     else:
                         # Likely the slice is already expired
@@ -497,6 +629,8 @@ class Framework(Framework_Base):
                     msg += ". Code %d: %s" % ( res['code'], res['output'])
                     if message and message.strip() != "":
                         msg = msg + " (%s)" % message
+#                if res.has_key('protogeni_error_url'):
+#                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
         else:
             msg = "%s does not support deleting slices. (And server error looking up slice %s)" % (self.fwtype, slice_name)
             if message is not None and message.strip() != "":
@@ -526,7 +660,10 @@ class Framework(Framework_Base):
                 for d in res['value']:
                     aggs[d['SERVICE_URN']] = d['SERVICE_URL']
             else:
-                self.logger.warn("Server Error listing aggregates %d: %s", res['code'], res['output'])
+                msg = "Server Error listing aggregates %d: %s" % (res['code'], res['output'])
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                self.logger.warn(msg)
         else:
             self.logger.warn("Server Error listing aggregates - no results")
 
@@ -536,6 +673,10 @@ class Framework(Framework_Base):
         '''List slices owned by the user (name or URN) provided, returning a list of slice URNs.'''
 
         scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         userurn = self.member_name_to_urn(user)
 
@@ -544,8 +685,8 @@ class Framework(Framework_Base):
                         }}
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.ch_url)), 
-                                    self.sa.lookup_slices_for_member, userurn, scred, options)
+        (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                    self.sa().lookup_slices_for_member, userurn, scred, options)
 
         slices = None
         if res is not None:
@@ -554,6 +695,8 @@ class Framework(Framework_Base):
             else:
                 msg = "Failed to list slices for %s" % user
                 msg += ". Server said: %s" % res['output']
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                 raise Exception(msg)
         else:
             msg = "Failed to list slices for %s" % user
@@ -571,10 +714,12 @@ class Framework(Framework_Base):
                     self.logger.debug("Skipping non slice URN %s", slice)
                     continue
                 slicename = slice
-                exp = tup['EXPIRED']
-                if exp == True:
-                    self.logger.debug("Skipping expired slice %s", slice)
-                    continue
+                # Returning this key is non-standard..
+                if tup.has_key('EXPIRED'):
+                    exp = tup['EXPIRED']
+                    if exp == True:
+                        self.logger.debug("Skipping expired slice %s", slice)
+                        continue
                 slicenames.append(slicename)
         return slicenames
 
@@ -682,6 +827,10 @@ class Framework(Framework_Base):
 
     def get_slice_expiration(self, urn):
         scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
 #                    'SLICE_EXPIRED': 'f',
@@ -690,8 +839,8 @@ class Framework(Framework_Base):
         self.logger.debug("Submitting with options %s", options)
         scred, options = self._add_credentials_and_speaksfor(scred, options)
         res = None
-        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.ch_url)),\
-                                     self.sa.lookup_slices, scred, options)
+        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
+                                     self.sa().lookup_slices, scred, options)
         slice_expiration = None
         msg = None
         if res is not None:
@@ -703,11 +852,11 @@ class Framework(Framework_Base):
                             expired = d[urn]['SLICE_EXPIRED']
                         if d[urn].has_key('SLICE_EXPIRATION'):
                             slice_expiration = d[urn]['SLICE_EXPIRATION']
-                            exp = dateutil.parser.parse(slice_expiration)
-                            if exp < datetime.datetime.utcnow():
+                            exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                            if exp < naiveUTC(datetime.datetime.utcnow()):
 #                                if not expired:
 #                                    self.logger.debug('CH says it is not expired, but expiration is in past?')
-                                self.logger.warn("Slice %s expired at %s", urn, slice_expiration)
+                                self.logger.warn("CH says slice %s expired at %s UTC", urn, slice_expiration)
 #                            elif expired:
 #                                self.logger.debug('CH says slice expired, but expiration %s is not in past?', slice_expiration)
                             return exp
@@ -723,6 +872,8 @@ class Framework(Framework_Base):
                     msg += ". Code %d: %s" % ( res['code'], res['output'])
                     if message and message.strip() != "":
                         msg = msg + " (%s)" % message
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                 self.logger.error(msg)
         else:
             msg = "Server Error looking up slice %s" % urn
@@ -742,6 +893,10 @@ class Framework(Framework_Base):
         print it and return None.
         """
         scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
 
         expiration = naiveUTC(expiration_dt).isoformat()
         self.logger.info('Requesting new slice expiration %r', expiration)
@@ -754,8 +909,8 @@ class Framework(Framework_Base):
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         (res, message) = _do_ssl(self, None, ("Renew slice %s on %s %s until %s" % (urn, 
-                                                                                    self.fwtype, self.ch_url, expiration_dt)), 
-                                  self.sa.update_slice, urn, scred, options)
+                                                                                    self.fwtype, self.sa_url(), expiration_dt)), 
+                                  self.sa().update_slice, urn, scred, options)
 
         b = False
         if res is not None:
@@ -763,6 +918,8 @@ class Framework(Framework_Base):
                 b = True
             else:
                 message = res['output']
+                if res.has_key('protogeni_error_url'):
+                    message += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
         if message is not None and message.strip() != "":
             self.logger.error(message)
 
@@ -831,8 +988,8 @@ class Framework(Framework_Base):
         response = dict()
         versionstruct = dict()
         types = {'ch': ('Clearinghouse', self.ch_url, self.ch), 'ma':
-                     ('Member Authority', self.ma_url, self.ma),
-                 'sa': ('Slice Authority', self.sa_url, self.sa)}
+                     ('Member Authority', self.ma_url(), self.ma()),
+                 'sa': ('Slice Authority', self.sa_url(), self.sa())}
 
         for service in types.keys():
             (response, message) = _do_ssl(self, None, ("GetVersion of %s %s %s using cert %s" % (self.fwtype,types[service][0], types[service][2], self.config['cert'])), types[service][2].get_version)
@@ -860,13 +1017,18 @@ class Framework(Framework_Base):
         if urn is None or urn.strip() == "" or not is_valid_urn_bytype(urn, 'user', None):
             return None
         creds = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
         res, mess = _do_ssl(self, None, "Looking up member email",
-                            self.ma.lookup_identifying_member_info, creds, options)
+                            self.ma().lookup_identifying_member_info, creds, options)
 
         logr = self._log_results((res, mess), 'Lookup member email')
         if logr == True:
-            if not res['value']:
+            if not res['value'] and isinstance(res['value'], dict) and len(res['value'].values()) > 0 and res['value'].values()[0].has_key('MEMBER_EMAIL'):
+                self.logger.debug("Got malformed return looking up member email: %s", res)
                 return None
             else:
                 return res['value'].values()[0]['MEMBER_EMAIL']
@@ -884,7 +1046,7 @@ class Framework(Framework_Base):
         creds, options = self._add_credentials_and_speaksfor(creds, options)
 
         res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
-                            self.ma.lookup_keys, creds, options)
+                            self.ma().lookup_keys, creds, options)
 
         logr = self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
         if logr == True:
@@ -903,8 +1065,18 @@ class Framework(Framework_Base):
         # if that is the most recent slice by this name
         # Shouldn't the SA check this?
 
-        creds = []
         slice_urn = self.slice_name_to_urn(urn)
+
+        creds = []
+        if self.needcred:
+            # FIXME: At PG both a user cred and a slice cred seem to work
+            # Which is correct?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
@@ -914,7 +1086,7 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
@@ -922,8 +1094,8 @@ class Framework(Framework_Base):
                     }}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Looking up %s slice %s members" % (self.fwtype, slice_urn),
-                            self.sa.lookup_slice_members, slice_urn, 
+        res, mess = _do_ssl(self, None, "Looking up %s slice %s members at %s" % (self.fwtype, slice_urn, self.sa_url()),
+                            self.sa().lookup_slice_members, slice_urn, 
                             creds, options)
         members = []
         logr = self._log_results((res, mess), 'Get members for %s slice %s%s' % (self.fwtype, slice_urn, expmess))
@@ -945,13 +1117,18 @@ class Framework(Framework_Base):
 
     # add a new member to a slice
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
-        creds = []
         role2 = str(role).upper()
         if role2 == 'LEAD':
             raise Exception("Cannot add a lead to a slice. Try role 'ADMIN'")
         if role2 not in ['LEAD','ADMIN', 'MEMBER', 'AUDITOR']:
             raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
         slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        if self.needcred:
+            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
         member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_add': [{'SLICE_MEMBER': member_urn,
                                        'SLICE_ROLE': role}]}
@@ -959,8 +1136,8 @@ class Framework(Framework_Base):
 #                            'SLICE_EXPIRED': 'f',
 #                            }
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s" %  (member_urn, self.fwtype, slice_urn),
-                            self.sa.modify_slice_membership,
+        res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                            self.sa().modify_slice_membership,
                             slice_urn, creds, options)
 
         # FIXME: do own result checking to detect DUPLICATE
@@ -986,6 +1163,8 @@ class Framework(Framework_Base):
                     msg += ". " + message
                 if res.has_key('output') and res['output'].strip() !=  "":
                     msg += ". Server said: " + res['output']
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                 # In APIv3 if you renew while allocated then the slice
                 # has not yet been recorded and will be unknown
                 if self.opts.api_version > 2 and "ARGUMENT_ERROR (Unknown slice urns: [[None]])" in msg and "Record sliver" in msg:
@@ -1024,6 +1203,16 @@ class Framework(Framework_Base):
     def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
                                creator_urn, expiration):
         creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+            # They don't seem to be requiring either one?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
+
         if not is_valid_urn(agg_urn):
             self.logger.debug("Not a valid AM URN: %s", agg_urn)
             agg_urn = None
@@ -1056,14 +1245,16 @@ class Framework(Framework_Base):
                   "SLIVER_INFO_AGGREGATE_URN": agg_urn,
                   "SLIVER_INFO_CREATOR_URN": creator_urn,
                   "SLIVER_INFO_CREATION": datetime.datetime.utcnow().isoformat()}
+
         options = {'fields' : fields}
         if (expiration):
             # Note that if no TZ specified, UTC is assumed
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
+
         self.logger.debug("Recording new slivers with options %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver %s creation at %s" % (sliver_urn, self.fwtype),
-                      self.sa.create_sliver_info, creds, options)
+        res = _do_ssl(self, None, "Recording sliver %s creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
+                      self.sa().create_sliver_info, creds, options)
         return self._log_results(res, "Record sliver %s creation at %s" % (sliver_urn, self.fwtype))
 
     # write new sliver_info to the database using chapi
@@ -1105,7 +1296,7 @@ class Framework(Framework_Base):
 
         if manifest and manifest.strip() != "" and (slivers is None or len(slivers) == 0):
             # APIv1/2: find slivers in manifest
-            self.logger.debug("Finding new slivers to record in manfiest")
+            self.logger.debug("Finding new slivers to record in manifest")
             # Loop through manifest finding all slivers to record
             while True:
                 idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
@@ -1177,6 +1368,14 @@ class Framework(Framework_Base):
         if not is_valid_urn(aggregate_urn):
             self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
             return []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
@@ -1186,7 +1385,7 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         # FIXME: Query the sliver expiration and skip expired slivers?
         options = {'filter': [],
@@ -1195,7 +1394,7 @@ class Framework(Framework_Base):
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
-                            self.sa.lookup_sliver_info, creds, options)
+                            self.sa().lookup_sliver_info, creds, options)
         logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
         if logr == True:
             self.logger.debug("Slice %s AM %s found slivers %s", slice_urn, aggregate_urn, res['value'])
@@ -1207,7 +1406,6 @@ class Framework(Framework_Base):
     # If we get an argument error indicating the sliver was not yet recorded, try
     # to record it
     def update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
-        creds = []
         if expiration is None:
             self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
             return None
@@ -1222,6 +1420,16 @@ class Framework(Framework_Base):
 
         slice_urn = self.slice_name_to_urn(slice_urn)
 
+        creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
+
         # Note that if no TZ is specified, UTC is assumed
         fields = {'SLIVER_INFO_EXPIRATION': str(expiration)}
 
@@ -1229,7 +1437,7 @@ class Framework(Framework_Base):
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         self.logger.debug("Passing options %s", options)
         res = _do_ssl(self, None, "Recording sliver %s updated expiration" % sliver_urn, \
-                self.sa.update_sliver_info, sliver_urn, creds, options)
+                self.sa().update_sliver_info, sliver_urn, creds, options)
         msg = self._log_results(res, "Update sliver %s expiration" % sliver_urn)
         if "Register the sliver" in str(msg) and "ARGUMENT_ERROR" in str(msg) and is_valid_urn(slice_urn) and is_valid_urn(agg_urn):
             # SA didn't know about this sliver
@@ -1257,6 +1465,15 @@ class Framework(Framework_Base):
     # delete the sliver from the chapi database
     def delete_sliver_info(self, sliver_urn):
         creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+            # If slice, then must refactor to get slice urn
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+#            sc = self.get_slice_cred_struct(slice_urn)
+#            if sc is not None:
+#                creds.append(sc)
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to record deletion")
@@ -1268,15 +1485,23 @@ class Framework(Framework_Base):
 #            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res = _do_ssl(self, None, "Recording sliver %s deleted" % sliver_urn,
-                      self.sa.delete_sliver_info, sliver_urn, creds, options)
+                      self.sa().delete_sliver_info, sliver_urn, creds, options)
         return self._log_results(res, "Record sliver %s deleted" % sliver_urn)
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
     def list_sliver_infos_for_slice(self, slice_urn):
         slivers_by_agg = {}
-        creds = []
         slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        if self.needcred:
+            # FIXME: At PG should this be user or slice cred?
+#            uc, msg = self.get_user_cred(True)
+#            if uc is not None:
+#                creds.append(uc)
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
 
         slice_expiration = self.get_slice_expiration(slice_urn)
 
@@ -1286,14 +1511,14 @@ class Framework(Framework_Base):
             exp = naiveUTC(slice_expiration)
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
-                expmess = " (EXPIRED at %s)" % slice_expiration
+                expmess = " (EXPIRED at %s UTC)" % exp
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
 
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
-                          self.sa.lookup_sliver_info, creds, options)
+                          self.sa().lookup_sliver_info, creds, options)
 
         logr = self._log_results((res, mess), "Find slivers for slice %s%s" % (slice_urn,expmess))
  

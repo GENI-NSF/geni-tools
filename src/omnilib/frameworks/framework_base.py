@@ -111,9 +111,14 @@ class Framework_Base():
                 else:
                     cred = None
             else:
+                # This would force a saved user cred in struct to be XML. Is that correct?
+                #cred = cred2
                 target = ""
                 try:
                     target = credutils.get_cred_target_urn(logger, cred)
+                    if "+authority+sa" in target:
+                        self.logger.debug("Got target %s - PG user creds list the user as the owner only", target)
+                        target = credutils.get_cred_owner_urn(logger, cred)
                 except:
                     if not opts.devmode:
                         logger.warn("Failed to parse target URN from user cred?")
@@ -124,6 +129,7 @@ class Framework_Base():
             else:
                 logger = logging.getLogger("omni.framework")
             logger.info("NOT getting user credential from file %s - file doesn't exist or is empty", opts.usercredfile)
+
         return cred
         
     def get_version(self):

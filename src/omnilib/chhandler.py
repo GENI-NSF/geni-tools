@@ -554,7 +554,19 @@ class CHCallHandler(object):
         return retVal, retVal
 
     def listslivers(self, args):
-        """List all slivers of the given slice by aggregate"""
+        """List all slivers of the given slice by aggregate, as recorded
+        at the clearinghouse. Note this is non-authoritative information.
+        Argument: slice name or URN
+        Return: String printout of slivers by aggregate, with the sliver expiration if known, AND
+        A dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records, 
+        each of which is a dictionary possibly containing:
+         - SLIVER_INFO_URN
+         - SLIVER_INFO_SLICE_URN
+         - SLIVER_INFO_AGGREGATE_URN
+         - SLIVER_INFO_CREATOR_URN
+         - SLIVER_INFO_EXPIRATION
+         - SLIVER_INFO_CREATION
+         """
         if len(args) == 0 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error("listslivers requires a slice name argument")
         slice_name = args[0]
@@ -614,7 +626,7 @@ class CHCallHandler(object):
             for i, member in enumerate(members):
                 prtStr += 'Member ' + str(i + 1) + ':\n'
                 prtStr += '   URN = ' + member['URN'] + '\n'
-                prtStr += '   Email = ' + member['EMAIL'] + '\n'
+                prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
                 prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
 #            self.logger.info(prtStr)
         else:

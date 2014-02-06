@@ -141,7 +141,9 @@ class Sliver(object):
         self._allocation_state = STATE_GENI_UNALLOCATED
         self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
-        self._setUrnFromParent(resource.urn())
+        global RESOURCE_NAMESPACE
+        self._base = RESOURCE_NAMESPACE
+        self._setUrnFromParent(resource.urn(self._base))
         self._shutdown = False
 
     def resource(self):
@@ -178,7 +180,7 @@ class Sliver(object):
 
     def urn(self):
         if self._urn is None:
-            self._setUrnFromParent(self._resource.urn())
+            self._setUrnFromParent(self._resource.urn(self._base))
         return self._urn
 
     def delete(self):
@@ -922,7 +924,7 @@ class ReferenceAggregateManager(object):
         resource_id = str(resource.id)
         resource_exclusive = str(False).lower()
         resource_available = str(resource.available).lower()
-        resource_urn = resource.urn()
+        resource_urn = resource.urn(self._urn_authority)
         return tmpl % (self._my_urn,
                        resource_id,
                        resource_urn,
@@ -983,7 +985,7 @@ class ReferenceAggregateManager(object):
         sliver_id="%s"/>
 '''
         return tmpl % (sliver.resource().external_id,
-                       sliver.resource().urn(),
+                       sliver.resource().urn(self._urn_authority),
                        self._my_urn, sliver.urn())
 
     def manifest_slice(self, slice_urn):
