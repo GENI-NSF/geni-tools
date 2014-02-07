@@ -196,11 +196,22 @@ class Signature(object):
             if not ref_id or ref_id == '':
                 ref_id = reference.getAttribute('URI').strip().strip('#')
         self.set_refid(ref_id)
-        keyinfo = sig.getElementsByTagName("X509Data")[0]
-        szgid = getTextNode(keyinfo, "X509Certificate")
-        szgid = szgid.strip()
-        szgid = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----" % szgid
-        self.set_issuer_gid(GID(string=szgid))        
+        keyinfos = sig.getElementsByTagName("X509Data")
+        gids = None
+        for keyinfo in keyinfos:
+            certs = keyinfo.getElementsByTagName("X509Certificate")
+            for cert in certs:
+                if len(cert.childNodes) > 0:
+                    szgid = cert.childNodes[0].nodeValue
+                    szgid = szgid.strip()
+                    szgid = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----" % szgid
+                    if gids is None:
+                        gids = szgid
+                    else:
+                        gids += "\n" + szgid
+        if gids is None:
+            raise CredentialNotVerifiable("Malformed XML: No certificate found in signature")
+        self.set_issuer_gid(GID(string=gids))
         
     def encode(self):
         self.xml = signature_template % (self.get_refid(), self.get_refid())
@@ -728,8 +739,31 @@ class Credential(object):
 
         self.set_refid(cred.getAttribute("xml:id"))
         self.set_expiration(utcparse(getTextNode(cred, "expires")))
-        self.gidCaller = GID(string=getTextNode(cred, "owner_gid"))
-        self.gidObject = GID(string=getTextNode(cred, "target_gid"))   
+
+#        import traceback
+#        stack = traceback.extract_stack()
+
+        og = getTextNode(cred, "owner_gid")
+        # ABAC creds will have this be None and use this method
+#        if og is None:
+#            found = False
+#            for frame in stack:
+#                if 'super(ABACCredential, self).decode()' in frame:
+#                    found = True
+#                    break
+#            if not found:
+#                raise CredentialNotVerifiable("Malformed XML: No owner_gid found")
+        self.gidCaller = GID(string=og)
+        tg = getTextNode(cred, "target_gid")
+#        if tg is None:
+#            found = False
+#            for frame in stack:
+#                if 'super(ABACCredential, self).decode()' in frame:
+#                    found = True
+#                    break
+#            if not found:
+#                raise CredentialNotVerifiable("Malformed XML: No target_gid found")
+        self.gidObject = GID(string=tg)
 
         # Process privileges
         rlist = Rights()
@@ -757,6 +791,8 @@ class Credential(object):
         if len(parent) > 0:
             parent_doc = parent[0].getElementsByTagName("credential")[0]
             parent_xml = parent_doc.toxml()
+            if parent_xml is None or parent_xml.strip() == "":
+                raise CredentialNotVerifiable("Malformed XML: Had parent tag but it is empty")
             self.parent = Credential(string=parent_xml)
             self.updateRefID()
 
@@ -1074,11 +1110,11 @@ class Credential(object):
             result += gidCaller.dump_string(8, dump_parents)
 
         if self.get_signature():
-            print "  gidIssuer:"
-            self.get_signature().get_issuer_gid().dump(8, dump_parents)
+            result += "  gidIssuer:\n"
+            result += self.get_signature().get_issuer_gid().dump_string(8, dump_parents)
 
         if self.expiration:
-            print "  expiration:", self.expiration.isoformat()
+            result += "  expiration: " + self.expiration.isoformat() + "\n"
 
         gidObject = self.get_gid_object()
         if gidObject:
@@ -1089,11 +1125,11 @@ class Credential(object):
             result += "\nPARENT"
             result += self.parent.dump_string(True)
 
-        if show_xml:
+        if show_xml and HAVELXML:
             try:
                 tree = etree.parse(StringIO(self.xml))
                 aside = etree.tostring(tree, pretty_print=True)
-                result += "\nXML\n"
+                result += "\nXML:\n\n"
                 result += aside
                 result += "\nEnd XML\n"
             except:
