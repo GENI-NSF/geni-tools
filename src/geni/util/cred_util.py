@@ -32,6 +32,8 @@ import datetime
 import dateutil
 
 import sfa.trust.credential as cred
+from sfa.trust.credential_factory import CredentialFactory
+from sfa.trust.abac_credential import ABACCredential
 import sfa.trust.certificate
 import sfa.trust.gid as gid
 import sfa.trust.rights as rights
@@ -136,7 +138,7 @@ class CredentialVerifier(object):
         def make_cred(cred_string):
             credO = None
             try:
-                credO = cred.Credential(string=cred_string)
+                credO = CredentialFactory.createCred(credString=cred_string)
             except Exception, e:
                 self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
             return credO
@@ -150,7 +152,7 @@ class CredentialVerifier(object):
         # Potentially, change gid_string to be the cert of the actual user 
         # if this is a 'speaks-for' invocation
         speaksfor_gid = \
-            determine_speaks_for( \
+            determine_speaks_for(self.logger, \
             cred_strings, # May include ABAC speaks_for credential
             caller_gid, # Caller cert (may be the tool 'speaking for' user)
             options, # May include 'geni_speaking_for' option with user URN
@@ -160,9 +162,10 @@ class CredentialVerifier(object):
             speaksfor_urn = speaksfor_gid.get_urn()
             self.logger.info("Speaks-for Invocation: %s speaking for %s" % (caller_gid.get_urn(), speaksfor_urn))
             caller_gid = speaksfor_gid
-            # Remove the 'speaks-for' credential
-            cred_strings = [cred_string for cred_string in cred_strings \
-                                if cred_string.find('abac') < 0]
+
+        # Remove the abac credentials
+        cred_strings = [cred_string for cred_string in cred_strings \
+                            if cred_string.find('abac') < 0]
 
         return self.verify(caller_gid,
                            map(make_cred, cred_strings),
@@ -245,10 +248,21 @@ class CredentialVerifier(object):
                 failure = "Credential was unparseable"
                 continue
 
-            if tried_creds != "":
-                tried_creds = "%s, %s" % (tried_creds, cred.get_gid_caller().get_urn())
+            if cred.get_cred_type() == cred.SFA_CREDENTIAL_TYPE:
+                cS = cred.get_gid_caller().get_urn()
+            elif cred.get_cred_type() == ABACCredential.ABAC_CREDENTIAL_TYPE:
+                cS = cred.get_summary_tostring()
             else:
-                tried_creds = cred.get_gid_caller().get_urn()
+                cS = "Unknown credential type %s" % cred.get_cred_type()
+
+            if tried_creds != "":
+                tried_creds = "%s, %s" % (tried_creds, cS)
+            else:
+                tried_creds = cS
+
+            if cred.get_cred_type() != cred.SFA_CREDENTIAL_TYPE:
+                failure = "Not an SFA credential: " + cS
+                continue
 
             if not self.verify_source(gid, cred):
                 failure = "Cred %s fails: Credential doesn't grant rights to you (%s), but to %s (over object %s)" % (cred.get_gid_caller().get_urn(), gid.get_urn(), cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
@@ -271,7 +285,6 @@ class CredentialVerifier(object):
             # If got here it verified
             result.append(cred)
 
-        
         if result and result != list():
             # At least one credential verified ok and was added to the list
             # return that list
