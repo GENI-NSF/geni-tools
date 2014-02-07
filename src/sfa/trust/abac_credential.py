@@ -65,21 +65,10 @@ class ABACElement:
     def get_role(self): return self._role
     def get_linking_role(self): return self._linking_role
 
-    # Produce a string like: Me.linkingRole.Role
-    def get_assert():
-        ret = self._principal_keyid
-        if self._principal_mnemonic:
-            ret = self._principal_mnemonic
-        if self._linking_role:
-            ret += ".%s" % self._linking_role
-        if self._role:
-            ret += ".%s" % self._role
-        return ret
-
     def __str__(self):
         ret = self._principal_keyid
         if self._principal_mnemonic:
-            ret += " (%s)" % self._principal_mnemonic
+            ret = "%s (%s)" % (self._principal_mnemonic, self._principal_keyid)
         if self._linking_role:
             ret += ".%s" % self._linking_role
         if self._role:
@@ -187,9 +176,9 @@ class ABACCredential(Credential):
     # sounds like this should be __repr__ instead ??
     # Produce the ABAC assertion. Something like [ABAC cred: Me.role<-You] or similar
     def get_summary_tostring(self):
-        result = "[ABAC cred: " + self.get_head().get_assert()
+        result = "[ABAC cred: " + str(self.get_head())
         for tail in self.get_tails():
-            result += "<-%s" % tail.get_assert()
+            result += "<-%s" % str(tail)
         result += "]"
         return result
 

@@ -270,6 +270,7 @@ def determine_speaks_for(credentials, caller_gid, options, \
             if not isinstance(cred_value, ABACCredential):
                 cred = CredentialFactory.createCred(cred_value)
 
+#            print "Got a cred to check speaksfor for: %s" % cred.get_summary_tostring()
             # See if this is a valid speaks_for
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
@@ -277,9 +278,10 @@ def determine_speaks_for(credentials, caller_gid, options, \
                                       trusted_roots, schema)
 
             # FIXME: Log or return the error message in some way?
-
             if is_valid_speaks_for:
                 return user_gid # speaks-for
+#            else:
+#                print msg
     return caller_gid # Not speaks-for
 
 # FIXME: Redo this as encode and sign in ABACCredential
@@ -316,11 +318,11 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
         '<rt0>\n' + \
         '<version>%s</version>\n' + \
         '<head>\n' + \
-        '<ABACprincipal><keyid>%s</keyid></ABACprincipal>\n' +\
+        '<ABACprincipal><keyid>%s</keyid><mnemonic>%s</mnemonic></ABACprincipal>\n' +\
         '<role>speaks_for_%s</role>\n' + \
         '</head>\n' + \
         '<tail>\n' +\
-        '<ABACprincipal><keyid>%s</keyid></ABACprincipal>\n' +\
+        '<ABACprincipal><keyid>%s</keyid><mnemonic>%s</mnemonic></ABACprincipal>\n' +\
         '</tail>\n' +\
         '</rt0>\n' + \
         '</abac>\n' + \
@@ -337,7 +339,7 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
     user_keyid = get_cert_keyid(user_gid)
     tool_keyid = get_cert_keyid(tool_gid)
     unsigned_cred = template % (reference, expiration_str, version, \
-                                    user_keyid, user_keyid, tool_keyid, \
+                                    user_keyid, user_urn, user_keyid, tool_keyid, tool_urn, \
                                     reference, reference)
     unsigned_cred_filename = write_to_tempfile(unsigned_cred)
 
