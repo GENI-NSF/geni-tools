@@ -119,7 +119,6 @@ class Framework(Framework_Base):
             credSs, options = self._add_credentials_and_speaksfor(None, None)
             creds = [CredentialFactory.createCred(credString=credutils.get_cred_xml(cred)) \
                          for cred in credSs]
-            options = {'geni_speaking_for' : self.opts.speaksfor}
             speaker_gid = \
                 determine_speaks_for(creds, self.cert_gid, options, None)
             if speaker_gid != self.cert_gid:
@@ -231,7 +230,8 @@ class Framework(Framework_Base):
         new_credentials = credentials
         new_options = options
         if self.opts.speaksfor and not options.has_key("speaking_for"):
-            options['speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
+            options['speaking_for'] = self.opts.speaksfor # At CHs this is speaking_for
+            options['geni_speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
         if self.cred_nonOs is not None:
             self.logger.debug("Using credentials already loaded")
             for cred in self.cred_nonOs:
