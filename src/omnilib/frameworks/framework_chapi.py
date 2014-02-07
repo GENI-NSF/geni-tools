@@ -120,7 +120,7 @@ class Framework(Framework_Base):
             creds = [CredentialFactory.createCred(credString=credutils.get_cred_xml(cred)) \
                          for cred in credSs]
             speaker_gid = \
-                determine_speaks_for(creds, self.cert_gid, options, None)
+                determine_speaks_for(self.logger, creds, self.cert_gid, options, None)
             if speaker_gid != self.cert_gid:
                 self.logger.info("Speaks-for Invocation: %s speaking for %s" % \
                                      (self.cert_gid.get_urn(), \
@@ -254,7 +254,7 @@ class Framework(Framework_Base):
                         new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
-        self.logger.debug("add_c_n_spkfor new_creds = %s new_options = %s" % (new_credentials, new_options))
+        self.logger.debug("add_c_n_spkfor new_creds = (%d of them) new_options = %s" % (len(new_credentials), new_options))
         return new_credentials, new_options
 
     def get_user_cred(self, struct=False):
