@@ -30,6 +30,7 @@ from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 #from omnilib.util.handler_utils import _lookupAggURNFromURLInNicknames
+from omnilib.util.handler_utils import _load_cred
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
@@ -116,7 +117,7 @@ class Framework(Framework_Base):
         if self.opts.speaksfor:
             creds = [CredentialFactory.createCred(credFile=cred_file) \
                          for cred_file in self.opts.cred]
-            options = {'geni_speaking_for' : opts.speaksfor}
+            options = {'geni_speaking_for' : self.opts.speaksfor}
             speaker_gid = \
                 determine_speaks_for(creds, self.cert_gid, options, None)
             if speaker_gid != self.cert_gid:
@@ -232,7 +233,12 @@ class Framework(Framework_Base):
         if self.opts.cred:
             for cred_filename in self.opts.cred:
                 try:
-                    cred_contents = open(cred_filename).read()
+                    # Use helper to load cred, but don't unwrap/wrap there.
+                    # We want it wrapped to preserve the wrapping it had
+                    oldDev = self.opts.devmode
+                    self.opts.devmode = True
+                    cred_contents = _load_cred(self, cred_filename)
+                    self.opts.devmode = oldDev
                     new_cred = self.wrap_cred(cred_contents)
                     new_credentials.append(new_cred)
                 except Exception, e:
