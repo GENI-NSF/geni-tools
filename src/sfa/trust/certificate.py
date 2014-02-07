@@ -358,6 +358,10 @@ class Certificate:
         # if it is a chain of multiple certs, then split off the first one and
         # load it (support for the ---parent--- tag as well as normal chained certs)
 
+        if string is None or string.strip() == "":
+            logger.warn("Empty string in load_from_string")
+            return
+
         string = string.strip()
         
         # If it's not in proper PEM format, wrap it
@@ -382,6 +386,9 @@ class Certificate:
 
         self.cert = crypto.load_certificate(crypto.FILETYPE_PEM, parts[0])
 
+        if self.cert is None:
+            logger.warn("Loaded from string but cert is None: %s" % string)
+
         # if there are more certs, then create a parent and let the parent load
         # itself from the remainder of the string
         if len(parts) > 1 and parts[1] != '':
@@ -403,6 +410,9 @@ class Certificate:
     # @param save_parents If save_parents==True, then also save the parent certificates.
 
     def save_to_string(self, save_parents=True):
+        if self.cert is None:
+            logger.warn("None cert in certificate.save_to_string")
+            return ""
         string = crypto.dump_certificate(crypto.FILETYPE_PEM, self.cert)
         if save_parents and self.parent:
             string = string + self.parent.save_to_string(save_parents)
@@ -571,8 +581,19 @@ class Certificate:
 
     def get_extension(self, name):
 
+        if name is None:
+            return None
+
+        certstr = self.save_to_string()
+        if certstr is None or certstr == "":
+            return None
         # pyOpenSSL does not have a way to get extensions
-        m2x509 = X509.load_cert_string(self.save_to_string())
+        m2x509 = X509.load_cert_string(certstr)
+        if m2x509 is None:
+            logger.warn("No cert loaded in get_extension")
+            return None
+        if m2x509.get_ext(name) is None:
+            return None
         value = m2x509.get_ext(name).get_value()
 
         return value
