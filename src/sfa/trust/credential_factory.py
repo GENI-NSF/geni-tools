@@ -58,7 +58,18 @@ class CredentialFactory:
             except Exception, e:
                 logger.info("Error opening credential file %s: %s" % credFile, e)
                 return None
-        cred_type = CredentialFactory.getType(credString)
+
+        # Try to treat the file as JSON, getting the cred_type from the struct
+        try:
+            credO = json.loads(credString, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+            if credO.has_key('geni_value') and credO.has_key('geni_type'):
+                cred_type = credO['geni_type']
+                credString = credO['geni_value']
+        except Exception, e:
+            # It wasn't a struct. So the credString is XML. Pull the type directly from the string
+            logger.debug("Credential string not JSON: %s", e)
+            cred_type = CredentialFactory.getType(credString)
+
         if cred_type == Credential.SFA_CREDENTIAL_TYPE:
             try:
                 cred = Credential(string=credString)
