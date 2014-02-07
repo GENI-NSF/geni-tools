@@ -111,12 +111,14 @@ class Framework(Framework_Base):
         except Exception, e:
             sys.exit('CHAPI Framework failed to parse cert read from %s: %s' % (self.cert, e))
 
+        self.cred_nonOs = None
         # ***
         # Do the whole speaksfor test here
         # ***
         if self.opts.speaksfor:
-            creds = [CredentialFactory.createCred(credFile=cred_file) \
-                         for cred_file in self.opts.cred]
+            credSs, options = self._add_credentials_and_speaksfor(None, None)
+            creds = [CredentialFactory.createCred(credString=credutils.get_cred_xml(cred)) \
+                         for cred in credSs]
             options = {'geni_speaking_for' : self.opts.speaksfor}
             speaker_gid = \
                 determine_speaks_for(creds, self.cert_gid, options, None)
@@ -228,9 +230,15 @@ class Framework(Framework_Base):
             options = {}
         new_credentials = credentials
         new_options = options
-        if self.opts.speaksfor:
+        if self.opts.speaksfor and not options.has_key("speaking_for"):
             options['speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
-        if self.opts.cred:
+        if self.cred_nonOs is not None:
+            self.logger.debug("Using credentials already loaded")
+            for cred in self.cred_nonOs:
+                if not cred in new_credentials:
+                    new_credentials.append(cred)
+        elif self.opts.cred:
+            self.cred_nonOs = []
             for cred_filename in self.opts.cred:
                 try:
                     # Use helper to load cred, but don't unwrap/wrap there.
@@ -240,7 +248,10 @@ class Framework(Framework_Base):
                     cred_contents = _load_cred(self, cred_filename)
                     self.opts.devmode = oldDev
                     new_cred = self.wrap_cred(cred_contents)
-                    new_credentials.append(new_cred)
+                    if not new_cred in self.cred_nonOs:
+                        self.cred_nonOs.append(new_cred)
+                    if not new_cred in new_credentials:
+                        new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
         self.logger.debug("add_c_n_spkfor new_creds = %s new_options = %s" % (new_credentials, new_options))
