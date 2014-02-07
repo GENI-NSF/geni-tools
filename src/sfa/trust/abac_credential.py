@@ -23,7 +23,16 @@
 
 from sfa.trust.credential import Credential
 from sfa.util.sfalogging import logger
+
+from StringIO import StringIO
 from xml.dom.minidom import Document, parseString
+
+HAVELXML = False
+try:
+    from lxml import etree
+    HAVELXML = True
+except:
+    pass
 
 # This module defines a subtype of sfa.trust,credential.Credential
 # called an ABACCredential. An ABAC credential is a signed statement
@@ -158,13 +167,13 @@ class ABACCredential(Credential):
         for tail in self.get_tails():
             result += "\tTail: %s\n" % tail
         if self.get_signature():
-            print "  gidIssuer:"
-            self.get_signature().get_issuer_gid().dump(8, dump_parents)
-        if show_xml:
+            result += "  gidIssuer:\n"
+            result += self.get_signature().get_issuer_gid().dump_string(8, dump_parents)
+        if show_xml and HAVELXML:
             try:
                 tree = etree.parse(StringIO(self.xml))
                 aside = etree.tostring(tree, pretty_print=True)
-                result += "\nXML\n"
+                result += "\nXML:\n\n"
                 result += aside
                 result += "\nEnd XML\n"
             except:
