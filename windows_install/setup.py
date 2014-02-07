@@ -26,7 +26,7 @@ from distutils.core import setup
 import py2exe
 import sys
 
-setup(console=['..\src\omni.py','..\src\omni-configure.py', '..\examples/readyToLogin.py', '..\src\clear-passphrases.py'],
+setup(console=['..\src\omni.py','..\src\omni-configure.py', '..\src\stitcher.py', '..\examples/readyToLogin.py', '..\src\clear-passphrases.py'],
       name="omni",
 
       options={
