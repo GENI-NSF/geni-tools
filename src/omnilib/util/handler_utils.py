@@ -24,6 +24,7 @@
 
 import datetime
 import json
+import json_encoding
 import logging
 import os
 import string
@@ -31,7 +32,6 @@ import string
 from dossl import _do_ssl
 import credparsing as credutils
 from dates import naiveUTC
-import json_encoding
 from geni.util import rspec_util
 from omnilib.util.files import *
 from sfa.trust.gid import GID

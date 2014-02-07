@@ -273,7 +273,7 @@ class Framework_Base():
         else:
             logger = logging.getLogger("omni.framework")
         if isinstance(cred, dict):
-            logger.warn("Called wrap on a cred that's already a dict? %s", cred)
+            logger.debug("Called wrap on a cred that's already a dict? %s", cred)
             return cred
         elif not isinstance(cred, str):
             logger.warn("Called wrap on non string cred? Stringify. %s", cred)

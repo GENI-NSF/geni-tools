@@ -24,6 +24,8 @@
 from sfa.util.sfalogging import logger
 from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
+
+import json
 import re
 
 # Factory for creating credentials of different sorts by type.
@@ -61,13 +63,13 @@ class CredentialFactory:
 
         # Try to treat the file as JSON, getting the cred_type from the struct
         try:
-            credO = json.loads(credString, encoding='ascii', cls=json_encoding.DateTimeAwareJSONDecoder)
+            credO = json.loads(credString, encoding='ascii')
             if credO.has_key('geni_value') and credO.has_key('geni_type'):
                 cred_type = credO['geni_type']
                 credString = credO['geni_value']
         except Exception, e:
             # It wasn't a struct. So the credString is XML. Pull the type directly from the string
-            logger.debug("Credential string not JSON: %s", e)
+            logger.debug("Credential string not JSON: %s" % e)
             cred_type = CredentialFactory.getType(credString)
 
         if cred_type == Credential.SFA_CREDENTIAL_TYPE:
@@ -76,7 +78,8 @@ class CredentialFactory:
                 return cred
             except Exception, e:
                 if credFile:
-                    raise Exception("%s not a parsable SFA credential: %s" % (credFile, e))
+                    msg = "credString started: %s" % credString[:50]
+                    raise Exception("%s not a parsable SFA credential: %s. " % (credFile, e) + msg)
                 else:
                     raise Exception("SFA Credential not parsable: %s. Cred start: %s..." % (e, credString[:50]))
 
