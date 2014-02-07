@@ -42,6 +42,7 @@ from sfa.trust.abac_credential import ABACCredential
 
 import datetime
 import dateutil
+import logging
 import os
 import string
 import sys
@@ -254,7 +255,18 @@ class Framework(Framework_Base):
                         new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
-        self.logger.debug("add_c_n_spkfor new_creds = (%d of them) new_options = %s" % (len(new_credentials), new_options))
+        if self.logger.isEnabledFor(logging.DEBUG):
+            msg = "add_c_n_spkfor new_creds = ["
+            first = True
+            for cred in new_credentials:
+                if not first:
+                    msg += ", "
+                if isinstance(cred, dict):
+                    msg += cred['geni_type'] + ": " + cred['geni_value'][:180] + "..."
+                else:
+                    msg += str(cred)[:180] + "..."
+                first = False
+            self.logger.debug("%s; new_options = %s" % (msg, new_options))
         return new_credentials, new_options
 
     def get_user_cred(self, struct=False):
