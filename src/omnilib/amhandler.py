@@ -3381,7 +3381,7 @@ class AMCallHandler(object):
                         for sliver_urn in sliver_urns:
                             self.framework.delete_sliver_info(sliver_urn)
                     else:
-                        self.logger.info("Cannot tell CH slivers were deleted - no valid AM URN known")
+                        self.logger.debug("Not reporting to CH that slivers were deleted - no valid AM URN known")
                 except NotImplementedError, nie:
                     self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
