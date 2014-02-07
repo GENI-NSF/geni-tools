@@ -248,7 +248,7 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
 # trusted_roots is a list of Certificate objects from the system
 #   trusted_root directory
 # Optionally, provide an XML schema against which to validate the credential
-def determine_speaks_for(credentials, caller_gid, options, \
+def determine_speaks_for(logger, credentials, caller_gid, options, \
                              trusted_roots, schema=None):
     if options and 'geni_speaking_for' in options:
         speaking_for_urn = options['geni_speaking_for'].strip()
@@ -271,6 +271,9 @@ def determine_speaks_for(credentials, caller_gid, options, \
                 cred = CredentialFactory.createCred(cred_value)
 
 #            print "Got a cred to check speaksfor for: %s" % cred.get_summary_tostring()
+#            #cred.dump(True, True)
+#            print "Caller: %s" % caller_gid.dump_string(2, True)
+
             # See if this is a valid speaks_for
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
@@ -280,8 +283,11 @@ def determine_speaks_for(credentials, caller_gid, options, \
             # FIXME: Log or return the error message in some way?
             if is_valid_speaks_for:
                 return user_gid # speaks-for
-#            else:
-#                print msg
+            else:
+                if logger:
+                    logger.info("Got speaks-for option but not a valid speaks_for: %s", msg)
+                else:
+                    print "Got a speaks-for option but not a valid speaks_for: " + msg
     return caller_gid # Not speaks-for
 
 # FIXME: Redo this as encode and sign in ABACCredential
@@ -414,7 +420,7 @@ if __name__ == "__main__":
 
     creds = [{'geni_type' : ABACCredential.ABAC_CREDENTIAL_TYPE, 'geni_value' : cred, 
               'geni_version' : '1'}]
-    gid = determine_speaks_for(creds, tool_gid, \
+    gid = determine_speaks_for(None, creds, tool_gid, \
                                    {'geni_speaking_for' : user_urn}, \
                                    trusted_roots)
 
