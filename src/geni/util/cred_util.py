@@ -165,7 +165,7 @@ class CredentialVerifier(object):
 
         # Remove the abac credentials
         cred_strings = [cred_string for cred_string in cred_strings \
-                            if cred_string.find('abac') < 0]
+                            if CredentialFactory.getType(cred_string) == cred.Credential.SFA_CREDENTIAL_TYPE]
 
         return self.verify(caller_gid,
                            map(make_cred, cred_strings),

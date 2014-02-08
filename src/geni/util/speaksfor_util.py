@@ -263,7 +263,7 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
                 else:
                     cred_value = cred
             else:
-                if cred.find('abac') < 0: continue
+                if CredentialFactory.getType(cred) != ABACCredential.ABAC_CREDENTIAL_TYPE: continue
                 cred_value = cred
 
             # If the cred_value is xml, create the object
