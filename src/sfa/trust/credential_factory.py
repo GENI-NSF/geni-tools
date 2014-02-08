@@ -46,7 +46,10 @@ class CredentialFactory:
         elif credString_nowhitespace.find('<type>privilege</type>') > -1:
             return Credential.SFA_CREDENTIAL_TYPE
         else:
-            return CredentialFactory.UNKNOWN_CREDENTIAL_TYPE
+            st = credString_nowhitespace.find('<type>')
+            end = credString_nowhitespace.find('</type>', st)
+            return credString_nowhitespace[st + len('<type>'):end]
+#            return CredentialFactory.UNKNOWN_CREDENTIAL_TYPE
 
     # Static Credential class method to create the appropriate credential
     # (SFA or ABAC) depending on its type
@@ -93,7 +96,7 @@ class CredentialFactory:
                 else:
                     raise Exception("ABAC Credential not parsable: %s. Cred start: %s..." % (e, credString[:50]))
         else:
-            raise Exception("Unknown credential type %s" % cred_type)
+            raise Exception("Unknown credential type '%s'" % cred_type)
 
 if __name__ == "__main__":
     c2 = open('/tmp/sfa.xml').read()
