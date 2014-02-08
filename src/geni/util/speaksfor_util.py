@@ -156,6 +156,8 @@ def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
     if cred.get_cred_type() != ABACCredential.ABAC_CREDENTIAL_TYPE:
         return False, None, "Credential not of type ABAC but %s" % cred.get_cred_type
 
+    if cred.signature is None or cred.signature.gid is None:
+        return False, None, "Credential malformed: missing signature or signer cert. Cred: %s" % cred.get_summary_tostring()
     user_gid = cred.signature.gid
     user_urn = user_gid.get_urn()
 
@@ -284,9 +286,9 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
                 return user_gid # speaks-for
             else:
                 if logger:
-                    logger.info("Got speaks-for option but not a valid speaks_for: %s", msg)
+                    logger.info("Got speaks-for option but not a valid speaks_for with this credential: %s", msg)
                 else:
-                    print "Got a speaks-for option but not a valid speaks_for: " + msg
+                    print "Got a speaks-for option but not a valid speaks_for with this credential: " + msg
     return caller_gid # Not speaks-for
 
 # Create an ABAC Speaks For credential using the ABACCredential object and it's encode&sign methods

@@ -959,6 +959,10 @@ class Credential(object):
     def verify_issuer(self, trusted_gids):
         root_cred = self.get_credential_list()[-1]
         root_target_gid = root_cred.get_gid_object()
+        if root_cred.get_signature() is None:
+            # malformed
+            raise CredentialNotVerifiable("Could not verify credential owned by %s for object %s. Cred has no signature" % (self.gidCaller.get_urn(), self.gidObject.get_urn()))
+
         root_cred_signer = root_cred.get_signature().get_issuer_gid()
 
         # Case 1:
