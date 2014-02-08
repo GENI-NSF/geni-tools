@@ -118,8 +118,18 @@ class Framework(Framework_Base):
         # ***
         if self.opts.speaksfor:
             credSs, options = self._add_credentials_and_speaksfor(None, None)
-            creds = [CredentialFactory.createCred(credString=credutils.get_cred_xml(cred)) \
-                         for cred in credSs]
+            creds = []
+            for cred in credSs:
+                try:
+                    c = CredentialFactory.createCred(credString=credutils.get_cred_xml(cred))
+                    creds.append(c)
+                except Exception, e:
+                    s = None
+                    if isinstance(cred, dict):
+                        s = "Type: '%s': %s" % (cred['geni_type'], cred['geni_value'][:60])
+                    else:
+                        s = str(cred)[:60]
+                    self.logger.error("Failed to read credential: %s. Cred: %s...", e, s)
             speaker_gid = \
                 determine_speaks_for(self.logger, creds, self.cert_gid, options, None)
             if speaker_gid != self.cert_gid:
