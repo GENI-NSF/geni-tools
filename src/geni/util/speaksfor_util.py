@@ -346,7 +346,9 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
         '<type>abac</type>\n' + \
         '<serial/>\n' +\
         '<owner_gid/>\n' + \
+        '<owner_urn/>\n' + \
         '<target_gid/>\n' + \
+        '<target_urn/>\n' + \
         '<uuid/>\n' + \
         '<expires>%s</expires>' +\
         '<abac>\n' + \
