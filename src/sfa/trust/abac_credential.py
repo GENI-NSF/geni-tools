@@ -21,7 +21,7 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
-from sfa.trust.credential import Credential
+from sfa.trust.credential import Credential, append_sub
 from sfa.util.sfalogging import logger
 
 from StringIO import StringIO
@@ -199,13 +199,13 @@ class ABACCredential(Credential):
         ele = doc.createElement(tagName)
         prin = doc.createElement('ABACprincipal')
         ele.appendChild(prin)
-        appendSub(doc, prin, "keyid", kid)
+        append_sub(doc, prin, "keyid", kid)
         if mnem:
-            appendSub(doc, prin, "mnemonic", mnem)
+            append_sub(doc, prin, "mnemonic", mnem)
         if role:
-            appendSub(doc, ele, "role", role)
+            append_sub(doc, ele, "role", role)
         if link:
-            appendSub(doc, ele, "linking_role", link)
+            append_sub(doc, ele, "linking_role", link)
         return ele
 
     ##
@@ -259,12 +259,12 @@ class ABACCredential(Credential):
         abac = doc.createElement("abac")
         rt0 = doc.createElement("rt0")
         abac.appendChild(rt0)
-        doc.appendChild(abac)
+        cred.appendChild(abac)
         append_sub(doc, rt0, "version", "1.1")
         head = self.createABACElement(doc, "head", self.get_head())
         rt0.appendChild(head)
         for tail in self.get_tails():
-            tailEle = self.createABACElement(doc, "tail", abacelement)
+            tailEle = self.createABACElement(doc, "tail", tail)
             rt0.appendChild(tailEle)
 
         # Create the <signatures> tag
