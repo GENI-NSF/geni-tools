@@ -33,7 +33,7 @@ from StringIO import StringIO
 
 from sfa.trust.certificate import Certificate
 from sfa.trust.credential import Credential, signature_template, HAVELXML
-from sfa.trust.abac_credential import ABACCredential
+from sfa.trust.abac_credential import ABACCredential, ABACElement
 from sfa.trust.credential_factory import CredentialFactory
 from sfa.trust.gid import GID
 
@@ -280,7 +280,6 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
                                   caller_gid, speaking_for_urn, \
                                       trusted_roots, schema)
 
-            # FIXME: Log or return the error message in some way?
             if is_valid_speaks_for:
                 return user_gid # speaks-for
             else:
@@ -290,20 +289,48 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
                     print "Got a speaks-for option but not a valid speaks_for: " + msg
     return caller_gid # Not speaks-for
 
-# FIXME: Redo this as encode and sign in ABACCredential
-# FIXME: Leaves out namespace declarations on resulting cred
+# Create an ABAC Speaks For credential using the ABACCredential object and it's encode&sign methods
+def create_sign_abaccred(tool_gid, user_gid, ma_gid, user_key_file, cred_filename, dur_days=365):
+    print "Creating ABAC SpeaksFor using ABACCredential...\n"
+    # Write out the user cert
+    from tempfile import mkstemp
+    ma_str = ma_gid.save_to_string()
+    user_cert_str = user_gid.save_to_string()
+    if not user_cert_str.endswith(ma_str):
+        user_cert_str += ma_str
+    fp, user_cert_filename = mkstemp(suffix='cred', text=True)
+    fp = os.fdopen(fp, "w")
+    fp.write(user_cert_str)
+    fp.close()
+
+    # Create the cred
+    cred = ABACCredential()
+    cred.set_issuer_keys(user_key_file, user_cert_filename)
+    tool_urn = tool_gid.get_urn()
+    user_urn = user_gid.get_urn()
+    user_keyid = get_cert_keyid(user_gid)
+    tool_keyid = get_cert_keyid(tool_gid)
+    cred.head = ABACElement(user_keyid, user_urn, "speaks_for_%s" % user_keyid)
+    cred.tails.append(ABACElement(tool_keyid, tool_urn))
+    cred.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(days=dur_days))
+    cred.expiration = cred.expiration.replace(microsecond=0)
+
+    # Produce the cred XML
+    cred.encode()
+
+    # Sign it
+    cred.sign()
+    # Save it
+    cred.save_to_file(cred_filename)
+    print "Created ABAC credential: '%s' in file %s" % \
+            (cred.get_summary_tostring(), cred_filename)
+
 # FIXME: Assumes xmlsec1 is on path
 # FIXME: Assumes signer is itself signed by an 'ma_gid' that can be trusted
 def create_speaks_for(tool_gid, user_gid, ma_gid, \
                           user_key_file, cred_filename, dur_days=365):
     tool_urn = tool_gid.get_urn()
     user_urn = user_gid.get_urn()
-
-    # FIXME: What about setting xmlns:xsi, xsi:noNamespace, xsi:schemaLocation, etc
-# These should be attributes o the signed-credential element
-#    signed_cred.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-#    signed_cred.setAttribute("xsi:noNamespaceSchemaLocation", "http://www.geni.net/resources/credential/2/credential.xsd")
-#    signed_cred.setAttribute("xsi:schemaLocation", "http://www.planet-lab.org/resources/sfa/ext/policy/1 http://www.planet-lab.org/resources/sfa/ext/policy/1/policy.xsd")
 
     header = '<?xml version="1.0" encoding="UTF-8"?>'
     reference = "ref0"
@@ -312,7 +339,9 @@ def create_speaks_for(tool_gid, user_gid, ma_gid, \
         signature_template + \
         '</signatures>'
     template = header + '\n' + \
-        '<signed-credential>\n' + \
+        '<signed-credential '
+    template += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.geni.net/resources/credential/2/credential.xsd" xsi:schemaLocation="http://www.protogeni.net/resources/credential/ext/policy/1 http://www.protogeni.net/resources/credential/ext/policy/1/policy.xsd"'
+    template += '>\n' + \
         '<credential xml:id="%s">\n' + \
         '<type>abac</type>\n' + \
         '<serial/>\n' +\
@@ -388,6 +417,8 @@ if __name__ == "__main__":
                       help='Directory of trusted root certs')
     parser.add_option('--create',
                       help="name of file of ABAC speaksfor cred to create")
+    parser.add_option('--useObject', action='store_true', default=False,
+                      help='Use the ABACCredential object to create the credential (default False)')
 
     options, args = parser.parse_args(sys.argv)
 
@@ -398,9 +429,14 @@ if __name__ == "__main__":
             and options.ma_cert_file:
             user_gid = GID(filename=options.user_cert_file)
             ma_gid = GID(filename=options.ma_cert_file)
-            create_speaks_for(tool_gid, user_gid, ma_gid, \
-                                  options.user_key_file,  \
-                                  options.create)
+            if options.useObject:
+                create_sign_abaccred(tool_gid, user_gid, ma_gid, \
+                                         options.user_key_file,  \
+                                         options.create)
+            else:
+                create_speaks_for(tool_gid, user_gid, ma_gid, \
+                                         options.user_key_file,  \
+                                         options.create)
         else:
             print "Usage: --create cred_file " + \
                 "--user_cert_file user_cert_file" + \
