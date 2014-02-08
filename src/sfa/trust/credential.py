@@ -501,7 +501,10 @@ class Credential(object):
         if not self.expiration:
             self.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(seconds=DEFAULT_CREDENTIAL_LIFETIME))
         self.expiration = self.expiration.replace(microsecond=0)
-        append_sub(doc, cred, "expires", self.expiration.isoformat())
+        if self.expiration.tzinfo is not None and self.expiration.tzinfo.utcoffset(self.expiration) is not None:
+            # TZ aware. Make sure it is UTC
+            self.expiration = self.expiration.astimezone(tz.tzutc())
+        append_sub(doc, cred, "expires", self.expiration.strftime('%Y-%m-%dT%H:%M:%SZ')) # RFC3339
         privileges = doc.createElement("privileges")
         cred.appendChild(privileges)
 
@@ -578,7 +581,7 @@ class Credential(object):
                 signatures.appendChild(ele)
                 
         # Get the finished product
-        self.xml = doc.toxml()
+        self.xml = doc.toxml("utf-8")
 
 
     def save_to_random_tmp_file(self):       
@@ -673,7 +676,7 @@ class Credential(object):
         sig_ele = doc.importNode(sdoc.getElementsByTagName("Signature")[0], True)
         sigs.appendChild(sig_ele)
 
-        self.xml = doc.toxml()
+        self.xml = doc.toxml("utf-8")
 
 
         # Split the issuer GID into multiple certificates if it's a chain
@@ -790,7 +793,7 @@ class Credential(object):
         parent = cred.getElementsByTagName("parent")
         if len(parent) > 0:
             parent_doc = parent[0].getElementsByTagName("credential")[0]
-            parent_xml = parent_doc.toxml()
+            parent_xml = parent_doc.toxml("utf-8")
             if parent_xml is None or parent_xml.strip() == "":
                 raise CredentialNotVerifiable("Malformed XML: Had parent tag but it is empty")
             self.parent = Credential(string=parent_xml)
@@ -798,7 +801,7 @@ class Credential(object):
 
         # Assign the signatures to the credentials
         for sig in sigs:
-            Sig = Signature(string=sig.toxml())
+            Sig = Signature(string=sig.toxml("utf-8"))
 
             for cur_cred in self.get_credential_list():
                 if cur_cred.get_refid() == Sig.get_refid():

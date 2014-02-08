@@ -254,7 +254,10 @@ class ABACCredential(Credential):
         if not self.expiration:
             self.set_expiration(datetime.datetime.utcnow() + datetime.timedelta(seconds=DEFAULT_CREDENTIAL_LIFETIME))
         self.expiration = self.expiration.replace(microsecond=0)
-        append_sub(doc, cred, "expires", self.expiration.isoformat())
+        if self.expiration.tzinfo is not None and self.expiration.tzinfo.utcoffset(self.expiration) is not None:
+            # TZ aware. Make sure it is UTC
+            self.expiration = self.expiration.astimezone(tz.tzutc())
+        append_sub(doc, cred, "expires", self.expiration.strftime('%Y-%m-%dT%H:%M:%SZ')) # RFC3339
 
         abac = doc.createElement("abac")
         rt0 = doc.createElement("rt0")
@@ -272,4 +275,4 @@ class ABACCredential(Credential):
         signed_cred.appendChild(signatures)
 
         # Get the finished product
-        self.xml = doc.toxml()
+        self.xml = doc.toxml("utf-8")
