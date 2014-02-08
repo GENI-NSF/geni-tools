@@ -33,6 +33,7 @@ import traceback
 import xml.dom.minidom as md
 from sfa.trust.credential import Credential
 from sfa.trust.abac_credential import ABACCredential
+from sfa.trust.credential_factory import CredentialFactory
 
 # FIXME: Doesn't distinguish v2 vs v3 yet
 def is_valid_v3(logger, credString):
@@ -97,16 +98,21 @@ def is_valid_v3(logger, credString):
 # Currently we only recognize two types: SFA (version 3) and ABAC (version 1)
 def get_cred_type(cred):
     is_abac = False
+    is_sfa = False
     doc = md.parseString(cred)
     type_elts = doc.getElementsByTagName('type')
     if len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'abac':
         is_abac = True
+    elif len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'privilege':
+        is_sfa = True
     if is_abac:
         return ABACCredential.ABAC_CREDENTIAL_TYPE, 1
-    else:
+    elif is_sfa:
         sfa_version = 3
         if not is_valid_v3(None, cred): sfa_version = 2
         return Credential.SFA_CREDENTIAL_TYPE, sfa_version
+    else:
+        return CredentialFactory.UNKNOWN_CREDENTIAL_TYPE, 0
 
 # Want to rule out ABAC
 # Want to rule out geni_sfa v2 if possible
