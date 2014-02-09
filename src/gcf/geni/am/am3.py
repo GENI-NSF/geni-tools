@@ -43,10 +43,10 @@ import zlib
 
 from .aggregate import Aggregate
 from .fakevm import FakeVM
-from .. import geni
-from ..geni.util.urn_util import publicid_to_urn
-from ..geni.util import urn_util as urn
-from ..geni.SecureXMLRPCServer import SecureXMLRPCServer
+from ... import geni
+from ..util.urn_util import publicid_to_urn
+from ..util import urn_util as urn
+from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential

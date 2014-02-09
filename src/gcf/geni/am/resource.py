@@ -23,7 +23,7 @@
 
 from __future__ import absolute_import
 
-from .. import geni
+from ... import geni
 
 import uuid
 

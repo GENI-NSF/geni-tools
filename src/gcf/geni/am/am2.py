@@ -43,9 +43,9 @@ import zlib
 from .resource import Resource
 from .aggregate import Aggregate
 from .fakevm import FakeVM
-from .. import geni
-from ..geni.util.urn_util import publicid_to_urn, URN
-from ..geni.SecureXMLRPCServer import SecureXMLRPCServer
+from ... import geni
+from ..util.urn_util import publicid_to_urn, URN
+from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 
 # See sfa/trust/rights.py
