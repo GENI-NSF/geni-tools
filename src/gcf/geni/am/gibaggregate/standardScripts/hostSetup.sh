@@ -72,7 +72,7 @@ echo "    - user accounts on the experimenter nodes." >>  ~/.gcf/passwords
 echo "" >> ~/.gcf/passwords
 echo "The password is:" >> ~/.gcf/passwords
 echo -n "    " >> ~/.gcf/passwords
-grep -i "rootpwd" ~/gcf/src/geni/am/gibaggregate/config.py | awk '{print $3}' | sed "s/'//g" >> ~/.gcf/passwords
+grep -i "rootpwd" ~/gcf/src/gcf/geni/am/gibaggregate/config.py | awk '{print $3}' | sed "s/'//g" >> ~/.gcf/passwords
 echo "" >> ~/.gcf/passwords
 echo "Please do not change this password." >> ~/.gcf/passwords
  

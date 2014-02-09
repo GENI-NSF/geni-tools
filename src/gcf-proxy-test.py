@@ -93,7 +93,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
         return
 
     # Otherwise make an unbounded request
-    # from src/geni/am/amapi2-request.xml
+    # from src/gcf/geni/am/amapi2-request.xml
     request_rspec = \
 '<?xml version="1.0" encoding="UTF-8"?>' + \
 '<rspec xmlns="http://www.geni.net/resources/rspec/3"' + \

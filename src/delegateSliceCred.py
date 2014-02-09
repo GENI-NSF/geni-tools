@@ -251,7 +251,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
+        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         logger.warn("Supplied slice cred didn't verify")
@@ -304,7 +304,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     # Verify the result is still good
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
+        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         logger.warn("Delegated slice cred does not verify")

@@ -33,7 +33,7 @@ Documentation
 =============
 
 This library provides convenience functions on top of the SFA library.
-The functions can be found in the modules located in src/geni/util/.
+The functions can be found in the modules located in src/gcf/geni/util/.
 These include functions for URN creation, secure XML-RPC client
 creation, credential creation and verification, and certificate
 creation.
@@ -43,13 +43,13 @@ Please see the source files themselves for further documentation.
 Example usage after installation:
 
 # To create a URN
-from geni.util.urn_util import URN
+from gcf.geni.util.urn_util import URN
 ch_urn = URN("gcf//gpo//bbn1","authority","sa").urn_string()
 am_urn = URN("gcf//gpo//bbn1//am1","authority","am").urn_string()
 
 # To create a certificate:
-from geni.util.urn_util import URN
-from geni.util.cert_util import create_cert
+from gcf.geni.util.urn_util import URN
+from gcf.geni.util.cert_util import create_cert
 urn = URN("gcf//gpo//bbn1", "user", "alice").urn_string()
 alice_cert = create_cert(urn, issuer_key, issuer_certificate).save_to_string()
 
