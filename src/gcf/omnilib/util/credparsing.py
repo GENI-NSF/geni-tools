@@ -26,14 +26,17 @@
    Utilities to parse credentials
 """
 
+from __future__ import absolute_import
+
 import datetime
 import dateutil.parser
 import logging
 import traceback
 import xml.dom.minidom as md
-from sfa.trust.credential import Credential
-from sfa.trust.abac_credential import ABACCredential
-from sfa.trust.credential_factory import CredentialFactory
+
+from ...sfa.trust.credential import Credential
+from ...sfa.trust.abac_credential import ABACCredential
+from ...sfa.trust.credential_factory import CredentialFactory
 
 # FIXME: Doesn't distinguish v2 vs v3 yet
 def is_valid_v3(logger, credString):
