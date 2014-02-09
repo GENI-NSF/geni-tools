@@ -175,49 +175,6 @@ class Framework(Framework_Base):
             _ = message #Appease eclipse
             return None
 
-    def get_user_cred_struct(self):
-        """
-        Returns a user credential from the control framework as a string in a struct. And an error message if any.
-        Struct is as per AM API v3:
-        {
-           geni_type: <string>,
-           geni_version: <string>,
-           geni_value: <the credential as a string>
-        }
-        """
-        cred, message = self.get_user_cred()
-        if cred:
-            cred = self.wrap_cred(cred)
-        return cred, message
-
-    def get_slice_cred_struct(self, urn):
-        """
-        Retrieve a slice with the given urn and returns the signed
-        credential as a string in the AM API v3 struct:
-        {
-           geni_type: <string>,
-           geni_version: <string>,
-           geni_value: <the credential as a string>
-        }
-        """
-        cred = self.get_slice_cred(urn)
-        return self.wrap_cred(cred)
-
-    def wrap_cred(self, cred):
-        """
-        Wrap the given cred in the appropriate struct for this framework.
-        """
-        if isinstance(cred, dict):
-            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
-            return cred
-        elif not isinstance(cred, str):
-            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
-            cred = str(cred)
-        ret = dict(geni_type="geni_sfa", geni_version="2", geni_value=cred)
-        if credutils.is_valid_v3(self.logger, cred):
-            ret["geni_version"] = "3"
-        return ret
-
     def get_version(self):
         pl_response = dict()
         versionstruct = dict()

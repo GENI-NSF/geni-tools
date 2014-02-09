@@ -102,6 +102,7 @@ New in v2.5:
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
+ - Speaks for option has been renamed `geni_speaking_for` (#466)
 
 
 New in v2.4:

@@ -36,6 +36,8 @@ from ..util import credparsing as credutils
 from ..util import json_encoding
 from ..xmlrpc import client as xmlrpcclient
 
+from ...sfa.trust.credential import Credential
+
 class Framework_Base():
     """
     Framework_Base is an abstract class that identifies the minimal set of functions
@@ -100,7 +102,7 @@ class Framework_Base():
                 if cred and isinstance(cred, dict) and \
                         cred.has_key('geni_type') and \
                         cred.has_key('geni_value') and \
-                        cred['geni_type'] == 'geni_sfa' and \
+                        cred['geni_type'] == Credential.SFA_CREDENTIAL_TYPE and \
                         cred['geni_value'] is not None:
                     self.user_cred_struct = cred
             except Exception, e:
@@ -248,7 +250,10 @@ class Framework_Base():
            geni_value: <the credential as a string>
         }
         """
-        raise NotImplementedError('get_user_cred_struct')
+        cred, message = self.get_user_cred()
+        if cred:
+            cred = self.wrap_cred(cred)
+        return cred, message
 
     def get_slice_cred_struct(self, urn):
         """
@@ -260,13 +265,27 @@ class Framework_Base():
            geni_value: <the credential as a string>
         }
         """
-        raise NotImplementedError('get_slice_cred_struct')
+        cred = self.get_slice_cred(urn)
+        return self.wrap_cred(cred)
 
     def wrap_cred(self, cred):
         """
         Wrap the given cred in the appropriate struct for this framework.
         """
-        raise NotImplementedError('wrap_cred')
+        if hasattr(self, 'logger'):
+            logger = self.logger
+        else:
+            logger = logging.getLogger("omni.framework")
+        if isinstance(cred, dict):
+            logger.debug("Called wrap on a cred that's already a dict? %s", cred)
+            return cred
+        elif not isinstance(cred, str):
+            logger.warn("Called wrap on non string cred? Stringify. %s", cred)
+            cred = str(cred)
+        cred_type, cred_version = credutils.get_cred_type(cred)
+        ret = dict(geni_type=cred_type, geni_version=cred_version, \
+                       geni_value=cred)
+        return ret
 
     # get the slice members (urn, email) and their public ssh keys
     def get_members_of_slice(self, slice_urn):

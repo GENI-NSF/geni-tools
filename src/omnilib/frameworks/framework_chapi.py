@@ -30,13 +30,19 @@ from omnilib.util.dates import naiveUTC
 from omnilib.util.dossl import _do_ssl
 import omnilib.util.credparsing as credutils
 #from omnilib.util.handler_utils import _lookupAggURNFromURLInNicknames
+from omnilib.util.handler_utils import _load_cred
 
 from geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
+from geni.util.speaksfor_util import determine_speaks_for
 import sfa.trust.gid as gid
+from sfa.trust.credential_factory import CredentialFactory
+from sfa.trust.credential import Credential
+from sfa.trust.abac_credential import ABACCredential
 
 import datetime
 import dateutil
+import logging
 import os
 import string
 import sys
@@ -64,7 +70,6 @@ class Framework(Framework_Base):
         self.ch_url = config['ch']
         self.ch = self.make_client(self.ch_url, self.key, self.cert,
                                    verbose=config['verbose'])
-
 
         self.logger = config['logger']
 
@@ -107,8 +112,33 @@ class Framework(Framework_Base):
         except Exception, e:
             sys.exit('CHAPI Framework failed to parse cert read from %s: %s' % (self.cert, e))
 
+        self.cred_nonOs = None
+        # ***
+        # Do the whole speaksfor test here
+        # ***
+        if self.opts.speaksfor:
+            credSs, options = self._add_credentials_and_speaksfor(None, None)
+            creds = []
+            for cred in credSs:
+                try:
+                    c = CredentialFactory.createCred(credString=credutils.get_cred_xml(cred))
+                    creds.append(c)
+                except Exception, e:
+                    s = None
+                    if isinstance(cred, dict):
+                        s = "Type: '%s': %s" % (cred['geni_type'], cred['geni_value'][:60])
+                    else:
+                        s = str(cred)[:60]
+                    self.logger.error("Failed to read credential: %s. Cred: %s...", e, s)
+            speaker_gid = \
+                determine_speaks_for(self.logger, creds, self.cert_gid, options, None)
+            if speaker_gid != self.cert_gid:
+                self.logger.info("Speaks-for Invocation: %s speaking for %s" % \
+                                     (self.cert_gid.get_urn(), \
+                                          speaker_gid.get_urn()))
+                self.cert_gid = speaker_gid
+
         self.user_urn = self.cert_gid.get_urn()
-        if self.opts.speaksfor: self.user_urn = self.opts.speaksfor
         self.user_cred = self.init_user_cred( opts )
 
     def list_slice_authorities(self):
@@ -210,20 +240,43 @@ class Framework(Framework_Base):
             options = {}
         new_credentials = credentials
         new_options = options
-        if self.opts.speaksfor:
-            options['speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
-        if self.opts.cred:
+        if self.opts.speaksfor and not options.has_key("speaking_for"):
+            options['speaking_for'] = self.opts.speaksfor # At CHs this is speaking_for
+            options['geni_speaking_for'] = self.opts.speaksfor # At AMs this is geni_speaking_for
+        if self.cred_nonOs is not None:
+            self.logger.debug("Using credentials already loaded")
+            for cred in self.cred_nonOs:
+                if not cred in new_credentials:
+                    new_credentials.append(cred)
+        elif self.opts.cred:
+            self.cred_nonOs = []
             for cred_filename in self.opts.cred:
                 try:
-                    cred_contents = open(cred_filename).read()
-                    # FIXME: Infer cred type and wrap only as necessary
-                    new_cred = {'geni_type' : 'geni_abac',
-                                'geni_value' : cred_contents,
-                                'geni_version' : '1'}
-                    new_credentials.append(new_cred)
+                    # Use helper to load cred, but don't unwrap/wrap there.
+                    # We want it wrapped to preserve the wrapping it had
+                    oldDev = self.opts.devmode
+                    self.opts.devmode = True
+                    cred_contents = _load_cred(self, cred_filename)
+                    self.opts.devmode = oldDev
+                    new_cred = self.wrap_cred(cred_contents)
+                    if not new_cred in self.cred_nonOs:
+                        self.cred_nonOs.append(new_cred)
+                    if not new_cred in new_credentials:
+                        new_credentials.append(new_cred)
                 except Exception, e:
                     self.logger.warn("Failed to read credential from %s: %s", cred_filename, e)
-        self.logger.debug("add_c_n_spkfor new_creds = %s new_options = %s" % (new_credentials, new_options))
+        if self.logger.isEnabledFor(logging.DEBUG):
+            msg = "add_c_n_spkfor new_creds = ["
+            first = True
+            for cred in new_credentials:
+                if not first:
+                    msg += ", "
+                if isinstance(cred, dict):
+                    msg += cred['geni_type'] + ": " + cred['geni_value'][:180] + "..."
+                else:
+                    msg += str(cred)[:180] + "..."
+                first = False
+            self.logger.debug("%s; new_options = %s" % (msg, new_options))
         return new_credentials, new_options
 
     def get_user_cred(self, struct=False):
@@ -384,7 +437,9 @@ class Framework(Framework_Base):
         if creds is None:
             return None
         for cred in creds:
-            if cred.has_key('geni_type') and cred['geni_type'] == 'geni_sfa' and cred.has_key('geni_value'):
+            if cred.has_key('geni_type') \
+                    and cred['geni_type'] == Credential.SFA_CREDENTIAL_TYPE \
+                    and cred.has_key('geni_value'):
                 if struct:
                     return cred
                 return cred['geni_value']
@@ -948,21 +1003,6 @@ class Framework(Framework_Base):
         }
         """
         return self.get_slice_cred(urn, struct=True)
-
-    def wrap_cred(self, cred):
-        """
-        Wrap the given cred in the appropriate struct for this framework.
-        """
-        if isinstance(cred, dict):
-            self.logger.warn("Called wrap on a cred that's already a dict? %s", cred)
-            return cred
-        elif not isinstance(cred, str):
-            self.logger.warn("Called wrap on non string cred? Stringify. %s", cred)
-            cred = str(cred)
-        ret = dict(geni_type="geni_sfa", geni_version="2", geni_value=cred)
-        if credutils.is_valid_v3(self.logger, cred):
-            ret["geni_version"] = "3"
-        return ret
 
     def get_version(self):
         # Do getversion at the CH (service registry), MA, and SA

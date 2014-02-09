@@ -762,7 +762,7 @@ class Aggregate(object):
                         child.localName == Path.GLOBAL_ID_TAG:
                     path_globalId = str(child.firstChild.nodeValue).strip()
         else:
-            raise StitchingError("%s: No stitching path %s element in manifest" % (self, path_id))
+            raise StitchingError("%s: No stitching path '%s' element in manifest" % (self, path_id))
 
         if hop_node:
 #            self.logger.debug("Found hop %s (id %s)" % (hop_node, this_hop_id))
@@ -772,7 +772,7 @@ class Aggregate(object):
                     link_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find hop %s in manifest rspec. Looking in path %s (id %s)" % (self, hop_id, path_node, this_path_id))
+            raise StitchingError("%s: Couldn't find hop '%s' in manifest rspec. Looking in path '%s' (id '%s')" % (self, hop_id, path_node, this_path_id))
 
         if link_node:
             link_id = link_node.getAttribute(HopLink.ID_TAG)
@@ -783,7 +783,7 @@ class Aggregate(object):
                     scd_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find link in hop %s in manifest rspec" % (self, hop_id))
+            raise StitchingError("%s: Couldn't find link in hop '%s' in manifest rspec" % (self, hop_id))
 
         if scd_node:
             for child in scd_node.childNodes:
@@ -792,7 +792,7 @@ class Aggregate(object):
                     scsi_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in hop %s in link %s in manifest rspec" % (self, hop_id, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in hop '%s' in link '%s' in manifest rspec" % (self, hop_id, link_id))
 
         if scsi_node:
             for child in scsi_node.childNodes:
@@ -801,7 +801,7 @@ class Aggregate(object):
                     scsil2_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in hop %s in manifest rspec" % (self, hop_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in hop '%s' in manifest rspec" % (self, hop_id))
 
         if scsil2_node:
             for child in scsil2_node.childNodes:
@@ -812,7 +812,7 @@ class Aggregate(object):
                     elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in hop %s in manifest rspec" % (self, hop_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in hop '%s' in manifest rspec" % (self, hop_id))
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
@@ -882,14 +882,14 @@ class Aggregate(object):
                         break
                             
         if link_node:
-            self.logger.debug("Hop %s had link %s", hop_id, link_id)
+            self.logger.debug("Hop '%s' had link '%s'", hop_id, link_id)
             for child in link_node.childNodes:
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == HopLink.SCD_TAG:
                     scd_node = child
                     break
         else:
-            self.logger.info("%s: Couldn't find link %s in path %s in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
+            self.logger.info("%s: Couldn't find link '%s' in path '%s' in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
             # SCS adds EG internal hops - to get from the VLAN component to the VM component.
             # But EG does not include those in the manifest.
             # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
@@ -915,7 +915,7 @@ class Aggregate(object):
                     scsi_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in link %s in manifest rspec" % (self, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilityDescriptor in link '%s' in manifest rspec" % (self, link_id))
 
         if scsi_node:
             for child in scsi_node.childNodes:
@@ -924,7 +924,7 @@ class Aggregate(object):
                     scsil2_node = child
                     break
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in link %s in manifest rspec" % (self, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo in link '%s' in manifest rspec" % (self, link_id))
 
         if scsil2_node:
             for child in scsil2_node.childNodes:
@@ -935,7 +935,7 @@ class Aggregate(object):
                     elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in link %s in manifest rspec" % (self, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in link '%s' in manifest rspec" % (self, link_id))
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 

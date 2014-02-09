@@ -63,6 +63,7 @@ gcf 2.5:
   - `chapi` framework looks up the MA and SA at the clearinghouse,
     though you can configure where they run. (#490)
   - Warn when acting at all AMs in the clearinghouse - slow (#461)
+  - Speaks for option has been renamed `geni_speaking_for` (#466)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -87,7 +88,8 @@ gcf 2.5:
     IDs are consistent with `sliverstatus` and between calls. Also clean
     up manifest formatting. (#484)
   - AM API v3 GCF AM must respect the gcf_config name of the AM authority (#487)
-
+  - Add support for ABAC speaks for credentials to libraries,
+    aggregates (#413)
 
  * acceptance tests
   - `get_ch_version` should return an `int` for `api`, not a `float` (#449)

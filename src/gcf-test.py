@@ -433,7 +433,8 @@ def exercise_am(ch_server, am_server, api_version=2):
     credentials = [slice_cred_string]
     if api_version > 2:
         # wrap the credential
-        credentials = [dict(geni_type="geni_sfa", geni_version="3", geni_value=slice_cred_string)]
+        credentials = [dict(geni_type=cred.Credential.SFA_CREDENTIAL_TYPE, 
+                            geni_version="3", geni_value=slice_cred_string)]
 
     test_get_version(am_server, api_version)
     dom = test_list_resources(am_server, credentials, apiver=api_version)
@@ -462,7 +463,8 @@ def exercise_am(ch_server, am_server, api_version=2):
     credentials = [slice_cred_string]
     if api_version > 2:
         # wrap the credential
-        credentials = [dict(geni_type="geni_sfa", geni_version="3", geni_value=slice_cred_string)]
+        credentials = [dict(geni_type=cred.CREDENTIAL.SFA_CREDENTIAL_TYPE, 
+                            geni_version="3", geni_value=slice_cred_string)]
     dom = test_list_resources(am_server, credentials, apiver=api_version)
     if dom is None:
         print 'No Ad RSpec - cannot create a sliver'

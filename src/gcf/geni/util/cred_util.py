@@ -37,6 +37,11 @@ from ...sfa.trust import credential as cred
 from ...sfa.trust import gid
 from ...sfa.trust import rights
 from ...sfa.util.xrn import hrn_authfor_hrn
+from ...sfa.trust.credential_factory import CredentialFactory
+from ...sfa.trust.abac_credential import ABACCredential
+import sfa.trust.certificate
+
+from .speaksfor_util import determine_speaks_for
 
 def naiveUTC(dt):
     """Converts dt to a naive datetime in UTC.
@@ -128,19 +133,44 @@ class CredentialVerifier(object):
         return comboFullPath
 
     def verify_from_strings(self, gid_string, cred_strings, target_urn,
-                            privileges):
+                            privileges, options=None):
+
         '''Create Credential and GID objects from the given strings,
         and then verify the GID has the right privileges according 
         to the given credentials on the given target.'''
         def make_cred(cred_string):
             credO = None
             try:
-                credO = cred.Credential(string=cred_string)
+                credO = CredentialFactory.createCred(credString=cred_string)
             except Exception, e:
                 self.logger.warn("Skipping unparsable credential. Error: %s. Credential begins: %s...", e, cred_string[:60])
             return credO
 
-        return self.verify(gid.GID(string=gid_string),
+        root_certs = \
+            [sfa.trust.certificate.Certificate(filename=root_cert_file) \
+                 for root_cert_file in self.root_cert_files]
+
+        caller_gid = gid.GID(string=gid_string)
+
+        # Potentially, change gid_string to be the cert of the actual user 
+        # if this is a 'speaks-for' invocation
+        speaksfor_gid = \
+            determine_speaks_for(self.logger, \
+            cred_strings, # May include ABAC speaks_for credential
+            caller_gid, # Caller cert (may be the tool 'speaking for' user)
+            options, # May include 'geni_speaking_for' option with user URN
+            root_certs
+            )
+        if caller_gid.get_subject() != speaksfor_gid.get_subject():
+            speaksfor_urn = speaksfor_gid.get_urn()
+            self.logger.info("Speaks-for Invocation: %s speaking for %s" % (caller_gid.get_urn(), speaksfor_urn))
+            caller_gid = speaksfor_gid
+
+        # Remove the abac credentials
+        cred_strings = [cred_string for cred_string in cred_strings \
+                            if CredentialFactory.getType(cred_string) == cred.Credential.SFA_CREDENTIAL_TYPE]
+
+        return self.verify(caller_gid,
                            map(make_cred, cred_strings),
                            target_urn,
                            privileges)
@@ -214,14 +244,28 @@ class CredentialVerifier(object):
         result = list()
         failure = ""
         tried_creds = ""
+        if len(credentials) == 0:
+            failure = "No credentials found"
         for cred in credentials:
             if cred is None:
                 failure = "Credential was unparseable"
                 continue
-            if tried_creds != "":
-                tried_creds = "%s, %s" % (tried_creds, cred.get_gid_caller().get_urn())
+
+            if cred.get_cred_type() == cred.SFA_CREDENTIAL_TYPE:
+                cS = cred.get_gid_caller().get_urn()
+            elif cred.get_cred_type() == ABACCredential.ABAC_CREDENTIAL_TYPE:
+                cS = cred.get_summary_tostring()
             else:
-                tried_creds = cred.get_gid_caller().get_urn()
+                cS = "Unknown credential type %s" % cred.get_cred_type()
+
+            if tried_creds != "":
+                tried_creds = "%s, %s" % (tried_creds, cS)
+            else:
+                tried_creds = cS
+
+            if cred.get_cred_type() != cred.SFA_CREDENTIAL_TYPE:
+                failure = "Not an SFA credential: " + cS
+                continue
 
             if not self.verify_source(gid, cred):
                 failure = "Cred %s fails: Credential doesn't grant rights to you (%s), but to %s (over object %s)" % (cred.get_gid_caller().get_urn(), gid.get_urn(), cred.get_gid_caller().get_urn(), cred.get_gid_object().get_urn())
@@ -244,7 +288,6 @@ class CredentialVerifier(object):
             # If got here it verified
             result.append(cred)
 
-        
         if result and result != list():
             # At least one credential verified ok and was added to the list
             # return that list

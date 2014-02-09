@@ -48,6 +48,7 @@ from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, Wrong
 from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import omnilib.util.json_encoding as json_encoding
 import omnilib.util.credparsing as credparsing
+from sfa.trust.credential import Credential
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
@@ -334,7 +335,8 @@ class Test(ut.OmniUnittest):
                     geni_version = self.assertReturnKeyValueType( 
                         'GetVersion', agg, creds, 
                         'geni_version', str )
-                    if geni_type == 'geni_sfa' and (geni_version == '2' or geni_version == '3'):
+                    if geni_type == Credential.SFA_CREDENTIAL_TYPE \
+                            and (geni_version == '2' or geni_version == '3'):
                         hasSfa = True
                         continue
                 self.assertTrue( hasSfa,
