@@ -39,7 +39,7 @@ from ...sfa.trust import rights
 from ...sfa.util.xrn import hrn_authfor_hrn
 from ...sfa.trust.credential_factory import CredentialFactory
 from ...sfa.trust.abac_credential import ABACCredential
-import sfa.trust.certificate
+from ...sfa.trust.certificate import Certificate
 
 from .speaksfor_util import determine_speaks_for
 
@@ -147,7 +147,7 @@ class CredentialVerifier(object):
             return credO
 
         root_certs = \
-            [sfa.trust.certificate.Certificate(filename=root_cert_file) \
+            [Certificate(filename=root_cert_file) \
                  for root_cert_file in self.root_cert_files]
 
         caller_gid = gid.GID(string=gid_string)
