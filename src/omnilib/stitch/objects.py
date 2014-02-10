@@ -1143,10 +1143,22 @@ class Aggregate(object):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
                         elif amtype == "protogeni":
-                            if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper")):
+                            if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or 'Inconsistent ifacemap' in msg):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                            elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and msg.startswith("Duplicate link "):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                            elif code == 7 and amcode == 7 and msg.startswith("Must delete existing sli"):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: You already have a reservation in slice %s at this aggregate - delete it first or use another aggregate. %s..." % (self, slicename, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
