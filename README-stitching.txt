@@ -101,7 +101,7 @@ for your topology. Stitcher will create reservations at each of these
 aggregates for you. NOTE however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
-a stitching link may not be reserved, because stitcher does not know
+a stitching link may not be reserved, because stitcher may not know
 the URL to contact that aggregate.
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate
@@ -119,7 +119,10 @@ all resources reserved as a result of this request.
 
 stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
-logging. Currently, stitcher will write several files to the current
+logging. However, stitcher always saves your combined result manifest
+RSpec to a file (named
+'<slicename>-manifest-rspec-stitching-combined.xml'), unless you specify the `--tostdout` option.
+Currently, stitcher will write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs).
 
@@ -202,7 +205,7 @@ Other options you should not need to use:
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked
- - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in the `<link>`
+ - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in each `<link>`
  - Stitching currently only works at a few aggregates, with more being
  added regularly. Contact help@geni.net for a current list.
  - Use "src/stitcher.py" instead of "src/omni.py"
@@ -219,10 +222,11 @@ Other options you should not need to use:
  stitching circuits. Note however that stitcher generally only knows how to
  contact aggregates that are involved in the circuits you request -
  nodes you are trying to reserve in the RSpec that are not linked with
- a stitching link may not be reserved, because stitcher does not know
+ a stitching link may not be reserved, because stitcher may not know
  the URL to contact that aggregate.
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
- where you have reservations for this request.
+ where you have reservations for this request, saved to a file named
+ '<slicename>-manifest-rspec-stitching-combined.xml'
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
  stitcher retries at just that aggregate (currently up to 50
@@ -268,7 +272,7 @@ Known issues with this aggregate can be found on the
 
 == Troubleshooting ==
 
-Stitching is new to GENI, and uses several prototype services (this
+Stitching is relatively new to GENI, and uses several prototype services (this
 client, the Stitching Computation Service, the ION aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
@@ -279,7 +283,7 @@ detail as possible:
  - `python src/omni.py --version`
  - The exact commandline you used to invoke stitcher
  - The request RSpec you used with stitcher
- - The last few lines of your call to stitcher - all the logs if
+ - At least the last few lines of your call to stitcher, and all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
  - Listing of new rspec files created in `/tmp` and your current
