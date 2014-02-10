@@ -96,10 +96,10 @@ def modifyToIgnoreHostChecking(loginCommands) :
     loginCommands[k]['command'] = c.replace("ssh ", "ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ")
 
 def executeCommand( loginCommands, host, command) :
-  print "Send command %s to %s" % (command, host)
+  print "2. Send command '%s' to %s\n" % (command, host)
   finalCommand = loginCommands[host]["command"] + " '" + command +"'"
   os.system(finalCommand)
-  print "Done with command %s to %s" % (command, host)
+  print "... Done with command '%s' at %s" % (command, host)
   time.sleep(5)
 
 def getParser() : 
@@ -151,7 +151,7 @@ def main(argv=None):
     argv = sys.argv[1:]
 
   parseArguments(argv=argv)
-  print "Find login Info for hosts in slice %s" % slicename
+  print "1. Find login Info for hosts in slice %s" % slicename
   loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)
   loginCommands = getLoginCommands(loginInfoDict, keyList)
   modifyToIgnoreHostChecking(loginCommands)
