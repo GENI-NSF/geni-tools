@@ -1,6 +1,15 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.5:
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+
  * omni
   - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
@@ -32,14 +41,14 @@ gcf 2.5:
   - Handle `~` in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in `listslices` (#456)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
-  - Omni cred_util uses an omni logger (#460)
+  - Omni `cred_util.py` uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
   - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
   - Speed up listaggregates in `pgch` framework (don't test AM API
     compliance) (#482)
   - URN testing requires 4 `+` separated pieces (#483)
   - Log at debug when downloading the aggregate nickname cache fails (#485)
-  - Add a new framework type `chapi` for talking the uniform federation API 
+  - Add a new framework type `chapi` for talking the Uniform Federation API 
     (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
     to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
    - See `omni_config.sample` for config options required
@@ -63,7 +72,18 @@ gcf 2.5:
   - `chapi` framework looks up the MA and SA at the clearinghouse,
     though you can configure where they run. (#490)
   - Warn when acting at all AMs in the clearinghouse - slow (#461)
-  - Speaks for option has been renamed `geni_speaking_for` (#466)
+  - Speaks for option that Omni passes to aggregates has been renamed
+    `geni_speaking_for` (#466)
+  - Refactored the source code to make it easier to import Omni in
+    other tools. Look in `src/gcf` for directories that were
+    previously directly under `src`. (#388)
+   - Your Omni based tool no longer needs to include any of the top
+     level scripts that Omni/GCF includes, nor to provide the existing
+     Omni `main`.
+   - Most of the code in `omni.py` has now been moved to
+     `gcf/oscript.py`
+   - To update your script that uses omni as a library:
+    - Change `import omni` to `import gcf.oscript as omni`
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -87,7 +107,7 @@ gcf 2.5:
     `component_manager_id`, and `sliver_id`. Also ensure that the sliver
     IDs are consistent with `sliverstatus` and between calls. Also clean
     up manifest formatting. (#484)
-  - AM API v3 GCF AM must respect the gcf_config name of the AM authority (#487)
+  - AM API v3 GCF AM must respect the `gcf_config` name of the AM authority (#487)
   - Add support for ABAC speaks for credentials to libraries,
     aggregates (#413)
 
@@ -95,7 +115,7 @@ gcf 2.5:
   - `get_ch_version` should return an `int` for `api`, not a `float` (#449)
  
  * omni-configure
-  - added Kentucky as a CH/SA authority (#453)
+  - Added Kentucky as a CH/SA authority (#453)
 
 gcf 2.4.2:
  v2.4.2 contains changes to support running omni on Windows.

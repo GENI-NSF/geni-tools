@@ -28,7 +28,7 @@ http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about ho
 For 'stitching' support (experimenter defined custom topologies), see
 README-stitching.txt.
 
-The currently supported CFs are the GENI Portal,
+The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
 These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
 
@@ -42,6 +42,18 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.5:
+
+Highlights:
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+
+Details:
  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
@@ -71,14 +83,14 @@ New in v2.5:
  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
  - Return error on SA error in `listslices` (#456)
  - Allow `PerformOperationalAction` on v2 AMs (#412)
- - Omni cred_util uses an omni logger (#460)
+ - Omni `cred_util.py` uses an omni logger (#460)
  - Support querying for other users' SSH keys where the CH supports it (#472)
  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
  - Speed up listaggregates in `pgch` framework (don't test AM API
    compliance) (#482)
  - URN testing requires 4 `+` separated pieces (#483)
  - Log at debug when downloading the aggregate nickname cache fails (#485)
- - Add a new framework type `chapi` for talking the uniform federation API 
+ - Add a new framework type `chapi` for talking the Uniform Federation API 
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
   - See `omni_config.sample` for config options required
@@ -103,6 +115,16 @@ New in v2.5:
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
  - Speaks for option has been renamed `geni_speaking_for` (#466)
+ - Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+  - Your Omni based tool no longer needs to include any of the top
+    level scripts that Omni/GCF includes, nor to provide the existing
+    Omni `main`.
+  - Most of the code in `omni.py` has now been moved to
+    `gcf/oscript.py`
+  - To update your script that uses omni as a library:
+   - Change `import omni` to `import gcf.oscript as omni`
 
 
 New in v2.4:
@@ -408,6 +430,9 @@ Omni is really a thin wrapper around `src/gcf/oscript.py`, which can
 be imported as a library, enabling programmatic
 access to Omni functions. To use Omni as a library, 
 `import gcf.oscript as omni` and use the `omni.call` function.
+
+Note that prior to v2.5, the import statement was `import omni` - be
+sure you have updated your scripts when you upgrade.
 
 {{{
   text, returnStruct = omni.call( ['listmyslices', username], options )  
