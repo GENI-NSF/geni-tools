@@ -83,6 +83,8 @@ gcf 2.5:
   - `Inconsistent ifacemap` is fatal at PG AMs (#477)
   - `Duplicate link` is fatal at PG AMs (#479)
   - `Must delete existing` is fatal at PG AMs (#438)
+  - Ensure we have an error message when a DCN reservation failed to
+    become ready and we have no circuitIDs. (#480)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

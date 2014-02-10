@@ -1486,6 +1486,9 @@ class Aggregate(object):
                 if dcnerror and dcnerror.strip() != '':
                     msg = msg + ": " + dcnerror
 
+            if msg is None:
+                msg = "Sliver status was (still): %s (and no circuits listed in status)" % status
+
             # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
