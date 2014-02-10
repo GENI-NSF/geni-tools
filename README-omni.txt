@@ -404,9 +404,10 @@ count).
 
 == Omni as a Library ==
 
-The omni.py file can be imported as a library, enabling programmatic
-access to Omni functions. To use Omni as a library, `import omni` and
-use the `omni.call` function.
+Omni is really a thin wrapper around `src/gcf/oscript.py`, which can
+be imported as a library, enabling programmatic
+access to Omni functions. To use Omni as a library, 
+`import gcf.oscript as omni` and use the `omni.call` function.
 
 {{{
   text, returnStruct = omni.call( ['listmyslices', username], options )  
@@ -430,15 +431,15 @@ and
 on the gcf wiki.
 
 '''NOTE''': Omni uses multiple command line options, and creates its
-own option names internally. Be sure not to pick the same option names. See omni.py and the
-getParser() function, around line 781 for all the option names.
+own option names internally. Be sure not to pick the same option names. See `gcf/oscript.py` and the
+`getParser()` function, around line 781 for all the option names.
 
 == Extending Omni ==
 
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension
 class. Adding other experiment management or utility functions can be
-done using Omni scripting, or by adding functions to amhandler.py
+done using Omni scripting, or by adding functions to `amhandler.py`.
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
