@@ -30,7 +30,7 @@ import pprint
 import sys
 import xmlrpclib
 
-from .utils import StitchingError, StitchingServiceFailedError
+from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
 
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
