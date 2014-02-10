@@ -78,6 +78,11 @@ gcf 2.5:
   - Add option `useExoSM` to force use of the ExoSM for EG racks,
     where possible. Use this if you are reserving bare metal nodes. (#496)
   - Change filenames to not use bad characters to support Windows (#497)
+  - `Could not verify topo` is fatal at PG AMs (#470)
+  - `Hostname > 63 characters` is fatal at PG AMs (#475)
+  - `Inconsistent ifacemap` is fatal at PG AMs (#477)
+  - `Duplicate link` is fatal at PG AMs (#479)
+  - `Must delete existing` is fatal at PG AMs (#438)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
