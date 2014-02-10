@@ -117,7 +117,8 @@ registry=http://www.planet-lab.org:12345
 slicemgr=http://www.planet-lab.org:12347
 
 [my_chapi]
-type=chapi # For use with the Uniform Federation API
+# For use with the Uniform Federation API
+type=chapi
 
 # Authority part of the control framework's URN
 authority=ch.geni.net
