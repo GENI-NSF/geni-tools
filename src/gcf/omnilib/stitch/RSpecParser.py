@@ -31,7 +31,7 @@ from xml.dom.minidom import parseString, getDOMImplementation
 
 from . import objects
 from .utils import StitchingError
-from .defs import *
+from . import defs
 
 class RSpecParser:
 

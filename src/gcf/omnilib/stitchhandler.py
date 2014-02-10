@@ -40,9 +40,10 @@ from .util.files import readFile
 from .util import handler_utils
 
 from . import stitch
+from .stitch import defs
 from .stitch.ManifestRSpecCombiner import combineManifestRSpecs
 from .stitch.objects import Aggregate, Link, Node
-from .stitch import defs
+from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
 from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
@@ -118,7 +119,7 @@ class StitchingHandler(object):
 
         # Parse the RSpec
         requestString = ""
-        self.rspecParser = RSpecParser.RSpecParser(self.logger)
+        self.rspecParser = RSpecParser(self.logger)
         self.parsedUserRequest = None
         if request:
             try:

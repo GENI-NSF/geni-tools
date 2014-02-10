@@ -24,5 +24,6 @@
 from __future__ import absolute_import
 
 from .launcher import *
+from .RSpecParser import *
 
 __all__ = ["Launcher"]
