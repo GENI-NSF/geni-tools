@@ -40,12 +40,12 @@ import xmlrpclib
 import zlib
 
 from . import gib_manager
-from .. import geni
-from ..geni.util.urn_util import publicid_to_urn
-from ..geni.SecureXMLRPCServer import SecureXMLRPCServer
-from ..geni.am.resource import Resource
-from ..geni.am.aggregate import Aggregate
-from ..geni.am.fakevm import FakeVM
+from .... import geni
+from ...util.urn_util import publicid_to_urn
+from ...SecureXMLRPCServer import SecureXMLRPCServer
+from ..resource import Resource
+from ..aggregate import Aggregate
+from ..fakevm import FakeVM
 
 
 # See sfa/trust/rights.py

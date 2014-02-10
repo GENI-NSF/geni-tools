@@ -415,7 +415,7 @@ import pprint
 import re
 import sys
 
-import gcf.oscript as oscript
+import gcf.oscript as omni
 from .omnilib.util.files import *
 from .omnilib.util.omnierror import OmniError
 
@@ -432,7 +432,7 @@ def main(argv=None):
   ##############################################################################
   # Get a parser from omni that understands omni options
   ##############################################################################
-  parser = oscript.getParser()
+  parser = omni.getParser()
   # update usage for help message
   omni_usage = parser.get_usage()
   parser.set_usage(omni_usage+"\nmyscript.py supports additional commands.\n\n\tCommands and their arguments are:\n\t\t\t[add stuff here]")
@@ -447,7 +447,7 @@ def main(argv=None):
                     help="A non-omni option added by %s"%sys.argv[0],
                     action="store_true", default=False)
   # options is an optparse.Values object, and args is a list
-  options, args = oscript.parse_args(sys.argv[1:], parser=parser)
+  options, args = omni.parse_args(sys.argv[1:], parser=parser)
   if options.myScriptPrivateOption:
     # do something special for your private script's options
     print "Got myScriptOption"
@@ -531,7 +531,7 @@ def main(argv=None):
   ##############################################################################
   print "Call Omni with args %s:\n" % omniargs
   try:
-    text, retItem = oscript.call(omniargs, options)
+    text, retItem = omni.call(omniargs, options)
   except OmniError, oe:
     sys.exit("\nOmni call failed: %s" % oe)
 

@@ -36,16 +36,16 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as etree 
 
-from geni.util import rspec_util 
-from geni.util.rspec_schema import *
-from geni.util import urn_util
-from geni.util import error_util
+from gcf.geni.util import rspec_util 
+from gcf.geni.util.rspec_schema import *
+from gcf.geni.util import urn_util
+from gcf.geni.util import error_util
 
-import gcf.oscript
+import gcf.oscript as omni
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, WrongRspecType
-from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
+from gcf.omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
 import gcf.omnilib.util.json_encoding as json_encoding
 import gcf.omnilib.util.credparsing as credparsing
 from gcf.sfa.trust.credential import Credential
@@ -106,7 +106,7 @@ class Test(ut.OmniUnittest):
             self.ad_namespace = GENI_3_NAMESPACE
             self.ad_schema = GENI_3_AD_SCHEMA
         self.success = False
-        self.logger = oscript.configure_logging(self.options_copy)
+        self.logger = omni.configure_logging(self.options_copy)
 
     def tearDown( self ):
         ut.OmniUnittest.tearDown(self)
@@ -1335,7 +1335,7 @@ class Test(ut.OmniUnittest):
             try:
                 self.logger.info("\n=== Should fail - renew 2 days past slice expiration ===")
                 text, (succList, failList) = self.call(omniargs, self.options_copy)
-                succNum, possNum = oscript.countSuccess( succList, failList )
+                succNum, possNum = omni.countSuccess( succList, failList )
             except AMAPIError, err:
                 text = str(err)
                 succNum = 0
@@ -1373,7 +1373,7 @@ class Test(ut.OmniUnittest):
         omniargs = ["renewsliver", slicename, newtime] 
         self.logger.info("\n=== Test.subtest_RenewSliver ===")
         text, (succList, failList) = self.call(omniargs, self.options_copy)
-        succNum, possNum = oscript.countSuccess( succList, failList )
+        succNum, possNum = omni.countSuccess( succList, failList )
         # Assume single AM
         self.assertTrue( int(succNum) == 1,
                          "'RenewSliver' until %s " \
@@ -1752,7 +1752,7 @@ class Test(ut.OmniUnittest):
         self.logger.info("\n=== Test.subtest_DeleteSliver ===")
         text, (successList, failList) = self.call(omniargs, self.options_copy)
         _ = text # Appease eclipse
-        succNum, possNum = oscript.countSuccess( successList, failList )
+        succNum, possNum = omni.countSuccess( successList, failList )
         _ = possNum # Appease eclipse
 
         if expectedNumSlivers==0:
@@ -1935,7 +1935,7 @@ class Test(ut.OmniUnittest):
             self.subtest_Renew_many( slicename )
 
     @classmethod
-    def getParser( cls, parser=oscript.getParser(), usage=None):
+    def getParser( cls, parser=omni.getParser(), usage=None):
         parser.add_option( "--reuse-slice", 
                            action="store", type='string', dest='reuse_slice_name', 
                            help="Use slice name provided instead of creating/deleting a new slice")

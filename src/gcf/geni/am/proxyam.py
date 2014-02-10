@@ -28,14 +28,15 @@ from __future__ import absolute_import
 
 import logging
 import os
+import socket
 
-from .. import geni
-from ..geni.am.am2 import AggregateManager
-from ..geni.am.am2 import AggregateManagerServer
-from ..geni.am.am2 import ReferenceAggregateManager
-from ..geni.SecureXMLRPCServer import SecureXMLRPCServer
-from ..geni.util.ch_interface import *
-from ..omnilib.xmlrpc.client import make_client
+from ... import geni
+from ...geni.am.am2 import AggregateManager
+from ...geni.am.am2 import AggregateManagerServer
+from ...geni.am.am2 import ReferenceAggregateManager
+from ...geni.SecureXMLRPCServer import SecureXMLRPCServer
+from ...geni.util.ch_interface import *
+from ...omnilib.xmlrpc.client import make_client
 
 SR_URL = "https://" + socket.gethostname() + "/sr/sr_controller.php"
 
