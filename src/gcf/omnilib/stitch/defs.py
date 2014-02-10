@@ -33,3 +33,11 @@ CONSUMER_VALUE = 'consumer'
 PRODUCER_VALUE = 'producer'
 VLANCONSUMER_VALUE = 'vlanconsumer'
 VLANPRODUCER_VALUE = 'vlanproducer'
+
+# see geni.util.rspec_schema for namespaces
+
+# This should go away, its value is no longer used
+LAST_UPDATE_TIME_TAG = "lastUpdateTime"
+
+# Need the ExoSM URL, as ugly as that is
+EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"
