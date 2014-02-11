@@ -321,6 +321,7 @@ class StitchingHandler(object):
         # Ensure we are processing all the workflow aggs plus any aggs in the RSpec not in
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
+        addedAMs = []
         for amURN in self.parsedSCSRSpec.amURNs:
             found = False
             for agg in self.ams_to_process:
@@ -337,6 +338,7 @@ class StitchingHandler(object):
                 continue
             else:
                 am = Aggregate.find(amURN)
+                addedAMs.append(am)
                 if not am.url:
                     # Try to pull from agg nicknames in the omni_config
                     for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
@@ -362,6 +364,16 @@ class StitchingHandler(object):
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
                     self.ams_to_process.append(am)
+        # Done adding user requested non linked AMs to list of AMs to
+        # process
+
+        # Add extra info about the aggregates to the AM objects
+        self.add_am_info(self.ams_to_process)
+
+        # FIXME: check each AM reachable, and we know the URL/API version to use
+
+        if self.opts.debug:
+            self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         self.logger.info("Stitched reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
@@ -765,17 +777,9 @@ class StitchingHandler(object):
         # And check for AM dependency loops
         workflow_parser.parse(workflow, parsed_rspec)
 
-        # FIXME: check each AM reachable, and we know the URL/API version to use
-
         # FIXME: Check SCS output consistency in a subroutine:
           # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
           # All AMs must be listed in workflow data at least once per path they are in
-
-        # Add extra info about the aggregates to the AM objects
-        self.add_am_info(workflow_parser.aggs)
-
-        if self.opts.debug:
-            self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
         return parsed_rspec, workflow_parser
 
@@ -925,6 +929,9 @@ class StitchingHandler(object):
                 continue
 #            else:
 #                self.logger.debug("%s is EG: %s, alt_url: %s, isExo: %s", agg, agg.isEG, agg.alt_url, agg.isExoSM)
+
+            # Save off the aggregate nickname if possible
+            agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)

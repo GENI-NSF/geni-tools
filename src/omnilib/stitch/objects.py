@@ -267,6 +267,7 @@ class Aggregate(object):
 
         self.url = url
         self.alt_url = None # IE the rack URL vs the ExoSM URL
+        self.nick = None
         self.inProcess = False
         self.completed = False
         self.userRequested = False
@@ -291,10 +292,16 @@ class Aggregate(object):
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
     def __str__(self):
-        return "<Aggregate %s>" % (self.urn)
+        if self.nick:
+            return "<Aggregate %s (%s)>" % (self.nick, self.urn)
+        else:
+            return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
-        return "Aggregate(%r)" % (self.urn)
+        if self.nick:
+            return "Aggregate(%r=%r)" % (self.nick, self.urn)
+        else:
+            return "Aggregate(%r)" % (self.urn)
 
     @property
     def hops(self):
