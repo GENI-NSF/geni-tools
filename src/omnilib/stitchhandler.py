@@ -177,6 +177,31 @@ class StitchingHandler(object):
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
+        # FIXME: Compare the list of AMs in the request with AMs known
+        # to the SCS. Any that the SCS does not know means the request
+        # cannot succeed.
+        # check self.parsedUserRequest.amURNs
+        scsAggs {}
+        try:
+            scsAggs = scs.ListAggregates(False)
+        except Exception, e:
+            self.logger.debug("SCS ListAggregates failed: %s", e)
+        if scsAggs and isinstance(scsAggs, dict) and len(scsAggs.keys()) > 0:
+            if scsAggs.has_key('value') and scsAggs['value'].has_key('geni_aggregate_list'):
+                scsAggs = scsAggs['value']['geni_aggregate_list']
+                
+                # Now sanity check AMs requested
+                # FIXME: Only sanity check AMs that are on stitched links.
+                for reqAMURN in self.parsedUserRequest.amURNs:
+                    found = False
+                    for sa in scsAggs.keys():
+                        if sa['urn'] == reqAMURN:
+                            self.logger.debug("Requested AM URN is listed by SCS with URL %s", sa['url'])
+                            found = True
+                            break
+                    if not found:
+                        raise StitchingError("Your request RSpec specifies aggregate (component manger) %s. No stitching paths are available for that aggregate." % reqAMURN)
+
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         lvl = None
         try:

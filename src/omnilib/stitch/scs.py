@@ -80,6 +80,20 @@ class Service(object):
             print pp.pformat(result)
         return result
 
+    def ListAggregates(self, printResult=True):
+        server = xmlrpclib.ServerProxy(self.url)
+        try:
+            result = server.ListAggregates()
+        except xmlrpclib.Error as v:
+            if printResult:
+                print "ERROR", v
+            raise
+        if printResult:
+            print "ListAggregates said:"
+            pp = pprint.PrettyPrinter(indent=4)
+            print pp.pformat(result)
+        return result
+
     def ComputePath(self, slice_urn, request_rspec, options):
         """Invoke the XML-RPC service with the request rspec.
         Create an SCS PathInfo from the result.
@@ -181,15 +195,21 @@ def main(argv=None):
     
     ind = -1
     printR = True
+    listAMs = False
     for arg in argv:
         ind = ind + 1
         if "--scs_url" == arg and (ind+1) < len(argv):
             SCS_URL = argv[ind+1]
         if "--monitoring" == arg:
             printR = False
+        if arg.lower() == "--listaggregates":
+            listAMs = True
     try:
         scsI = Service(SCS_URL)
-        result = scsI.GetVersion(printR)
+        if listAMs:
+            result = scsI.ListAggregates(printR)
+        else:
+            result = scsI.GetVersion(printR)
         tag = ""
         try:
             verStruct = result
