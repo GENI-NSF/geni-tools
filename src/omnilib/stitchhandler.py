@@ -178,6 +178,7 @@ class StitchingHandler(object):
         self.scsCalls = 0
 
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
+        lvl = None
         try:
             # Passing in the request as a DOM. OK?
             lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.dom)
@@ -206,12 +207,17 @@ class StitchingHandler(object):
             ot = self.opts.output
             if not self.opts.tostdout:
                 self.opts.output = True
+            lvl = self.logger.getEffectiveLevel()
+            self.logger.setLevel(logging.WARN)
             retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+            self.logger.setLevel(lvl)
             self.opts.output = ot
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
         except StitchingError, se:
+            if lvl:
+                self.logger.setLevel(lvl)
             # FIXME: Return anything different for stitching error?
             # Do we want to return a geni triple struct?
             if self.lastException:
@@ -344,7 +350,7 @@ class StitchingHandler(object):
                     for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
                         if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
                             am.url = amURLNick
-                            self.logger.info("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
+                            self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
                             break
 
                 if not am.url:
@@ -356,7 +362,7 @@ class StitchingHandler(object):
                         for fw_am_urn in fw_ams.keys():
                             if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
                                 am.url = fw_ams[fw_am_urn]
-                                self.logger.info("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
+                                self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
                                 break
                     except:
                         pass
@@ -811,13 +817,15 @@ class StitchingHandler(object):
             # So note the other one, since VMs are split between the 2
             for (amURN, amURL) in self.config['aggregate_nicknames'].values():
                 if amURN.strip() in agg.urn_syns:
-                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url and not amURL.strip == '':
-                        agg.alt_url = amURL
+                    hadURL = handler_utils._extractURL(self.logger, agg.url)
+                    newURL = handler_utils._extractURL(self.logger, amURL)
+                    if hadURL != newURL and not hadURL in newURL and not newURL in hadURL and not newURL.strip == '':
+                        agg.alt_url = newURL
                         break
 #                    else:
-#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, agg.url, amURL, amURN)
+#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, hadURL, newURL, amURN)
 #                elif "exogeni" in amURN and "exogeni" in agg.urn:
-#                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, amURL, agg)
+#                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, newURL, agg)
 
             if "exogeni" in agg.urn and not agg.alt_url:
 #                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
@@ -889,6 +897,9 @@ class StitchingHandler(object):
                         for key in version[agg.url]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
+                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
+                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
+                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
@@ -903,8 +914,9 @@ class StitchingHandler(object):
                             msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
                             #self.logger.error(msg)
                             raise StitchingError(msg)
-                        if maxVer != 2:
-                            self.logger.info("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
+#                        if maxVer != 2:
+#                            self.logger.debug("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
+
 #                        if self.opts.fakeModeDir:
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3

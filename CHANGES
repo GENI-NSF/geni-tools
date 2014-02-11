@@ -88,6 +88,8 @@ gcf 2.5:
     become ready and we have no circuitIDs. (#480)
   - Save the result manifest RSpec to a file always (not to log)
     unless the user specified `--tostdout` explicitly (#498)
+  - Show the AM nickname in addition to URL in output (#424)
+  - Suppress some useless log messages (#499)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
