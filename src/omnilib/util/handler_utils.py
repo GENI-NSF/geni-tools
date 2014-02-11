@@ -92,9 +92,13 @@ def _extractURL(logger, url):
 
 # Lookup aggregate nickname by aggregate_urn or aggregate_url
 def _lookupAggNick(handler, aggregate_urn_or_url):
+    retNick = None
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
-            return nick
+            if not retNick or retNick.startswith(nick):
+                retNick = nick
+    if retNick is not None:
+        return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url.startswith(url):
             return nick
