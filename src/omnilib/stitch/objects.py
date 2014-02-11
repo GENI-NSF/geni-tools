@@ -293,13 +293,13 @@ class Aggregate(object):
 
     def __str__(self):
         if self.nick:
-            return "<Aggregate %s (%s)>" % (self.nick, self.urn)
+            return "<Aggregate %s>" % (self.nick)
         else:
             return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
         if self.nick:
-            return "Aggregate(%r=%r)" % (self.nick, self.urn)
+            return "Aggregate(%r)" % (self.nick)
         else:
             return "Aggregate(%r)" % (self.urn)
 
