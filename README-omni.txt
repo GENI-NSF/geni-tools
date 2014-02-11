@@ -103,6 +103,7 @@ New in v2.5:
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
  - Speaks for option has been renamed `geni_speaking_for` (#466)
+ - Show the AM nickname in addition to URL in output (#424)
 
 
 New in v2.4:
