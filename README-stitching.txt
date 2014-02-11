@@ -102,7 +102,9 @@ aggregates for you. NOTE however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
 a stitching link may not be reserved, because stitcher may not know
-the URL to contact that aggregate.
+the URL to contact that aggregate. If there is an aggregate nickname
+for the component manager URN in your RSpec with a matching URL,
+stitcher should find it.
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate
 limitations. If an aggregate does not speak AM API v2, `stitcher`
@@ -223,7 +225,9 @@ Other options you should not need to use:
  contact aggregates that are involved in the circuits you request -
  nodes you are trying to reserve in the RSpec that are not linked with
  a stitching link may not be reserved, because stitcher may not know
- the URL to contact that aggregate.
+ the URL to contact that aggregate. If there is an aggregate nickname
+ for the component manager URN in your RSpec with a matching URL,
+ stitcher should find it.
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
  where you have reservations for this request, saved to a file named
  '<slicename>-manifest-rspec-stitching-combined.xml'
@@ -299,7 +303,7 @@ Some sample error messages and their meaning:
     a stitching failure on each - probably because that tag was not available.
 
 == Known Issues and Limitations ==
- - Aggregate support is limited.
+ - Aggregate support is limited. See http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
  - Links are point to point only - each link connects an interface on
  a compute node to another interface on a node.
  - Links between aggregates use VLANs. QinQ is not supported at any
@@ -337,6 +341,7 @@ Some sample error messages and their meaning:
  - Support GRE tunnels or other stitching technologies
 
 == Related Reading ==
+ - [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI Stitching Sites]
  - [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
  - [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
 
