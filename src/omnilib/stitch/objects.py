@@ -1139,6 +1139,11 @@ class Aggregate(object):
                             val = ae.returnstruct["value"]
 #                        self.logger.debug("Error was code %s (am code
 #                        %s): %s", code, amcode, msg)
+
+                        # 2/11/14: JonD says the below error should be
+                        # rare and means something deeper/bad is
+                        # wrong. Report it to Jon if it gets common.
+                        # But maybe sometime soon make this a vlanAvailableIssue
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
 
@@ -1718,6 +1723,11 @@ class Aggregate(object):
                 self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
+
+                        # 2/11/14: JonD says the below error should be
+                        # rare and means something deeper/bad is
+                        # wrong. Report it to Jon if it gets common.
+                        # But maybe sometime soon make this a vlanAvailableIssue
                         # ("Error reserving vlan tag for link" in msg
                         # and code==2 and amcode==2 and amtype=="protogeni")
 
