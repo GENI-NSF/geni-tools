@@ -78,9 +78,7 @@ def _derefAggNick(handler, aggregateNickname):
 
 def _extractURL(logger, url):
     if url:
-        orig = url
-        httpsind = url.find("https://")
-        httpind = url.find("http://")
+#        orig = url
         if url.startswith("https://"):
             url = url[len("https://"):]
         elif url.startswith("http://"):
@@ -94,8 +92,17 @@ def _extractURL(logger, url):
 
 # Lookup aggregate nickname by aggregate_urn or aggregate_url
 def _lookupAggNick(handler, aggregate_urn_or_url):
+    for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
+            return nick
+    for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        if aggregate_urn_or_url.startswith(url):
+            return nick
     aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
-    for nick, (urn, urn) in handler.config['aggregate_nicknames'].items():
+    for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
+        if url.endswith(aggregate_urn_or_url):
+            return nick
+    for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url in urn or aggregate_urn_or_url in url:
             return nick
     return None
