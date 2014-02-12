@@ -39,7 +39,7 @@ import omnilib.util.handler_utils as handler_utils
 
 import omnilib.stitch as stitch
 from omnilib.stitch.ManifestRSpecCombiner import combineManifestRSpecs
-from omnilib.stitch.objects import Aggregate, Link, Node
+from omnilib.stitch.objects import Aggregate, Link, Node, LinkProperty
 from omnilib.stitch import RSpecParser
 import omnilib.stitch.defs as defs
 import omnilib.stitch.scs as scs
@@ -143,11 +143,14 @@ class StitchingHandler(object):
             raise OmniError("No request RSpec found!")
 
         # If this is not a real stitching thing, just let Omni handle this.
+        # This will also ensure each stitched link has an explicit capacity on 2 properties
         if not self.mustCallSCS(self.parsedUserRequest):
             self.logger.info("Not a stitching request - let Omni handle this.")
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
+
+#        self.logger.debug("Edited request RSpec: %s", self.parsedUserRequest.getLinkEditedDom().toprettyxml())
 
         if self.opts.explicitRSpecVersion:
             self.logger.info("All manifest RSpecs will be in GENI v3 format")
@@ -185,8 +188,8 @@ class StitchingHandler(object):
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         lvl = None
         try:
-            # Passing in the request as a DOM. OK?
-            lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.dom)
+            # Passing in the request as a DOM - after allowing edits as necessary. OK?
+            lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.getLinkEditedDom())
 
             # Construct a unified manifest
             # include AMs, URLs, API versions
@@ -580,6 +583,108 @@ class StitchingHandler(object):
         # return the slice urn, slice expiration (datetime)
         return (sliceurn, sliceexp)
 
+    # Ensure the link has 2 well formed property elements each with a capacity
+    def addCapacityOneLink(self, link):
+        # look for property elements
+        if len(link.properties) > 2:
+            raise StitchingError("Your request RSpec is malformed: include either 2 or 0 property elements on link '%s'" % link.id)
+        # Get the 2 node IDs
+        ifcs = link.interfaces
+        if len(ifcs) < 2:
+            self.logger.debug("Link '%s' doesn't have at least 2 interfaces? Has %d", link.id, len(ifcs))
+            return
+        if len(ifcs) > 2:
+            self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2.", link.id, len(ifcs))
+        node1ID = ifcs[0].client_id
+        node2ID = ifcs[1].client_id
+
+        # If there are no property elements
+        if len(link.properties) == 0:
+            self.logger.debug("Had no properties - must add them")
+            # Then add them
+            s_id = node1ID
+            d_id = node2ID
+            s_p = LinkProperty(s_id, d_id, None, None, self.opts.defaultCapacity)
+            s_p.link = link
+            d_p = LinkProperty(d_id, s_id, None, None, self.opts.defaultCapacity)
+            d_p.link = link
+            link.properties = [s_p, d_p]
+            return
+
+        # If the elements are there, error check them, adding property if necessary
+        if len(link.properties) == 2:
+            props = link.properties
+            prop1S = props[0].source_id
+            prop1D = props[0].dest_id
+            prop2S = props[1].source_id
+            prop2D = props[1].dest_id
+            if prop1S is None or prop1S == "":
+                raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+            if prop1D is None or prop1D == "":
+                raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+            if prop1D == prop1S:
+                raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop1D))
+            if prop2S is None or prop2S == "":
+                raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+            if prop2D is None or prop2D == "":
+                raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+            if prop2D == prop2S:
+                raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop2D))
+            # FIXME: Compare to the interface_refs
+            if prop1S != prop2D or prop1D != prop2S:
+                raise StitchingError("Malformed properties on link %s: source and dest tags are not reversed" % link.id)
+            if props[0].capacity and not props[1].capacity:
+                props[1].capacity = props[0].capacity
+            if props[1].capacity and not props[0].capacity:
+                props[0].capacity = props[1].capacity
+            for prop in props:
+                if prop.capacity is None or prop.capacity == "":
+                    prop.capacity = self.opts.defaultCapacity
+                # FIXME: Warn about really small or big capacities?
+            return
+
+        # There is a single property tag
+        prop = link.properties[0]
+        if prop.source_id is None or prop.source_id == "":
+            raise StitchingError("Malformed property on link %s missing source_id attribute" % link.id)
+        if prop.dest_id is None or prop.dest_id == "":
+            raise StitchingError("Malformed property on link %s missing dest_id attribute" % link.id)
+        if prop.dest_id == prop.source_id:
+            raise StitchingError("Malformed property on link %s has matching source and dest_id: %s" % (link.id, prop.dest_id))
+        # FIXME: Compare to the interface_refs
+        if prop.capacity is None or prop.capacity == "":
+            prop.capacity = self.opts.defaultCapacity
+        # FIXME: Warn about really small or big capacities?
+        # Create the 2nd property with the source and dest reversed
+        prop2 = LinkProperty(prop.dest_id, prop.source_id, prop.latency, prop.packet_loss, prop.capacity)
+        link.properties = [prop, prop2]
+        self.logger.debug("Link %s added missing reverse property")
+
+    # Ensure all implicit AMs (from interface_ref->node->component_manager_id) are explicit on the link
+    def ensureLinkListsAMs(self, link, requestRSpecObject):
+        if not link:
+            return
+
+        ams = []
+        for ifc in link.interfaces:
+            found = False
+            for node in requestRSpecObject.nodes:
+                if ifc.client_id in node.interface_ids:
+                    if node.amURN not in ams:
+                        ams.append(node.amURN)
+                    found = True
+                    self.logger.debug("Link %s interface %s found on node %s", link.id, ifc.client_id, node.id)
+                    break
+            if not found:
+                self.logger.debug("Link %s interface %s not found on any node", link.id, ifc.client_id)
+                # FIXME: What would this mean?
+
+        for amURN in ams:
+            am = Aggregate.find(amURN)
+            if am not in link.aggregates:
+                self.logger.debug("Adding missing AM %s to link %s", amURN, link.id)
+                link.aggregates.append(am)
+
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
         Check: >=1 link in main body with >= 2 diff component_manager
@@ -587,7 +692,11 @@ class StitchingHandler(object):
         '''
         if requestRSpecObject:
             for link in requestRSpecObject.links:
+                # Make sure this link explicitly lists all its aggregates, so this test is valid
+                self.ensureLinkListsAMs(link, requestRSpecObject)
                 if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
+                    # Ensure this link has 2 well formed property elements with explicity capacities
+                    self.addCapacityOneLink(link)
                     return True
 
             # FIXME: Can we be robust to malformed requests, and stop and warn the user?
