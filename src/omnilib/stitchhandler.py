@@ -177,6 +177,11 @@ class StitchingHandler(object):
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
+        # Compare the list of AMs in the request with AMs known
+        # to the SCS. Any that the SCS does not know means the request
+        # cannot succeed if those are AMs in a stitched link
+#        self.checkSCSAMs()
+
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         lvl = None
         try:
@@ -260,6 +265,35 @@ class StitchingHandler(object):
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
         return (retMsg, combinedManifest)
+
+    # Compare the list of AMs in the request with AMs known
+    # to the SCS. Any that the SCS does not know means the request
+    # cannot succeed if those are AMs in a stitched link
+    def checkSCSAMs(self):
+        # FIXME: This takes time. If this can't block a more expensive later operation, why bother?
+        scsAggs = {}
+        try:
+            scsAggs = self.scsService.ListAggregates(False)
+        except Exception, e:
+            self.logger.debug("SCS ListAggregates failed: %s", e)
+        if scsAggs and isinstance(scsAggs, dict) and len(scsAggs.keys()) > 0:
+            if scsAggs.has_key('value') and scsAggs['value'].has_key('geni_aggregate_list'):
+                scsAggs = scsAggs['value']['geni_aggregate_list']
+#                self.logger.debug("Got geni_agg_list from scs: %s", scsAggs)
+                # Now sanity check AMs requested
+                # Note that this includes AMs that the user does not
+                # want to stitch - so we cannot error out early
+                # FIXME: Can we ID from the request which are AMs that need a stitch?
+                for reqAMURN in self.parsedUserRequest.amURNs:
+                    found = False
+                    for sa in scsAggs.keys():
+                        if scsAggs[sa]['urn'] == reqAMURN:
+                            self.logger.debug("Requested AM URN %s is listed by SCS with URL %s", reqAMURN, scsAggs[sa]['url'])
+                            found = True
+                            break
+                    if not found:
+                        self.logger.warn("Your request RSpec specifies the aggregate (component manager) '%s' for which there are no stitching paths configured. If you requested a stitched link to this aggregate, it will fail.", reqAMURN)
+
 
     def cleanup(self):
         '''Remove temporary files if not in debug mode'''

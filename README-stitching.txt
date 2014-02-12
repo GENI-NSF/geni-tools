@@ -243,6 +243,16 @@ Other options you should not need to use:
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
  all the right aggregates.
+ - If you want to check what aggregates are stitchable, you can view
+ the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online], or programmatically.
+ You should only try to stitch among aggregates listed here - all
+ other requests will fail.
+ To check programmatically:
+{{{
+cd <omni install directory>
+export PYTHONPATH=$PYTHONPATH:.
+python src/omnilib/stich/scs.py --listaggregates
+}}}
 
 === Stitching Computation Service ===
 

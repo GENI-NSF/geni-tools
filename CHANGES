@@ -90,6 +90,8 @@ gcf 2.5:
     unless the user specified `--tostdout` explicitly (#498)
   - Show the AM nickname in addition to URL in output (#424)
   - Suppress some useless log messages (#499)
+  - New option to the SCS main `--listaggregates` to list the
+    aggregates known to the SCS. (#501)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
