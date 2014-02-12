@@ -48,17 +48,18 @@ Highlights:
    other tools. Look in `src/gcf` for directories that were
    previously directly under `src`. (#388)
  * Omni adds the ability to contact clearinghouses that speak the
-   Uniform Federation API
+   Uniform Federation API using framework type `chapi`
  * Added utilities for creating and processing 'Speaks For'
    credentials (which Omni can pass along to aggregates and to Uniform
    Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (configurable)
 
 Details:
- - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+ - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
    allows changing this. (#407)
- - Create any directories need in the path to the agg_nick_cache (#383)
+ - Create any directories needed in the path to the agg_nick_cache (#383)
  - If using `--AggNickCacheName` and can't read/write to the specified
    file, omni should fall back to reading `agg_nick_cach.base` (#384)
  - Look up AM URN by URL in the defined aggregate nicknames (#404)
@@ -125,6 +126,7 @@ Details:
     `gcf/oscript.py`
   - To update your script that uses omni as a library:
    - Change `import omni` to `import gcf.oscript as omni`
+ - Show the AM nickname in addition to URL in output (#424)
 
 
 New in v2.4:

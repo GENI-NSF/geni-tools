@@ -101,8 +101,10 @@ for your topology. Stitcher will create reservations at each of these
 aggregates for you. NOTE however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
-a stitching link may not be reserved, because stitcher does not know
-the URL to contact that aggregate.
+a stitching link may not be reserved, because stitcher may not know
+the URL to contact that aggregate. If there is an aggregate nickname
+for the component manager URN in your RSpec with a matching URL,
+stitcher should find it.
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate
 limitations. If an aggregate does not speak AM API v2, `stitcher`
@@ -119,7 +121,10 @@ all resources reserved as a result of this request.
 
 stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
-logging. Currently, stitcher will write several files to the current
+logging. However, stitcher always saves your combined result manifest
+RSpec to a file (named
+'<slicename>-manifest-rspec-stitching-combined.xml'), unless you specify the `--tostdout` option.
+Currently, stitcher will write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs).
 
@@ -143,6 +148,8 @@ to do using:
 Note that stitcher will not delete reservations at other aggregates
 not involved in stitching. To partially delete your reservation or
 delete at these other aggregates, supply the necessary `-a` options.
+
+Be sure to see the Known Issues section below.
 
 === Options ===
 stitcher is a simple extension of Omni. As such, it uses all the same
@@ -202,12 +209,12 @@ Other options you should not need to use:
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked
- - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in the `<link>`
+ - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in each `<link>`
  - Stitching currently only works at a few aggregates, with more being
  added regularly. Contact help@geni.net for a current list.
  - Use "src/stitcher.py" instead of "src/omni.py"
  - This script can take a while - it must make reservations at all the
- aggregates, and keep retrying at aggregates that can't provide
+ aggregates, and keeps retrying at aggregates that can't provide
  matching VLAN tags. Be patient.
  - When the script completes, you will have reservations at each of the
  aggregates involved in stitched links in your request RSpec, plus any intermediate
@@ -219,10 +226,13 @@ Other options you should not need to use:
  stitching circuits. Note however that stitcher generally only knows how to
  contact aggregates that are involved in the circuits you request -
  nodes you are trying to reserve in the RSpec that are not linked with
- a stitching link may not be reserved, because stitcher does not know
- the URL to contact that aggregate.
+ a stitching link may not be reserved, because stitcher may not know
+ the URL to contact that aggregate. If there is an aggregate nickname
+ for the component manager URN in your RSpec with a matching URL,
+ stitcher should find it.
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
- where you have reservations for this request.
+ where you have reservations for this request, saved to a file named
+ '<slicename>-manifest-rspec-stitching-combined.xml'
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
  stitcher retries at just that aggregate (currently up to 50
@@ -235,6 +245,17 @@ Other options you should not need to use:
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
  all the right aggregates.
+ - If you want to check what aggregates are stitchable, you can view
+ the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online], or programmatically.
+ You should only try to stitch among aggregates listed here - all
+ other requests will fail.
+ To check programmatically:
+{{{
+cd <omni install directory>
+export PYTHONPATH=$PYTHONPATH:.
+python src/omnilib/stich/scs.py --listaggregates
+}}}
+ - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
 
@@ -268,7 +289,7 @@ Known issues with this aggregate can be found on the
 
 == Troubleshooting ==
 
-Stitching is new to GENI, and uses several prototype services (this
+Stitching is relatively new to GENI, and uses several prototype services (this
 client, the Stitching Computation Service, the ION aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
@@ -279,7 +300,7 @@ detail as possible:
  - `python src/omni.py --version`
  - The exact commandline you used to invoke stitcher
  - The request RSpec you used with stitcher
- - The last few lines of your call to stitcher - all the logs if
+ - At least the last few lines of your call to stitcher, and all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
  - Listing of new rspec files created in `/tmp` and your current
@@ -294,13 +315,38 @@ Some sample error messages and their meaning:
     tried all available VLAN tags for one of your aggregates, and got
     a stitching failure on each - probably because that tag was not available.
 
+See the list of Known Issues below.
+
 == Known Issues and Limitations ==
- - Aggregate support is limited.
+ - Aggregate support is limited. See http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
  - Links are point to point only - each link connects an interface on
  a compute node to another interface on a node.
  - Links between aggregates use VLANs. QinQ is not supported at any
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
+ - If your circuit goes across ProtoGENI Utah (nickname `pg-utah`) to
+ `ig-utah` or `utah-ddc`, then you will need to explicitly set the
+ MTU on your link in order to exchange TCP traffic. Otherwise, while
+ `ping` will work, most other traffic will not pass. 
+  - Workaround: After reserving your circuit, log in to each of your nodes and
+  change the MTU to 1496 on your data plane interface.
+   - For example, `sudo /sbin/ifconfig eth1 mtu 1496`
+  - This is a known issue: http://groups.geni.net/geni/ticket/1086
+ - Stitching to ExoGENI is limited:
+  - Stitching within ExoGENI, by submitting a request to the ExoSM
+  with only ExoGENI resources, works fine.
+  - Stitching between ExoGENI and non ExoGENI resources only works at
+  a very few ExoGENI sites currently.
+  - You can have only 1 stitched link per ExoGENI node (though you can
+  have multiple nodes).
+   - See http://groups.geni.net/exogeni/ticket/193
+  - You cannot stitch to ExoGENI 'bare metal' nodes; stitching only
+  works at ExoGENI VMs.
+   - See http://groups.geni.net/exogeni/ticket/195
+  - Due to limitations in the `stitcher` tool, you cannot reserve some
+  ExoGENI resources from the ExoSM, and some from an individual
+  ExoGENI rack. You must either use all ExoSM resources, or all
+  resources at an individual rack. See options `--useExoSM` and `--noExoSM`
  - AM API v3 is not supported - VLAN tag selection is not optimal
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to
@@ -333,6 +379,7 @@ Some sample error messages and their meaning:
  - Support GRE tunnels or other stitching technologies
 
 == Related Reading ==
+ - [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI Stitching Sites]
  - [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
  - [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
 

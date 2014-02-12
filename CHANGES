@@ -5,17 +5,22 @@ gcf 2.5:
    other tools. Look in `src/gcf` for directories that were
    previously directly under `src`. (#388)
  * Omni adds the ability to contact clearinghouses that speak the
-   Uniform Federation API
+   Uniform Federation API using framework type `chapi`
  * Added utilities for creating and processing 'Speaks For'
    credentials (which Omni can pass along to aggregates and to Uniform
    Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (configurable)
+ * Stitcher adds an option to force use of the ExoSM for EG resources.
+ * Stitcher saves the manifest RSpec to a file by default.
+ * Stitcher adds the ability to query the Stitching Service for a list of
+   stitchable aggregates.
 
  * omni
-  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
   - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
     allows changing this. (#407)
-  - Create any directories need in the path to the `agg_nick_cache` (#383)
+  - Create any directories needed in the path to the `agg_nick_cache` (#383)
   - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
@@ -84,6 +89,7 @@ gcf 2.5:
      `gcf/oscript.py`
    - To update your script that uses omni as a library:
     - Change `import omni` to `import gcf.oscript as omni`
+  - Show the AM nickname in addition to URL in output (#424)
 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -95,7 +101,7 @@ gcf 2.5:
   - Handle empty range of VLANs in VLANRange (#471)
   - Report per sliver errors at DCN AMs (#481)
   - Fix circular imports in `RSpecParser` and `objects` (#459)
-  - Add option `useExoSM` to force use of the ExoSM for EG racks,
+  - Add option `--useExoSM` to force use of the ExoSM for EG racks,
     where possible. Use this if you are reserving bare metal nodes. (#496)
   - Change filenames to not use bad characters to support Windows (#497)
   - `Could not verify topo` is fatal at PG AMs (#470)
@@ -105,6 +111,15 @@ gcf 2.5:
   - `Must delete existing` is fatal at PG AMs (#438)
   - Ensure we have an error message when a DCN reservation failed to
     become ready and we have no circuitIDs. (#480)
+  - Save the result manifest RSpec to a file always (not to log)
+    unless the user specified `--tostdout` explicitly (#498)
+  - Show the AM nickname in addition to URL in output (#424)
+  - Suppress some useless log messages (#499)
+  - New option to the SCS main `--listaggregates` to list the
+    aggregates known to the SCS. (#501)
+  - Treat another PG error message as meaning the VLAN is unavailable.
+  - `CreateSliver: Existing record` is fatal at DCN aggregates (#438)
+  - Note known issues in README-stitching (#469)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

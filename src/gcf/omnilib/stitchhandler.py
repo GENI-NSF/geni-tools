@@ -179,7 +179,13 @@ class StitchingHandler(object):
         self.scsService = scs.Service(self.opts.scsURL)
         self.scsCalls = 0
 
+        # Compare the list of AMs in the request with AMs known
+        # to the SCS. Any that the SCS does not know means the request
+        # cannot succeed if those are AMs in a stitched link
+#        self.checkSCSAMs()
+
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
+        lvl = None
         try:
             # Passing in the request as a DOM. OK?
             lastAM = self.mainStitchingLoop(sliceurn, self.parsedUserRequest.dom)
@@ -205,11 +211,20 @@ class StitchingHandler(object):
             # FIXME: This prepends a header on an RSpec that might already have a header
             # -- maybe replace any existing header
             # FIXME: Without the -o option this is really verbose! Maybe set -o?
+            ot = self.opts.output
+            if not self.opts.tostdout:
+                self.opts.output = True
+            lvl = self.logger.getEffectiveLevel()
+            self.logger.setLevel(logging.WARN)
             retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
+            self.logger.setLevel(lvl)
+            self.opts.output = ot
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
         except StitchingError, se:
+            if lvl:
+                self.logger.setLevel(lvl)
             # FIXME: Return anything different for stitching error?
             # Do we want to return a geni triple struct?
             if self.lastException:
@@ -252,6 +267,35 @@ class StitchingHandler(object):
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
         return (retMsg, combinedManifest)
+
+    # Compare the list of AMs in the request with AMs known
+    # to the SCS. Any that the SCS does not know means the request
+    # cannot succeed if those are AMs in a stitched link
+    def checkSCSAMs(self):
+        # FIXME: This takes time. If this can't block a more expensive later operation, why bother?
+        scsAggs = {}
+        try:
+            scsAggs = self.scsService.ListAggregates(False)
+        except Exception, e:
+            self.logger.debug("SCS ListAggregates failed: %s", e)
+        if scsAggs and isinstance(scsAggs, dict) and len(scsAggs.keys()) > 0:
+            if scsAggs.has_key('value') and scsAggs['value'].has_key('geni_aggregate_list'):
+                scsAggs = scsAggs['value']['geni_aggregate_list']
+#                self.logger.debug("Got geni_agg_list from scs: %s", scsAggs)
+                # Now sanity check AMs requested
+                # Note that this includes AMs that the user does not
+                # want to stitch - so we cannot error out early
+                # FIXME: Can we ID from the request which are AMs that need a stitch?
+                for reqAMURN in self.parsedUserRequest.amURNs:
+                    found = False
+                    for sa in scsAggs.keys():
+                        if scsAggs[sa]['urn'] == reqAMURN:
+                            self.logger.debug("Requested AM URN %s is listed by SCS with URL %s", reqAMURN, scsAggs[sa]['url'])
+                            found = True
+                            break
+                    if not found:
+                        self.logger.warn("Your request RSpec specifies the aggregate (component manager) '%s' for which there are no stitching paths configured. If you requested a stitched link to this aggregate, it will fail.", reqAMURN)
+
 
     def cleanup(self):
         '''Remove temporary files if not in debug mode'''
@@ -319,6 +363,7 @@ class StitchingHandler(object):
         # Ensure we are processing all the workflow aggs plus any aggs in the RSpec not in
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
+        addedAMs = []
         for amURN in self.parsedSCSRSpec.amURNs:
             found = False
             for agg in self.ams_to_process:
@@ -335,12 +380,13 @@ class StitchingHandler(object):
                 continue
             else:
                 am = Aggregate.find(amURN)
+                addedAMs.append(am)
                 if not am.url:
                     # Try to pull from agg nicknames in the omni_config
                     for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
                         if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
                             am.url = amURLNick
-                            self.logger.info("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
+                            self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
                             break
 
                 if not am.url:
@@ -352,7 +398,7 @@ class StitchingHandler(object):
                         for fw_am_urn in fw_ams.keys():
                             if fw_am_urn and fw_am_urn.strip() in am.urn_syns and fw_ams[fw_am_urn].strip() != '':
                                 am.url = fw_ams[fw_am_urn]
-                                self.logger.info("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
+                                self.logger.debug("Found AM %s URL from CH ListAggs: %s", amURN, am.url)
                                 break
                     except:
                         pass
@@ -360,6 +406,16 @@ class StitchingHandler(object):
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
                     self.ams_to_process.append(am)
+        # Done adding user requested non linked AMs to list of AMs to
+        # process
+
+        # Add extra info about the aggregates to the AM objects
+        self.add_am_info(self.ams_to_process)
+
+        # FIXME: check each AM reachable, and we know the URL/API version to use
+
+        if self.opts.debug:
+            self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         self.logger.info("Stitched reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
@@ -763,17 +819,9 @@ class StitchingHandler(object):
         # And check for AM dependency loops
         workflow_parser.parse(workflow, parsed_rspec)
 
-        # FIXME: check each AM reachable, and we know the URL/API version to use
-
         # FIXME: Check SCS output consistency in a subroutine:
           # In each path: An AM with 1 hop must either _have_ dependencies or _be_ a dependency
           # All AMs must be listed in workflow data at least once per path they are in
-
-        # Add extra info about the aggregates to the AM objects
-        self.add_am_info(workflow_parser.aggs)
-
-        if self.opts.debug:
-            self.dump_objects(parsed_rspec, workflow_parser.aggs)
 
         return parsed_rspec, workflow_parser
 
@@ -805,13 +853,15 @@ class StitchingHandler(object):
             # So note the other one, since VMs are split between the 2
             for (amURN, amURL) in self.config['aggregate_nicknames'].values():
                 if amURN.strip() in agg.urn_syns:
-                    if agg.url != amURL and not agg.url in amURL and not amURL in agg.url and not amURL.strip == '':
-                        agg.alt_url = amURL
+                    hadURL = handler_utils._extractURL(self.logger, agg.url)
+                    newURL = handler_utils._extractURL(self.logger, amURL)
+                    if hadURL != newURL and not hadURL in newURL and not newURL in hadURL and not newURL.strip == '':
+                        agg.alt_url = newURL
                         break
 #                    else:
-#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, agg.url, amURL, amURN)
+#                        self.logger.debug("Not setting alt_url for %s. URL is %s, alt candidate was %s with URN %s", agg, hadURL, newURL, amURN)
 #                elif "exogeni" in amURN and "exogeni" in agg.urn:
-#                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, amURL, agg)
+#                    self.logger.debug("Config had URN %s URL %s, but that URN didn't match our URN synonyms for %s", amURN, newURL, agg)
 
             if "exogeni" in agg.urn and not agg.alt_url:
 #                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
@@ -883,6 +933,9 @@ class StitchingHandler(object):
                         for key in version[agg.url]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
+                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
+                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
+                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
@@ -897,8 +950,9 @@ class StitchingHandler(object):
                             msg = "%s does not speak AM API v2 (max is V%d). APIv2 required!" % (agg, maxVer)
                             #self.logger.error(msg)
                             raise StitchingError(msg)
-                        if maxVer != 2:
-                            self.logger.info("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
+#                        if maxVer != 2:
+#                            self.logger.debug("%s speaks AM API v%d, but sticking with v2", agg, maxVer)
+
 #                        if self.opts.fakeModeDir:
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
@@ -923,6 +977,9 @@ class StitchingHandler(object):
                 continue
 #            else:
 #                self.logger.debug("%s is EG: %s, alt_url: %s, isExo: %s", agg, agg.isEG, agg.alt_url, agg.isExoSM)
+
+            # Save off the aggregate nickname if possible
+            agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
