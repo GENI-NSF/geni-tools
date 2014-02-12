@@ -597,6 +597,7 @@ class StitchingHandler(object):
             self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2.", link.id, len(ifcs))
         node1ID = ifcs[0].client_id
         node2ID = ifcs[1].client_id
+        # FIXME: If node2ID is same AM as node1ID and there are other choices, try those
 
         # If there are no property elements
         if len(link.properties) == 0:
