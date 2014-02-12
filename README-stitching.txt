@@ -284,6 +284,9 @@ Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
 
+This same software runs other aggregates for OSCARS networks,
+specifically the MAX aggregate.
+
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
 
