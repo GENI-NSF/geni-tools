@@ -1085,9 +1085,12 @@ class Aggregate(object):
                 raise StitchingError(msg)
 
         except AMAPIError, ae:
-            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+            didInfo = False
+#            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
 
             if self.isEG:
+                didInfo = True
+                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                 # deleteReservation
                 opName = 'deletesliver'
                 if self.api_version > 2:
@@ -1114,6 +1117,9 @@ class Aggregate(object):
                     pass
 
                 if ae.returnstruct["code"]["geni_code"] == 24:
+                    if not didInfo:
+                        self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                        didInfo = True
                     # VLAN_UNAVAILABLE
                     self.logger.warn("FIXME: Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
                     # FIXME FIXME FIXME
@@ -1213,6 +1219,9 @@ class Aggregate(object):
                         pass
 
                     if isVlanAvailableIssue:
+                        if not didInfo:
+                            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                            didInfo = True
                         self.handleVlanUnavailable(opName, ae)
                     else:
                         if isFatal and self.userRequested:
