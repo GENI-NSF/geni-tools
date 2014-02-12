@@ -149,6 +149,8 @@ Note that stitcher will not delete reservations at other aggregates
 not involved in stitching. To partially delete your reservation or
 delete at these other aggregates, supply the necessary `-a` options.
 
+Be sure to see the Known Issues section below.
+
 === Options ===
 stitcher is a simple extension of Omni. As such, it uses all the same
 options as Omni. `stitcher` however adds several options:
@@ -212,7 +214,7 @@ Other options you should not need to use:
  added regularly. Contact help@geni.net for a current list.
  - Use "src/stitcher.py" instead of "src/omni.py"
  - This script can take a while - it must make reservations at all the
- aggregates, and keep retrying at aggregates that can't provide
+ aggregates, and keeps retrying at aggregates that can't provide
  matching VLAN tags. Be patient.
  - When the script completes, you will have reservations at each of the
  aggregates involved in stitched links in your request RSpec, plus any intermediate
@@ -253,6 +255,7 @@ cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
 python src/omnilib/stich/scs.py --listaggregates
 }}}
+ - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
 
@@ -312,6 +315,8 @@ Some sample error messages and their meaning:
     tried all available VLAN tags for one of your aggregates, and got
     a stitching failure on each - probably because that tag was not available.
 
+See the list of Known Issues below.
+
 == Known Issues and Limitations ==
  - Aggregate support is limited. See http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
  - Links are point to point only - each link connects an interface on
@@ -319,6 +324,29 @@ Some sample error messages and their meaning:
  - Links between aggregates use VLANs. QinQ is not supported at any
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
+ - If your circuit goes across ProtoGENI Utah (nickname `pg-utah`) to
+ `ig-utah` or `utah-ddc`, then you will need to explicitly set the
+ MTU on your link in order to exchange TCP traffic. Otherwise, while
+ `ping` will work, most other traffic will not pass. 
+  - Workaround: After reserving your circuit, log in to each of your nodes and
+  change the MTU to 1496 on your data plane interface.
+   - For example, `sudo /sbin/ifconfig eth1 mtu 1496`
+  - This is a known issue: http://groups.geni.net/geni/ticket/1086
+ - Stitching to ExoGENI is limited:
+  - Stitching within ExoGENI, by submitting a request to the ExoSM
+  with only ExoGENI resources, works fine.
+  - Stitching between ExoGENI and non ExoGENI resources only works at
+  a very few ExoGENI sites currently.
+  - You can have only 1 stitched link per ExoGENI node (though you can
+  have multiple nodes).
+   - See http://groups.geni.net/exogeni/ticket/193
+  - You cannot stitch to ExoGENI 'bare metal' nodes; stitching only
+  works at ExoGENI VMs.
+   - See http://groups.geni.net/exogeni/ticket/195
+  - Due to limitations in the `stitcher` tool, you cannot reserve some
+  ExoGENI resources from the ExoSM, and some from an individual
+  ExoGENI rack. You must either use all ExoSM resources, or all
+  resources at an individual rack. See options `--useExoSM` and `--noExoSM`
  - AM API v3 is not supported - VLAN tag selection is not optimal
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to

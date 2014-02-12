@@ -94,6 +94,7 @@ gcf 2.5:
     aggregates known to the SCS. (#501)
   - Treat another PG error message as meaning the VLAN is unavailable.
   - `CreateSliver: Existing record` is fatal at DCN aggregates (#438)
+  - Note known issues in README-stitching (#469)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
