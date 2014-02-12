@@ -180,15 +180,15 @@ class StitchingHandler(object):
         # Compare the list of AMs in the request with AMs known
         # to the SCS. Any that the SCS does not know means the request
         # cannot succeed if those are AMs in a stitched link
-        scsAggs {}
+        scsAggs = {}
         try:
-            scsAggs = scs.ListAggregates(False)
+            scsAggs = self.scsService.ListAggregates(False)
         except Exception, e:
             self.logger.debug("SCS ListAggregates failed: %s", e)
         if scsAggs and isinstance(scsAggs, dict) and len(scsAggs.keys()) > 0:
             if scsAggs.has_key('value') and scsAggs['value'].has_key('geni_aggregate_list'):
                 scsAggs = scsAggs['value']['geni_aggregate_list']
-                
+#                self.logger.debug("Got geni_agg_list from scs: %s", scsAggs)
                 # Now sanity check AMs requested
                 # Note that this includes AMs that the user does not
                 # want to stitch - so we cannot error out early
@@ -196,12 +196,12 @@ class StitchingHandler(object):
                 for reqAMURN in self.parsedUserRequest.amURNs:
                     found = False
                     for sa in scsAggs.keys():
-                        if sa['urn'] == reqAMURN:
-                            self.logger.debug("Requested AM URN is listed by SCS with URL %s", sa['url'])
+                        if scsAggs[sa]['urn'] == reqAMURN:
+                            self.logger.debug("Requested AM URN %s is listed by SCS with URL %s", reqAMURN, scsAggs[sa]['url'])
                             found = True
                             break
                     if not found:
-                        self.logger.warn("Your request RSpec specifies aggregate (component manger) '%s'. No stitching paths are configured for that aggregate. Allocation can continue but no stitched circuits can be allocated.", reqAMURN)
+                        self.logger.warn("Your request RSpec specifies the aggregate (component manager) '%s' for which there are no stitching paths configured. If you requested a stitched link to this aggregate, it will fail.", reqAMURN)
 
         # Call SCS and then do reservations at AMs, deleting or retrying SCS as needed
         lvl = None
