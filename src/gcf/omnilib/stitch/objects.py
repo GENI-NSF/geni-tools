@@ -1087,9 +1087,12 @@ class Aggregate(object):
                 raise StitchingError(msg)
 
         except AMAPIError, ae:
-            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+            didInfo = False
+#            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
 
             if self.isEG:
+                didInfo = True
+                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                 # deleteReservation
                 opName = 'deletesliver'
                 if self.api_version > 2:
@@ -1116,6 +1119,9 @@ class Aggregate(object):
                     pass
 
                 if ae.returnstruct["code"]["geni_code"] == 24:
+                    if not didInfo:
+                        self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                        didInfo = True
                     # VLAN_UNAVAILABLE
                     self.logger.warn("FIXME: Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
                     # FIXME FIXME FIXME
@@ -1215,6 +1221,9 @@ class Aggregate(object):
                         pass
 
                     if isVlanAvailableIssue:
+                        if not didInfo:
+                            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                            didInfo = True
                         self.handleVlanUnavailable(opName, ae)
                     else:
                         if isFatal and self.userRequested:
@@ -1455,7 +1464,7 @@ class Aggregate(object):
                 status = statuses[entry]
                 if dcnerror and dcnerror.strip() != '':
                     if circuitid:
-                        self.logger.info("%s %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
+                        self.logger.info("%s: %s is (still) %s at %s. Had error message: %s", opName, circuitid, status, self, dcnerror)
                     else:
                         self.logger.info("%s is (still) %s at %s. Had error message: %s", opName, status, self, dcnerror)
         # End of while loop getting sliverstatus
@@ -1467,7 +1476,7 @@ class Aggregate(object):
                 status = statuses[entry]
                 if (status not in ('ready', 'geni_allocated', 'geni_provisioned', 'geni_ready') or dcnerror is not None):
                     if circuitid:
-                        self.logger.warn("%s %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
+                        self.logger.warn("%s: %s is (still) %s at %s. Delete and retry.", opName, circuitid, status, self)
                     else:
                         self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
                     if dcnerror and dcnerror.strip() != '':
@@ -1488,6 +1497,8 @@ class Aggregate(object):
             except Exception, e:
                 # Exit to user
                 raise StitchingError("Failed to delete reservation at DCN AM %s that was %s: %s" % (self, status, e))
+
+            # FIXME: Check the return from delete for errors. If there are errors, raise StitchingError? Really I want to treat this like we had a previous sliver here
 
             msg = None
             for entry in circuitIDs.keys():
@@ -2312,10 +2323,40 @@ class RSpec(GENIObject):
                 return link
         return None
 
+    # Get a DOM version of this RSpec that includes any edits to link -> property elements
+    def getLinkEditedDom(self):
+        # find all link nodes in dom
+        dom = self.dom.cloneNode(True)
+        rspecs = dom.getElementsByTagName(defs.RSPEC_TAG)
+        # Gather the link nodes
+        linkNodes = []
+        if not rspecs or len(rspecs) == 0:
+            return dom
+
+        for link in self._links:
+            domNode = link.findDomNode(rspecs[0])
+
+            # Make sure we have a component_manager element for all implicit AMs on the link
+            cms = []
+            for child in domNode.childNodes:
+                if child.localName == Link.COMPONENT_MANAGER_TAG:
+                    cms.append(child.getAttribute(Link.NAME_TAG))
+            for agg in link.aggregates:
+                if agg.urn not in cms:
+                    cme = domNode.ownerDocument.createElement(Link.COMPONENT_MANAGER_TAG)
+                    cme.setAttribute(Link.NAME_TAG, agg.urn)
+                    domNode.appendChild(cme)
+
+            # Make sure we have the 2 property elements
+#            print "Outputting link %s with %d props" % (link.id, len(link.properties))
+            for prop in link.properties:
+                prop.addOrEditIntoLinkDom(domNode)
+        return dom
 
 class Node(GENIObject):
     CLIENT_ID_TAG = 'client_id'
     COMPONENT_MANAGER_ID_TAG = 'component_manager_id'
+    INTERFACE_TAG = "interface"
 
     @classmethod
     def fromDOM(cls, element):
@@ -2323,12 +2364,75 @@ class Node(GENIObject):
         # FIXME: getAttributeNS?
         client_id = element.getAttribute(cls.CLIENT_ID_TAG)
         amID = element.getAttribute(cls.COMPONENT_MANAGER_ID_TAG)
-        return Node(client_id, amID)
+        # Get the interfaces. Need those to get the client_id so from the link I can find the AM
+        ifcs = []
+        for child in element.childNodes:
+            if child.localName == cls.INTERFACE_TAG:
+                if child.hasAttribute(cls.CLIENT_ID_TAG):
+                    ifcs.append(child.getAttribute(cls.CLIENT_ID_TAG))
+        return Node(client_id, amID, ifcs)
 
-    def __init__(self, client_id, amID):
+    def __init__(self, client_id, amID, ifc_ids = []):
         super(Node, self).__init__()
         self.id = client_id
         self.amURN = amID
+        self.interface_ids = ifc_ids
+
+class LinkProperty(GENIObject):
+    # A property element inside a main body link
+    CAPACITY_TAG = "capacity"
+    DEST_TAG = "dest_id" # node interface or 1 of the interface_ref elements
+    LATENCY_TAG = "latency" # 0
+    PACKETLOSS_TAG = "packet_loss" # 0
+    SOURCE_TAG = "source_id"
+
+    def __init__(self, s_id, d_id, lat=None, pl=None, cap=None):
+        self.source_id = s_id
+        self.dest_id = d_id
+        self.latency = lat
+        self.packet_loss = pl
+        self.capacity = cap
+        self.link = None
+
+    def addOrEditIntoLinkDom(self, linkNode):
+        if not linkNode:
+            return
+        found = False
+        for child in linkNode.childNodes:
+            if child.localName == Link.PROPERTY_TAG:
+                d_id = child.getAttribute(LinkProperty.DEST_TAG)
+                s_id = child.getAttribute(LinkProperty.SOURCE_TAG)
+                if d_id == self.dest_id and s_id == self.source_id:
+                    self.editChangesIntoDom(child)
+                    found = True
+                    break
+        if not found:
+            self.addDomNode(linkNode)
+
+    def addDomNode(self, linkNode):
+        selfNode = linkNode.ownerDocument.createElement(Link.PROPERTY_TAG)
+        selfNode.setAttribute(self.SOURCE_TAG, self.source_id)
+        selfNode.setAttribute(self.DEST_TAG, self.dest_id)
+        self.editChangesIntoDom(selfNode)
+        linkNode.appendChild(selfNode)
+
+    def editChangesIntoDom(self, propertyDomNode):
+        if propertyDomNode.hasAttribute(self.SOURCE_TAG):
+            s_id = propertyDomNode.getAttribute(self.SOURCE_TAG)
+            if s_id != self.source_id:
+                raise StitchingError("LinkProperty got wrong dom node. DOM source %s != My %s" % (s_id, self.source_id))
+        if propertyDomNode.hasAttribute(self.DEST_TAG):
+            d_id = propertyDomNode.getAttribute(self.DEST_TAG)
+            if d_id != self.dest_id:
+                raise StitchingError("LinkProperty got wrong dom node. DOM dest %s != My %s" % (d_id, self.dest_id))
+
+        # Now set or add attributes for each of lat, cap, pl if they are not None
+        if self.latency is not None:
+            propertyDomNode.setAttribute(self.LATENCY_TAG, str(self.latency))
+        if self.packet_loss is not None:
+            propertyDomNode.setAttribute(self.PACKETLOSS_TAG, str(self.packet_loss))
+        if self.capacity is not None:
+            propertyDomNode.setAttribute(self.CAPACITY_TAG, str(self.capacity))
 
 class Link(GENIObject):
     # A link from the main body of the rspec
@@ -2345,6 +2449,7 @@ class Link(GENIObject):
     SHARED_VLAN_TAG = 'link_shared_vlan'
     LINK_TYPE_TAG = 'link_type'
     VLAN_LINK_TYPE = 'vlan'
+    PROPERTY_TAG = 'property'
 
     @classmethod
     def fromDOM(cls, element):
@@ -2353,6 +2458,7 @@ class Link(GENIObject):
         client_id = element.getAttribute(cls.CLIENT_ID_TAG)
         refs = []
         aggs = []
+        props = []
         hasSharedVlan = False
         typeName = cls.VLAN_LINK_TYPE
         for child in element.childNodes:
@@ -2373,9 +2479,31 @@ class Link(GENIObject):
             elif child.localName == cls.LINK_TYPE_TAG:
                 name = child.getAttribute(cls.NAME_TAG)
                 typeName = str(name).strip().lower()
+            elif child.localName == cls.PROPERTY_TAG:
+                d_id = None
+                s_id = None
+                lat = None
+                pl = None
+                cap = None
+                if child.hasAttribute(LinkProperty.DEST_TAG):
+                    d_id = child.getAttribute(LinkProperty.DEST_TAG)
+                if child.hasAttribute(LinkProperty.SOURCE_TAG):
+                    s_id = child.getAttribute(LinkProperty.SOURCE_TAG)
+                if child.hasAttribute(LinkProperty.LATENCY_TAG):
+                    lat = child.getAttribute(LinkProperty.LATENCY_TAG)
+                if child.hasAttribute(LinkProperty.PACKETLOSS_TAG):
+                    pl = child.getAttribute(LinkProperty.PACKETLOSS_TAG)
+                if child.hasAttribute(LinkProperty.CAPACITY_TAG):
+                    cap = child.getAttribute(LinkProperty.CAPACITY_TAG)
+#                print "Link %s Parsed property s %s d %s cap %s" % (client_id, s_id, d_id, cap)
+                prop = LinkProperty(s_id, d_id, lat, pl, cap)
+                props.append(prop)
         link = Link(client_id)
         link.aggregates = aggs
         link.interfaces = refs
+        for prop in props:
+            prop.link = link
+        link.properties = props
         link.hasSharedVlan = hasSharedVlan
         link.typeName = typeName
         return link
@@ -2385,6 +2513,7 @@ class Link(GENIObject):
         self.id = client_id
         self._aggregates = []
         self._interfaces = []
+        self._props = []
         self.hasSharedVlan = False
         self.typeName = self.VLAN_LINK_TYPE
 
@@ -2403,6 +2532,24 @@ class Link(GENIObject):
     @aggregates.setter
     def aggregates(self, aggregateList):
         self._setListProp('aggregates', aggregateList, Aggregate)
+
+    @property
+    def properties(self):
+        return self._props
+
+    @properties.setter
+    def properties(self, propertyList):
+        self._setListProp('props', propertyList, LinkProperty)
+
+    def findDomNode(self, parentNode):
+        if parentNode is None:
+            return None
+        for child in parentNode.childNodes:
+            if child.localName == defs.LINK_TAG:
+                client_id = child.getAttribute(Link.CLIENT_ID_TAG)
+                if client_id == self.id:
+                    return child
+        return None
 
 
 class InterfaceRef(object):

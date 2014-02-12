@@ -76,6 +76,8 @@ import gcf.omnilib.stitch.objects
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
 
+DEFAULT_CAPACITY = 20000 # in Kbps
+
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
 # and then dispatches to the stitch handler
@@ -124,6 +126,8 @@ def call(argv, options=None):
                       help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")
     parser.add_option("--useExoSM", default=False, action="store_true",
                       help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default False)")
+    parser.add_option("--defaultCapacity", default=DEFAULT_CAPACITY,
+                      type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -158,6 +162,9 @@ def call(argv, options=None):
     if options.debug:
         logger.info(omni.getSystemInfo())
 
+    if options.defaultCapacity < 1:
+        logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)
+    # FIXME: Warn about really big capacities too?
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

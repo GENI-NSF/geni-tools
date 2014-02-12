@@ -115,7 +115,8 @@ Details:
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
- - Speaks for option has been renamed `geni_speaking_for` (#466)
+ - Speaks for option that Omni passes to aggregates has been renamed
+   `geni_speaking_for` (#466)
  - Refactored the source code to make it easier to import Omni in
    other tools. Look in `src/gcf` for directories that were
    previously directly under `src`. (#388)

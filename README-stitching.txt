@@ -170,6 +170,8 @@ paths used for your circuits, without requiring that you construct the
 full RSpec stitching extension yourself.
 
 Additionally, these options are used for some topologies:
+ - `--defaultCapacity`: If not specified, set all stitched links to
+ request the specified capacity (in Kbps). Default is '20000' meaning ~20Mbps.
  - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
  not at a node, but at a switch (E.G. because you have a static VLAN to a
  fixed non-AM controlled host from there.). This option adds a fake
@@ -245,11 +247,12 @@ Other options you should not need to use:
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
  all the right aggregates.
- - If you want to check what aggregates are stitchable, you can view
- the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online], or programmatically.
+ - If you want to check what aggregates are stitchable, you should view
+ the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online].
  You should only try to stitch among aggregates listed here - all
  other requests will fail.
- To check programmatically:
+ To check programmatically for a list of sites, including those still
+ in testing:
 {{{
 cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
@@ -283,6 +286,14 @@ Many connections will cross Internet2's ION network. To support this,
 Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
+
+This aggregate has no compute resources - it exists only to provision
+circuits between other aggregates. When you request a stitched link
+between 2 aggregates, often stitcher and the SCS will automatically
+add ION to your request to provide connectivity.
+
+This same software runs other aggregates for OSCARS networks,
+specifically the MAX aggregate.
 
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
@@ -347,6 +358,11 @@ See the list of Known Issues below.
   ExoGENI resources from the ExoSM, and some from an individual
   ExoGENI rack. You must either use all ExoSM resources, or all
   resources at an individual rack. See options `--useExoSM` and `--noExoSM`
+ - Some aggregates require an explicit capacity to be requested on links. 
+   For this reason, stitcher ensures that all requests for stitched links include 
+   an explicit capacity (whose value defaults to the `--defaultCapacity` option).
+  - Works around issues http://groups.geni.net/geni/ticket/1039 and 
+    http://groups.geni.net/geni/ticket/1101
  - AM API v3 is not supported - VLAN tag selection is not optimal
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to

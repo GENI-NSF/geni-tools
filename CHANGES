@@ -14,6 +14,8 @@ gcf 2.5:
  * Stitcher saves the manifest RSpec to a file by default.
  * Stitcher adds the ability to query the Stitching Service for a list of
    stitchable aggregates.
+ * Stitcher fills in capacity on your links where it is missing
+   (amount is configurable)
 
  * omni
   - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
@@ -120,6 +122,13 @@ gcf 2.5:
   - Treat another PG error message as meaning the VLAN is unavailable.
   - `CreateSliver: Existing record` is fatal at DCN aggregates (#438)
   - Note known issues in README-stitching (#469)
+  - Added option `--defaultCapacity` to specify the default capacity
+    to fill in on stitchable links that do not specify a capacity.
+    At some aggregates, you must explicitly specify a capacity for
+    stitching to work. Stitcher now ensures that all your stitchable
+    links have an explicit capacity. (#464)
+   - Works around issues http://groups.geni.net/geni/ticket/1039 and 
+     http://groups.geni.net/geni/ticket/1101
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
