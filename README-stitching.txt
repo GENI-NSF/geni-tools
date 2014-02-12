@@ -245,11 +245,12 @@ Other options you should not need to use:
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
  all the right aggregates.
- - If you want to check what aggregates are stitchable, you can view
- the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online], or programmatically.
+ - If you want to check what aggregates are stitchable, you should view
+ the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online].
  You should only try to stitch among aggregates listed here - all
  other requests will fail.
- To check programmatically:
+ To check programmatically for a list of sites, including those still
+ in testing:
 {{{
 cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
@@ -283,6 +284,11 @@ Many connections will cross Internet2's ION network. To support this,
 Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
+
+This aggregate has no compute resources - it exists only to provision
+circuits between other aggregates. When you request a stitched link
+between 2 aggregates, often stitcher and the SCS will automatically
+add ION to your request to provide connectivity.
 
 This same software runs other aggregates for OSCARS networks,
 specifically the MAX aggregate.
