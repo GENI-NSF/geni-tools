@@ -1738,7 +1738,7 @@ class Aggregate(object):
 
                 # FIXME Put in things for EG VLAN Unavail errors
 
-                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reservig vlan tag for link" in msg) and \
+                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for link" in msg) and \
                                       code==2 and amcode==2 and amtype=="protogeni") or \
                                       ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
