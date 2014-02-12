@@ -42,11 +42,11 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.5:
- - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+ - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
    allows changing this. (#407)
- - Create any directories need in the path to the agg_nick_cache (#383)
+ - Create any directories needed in the path to the agg_nick_cache (#383)
  - If using `--AggNickCacheName` and can't read/write to the specified
    file, omni should fall back to reading `agg_nick_cach.base` (#384)
  - Look up AM URN by URL in the defined aggregate nicknames (#404)
@@ -71,14 +71,14 @@ New in v2.5:
  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
  - Return error on SA error in `listslices` (#456)
  - Allow `PerformOperationalAction` on v2 AMs (#412)
- - Omni cred_util uses an omni logger (#460)
+ - Omni `cred_util.py` uses an omni logger (#460)
  - Support querying for other users' SSH keys where the CH supports it (#472)
  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
  - Speed up listaggregates in `pgch` framework (don't test AM API
    compliance) (#482)
  - URN testing requires 4 `+` separated pieces (#483)
  - Log at debug when downloading the aggregate nickname cache fails (#485)
- - Add a new framework type `chapi` for talking the uniform federation API 
+ - Add a new framework type `chapi` for talking the Uniform Federation API
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
   - See `omni_config.sample` for config options required
@@ -102,7 +102,8 @@ New in v2.5:
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
- - Speaks for option has been renamed `geni_speaking_for` (#466)
+ - Speaks for option that Omni passes to aggregates has been renamed
+   `geni_speaking_for` (#466)
  - Show the AM nickname in addition to URL in output (#424)
 
 

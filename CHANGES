@@ -1,12 +1,25 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.5:
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API using framework type `chapi`
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (configurable)
+ * Stitcher adds an option to force use of the ExoSM for EG resources.
+ * Stitcher saves the manifest RSpec to a file by default.
+ * Stitcher adds the ability to query the Stitching Service for a list of
+   stitchable aggregates.
+ * Stitcher fills in capacity on your links where it is missing
+   (amount is configurable)
+
  * omni
-  - Avoid sending options to getversion if there are none, to support querying v1 AMs (#375)
+  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
   - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
   - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
     allows changing this. (#407)
-  - Create any directories need in the path to the `agg_nick_cache` (#383)
+  - Create any directories needed in the path to the `agg_nick_cache` (#383)
   - If using `--AggNickCacheName` and can't read/write to the specified
     file, omni should fall back to reading `agg_nick_cach.base` (#384)
   - Look up AM URN by URL in the defined aggregate nicknames (#404)
@@ -32,14 +45,14 @@ gcf 2.5:
   - Handle `~` in `usercredfile` and `slicecredfile` (#455)
   - Return error on SA error in `listslices` (#456)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
-  - Omni cred_util uses an omni logger (#460)
+  - Omni `cred_util.py` uses an omni logger (#460)
   - Support querying for other users' SSH keys where the CH supports it (#472)
   - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
   - Speed up listaggregates in `pgch` framework (don't test AM API
     compliance) (#482)
   - URN testing requires 4 `+` separated pieces (#483)
   - Log at debug when downloading the aggregate nickname cache fails (#485)
-  - Add a new framework type `chapi` for talking the uniform federation API 
+  - Add a new framework type `chapi` for talking the Uniform Federation API
     (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
     to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
    - See `omni_config.sample` for config options required
@@ -63,7 +76,8 @@ gcf 2.5:
   - `chapi` framework looks up the MA and SA at the clearinghouse,
     though you can configure where they run. (#490)
   - Warn when acting at all AMs in the clearinghouse - slow (#461)
-  - Speaks for option has been renamed `geni_speaking_for` (#466)
+  - Speaks for option has that Omni passes to aggregates has been
+    renamed `geni_speaking_for` (#466)
   - Show the AM nickname in addition to URL in output (#424)
 
  * stitcher
@@ -76,7 +90,7 @@ gcf 2.5:
   - Handle empty range of VLANs in VLANRange (#471)
   - Report per sliver errors at DCN AMs (#481)
   - Fix circular imports in `RSpecParser` and `objects` (#459)
-  - Add option `useExoSM` to force use of the ExoSM for EG racks,
+  - Add option `--useExoSM` to force use of the ExoSM for EG racks,
     where possible. Use this if you are reserving bare metal nodes. (#496)
   - Change filenames to not use bad characters to support Windows (#497)
   - `Could not verify topo` is fatal at PG AMs (#470)
@@ -95,6 +109,13 @@ gcf 2.5:
   - Treat another PG error message as meaning the VLAN is unavailable.
   - `CreateSliver: Existing record` is fatal at DCN aggregates (#438)
   - Note known issues in README-stitching (#469)
+  - Added option `--defaultCapacity` to specify the default capacity
+    to fill in on stitchable links that do not specify a capacity.
+    At some aggregates, you must explicitly specify a capacity for
+    stitching to work. Stitcher now ensures that all your stitchable
+    links have an explicit capacity. (#464)
+   - Works around issues http://groups.geni.net/geni/ticket/1039 and 
+     http://groups.geni.net/geni/ticket/1101
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
@@ -104,7 +125,7 @@ gcf 2.5:
     `component_manager_id`, and `sliver_id`. Also ensure that the sliver
     IDs are consistent with `sliverstatus` and between calls. Also clean
     up manifest formatting. (#484)
-  - AM API v3 GCF AM must respect the gcf_config name of the AM authority (#487)
+  - AM API v3 GCF AM must respect the `gcf_config` name of the AM authority (#487)
   - Add support for ABAC speaks for credentials to libraries,
     aggregates (#413)
 
