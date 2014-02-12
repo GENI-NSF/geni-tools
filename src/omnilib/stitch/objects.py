@@ -1150,7 +1150,8 @@ class Aggregate(object):
                         # FIXME: Add support for EG specific vlan unavail errors
                         # FIXME: Add support for EG specific fatal errors
 
-                        if ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
+                        if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for link" in msg) and \
+                                code==2 and amcode==2 and amtype=="protogeni") or \
                                 ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
                             isVlanAvailableIssue = True
@@ -1202,6 +1203,10 @@ class Aggregate(object):
                                 # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
                                 self.inProcess = False
                                 raise StitchingRetryAggregateNewVlanError("SFA based %s had not seen your project before. Try again. (Error was %s)" % (self, msg))
+                            elif code == 7 and amcode == 7 and "CreateSliver: Existing record" in msg:
+                                self.logger.debug("Fatal error from DCN AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
 
                     except:
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
@@ -1733,8 +1738,9 @@ class Aggregate(object):
 
                 # FIXME Put in things for EG VLAN Unavail errors
 
-                if code == 24 or ("Could not reserve vlan tags" in msg and code==2 and amcode==2 and amtype=="protogeni") or \
-                        ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
+                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reservig vlan tag for link" in msg) and \
+                                      code==2 and amcode==2 and amtype=="protogeni") or \
+                                      ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 else:
