@@ -208,6 +208,8 @@ Other options you should not need to use:
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
  is 30 (seconds).
+ - `--noReservation`: Do not try to reservate at aggregates; intead,
+   just save the expanded request RSpec.
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked

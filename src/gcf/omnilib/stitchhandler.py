@@ -429,6 +429,24 @@ class StitchingHandler(object):
         if self.opts.fixedEndpoint:
             self.addFakeNode()
 
+        if self.opts.noReservation:
+            self.logger.info("Not reserving resources")
+            # Write the request rspec to a string that we save to a file
+            requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
+            header = "<!-- Expanded Resource request for stitching for:\n\tSlice: %s -->" % (self.slicename)
+            content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
+            rspecfileName = "%s-expanded-request.xml" % self.slicename
+
+            # Set -o to ensure this request RSpec goes to a file, not logger or stdout
+            opts_copy = copy.deepcopy(self.opts)
+            opts_copy.output = True
+            lvl = self.logger.getEffectiveLevel()
+            self.logger.setLevel(logging.WARN)
+            handler_utils._printResults(opts_copy, self.logger, header, content, rspecfileName)
+            self.logger.setLevel(lvl)
+            self.logger.info("Saved expanded request RSpec to file %s", rspecfileName)
+            raise StitchingError("Requested no reservation")
+
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
         try:
@@ -603,7 +621,7 @@ class StitchingHandler(object):
 
         # If there are no property elements
         if len(link.properties) == 0:
-            self.logger.debug("Had no properties - must add them")
+            self.logger.debug("Link %s had no properties - must add them", link.id)
             # Then add them
             s_id = node1ID
             d_id = node2ID

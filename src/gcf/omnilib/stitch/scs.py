@@ -31,8 +31,8 @@ import sys
 import xmlrpclib
 
 from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
+from gcf.omnilib.xmlrpc.client import make_client
 
-from omnilib.xmlrpc.client import make_client
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
 HOP_INCLUSION_TAG = 'hop_inclusion_list'
