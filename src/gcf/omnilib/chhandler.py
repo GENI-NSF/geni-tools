@@ -38,6 +38,7 @@ import os
 import pprint
 import re
 
+from ..geni.util.tz_util import tzd
 from ..geni.util.urn_util import nameFromURN, is_valid_urn_bytype
 from ..sfa.util.xrn import get_leaf
 from .util import OmniError
@@ -209,7 +210,7 @@ class CHCallHandler(object):
         Return summary string, new slice expiration (string)
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewslice missing args: Supply <slice name> <expiration date>')
+            self._raise_omni_error('renewslice missing or too many args: Supply <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
 
@@ -220,7 +221,8 @@ class CHCallHandler(object):
         # convert the desired expiration to a python datetime
         # FIXME: See amhandler._datetimeFromString: converts to naive UTC, adds UTC TZ
         try:
-            in_expiration = dateutil.parser.parse(expire_str)
+            in_expiration = dateutil.parser.parse(expire_str, tzinfos=tzd)
+            self.logger.debug("From '%s' parsed requested new expiration %s", expire_str, in_expiration)
         except:
             msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
             msg = msg % (expire_str)
@@ -235,16 +237,15 @@ class CHCallHandler(object):
             retVal = prtStr+"\n"
             retTime = out_expiration
             if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile):
-                (dirname, fname) = os.path.split(self.opts.slicecredfile)
-                newslicecredfile = "renewed-%s-%s" % (out_expiration, fname)
-                newslicecredfile = os.path.join(dirname, newslicecredfile)
-                scwarn = "Saved slice credential %s is now wrong; new slice credential will be saved in %s. " % (self.opts.slicecredfile, newslicecredfile)
+                scwarn = "Saved slice credential %s is now wrong; will replace with new slice credential. " % (self.opts.slicecredfile)
                 self.logger.info(scwarn)
                 retVal += scwarn +"\n"
+                sf = self.opts.slicecredfile
                 self.opts.slicecredfile = None
                 (cred, _) = _get_slice_cred(self, urn)
+                self.opts.slicecredfile = sf
                 if cred:
-                    self.opts.slicecredfile = _save_cred(self, newslicecredfile, cred)
+                    self.opts.slicecredfile = _save_cred(self, self.opts.slicecredfile, cred)
         else:
             prtStr = "Failed to renew slice %s" % (name)
             if message != "":

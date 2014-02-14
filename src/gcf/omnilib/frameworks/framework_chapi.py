@@ -34,6 +34,7 @@ from ..util import credparsing as credutils
 #from ..util.handler_utils import _lookupAggURNFromURLInNicknames
 from ..util.handler_utils import _load_cred
 
+from ...geni.util.tz_util import tzd
 from ...geni.util.urn_util import is_valid_urn, URN, string_to_urn_format,\
     nameFromURN, is_valid_urn_bytype, string_to_urn_format
 from ...geni.util.speaksfor_util import determine_speaks_for
@@ -649,7 +650,7 @@ class Framework(Framework_Base):
                     if d.has_key(slice_urn) and \
                                      d[slice_urn].has_key('SLICE_EXPIRATION'):
                         slice_expiration = d[slice_urn]['SLICE_EXPIRATION']
-                        exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                        exp = naiveUTC(dateutil.parser.parse(slice_expiration, tzinfos=tzd))
                         if exp < naiveUTC(datetime.datetime.utcnow()):
                             self.logger.warn("Got expired slice %s at %s?", slice_urn, slice_expiration)
                     else:
@@ -890,7 +891,7 @@ class Framework(Framework_Base):
                             expired = d[urn]['SLICE_EXPIRED']
                         if d[urn].has_key('SLICE_EXPIRATION'):
                             slice_expiration = d[urn]['SLICE_EXPIRATION']
-                            exp = naiveUTC(dateutil.parser.parse(slice_expiration))
+                            exp = naiveUTC(dateutil.parser.parse(slice_expiration, tzinfos=tzd))
                             if exp < naiveUTC(datetime.datetime.utcnow()):
 #                                if not expired:
 #                                    self.logger.debug('CH says it is not expired, but expiration is in past?')

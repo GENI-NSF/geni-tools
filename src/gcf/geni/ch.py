@@ -40,6 +40,7 @@ from .SecureXMLRPCServer import SecureXMLRPCServer
 from .SecureThreadedXMLRPCServer import SecureThreadedXMLRPCServer, SecureThreadedXMLRPCRequestHandler
 from .util import cred_util
 from .util import cert_util
+from .util.tz_util import tzd
 from .util import urn_util
 from ..sfa.trust import gid
 
@@ -342,7 +343,7 @@ class Clearinghouse(object):
             self.logger.warning('Slice %s was not found', slice_urn)
             return False
         try:
-            in_expiration = dateutil.parser.parse(expire_str)
+            in_expiration = dateutil.parser.parse(expire_str, tzinfos=tzd)
             in_expiration = cred_util.naiveUTC(in_expiration)
         except:
             self.logger.warning('Unable to parse date "%s"', expire_str)

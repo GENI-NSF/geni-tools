@@ -32,6 +32,7 @@ import sys
 
 from .framework_base import Framework_Base
 from ..util.dossl import _do_ssl
+from ...geni.util.tz_util import tzd
 from ...geni.util.urn_util import is_valid_urn, URN, string_to_urn_format
 from ...sfa.trust.credential import Credential
 
@@ -430,7 +431,7 @@ class Framework(Framework_Base):
 
             out_expiration = slice_record['expires']
             try:
-                out_expiration = dateutil.parser.parse(out_expiration)
+                out_expiration = dateutil.parser.parse(out_expiration, tzinfos=tzd)
                 # If request is diff from sliceexp then log a warning
                 # Make requested_expiration have the UTC TZ
                 req_exp_tz = requested_expiration.replace(tzinfo=dateutil.tz.tzutc())

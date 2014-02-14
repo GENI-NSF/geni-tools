@@ -66,6 +66,7 @@ from gcf.sfa.trust.gid import GID
 from gcf.sfa.trust.certificate import Keypair, Certificate
 import gcf.omnilib.util.credparsing as credutils
 import gcf.omnilib.util.json_encoding as json_encoding
+from gcf.geni.util.tz_util import tzd
 
 def configure_logging(opts):
     """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
@@ -211,7 +212,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     newExpiration = None
     if opts.newExpiration:
         try:
-            newExpiration = naiveUTC(dateutil.parser.parse(opts.newExpiration))
+            newExpiration = naiveUTC(dateutil.parser.parse(opts.newExpiration, tzinfos=tzd))
         except Exception, exc:
             sys.exit("Failed to parse desired new expiration %s: %s" % (opts.newExpiration, exc))
 

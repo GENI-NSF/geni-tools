@@ -37,6 +37,7 @@ import xml.dom.minidom as md
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential
 from ...sfa.trust.credential_factory import CredentialFactory
+from ...geni.util.tz_util import tzd
 
 # FIXME: Doesn't distinguish v2 vs v3 yet
 def is_valid_v3(logger, credString):
@@ -279,7 +280,7 @@ def get_cred_exp(logger, cred):
             cred = doc.getElementsByTagName("credential")[0]
         expirnode = cred.getElementsByTagName("expires")[0]
         if len(expirnode.childNodes) > 0:
-            credexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue)
+            credexp = dateutil.parser.parse(expirnode.childNodes[0].nodeValue, tzinfos=tzd)
     except Exception, exc:
         if logger is None:
             level = logging.INFO

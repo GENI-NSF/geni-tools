@@ -54,6 +54,7 @@ from .xmlrpc import client as xmlrpcclient
 from .util.files import *
 from .util.credparsing import *
 
+from ..geni.util.tz_util import tzd
 from ..geni.util import rspec_util, urn_util
 
 
@@ -2602,7 +2603,7 @@ class AMCallHandler(object):
                 gotALAP = False
                 if self.opts.alap and outputstr:
                     try:
-                        newExpO = dateutil.parser.parse(str(outputstr))
+                        newExpO = dateutil.parser.parse(str(outputstr), tzinfos=tzd)
                         newExpO = naiveUTC(newExpO)
                         newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
                         newExp = newExpO_tz.isoformat()
@@ -2610,7 +2611,7 @@ class AMCallHandler(object):
                             gotALAP = True
                             #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
                     except:
-                        self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: %s", outputstr)
+                        self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: '%s'", outputstr)
                 prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.str, newExp)
                 if gotALAP:
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
@@ -4908,9 +4909,9 @@ class AMCallHandler(object):
         time = datetime.datetime.max
         try:
             if dateString is not None or self.opts.devmode:
-                time = dateutil.parser.parse(dateString)
+                time = dateutil.parser.parse(dateString, tzinfos=tzd)
         except Exception, exc:
-            msg = "Couldn't parse time from %s: %s" % (dateString, exc)
+            msg = "Couldn't parse time from '%s': %s" % (dateString, exc)
             if self.opts.devmode:
                 self.logger.warn(msg)
             else:
@@ -4923,7 +4924,7 @@ class AMCallHandler(object):
             if self.opts.devmode:
                 pass
             else:
-                self.logger.warn("Failed to convert %s to naive UTC: %r", dateString, exc)
+                self.logger.warn("Failed to convert '%s' to naive UTC: %r", dateString, exc)
                 raise
 
         if slice_exp:

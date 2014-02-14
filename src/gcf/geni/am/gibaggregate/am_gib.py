@@ -41,6 +41,7 @@ import zlib
 
 from . import gib_manager
 from .... import geni
+from ...util.tz_util import tzd
 from ...util.urn_util import publicid_to_urn
 from ...SecureXMLRPCServer import SecureXMLRPCServer
 from ..resource import Resource
@@ -469,7 +470,7 @@ class ReferenceAggregateManager(object):
                 self.logger.info("Sliver %s not renewed because it is shutdown",
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
-            requested = dateutil.parser.parse(str(expiration_time))
+            requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
             # Per the AM API, the input time should be TZ-aware
             # But since the slice cred may not (per ISO8601), convert
             # it to naiveUTC for comparison
