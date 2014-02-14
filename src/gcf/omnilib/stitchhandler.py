@@ -1347,6 +1347,8 @@ class StitchingHandler(object):
         fakeInterface.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
         fakeNode.setAttribute(Node.CLIENT_ID_TAG, "fake")
         fakeNode.setAttribute(Node.COMPONENT_MANAGER_ID_TAG, "urn:publicid:IDN+fake+authority+am")
+        fakeCM = self.parsedSCSRSpec.dom.createElement(Link.COMPONENT_MANAGER_TAG)
+        fakeCM.setAttribute(Link.NAME_TAG, "urn:publicid:IDN+fake+authority+am")
         fakeNode.appendChild(fakeInterface)
         fakeiRef = self.parsedSCSRSpec.dom.createElement(Link.INTERFACE_REF_TAG)
         fakeiRef.setAttribute(Node.CLIENT_ID_TAG, "fake:if0")
@@ -1361,8 +1363,35 @@ class StitchingHandler(object):
             # Also find all links and add an interface_ref
             for child in rspec.childNodes:
                 if child.localName == defs.LINK_TAG:
-                    # FIXME: If this link has > 1 interface_ref so far, then maybe it doesn't want this fake one? Ticket #392
-                    # add an interface_ref
-                    self.logger.info("Adding fake iref endpoint on link " + str(child))
-                    child.appendChild(fakeiRef)
+                    linkName = child.getAttribute(Node.CLIENT_ID_TAG)
+                    ifcCount = 0
+                    propCount = 0
+                    ifc1Name = None
+                    for c2 in child.childNodes:
+                        if c2.localName == Link.INTERFACE_REF_TAG:
+                            ifcCount += 1
+                            ifc1Name = c2.getAttribute(Node.CLIENT_ID_TAG)
+                        if c2.localName == Link.PROPERTY_TAG:
+                            propCount += 1
+                    if ifcCount == 1:
+                        self.logger.info("Adding fake interface_ref endpoint on link %s", linkName)
+                        child.appendChild(fakeiRef)
+                        child.appendChild(fakeCM)
+                        if propCount == 0:
+                            # Add the 2 property elements
+                            self.logger.debug("Adding property tags to link %s to fake node", linkName)
+                            sP = self.parsedSCSRSpec.dom.createElement(Link.PROPERTY_TAG)
+                            sP.setAttribute(LinkProperty.SOURCE_TAG, ifc1Name)
+                            sP.setAttribute(LinkProperty.DEST_TAG, "fake:if0")
+                            sP.setAttribute(LinkProperty.CAPACITY_TAG, str(self.opts.defaultCapacity))
+                            dP = self.parsedSCSRSpec.dom.createElement(Link.PROPERTY_TAG)
+                            dP.setAttribute(LinkProperty.DEST_TAG, ifc1Name)
+                            dP.setAttribute(LinkProperty.SOURCE_TAG, "fake:if0")
+                            dP.setAttribute(LinkProperty.CAPACITY_TAG, str(self.opts.defaultCapacity))
+                            child.appendChild(sP)
+                            child.appendChild(dP)
+                        else:
+                            self.logger.debug("Link %s had only 1 ifc, so added the fake interface - but it has %d properties already?", linkName, propCount)
+                    else:
+                        self.logger.debug("Not adding fake endpoint to link %s with %d interfaces", linkName, ifcCount)
 #        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())

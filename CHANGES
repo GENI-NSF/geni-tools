@@ -129,6 +129,8 @@ gcf 2.5:
     links have an explicit capacity. (#464)
    - Works around issues http://groups.geni.net/geni/ticket/1039 and 
      http://groups.geni.net/geni/ticket/1101
+  - Only add fake interface to a link for `--fixedEndpoint` option if
+    there is only 1 interface on the link. (#392)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
