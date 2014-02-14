@@ -177,7 +177,7 @@ class StitchingHandler(object):
         # Here is where we used to add the expires attribute. No
         # longer necessary (or a good idea).
 
-        self.scsService = scs.Service(self.opts.scsURL)
+        self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -276,7 +276,7 @@ class StitchingHandler(object):
         # FIXME: This takes time. If this can't block a more expensive later operation, why bother?
         scsAggs = {}
         try:
-            scsAggs = self.scsService.ListAggregates(False)
+            scsAggs = self.scsService.ListAggregates(False, self.opts.ssltimeout)
         except Exception, e:
             self.logger.debug("SCS ListAggregates failed: %s", e)
         if scsAggs and isinstance(scsAggs, dict) and len(scsAggs.keys()) > 0:
