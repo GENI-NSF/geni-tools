@@ -105,6 +105,8 @@ New in v2.5:
  - Speaks for option that Omni passes to aggregates has been renamed
    `geni_speaking_for` (#466)
  - Show the AM nickname in addition to URL in output (#424)
+ - `renewslice` when given a slice credential replaces the saved 
+   slice credential in place, rather than in a new filename. (#386)
 
 
 New in v2.4:

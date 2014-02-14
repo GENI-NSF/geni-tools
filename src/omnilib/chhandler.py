@@ -233,16 +233,15 @@ class CHCallHandler(object):
             retVal = prtStr+"\n"
             retTime = out_expiration
             if self.opts.slicecredfile and os.path.exists(self.opts.slicecredfile):
-                (dirname, fname) = os.path.split(self.opts.slicecredfile)
-                newslicecredfile = "renewed-%s-%s" % (out_expiration, fname)
-                newslicecredfile = os.path.join(dirname, newslicecredfile)
-                scwarn = "Saved slice credential %s is now wrong; new slice credential will be saved in %s. " % (self.opts.slicecredfile, newslicecredfile)
+                scwarn = "Saved slice credential %s is now wrong; will replace with new slice credential. " % (self.opts.slicecredfile)
                 self.logger.info(scwarn)
                 retVal += scwarn +"\n"
+                sf = self.opts.slicecredfile
                 self.opts.slicecredfile = None
                 (cred, _) = _get_slice_cred(self, urn)
+                self.opts.slicecredfile = sf
                 if cred:
-                    self.opts.slicecredfile = _save_cred(self, newslicecredfile, cred)
+                    self.opts.slicecredfile = _save_cred(self, self.opts.slicecredfile, cred)
         else:
             prtStr = "Failed to renew slice %s" % (name)
             if message != "":
