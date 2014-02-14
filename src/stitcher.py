@@ -128,6 +128,8 @@ def call(argv, options=None):
                       help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default False)")
     parser.add_option("--defaultCapacity", default=DEFAULT_CAPACITY,
                       type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
+    parser.add_option("--noReservation", default=False, action="store_true",
+                      help="Do no reservations: just generate the expanded request RSpec (default False)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)

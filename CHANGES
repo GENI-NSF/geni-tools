@@ -134,6 +134,9 @@ gcf 2.5:
      http://groups.geni.net/geni/ticket/1101
   - Only add fake interface to a link for `--fixedEndpoint` option if
     there is only 1 interface on the link. (#392)
+  - New option `--noReservation` to just get the expanded request
+    RSpec, and not actually talk to the aggregates. (#505)
+
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

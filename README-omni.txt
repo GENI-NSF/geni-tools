@@ -59,6 +59,9 @@ Details:
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
    allows changing this. (#407)
+  - If Omni hangs talking to a server you believe is up, try
+    specifying `--ssltimeout 0` to disable the timeout. Some servers
+    cannot handle the timeout request. (See ticket #506)
  - Create any directories needed in the path to the agg_nick_cache (#383)
  - If using `--AggNickCacheName` and can't read/write to the specified
    file, omni should fall back to reading `agg_nick_cach.base` (#384)
