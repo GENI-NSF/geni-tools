@@ -404,7 +404,10 @@ class AMCallHandler(object):
         prettyVersion = pp.pformat(thisVersion)
         if client.nick:
             header = "AM %s URN: %s (url: %s) has version:" % (client.nick, client.urn, client.url)
-            amstr = "%s (%s, %s)" % (client.nick, client.urn, client.url)
+            if self.opts.devmode:
+                amstr = "%s (%s, %s)" % (client.nick, client.urn, client.url)
+            else:
+                amstr = client.nick
         else:
             header = "AM URN: %s (url: %s) has version:" % (client.urn, client.url)
             amstr = "%s (%s)" % (client.urn, client.url)
@@ -2587,7 +2590,7 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if not res:
-                prStr = "Failed to renew sliver %s at %s (%s) (got result '%s')" % (urn, client.urn, client.str, res)
+                prStr = "Failed to renew sliver %s at %s (got result '%s')" % (urn, (client.str if client.nick else client.urn), res)
                 if message != "":
                     if not prStr.endswith('.'):
                         prStr += '.'
@@ -2612,7 +2615,7 @@ class AMCallHandler(object):
                             #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
                     except:
                         self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: '%s'", outputstr)
-                prStr = "Renewed sliver %s at %s (%s) until %s (UTC)" % (urn, client.urn, client.str, newExp)
+                prStr = "Renewed sliver %s at %s until %s (UTC)" % (urn, (client.str if client.nick else client.urn), newExp)
                 if gotALAP:
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
                 self.logger.info(prStr)
@@ -2818,7 +2821,7 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if res is None:
-                prStr = "Failed to renew %s at %s (%s)" % (descripMsg, client.urn, client.str)
+                prStr = "Failed to renew %s at %s" % (descripMsg, (client.str if client.nick else client.urn))
                 if message != "":
                     prStr += ": " + message
                 else:
@@ -2827,7 +2830,7 @@ class AMCallHandler(object):
                     retVal += prStr + "\n"
                 self.logger.warn(prStr)
             else:
-                prStr = "Renewed %s at %s (%s) until %s (UTC)" % (descripMsg, client.urn, client.str, time_with_tz.isoformat())
+                prStr = "Renewed %s at %s until %s (UTC)" % (descripMsg, (client.str if client.nick else client.urn), time_with_tz.isoformat())
                 self.logger.info(prStr)
 
                 # Look inside return. Did all slivers we asked about report results?
@@ -3373,9 +3376,8 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if res:
-                prStr = "Deleted sliver %s at %s (%s)" % (urn,
-                                                           client.urn,
-                                                           client.str)
+                prStr = "Deleted sliver %s at %s" % (urn,
+                                                     (client.str if client.nick else client.urn))
 
                 # delete sliver info from SA database
                 try:
@@ -3402,7 +3404,7 @@ class AMCallHandler(object):
                 successCnt += 1
                 successList.append( client.url )
             else:
-                prStr = "Failed to delete sliver %s at %s (%s) (got result '%s')" % (urn, client.urn, client.str, res)
+                prStr = "Failed to delete sliver %s at %s (got result '%s')" % (urn, (client.str if client.nick else client.urn), res)
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 if not prStr.endswith('.'):
@@ -3590,9 +3592,8 @@ class AMCallHandler(object):
                     self.logger.warn('Error noting sliver deleted in SA database')
                     self.logger.debug(e)
 
-                prStr = "Deleted %s at %s (%s)" % (descripMsg,
-                                                           client.urn,
-                                                           client.str)
+                prStr = "Deleted %s at %s" % (descripMsg,
+                                              (client.str if client.nick else client.urn))
                 if someSliversFailed:
                     prStr += " - but %d slivers are not fully de-allocated; check the return! " % len(badSlivers.keys())
                 if len(missingSlivers) > 0:
@@ -3630,7 +3631,7 @@ class AMCallHandler(object):
             else:
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
-                prStr = "Failed to delete %s at %s (%s): %s" % (descripMsg, client.urn, client.str, message)
+                prStr = "Failed to delete %s at %s: %s" % (descripMsg, (client.str if client.nick else client.urn), message)
                 self.logger.warn(prStr)
                 if numClients == 1:
                     retVal = prStr
@@ -3705,14 +3706,14 @@ class AMCallHandler(object):
             (res, message) = self._retrieve_value(res, message, self.framework)
 
             if res:
-                prStr = "Shutdown Sliver %s at AM %s (%s)" % (urn, client.urn, client.str)
+                prStr = "Shutdown Sliver %s at AM %s" % (urn, (client.str if client.nick else client.urn))
                 self.logger.info(prStr)
                 if numClients == 1:
                     retVal = prStr
                 successCnt+=1
                 successList.append( client.url )
             else:
-                prStr = "Failed to shutdown sliver %s at AM %s (%s)" % (urn, client.urn, client.str) 
+                prStr = "Failed to shutdown sliver %s at AM %s" % (urn, (client.str if client.nick else client.urn)) 
                 if message is None or message.strip() == "":
                     message = "(no reason given)"
                 if not prStr.endswith('.'):
@@ -4206,7 +4207,10 @@ class AMCallHandler(object):
                     newclient.urn = client.urn # Wrong urn?
                     newclient.nick = _lookupAggNick(self, newclient.url)
                     if newclient.nick:
-                        newclient.str = "%s (%s)" % (newclient.nick, newclient.url)
+                        if self.opts.devmode:
+                            newclient.str = "%s (%s)" % (newclient.nick, newclient.url)
+                        else:
+                            newclient.str = newclient.nick
                     else:
                         newclient.str = newclient.url
                     (ver, c, msg2) = self._checkValidClient(newclient)
@@ -4550,7 +4554,10 @@ class AMCallHandler(object):
             client.nick = _lookupAggNick(self, url)
             clstr = client.url
             if client.nick:
-                clstr = "%s (%s)" % (client.nick, client.url)
+                if self.opts.devmode:
+                    clstr = "%s (%s)" % (client.nick, client.url)
+                else:
+                    clstr = client.nick
             client.str = clstr
             self.clients.append(client)
         self.numOrigClients = len(self.clients)
