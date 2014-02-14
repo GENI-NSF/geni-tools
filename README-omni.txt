@@ -127,7 +127,7 @@ Details:
     `gcf/oscript.py`
   - To update your script that uses omni as a library:
    - Change `import omni` to `import gcf.oscript as omni`
- - Show the AM nickname in addition to URL in output (#424)
+ - Show the AM nickname instead of URL in output (#424, #504)
  - `renewslice` when given a slice credential replaces the saved 
    slice credential in place, rather than in a new filename. (#386)
  - Support named timezones when renewing, etc (#503)
