@@ -60,13 +60,13 @@ import string
 import sys
 from xml.dom.minidom import Document, parseString
 
-import sfa.trust.credential as cred
-import sfa.trust.rights as privs
-from sfa.trust.gid import GID
-from sfa.trust.certificate import Keypair, Certificate
-import omnilib.util.credparsing as credutils
-import omnilib.util.json_encoding as json_encoding
-from geni.util.tz_util import tzd
+import gcf.sfa.trust.credential as cred
+import gcf.sfa.trust.rights as privs
+from gcf.sfa.trust.gid import GID
+from gcf.sfa.trust.certificate import Keypair, Certificate
+import gcf.omnilib.util.credparsing as credutils
+import gcf.omnilib.util.json_encoding as json_encoding
+from gcf.geni.util.tz_util import tzd
 
 def configure_logging(opts):
     """Configure logging. INFO level by defult, DEBUG level if opts.debug"""
@@ -252,7 +252,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
+        if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         logger.warn("Supplied slice cred didn't verify")
@@ -305,7 +305,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     # Verify the result is still good
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
-        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/sfa/trust/credential.xsd")):
+        if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
             sys.exit("Failed to validate credential")
     except Exception, exc:
         logger.warn("Delegated slice cred does not verify")

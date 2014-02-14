@@ -256,7 +256,7 @@ Other options you should not need to use:
 {{{
 cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
-python src/omnilib/stitch/scs.py --listaggregates
+python src/gcf/omnilib/stitch/scs.py --listaggregates
 }}}
  - Be sure to see the list of Known Issues below.
 

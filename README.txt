@@ -39,8 +39,8 @@ Included Software
 =================
 
 This package includes software from PlanetLab. All of the PlanetLab
-software is in the src/sfa directory. More information, including the
-license, can be found in src/sfa/README.txt.
+software is in the src/gcf/sfa directory. More information, including the
+license, can be found in src/gcf/sfa/README.txt.
 
 
 Usage Instructions
@@ -101,7 +101,7 @@ Full details on options for each step are described below.
 
    The gcf_config file am_* properties lists the Aggregate Managers that have
    federated with this Clearinghouse. For some other examples see
-   src/geni/ch.py.  This is how a single gcf-ch can contact multiple
+   src/gcf/geni/ch.py.  This is how a single gcf-ch can contact multiple
    AM API compliant agggregate managers from whatever control
    framework.  Aggregate URNs here are for human consumption and need
    not be accurate.

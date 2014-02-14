@@ -46,9 +46,9 @@ import random
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
-from geni.config import read_config
-from omnilib.xmlrpc.client import make_client
-import sfa.trust.credential as cred
+from gcf.geni.config import read_config
+from gcf.omnilib.xmlrpc.client import make_client
+import gcf.sfa.trust.credential as cred
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.

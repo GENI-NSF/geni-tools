@@ -28,9 +28,9 @@ import pprint
 import re
 import sys
 
-import omni
-from omnilib.util.omnierror import OmniError
-from omnilib.util.files import *
+import gcf.oscript as omni
+from gcf.omnilib.util.omnierror import OmniError
+from gcf.omnilib.util.files import *
   
 
 ################################################################################

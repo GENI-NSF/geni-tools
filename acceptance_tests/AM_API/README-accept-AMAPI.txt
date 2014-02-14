@@ -372,7 +372,7 @@ where <username> is your Unix account username.
 A successful run looks something like this:
 {{{
 $ ./am_api_accept.py --NoGetVersionCache --sleep-time 0 -a https://localhost:8001 \
-                     -V 2 --rspec-file ../../src/geni/am/amapi2-request.xml
+                     -V 2 --rspec-file ../../src/gcf/geni/am/amapi2-request.xml
 .............
 ----------------------------------------------------------------------
 Ran 13 tests in 18.542s

@@ -26,12 +26,13 @@
 import copy
 import string
 import sys, platform
-import omni
 import os.path
 from optparse import OptionParser
-import omnilib.util.omnierror as oe
 import xml.etree.ElementTree as etree
 import re
+
+import gcf.oscript as omni
+import gcf.omnilib.util.omnierror as oe
 
 ################################################################################
 # Requires that you have omni installed and add the path to gcf/src in your

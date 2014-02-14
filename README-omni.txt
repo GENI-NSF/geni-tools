@@ -28,7 +28,7 @@ http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about ho
 For 'stitching' support (experimenter defined custom topologies), see
 README-stitching.txt.
 
-The currently supported CFs are the GENI Portal,
+The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
 These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
 
@@ -42,6 +42,19 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.5:
+
+Highlights:
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API using framework type `chapi`
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (configurable)
+
+Details:
  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
  - Fix passing speaksfor and other options to createsliver, renewsliver (#377)
  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
@@ -78,7 +91,7 @@ New in v2.5:
    compliance) (#482)
  - URN testing requires 4 `+` separated pieces (#483)
  - Log at debug when downloading the aggregate nickname cache fails (#485)
- - Add a new framework type `chapi` for talking the Uniform Federation API
+ - Add a new framework type `chapi` for talking the Uniform Federation API 
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
   - See `omni_config.sample` for config options required
@@ -104,6 +117,16 @@ New in v2.5:
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
  - Speaks for option that Omni passes to aggregates has been renamed
    `geni_speaking_for` (#466)
+ - Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+  - Your Omni based tool no longer needs to include any of the top
+    level scripts that Omni/GCF includes, nor to provide the existing
+    Omni `main`.
+  - Most of the code in `omni.py` has now been moved to
+    `gcf/oscript.py`
+  - To update your script that uses omni as a library:
+   - Change `import omni` to `import gcf.oscript as omni`
  - Show the AM nickname in addition to URL in output (#424)
  - `renewslice` when given a slice credential replaces the saved 
    slice credential in place, rather than in a new filename. (#386)
@@ -409,9 +432,13 @@ count).
 
 == Omni as a Library ==
 
-The omni.py file can be imported as a library, enabling programmatic
-access to Omni functions. To use Omni as a library, `import omni` and
-use the `omni.call` function.
+Omni is really a thin wrapper around `src/gcf/oscript.py`, which can
+be imported as a library, enabling programmatic
+access to Omni functions. To use Omni as a library, 
+`import gcf.oscript as omni` and use the `omni.call` function.
+
+Note that prior to v2.5, the import statement was `import omni` - be
+sure you have updated your scripts when you upgrade.
 
 {{{
   text, returnStruct = omni.call( ['listmyslices', username], options )  
@@ -435,15 +462,15 @@ and
 on the gcf wiki.
 
 '''NOTE''': Omni uses multiple command line options, and creates its
-own option names internally. Be sure not to pick the same option names. See omni.py and the
-getParser() function, around line 781 for all the option names.
+own option names internally. Be sure not to pick the same option names. See `gcf/oscript.py` and the
+`getParser()` function, around line 781 for all the option names.
 
 == Extending Omni ==
 
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension
 class. Adding other experiment management or utility functions can be
-done using Omni scripting, or by adding functions to amhandler.py
+done using Omni scripting, or by adding functions to `amhandler.py`.
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 

@@ -37,18 +37,18 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as etree 
 
-from geni.util import rspec_util 
-from geni.util.rspec_schema import *
-from geni.util import urn_util
-from geni.util import error_util
+from gcf.geni.util import rspec_util 
+from gcf.geni.util.rspec_schema import *
+from gcf.geni.util import urn_util
+from gcf.geni.util import error_util
 
-import omni
+import gcf.oscript as omni
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, WrongRspecType
-from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
-import omnilib.util.json_encoding as json_encoding
-import omnilib.util.credparsing as credparsing
+from gcf.omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
+import gcf.omnilib.util.json_encoding as json_encoding
+import gcf.omnilib.util.credparsing as credparsing
 
 import am_api_accept as accept
 

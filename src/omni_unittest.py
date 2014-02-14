@@ -26,17 +26,18 @@
 
 import copy as docopy
 import datetime
-from geni.util import rspec_util 
-from geni.util import urn_util
-from geni.util import error_util
+from gcf.geni.util import rspec_util 
+from gcf.geni.util import urn_util
+from gcf.geni.util import error_util
 import inspect
 import sys
 import unittest
-import omni
 import os.path
 import getpass
 import dateutil.parser
-from omnilib.util import OmniError, naiveUTC, AMAPIError
+
+from gcf.omnilib.util import OmniError, naiveUTC, AMAPIError
+import gcf.oscript as omni
 
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "logging.conf"

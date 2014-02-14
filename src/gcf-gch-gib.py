@@ -40,9 +40,10 @@ elif sys.version_info >= (3,):
 import logging
 import optparse
 import os
-import geni
-from geni.config import read_config
-from geni.pgch import PGClearinghouse
+
+from gcf import geni
+from gcf.geni.config import read_config
+from gcf.geni.pgch import PGClearinghouse
 
 config = None
 
