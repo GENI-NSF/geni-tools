@@ -37,6 +37,7 @@ import xmlrpclib
 import zlib
 
 import geni
+from geni.util.tz_util import tzd
 from SecureXMLRPCServer import SecureXMLRPCServer
 
 
@@ -612,7 +613,7 @@ class ReferenceAggregateManager(object):
                 self.logger.info("Sliver %s not renewed because it is shutdown",
                                  slice_urn)
                 return False
-            requested = dateutil.parser.parse(str(expiration_time))
+            requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
             # Per the AM API, the input time should be TZ-aware
             # But since the slice cred may not (per ISO8601), convert
             # it to naiveUTC for comparison

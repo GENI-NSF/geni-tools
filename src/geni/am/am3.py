@@ -40,6 +40,7 @@ import xmlrpclib
 import zlib
 
 import geni
+from geni.util.tz_util import tzd
 from geni.util.urn_util import publicid_to_urn
 import geni.util.urn_util as urn
 from geni.SecureXMLRPCServer import SecureXMLRPCServer
@@ -824,7 +825,7 @@ class ReferenceAggregateManager(object):
 
         # All the credentials we just got are valid
         expiration = self.min_expire(creds, self.max_lease)
-        requested = dateutil.parser.parse(str(expiration_time))
+        requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
         # Per the AM API, the input time should be TZ-aware
         # But since the slice cred may not (per ISO8601), convert
         # it to naiveUTC for comparison
@@ -1111,7 +1112,7 @@ class ReferenceAggregateManager(object):
         if max_duration:
             expires.append(now + max_duration)
         if requested:
-            requested = self._naiveUTC(dateutil.parser.parse(str(requested)))
+            requested = self._naiveUTC(dateutil.parser.parse(str(requested), tzinfos=tzd))
             # Ignore requested time in the past.
             if requested > now:
                 expires.append(self._naiveUTC(requested))

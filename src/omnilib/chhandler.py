@@ -37,6 +37,7 @@ import pprint
 import re
 
 from geni.util.urn_util import nameFromURN, is_valid_urn_bytype
+from geni.util.tz_util import tzd
 from sfa.util.xrn import get_leaf
 from omnilib.util import OmniError
 from omnilib.util.dossl import _do_ssl
@@ -207,7 +208,7 @@ class CHCallHandler(object):
         Return summary string, new slice expiration (string)
         """
         if len(args) != 2 or args[0] == None or args[0].strip() == "":
-            self._raise_omni_error('renewslice missing args: Supply <slice name> <expiration date>')
+            self._raise_omni_error('renewslice missing or too many args: Supply <slice name> <expiration date>')
         name = args[0]
         expire_str = args[1]
 
@@ -218,7 +219,8 @@ class CHCallHandler(object):
         # convert the desired expiration to a python datetime
         # FIXME: See amhandler._datetimeFromString: converts to naive UTC, adds UTC TZ
         try:
-            in_expiration = dateutil.parser.parse(expire_str)
+            in_expiration = dateutil.parser.parse(expire_str, tzinfos=tzd)
+            self.logger.debug("From '%s' parsed requested new expiration %s", expire_str, in_expiration)
         except:
             msg = 'Unable to parse date "%s".\nTry "YYYYMMDDTHH:MM:SSZ" format'
             msg = msg % (expire_str)

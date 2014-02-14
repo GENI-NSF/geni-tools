@@ -107,6 +107,7 @@ New in v2.5:
  - Show the AM nickname in addition to URL in output (#424)
  - `renewslice` when given a slice credential replaces the saved 
    slice credential in place, rather than in a new filename. (#386)
+ - Support named timezones when renewing, etc (#503)
 
 
 New in v2.4:
