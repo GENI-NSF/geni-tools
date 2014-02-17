@@ -49,13 +49,24 @@ class Framework(Framework_Base):
             sys.exit('GCF Framework keyfile %s is empty' % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
+        if str(config['verbose']).lower().strip() in ('t', 'true', 'y', 'yes', '1', 'on'):
+            config['verbose'] = True
+        else:
+            config['verbose'] = False
+
+        self.logger = config['logger']
+
+        if opts.verbosessl:
+            self.logger.debug('Setting Verbose SSL logging based on option')
+            config['verbose'] = True
+        if config['verbose']:
+            self.logger.info('Verbose logging is on')
         self.config = config
         
         self.ch = self.make_client(config['ch'], self.key, self.cert,
                                    verbose=config['verbose'], timeout=opts.ssltimeout)
         self.cert_string = file(config['cert'],'r').read()
         self.user_cred = self.init_user_cred( opts )
-        self.logger = config['logger']
         
     def get_user_cred(self):
         message = ""

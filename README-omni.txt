@@ -134,6 +134,9 @@ Details:
  - `renewslice` when given a slice credential replaces the saved 
    slice credential in place, rather than in a new filename. (#386)
  - Support named timezones when renewing, etc (#503)
+ - Properly parse the verbose config option and let the commandline
+   `--verbosessl` over-ride it talking to clearinghouses. (#509)
+
 
 
 New in v2.4:
