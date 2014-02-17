@@ -62,6 +62,10 @@ class WorkflowParser(object):
         """Parse the workflow struct from the SCS into the given RSpec data structure.
         Includes computing AM dependencies, hop import_from pointers, etc."""
         for link_id in workflow:
+            # Skip the 'path' that is really all the paths merged together
+            # FIXME: Use this information!
+            if link_id == 'all_paths_merged':
+                continue
             path = rspec.find_path(link_id)
             if not path:
                 msg = "No path found in rspec with id = %r" % (link_id)

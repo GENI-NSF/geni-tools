@@ -196,6 +196,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+    # Dev SCS: http://geni.maxgigapop.net:8081/geni/xmlrpc
     
     ind = -1
     printR = True
