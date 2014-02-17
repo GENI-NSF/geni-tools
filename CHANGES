@@ -138,6 +138,7 @@ gcf 2.5:
     there is only 1 interface on the link. (#392)
   - New option `--noReservation` to just get the expanded request
     RSpec, and not actually talk to the aggregates. (#505)
+  - Be robust to SCS workflow having a fake all_paths path (#511)
 
 
  * gcf

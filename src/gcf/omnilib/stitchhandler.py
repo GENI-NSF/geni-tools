@@ -1382,6 +1382,7 @@ class StitchingHandler(object):
             for child in rspec.childNodes:
                 if child.localName == defs.LINK_TAG:
                     linkName = child.getAttribute(Node.CLIENT_ID_TAG)
+                    # FIXME: This counts interfaces. It should count interfaces at a diff AM
                     ifcCount = 0
                     propCount = 0
                     ifc1Name = None
