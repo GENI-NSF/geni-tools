@@ -58,23 +58,33 @@ class Framework(Framework_Base):
         self.fwtype = "GENI Clearinghouse"
         self.opts = opts
         if not os.path.exists(config['cert']):
-            sys.exit('CHAPI Framework certfile %s doesnt exist' % config['cert'])
+            sys.exit("CHAPI Framework certfile '%s' doesn't exist" % config['cert'])
         if not os.path.getsize(config['cert']) > 0:
-            sys.exit('CHAPI Framework certfile %s is empty' % config['cert'])
+            sys.exit("CHAPI Framework certfile '%s' is empty" % config['cert'])
         config['key'] = os.path.expanduser(config['key'])
         if not os.path.exists(config['key']):
-            sys.exit('CHAPI Framework keyfile %s doesnt exist' % config['key'])
+            sys.exit("CHAPI Framework keyfile '%s' doesn't exist" % config['key'])
         if not os.path.getsize(config['key']) > 0:
-            sys.exit('CHAPI Framework keyfile %s is empty' % config['key'])
+            sys.exit("CHAPI Framework keyfile '%s' is empty" % config['key'])
         if not config.has_key('verbose'):
             config['verbose'] = False
+        if str(config['verbose']).lower().strip() in ('t', 'true', 'y', 'yes', '1', 'on'):
+            config['verbose'] = True
+        else:
+            config['verbose'] = False
+
+        self.logger = config['logger']
+
+        if opts.verbosessl:
+            self.logger.debug('Setting Verbose SSL logging based on option')
+            config['verbose'] = True
+        if config['verbose']:
+            self.logger.info('Verbose logging is on')
         self.config = config
 
         self.ch_url = config['ch']
         self.ch = self.make_client(self.ch_url, self.key, self.cert,
-                                   verbose=config['verbose'])
-
-        self.logger = config['logger']
+                                   verbose=config['verbose'], timeout=opts.ssltimeout)
 
         self._ma = None
         self._ma_url = None
@@ -197,7 +207,7 @@ class Framework(Framework_Base):
             return self._ma
         url = self.ma_url()
         self._ma = self.make_client(url, self.key, self.cert,
-                                   verbose=self.config['verbose'])
+                                   verbose=self.config['verbose'], timeout=self.opts.ssltimeout)
         return self._ma
 
     def ma_url(self):
@@ -217,7 +227,7 @@ class Framework(Framework_Base):
             return self._sa
         url = self.sa_url()
         self._sa = self.make_client(url, self.key, self.cert,
-                                   verbose=self.config['verbose'])
+                                   verbose=self.config['verbose'], timeout=self.opts.ssltimeout)
         return self._sa
 
     def sa_url(self):

@@ -73,7 +73,10 @@ class Framework(Framework_Base):
         if not config.has_key('verbose'):
             config['verbose'] = False
         else:
-            config['verbose'] = config['verbose'].lower() in ['true', '1', 't', 'yes', 'on']
+            config['verbose'] = config['verbose'].lower().strip() in ['true', '1', 't', 'yes', 'on', 'y']
+        if opts.verbosessl:
+            self.logger.debug('Setting Verbose SSL logging based on option')
+            config['verbose'] = True
         if config['verbose']:
             self.logger.info('Verbose logging is on')
         self.config = config
