@@ -343,7 +343,15 @@ def getSliverStatus( amUrl, amType ) :
     tmpoptions.aggregate = [amUrl]
         
     # Run equivalent of 'omni.py sliverstatus username'
-    argv = ['sliverstatus', slicename]
+    if tmpoptions.api_version >=3:
+        # For AM API v3 and later:
+        #   Run equivalent of 'omni.py status slicename'
+        argv = ['status', slicename]
+    else: 
+        # For AM API v1 or v2:
+        #   Run equivalent of 'omni.py sliverstatus slicename'
+        argv = ['sliverstatus', slicename]
+        
     try:
       text, sliverStatus = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
@@ -814,7 +822,8 @@ def main_no_print(argv=None, opts=None, slicen=None):
                                 'info' : amLoginInfo
                                }
       continue
-    if amType == "orca" or (amType == "protogeni"): 
+#    if amType == "orca" or (amType == "protogeni") or (amType == "GRAM"): 
+    else:
       #print "Getting login info from manifest for %s" % amUrl
       amLoginInfo = getInfoFromSliceManifest(amUrl)
       # Get the status only if we care
