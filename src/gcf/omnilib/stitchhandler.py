@@ -619,10 +619,37 @@ class StitchingHandler(object):
             self.logger.debug("Link '%s' doesn't have at least 2 interfaces? Has %d", link.id, len(ifcs))
             return
         if len(ifcs) > 2:
-            self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2.", link.id, len(ifcs))
+            self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2 on different AMs.", link.id, len(ifcs))
         node1ID = ifcs[0].client_id
-        node2ID = ifcs[1].client_id
-        # FIXME: If node2ID is same AM as node1ID and there are other choices, try those
+        node1AM = None
+        for node in self.parsedUserRequest.nodes:
+            if node1ID in node.interface_ids:
+                node1AM = node.amURN
+                break
+
+        # Now find a 2nd interface on a different AM
+        node2ID = None
+        node2AM = None
+        for ifc in ifcs:
+            if ifc.client_id == node1ID:
+                continue
+            node2ID = ifc.client_id
+            node2AM = None
+            for node in self.parsedUserRequest.nodes:
+                if node2ID in node.interface_ids:
+                    node2AM = node.amURN
+                    break
+            if node2AM == node1AM:
+                node2ID = None
+                node2AM = None
+                continue
+            else:
+                break
+        if node2AM is None:
+            # No 2nd interface on different AM found
+            self.logger.debug("Link '%s' doesn't have interfaces on more than 1 AM ('%s')?" % (link.id, node1AM))
+        else:
+            self.logger.debug("Link '%s' properties will be from '%s' to '%s'", link.id, node1ID, node2ID)
 
         # If there are no property elements
         if len(link.properties) == 0:
