@@ -139,6 +139,10 @@ gcf 2.5:
   - New option `--noReservation` to just get the expanded request
     RSpec, and not actually talk to the aggregates. (#505)
   - Be robust to SCS workflow having a fake all_paths path (#511)
+  - When adding a fake node, only do so if there are only interfaces
+    from a single AM - multiple interfaces at one AM counts as needing
+    the fake one. Similarly, when adding capacity on property elements,
+    set the destination based on an interface at a different aggregate. (#512)
 
 
  * gcf

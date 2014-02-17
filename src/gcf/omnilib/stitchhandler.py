@@ -148,6 +148,11 @@ class StitchingHandler(object):
         # This will also ensure each stitched link has an explicit capacity on 2 properties
         if not self.mustCallSCS(self.parsedUserRequest):
             self.logger.info("Not a stitching request - let Omni handle this.")
+
+            if self.opts.noReservation:
+                self.logger.info("Not reserving resources")
+                raise StitchingError("Requested no reservation")
+
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
             return omni.call(args, self.opts)
@@ -614,10 +619,37 @@ class StitchingHandler(object):
             self.logger.debug("Link '%s' doesn't have at least 2 interfaces? Has %d", link.id, len(ifcs))
             return
         if len(ifcs) > 2:
-            self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2.", link.id, len(ifcs))
+            self.logger.debug("Link '%s' has more than 2 interfaces (%d). Picking source and dest from the first 2 on different AMs.", link.id, len(ifcs))
         node1ID = ifcs[0].client_id
-        node2ID = ifcs[1].client_id
-        # FIXME: If node2ID is same AM as node1ID and there are other choices, try those
+        node1AM = None
+        for node in self.parsedUserRequest.nodes:
+            if node1ID in node.interface_ids:
+                node1AM = node.amURN
+                break
+
+        # Now find a 2nd interface on a different AM
+        node2ID = None
+        node2AM = None
+        for ifc in ifcs:
+            if ifc.client_id == node1ID:
+                continue
+            node2ID = ifc.client_id
+            node2AM = None
+            for node in self.parsedUserRequest.nodes:
+                if node2ID in node.interface_ids:
+                    node2AM = node.amURN
+                    break
+            if node2AM == node1AM:
+                node2ID = None
+                node2AM = None
+                continue
+            else:
+                break
+        if node2AM is None:
+            # No 2nd interface on different AM found
+            self.logger.debug("Link '%s' doesn't have interfaces on more than 1 AM ('%s')?" % (link.id, node1AM))
+        else:
+            self.logger.debug("Link '%s' properties will be from '%s' to '%s'", link.id, node1ID, node2ID)
 
         # If there are no property elements
         if len(link.properties) == 0:
@@ -1382,17 +1414,25 @@ class StitchingHandler(object):
             for child in rspec.childNodes:
                 if child.localName == defs.LINK_TAG:
                     linkName = child.getAttribute(Node.CLIENT_ID_TAG)
-                    # FIXME: This counts interfaces. It should count interfaces at a diff AM
                     ifcCount = 0
+                    ifcAMCount = 0 # Num AMs the interfaces are at
                     propCount = 0
                     ifc1Name = None
+                    ifcAuths = []
                     for c2 in child.childNodes:
                         if c2.localName == Link.INTERFACE_REF_TAG:
                             ifcCount += 1
                             ifc1Name = c2.getAttribute(Node.CLIENT_ID_TAG)
+                            for node in self.parsedSCSRSpec.nodes:
+                                if ifc1Name in node.interface_ids:
+                                    ifcAuth = node.amURN
+                                    if not ifcAuth in ifcAuths:
+                                        ifcAuths.append(ifcAuth)
+                                        ifcAMCount += 1
+                                    break
                         if c2.localName == Link.PROPERTY_TAG:
                             propCount += 1
-                    if ifcCount == 1:
+                    if ifcAMCount == 1:
                         self.logger.info("Adding fake interface_ref endpoint on link %s", linkName)
                         child.appendChild(fakeiRef)
                         child.appendChild(fakeCM)
@@ -1410,7 +1450,7 @@ class StitchingHandler(object):
                             child.appendChild(sP)
                             child.appendChild(dP)
                         else:
-                            self.logger.debug("Link %s had only 1 ifc, so added the fake interface - but it has %d properties already?", linkName, propCount)
+                            self.logger.debug("Link %s had only interfaces at 1 am (%d of them), so added the fake interface - but it has %d properties already?", linkName, ifcCount, propCount)
                     else:
-                        self.logger.debug("Not adding fake endpoint to link %s with %d interfaces", linkName, ifcCount)
+                        self.logger.debug("Not adding fake endpoint to link %s with %d interfaces at %d AMs", linkName, ifcCount, ifcAMCount)
 #        self.logger.debug("\n" + self.parsedSCSRSpec.dom.toxml())
