@@ -74,11 +74,11 @@ gcf 2.5:
    - New function `listslicemembers <slice>` lists the members of
      the given slice, with their email and registered SSH public
      keys (if any). (#421, #431)
-   - New function `addmembertoslice <slice> <member> [optional: role]`
+   - New function `addslicemember <slice> <member> [optional: role]`
      Adds the member with the given username to the named slice,
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing
-     slivers. (#422)
+     slivers. (#422, #513)
   - `chapi` framework looks up the MA and SA at the clearinghouse,
     though you can configure where they run. (#490)
   - Warn when acting at all AMs in the clearinghouse - slow (#461)

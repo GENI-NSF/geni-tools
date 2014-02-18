@@ -93,7 +93,7 @@ from __future__ import absolute_import
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL)] = omni.py listslicemembers SLICENAME
-       [string Boolean] = omni.py addmembertoslice SLICENAME MEMBER [ROLE]
+       [string Boolean] = omni.py addslicemember SLICENAME MEMBER [ROLE]
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
@@ -822,7 +822,7 @@ def getParser():
  \t\t\t print_slice_expiration <slicename> \n\
  \t\t\t listslivers <slicename> \n\
  \t\t\t listslicemembers <slicename> \n\
- \t\t\t addmembertoslice <slicename> <membername> [optional: role] \n\
+ \t\t\t addslicemember <slicename> <membername> [optional: role] \n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\

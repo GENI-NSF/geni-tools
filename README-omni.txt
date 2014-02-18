@@ -114,11 +114,11 @@ Details:
   - New function `listslicemembers <slice>` lists the members of
     the given slice, with their email and registered SSH public
     keys (if any). (#421, #431)
-  - New function `addmembertoslice <slice> <member> [optional: role]`
+  - New function `addslicemember <slice> <member> [optional: role]`
     Adds the member with the given username to the named slice,
     with the given role (or `MEMBER` by default). Note this
     does not change what SSH keys are installed on any existing
-    slivers. (#422)
+    slivers. (#422,#513)
  - `chapi` framework looks up the MA and SA at the clearinghouse,
    though you can configure where they run. (#490)
  - Warn when acting at all AMs in the clearinghouse - slow (#461)
@@ -1122,13 +1122,13 @@ public SSH keys installed on reserved resources.
 Note also that just because a slice member has SSH keys registered does not
 mean that those SSH keys have been installed on all reserved compute resources.
 
-=== addmembertoslice ===
+=== addslicemember ===
 Add the named member to the named slice. The member's role in the
 slice will be `MEMBER` if not specified.
 
-Format: `omni.py addmembertoslice <slice name> <member username> [role]`
+Format: `omni.py addslicemember <slice name> <member username> [role]`
 
-Sample Usage: `omni.py addmembertoslice myslice jsmith`
+Sample Usage: `omni.py addslicemember myslice jsmith`
 
 Return is a boolean indicating success or failure.
 
