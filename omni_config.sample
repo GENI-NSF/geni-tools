@@ -29,6 +29,12 @@ default_cf = my_gcf
 # Details on users should be defined in sections below
 # users = Alice, Bob
 
+# Over-ride the commandline setting of --useSliceMembers to force it True
+# useslicemembers = True
+
+# Over-ride the commandline setting of --ignoreConfigUsers to force it True
+# ignoreconfigusers = True
+
 
 # Omni will by default contact every Aggregate Manager listed
 # by your control framework's registry/clearinghouse.  If you would

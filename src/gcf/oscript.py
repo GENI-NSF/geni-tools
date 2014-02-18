@@ -292,6 +292,23 @@ def load_config(opts, logger, config={}):
         if config['omni'].has_key('default_project'):
             opts.project = config['omni']['default_project']
 
+    # Config of useslicemembers some value of true sets the option
+    if config['omni'].has_key('useslicemembers'):
+        usm = config['omni']['useslicemembers'].strip().lower()
+        if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
+            usm = True
+            if not opts.useSliceMembers:
+                logger.info("Setting option useSliceMembers based on omni_config setting")
+                opts.useSliceMembers = True
+    # Config of ignoreconfigusers some value of true sets the option
+    if config['omni'].has_key('ignoreconfigusers'):
+        usm = config['omni']['ignoreconfigusers'].strip().lower()
+        if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
+            usm = True
+            if not opts.ignoreConfigUsers:
+                logger.info("Setting option ignoreConfigUsers based on omni_config setting")
+                opts.ignoreConfigUsers = True
+
     logger.info("Using control framework %s" % opts.framework)
 
     # Find the control framework
