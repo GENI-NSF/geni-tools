@@ -79,6 +79,9 @@ class CallHandler(object):
         elif hasattr(self.chhandler, call):
             return getattr(self.chhandler, call)(args[1:])
         elif hasattr(self.amhandler, call):
+            # Extract the slice name arg and put it in an option
+            self.amhandler.opts.sliceName = self.amhandler._extractSliceArg(args)
+
             # Try to auto-correct API version
             msg = self.amhandler._correctAPIVersion(args)
             if msg is None:

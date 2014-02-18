@@ -124,6 +124,23 @@ def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
                 break
     return urn
 
+def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
+    url = ""
+    nick = ""
+    if agg_urn:
+        # Ignore any +cm / +am difference
+        if agg_urn.endswith('+cm') or agg_urn.endswith('+am'):
+            agg_urn = agg_urn[:-3]
+            logger.debug("Trimmed URN to %s", agg_urn)
+        for amNick in config['aggregate_nicknames'].keys():
+            (amURN, amURL) = config['aggregate_nicknames'][amNick]
+            # Pick the shortest URL / nickname for this URN - stripping of any version diff for the URL
+            if agg_urn in amURN and amURL.strip() != '' and ((url == "" or len(amURL) < len(url)) or (nick == "" or len(amNick) < len(nick))):
+                url = amURL.strip()
+                nick = amNick.strip()
+                logger.debug("Supplied AM URN %s is AM %s, URL %s according to configured aggregate nicknames (matches %s)", agg_urn, nick, url, amURN)
+    return nick, url
+
 def _derefRSpecNick( handler, rspecNickname ):
     contentstr = None
     try:
@@ -154,9 +171,11 @@ def _derefRSpecNick( handler, rspecNickname ):
             raise ValueError, "Unable to interpret RSpec '%s' as any of url, file, nickname, or in a default location" % (rspecNickname)            
     return contentstr
 
-
 def _listaggregates(handler):
     """List the aggregates that can be used for the current operation.
+    If the user specified --useSliceAggregates and the framework
+    supports it, then use the aggregates for which
+    there are recorded slivers at the CH.
     If 1+ aggregates were specified on the command line, use only those.
     Else if aggregates are specified in the config file, use that set.
     Else ask the framework for the list of aggregates.
@@ -165,8 +184,24 @@ def _listaggregates(handler):
     If multiple URLs were given in the omni config, URN is really the URL
     """
     # used by _getclients (above), createsliver, listaggregates
+    ret = {}
+    if handler.opts.useSliceAggregates and hasattr(handler.opts,'sliceName') and handler.opts.sliceName is not None:
+        handler.logger.debug("Looking for slivers recorded at CH for slice %s", handler.opts.sliceName)
+        sliverAggs = handler.framework.list_sliver_infos_for_slice(handler.opts.sliceName).keys()
+        for aggURN in sliverAggs:
+            handler.logger.debug("Look up CH recorded URN %s", aggURN)
+            nick, url = _lookupAggNickURLFromURNInNicknames(handler.logger, handler.config, aggURN)
+            if url != '':
+                # Avoid duplicate aggregate entries
+                if url in ret.values() and ret.has_key(aggURN) and ret[aggURN]==url:
+                    continue
+                while aggURN in ret:
+                    aggURN += "+"
+                ret[aggURN] = url
+                handler.logger.info("Adding aggregate %s to query list", nick)
+        if not handler.opts.aggregate:
+            return (ret, "%d aggregates known to have resources for slice %s" % (len(sliverAggs), handler.opts.sliceName))
     if handler.opts.aggregate:
-        ret = {}
         for agg in handler.opts.aggregate:
             # Try treating that as a nickname
             # otherwise it is the url directly
