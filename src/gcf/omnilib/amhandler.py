@@ -1801,9 +1801,12 @@ class AMCallHandler(object):
 
             # record new slivers in the SA database if able to do so
             try:
-                agg_urn = self._getURNForClient(client)
-                self.framework.create_sliver_info(result, urn, 
-                                                     url, slice_exp, None, agg_urn)
+                if not self.opts.noExtraCHCalls:
+                    agg_urn = self._getURNForClient(client)
+                    self.framework.create_sliver_info(result, urn, 
+                                                      url, slice_exp, None, agg_urn)
+                else:
+                    self.logger.debug("Per commandline option, not reporting new sliver to clearinghouse")
             except NotImplementedError, nie:
                 self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
             except Exception, e:
@@ -2250,13 +2253,16 @@ class AMCallHandler(object):
 
                 # record new slivers in SA database if possible
                 try:
-                    agg_urn = self._getURNForClient(client)
-                    # Get the slivers actually returned
-                    ret_slivers = self._getSliverResultList(realresult)
-                    self.framework.create_sliver_info(None, urn, 
-                                                         client.url,
-                                                         slice_exp,
-                                                         ret_slivers, agg_urn)
+                    if not self.opts.noExtraCHCalls:
+                        agg_urn = self._getURNForClient(client)
+                        # Get the slivers actually returned
+                        ret_slivers = self._getSliverResultList(realresult)
+                        self.framework.create_sliver_info(None, urn, 
+                                                          client.url,
+                                                          slice_exp,
+                                                          ret_slivers, agg_urn)
+                    else:
+                        self.logger.debug("Per commandline option, not reporting new sliver(s) to clearinghouse")
                 except NotImplementedError, nie:
                     self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
                 except Exception, e:
@@ -2662,51 +2668,54 @@ class AMCallHandler(object):
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
                 self.logger.info(prStr)
 
-                try:
-                    agg_urn = self._getURNForClient(client)
-                    if urn_util.is_valid_urn(agg_urn):
-                        sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
-                        # We only get here if the framework implements list_sliverinfo_urns
-                        if not sliver_urns:
-                            sliver_urns = []
+                if not self.opts.noExtraCHCalls:
+                    try:
+                        agg_urn = self._getURNForClient(client)
+                        if urn_util.is_valid_urn(agg_urn):
+                            sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                            # We only get here if the framework implements list_sliverinfo_urns
+                            if not sliver_urns:
+                                sliver_urns = []
 
-                        # Use sliverstatus to augment the list of slivers in this slice at this AM
-                        # This way we catch slivers that were never recorded.
-                        # Only do this if we have 0 slivers, to limit times we incur the expense of
-                        # an extra AM API call.
-                        if len(sliver_urns) == 0:
-                            st = None
-                            try:
-                                args2 = [urn, creds]
-                                ops = self._build_options('SliverStatus', name, None)
-                                args2.append(ops)
-                                ((st, m), c) = self._api_call(client,
-                                                              "Sliverstatus of %s at %s" % (urn, agg_urn),
-                                                              'SliverStatus', args2)
-                                (streal, m2) = self._retrieve_value(st, m, self.framework)
-                                self.logger.debug("Got st %s", streal)
-                            except Exception, e:
-                                self.logger.debug("Failed Sliverstatus to list slivers after renew of %s at %s: %s", urn, agg_urn, e)
-                            if streal and isinstance(streal, dict) and streal.has_key('geni_resources'):
-                                for s in streal['geni_resources']:
-                                    self.logger.debug("Got s %s", s)
-                                    if s.has_key('geni_urn') and urn_util.is_valid_urn_bytype(s['geni_urn'], 'sliver'):
-                                        if not s['geni_urn'] in sliver_urns:
-                                            sliver_urns.append(s['geni_urn'])
+                            # Use sliverstatus to augment the list of slivers in this slice at this AM
+                            # This way we catch slivers that were never recorded.
+                            # Only do this if we have 0 slivers, to limit times we incur the expense of
+                            # an extra AM API call.
+                            if len(sliver_urns) == 0:
+                                st = None
+                                try:
+                                    args2 = [urn, creds]
+                                    ops = self._build_options('SliverStatus', name, None)
+                                    args2.append(ops)
+                                    ((st, m), c) = self._api_call(client,
+                                                                  "Sliverstatus of %s at %s" % (urn, agg_urn),
+                                                                  'SliverStatus', args2)
+                                    (streal, m2) = self._retrieve_value(st, m, self.framework)
+                                    self.logger.debug("Got st %s", streal)
+                                except Exception, e:
+                                    self.logger.debug("Failed Sliverstatus to list slivers after renew of %s at %s: %s", urn, agg_urn, e)
+                                if streal and isinstance(streal, dict) and streal.has_key('geni_resources'):
+                                    for s in streal['geni_resources']:
+                                        self.logger.debug("Got s %s", s)
+                                        if s.has_key('geni_urn') and urn_util.is_valid_urn_bytype(s['geni_urn'], 'sliver'):
+                                            if not s['geni_urn'] in sliver_urns:
+                                                sliver_urns.append(s['geni_urn'])
 
-                        for sliver_urn in sliver_urns:
-                            self.framework.update_sliver_info(agg_urn, urn, sliver_urn,
-                                                                 newExp)
-                    else:
-                        self.logger.info("Not updating recorded sliver expirations - no valid AM URN known")
-                except NotImplementedError, nie:
-                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
-                except Exception, e:
-                    # FIXME: Only info?
-                    self.logger.warn('Error updating sliver record in SA database')
-                    self.logger.debug(e)
-                    import traceback
-                    self.logger.debug(traceback.format_exc())
+                            for sliver_urn in sliver_urns:
+                                self.framework.update_sliver_info(agg_urn, urn, sliver_urn,
+                                                                  newExp)
+                        else:
+                            self.logger.info("Not updating recorded sliver expirations - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        # FIXME: Only info?
+                        self.logger.warn('Error updating sliver record in SA database')
+                        self.logger.debug(e)
+                        import traceback
+                        self.logger.debug(traceback.format_exc())
+                else:
+                    self.logger.debug("Per commandline option, not updating sliver info record at clearinghouse")
 
                 if numClients == 1:
                     retVal += prStr + "\n"
@@ -2918,35 +2927,38 @@ class AMCallHandler(object):
                         break
                     self.logger.warn("Slivers do not all expire as requested: %d as requested (%r), but %d expire on %r, and others at %d other times", expectedCount, time_with_tz.isoformat(), firstCount, firstTime.isoformat(), len(orderedDates) - 2)
 
-                # record results in SA database
-                try:
-                    agg_urn = self._getURNForClient(client)
-                    slivers = self._getSliverResultList(res)
-                    for sliver in slivers:
-                        if isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn') and \
-                           sliver.has_key('geni_expires'):
-                            # Exclude slivers with
-                            # geni_allocation_status of geni_allocated - they
-                            # are not yet in the DB
-                            if sliver.has_key('geni_allocation_status') and \
-                                    sliver['geni_allocation_status'] == 'geni_allocated':
-                                self.logger.debug("Not recording updated sliver that is only allocated: %s", sliver)
-                                continue
+                if not self.opts.noExtraCHCalls:
+                    # record results in SA database
+                    try:
+                        agg_urn = self._getURNForClient(client)
+                        slivers = self._getSliverResultList(res)
+                        for sliver in slivers:
+                            if isinstance(sliver, dict) and \
+                                    sliver.has_key('geni_sliver_urn') and \
+                                    sliver.has_key('geni_expires'):
+                                # Exclude slivers with
+                                # geni_allocation_status of geni_allocated - they
+                                # are not yet in the DB
+                                if sliver.has_key('geni_allocation_status') and \
+                                        sliver['geni_allocation_status'] == 'geni_allocated':
+                                    self.logger.debug("Not recording updated sliver that is only allocated: %s", sliver)
+                                    continue
 
-                            # FIXME: Exclude slivers in sliverFails (had errors)?
-                            if sliver['geni_sliver_urn'] in sliverFails.keys():
-                                self.logger.debug("Not recording sliver that had renew error: %s", sliver)
-                                continue
+                                # FIXME: Exclude slivers in sliverFails (had errors)?
+                                if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                    self.logger.debug("Not recording sliver that had renew error: %s", sliver)
+                                    continue
 
-                            self.framework.update_sliver_info \
-                             (agg_urn, urn, sliver['geni_sliver_urn'], sliver['geni_expires'])
-                except NotImplementedError, nie:
-                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
-                except Exception, e:
-                    # FIXME: Info only?
-                    self.logger.warn('Error updating sliver record in SA database')
-                    self.logger.debug(e)
+                                self.framework.update_sliver_info \
+                                    (agg_urn, urn, sliver['geni_sliver_urn'], sliver['geni_expires'])
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        # FIXME: Info only?
+                        self.logger.warn('Error updating sliver record in SA database')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Per commandline option, not updating sliver record at clearinghouse")
 
                 # Save results
                 if isinstance(res, dict):
@@ -3433,24 +3445,27 @@ class AMCallHandler(object):
                 prStr = "Deleted sliver %s at %s" % (urn,
                                                      (client.str if client.nick else client.urn))
 
-                # delete sliver info from SA database
-                try:
-                    # Get the Agg URN for this client
-                    agg_urn = self._getURNForClient(client)
-                    if urn_util.is_valid_urn(agg_urn):
-                        # I'd like to be able to tell the SA to delete all slivers registered for
-                        # this slice/AM, but the API says sliver_urn is required
-                        sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
-                        for sliver_urn in sliver_urns:
-                            self.framework.delete_sliver_info(sliver_urn)
-                    else:
-                        self.logger.debug("Not reporting to CH that slivers were deleted - no valid AM URN known")
-                except NotImplementedError, nie:
-                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
-                except Exception, e:
-                    # FIXME: info only?
-                    self.logger.warn('Error noting sliver deleted in SA database')
-                    self.logger.debug(e)
+                if not self.opts.noExtraCHCalls:
+                    # delete sliver info from SA database
+                    try:
+                        # Get the Agg URN for this client
+                        agg_urn = self._getURNForClient(client)
+                        if urn_util.is_valid_urn(agg_urn):
+                            # I'd like to be able to tell the SA to delete all slivers registered for
+                            # this slice/AM, but the API says sliver_urn is required
+                            sliver_urns = self.framework.list_sliverinfo_urns(urn, agg_urn)
+                            for sliver_urn in sliver_urns:
+                                self.framework.delete_sliver_info(sliver_urn)
+                        else:
+                            self.logger.debug("Not reporting to CH that slivers were deleted - no valid AM URN known")
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        # FIXME: info only?
+                        self.logger.warn('Error noting sliver deleted in SA database')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Per commandline option, not reporting sliver deleted to clearinghouse")
 
                 if numClients == 1:
                     retVal = prStr
@@ -3616,38 +3631,41 @@ class AMCallHandler(object):
 
             if realres is not None:
 
-                # record results in SA database
-                try:
-                    slivers = self._getSliverResultList(realres)
-                    for sliver in slivers:
-                        if isinstance(sliver, dict) and \
-                           sliver.has_key('geni_sliver_urn'):
-                            # Note that the sliver may not be in the DB if you delete after allocate
+                if not self.opts.noExtraCHCalls:
+                    # record results in SA database
+                    try:
+                        slivers = self._getSliverResultList(realres)
+                        for sliver in slivers:
+                            if isinstance(sliver, dict) and \
+                                    sliver.has_key('geni_sliver_urn'):
+                                # Note that the sliver may not be in the DB if you delete after allocate
 
-                            # FIXME: Exclude any slivers that are not geni_unallocated?
-                            # That is, what happens if you call delete only with specific slivers, 
-                            # and do not delete all the slivers. Will the others be returned?
-                            # I think the others are not _supposed to be returned....
+                                # FIXME: Exclude any slivers that are not geni_unallocated?
+                                # That is, what happens if you call delete only with specific slivers, 
+                                # and do not delete all the slivers. Will the others be returned?
+                                # I think the others are not _supposed to be returned....
 
-                            # FIXME: If the user asked to delete everything in this slice
-                            # at this AM, should I use list_slivers to delete everything
-                            # the CH knows in this slice at this AM, in case something got missed?
+                                # FIXME: If the user asked to delete everything in this slice
+                                # at this AM, should I use list_slivers to delete everything
+                                # the CH knows in this slice at this AM, in case something got missed?
 
-                            # FIXME: Exclude slivers in sliverFails (had errors)?
-                            if sliver['geni_sliver_urn'] in sliverFails.keys():
-                                self.logger.debug("Skipping noting delete of failed sliver %s", sliver)
-                                continue
-                            self.logger.debug("Recording sliver %s deleted", sliver)
-                            self.framework.delete_sliver_info \
-                                (sliver['geni_sliver_urn'])
-                        else:
-                            self.logger.debug("Skipping noting delete of malformed sliver %s", sliver)
-                except NotImplementedError, nie:
-                    self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
-                except Exception, e:
-                    # FIXME Info?
-                    self.logger.warn('Error noting sliver deleted in SA database')
-                    self.logger.debug(e)
+                                # FIXME: Exclude slivers in sliverFails (had errors)?
+                                if sliver['geni_sliver_urn'] in sliverFails.keys():
+                                    self.logger.debug("Skipping noting delete of failed sliver %s", sliver)
+                                    continue
+                                self.logger.debug("Recording sliver %s deleted", sliver)
+                                self.framework.delete_sliver_info \
+                                    (sliver['geni_sliver_urn'])
+                            else:
+                                self.logger.debug("Skipping noting delete of malformed sliver %s", sliver)
+                    except NotImplementedError, nie:
+                        self.logger.debug('Framework %s doesnt support recording slivers in SA database', self.config['selected_framework']['type'])
+                    except Exception, e:
+                        # FIXME Info?
+                        self.logger.warn('Error noting sliver deleted in SA database')
+                        self.logger.debug(e)
+                else:
+                    self.logger.debug("Per commandline option, not reporting sliver deleted to clearinghouse")
 
                 prStr = "Deleted %s at %s" % (descripMsg,
                                               (client.str if client.nick else client.urn))
@@ -5058,7 +5076,7 @@ class AMCallHandler(object):
             (gvurn, gvmess) = self._get_getversion_key(client, 'geni_urn', helper=True)
             if urn_util.is_valid_urn(gvurn):
                 agg_urn = gvurn
-            else:
+            elif not self.opts.noExtraCHCalls:
                 # Else, ask the CH
                 try:
                     turn = self.framework.lookup_agg_urn_by_url(client.url)
@@ -5066,6 +5084,8 @@ class AMCallHandler(object):
                         return turn
                 except Exception, e:
                     self.logger.debug("Error asking CH for URN to match URL %s: %s", client.url, e)
+            else:
+                self.logger.debug("Didn't look up AM urn at CH per commandline option")
         return agg_urn
 
 # End of AMHandler

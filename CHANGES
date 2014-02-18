@@ -100,14 +100,19 @@ gcf 2.5:
   - Support named timezones when renewing, etc (#503)
   - Properly parse the verbose config option and let the commandline
     `--verbosessl` over-ride it talking to clearinghouses. (#509)
- - When using the new `chapi` framework allow a `--useSliceAggregates`
-   option to specify that the aggregate action should be taken at all
-   aggregates at which you have resources in this slice. (#507)
-  - Any `-a` aggregates are extra. 
-  - At other frameworks, this is ignored.
-  - This option is ignored for commands like `createsliver`,
-  `allocate`, `provision`, and `getversion`.
-
+  - When using the new `chapi` framework allow a `--useSliceAggregates`
+    option to specify that the aggregate action should be taken at all
+    aggregates at which you have resources in this slice. (#507)
+   - Any `-a` aggregates are extra. 
+   - At other frameworks, this is ignored.
+   - This option is ignored for commands like `createsliver`,
+   `allocate`, `provision`, and `getversion`.
+  - Added new option `--noExtraCHCalls` to disable calls to the
+    clearinghouse to report slivers, query for slivers, or query
+    a list of aggregates; explicit CH calls and retrieving credentials
+    is not effected. (#514)
+ 
+ 
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
   - Retry if SFA AM gives error indicating a new project (#433)

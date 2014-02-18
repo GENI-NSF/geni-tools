@@ -185,7 +185,7 @@ def _listaggregates(handler):
     """
     # used by _getclients (above), createsliver, listaggregates
     ret = {}
-    if handler.opts.useSliceAggregates and hasattr(handler.opts,'sliceName') and handler.opts.sliceName is not None:
+    if handler.opts.useSliceAggregates and not handler.opts.noExtraCHCalls and hasattr(handler.opts,'sliceName') and handler.opts.sliceName is not None:
         handler.logger.debug("Looking for slivers recorded at CH for slice %s", handler.opts.sliceName)
         sliverAggs = handler.framework.list_sliver_infos_for_slice(handler.opts.sliceName).keys()
         for aggURN in sliverAggs:
@@ -238,7 +238,7 @@ def _listaggregates(handler):
                 else:
                     aggs[url] = url
         return (aggs, "")
-    else:
+    elif not handler.opts.noExtraCHCalls:
         handler.logger.debug("Querying clearinghouse for all aggregates")
         (aggs, message) =  _do_ssl(handler.framework, None, "List Aggregates from control framework", handler.framework.list_aggregates)
         if aggs is None:
@@ -246,6 +246,9 @@ def _listaggregates(handler):
             return ({}, message)
         # FIXME: Check that each agg has both a urn and url key?
         return (aggs, "From CH")
+    else:
+        handler.logger.debug("Per commandline option, not looking up aggregates at the clearinghouse")
+        return ({}, "Per noExtraCHCalls, not looking up aggregates at clearinghouse")
 
 def _load_cred(handler, filename):
     '''

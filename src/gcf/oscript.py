@@ -986,6 +986,8 @@ def getParser():
                       help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
     devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
                         help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
+    devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
+                        help="Disable extra Clearinghouse calls like reporting slivers. Default False.")
     parser.add_option_group( devgroup )
     return parser
 

@@ -147,7 +147,10 @@ Details:
   - At other frameworks, this is ignored.
   - This option is ignored for commands like `createsliver`,
   `allocate`, `provision`, and `getversion`.
-
+ - Added new option `--noExtraCHCalls` to disable calls to the
+   clearinghouse to report slivers, query for slivers, or query
+   a list of aggregates; explicit CH calls and retrieving credentials
+   is not effected. (#514)
 
 
 New in v2.4:
@@ -856,6 +859,8 @@ Options:
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
+    --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
+                        slivers. Default False.
 }}}
 
 Notes:
