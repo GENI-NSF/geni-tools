@@ -1373,7 +1373,7 @@ class Framework(Framework_Base):
 
     # use the database to convert an aggregate url to the corresponding urn
     # FIXME: other CHs do similar things - implement this elsewhere
-    def lookup_agg_urn_ny_url(self, agg_url):
+    def lookup_agg_urn_by_url(self, agg_url):
         if agg_url is None or agg_url.strip() == "":
             self.logger.warn("Empty Aggregate URL to look up")
             return None
