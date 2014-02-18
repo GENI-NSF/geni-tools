@@ -97,6 +97,9 @@ class AMCallHandler(object):
         if not hasattr(self,call):
             self._raise_omni_error('Unknown function: %s' % call)
 
+        # Extract the slice name arg and put it in an option
+        self.opts.sliceName = self._extractSliceArg(args)
+
         # Try to auto-correct API version
         msg = self._correctAPIVersion(args)
         if msg is None:
@@ -106,6 +109,22 @@ class AMCallHandler(object):
         if message is None:
             message = ""
         return (msg+message, val)
+
+    # Pull any slice name arg out of the args and return it, else None
+    # Ignore it for createsliver or allocate as no slice exists yet in these cases
+    def _extractSliceArg(self, args):
+        if args is None or len(args) == 0:
+            return None
+        call = args[0].lower().strip()
+        # Skip createsliver and allocate and provision because the whole idea is to add a new AM here - so the CH doesn't know
+        if call in ('getversion', 'listimages', 'deleteimage', 'createsliver', 'allocate', 'provision'): # createimage?
+            return None
+        elif len(args) > 1:
+            ret = args[1].lower().strip()
+            if ret == "":
+                return None
+            self.logger.debug("Found slice name %s", ret)
+            return ret
 
     def _correctAPIVersion(self, args):
         '''Switch AM API versions if the AMs all or mostly speak something else. But be conservative.'''
@@ -752,6 +771,7 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+        - Note that --useSliceAggregates is not honored as no slice name is provided.
 
         Output directing options:
         -o Save result (JSON format) in per-Aggregate files
@@ -1014,6 +1034,9 @@ class AMCallHandler(object):
         Takes an optional slicename.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1281,6 +1304,9 @@ class AMCallHandler(object):
         For listing contents of a slice in APIv3+, use describe().
         
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1432,6 +1458,9 @@ class AMCallHandler(object):
         code/value/output return struct from the AM.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1636,6 +1665,9 @@ class AMCallHandler(object):
         -a Contact only the aggregate at the given URL, or with the given
          nickname that translates to a URL in your omni_config
 
+          - Note that `--useSliceAggregates` is not honored, as the desired
+            aggregate usually has no resources in this slice yet.
+
         Output directing options:
         -o writes output to file instead of stdout; single file per aggregate.
         -p gives filename prefix for each output file
@@ -1826,6 +1858,8 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+        - Note that `--useSliceAggregates` is not honored, as the desired
+          aggregate usually has no resources in this slice yet.
         Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
         Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each 
         aggregate should attempt to satisfy all unbound requests. Note also that allocate() calls
@@ -2050,6 +2084,8 @@ class AMCallHandler(object):
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
         - List of URNs and URLs provided by the selected clearinghouse
+        - Note that `--useSliceAggregates` is not honored, as the desired
+          aggregate usually has no resources in this slice yet.
 
         -t <type version>: Specify a required manifest RSpec type and version to return.
         It skips any AM that doesn't advertise (in GetVersion)
@@ -2315,6 +2351,9 @@ class AMCallHandler(object):
         (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -2504,6 +2543,9 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -2700,6 +2742,9 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -2941,6 +2986,9 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -3088,6 +3136,9 @@ class AMCallHandler(object):
         only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -3307,6 +3358,9 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -3444,6 +3498,9 @@ class AMCallHandler(object):
         and slivers do not change.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -3655,6 +3712,9 @@ class AMCallHandler(object):
         with the --slicecredfile option it is read from that file, if it exists.
 
         Aggregates queried:
+        - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+          '''and''' any aggregates specified with the `-a` option.
+         - Only supported at some clearinghouses, and the list of aggregates is only advisory
         - Each URL given in an -a argument or URL listed under that given
         nickname in omni_config, if provided, ELSE
         - List of URLs given in omni_config aggregates option, if provided, ELSE

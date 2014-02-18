@@ -53,6 +53,10 @@ Highlights:
    credentials (which Omni can pass along to aggregates and to Uniform
    Federation API clearinghouses).
  * Timeout Omni calls to servers after 6 minutes (configurable)
+ * When using the new `chapi` framework allow a `--useSliceAggregates`
+   option to specify that the aggregate action should be taken at all
+   aggregates at which you have resources in this slice. (#507)
+
 
 Details:
  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
@@ -136,6 +140,13 @@ Details:
  - Support named timezones when renewing, etc (#503)
  - Properly parse the verbose config option and let the commandline
    `--verbosessl` over-ride it talking to clearinghouses. (#509)
+ - When using the new `chapi` framework allow a `--useSliceAggregates`
+   option to specify that the aggregate action should be taken at all
+   aggregates at which you have resources in this slice. (#507)
+  - Any `-a` aggregates are extra. 
+  - At other frameworks, this is ignored.
+  - This option is ignored for commands like `createsliver`,
+  `allocate`, `provision`, and `getversion`.
 
 
 
@@ -486,7 +497,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     use (that is the control framework you will use). Get a user
     certificate and key pair.
  2. Configure Omni: Be sure the appropriate section of omni_config for
-    your framework (sfa/gcf/pg) has appropriate settings for
+    your framework (sfa/gcf/pg/chapi/pgch) has appropriate settings for
     contacting that CF, and user credentials that are valid for that
     CF. Make sure the `[omni]` section refers to your CF as the default.
     If you ran src/omni-configure.py this should automatically be
@@ -666,10 +677,10 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys
+ 			 listmykeys 
  			 listkeys [optional: username]
  			 getusercred 
- 			 print_slice_expiration <slicename> 
+ 			 print_slice_expiration <slicename>
 			 listslivers <slicename>
 			 listslicemembers <slicename>
 			 addslicemember <slicename> <membername> [optional: role]
@@ -701,6 +712,10 @@ Options:
                         RSpec type and version to return, default 'GENI 3'
     -V API_VERSION, --api-version=API_VERSION
                         Specify version of AM API to use (default 2)
+    --useSliceAggregates
+                        Perform slice action at all aggregates the given slice
+                        uses according the clearinghouse records. Default is
+                        False.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -1228,7 +1243,10 @@ exists. Note that the slice name argument is only valid in AM API v1
 or v2; for v3, see `describe`.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1298,6 +1316,9 @@ Lists contents and state on 1+ aggregates and prints the result to stdout or to 
    described. Otherwise, all slivers in the slice will be described.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config `aggregates` option, if provided, ELSE
@@ -1464,6 +1485,8 @@ Aggregates queried:
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+ - Note that `--useSliceAggregates` is not honored, as the desired
+   aggregate usually has no resources in this slice yet.
 
 Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
 Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each
@@ -1546,6 +1569,8 @@ Aggregates queried:
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+ - Note that `--useSliceAggregates` is not honored, as the desired
+   aggregate usually has no resources in this slice yet.
 
 Options:
  - `--sliver-urn` or `-u` option: each specifies a sliver URN to provision. If specified,
@@ -1630,6 +1655,9 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1693,6 +1721,9 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from the specified file, if it exists.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an -a argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1754,6 +1785,9 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an -a argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1832,6 +1866,9 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an -a argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1870,6 +1907,9 @@ with the `--slicecredfile` option it is read from that file, if it exists.
    only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an -a argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1961,6 +2001,9 @@ with the `--slicecredfile` option it is read from that file, if it exists.
    and slivers do not change.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an -a argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -2012,6 +2055,9 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Single URL given in `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -2057,7 +2103,7 @@ Only one aggregate should be queried.
  - You will likely get an error
 
 ==== snapshotimage ====
-Alias for createimage
+Alias for `createimage`
 
 ==== deleteimage ====
 Call the ProtoGENI / InstaGENI !DeleteImage method, to delete a disk
@@ -2068,7 +2114,7 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py deleteimage IMAGEURN [CREATORURN]
+Format: `omni.py deleteimage IMAGEURN [CREATORURN]`
 
 Deletes the image with the given URN. Use the image URN from the
 return of createimage, or the email ProtoGENI sends when the image
