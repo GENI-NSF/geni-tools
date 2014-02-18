@@ -319,6 +319,11 @@ class Framework(Framework_Base):
                         self.user_cred_struct = self._select_sfa_cred(res['value'], True)
                         if self.user_cred_struct:
                             self.user_cred = self.user_cred_struct['geni_value']
+                            if self.user_cred_struct.has_key('geni_version'):
+                                if not isinstance(self.user_cred_struct['geni_version'], str):
+                                    self.logger.debug("Got non string geni_version on user cred. %s is type %s", 
+                                                      self.user_cred_struct['geni_version'], type(self.user_cred_struct['geni_version']))
+                                    self.user_cred_struct['geni_version'] = str(self.user_cred_struct['geni_version'])
                     if self.user_cred is None:
                         self.logger.error("No SFA user credential returned!")
                         self.logger.debug("Got %s", res['value'])
@@ -370,6 +375,10 @@ class Framework(Framework_Base):
                         cred = credstruct['geni_value']
                     else:
                         cred = credstruct
+                        if cred.has_key('geni_version'):
+                            if not isinstance(cred['geni_version'], str):
+                                self.logger.debug("Got non string geni_version on cred. %s is type %s", cred['geni_version'], type(cred['geni_version']))
+                                cred['geni_version'] = str(cred['geni_version'])
                     if cred is None:
                         self.logger.debug("Malformed list of creds: Got %s", d)
                         raise Exception("No slice credential returned for slice %s" % slice_urn)

@@ -177,6 +177,9 @@ Details:
    Omni uses the same logic as for `createsliver`, optionally
    querying your clearinghouse for slice members, and by default 
    reading users and keys configured in your `omni_config`. (#491)
+ - Ensure `geni_version` on credential structs is a string.
+   Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
+
 
 
 New in v2.4:

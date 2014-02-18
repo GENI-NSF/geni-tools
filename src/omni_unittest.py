@@ -378,8 +378,8 @@ class OmniUnittest(unittest.TestCase):
         self.assertTrue(type(dictionary[key])==valueType,
                         "Return from '%s' %s" \
                             "expected to have entry '%s' of type '%s' " \
-                            "but instead returned: %s" 
-                        % (method, agg, key, str(valueType), str(dictionary[key])))
+                            "but instead returned: '%s' of type %s" 
+                        % (method, agg, key, str(valueType), str(dictionary[key]), str(type(dictionary[key]))))
 
     def assertKeyValue( self, method, aggName, dictionary, key):
         """Check whether dictionary returned by method at aggName has_key( key )"""
