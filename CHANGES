@@ -13,6 +13,8 @@ gcf 2.5:
  * When using the new `chapi` framework allow a `--useSliceAggregates`
    option to specify that the aggregate action should be taken at all
    aggregates at which you have resources in this slice. (#507)
+ * Added new options to allow installing SSH keys of all slice members
+   when using the new `chapi` framework. (#491)
  * Stitcher adds an option to force use of the ExoSM for EG resources.
  * Stitcher saves the manifest RSpec to a file by default.
  * Stitcher adds the ability to query the Stitching Service for a list of
@@ -111,6 +113,30 @@ gcf 2.5:
     clearinghouse to report slivers, query for slivers, or query
     a list of aggregates; explicit CH calls and retrieving credentials
     is not effected. (#514)
+  - Added new options controlling what SSH keys are installed on
+    compute resources. Default behavior is unchanged. These options
+    control what users are created and SSH keys installed in new
+    slivers from `createsliver` or `provision`, or when you update
+    the installed users and keys using 
+    `performoperationalaction <slice> geni_update_users`.
+    If you supply the new option `--useSliceMembers` and your
+    clearinghouse supports listing slice members (i.e. the new `chapi`
+    type), then Omni will fetch the members of your slice from the
+    clearinghouse and their public SSH keys, and send those to the
+    aggregate to install on new compute resources. 
+    By default, Omni will ''also'' read the users and SSH keys
+    configured in your `omni_config` as usual, ''adding'' those users
+    and keys to the set downloaded from the clearinghouse, if any.
+    You can skip reading the `omni_config` keys by supplying the new option
+    `--ignoreConfigUsers`.
+    As before, `performoperationalaction` allows you to specify a file
+    containing options with the `--optionsfile` option. If that file
+    specifies the `geni_users` option, then that is the only set of
+    users and keys that is supplied with `performoperationalaction`.
+    However, if you do not supply the `geni_users` option from a file,
+    Omni uses the same logic as for `createsliver`, optionally
+    querying your clearinghouse for slice members, and by default 
+    reading users and keys configured in your `omni_config`. (#491)
  
  
  * stitcher

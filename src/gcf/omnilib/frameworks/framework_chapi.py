@@ -289,7 +289,7 @@ class Framework(Framework_Base):
                 else:
                     msg += str(cred)[:180] + "..."
                 first = False
-            self.logger.debug("%s; new_options = %s" % (msg, new_options))
+            self.logger.debug("%s]; new_options = %s" % (msg, new_options))
         return new_credentials, new_options
 
     def get_user_cred(self, struct=False):
