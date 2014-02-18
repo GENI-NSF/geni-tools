@@ -56,6 +56,8 @@ Highlights:
  * When using the new `chapi` framework allow a `--useSliceAggregates`
    option to specify that the aggregate action should be taken at all
    aggregates at which you have resources in this slice. (#507)
+ * Added new options to allow installing SSH keys of all slice members
+   when using the new `chapi` framework. (#491)
 
 
 Details:
@@ -151,6 +153,30 @@ Details:
    clearinghouse to report slivers, query for slivers, or query
    a list of aggregates; explicit CH calls and retrieving credentials
    is not effected. (#514)
+ - Added new options controlling what SSH keys are installed on
+   compute resources. Default behavior is unchanged. These options
+   control what users are created and SSH keys installed in new
+   slivers from `createsliver` or `provision`, or when you update
+   the installed users and keys using 
+   `performoperationalaction <slice> geni_update_users`.
+   If you supply the new option `--useSliceMembers` and your
+   clearinghouse supports listing slice members (i.e. the new `chapi`
+   type), then Omni will fetch the members of your slice from the
+   clearinghouse and their public SSH keys, and send those to the
+   aggregate to install on new compute resources. 
+   By default, Omni will ''also'' read the users and SSH keys
+   configured in your `omni_config` as usual, ''adding'' those users
+   and keys to the set downloaded from the clearinghouse, if any.
+   You can skip reading the `omni_config` keys by supplying the new option
+   `--ignoreConfigUsers`.
+   As before, `performoperationalaction` allows you to specify a file
+   containing options with the `--optionsfile` option. If that file
+   specifies the `geni_users` option, then that is the only set of
+   users and keys that is supplied with `performoperationalaction`.
+   However, if you do not supply the `geni_users` option from a file,
+   Omni uses the same logic as for `createsliver`, optionally
+   querying your clearinghouse for slice members, and by default 
+   reading users and keys configured in your `omni_config`. (#491)
 
 
 New in v2.4:
@@ -719,6 +745,16 @@ Options:
                         Perform slice action at all aggregates the given slice
                         uses according the clearinghouse records. Default is
                         False.
+    --useSliceMembers   Put slice members' SSH keys on reserved resources in
+                        createsliver, provision or performoperationalaction.
+                        Default False. When true, adds these users and keys to
+                        those read from your omni_config (unless
+                        --ignoreConfigUsers).
+    --ignoreConfigUsers
+                        Ignore users and SSH keys listed in your omni_config
+                        when installing SSH keys on resources in createsliver
+                        or provision or performoperationalaction. Default
+                        false - your omni_config users are read and used.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -1386,6 +1422,12 @@ Sample Usage:
      omni.py -a pg-gpo -o -p myPrefix \
              createsliver myslice resources.rspec
 }}}
+ * Reserve resources, installing all slice members' keys on the new
+ nodes, but not any users listed in `omni_config`.
+{{{
+     omni.py -a ig-gpo --useSliceMembers --ignoreConfigUsers \
+             createsliver myslices resources.rspec
+}}}
 
 Note: 
 The request RSpec file argument should have been created by using
@@ -1442,9 +1484,16 @@ Options for development and testing:
 Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
-The omni_config `users` section is used to get a set of SSH keys that
+Users and SSH Keys:
+By default, the omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this.
+remote resource and aggregate support this. 2 options control this:
+ - `--ignoreConfiguUsers': When supplied, ignore the omni_config
+ `users` and do not install any keys listed there.
+ - `--useSliceMembers`: When supplied and you use a
+ framework/clearinghouse that supports it (i.e. type `chapi), query
+ the clearinghouse for all configured members of the slice and their
+ public SSH keys. Also install those users and keys.
 
 Note you likely want to check `sliverstatus` to ensure your resource comes up.
 And check the sliver expiration time; you may want to call `renewsliver` to extend the expiration time.
@@ -1592,9 +1641,16 @@ Options:
 Note that some aggregates may require provisioning all slivers in the same state at the same
 time, per the `geni_single_allocation` !GetVersion return.
 
-omni_config `users` section is used to get a set of SSH keys that
+Users and SSH Keys:
+By default, the omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this.
+remote resource and aggregate support this. 2 options control this:
+ - `--ignoreConfiguUsers': When supplied, ignore the omni_config
+ `users` and do not install any keys listed there.
+ - `--useSliceMembers`: When supplied and you use a
+ framework/clearinghouse that supports it (i.e. type `chapi), query
+ the clearinghouse for all configured members of the slice and their
+ public SSH keys. Also install those users and keys.
 
 Output directing options:
  - `-o`: Save result in per-aggregate files
@@ -1653,6 +1709,9 @@ Options:
    only the listed slivers will be acted on. Otherwise, all slivers in
    the slice will be acted on.
    Note though that actions are state and resource type specific, so the action may not apply everywhere.
+ - `--optionsfile`: Path to a JSON format file defining options to be passed to
+ the aggregate. The specific required options depend on the action
+ specified.
 
 Slice name could be a full URN, but is usually just the slice name
 portion.
@@ -1694,6 +1753,24 @@ Other options:
 
 Options for development and testing:
  - `--devmode`: Continue on error if possible
+
+Common actions:
+Some actions are well known and supported at many aggregates and
+resource types. Always check the Ad RSpec for an aggregate to verify
+what is supported.
+ - `geni_start`: Make the resources ready for use (like booting
+ machines). No options needed
+ - `geni_restart`: For example, reboot a machine. No options required.
+ - `geni_stop`: Stop a resource (e.g. shut it down). No options
+ needed.
+ - `geni_update_users`: Refresh the set of user accounts and installed
+ SSH keys on the resource. Takes the option `geni_users`. This action
+ creates any users specified that do not already exist, and sets the
+ SSH keys for all users per the list of keys specified - including
+ removing keys not explicitly listed. The `geni_users` option can be
+ supplied using the `--optionsfile` argument. If not supplied that
+ way, then users are read from the omni_config or clearinghouse slice
+ members, as documented under `createsliver`.
 
 ==== renewsliver ====
 Calls the AM API v1 or v2 !RenewSliver function.  For AM API v3, see `renew` instead.

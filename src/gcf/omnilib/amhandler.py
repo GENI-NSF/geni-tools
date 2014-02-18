@@ -1768,7 +1768,9 @@ class AMCallHandler(object):
         creds = self._maybe_add_creds_from_files(creds)
 
         # Copy the user config and read the keys from the files into the structure
-        slice_users = self._get_users_arg()
+        slice_users = self._get_users_arg(slicename)
+        if not slice_users or len(slice_users) == 0:
+            self.logger.warn("No users or SSH keys supplied; you will not be able to SSH in to any compute resources")
 
         op = "CreateSliver"
         options = self._build_options(op, slicename, None)
@@ -2157,12 +2159,14 @@ class AMCallHandler(object):
                                                       op)
 
         # Copy the user config and read the keys from the files into the structure
-        slice_users = self._get_users_arg()
+        slice_users = self._get_users_arg(slicename)
 
         # If there are slice_users, include that option
         options = {}
         if slice_users and len(slice_users) > 0:
             options['geni_users'] = slice_users
+        else:
+            self.logger.warn("No users or SSH keys supplied; you will not be able to SSH in to any compute resources")
 
         options = self._build_options(op, slicename, options)
         urnsarg, slivers = self._build_urns(urn)
@@ -2430,6 +2434,22 @@ class AMCallHandler(object):
                 self.logger.warn("Action: '%s'. Did you mean 'geni_restart'?" % action)
 
         options = self._build_options(op, slicename, None)
+
+        # If the action is geni_update_users and we got no geni_users option yet, then call _get_users_arg.
+        # If we did get a geni_users, then we use that.
+        # _get_users_arg will check slice members and the omni config (per options)
+        if action.lower() == 'geni_update_users':
+            if options and options.has_key('geni_users'):
+                self.logger.debug("Got geni_users option from optionsfile")
+            else:
+                if not options:
+                    options = {}
+                users = self._get_users_arg(slicename)
+                if users and len(users) > 0:
+                    options['geni_users'] = users
+                else:
+                    self.logger.info("No users or keys supplied for geni_update_users")
+
         urnsarg, slivers = self._build_urns(urn)
 
         descripMsg = "%s on slivers in slice %s" % (action, urn)
@@ -4361,51 +4381,130 @@ class AMCallHandler(object):
 #        rspec = string.replace(rspec, '\n', ' ')
         return rspec
 
-    def _get_users_arg(self):
-        '''Get the users argument for SSH public keys to install from omni_config 'users' section.'''
-        # Copy the user config and read the keys from the files into the structure
-        slice_users = copy(self.config['users'])
-        if len(slice_users) == 0:
-            self.logger.warn("No users defined. No keys will be uploaded to support SSH access.")
+    def _get_users_arg(self, sliceName):
+        '''Get the users argument for SSH public keys to install.
+        These keys are used in createsliver, provision, and poa geni_update_users.
+        Keys may come from the clearinghouse list of slice members, and from the omni_config 'users' section.
+        Commandline options enable/disable each source. The set of users and keys is unioned.'''
 
-        #slice_users = copy(self.omni_config['slice_users'])
-        for user in slice_users:
-            newkeys = []
-            required = ['urn', 'keys']
-            for req in required:
+        # Return is a list of dicts
+        # Each dict has 2 keys: 'urn' and 'keys'
+        # 'keys' is a list of strings - the value of the keys
+        slice_users = []
+
+
+        # First get slice members & keys from the CH
+        if self.opts.useSliceMembers and not self.opts.noExtraCHCalls:
+            self.logger.debug("Getting users and SSH keys from the Clearinghouse list of slice members")
+            sliceMembers = []
+            mess = None
+            try:
+                # Return is a list of dicts with 'URN', 'EMAIL', and 'KEYS' (which is a list of keys or None)
+                (sliceMembers, mess) = self.framework.get_members_of_slice(sliceName)
+                if not sliceMembers:
+                    self.logger.debug("Got empty sliceMembers list for slice %s: %s", sliceName, mess)
+            except Exception, e:
+                self.logger.debug("Failed to get list of slice members for slice %s: %s", sliceName, e)
+
+            if sliceMembers:
+                for member in sliceMembers:
+                    if not (member.has_key('URN') and member.has_key('KEYS')):
+                        self.logger.debug("Skipping malformed member %s", member)
+                        continue
+                    found = False
+                    for user in slice_users:
+                        if user['urn'] == member['URN']:
+                            found = True
+                            if member['KEYS'] is None:
+                                self.logger.debug("CH had no keys for member %s", member['URN'])
+                                break
+                            for mkey in member['KEYS']:
+                                if mkey in user['keys']:
+                                    continue
+                                else:
+                                    user['keys'].append(mkey)
+                                    self.logger.debug("Adding a CH key for member %s", member['URN'])
+                            # Done unioning keys for existing user
+                            break
+                    # Done searching for existing user
+                    if not found:
+                        nmember = dict()
+                        nmember['urn'] = member['URN']
+                        nmember['keys'] = member['KEYS']
+                        if nmember['keys'] is None:
+                            nmember['keys'] = []
+                        slice_users.append(nmember)
+                # Done looping of slice members
+            # Done if got sliceMembers
+            self.logger.debug("From Clearinghouse got %d users whose SSH keys will be set", len(slice_users))
+        # Done block to fetch users from CH
+        else:
+            if self.opts.useSliceMembers and self.opts.noExtraCHCalls:
+                self.logger.debug("Per config not doing extra Clearinghouse calls, including looking up slice members")
+            elif not self.opts.useSliceMembers:
+                self.logger.debug("Did not request to get slice members' SSH keys")
+
+        if not self.opts.ignoreConfigUsers:
+            self.logger.debug("Reading users and keys to install from your omni_config")
+            # Copy the user config and read the keys from the files into the structure
+            slice_users2 = copy(self.config['users'])
+            if len(slice_users) == 0 and len(slice_users2) == 0:
+                self.logger.warn("No users defined. No keys will be uploaded to support SSH access.")
+                return slice_users
+
+            for user in slice_users2:
+                newkeys = []
+                required = ['urn', 'keys']
+                for req in required:
 #--- Dev vs Exp: allow this in dev mode:
-                if not req in user:
-                    msg = "%s in omni_config is not specified for user %s" % (req,user)
-                    if self.opts.devmode:
-                        self.logger.warn(msg)
-                    else:
-                        self._raise_omni_error(msg)
+                    if not req in user:
+                        msg = "%s in omni_config is not specified for user %s" % (req,user)
+                        if self.opts.devmode:
+                            self.logger.warn(msg)
+                        else:
+                            self._raise_omni_error(msg)
 #---
+                if user.has_key('keys'):
+                    for key in user['keys'].split(','):
+                        try:
+                            newkeys.append(file(os.path.expanduser(key.strip())).read())
+                        except Exception, exc:
+                            self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
+                    user['keys'] = newkeys
+                if len(newkeys) == 0:
+                    uStr = ""
+                    if user.has_key('urn'):
+                        uStr = user['urn']
+                    self.logger.warn("Empty keys for user %s", uStr)
+                else:
+                    uStr = ""
+                    if user.has_key('urn'):
+                        uStr = "User %s " % user['urn']
+                    self.logger.debug("%sNewkeys: %r", uStr, newkeys)
 
-            for key in user['keys'].split(','):
-                try:
-                    newkeys.append(file(os.path.expanduser(key.strip())).read())
-                except Exception, exc:
-                    self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
-            user['keys'] = newkeys
-            if len(newkeys) == 0:
-                self.logger.warn("Empty keys for user %s", user['urn'])
-            else:
-                self.logger.debug("Newkeys: %r", newkeys)
-
-#            # Now error check the URN. It has to match that in the cert
-#            # for AMs of type pg with tag < Tag v4.240? or stable-20110420?
-#            # FIXME: Complain if NO urn is that in the cert?
-#            # Only do the complaint if there is a PG AM that is old?
-#            # Or somehow hold of complaining until per AM we have an issue?
-#            certurn = ''
-#            try:
-#                certurn = gid.GID(filename=self.framework.cert).get_urn()
-#            except Exception, exc:
-#                self.logger.warn("Failed to get URN from cert %s: %s", self.framework.cert, exc)
-#            if certurn != user['urn']:
-#                self.logger.warn("Keys MAY not be installed for user %s. In PG prior to stable-20110420, the user URN must match that in your certificate. Your cert has urn %s but you specified that user %s has URN %s. Try making your omni_config user have a matching URN.", user, certurn, user, user['urn'])
-#                # FIXME: if len(slice_users) == 1 then use the certurn?
+                # Now merge this into the list from above
+                found = False
+                for member in slice_users:
+                    if not user.has_key('urn'):
+                        if not member.has_key('urn'):
+                            found = True
+                    elif member.has_key('urn') and user['urn'] == member['urn']:
+                        found = True
+                    if found:
+                        if user.has_key('keys'):
+                            if not member.has_key('keys'):
+                                member['keys'] = user['keys']
+                            else:
+                                for key in user['keys']:
+                                    if key not in member['keys']:
+                                        member['keys'].append(key)
+                        break
+                if not found:
+                    slice_users.append(user)
+            # Done looping over users defined in the omni_config
+            self.logger.debug("After reading omni_config, %d users will have SSH keys set", len(slice_users))
+        else:
+            self.logger.debug("Requested to ignore omni_config users and SSH keys")
 
 #        if len(slice_users) < 1:
 #            self.logger.warn("No user keys found to be uploaded")
