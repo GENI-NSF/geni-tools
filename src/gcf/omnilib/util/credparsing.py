@@ -110,13 +110,13 @@ def get_cred_type(cred):
     elif len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'privilege':
         is_sfa = True
     if is_abac:
-        return ABACCredential.ABAC_CREDENTIAL_TYPE, 1
+        return ABACCredential.ABAC_CREDENTIAL_TYPE, "1"
     elif is_sfa:
-        sfa_version = 3
-        if not is_valid_v3(None, cred): sfa_version = 2
+        sfa_version = "3"
+        if not is_valid_v3(None, cred): sfa_version = "2"
         return Credential.SFA_CREDENTIAL_TYPE, sfa_version
     else:
-        return CredentialFactory.UNKNOWN_CREDENTIAL_TYPE, 0
+        return CredentialFactory.UNKNOWN_CREDENTIAL_TYPE, "0"
 
 # Want to rule out ABAC
 # Want to rule out geni_sfa v2 if possible
