@@ -639,13 +639,13 @@ class CHCallHandler(object):
             self.logger.warn(prtStr)
         return prtStr + '\n', members
 
-    def addmembertoslice(self, args):
+    def addslicemember(self, args):
         """Add a member to a slice
         Args: slicename membername [optional: role name, default 'MEMBER']
         Return summary string and whether successful
         """
         if len(args) != 2 and len(args) != 3:
-            self._raise_omni_error('addmembertoslice missing args: Supply <slice name> <member name> [role = MEMBER]')
+            self._raise_omni_error('addslicemember missing args: Supply <slice name> <member name> [role = MEMBER]')
         slice_name = args[0].strip()
         member_name = args[1].strip()
         if len(args) == 3:
