@@ -205,6 +205,9 @@ gcf 2.5:
  * omni-configure
   - Added Kentucky as a CH/SA authority (#453)
 
+ * readyToLogin.py
+  - Add support for v2 GRAM (#444)
+
 gcf 2.4.2:
  v2.4.2 contains changes to support running omni on Windows.
  * omni

@@ -138,6 +138,7 @@ def getInfoFromManifest(manifestStr):
          try:
            loginInfo.append(login_el.attrib)
            loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
+           loginInfo[-1]["sliver_urn"] = node_el.attrib["sliver_id"]
          except AttributeError, ae:
            print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
            print "Error: %s" % ae
@@ -475,6 +476,8 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
     # a future release should remove the following line so that we don't fall back to SliverStatus
     if options.fallback_status_PG:
         amLoginInfo = addNodeStatusCheckForPGFallback( amLoginInfo, amSliverStat )
+  elif amType == "GRAM":
+      amLoginInfo = addNodeStatusGRAM( amLoginInfo, amSliverStat )
   else:
       print "NOT IMPLEMENTED YET"
   return amLoginInfo
@@ -498,6 +501,20 @@ def addNodeStatusPG( amLoginInfo, amSliverStat ):
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
+    return amLoginInfo
+
+def addNodeStatusGRAM( amLoginInfo, amSliverStat ):
+    for resourceDict in amSliverStat['geni_resources']:
+      client_id = ""
+      if resourceDict.has_key("geni_sliver_urn"):
+         sliver_id = resourceDict["geni_sliver_urn"]
+      geni_status = ""
+      if resourceDict.has_key("geni_status"):
+         geni_status = resourceDict["geni_status"]
+      for userLoginInfo in amLoginInfo:
+         if userLoginInfo['sliver_urn'] != sliver_id:
+            continue
+         userLoginInfo['geni_status'] = geni_status
     return amLoginInfo
 
 def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
@@ -664,9 +681,9 @@ def printLoginInfo( loginInfoDict, keyList ) :
             if firstTime[ item['client_id'] ]:
                 gsOut = ""
                 amsOut = ""
-                if item.has_key('geni_status'):
+                if item.has_key('geni_status') and item['geni_status'].strip()!="":
                     gsOut = "geni_status is: %s" % item['geni_status']
-                if item.has_key('am_status'):
+                if item.has_key('am_status') and item['am_status'].strip()!="":
                     amsOut = "am_status: %s" % item['am_status']
                 if gsOut:
                     if amsOut:
@@ -822,13 +839,12 @@ def main_no_print(argv=None, opts=None, slicen=None):
                                 'info' : amLoginInfo
                                }
       continue
-#    if amType == "orca" or (amType == "protogeni") or (amType == "GRAM"): 
     else:
-      #print "Getting login info from manifest for %s" % amUrl
+      # Getting login info from manifest"
       amLoginInfo = getInfoFromSliceManifest(amUrl)
       # Get the status only if we care
       if len(amLoginInfo) > 0 :
-        if options.readyonly or (amType == "protogeni"):
+        if options.readyonly or (amType == "protogeni") or (amType == "GRAM"):
           amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
         loginInfoDict[amUrl] = {'amType':amType,
                                 'info':amLoginInfo
