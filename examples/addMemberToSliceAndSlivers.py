@@ -85,6 +85,9 @@ def main(argv=None):
   print "Calling Omni to add %s to slice %s\n" % (userName, sliceName)
   try:
     text, retItem = omni.call(omniargs, options)
+    if not retItem:
+      print "\nFailed to add member to slice: %s" % text
+      sys.exit(-1)
   except OmniError, oe:
     print "\nOmni call failed: %s\n" % oe
     sys.exit(-1)
