@@ -179,6 +179,8 @@ Details:
    `--verbosessl` over-ride it talking to clearinghouses. (#509)
  - Ensure `geni_version` on credential structs is a string.
    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
+ - Notice invalid slice and member names earlier and supporess ugly
+   tracebacks on most `chapi` framework errors. (#517)
 
 
 New in v2.4:
