@@ -589,7 +589,6 @@ class CHCallHandler(object):
         else:
             result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
             for agg_urn in slivers_by_agg:
-                agg_nickname = _lookupAggNick(self, agg_urn)
                 result_string += "Aggregate: " + agg_urn
                 agg_nickname = _lookupAggNick(self, agg_urn)
                 if agg_nickname:
