@@ -103,12 +103,20 @@ def is_valid_v3(logger, credString):
 def get_cred_type(cred):
     is_abac = False
     is_sfa = False
-    doc = md.parseString(cred)
-    type_elts = doc.getElementsByTagName('type')
-    if len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'abac':
-        is_abac = True
-    elif len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'privilege':
-        is_sfa = True
+    try:
+        doc = md.parseString(cred)
+        type_elts = doc.getElementsByTagName('type')
+        if len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'abac':
+            is_abac = True
+        elif len(type_elts) == 1 and type_elts[0].childNodes[0].nodeValue.strip() == 'privilege':
+            is_sfa = True
+    except Exception, e:
+        level = logging.INFO
+        logging.basicConfig(level=level)
+        logger = logging.getLogger("omni.credparsing")
+        logger.setLevel(level)
+        logger.warn("Unparsable credential: %s", e)
+
     if is_abac:
         return ABACCredential.ABAC_CREDENTIAL_TYPE, "1"
     elif is_sfa:

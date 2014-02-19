@@ -155,6 +155,7 @@ sa=https://ch.geni.net/SA
   - Support AM API draft proposal O1 and allow '.' and '_' in sliver
     names, and do not complain or stop needlessly on illegal sliver
     names. (#518)
+  - Catch parse errors when determining credential type (#521)
  
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
