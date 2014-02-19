@@ -314,6 +314,7 @@ class CHCallHandler(object):
             self.logger.error("Failed to list slices for user '%s'"%(username))
             retStr += "Server error: %s. " % message
         elif len(slices) > 0:
+            slices = sorted(slices)
             self.logger.info("User '%s' has slice(s): \n\t%s"%(username,"\n\t".join(slices)))
         else:
             self.logger.info("User '%s' has NO slices."%username)
@@ -324,7 +325,6 @@ class CHCallHandler(object):
         return retStr, slices
 
     def listkeys(self, args):
-
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
         Not supported by all frameworks, and some frameworks insist on only the current user."""
@@ -364,8 +364,12 @@ class CHCallHandler(object):
 
 
     def listmykeys(self, args):
-        """Provides a list of SSH public keys registered at the CH for the current user.
-        Not supported by all frameworks."""
+        """Provides a list of SSH public keys registered at the CH for the specified user,
+        or the current user if not specified.
+        Not supported by all frameworks, and some frameworks insist on
+        only the current user.
+        Really just an alias for listkeys."""
+
         return self.listkeys(args)
 
     def getusercred(self, args):
@@ -608,7 +612,7 @@ class CHCallHandler(object):
         """List all the members of a slice
         Args: slicename
         Return summary string and list of member dictionaries
-        containing KEYS (list), URN, EMAIL
+        containing KEYS (list), URN, EMAIL, and ROLE
         """
         if len(args) < 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listslicemembers missing args: Supply <slice name>')
@@ -625,12 +629,14 @@ class CHCallHandler(object):
             self._raise_omni_error("listslicemembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 
         if members and len(members) > 0:
-            prtStr = "Members in slice %s are:\n" % (slice_name)
+            prtStr = "Members of slice %s are:\n" % (slice_name)
             for i, member in enumerate(members):
                 prtStr += 'Member ' + str(i + 1) + ':\n'
                 prtStr += '   URN = ' + member['URN'] + '\n'
                 prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
                 prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
+                if member.has_key('ROLE'):
+                    prtStr += '   Role = ' + str(member['ROLE']) + '\n'
 #            self.logger.info(prtStr)
         else:
             prtStr = "Failed to find members of slice %s" % (slice_name)
@@ -640,12 +646,12 @@ class CHCallHandler(object):
         return prtStr + '\n', members
 
     def addslicemember(self, args):
-        """Add a member to a slice
-        Args: slicename membername [optional: role name, default 'MEMBER']
+        """Add a user to a slice
+        Args: slicename username [optional: role name, default 'MEMBER']
         Return summary string and whether successful
         """
         if len(args) != 2 and len(args) != 3:
-            self._raise_omni_error('addslicemember missing args: Supply <slice name> <member name> [role = MEMBER]')
+            self._raise_omni_error('addslicemember missing args: Supply <slice name> <username> [role = MEMBER]')
         slice_name = args[0].strip()
         member_name = args[1].strip()
         if len(args) == 3:
@@ -658,7 +664,7 @@ class CHCallHandler(object):
         slice_urn = self.framework.slice_name_to_urn(slice_name)
 
         # Try to add the member to the slice
-        (res, m2) = _do_ssl(self.framework, None, "Add member %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_name, role)
+        (res, m2) = _do_ssl(self.framework, None, "Add user %s to slice %s" % (member_name, slice_name), self.framework.add_member_to_slice, slice_urn, member_name, role)
         if res is None:
             success = False
             message = None
@@ -666,10 +672,10 @@ class CHCallHandler(object):
             (success, message) = res
 
         if success:
-            prtStr = "Member %s is now a %s in slice %s" % (member_name, role, slice_name)
+            prtStr = "User %s is now a %s in slice %s" % (member_name, role, slice_name)
             self.logger.info(prtStr)
         else:
-            prtStr = "Failed to add member %s to slice %s" % (member_name, slice_name)
+            prtStr = "Failed to add user %s to slice %s" % (member_name, slice_name)
             if message and message.strip() != "":
                 prtStr += ". " + message
             if m2 and m2.strip() != "":

@@ -287,7 +287,8 @@ class Framework_Base():
                        geni_value=cred)
         return ret
 
-    # get the slice members (urn, email) and their public ssh keys
+    # get the slice members (urn, email) and their public ssh keys and
+    # slice role
     def get_members_of_slice(self, slice_urn):
         raise NotImplementedError('get_members_of_slice')
 

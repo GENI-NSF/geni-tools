@@ -76,9 +76,9 @@ Details:
     not to miss any reservations.
   - New function `listslicemembers <slice>` lists the members of
     the given slice, with their email and registered SSH public
-    keys (if any). (#421, #431)
-  - New function `addslicemember <slice> <member> [optional: role]`
-    Adds the member with the given username to the named slice,
+    keys (if any) and role in the slice. (#421, #431)
+  - New function `addslicemember <slice> <username> [optional: role]`
+    Adds the user with the given username to the named slice,
     with the given role (or `MEMBER` by default). Note this
     does not change what SSH keys are installed on any existing
     slivers. (#422,#513)
@@ -714,13 +714,13 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys 
+ 			 listmykeys [optiona: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename>
 			 listslivers <slicename>
 			 listslicemembers <slicename>
-			 addslicemember <slicename> <membername> [optional: role]
+			 addslicemember <slicename> <username> [optional: role]
  		Other functions: 
  			 nicknames 
 
@@ -1018,6 +1018,9 @@ Format: `omni.py get_ch_version`
 ==== listaggregates ====
 List the URN and URL for all known aggregates.
 
+Note that this lists all known aggregates, not just those used by a
+particular slice.
+
 Format: `omni.py [-a AM_URL_or_nickname] listaggregates`
 
 Sample Usage:
@@ -1152,9 +1155,11 @@ With no `username` supplied, it will look up slices registered to you
 (the user whose certificate is supplied).
 
 ==== listmykeys ====
-Provides a list of the SSH public keys registered at the confiigured
-clearinghouse for the current user. 
-Not supported by all frameworks.
+Provides a list of SSH public keys registered at the configured
+control framework for the specified user, or current user if not defined.
+Not supported by all frameworks. Some frameworks only support querying
+the current user.
+Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
 
@@ -1214,6 +1219,15 @@ that file, if it exists. Otherwise the Slice Authority is queried.
 List all slivers of the given slice by aggregate, as recorded at the
 clearinghouse. Note that this is non-authoritative information.
 
+Notes:
+ - This is a function of the clearinghouse, and relies on information
+ reported by Omni and other tools.
+ - This is non-authoritative information: your slice may have other
+ reservations and some of these reservations may have since been
+ renewed or deleted.
+ - This command does not list all known aggregates, only those used by a
+ particular slice. For a list of all known aggregates, see `listaggregates`.
+
 Format: `omni.py listslivers <slice name>`
 
 Sample usage: `omni.py listslivers myslices`
@@ -1234,7 +1248,7 @@ This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
 not authoritative. You may use it to look for reservations, but if you
 require accurate information you must query the aggregates. Note in
-particular that slivers reserved through Flack are not reported here.
+particular that slivers reserved through Flack are currently not reported here.
 
 This function is only supported at some `chapi` style clearinghouses,
 including the GENI Clearinghouse.
@@ -1251,10 +1265,11 @@ Output prints out the slice members and their SSH keys, URN, and
 email.
 
 Return is a list of the members of the slice as registered at the
-clearinghouse. For each member, the return includes:
+clearinghouse. For each such user, the return includes:
  - `KEYS`: a list of all public SSH keys registered at the clearinghouse
- - `URN` identifier of the member
- - `EMAIL` address of the member
+ - `URN` identifier of the user
+ - `EMAIL` address of the user
+ - `ROLE` of the user in the slice.
 
 Note that slice membership is only supported at some `chapi` type
 clearinghouses, including the GENI Clearinghouse. Slice membership
@@ -1266,10 +1281,10 @@ Note also that just because a slice member has SSH keys registered does not
 mean that those SSH keys have been installed on all reserved compute resources.
 
 === addslicemember ===
-Add the named member to the named slice. The member's role in the
+Add the named user to the named slice. The user's role in the
 slice will be `MEMBER` if not specified.
 
-Format: `omni.py addslicemember <slice name> <member username> [role]`
+Format: `omni.py addslicemember <slice name> <user username> [role]`
 
 Sample Usage: `omni.py addslicemember myslice jsmith`
 
@@ -1289,7 +1304,7 @@ This function is typically a privileged operation at the
 clearinghouse, limited to slice members with the role `LEAD` or
 `ADMIN`.
 
-Note also that adding a member to a slice does not automatically add
+Note also that adding a user to a slice does not automatically add
 their public SSH keys to resources that have already been reserved.
 
 ==== getversion ====

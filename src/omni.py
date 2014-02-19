@@ -89,8 +89,8 @@
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
-       [string listOfMemberDictionaries (KEYS, URN, EMAIL)] = omni.py listslicemembers SLICENAME
-       [string Boolean] = omni.py addslicemember SLICENAME MEMBER [ROLE]
+       [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
+       [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    

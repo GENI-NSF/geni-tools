@@ -1102,7 +1102,7 @@ class Framework(Framework_Base):
         else:
             return None
 
-    # get the members (urn, email) and their ssh keys
+    # get the members (urn, email) and their ssh keys and role in the slice
     def get_members_of_slice(self, urn):
         # FIXME: This seems to list members even of an expired slice,
         # if that is the most recent slice by this name
@@ -1146,11 +1146,11 @@ class Framework(Framework_Base):
             if res['value']:
                 for member_vals in res['value']:
                     member_urn = member_vals['SLICE_MEMBER']
-                    # FIXME: Return this too?
-#                    member_role = member_vals['SLICE_ROLE']
+                    member_role = member_vals['SLICE_ROLE']
                     member = {'URN': member_urn}
                     member['EMAIL'] = self._get_member_email(member_urn)
                     member['KEYS'] = self._get_member_keys(member_urn)
+                    member['ROLE'] = member_role
                     members.append(member)
         else:
             mess = logr
