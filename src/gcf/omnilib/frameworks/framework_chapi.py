@@ -1387,12 +1387,16 @@ class Framework(Framework_Base):
             self.logger.warn("Empty Aggregate URL to look up")
             return None
 
+        # FIXME: This relies on an exact match. See handler_utils for
+        # tricks we do locally that perhaps we should do here.
+
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
         res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for %s" % (self.fwtype, agg_url),
                             self.ch.lookup_aggregates, options)
         logr = self._log_results((res, mess), 'Convert aggregate url %s to urn using %s DB' % (agg_url, self.fwtype))
         if logr == True:
+            self.logger.debug("Got CH AM listing %s for URL %s", res['value'], agg_url)
             if len(res['value']) == 0:
                 return None
             else:
