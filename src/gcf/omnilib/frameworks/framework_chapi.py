@@ -1137,6 +1137,10 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # Probably the slice doesn't exist or you don't have
+            # rights on it
+            return ([], "Error looking up slice %s - check the logs" % slice_urn)
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
@@ -1445,6 +1449,10 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # Usually means the slice doesn't exist or you don't have
+            # rights on it
+            return []
 
         # FIXME: Query the sliver expiration and skip expired slivers?
         options = {'filter': [],
@@ -1574,6 +1582,9 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # User not authorized or slice doesn't exist
+            return slivers_by_agg
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
 
