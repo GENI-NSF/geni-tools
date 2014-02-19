@@ -120,7 +120,7 @@ class AMCallHandler(object):
         if call in ('getversion', 'listimages', 'deleteimage', 'createsliver', 'allocate', 'provision'): # createimage?
             return None
         elif len(args) > 1:
-            ret = args[1].lower().strip()
+            ret = args[1].strip()
             if ret == "":
                 return None
             self.logger.debug("Found slice name %s", ret)
