@@ -1,65 +1,28 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.5:
- * Refactored the source code to make it easier to import Omni in
-   other tools. Look in `src/gcf` for directories that were
-   previously directly under `src`. (#388)
  * Omni adds the ability to contact clearinghouses that speak the
    Uniform Federation API using framework type `chapi`
- * Added utilities for creating and processing 'Speaks For'
-   credentials (which Omni can pass along to aggregates and to Uniform
-   Federation API clearinghouses).
- * Timeout Omni calls to servers after 6 minutes (configurable)
  * When using the new `chapi` framework allow a `--useSliceAggregates`
    option to specify that the aggregate action should be taken at all
    aggregates at which you have resources in this slice. (#507)
  * Added new options to allow installing SSH keys of all slice members
    when using the new `chapi` framework. (#491)
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (configurable)
  * Stitcher adds an option to force use of the ExoSM for EG resources.
  * Stitcher saves the manifest RSpec to a file by default.
- * Stitcher adds the ability to query the Stitching Service for a list of
-   stitchable aggregates.
  * Stitcher fills in capacity on your links where it is missing
    (amount is configurable)
+ * Stitcher adds the ability to query the Stitching Service for a list of
+   stitchable aggregates.
 
  * omni
-  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
-  - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
-  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
-    allows changing this. (#407)
-  - Create any directories needed in the path to the `agg_nick_cache` (#383)
-  - If using `--AggNickCacheName` and can't read/write to the specified
-    file, omni should fall back to reading `agg_nick_cach.base` (#384)
-  - Look up AM URN by URL in the defined aggregate nicknames (#404)
-  - Eliminated a repetitive log message (#384)
-  - Fix bug in APIv3 calling status with slivers with different
-    expiration times (#408)
-  - Fit Omni result summaries in 80 character wide terminals (#409)
-  - `ForceUseAggNickCache` avoids fetching new cache even if the agg
-    nick cache is old (#391)
-  - Support `geni_extend_alap` with new `--alap` option, allowing you to
-    request that slivers be renewed as long as possible, if your
-    requested time is not permitted by local AM policy. (#415)
-  - Renew Slice returns actual new expiration (checks the SA, not just
-    assuming success means you got what you asked for) (#428, #447)
-  - SFA slice and user records changed: keys and slices moved (#429)
-  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
-  - Support unicode urns (#448)
-  - Return any error message from a CH on `getusercred` (#452)
-  - If set, `GENI_FRAMEWORK` environment variable is the default for
-    the `--framework` option (#315)
-  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
-    set the default path to your saved user and slice credentials (#434)
-  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
-  - Return error on SA error in `listslices` (#456)
-  - Allow `PerformOperationalAction` on v2 AMs (#412)
-  - Omni `cred_util.py` uses an omni logger (#460)
-  - Support querying for other users' SSH keys where the CH supports it (#472)
-  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
-  - Speed up listaggregates in `pgch` framework (don't test AM API
-    compliance) (#482)
-  - URN testing requires 4 `+` separated pieces (#483)
-  - Log at debug when downloading the aggregate nickname cache fails (#485)
   - Add a new framework type `chapi` for talking the Uniform Federation API 
     (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
     to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
@@ -81,27 +44,9 @@ gcf 2.5:
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing
      slivers. (#422, #513)
-  - `chapi` framework looks up the MA and SA at the clearinghouse,
-    though you can configure where they run. (#490)
-  - Warn when acting at all AMs in the clearinghouse - slow (#461)
-  - Speaks for option that Omni passes to aggregates has been renamed
-    `geni_speaking_for` (#466)
-  - Refactored the source code to make it easier to import Omni in
-    other tools. Look in `src/gcf` for directories that were
-    previously directly under `src`. (#388)
-   - Your Omni based tool no longer needs to include any of the top
-     level scripts that Omni/GCF includes, nor to provide the existing
-     Omni `main`.
-   - Most of the code in `omni.py` has now been moved to
-     `gcf/oscript.py`
-   - To update your script that uses omni as a library:
-    - Change `import omni` to `import gcf.oscript as omni`
-  - Show the AM nickname instead of URL in output (#424, #504)
-  - `renewslice` when given a slice credential replaces the saved 
-    slice credential in place, rather than in a new filename. (#386)
-  - Support named timezones when renewing, etc (#503)
-  - Properly parse the verbose config option and let the commandline
-    `--verbosessl` over-ride it talking to clearinghouses. (#509)
+  - Support `geni_extend_alap` with new `--alap` option, allowing you to
+    request that slivers be renewed as long as possible, if your
+    requested time is not permitted by local AM policy. (#415)
   - When using the new `chapi` framework allow a `--useSliceAggregates`
     option to specify that the aggregate action should be taken at all
     aggregates at which you have resources in this slice. (#507)
@@ -137,6 +82,64 @@ gcf 2.5:
     Omni uses the same logic as for `createsliver`, optionally
     querying your clearinghouse for slice members, and by default 
     reading users and keys configured in your `omni_config`. (#491)
+  - If set, `GENI_FRAMEWORK` environment variable is the default for
+    the `--framework` option (#315)
+  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+    set the default path to your saved user and slice credentials (#434)
+  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
+  - Support querying for other users' SSH keys where the CH supports it (#472)
+  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
+  - Allow `PerformOperationalAction` on v2 AMs (#412)
+  - Renew Slice returns actual new expiration (checks the SA, not just
+    assuming success means you got what you asked for) (#428, #447)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
+   - If Omni hangs talking to a server you believe is up, try
+     specifying `--ssltimeout 0` to disable the timeout. Some servers
+     cannot handle the timeout request. (See ticket #506)
+  - Speed up `listaggregates` in `pgch` framework (don't test AM API
+    compliance) (#482)
+  - Refactored the source code to make it easier to import Omni in
+    other tools. Look in `src/gcf` for directories that were
+    previously directly under `src`. (#388)
+   - Your Omni based tool no longer needs to include any of the top
+     level scripts that Omni/GCF includes, nor to provide the existing
+     Omni `main`.
+   - Most of the code in `omni.py` has now been moved to
+     `gcf/oscript.py`
+   - To update your script that uses omni as a library:
+    - Change `import omni` to `import gcf.oscript as omni`
+  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
+  - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+  - `renewslice` when given a slice credential replaces the saved 
+    slice credential in place, rather than in a new filename. (#386)
+  - Create any directories needed in the path to the `agg_nick_cache` (#383)
+  - If using `--AggNickCacheName` and can't read/write to the specified
+    file, omni should fall back to reading `agg_nick_cache.base` (#384)
+  - Look up AM URN by URL in the defined aggregate nicknames (#404)
+  - Support named timezones when renewing, etc (#503)
+  - Eliminated a repetitive log message (#384)
+  - Fix bug in APIv3 calling status with slivers with different
+    expiration times (#408)
+  - Fit Omni result summaries in 80 character wide terminals (#409)
+  - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+    nick cache is old (#391)
+  - SFA slice and user records changed: keys and slices moved (#429)
+  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+  - Support unicode urns (#448)
+  - Return any error message from a CH on `getusercred` (#452)
+  - Return error on SA error in `listslices` (#456)
+  - Omni `cred_util.py` uses an omni logger (#460)
+  - URN testing requires 4 `+` separated pieces (#483)
+  - Log at debug when downloading the aggregate nickname cache fails (#485)
+  - `chapi` framework looks up the MA and SA at the clearinghouse,
+    though you can configure where they run. (#490)
+  - Warn when acting at all AMs in the clearinghouse - slow (#461)
+  - Speaks for option that Omni passes to aggregates has been renamed
+    `geni_speaking_for` (#466)
+  - Show the AM nickname instead of URL in output (#424, #504)
+  - Properly parse the verbose config option and let the commandline
+    `--verbosessl` over-ride it talking to clearinghouses. (#509)
   - Ensure `geni_version` on credential structs is a string.
     Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
  
