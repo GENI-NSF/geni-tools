@@ -98,7 +98,9 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
 #            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
-            if not retNick or len(nick) < len(retNick):
+            if not retNick or len(nick) < len(retNick) or \
+                    (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
@@ -140,10 +142,15 @@ def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
         for amNick in config['aggregate_nicknames'].keys():
             (amURN, amURL) = config['aggregate_nicknames'][amNick]
             # Pick the shortest URL / nickname for this URN - stripping of any version diff for the URL
-            if agg_urn in amURN and amURL.strip() != '' and ((url == "" or len(amURL) < len(url)) or (nick == "" or len(amNick) < len(nick))):
-                url = amURL.strip()
-                nick = amNick.strip()
-                logger.debug("Supplied AM URN %s is AM %s, URL %s according to configured aggregate nicknames (matches %s)", agg_urn, nick, url, amURN)
+            if agg_urn in amURN and amURL.strip() != '':
+                if (url == "" or nick == "") or \
+                        (len(amURL) < len(url)) or \
+                        (len(amNick) < len(nick)) or \
+                        (nick.startswith('ig-') and amNick.endswith('-ig')) or \
+                        (nick.startswith('eg-') and amNick.endswith('-eg')):
+                    url = amURL.strip()
+                    nick = amNick.strip()
+                    logger.debug("Supplied AM URN %s is AM %s, URL %s according to configured aggregate nicknames (matches %s)", agg_urn, nick, url, amURN)
     return nick, url
 
 def _derefRSpecNick( handler, rspecNickname ):
