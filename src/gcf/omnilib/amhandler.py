@@ -2349,6 +2349,24 @@ class AMCallHandler(object):
         operations and expected states, consult the state diagram advertised in the 
         aggregate's advertisement RSpec.
 
+        Common `poa` Actions:
+        Some actions are well known and supported at many aggregates and
+        resource types. Always check the Ad RSpec for an aggregate to verify
+        what is supported.
+        - `geni_start`: Make the resources ready for use (like booting
+        machines). No options needed
+        - `geni_restart`: For example, reboot a machine. No options required.
+        - `geni_stop`: Stop a resource (e.g. shut it down). No options
+        needed.
+        - `geni_update_users`: Refresh the set of user accounts and installed
+        SSH keys on the resource. Takes the option `geni_users`. This action
+        creates any users specified that do not already exist, and sets the
+        SSH keys for all users per the list of keys specified - including
+        removing keys not explicitly listed. The `geni_users` option can be
+        supplied using the `--optionsfile` argument. If not supplied that
+        way, then users are read from the omni_config or clearinghouse slice
+        members, as documented under `createsliver`.
+
         Clients must Renew or use slivers before the expiration time
         (given in the return struct), or the aggregate will automatically Delete them.
 

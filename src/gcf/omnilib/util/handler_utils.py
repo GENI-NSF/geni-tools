@@ -131,7 +131,7 @@ def _lookupAggNickURLFromURNInNicknames(logger, config, agg_urn):
         # Ignore any +cm / +am difference
         if agg_urn.endswith('+cm') or agg_urn.endswith('+am'):
             agg_urn = agg_urn[:-3]
-            logger.debug("Trimmed URN to %s", agg_urn)
+            logger.debug("Trimmed URN for lookup to %s", agg_urn)
         for amNick in config['aggregate_nicknames'].keys():
             (amURN, amURL) = config['aggregate_nicknames'][amNick]
             # Pick the shortest URL / nickname for this URN - stripping of any version diff for the URL
@@ -187,7 +187,11 @@ def _listaggregates(handler):
     ret = {}
     if handler.opts.useSliceAggregates and not handler.opts.noExtraCHCalls and hasattr(handler.opts,'sliceName') and handler.opts.sliceName is not None:
         handler.logger.debug("Looking for slivers recorded at CH for slice %s", handler.opts.sliceName)
-        sliverAggs = handler.framework.list_sliver_infos_for_slice(handler.opts.sliceName).keys()
+        sliverAggs = []
+        try:
+            sliverAggs = handler.framework.list_sliver_infos_for_slice(handler.opts.sliceName).keys()
+        except Exception, e:
+            handler.logger.warn("Error looking up aggregates for slice %s at CH: %s", handler.opts.sliceName, e)
         for aggURN in sliverAggs:
             handler.logger.debug("Look up CH recorded URN %s", aggURN)
             nick, url = _lookupAggNickURLFromURNInNicknames(handler.logger, handler.config, aggURN)

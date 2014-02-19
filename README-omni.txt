@@ -751,17 +751,17 @@ Options:
                         Specify version of AM API to use (default 2)
     --useSliceAggregates
                         Perform slice action at all aggregates the given slice
-                        uses according the clearinghouse records. Default is
+                        is known to use according to clearinghouse records. Default is
                         False.
     --useSliceMembers   Put slice members' SSH keys on reserved resources in
                         createsliver, provision or performoperationalaction.
-                        Default False. When true, adds these users and keys to
+                        Default is False. When true, adds these users and keys to
                         those read from your omni_config (unless
                         --ignoreConfigUsers).
     --ignoreConfigUsers
                         Ignore users and SSH keys listed in your omni_config
                         when installing SSH keys on resources in createsliver
-                        or provision or performoperationalaction. Default
+                        or provision or performoperationalaction. Default is
                         false - your omni_config users are read and used.
 
   AM API v3+:
@@ -898,13 +898,13 @@ Options:
                         Use the given Orca slice id
     --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default False. For
+                        result code, raise an AMAPIError. Default is False. For
                         use by scripts.
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
     --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
-                        slivers. Default False.
+                        slivers. Default is False.
 }}}
 
 ==== Notes on Options ====
@@ -1306,7 +1306,7 @@ Sample Usage:
     `omni.py -o getversion`
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1909,7 +1909,7 @@ Aggregates queried:
  - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
    '''and''' any aggregates specified with the `-a` option.
   - Only supported at some clearinghouses, and the list of aggregates is only advisory
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1973,7 +1973,7 @@ Aggregates queried:
  - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
    '''and''' any aggregates specified with the `-a` option.
   - Only supported at some clearinghouses, and the list of aggregates is only advisory
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -2054,7 +2054,7 @@ Aggregates queried:
  - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
    '''and''' any aggregates specified with the `-a` option.
   - Only supported at some clearinghouses, and the list of aggregates is only advisory
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -2095,7 +2095,7 @@ Aggregates queried:
  - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
    '''and''' any aggregates specified with the `-a` option.
   - Only supported at some clearinghouses, and the list of aggregates is only advisory
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -2189,7 +2189,7 @@ Aggregates queried:
  - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
    '''and''' any aggregates specified with the `-a` option.
   - Only supported at some clearinghouses, and the list of aggregates is only advisory
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse

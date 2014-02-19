@@ -870,13 +870,13 @@ def getParser():
     basicgroup.add_option("-V", "--api-version", type="int", default=2,
                       help="Specify version of AM API to use (default 2)")
     basicgroup.add_option("--useSliceAggregates", default=False, action="store_true",
-                          help="Perform slice action at all aggregates the given slice uses according the clearinghouse records. Default is False.")
+                          help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is False.")
     basicgroup.add_option("--useSliceMembers", default=False, action="store_true",
-                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default False. " + \
+                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is False. " + \
                               "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers).")
     basicgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
                           help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
-                              "performoperationalaction. Default false - your omni_config users are read and used.")
+                              "performoperationalaction. Default is false - your omni_config users are read and used.")
 
     parser.add_option_group( basicgroup )
     # AM API v3 specific
@@ -1006,11 +1006,11 @@ def getParser():
                       help="Use the given Orca slice id")
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
-                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default False. For use by scripts.")
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is False. For use by scripts.")
     devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
                         help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
     devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
-                        help="Disable extra Clearinghouse calls like reporting slivers. Default False.")
+                        help="Disable extra Clearinghouse calls like reporting slivers. Default is False.")
     parser.add_option_group( devgroup )
     return parser
 
