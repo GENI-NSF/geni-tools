@@ -181,7 +181,6 @@ Details:
    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
 
 
-
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
  location. See the sample omni_config for details. (#265,#360,#361)
@@ -495,7 +494,8 @@ sure you have updated your scripts when you upgrade.
 
 The return from `omni.call` is a list of 2 items: a human readable string summarizing the result 
 (possibly an error message), and the result object (may be `None` on error). The result 
-object type varies by the underlying command called.
+object type varies by the underlying command called. See the docs in
+the source code for individual methods.
 
 Omni scripting allows a script to:
  * Have its own private options
@@ -519,7 +519,7 @@ own option names internally. Be sure not to pick the same option names. See `gcf
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension
 class. Adding other experiment management or utility functions can be
-done using Omni scripting, or by adding functions to `amhandler.py`.
+done using Omni scripting, or by adding functions to `src/gcf/omnilib/amhandler.py`.
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
@@ -532,7 +532,7 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     your framework (sfa/gcf/pg/chapi/pgch) has appropriate settings for
     contacting that CF, and user credentials that are valid for that
     CF. Make sure the `[omni]` section refers to your CF as the default.
-    If you ran src/omni-configure.py this should automatically be
+    If you ran `src/omni-configure.py` this should automatically be
     configured.
  3. Find available resources: Run `omni.py -o listresources`
   a. When you do this, Omni will contact your designated
@@ -639,7 +639,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
  Compute resources typically use SSH to let you log in to the
  machines. The SSH keys configured in your omni_config `users` section
- should be available for use.
+ should be available for use. See the options `--useSliceMembers` and
+ `--ignoreConfigUsers` to change this behavior.
 
 10. Delete slivers when you are done, freeing the resources for others:
 
@@ -652,16 +653,20 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
  AM API v3:
 `omni.py -V 3 delete -a myV3AM MySlice`
 
-11. Optional: `listmyslices` and `print_slice_expiration`. 
+11. Optional commands:
 Occasionally you may run `listmyslices` to remind yourself of your
 outstanding slices. Then you can choose to delete or renew them as
 needed. If you don't recall when your slice expires, use
-`print_slice_expiration` to remind yourself. 
+`print_slice_expiration` to remind yourself. If you use a `chapi`
+framework (clearinghouse), you can additionally query the
+clearinghouse to be reminded of where you may have reservations, using `listslivers`
 
  To List your slices : `omni.py listmyslices`
 
  To Print slice expiration : `omni.py print_slice_expiration MySlice`
-    
+
+ To list slivers where you made reservations using Omni: `omni.py listslivers MySlice`
+
 == Running Omni ==
 
 === Supported options ===
@@ -902,10 +907,104 @@ Options:
                         slivers. Default False.
 }}}
 
-Notes:
+==== Notes on Options ====
+Most options are documented more fully with the commands where they
+are relevant. Some notes on select options are provided here.
+
+Commonly used options:
+Omni provides many options. However, most users will only use a very
+few of them. 
+ - `-a`: specify the aggregate at which to operate
+ - `-r`: over-ride your default project setting
+ - `--alap`: ask aggregates to renew your reservations as long as possible
+ - `-o`: to save manifest RSpecs to a file
+ - `--useSliceAggregates`: renew or delete at all aggregates where you
+ used Omni to reserve resources
+ - `--useSliceMembers`: Have all your slice members get accounts on
+ your compute resources
+ - `--optionsfile`: Specify custom options for commands
+ - `-u`: Specify a particular sliver to act on when using APIv3
+ - `--debug`: Turn on debug logging when resolving an Omni problem
+ - `--usercredfile`: Use a saved user credential (to save time
+ calling the clearinghouse re-retrieving it later)
+ - `--slicecredfile`: Use a saved slice credential (to save time
+ calling the clearinghouse re-retrieving it later)
+
+Basic Options:
+ - The `-a` option may be an aggregate nickname or URL. Nicknames are
+ defined in your `omni_config` plus some standard nicknames are
+ defined globally and updated automatically by Omni. Run the command
+ `nicknames` for a list.
+ - `--available` is for use with `listresources` and `describe`
+ - `-f` specifies the name of the framework in your `omni_config`,
+ such as "my_genich". It is not required if you want to use the
+ framework specified by `default_cf` in your `omni_config`.
  - If set, the `GENI_FRAMEWORK` environment variable will be the
  default for the `--framework` option, over-riding any default from
  your Omni config file.
+ - `-r` / `--project` is used by framework types `pgch` and `chapi` which
+ use a 'project' to group slices. It is only required if you want to
+ use project other than your configured `default_project` from your `omni_config`.
+ - `--alap` is supported only at select aggregates with `renew` and
+ `renewsliver`
+ - `-t` is typically not required. See `createsliver`
+ - `-V` is typically not required as AM API v2 is the default. Specify
+ `-V3` if you are calling an AM API V3 command
+ - `--useSliceAggregates` is supported only when using framework type
+ `chapi`, and then only with commands after your resources have been
+ reserved, such as `renewsliver`, `sliverstatus`, and
+ `deletesliver`. It relies on the clearinghouse's advisory list of aggregates where
+ you have used Omni to reserve resources - reservations made using
+ other tools may not be reflected.
+ - `--useSliceMembers` is supported only by framework type
+ `chapi`. See `createsliver`
+ - `--ignoreConfigUsers: By default, `createsliver` and `provision`
+ tell the aggregate to create accounts for users listed in the users
+ section of your `omni_config`, and install the listed SSH keys. With
+ this option, Omni will not use those keys. Typically this is used
+ with `--useSliceMembers`.
+
+AM API v3 Options:
+ - `--best-effort`: In AM API v3 operations are on multiple
+ slivers. This option, when supported by the aggregate, allows the AM
+ to let the operation succeed on slivers where possible and only fail
+ the operation on select slivers, rather than having to fail the whole
+ request. For example, you might use this with `renew` to renew your
+ reservation for 3 nodes, and allow the aggregate to fail to extend
+ your reservation on a 4th node.
+ - `--cred` allows you to specify an extra credential to any call that
+ takes a list of credentials.
+ - `--optionsfile` allows you to specify arbitrary options to be
+ passed to aggregate calls. For example, use this to specify options
+ for `performoperationalaction`.
+
+File Output Options:
+ - `-o` specifies that many commands write their output to a
+ file. This includes RSpecs, sliver status, and slice and user
+ credentials. Not all commands support this. `-p` and `--outputfile`
+ work with `-o`.
+ - `--usercredfile` and `--slicecredfile`: Most aggregate operations
+ require a credential to prove your authorization. This credential
+ comes from your framework / clearinghouse. This credential typically
+ does not change frequently, so many users choose to save this
+ credential to a file using the commands `omni -o getusercred` and
+ `omni -o getslicecred`. Then by supplying the `--usercredfile` and
+ `--slicecredfile` options, Omni can uses the saved credential and
+ save the time required to re-fetch the credential from the
+ clearinghouse.
+
+Advanced / Developer Options:
+ - `--ssltimeout`: Omni times out calls to servers, by default after
+ 360 seconds (6 minutes). Use this option to change that timeout. If
+ commands to a server that you believe is up are failing, try
+ specifying a timeout of `0` to disable the timeout.
+  - `--noExtraCHCalls`: Omni makes multiple calls to the
+  clearinghouse, particularly when using framework type `chapi`. These
+  include reporting creation / renewal of slivers, querying for lists
+  of aggregates, etc. These functions are necessary to support some
+  Omni operations (such as provided by `--useSliceMembers` and
+  `--useSliceAggregates`). However, you can disable these calls with
+  this option.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -1690,7 +1789,7 @@ For use with AM API v3+ only. For AM API v1 or v2 use `createsliver`.
 Perform the named operational action on the named slivers or slice, possibly changing
 the `geni_operational_status` of the named slivers. e.g. 'start' a VM. For valid
 operations and expected states, consult the state diagram advertised in the
-aggregate's advertisement RSpec.
+aggregate's advertisement RSpec. Commonly available actions are listed below.
 
 Sample usage:
  * Do `geni_start` on all slivers in myslice:
@@ -1704,6 +1803,25 @@ Sample usage:
 	   poa myslice geni_start
 }}}
 
+Common `poa` Actions:
+Some actions are well known and supported at many aggregates and
+resource types. Always check the Ad RSpec for an aggregate to verify
+what is supported.
+ - `geni_start`: Make the resources ready for use (like booting
+ machines). No options needed
+ - `geni_restart`: For example, reboot a machine. No options required.
+ - `geni_stop`: Stop a resource (e.g. shut it down). No options
+ needed.
+ - `geni_update_users`: Refresh the set of user accounts and installed
+ SSH keys on the resource. Takes the option `geni_users`. This action
+ creates any users specified that do not already exist, and sets the
+ SSH keys for all users per the list of keys specified - including
+ removing keys not explicitly listed. The `geni_users` option can be
+ supplied using the `--optionsfile` argument. If not supplied that
+ way, then users are read from the omni_config or clearinghouse slice
+ members, as documented under `createsliver`.
+
+Note:
 Clients must `renew` or use slivers before the expiration time
 (given in the return struct), or the aggregate will automatically delete them.
 
@@ -1756,24 +1874,6 @@ Other options:
 
 Options for development and testing:
  - `--devmode`: Continue on error if possible
-
-Common actions:
-Some actions are well known and supported at many aggregates and
-resource types. Always check the Ad RSpec for an aggregate to verify
-what is supported.
- - `geni_start`: Make the resources ready for use (like booting
- machines). No options needed
- - `geni_restart`: For example, reboot a machine. No options required.
- - `geni_stop`: Stop a resource (e.g. shut it down). No options
- needed.
- - `geni_update_users`: Refresh the set of user accounts and installed
- SSH keys on the resource. Takes the option `geni_users`. This action
- creates any users specified that do not already exist, and sets the
- SSH keys for all users per the list of keys specified - including
- removing keys not explicitly listed. The `geni_users` option can be
- supplied using the `--optionsfile` argument. If not supplied that
- way, then users are read from the omni_config or clearinghouse slice
- members, as documented under `createsliver`.
 
 ==== renewsliver ====
 Calls the AM API v1 or v2 !RenewSliver function.  For AM API v3, see `renew` instead.
