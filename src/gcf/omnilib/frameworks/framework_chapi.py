@@ -28,6 +28,7 @@
 from __future__ import absolute_import
 
 from .framework_base import Framework_Base
+from ..util import OmniError
 from ..util.dates import naiveUTC
 from ..util.dossl import _do_ssl
 from ..util import credparsing as credutils
@@ -215,7 +216,7 @@ class Framework(Framework_Base):
             return self._ma_url
         mas = self.list_member_authorities()
         if len(mas.keys()) == 0:
-            raise Exception("No member authorities listed at %s %s!" % (self.fwtype, self.ch_url))
+            raise OmniError("No member authorities listed at %s %s!" % (self.fwtype, self.ch_url))
         if len(mas.keys()) > 1:
             self.logger.warn("%d member authorities were listed - taking the first: %s (%s)", len(mas.keys()), mas.keys()[0], mas[mas.keys()[0]])
         self.logger.info("Member Authority is %s %s", mas.keys()[0], mas[mas.keys()[0]])
@@ -235,7 +236,7 @@ class Framework(Framework_Base):
             return self._sa_url
         sas = self.list_slice_authorities()
         if len(sas.keys()) == 0:
-            raise Exception("No slice authorities listed at %s %s!" % (self.fwtype, self.ch_url))
+            raise OmniError("No slice authorities listed at %s %s!" % (self.fwtype, self.ch_url))
         if len(sas.keys()) > 1:
             self.logger.warn("%d slice authorities were listed - taking the first: %s (%s)", len(sas.keys()), sas.keys()[0], sas[sas.keys()[0]])
         self.logger.info("Slice Authority is %s %s", sas.keys()[0], sas[sas.keys()[0]])
@@ -381,20 +382,20 @@ class Framework(Framework_Base):
                                 cred['geni_version'] = str(cred['geni_version'])
                     if cred is None:
                         self.logger.debug("Malformed list of creds: Got %s", d)
-                        raise Exception("No slice credential returned for slice %s" % slice_urn)
+                        raise OmniError("No slice credential returned for slice %s" % slice_urn)
                 else:
                     self.logger.debug("Malformed slice cred return. Got %s", res)
-                    raise Exception("Malformed return getting slice credential")
+                    raise OmniError("Malformed return getting slice credential")
             else:
                 msg = "Server Error getting slice %s credential: %d: %s (%s)" % (slice_urn, res['code'], res['output'], message)
                 if res.has_key('protogeni_error_url'):
                     msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
-                raise Exception(msg)
+                raise OmniError(msg)
         else:
             msg = "Server Error getting slice %s credential" % slice_urn
             if message is not None and message.strip() != "":
                 msg = msg + ". %s" % message
-            raise Exception(msg)
+            raise OmniError(msg)
         return cred
 
     def list_ssh_keys(self, username=None):
@@ -503,7 +504,7 @@ class Framework(Framework_Base):
 
         if auth is None:
             if not self.config.has_key('authority'):
-                raise Exception("Invalid configuration: no authority defined")
+                raise OmniError("Invalid configuration: no authority defined")
             auth = self.config['authority'].strip()
             self.logger.debug("From config got authority %s", auth)
 
@@ -755,12 +756,12 @@ class Framework(Framework_Base):
                 msg += ". Server said: %s" % res['output']
                 if res.has_key('protogeni_error_url'):
                     msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
-                raise Exception(msg)
+                raise OmniError(msg)
         else:
             msg = "Failed to list slices for %s" % user
             if message is not None and message.strip() != "":
                 msg += ": %s" % message
-            raise Exception(msg)
+            raise OmniError(msg)
 
         # Return is a struct with the URN
         slicenames = list()
@@ -785,7 +786,7 @@ class Framework(Framework_Base):
         """Convert a slice name to a slice urn."""
 
         if name is None or name.strip() == '':
-            raise Exception('Empty slice name')
+            raise OmniError('Empty slice name')
 
         project = None
         auth = None
@@ -793,9 +794,9 @@ class Framework(Framework_Base):
         if is_valid_urn(name):
             urn = URN(None, None, None, name)
             if not urn.getType() == "slice":
-                raise Exception("Invalid Slice name: got a non Slice URN %s" % name)
+                raise OmniError("Invalid Slice name: got a non Slice URN %s" % name)
             if not is_valid_urn_bytype(name, 'slice', self.logger):
-                raise Exception("Invalid slice name %s" % name)
+                raise OmniError("Invalid slice name '%s'" % name)
 
             urn_fmt_auth = string_to_urn_format(urn.getAuthority())
 
@@ -805,7 +806,7 @@ class Framework(Framework_Base):
                 if not urn_fmt_auth.startswith(auth):
                     self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
                     self.logger.info("This may be OK though if you are using delegated slice credentials...")
-#                    raise Exception("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+#                    raise OmniError("Invalid slice name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
 
             if self.useProjects:
                 # Make sure the auth has a project
@@ -827,7 +828,7 @@ class Framework(Framework_Base):
                         project = self.config['default_project']
                         self.logger.warn("Invalid slice URN - no project specified. Will use default from config")
                     else:
-                        raise Exception("Invalid slice URN missing project. Specify a project with --project or a default_project in your omni_config")
+                        raise OmniError("Invalid slice URN missing project. Specify a project with --project or a default_project in your omni_config")
 
                     # Fall through so we can produce a new URN
                     name = urn.getName()
@@ -839,7 +840,7 @@ class Framework(Framework_Base):
 
         if not auth:
             if not self.config.has_key('authority'):
-                raise Exception("Invalid configuration: no authority defined")
+                raise OmniError("Invalid configuration: no authority defined")
             else:
                 auth = self.config['authority']
         if self.useProjects:
@@ -853,22 +854,25 @@ class Framework(Framework_Base):
                     project = self.config['default_project']
                     self.logger.debug("Will use default_project from config")
                 else:
-                    raise Exception("Project name required. Specify a project with --project or a default_project in your omni_config")
+                    raise OmniError("Project name required. Specify a project with --project or a default_project in your omni_config")
             auth = auth + ':' + project
-        return URN(auth, "slice", name).urn_string()
+        urnstr = URN(auth, "slice", name).urn_string()
+        if not is_valid_urn_bytype(urnstr, 'slice', self.logger):
+            raise OmniError("Invalid slice name '%s'" % name)
+        return urnstr
 
     def member_name_to_urn(self, name):
         """Convert a member name to a member urn."""
 
         if name is None or name.strip() == '':
-            raise Exception('Empty member name')
+            raise OmniError('Empty member name')
 
         if is_valid_urn(name):
             urn = URN(None, None, None, name)
             if not urn.getType() == "user":
-                raise Exception("Invalid member name: got a non member URN %s", name)
+                raise OmniError("Invalid member name: got a non member URN '%s'", name)
             if not is_valid_urn_bytype(name, 'user', self.logger):
-                raise Exception("Invalid user name %s" % name)
+                raise OmniError("Invalid user name '%s'" % name)
             # if config has an authority, make sure it matches
             if self.config.has_key('authority'):
                 auth = self.config['authority']
@@ -878,10 +882,13 @@ class Framework(Framework_Base):
             return name
 
         if not self.config.has_key('authority'):
-            raise Exception("Invalid configuration: no authority defined")
+            raise OmniError("Invalid configuration: no authority defined")
 
         auth = self.config['authority']
-        return URN(auth, "user", name).urn_string()
+        urnstr = URN(auth, "user", name).urn_string()
+        if not is_valid_urn_bytype(urnstr, 'user', self.logger):
+            raise OmniError("Invalid user name '%s'" % name)
+        return urnstr
 
     def get_slice_expiration(self, urn):
         scred = []
@@ -1162,9 +1169,9 @@ class Framework(Framework_Base):
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         role2 = str(role).upper()
         if role2 == 'LEAD':
-            raise Exception("Cannot add a lead to a slice. Try role 'ADMIN'")
+            raise OmniError("Cannot add a lead to a slice. Try role 'ADMIN'")
         if role2 not in ['LEAD','ADMIN', 'MEMBER', 'AUDITOR']:
-            raise Exception("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
+            raise OmniError("Unknown role '%s'. Use ADMIN, MEMBER, or AUDITOR" % role)
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
         if self.needcred:
