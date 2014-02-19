@@ -185,9 +185,10 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             return False
     elif urntype == 'sliver':
         # May use only alphanumeric characters plus hyphen
-        if not re.match("^[-a-zA-Z0-9]+$", name):
+        # Draft allows also underscore or period. So allow that here.
+        if not re.match("^[-a-zA-Z0-9_\.]+$", name):
             if logger:
-                logger.warn("Sliver names may only be alphanumeric plus hyphen: %s", name)
+                logger.warn("Sliver names may only be alphanumeric plus hyphen, underscore, or period: %s", name)
             return False
     elif urntype == 'user':
         # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]{0,7}$').

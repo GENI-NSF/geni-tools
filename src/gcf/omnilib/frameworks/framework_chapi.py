@@ -1243,11 +1243,16 @@ class Framework(Framework_Base):
 
     # Guess the aggregate URN from the sliver URN
     def _getAggFromSliverURN(self, sliver_urn):
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+        if sliver_urn is None or sliver_urn.strip() == "":
             return None
-        idx1 = sliver_urn.find('sliver+')
+        idx1 = sliver_urn.find('+sliver+')
+        if idx1 < 0:
+            return None
         auth = sliver_urn[0 : idx1]
-        return auth + 'authority+am'
+        # Actual auth part should be length of at least 1
+        if len(auth) < len("urn:publicid:IDN+1"):
+            return None
+        return auth + '+authority+am'
 
     # Helper for actually recording a new sliver with the given expiration
     def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
@@ -1270,7 +1275,7 @@ class Framework(Framework_Base):
             self.logger.warn("Empty sliver_urn to record")
             return ""
         if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+            self.logger.info("Invalid sliver urn but continuing: %s", sliver_urn)
 #                   return ""
 
         if not agg_urn:
@@ -1466,8 +1471,11 @@ class Framework(Framework_Base):
         if sliver_urn is None or sliver_urn.strip() == "":
             self.logger.warn("Empty sliver_urn to update expiration")
             return
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+        # Just make sure this is a reasonable URN of type sliver,
+        # without validating the name portion - since we really don't
+        # care so much what names the AM uses
+        if not is_valid_urn(sliver_urn) or not "+sliver+" in sliver_urn[:-1]:
+            self.logger.warn("Invalid sliver urn '%s'", sliver_urn)
             return
         if not is_valid_urn(agg_urn):
             agg_urn = self._getAggFromSliverURN(sliver_urn)
@@ -1530,11 +1538,11 @@ class Framework(Framework_Base):
 #                creds.append(sc)
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
-            self.logger.warn("Empty sliver_urn to record deletion")
+            self.logger.info("Empty sliver_urn to record deletion but continuing")
 # Delete it anyway
 #            return
         if not is_valid_urn_bytype(sliver_urn, 'sliver'):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+            self.logger.info("Invalid sliver urn but continuing: %s", sliver_urn)
 # Delete it anyway
 #            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)

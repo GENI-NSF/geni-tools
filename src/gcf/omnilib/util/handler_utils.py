@@ -97,9 +97,9 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
     retNick = None
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url == urn or aggregate_urn_or_url == url:
-            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
+#            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if not retNick or len(nick) < len(retNick):
-                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
+#                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
         return retNick

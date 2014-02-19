@@ -181,6 +181,9 @@ Details:
    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
  - Notice invalid slice and member names earlier and supporess ugly
    tracebacks on most `chapi` framework errors. (#517)
+ - Support AM API draft proposal O1 and allow '.' and '_' in sliver
+   names, and do not complain or stop needlessly on illegal sliver
+   names. (#518)
 
 
 New in v2.4:
