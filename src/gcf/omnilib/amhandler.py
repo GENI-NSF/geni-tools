@@ -2690,20 +2690,62 @@ class AMCallHandler(object):
             else:
                 newExp = time_with_tz.isoformat()
                 gotALAP = False
-                if self.opts.alap and outputstr:
-                    try:
-                        newExpO = dateutil.parser.parse(str(outputstr), tzinfos=tzd)
-                        newExpO = naiveUTC(newExpO)
-                        newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
-                        newExp = newExpO_tz.isoformat()
-                        if time - newExpO > datetime.timedelta.resolution:
-                            gotALAP = True
-                            #self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
-                    except:
-                        self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: '%s'", outputstr)
+                if self.opts.alap:
+                    if not outputstr or outputstr.strip() == "":
+                        self.logger.info("Querying AM for actual sliver expiration...")
+                        # Call sliverstatus
+                        # If result haskey 'pg_expires' then make that
+                        # outputstr
+                        # elif haskey geni_resources and that haskey
+                        # orca_expires then make that outputstr
+                        # use same creds but diff args & options
+                        try:
+                            args2 = [urn, creds]
+                            options2 = self._build_options('SliverStatus', name, None)
+                            # API version specific
+                            if self.opts.api_version >= 2:
+                                # Add the options dict
+                                args2.append(options2)
+                            message2 = ""
+                            status = None
+
+                            ((status, message2), client2) = self._api_call(client,
+                                                                         'SliverStatus of %s at %s' % (urn, str(client.url)),
+                                                                         'SliverStatus', args2)
+                            # Get the dict status out of the result (accounting for API version diffs, ABAC)
+                            (status, message1) = self._retrieve_value(status, message2, self.framework)
+                            if status and isinstance(status, dict):
+                                if status.has_key('pg_expires'):
+                                    outputstr = status['pg_expires']
+                                    self.logger.debug("Got real sliver expiration using sliverstatus at PG AM")
+                                elif status.has_key('geni_resources') and \
+                                        isinstance(status['geni_resources'], list) and \
+                                        len(status['geni_resources']) > -1 and \
+                                        isinstance(status['geni_resources'][0], dict) and \
+                                        status['geni_resources'][0].has_key('orca_expires'):
+                                    outputstr = status['geni_resources'][0]['orca_expires']
+                                    self.logger.debug("Got real sliver expiration using sliverstatus at Orca AM")
+                        except Exception, e:
+                            self.logger.debug("Failed SliverStatus to get real expiration: %s", e)
+                    if outputstr:
+                        try:
+                            newExpO = dateutil.parser.parse(str(outputstr), tzinfos=tzd)
+                            newExpO = naiveUTC(newExpO)
+                            newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
+                            newExp = newExpO_tz.isoformat()
+                            if time - newExpO > datetime.timedelta.resolution:
+                                gotALAP = True
+                                self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
+                        except:
+                            self.logger.debug("Failed to parse a time from the RenewSliver output - assume got requested time. Output: '%s'", outputstr)
+                    else:
+                        self.logger.debug("Could not determine actual sliver expiration after renew alap")
+
                 prStr = "Renewed sliver %s at %s until %s (UTC)" % (urn, (client.str if client.nick else client.urn), newExp)
                 if gotALAP:
                     prStr = prStr + " (not requested %s UTC), which was as long as possible for this AM" % time_with_tz.isoformat()
+                elif self.opts.alap:
+                    prStr = prStr + " (or as long as possible at this AM)"
                 self.logger.info(prStr)
 
                 if not self.opts.noExtraCHCalls:

@@ -194,6 +194,8 @@ sa=https://ch.geni.net/SA
    names. (#518)
  - Catch parse errors when determining credential type (#521)
  - Using `chapi` framework, expired slice expirations are printed (#523)
+ - When doing `renewsliver --alap`, if the real expiration is not in
+   the `output` slot, call `sliverstatus` to get it. (#527)
 
 
 New in v2.4:
