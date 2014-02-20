@@ -105,6 +105,8 @@ sa=https://ch.geni.net/SA
    - If Omni hangs talking to a server you believe is up, try
      specifying `--ssltimeout 0` to disable the timeout. Some servers
      cannot handle the timeout request. (See ticket #506)
+   - Note this timeout does not work on old versions of python2.6 due
+     to a known python bug: http://bugs.python.org/issue5103
   - Speed up `listaggregates` in `pgch` framework (don't test AM API
     compliance) (#482)
   - Refactored the source code to make it easier to import Omni in
