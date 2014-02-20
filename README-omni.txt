@@ -189,7 +189,7 @@ sa=https://ch.geni.net/SA
    `--verbosessl` over-ride it talking to clearinghouses. (#509)
  - Ensure `geni_version` on credential structs is a string.
    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
- - Notice invalid slice and member names earlier and supporess ugly
+ - Notice invalid slice and member names earlier and suppress ugly
    tracebacks on most `chapi` framework errors. (#517)
  - Support AM API draft proposal O1 and allow '.' and '_' in sliver
    names, and do not complain or stop needlessly on illegal sliver
