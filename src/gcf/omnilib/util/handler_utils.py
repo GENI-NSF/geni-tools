@@ -107,7 +107,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url.startswith(url):
-#            handler.logger.debug("Queried %s startswith url for nick %s", aggrgate_urn_or_url, nick)
+#            handler.logger.debug("Queried %s startswith url for nick %s", aggregate_urn_or_url, nick)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
                     (retNick.startswith('eg-') and nick.endwwith('-eg')):

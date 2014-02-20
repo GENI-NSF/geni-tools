@@ -1259,7 +1259,7 @@ class Framework(Framework_Base):
         if len(name) == 0:
             self.logger.debug("Sliver URN '%s' has empty name", sliver_urn)
             return False
-        auth = urnObj.getAuthority():
+        auth = urnObj.getAuthority()
         if len(auth) == 0:
             self.logger.debug("Sliver URN '%s' has empty authority", sliver_urn)
             return False
@@ -1429,7 +1429,7 @@ class Framework(Framework_Base):
                    'match': {'SERVICE_URL': agg_url}}
         res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for '%s'" % (self.fwtype, agg_url),
                             self.ch.lookup_aggregates, options)
-        logr = self._log_results((res, mess), 'Convert aggregate url '%s' to urn using %s DB' % (agg_url, self.fwtype))
+        logr = self._log_results((res, mess), "Convert aggregate url '%s' to urn using %s DB" % (agg_url, self.fwtype))
         if logr == True:
             self.logger.debug("Got CH AM listing '%s' for URL '%s'", res['value'], agg_url)
             if len(res['value']) == 0:
