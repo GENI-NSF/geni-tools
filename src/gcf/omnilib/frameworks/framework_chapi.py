@@ -1279,7 +1279,7 @@ class Framework(Framework_Base):
             self.logger.warn("Empty sliver_urn to record")
             return ""
         if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
-            self.logger.info("Invalid sliver urn but continuing: %s", sliver_urn)
+            self.logger.debug("Invalid sliver urn but continuing: %s", sliver_urn)
 #                   return ""
 
         if not agg_urn:
@@ -1550,7 +1550,7 @@ class Framework(Framework_Base):
 # Delete it anyway
 #            return
         if not is_valid_urn_bytype(sliver_urn, 'sliver'):
-            self.logger.info("Invalid sliver urn but continuing: %s", sliver_urn)
+            self.logger.debug("Invalid sliver urn but continuing: %s", sliver_urn)
 # Delete it anyway
 #            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
