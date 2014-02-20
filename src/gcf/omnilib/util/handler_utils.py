@@ -107,18 +107,34 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url.startswith(url):
-            handler.logger.debug("Queried %s startswith url for nick %s", aggrgate_urn_or_url, nick)
-            return nick
+#            handler.logger.debug("Queried %s startswith url for nick %s", aggrgate_urn_or_url, nick)
+            if not retNick or len(nick) < len(retNick) or \
+                    (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+#                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
+                retNick = nick
+    if retNick is not None:
+        return retNick
     aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if url.endswith(aggregate_urn_or_url):
-            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
-            return nick
+#            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
+            if not retNick or len(nick) < len(retNick) or \
+                    (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+#                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
+                retNick = nick
+    if retNick is not None:
+        return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
         if aggregate_urn_or_url in urn or aggregate_urn_or_url in url:
-            handler.logger.debug("Trimmed %s is in urn or url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
-            return nick
-    return None
+#            handler.logger.debug("Trimmed %s is in urn or url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
+            if not retNick or len(nick) < len(retNick) or \
+                    (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+#                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
+                retNick = nick
+    return retNick
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
     urn = ""
