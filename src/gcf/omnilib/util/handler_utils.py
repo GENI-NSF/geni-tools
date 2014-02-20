@@ -100,8 +100,13 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
-                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
-                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+                    (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+                    (retNick.startswith('eg-') and nick.endswith('-eg')):
+                # Don't flip back to type-site to get something shorter
+                if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
+                        nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+#                            handler.logger.debug(" .. but this nickname flips site/type")
+                    continue
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
@@ -111,7 +116,13 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #            handler.logger.debug("Queried %s startswith url for nick %s", aggregate_urn_or_url, nick)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
-                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+                    (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+                    (retNick.startswith('eg-') and nick.endswith('-eg')):
+                # Don't flip back to type-site to get something shorter
+                if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
+                        nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+#                            handler.logger.debug(" .. but this nickname flips site/type")
+                    continue
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
@@ -130,8 +141,13 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
-                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
-                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+                    (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+                    (retNick.startswith('eg-') and nick.endswith('-eg')):
+                # Don't flip back to type-site to get something shorter
+                if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
+                        nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+#                            handler.logger.debug(" .. but this nickname flips site/type")
+                    continue
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
@@ -141,8 +157,13 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #            handler.logger.debug("Trimmed %s is in urn for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
-                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
-                    (retNick.startswith('eg-') and nick.endwwith('-eg')):
+                    (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+                    (retNick.startswith('eg-') and nick.endswith('-eg')):
+                # Don't flip back to type-site to get something shorter
+                if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
+                        nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+#                            handler.logger.debug(" .. but this nickname flips site/type")
+                    continue
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
         elif aggregate_urn_or_url in url:
@@ -158,11 +179,15 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #                    handler.logger.debug("Trimmed %s is in url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
                     if not retNick or len(nick) < len(retNick) or \
                             (retNick.startswith('ig-') and nick.endswith('-ig')) or \
-                            (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
-                            (retNick.startswith('eg-') and nick.endwwith('-eg')):
+                            (retNick.startswith('pg-') and nick.endswith('-pg')) or \
+                            (retNick.startswith('eg-') and nick.endswith('-eg')):
+                        # Don't flip back to type-site to get something shorter
+                        if retNick and retNick.split('-')[-1] in ['ig', 'pg', 'eg'] and \
+                                             nick.split('-')[-1] not in ['ig', 'pg', 'eg']:
+#                            handler.logger.debug(" .. but this nickname flips site/type")
+                            continue
 #                        handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                         retNick = nick
-                    break
     return retNick
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
