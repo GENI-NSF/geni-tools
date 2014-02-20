@@ -898,7 +898,7 @@ class Framework(Framework_Base):
                 scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
-#                    'SLICE_EXPIRED': 'f',
+                    'SLICE_EXPIRED': 'f',
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
         self.logger.debug("Submitting with options %s", options)

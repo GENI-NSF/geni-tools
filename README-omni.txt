@@ -193,6 +193,7 @@ sa=https://ch.geni.net/SA
    names, and do not complain or stop needlessly on illegal sliver
    names. (#518)
  - Catch parse errors when determining credential type (#521)
+ - Using `chapi` framework, expired slice expirations are printed (#523)
 
 
 New in v2.4:
