@@ -100,6 +100,7 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
 #            handler.logger.debug("For urn/url %s found match: %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
                     (retNick.startswith('eg-') and nick.endwwith('-eg')):
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
@@ -117,23 +118,51 @@ def _lookupAggNick(handler, aggregate_urn_or_url):
         return retNick
     aggregate_urn_or_url = _extractURL(handler.logger, aggregate_urn_or_url)
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
-        if url.endswith(aggregate_urn_or_url):
+        if url.endswith(aggregate_urn_or_url) and url in \
+                ['http://' + aggregate_urn_or_url, 
+                 'https://' + aggregate_urn_or_url,
+                 'http://www.' + aggregate_urn_or_url,
+                 'https://www.' + aggregate_urn_or_url,
+                 'http://boss.' + aggregate_urn_or_url,
+                 'https://boss.' + aggregate_urn_or_url,
+                 'http://www.boss.' + aggregate_urn_or_url,
+                 'https://www.boss.' + aggregate_urn_or_url]:
 #            handler.logger.debug("Queried & trimmed %s is end of url %s for nick %s", aggregate_urn_or_url, url, nick)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
                     (retNick.startswith('eg-') and nick.endwwith('-eg')):
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
     if retNick is not None:
         return retNick
     for nick, (urn, url) in handler.config['aggregate_nicknames'].items():
-        if aggregate_urn_or_url in urn or aggregate_urn_or_url in url:
-#            handler.logger.debug("Trimmed %s is in urn or url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
+        if aggregate_urn_or_url in urn:
+#            handler.logger.debug("Trimmed %s is in urn for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
             if not retNick or len(nick) < len(retNick) or \
                     (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                    (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
                     (retNick.startswith('eg-') and nick.endwwith('-eg')):
 #                handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
                 retNick = nick
+        elif aggregate_urn_or_url in url:
+            for curl in ['http://' + aggregate_urn_or_url, 
+                 'https://' + aggregate_urn_or_url,
+                 'http://www.' + aggregate_urn_or_url,
+                 'https://www.' + aggregate_urn_or_url,
+                 'http://boss.' + aggregate_urn_or_url,
+                 'https://boss.' + aggregate_urn_or_url,
+                 'http://www.boss.' + aggregate_urn_or_url,
+                 'https://www.boss.' + aggregate_urn_or_url]:
+                if curl in url:
+#                    handler.logger.debug("Trimmed %s is in url for %s=%s,%s", aggregate_urn_or_url, nick, urn, url)
+                    if not retNick or len(nick) < len(retNick) or \
+                            (retNick.startswith('ig-') and nick.endswith('-ig')) or \
+                            (retNick.startswith('pg-') and nick.endwwith('-pg')) or \
+                            (retNick.startswith('eg-') and nick.endwwith('-eg')):
+#                        handler.logger.debug(" ... that nickname is better than what I had (%s)", retNick)
+                        retNick = nick
+                    break
     return retNick
 
 def _lookupAggURNFromURLInNicknames(logger, config, agg_url):
