@@ -902,7 +902,7 @@ class Aggregate(object):
                     scd_node = child
                     break
         else:
-            self.logger.info("%s: Couldn't find link '%s' in path '%s' in EG manifest rspec (usually harmless; 2 of these may happen)" % (self, link_id, path_id))
+            self.logger.info("%s: Couldn't find link '%s' in path '%s' in EG manifest rspec (usually harmless; 2 or 3 of these may happen)" % (self, link_id, path_id))
             # SCS adds EG internal hops - to get from the VLAN component to the VM component.
             # But EG does not include those in the manifest.
             # FIXME: Really, the avail/sugg here should be those reported by that hop. And we should only do this
