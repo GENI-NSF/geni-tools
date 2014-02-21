@@ -1222,9 +1222,10 @@ class Aggregate(object):
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
 
-                    except:
+                    except Exception, e:
+                        if isinstance(e, StitchingError):
+                            raise e
 #                        self.logger.debug("Apparently not a vlan availability issue. Back to the SCS")
-                        pass
 
                     if isVlanAvailableIssue:
                         if not didInfo:
