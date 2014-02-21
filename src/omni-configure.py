@@ -808,13 +808,21 @@ def fixNicknames(config) :
     # ExoGENI AMs
 
 def getPortalOmniSection(opts, config, user, projects) :
-
+    if config['selected_framework']['type'] == 'chapi':
+        useSliceMembers = True
+    else:
+        useSliceMembers = False
+        
     omni_section = """
 [omni]
 default_cf=%s
 users=%s
 default_project=%s
-""" %(opts.framework, user, config['omni']['default_project'])
+
+# Over-ride the commandline setting of --useSliceMembers to force it True
+useslicemembers = %s
+
+""" %(opts.framework, user, config['omni']['default_project'], useSliceMembers)
 
     for p in projects :
       if p != config['omni']['default_project'] :
@@ -823,7 +831,6 @@ default_project=%s
     return omni_section
 
 def getPortalSFSection(opts, config) :
-
     return """
 [portal]
 type = pgch
@@ -859,9 +866,6 @@ cert = %s
 key = %s
 # For debugging
 verbose=false
-
-# Over-ride the commandline setting of --useSliceMembers to force it True
-useslicemembers = True
 
 # Some chapi Clearinghouses do not use projects
 # Uncomment this line for such servers (such as emulab.net)
