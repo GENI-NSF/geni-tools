@@ -129,9 +129,28 @@ class AMCallHandler(object):
     def _correctAPIVersion(self, args):
         '''Switch AM API versions if the AMs all or mostly speak something else. But be conservative.'''
 
+        cmd = None
+        if len(args) > 0:
+            cmd = args[0].strip().lower()
+
+        # FIXME: Keep this check in sync with createsliver
+        if cmd is not None and cmd == 'createsliver' and (not self.opts.aggregate or len(self.opts.aggregate) == 0):
+            # the user must supply an aggregate.
+            msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
+            self._raise_omni_error(msg)
+
         configVer = str(self.opts.api_version) # turn int into a string
         (clients, message) = self._getclients()
         numClients = len(clients)
+
+        # If we know the method we are calling takes exactly 1 AM and we have more
+        # than one here, bail. Note that later we remove bad AMs, so this is an imperfect check.
+
+        # createimage takes exactly 1 client
+        # FIXME: Keep this check in sync with createimage
+        if cmd is not None and cmd == 'createimage' and numClients > 1:
+            self._raise_omni_error("CreateImage snapshots a particular machine: specify exactly 1 AM URL with '-a'")
+
         liveVers = {}
         versions = {}
         retmsg = "" # Message to put at start of result summary
@@ -1707,6 +1726,9 @@ class AMCallHandler(object):
         # check command line args
         if not self.opts.aggregate or len(self.opts.aggregate) == 0:
             # the user must supply an aggregate.
+
+            # FIXME: Note this check is now duplicated in _correctAPIVersion
+
             msg = 'Missing -a argument: specify an aggregate where you want the reservation.'
             # FIXME: parse the AM to reserve at from a comment in the RSpec
             # Calling exit here is a bit of a hammer.
@@ -3980,6 +4002,8 @@ class AMCallHandler(object):
         numClients = len(clientList)
         if numClients != 1:
             self._raise_omni_error("CreateImage snapshots a particular machine: specify exactly 1 AM URL with '-a'")
+            # FIXME: Note this is already checked in _correctAPIVersion
+
         client = clientList[0]
         msg = "Create %s Image %s of sliver %s on " % (publicString, imageName, sliverURN)
         op = "CreateImage"
