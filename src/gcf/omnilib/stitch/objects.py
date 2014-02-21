@@ -295,9 +295,15 @@ class Aggregate(object):
 
     def __str__(self):
         if self.nick:
-            return "<Aggregate %s>" % (self.nick)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.nick, self.url)
+            else:
+                return "<Aggregate %s>" % (self.nick)
         else:
-            return "<Aggregate %s>" % (self.urn)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.urn, self.url)
+            else:
+                return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
         if self.nick:
@@ -355,7 +361,7 @@ class Aggregate(object):
             self.logger.warn("Cannot allocate at %s: dependencies not ready", self)
             return
         if self.completed:
-            self.logger.warn("Called allocate on AM already maked complete", self)
+            self.logger.warn("Called allocate on AM already marked complete: %s", self)
             return
 
         # FIXME: If we are quitting, return (important when threaded)
@@ -1221,6 +1227,11 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                            elif code == 5 and amcode == 5 and "AddSite: Invalid argument: Login base must be specified" in msg:
+                                self.logger.debug("Fatal error from DCN AM")
+                                isFatal = True
+                                # FIXME: Find out the real rule from Tony/Xi and say something better here
+                                fatalMsg = "Project name or slice name too long? At %s: %s..." % (self, str(ae)[:120])
 
                     except Exception, e:
                         if isinstance(e, StitchingError):

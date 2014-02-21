@@ -465,7 +465,7 @@ class ManifestRSpecCombiner:
                             am_link = child2
                             break
             if am_link is None:
-                self.logger.info("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2 times for ExoGENI aggregates)", link_id, path_id)
+                self.logger.info("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
                 return
         else:
             self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
