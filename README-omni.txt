@@ -198,6 +198,8 @@ sa=https://ch.geni.net/SA
  - Using `chapi` framework, expired slice expirations are printed (#523)
  - When doing `renewsliver --alap`, if the real expiration is not in
    the `output` slot, call `sliverstatus` to get it. (#527)
+ - Bail early from `createsliver` or `createimage` if the user
+   didn't specify exactly one aggregate. (#395)
 
 
 New in v2.4:
