@@ -1405,6 +1405,7 @@ class StitchingHandler(object):
                     agg.userRequested = oldAgg.userRequested
                     agg.alt_url = oldAgg.alt_url
                     agg.api_version = oldAgg.api_version
+                    agg.nick = oldAgg.nick
                     break
 
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff
