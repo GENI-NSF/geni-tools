@@ -406,7 +406,13 @@ class Aggregate(object):
                 tagByURN[hop.urn].append(hop._hop_link.vlan_suggested_request)
                 hopByURN[hop.urn] = list()
                 hopByURN[hop.urn].append(hop)
-            # FIXME: Ticket #355: If this is PG/IG (self.isPG once stitchandler fills that in), then complain if any hop on a different path uses the same VLAN tag
+
+            # Ticket #355: If this is PG/IG, then complain if any hop on a different path uses the same VLAN tag
+            if self.isPG:
+                for hop2 in self.hops:
+                    if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
+                        raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
+                                                 self, hop, hop._hop_link.vlan_suggested_request, hop2)
 
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
@@ -1896,8 +1902,13 @@ class Aggregate(object):
                         else:
                             doneHop._hop_link.vlan_range_request = doneHop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                             self.logger.debug("Reset %s range request to exclude %s previous failed tag %s. New: %s", doneHop, hop, hop._hop_link.vlan_suggested_request, doneHop._hop_link.vlan_range_request)
-                    # FIXME: Ticket #355: If this is PG/IG (self.isPG once stitchandler fills that in), then any hop on a different path: it's new suggested should not be in the new range request here
+                    # FIXME: Ticket #355: If this is PG/IG, then any hop on a different path: it's new suggested should not be in the new range request here
                             # Is this enough to ensure that this hops new range_request does not include any tags used by any other path? I think so
+#                    if self.isPG:
+#                        for hop2 in self.hops:
+#                            if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
+#                                raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
+#                                                         self, hop, hop._hop_link.vlan_suggested_request, hop2)
 
 
                 # If self is a VLAN producer, then set newSug to VLANRange('any') and let it pick?
@@ -1937,7 +1948,12 @@ class Aggregate(object):
                             self.logger.debug("%s range request used to include new suggested %s for %s. New: %s", doneHop, hop._hop_link.vlan_suggested_request, hop, doneHop._hop_link.vlan_range_request)
                         else:
                             self.logger.debug("%s range request already excluded new suggested %s for %s: %s", doneHop, hop._hop_link.vlan_suggested_request, hop, doneHop._hop_link.vlan_range_request)
-                    # FIXME: Ticket #355: For PG/IG (self.isPG once stitchandler fills that in), ensure that other hops on other paths exclude newly picked tag from their range request
+                    # FIXME: Ticket #355: For PG/IG, ensure that other hops on other paths exclude newly picked tag from their range request
+#            if self.isPG:
+#                for hop2 in self.hops:
+#                    if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
+#                        raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
+#                                                 self, hop, hop._hop_link.vlan_suggested_request, hop2)
 
                 resetHops.append(hop)
             # End of Loop over hops to set new suggested request and range request
