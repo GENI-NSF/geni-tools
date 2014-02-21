@@ -355,7 +355,7 @@ class Aggregate(object):
             self.logger.warn("Cannot allocate at %s: dependencies not ready", self)
             return
         if self.completed:
-            self.logger.warn("Called allocate on AM already maked complete", self)
+            self.logger.warn("Called allocate on AM already marked complete: %s", self)
             return
 
         # FIXME: If we are quitting, return (important when threaded)
