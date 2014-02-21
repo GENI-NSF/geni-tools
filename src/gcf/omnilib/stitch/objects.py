@@ -295,9 +295,15 @@ class Aggregate(object):
 
     def __str__(self):
         if self.nick:
-            return "<Aggregate %s>" % (self.nick)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.nick, self.url)
+            else:
+                return "<Aggregate %s>" % (self.nick)
         else:
-            return "<Aggregate %s>" % (self.urn)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.urn, self.url)
+            else:
+                return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
         if self.nick:
