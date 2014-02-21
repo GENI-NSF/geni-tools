@@ -55,6 +55,7 @@ from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
+PG_AM_TYPE = 'protogeni' # geni_am_type / am_type from ProtoGENI based AMs
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
@@ -142,7 +143,7 @@ class StitchingHandler(object):
             # parseRequest
             self.parsedUserRequest = self.rspecParser.parse(requestString)
         else:
-            raise OmniError("No request RSpec found!")
+            raise OmniError("No request RSpec found, or slice name missing!")
 
         # If this is not a real stitching thing, just let Omni handle this.
         # This will also ensure each stitched link has an explicit capacity on 2 properties
@@ -1081,21 +1082,38 @@ class StitchingHandler(object):
                         elif ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
-                        # FIXME: elif something to detect isPG. "protogeni" in
-                        # URL? "instageni" or "emulab" or "protogeni" in URN? 
+                        elif PG_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is ProtoGENI", agg)
+                            agg.isPG = True
                     elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
-                    # FIXME: A PG elif per above goes here
+                    # This code block looks nice but doesn't work - the version object is not the full triple
+#                    elif version[agg.url].has_key['code'] and isinstance(version[agg.url]['code'], dict) and \
+#                            version[agg.url]['code'].has_key('am_type') and str(version[agg.url]['code']['am_type']).strip() != "":
+#                        if version[agg.url]['code']['am_type'] == PG_AM_TYPE:
+#                            self.logger.debug("AM %s is ProtoGENI", agg)
+#                            agg.isPG = True
+#                        elif version[agg.url]['code']['am_type'] == ORCA_AM_TYPE:
+#                            self.logger.debug("AM %s is Orca", agg)
+#                            agg.isEG = True
+#                        elif version[agg.url]['code']['am_type'] == DCN_AM_TYPE:
+#                            self.logger.debug("AM %s is DCN", agg)
+#                            agg.dcn = True
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
                         for key in version[agg.url]['value']['geni_api_versions'].keys():
                             if int(key) == 2:
                                 hasV2 = True
-                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
-                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
-                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
+                                # Ugh. Why was I changing the URL based on the Ad? Not needed, Omni does this.
+                                # And if the AM says the current URL is the current opts.api_version OR the AM only lists 
+                                # one URL, then changing the URL makes no sense. So if I later decide I need this
+                                # for some reason, only do it if len(keys) > 1 and [value][geni_api] != opts.api_version
+                                # Or was I trying to change to the 'canonical' URL for some reason?
+#                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
+#                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
+#                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
@@ -1387,6 +1405,7 @@ class StitchingHandler(object):
                     agg.userRequested = oldAgg.userRequested
                     agg.alt_url = oldAgg.alt_url
                     agg.api_version = oldAgg.api_version
+                    agg.nick = oldAgg.nick
                     break
 
     # If we said this rspec needs a fake endpoint, add it here - so the SCS and other stuff

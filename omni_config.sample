@@ -82,19 +82,10 @@ hellogeni = http://www.gpolab.bbn.com/experiment-support/HelloGENI/hellogeni.rsp
 default_rspec_location = http://www.gpolab.bbn.com/experiment-support
 default_rspec_extension = rspec
 
-#------AM nicknames
-# Put your custom aggregate nicknames here. 
-# To see all available nicknames try: omni.py nicknames
-# Format :
-# Nickname=URN, URL
-# URN is optional
-[aggregate_nicknames]
-# boston=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-
 # ==================================
 # Configure Control Frameworks here
 
-# At least one framework section (sfa/pg/gcf) needs to be filled out
+# At least one framework section (sfa/pg/gcf/pgch/chapi) needs to be filled out
 # and pointed to by default_cf
 
 [my_sfa]

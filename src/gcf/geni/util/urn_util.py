@@ -155,8 +155,9 @@ def is_valid_urn_string(instr):
 # Note that this is not sufficient but it is necessary
 def is_valid_urn(inurn):
     ''' Check that this string is a valid URN'''
-    # FIXME: This should pull out the type and do the type specific
+    # FIXME: This could pull out the type and do the type specific
     # checks that are currently below
+    # FIXME: This should check for non empty authority and name pieces
     return is_valid_urn_string(inurn) and \
         inurn.startswith(publicid_urn_prefix) and \
         len(inurn.split('+')) > 3
@@ -172,6 +173,10 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
         if logger:
             logger.warn("URN %s not of right type: %s, not %s", inurn, urnObj.getType().lower(), urntype)
         return False
+    if len(urnObj.getAuthority()) == 0:
+        if logger:
+            logger.warn("URN %s has empty authority", inurn)
+        return False
     name = urnObj.getName()
     if urntype == 'slice':
         # Slice names are <=19 characters, only alphanumeric plus hyphen (no hyphen in first character): '^[a-zA-Z0-9][-a-zA-Z0-9]{0,18}$'
@@ -185,9 +190,12 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             return False
     elif urntype == 'sliver':
         # May use only alphanumeric characters plus hyphen
-        if not re.match("^[-a-zA-Z0-9]+$", name):
+        # Draft AM API change O1 allows also underscore or period. So
+        # allow that here.
+        # Note that EG uses a ':' as well.
+        if not re.match("^[-a-zA-Z0-9_\.]+$", name):
             if logger:
-                logger.warn("Sliver names may only be alphanumeric plus hyphen: %s", name)
+                logger.warn("Sliver names may only be alphanumeric plus hyphen, underscore, or period: %s", name)
             return False
     elif urntype == 'user':
         # Usernames should begin with a letter and be alphanumeric or underscores; no hyphen or '.': ('^[a-zA-Z][\w]{0,7}$').
@@ -200,6 +208,10 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             if logger:
                 logger.warn("User names may only be alphanumeric plus underscore, beginning with a letter: %s", name)
             return False
+    elif len(name) == 0:
+        if logger:
+            logger.warn("Empty name in URN %s", inurn)
+        return False
     return True
 
 def urn_to_publicid(urn):

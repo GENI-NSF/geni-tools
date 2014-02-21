@@ -65,19 +65,27 @@ Details:
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
   - See `omni_config.sample` for config options required
-   Included in this change:
+  - To upgrade a `pgch` config for `ch.geni.net` to a `chapi` config:
+   - Change `type = pgch` to `type = chapi`
+   - Change `ch = https://ch.geni.net...` to:
+{{{
+ch=https://ch.geni.net:8444/CH
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
+}}}
+  Included in this change:
   - When creating or renewing or deleting slivers, tell the Slice Authority.
     This allows the SA to know (non-authoritatively) where your slice
     has resources. (#439)
-  - New function `listslivers <slice>` lists the slivers reported to 
+  - New function `listslivers <slice>`: lists the slivers reported to 
     the slice authority in the given slice, by aggregate (with
     the sliver expirations). Note that this information is not
     authoritative - contact the aggregates if you want to be sure
     not to miss any reservations.
-  - New function `listslicemembers <slice>` lists the members of
+  - New function `listslicemembers <slice>`: lists the members of
     the given slice, with their email and registered SSH public
     keys (if any) and role in the slice. (#421, #431)
-  - New function `addslicemember <slice> <username> [optional: role]`
+  - New function `addslicemember <slice> <username> [optional: role]`:
     Adds the user with the given username to the named slice,
     with the given role (or `MEMBER` by default). Note this
     does not change what SSH keys are installed on any existing
@@ -135,6 +143,8 @@ Details:
   - If Omni hangs talking to a server you believe is up, try
     specifying `--ssltimeout 0` to disable the timeout. Some servers
     cannot handle the timeout request. (See ticket #506)
+  - Note this timeout does not work on old versions of python2.6 due
+    to a known python bug: http://bugs.python.org/issue5103
  - Speed up `listaggregates` in `pgch` framework (don't test AM API
    compliance) (#482)
  - Refactored the source code to make it easier to import Omni in
@@ -179,8 +189,17 @@ Details:
    `--verbosessl` over-ride it talking to clearinghouses. (#509)
  - Ensure `geni_version` on credential structs is a string.
    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
- - Notice invalid slice and member names earlier and supporess ugly
+ - Notice invalid slice and member names earlier and suppress ugly
    tracebacks on most `chapi` framework errors. (#517)
+ - Support AM API draft proposal O1 and allow '.' and '_' in sliver
+   names, and do not complain or stop needlessly on illegal sliver
+   names. (#518)
+ - Catch parse errors when determining credential type (#521)
+ - Using `chapi` framework, expired slice expirations are printed (#523)
+ - When doing `renewsliver --alap`, if the real expiration is not in
+   the `output` slot, call `sliverstatus` to get it. (#527)
+ - Bail early from `createsliver` or `createimage` if the user
+   didn't specify exactly one aggregate. (#395)
 
 
 New in v2.4:
@@ -1217,7 +1236,7 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 With the `--slicecredfile` option the slice's credential is read from
 that file, if it exists. Otherwise the Slice Authority is queried.
 
-=== listslivers ===
+==== listslivers ====
 List all slivers of the given slice by aggregate, as recorded at the
 clearinghouse. Note that this is non-authoritative information.
 
@@ -1255,7 +1274,7 @@ particular that slivers reserved through Flack are currently not reported here.
 This function is only supported at some `chapi` style clearinghouses,
 including the GENI Clearinghouse.
 
-=== listslicemembers ===
+==== listslicemembers ====
 List all the members of the given slice, including their registered
 public SSH keys.
 
@@ -1282,7 +1301,7 @@ public SSH keys installed on reserved resources.
 Note also that just because a slice member has SSH keys registered does not
 mean that those SSH keys have been installed on all reserved compute resources.
 
-=== addslicemember ===
+==== addslicemember ====
 Add the named user to the named slice. The user's role in the
 slice will be `MEMBER` if not specified.
 
@@ -2358,7 +2377,7 @@ Aggregates queried:
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
-=== nicknames ===
+==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
 the Omni config file(s). 
 

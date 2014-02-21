@@ -246,7 +246,7 @@ class Framework(Framework_Base):
     # Add new speaks for options and credentials based on provided opts 
     def _add_credentials_and_speaksfor(self, credentials, options):
         # FIXME: Tune log messages
-        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = %s" % self.opts.speaksfor)
+        self.logger.debug("add_c_n_spkfor start with self.opts.speaksfor = '%s'" % self.opts.speaksfor)
         self.logger.debug("add_c_n_spkfor start with self.opts.cred = %s" % self.opts.cred)
         if credentials is None:
             credentials = []
@@ -314,8 +314,8 @@ class Framework(Framework_Base):
             if res is not None:
                 if res['code'] == 0:
                     if res['value'] is None:
-                        self.logger.error("No SFA user credential returned!")
-                        self.logger.debug("Got %s", res['value'])
+                        self.logger.error("No SFA-type user credential returned!")
+                        self.logger.debug("Got: %s", res['value'])
                     else:
                         self.user_cred_struct = self._select_sfa_cred(res['value'], True)
                         if self.user_cred_struct:
@@ -326,8 +326,8 @@ class Framework(Framework_Base):
                                                       self.user_cred_struct['geni_version'], type(self.user_cred_struct['geni_version']))
                                     self.user_cred_struct['geni_version'] = str(self.user_cred_struct['geni_version'])
                     if self.user_cred is None:
-                        self.logger.error("No SFA user credential returned!")
-                        self.logger.debug("Got %s", res['value'])
+                        self.logger.error("No SFA-type user credential returned!")
+                        self.logger.debug("Got: %s", res['value'])
                 else:
                     msg = res['output']
                     if msg is None or msg.strip() == "":
@@ -381,10 +381,10 @@ class Framework(Framework_Base):
                                 self.logger.debug("Got non string geni_version on cred. %s is type %s", cred['geni_version'], type(cred['geni_version']))
                                 cred['geni_version'] = str(cred['geni_version'])
                     if cred is None:
-                        self.logger.debug("Malformed list of creds: Got %s", d)
+                        self.logger.debug("Malformed list of creds: Got: %s", d)
                         raise OmniError("No slice credential returned for slice %s" % slice_urn)
                 else:
-                    self.logger.debug("Malformed slice cred return. Got %s", res)
+                    self.logger.debug("Malformed slice cred return. Got: %s", res)
                     raise OmniError("Malformed return getting slice credential")
             else:
                 msg = "Server Error getting slice %s credential: %d: %s (%s)" % (slice_urn, res['code'], res['output'], message)
@@ -441,7 +441,7 @@ class Framework(Framework_Base):
                     if message is not None and message.strip() != "":
                         msg = msg + ". %s" % message
                     self.logger.error(msg)
-                    self.logger.debug("Got %s", res)
+                    self.logger.debug("Got: %s", res)
             else:
                 msg = "Server Error getting SSH keys: %d: %s" % (res['code'], res['output'])
                 if message is not None and message.strip() != "":
@@ -489,7 +489,7 @@ class Framework(Framework_Base):
         auth = s_auths[0]
         if len(s_auths) > 1:
             project = s_auths[-1]
-            self.logger.debug("From slice URN extracted project %s", project)
+            self.logger.debug("From slice URN extracted project '%s'", project)
 
         if project is None and self.useProjects:
             if self.opts.project:
@@ -506,14 +506,14 @@ class Framework(Framework_Base):
             if not self.config.has_key('authority'):
                 raise OmniError("Invalid configuration: no authority defined")
             auth = self.config['authority'].strip()
-            self.logger.debug("From config got authority %s", auth)
+            self.logger.debug("From config got authority '%s'", auth)
 
         project_urn = None
         if project is not None:
             project_urn = URN(authority = auth,
                               type = 'project',
                               name = project).urn_string()
-            self.logger.debug("Built project_urn %s", project_urn)
+            self.logger.debug("Built project_urn '%s'", project_urn)
 
         options = {'fields': 
                    {'SLICE_NAME': slice_name,
@@ -521,7 +521,7 @@ class Framework(Framework_Base):
         if project_urn is not None:
             options['fields']['SLICE_PROJECT_URN'] = project_urn
 
-        self.logger.debug("Submitting with options %s", options)
+        self.logger.debug("Submitting with options: %s", options)
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -622,7 +622,7 @@ class Framework(Framework_Base):
             auth = s_auths[0]
             if len(s_auths) > 1:
                 project = s_auths[-1]
-                self.logger.debug("From slice URN extracted project %s", project)
+                self.logger.debug("From slice URN extracted project '%s'", project)
             slice_urn = urn
         else:
             slice_name = urn
@@ -641,7 +641,7 @@ class Framework(Framework_Base):
             if not self.config.has_key('authority'):
                 return "%s does not support deleting slices. (And invalid configuration: no authority defined to construct slice urn)" % self.fwtype
             auth = self.config['authority'].strip()
-            self.logger.debug("From config got authority %s", auth)
+            self.logger.debug("From config got authority '%s'", auth)
 
         if slice_urn is None:
             slice_urn = URN(authority=auth + ":" + project, type='slice', name=slice_name).urn_string()
@@ -655,7 +655,7 @@ class Framework(Framework_Base):
                     'SLICE_EXPIRED': 'f',
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION']
-        self.logger.debug("Submitting with options %s", options)
+        self.logger.debug("Submitting with options: %s", options)
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
@@ -770,7 +770,7 @@ class Framework(Framework_Base):
                 slice = tup['SLICE_URN']
                 slicelower = string.lower(slice)
                 if not string.find(slicelower, "+slice+"):
-                    self.logger.debug("Skipping non slice URN %s", slice)
+                    self.logger.debug("Skipping non slice URN '%s'", slice)
                     continue
                 slicename = slice
                 # Returning this key is non-standard..
@@ -815,7 +815,7 @@ class Framework(Framework_Base):
                 if len(s_auths) > 1 and s_auths[-1].strip() != "":
                     project = s_auths[-1]
                     # FIXME: Validate the project
-                    self.logger.debug("From slice URN extracted project %s", project)
+                    self.logger.debug("From slice URN extracted project '%s'", project)
                     return name
                 else:
                     # Can we get a project from options or config?
@@ -898,10 +898,10 @@ class Framework(Framework_Base):
                 scred.append(uc)
         options = {'match': 
                    {'SLICE_URN': urn,
-#                    'SLICE_EXPIRED': 'f',
+                    'SLICE_EXPIRED': 'f',
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
-        self.logger.debug("Submitting with options %s", options)
+        self.logger.debug("Submitting with options: %s", options)
         scred, options = self._add_credentials_and_speaksfor(scred, options)
         res = None
         (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
@@ -997,7 +997,7 @@ class Framework(Framework_Base):
                     sliceexp = naiveUTC(slice_expiration)
                     # If request is diff from sliceexp then log a warning
                     if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
-                        self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
+                        self.logger.warn("Renewed %s slice %s expiration %s is different than requested: %s", self.fwtype, urn, sliceexp, expiration_dt)
                 except:
                     pass
             return expiration_dt
@@ -1137,6 +1137,10 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # Probably the slice doesn't exist or you don't have
+            # rights on it
+            return ([], "Error looking up slice %s - check the logs" % slice_urn)
 
         options = {'match': 
                    {'SLICE_URN': slice_urn,
@@ -1241,13 +1245,33 @@ class Framework(Framework_Base):
             return msg
         return False
 
+    # A poor check for valid sliver URNs, to avoid complaining about
+    # technically illegal characters in sliver names
+    def _weakSliverValidCheck(self, sliver_urn):
+        if not is_valid_urn(sliver_urn):
+            self.logger.debug("Invalid sliver urn '%s'", sliver_urn)
+            return False
+        urnObj = URN(urn=sliver_urn)
+        if not urnObj.getType().lower() == 'sliver':
+            self.logger.debug("Sliver URN '%s' not of type sliver, but '%s'", sliver_urn, urnObj.getType())
+            return False
+        name = urnObj.getName()
+        if len(name) == 0:
+            self.logger.debug("Sliver URN '%s' has empty name", sliver_urn)
+            return False
+        auth = urnObj.getAuthority()
+        if len(auth) == 0:
+            self.logger.debug("Sliver URN '%s' has empty authority", sliver_urn)
+            return False
+        return True
+
     # Guess the aggregate URN from the sliver URN
     def _getAggFromSliverURN(self, sliver_urn):
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
+        if not self._weakSliverValidCheck(sliver_urn):
             return None
-        idx1 = sliver_urn.find('sliver+')
+        idx1 = sliver_urn.find('+sliver+')
         auth = sliver_urn[0 : idx1]
-        return auth + 'authority+am'
+        return auth + '+authority+am'
 
     # Helper for actually recording a new sliver with the given expiration
     def _record_one_new_sliver(self, sliver_urn, slice_urn, agg_urn,
@@ -1267,16 +1291,20 @@ class Framework(Framework_Base):
             self.logger.debug("Not a valid AM URN: %s", agg_urn)
             agg_urn = None
         if sliver_urn is None or sliver_urn.strip() == "":
-            self.logger.warn("Empty sliver_urn to record")
+            self.logger.warn("Empty sliver urn to record")
             return ""
-        if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+
+        # The full check punishes the experimenter for an AM's
+        # malformed sliver URNs, which I think is wrong and confusing.
+#        if not is_valid_urn_bytype(sliver_urn, 'sliver', self.logger):
+        if not self._weakSliverValidCheck(sliver_urn):
+            self.logger.debug("Invalid sliver urn but continuing: '%s'", sliver_urn)
 #                   return ""
 
         if not agg_urn:
             agg_urn = self._getAggFromSliverURN(sliver_urn)
             if not is_valid_urn(agg_urn):
-                self.logger.warn("Invalid aggregate URN %s for recording new sliver from sliver urn %s", agg_urn, sliver_urn)
+                self.logger.warn("Invalid aggregate URN '%s' for recording new sliver from sliver urn '%s'", agg_urn, sliver_urn)
                 return ""
         else:
             # The authority of the agg_urn should be the start of the authority of the sliver auth
@@ -1285,7 +1313,7 @@ class Framework(Framework_Base):
             idx1 = sliver_urn.find('sliver+')
             auth = sliver_urn[0 : idx1]
             if not auth.startswith(agg_auth):
-                self.logger.debug("Skipping sliver %s that doesn't appear to come from the specified AM %s", sliver_urn,
+                self.logger.debug("Skipping sliver '%s' that doesn't appear to come from the specified AM '%s'", sliver_urn,
                                   agg_urn)
                 return ""
         # FIXME: This assumes the sliver was created now, which isn't strictly true on create,
@@ -1301,11 +1329,11 @@ class Framework(Framework_Base):
             # Note that if no TZ specified, UTC is assumed
             fields["SLIVER_INFO_EXPIRATION"] = str(expiration)
 
-        self.logger.debug("Recording new slivers with options %s", options)
+        self.logger.debug("Recording new slivers with options: %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver %s creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
+        res = _do_ssl(self, None, "Recording sliver '%s' creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
                       self.sa().create_sliver_info, creds, options)
-        return self._log_results(res, "Record sliver %s creation at %s" % (sliver_urn, self.fwtype))
+        return self._log_results(res, "Record sliver '%s' creation at %s" % (sliver_urn, self.fwtype))
 
     # write new sliver_info to the database using chapi
     # Manifest is the XML when using APIv1&2 and none otherwise
@@ -1321,7 +1349,7 @@ class Framework(Framework_Base):
             self.logger.debug("Using AM URN %s", am_urn)
             agg_urn = am_urn
         elif aggregate_url is None or aggregate_url.strip() == "":
-            self.logger.warn("Empty aggregate for recording new slivers")
+            self.logger.warn("Empty aggregate URL for recording new slivers")
             # Just get the URN from the manifest or slivers
             agg_urn = None
         else:
@@ -1339,7 +1367,7 @@ class Framework(Framework_Base):
         creator_urn = self.user_urn
         slice_urn = self.slice_name_to_urn(slice_urn)
         if not is_valid_urn(slice_urn):
-            self.logger.warn("Invalid slice URN %s for recording new slivers", slice_urn)
+            self.logger.warn("Invalid slice URN '%s' for recording new slivers", slice_urn)
             return
         creds = []
         msg = ""
@@ -1354,13 +1382,13 @@ class Framework(Framework_Base):
                 idx2 = manifest.find('"', idx1) + 1 # Start of URN
                 if idx2 == 0:
                     # didn't find start of sliver id?
-                    self.logger.warn("Malformed sliver_id in rspec? %s", manifest[:30])
+                    self.logger.debug("Malformed sliver_id in rspec? %s", manifest[:30])
                     manifest = manifest[9:]
                     continue
                 idx3 = manifest.find('"', idx2) # End of URN
                 if idx3 == 0:
                     # didn't find end of sliver id?
-                    self.logger.warn("Malformed sliver_id in rspec? %s", manifest[idx2-15:idx2+80])
+                    self.logger.debug("Malformed sliver_id in rspec? %s", manifest[idx2-15:idx2+80])
                     manifest = manifest[idx2:]
                     continue
                 sliver_urn = manifest[idx2 : idx3]
@@ -1399,11 +1427,11 @@ class Framework(Framework_Base):
 
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
-        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for %s" % (self.fwtype, agg_url),
+        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for '%s'" % (self.fwtype, agg_url),
                             self.ch.lookup_aggregates, options)
-        logr = self._log_results((res, mess), 'Convert aggregate url %s to urn using %s DB' % (agg_url, self.fwtype))
+        logr = self._log_results((res, mess), "Convert aggregate url '%s' to urn using %s DB" % (agg_url, self.fwtype))
         if logr == True:
-            self.logger.debug("Got CH AM listing %s for URL %s", res['value'], agg_url)
+            self.logger.debug("Got CH AM listing '%s' for URL '%s'", res['value'], agg_url)
             if len(res['value']) == 0:
                 return None
             else:
@@ -1420,7 +1448,7 @@ class Framework(Framework_Base):
             self.logger.warn("No slice to lookup slivers")
             return []
         if not is_valid_urn(aggregate_urn):
-            self.logger.warn("Invalid aggregate URN %s for querying slivers", aggregate_urn)
+            self.logger.warn("Invalid aggregate URN '%s' for querying slivers", aggregate_urn)
             return []
         if self.needcred:
             # FIXME: At PG should this be user or slice cred?
@@ -1440,6 +1468,10 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # Usually means the slice doesn't exist or you don't have
+            # rights on it
+            return []
 
         # FIXME: Query the sliver expiration and skip expired slivers?
         options = {'filter': [],
@@ -1451,7 +1483,7 @@ class Framework(Framework_Base):
                             self.sa().lookup_sliver_info, creds, options)
         logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
         if logr == True:
-            self.logger.debug("Slice %s AM %s found slivers %s", slice_urn, aggregate_urn, res['value'])
+            self.logger.debug("Slice %s AM %s found slivers: %s", slice_urn, aggregate_urn, res['value'])
             return res['value'].keys()
         else:
             return []
@@ -1461,13 +1493,16 @@ class Framework(Framework_Base):
     # to record it
     def update_sliver_info(self, agg_urn, slice_urn, sliver_urn, expiration):
         if expiration is None:
-            self.logger.warn("Empty new expiration to record for sliver %s", sliver_urn)
+            self.logger.warn("Empty new expiration to record for sliver '%s'", sliver_urn)
             return None
         if sliver_urn is None or sliver_urn.strip() == "":
-            self.logger.warn("Empty sliver_urn to update expiration")
+            self.logger.warn("Empty sliver_urn to update record of sliver expiration")
             return
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+        # Just make sure this is a reasonable URN of type sliver,
+        # without validating the name portion - since we really don't
+        # care so much what names the AM uses
+        if not self._weakSliverValidCheck(sliver_urn):
+            self.logger.warn("Cannot update sliver expiration record: Invalid sliver urn '%s'", sliver_urn)
             return
         if not is_valid_urn(agg_urn):
             agg_urn = self._getAggFromSliverURN(sliver_urn)
@@ -1489,10 +1524,10 @@ class Framework(Framework_Base):
 
         options = {'fields' : fields}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        self.logger.debug("Passing options %s", options)
-        res = _do_ssl(self, None, "Recording sliver %s updated expiration" % sliver_urn, \
+        self.logger.debug("Passing options: %s", options)
+        res = _do_ssl(self, None, "Recording sliver '%s' updated expiration" % sliver_urn, \
                 self.sa().update_sliver_info, sliver_urn, creds, options)
-        msg = self._log_results(res, "Update sliver %s expiration" % sliver_urn)
+        msg = self._log_results(res, "Update sliver '%s' expiration" % sliver_urn)
         if "Register the sliver" in str(msg) and "ARGUMENT_ERROR" in str(msg) and is_valid_urn(slice_urn) and is_valid_urn(agg_urn):
             # SA didn't know about this sliver
 
@@ -1502,7 +1537,7 @@ class Framework(Framework_Base):
             if nm != True:
                 msg += str(msg)
             else:
-                msg = "Recorded sliver %s with new expiration" % sliver_urn
+                msg = "Recorded sliver '%s' with new expiration" % sliver_urn
         return msg
 
 # Note: Valid 'match' fields for lookup_sliver_info are the same as is
@@ -1530,17 +1565,17 @@ class Framework(Framework_Base):
 #                creds.append(sc)
         options = {}
         if sliver_urn is None or sliver_urn.strip() == "":
-            self.logger.warn("Empty sliver_urn to record deletion")
+            self.logger.debug("Empty sliver_urn to record deletion but continuing")
 # Delete it anyway
 #            return
-        if not is_valid_urn_bytype(sliver_urn, 'sliver'):
-            self.logger.warn("Invalid sliver urn %s", sliver_urn)
+        if not self._weakSliverValidCheck(sliver_urn):
+            self.logger.debug("Invalid sliver urn but continuing: %s", sliver_urn)
 # Delete it anyway
 #            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver %s deleted" % sliver_urn,
+        res = _do_ssl(self, None, "Recording sliver '%s' deleted" % sliver_urn,
                       self.sa().delete_sliver_info, sliver_urn, creds, options)
-        return self._log_results(res, "Record sliver %s deleted" % sliver_urn)
+        return self._log_results(res, "Record sliver '%s' deleted" % sliver_urn)
 
     # Find all slivers the SA lists for the given slice
     # Return a struct by AM URN containing a struct: sliver_urn = sliver info struct
@@ -1566,6 +1601,9 @@ class Framework(Framework_Base):
             if exp < naiveUTC(datetime.datetime.utcnow()):
                 expired = True
                 expmess = " (EXPIRED at %s UTC)" % exp
+        else:
+            # User not authorized or slice doesn't exist
+            return slivers_by_agg
 
         options = {"match" : {"SLIVER_INFO_SLICE_URN" : slice_urn}}
 
@@ -1578,7 +1616,7 @@ class Framework(Framework_Base):
  
         if logr == True:
             for sliver_urn, sliver_info in res['value'].items():
-                self.logger.debug("Slice %s found sliver %s: %s", slice_urn, sliver_urn, sliver_info)
+                self.logger.debug("Slice '%s' found sliver '%s': %s", slice_urn, sliver_urn, sliver_info)
                 # FIXME: If the sliver seems to have expired, skip it?
                 agg_urn = sliver_info['SLIVER_INFO_AGGREGATE_URN']
                 if agg_urn not in slivers_by_agg:

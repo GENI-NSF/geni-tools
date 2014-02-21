@@ -27,19 +27,27 @@ gcf 2.5:
     (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
     to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
    - See `omni_config.sample` for config options required
-    Included in this change:
+   - To upgrade a `pgch` config for `ch.geni.net` to a `chapi` config:
+    - Change `type = pgch` to `type = chapi`
+    - Change `ch = https://ch.geni.net...` to:
+{{{
+ch=https://ch.geni.net:8444/CH
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
+}}}
+   Included in this change:
    - When creating or renewing or deleting slivers, tell the Slice Authority.
      This allows the SA to know (non-authoritatively) where your slice
      has resources. (#439)
-   - New function `listslivers <slice>` lists the slivers reported to 
+   - New function `listslivers <slice>`: lists the slivers reported to 
      the slice authority in the given slice, by aggregate (with
      the sliver expirations). Note that this information is not
      authoritative - contact the aggregates if you want to be sure
      not to miss any reservations.
-   - New function `listslicemembers <slice>` lists the members of
+   - New function `listslicemembers <slice>`: lists the members of
      the given slice, with their email and registered SSH public
      keys (if any) and role in the slice. (#421, #431)
-   - New function `addslicemember <slice> <usernane> [optional: role]`
+   - New function `addslicemember <slice> <usernane> [optional: role]`:
      Adds the user with the given username to the named slice,
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing
@@ -97,6 +105,8 @@ gcf 2.5:
    - If Omni hangs talking to a server you believe is up, try
      specifying `--ssltimeout 0` to disable the timeout. Some servers
      cannot handle the timeout request. (See ticket #506)
+   - Note this timeout does not work on old versions of python2.6 due
+     to a known python bug: http://bugs.python.org/issue5103
   - Speed up `listaggregates` in `pgch` framework (don't test AM API
     compliance) (#482)
   - Refactored the source code to make it easier to import Omni in
@@ -142,8 +152,17 @@ gcf 2.5:
     `--verbosessl` over-ride it talking to clearinghouses. (#509)
   - Ensure `geni_version` on credential structs is a string.
     Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
-  - Notice invalid slice and member names earlier and supporess ugly
+  - Notice invalid slice and member names earlier and suppress ugly
     tracebacks on most `chapi` framework errors. (#517)
+  - Support AM API draft proposal O1 and allow '.' and '_' in sliver
+    names, and do not complain or stop needlessly on illegal sliver
+    names. (#518)
+  - Catch parse errors when determining credential type (#521)
+  - Using `chapi` framework, expired slice expirations are printed (#523)
+  - When doing `renewsliver --alap`, if the real expiration is not in
+    the `output` slot, call `sliverstatus` to get it. (#527)
+  - Bail early from `createsliver` or `createimage` if the user
+    didn't specify exactly one aggregate. (#395)
  
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -190,6 +209,9 @@ gcf 2.5:
     from a single AM - multiple interfaces at one AM counts as needing
     the fake one. Similarly, when adding capacity on property elements,
     set the destination based on an interface at a different aggregate. (#512)
+  - Stop changing AM URL based on getversion Ad (breaks if AM lists wrong
+    URL, as was happening). (#528)
+  - Error from DCN AM is fatal: 'Login base must be specified'. (#529)
 
 
  * gcf
