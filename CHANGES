@@ -209,6 +209,7 @@ sa=https://ch.geni.net/SA
     set the destination based on an interface at a different aggregate. (#512)
   - Stop changing AM URL based on getversion Ad (breaks if AM lists wrong
     URL, as was happening). (#528)
+  - Error from DCN AM is fatal: 'Login base must be specified'. (#529)
 
 
  * gcf

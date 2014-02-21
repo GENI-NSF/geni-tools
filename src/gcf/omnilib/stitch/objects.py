@@ -1221,6 +1221,11 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                            elif code == 5 and amcode == 5 and "AddSite: Invalid argument: Login base must be specified" in msg:
+                                self.logger.debug("Fatal error from DCN AM")
+                                isFatal = True
+                                # FIXME: Find out the real rule from Tony/Xi and say something better here
+                                fatalMsg = "Project name or slice name too long? At %s: %s..." % (self, str(ae)[:120])
 
                     except Exception, e:
                         if isinstance(e, StitchingError):
