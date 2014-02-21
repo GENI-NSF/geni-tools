@@ -232,6 +232,8 @@ sa=https://ch.geni.net/SA
  
  * omni-configure
   - Added Kentucky as a CH/SA authority (#453)
+  - Add support for speaking the common Clearinghouse API (CH API) to
+    the GENI Clearinghouse/Portal.  Use --not-use-chapi to get the old behavior. (#519)
 
  * readyToLogin.py
   - Add support for v2 GRAM (#444)
