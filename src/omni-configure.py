@@ -561,6 +561,10 @@ def parseArgs(argv, options=None):
                       default=False, help="Lets you choose which project to "+ \
                       "use as default from the projects in the bundle "+ \
                       "downloaded from the portal")
+    parser.add_option("--not-use-chapi", dest="use_chapi", 
+                      action="store_false",
+                      default=True, help="If available, do not configure the "+ \
+                      "omni_config to use the common Clearinghouse API (CH API).")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
@@ -921,7 +925,11 @@ def getPortalConfig(opts, public_key_list, cert) :
     # The bundle contains and omni_config
     # extract it and load it
     omnizip = zipfile.ZipFile(opts.portal_bundle)
-    for config in ['omni_config_chapi', 'omni_config']:
+    bundle_omni_configs = ['omni_config']
+    if opts.use_chapi:
+        # if want to use CH API, then look in 'omni_config_chapi' first
+        bundle_omni_configs = ['omni_config_chapi'] + bundle_omni_configs
+    for config in bundle_omni_configs:
         try:
             omnizip.extract(config, '/tmp/omni_bundle')
             config_path = os.path.join('/tmp/omni_bundle/', config)
