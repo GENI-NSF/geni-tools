@@ -143,7 +143,7 @@ class StitchingHandler(object):
             # parseRequest
             self.parsedUserRequest = self.rspecParser.parse(requestString)
         else:
-            raise OmniError("No request RSpec found!")
+            raise OmniError("No request RSpec found, or slice name missing!")
 
         # If this is not a real stitching thing, just let Omni handle this.
         # This will also ensure each stitched link has an explicit capacity on 2 properties
@@ -1088,17 +1088,18 @@ class StitchingHandler(object):
                     elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
-                    elif version[agg.url].has_key['code'] and isinstance(version[agg.url]['code'], dict) and \
-                            version[agg.url]['code'].has_key('am_type') and str(version[agg.url]['code']['am_type']).strip() != "":
-                        if version[agg.url]['code']['am_type'] == PG_AM_TYPE:
-                            self.logger.debug("AM %s is ProtoGENI", agg)
-                            agg.isPG = True
-                        elif version[agg.url]['code']['am_type'] == ORCA_AM_TYPE:
-                            self.logger.debug("AM %s is Orca", agg)
-                            agg.isEG = True
-                        elif version[agg.url]['code']['am_type'] == DCN_AM_TYPE:
-                            self.logger.debug("AM %s is DCN", agg)
-                            agg.dcn = True
+                    # This code block looks nice but doesn't work - the version object is not the full triple
+#                    elif version[agg.url].has_key['code'] and isinstance(version[agg.url]['code'], dict) and \
+#                            version[agg.url]['code'].has_key('am_type') and str(version[agg.url]['code']['am_type']).strip() != "":
+#                        if version[agg.url]['code']['am_type'] == PG_AM_TYPE:
+#                            self.logger.debug("AM %s is ProtoGENI", agg)
+#                            agg.isPG = True
+#                        elif version[agg.url]['code']['am_type'] == ORCA_AM_TYPE:
+#                            self.logger.debug("AM %s is Orca", agg)
+#                            agg.isEG = True
+#                        elif version[agg.url]['code']['am_type'] == DCN_AM_TYPE:
+#                            self.logger.debug("AM %s is DCN", agg)
+#                            agg.dcn = True
                     if version[agg.url]['value'].has_key('geni_api_versions') and isinstance(version[agg.url]['value']['geni_api_versions'], dict):
                         maxVer = 1
                         hasV2 = False
