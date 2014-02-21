@@ -372,17 +372,25 @@ class StitchingHandler(object):
         # Ensure we are processing all the workflow aggs plus any aggs in the RSpec not in
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
+
+        self.logger.debug("SCS workflow said to include resources from these aggregates:")
+        for am in self.ams_to_process:
+            self.logger.debug("\t%s", am)
+
         addedAMs = []
         for amURN in self.parsedSCSRSpec.amURNs:
+#            self.logger.debug("Looking at SCS returned amURN %s", amURN)
             found = False
             for agg in self.ams_to_process:
                 if agg.urn == amURN:
                     found = True
+#                    self.logger.debug(" .. was already in ams_to_process")
                     break
                 # For EG there are multiple URNs that are really the same
                 # If find one, found them all
                 for urn2 in agg.urn_syns:
                     if urn2 == amURN:
+#                        self.logger.debug(" .. was in ams_to_process under synonym. Ams_to_process had %s", agg.urn)
                         found = True
                         break
             if found:
@@ -414,6 +422,7 @@ class StitchingHandler(object):
                 if not am.url:
                     self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
                 else:
+                    self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
                     self.ams_to_process.append(am)
         # Done adding user requested non linked AMs to list of AMs to
         # process
@@ -992,10 +1001,13 @@ class StitchingHandler(object):
         options_copy.debug = False
         options_copy.info = False
 
-        for agg in aggs:
+        aggsc = copy.copy(aggs)
+
+        for agg in aggsc:
             # Don't do an aggregate twice
             if agg.urn in self.amURNsAddedInfo:
                 continue
+#            self.logger.debug("add_am_info looking at %s", agg)
 
             # Note which AMs were user requested
             if agg.urn in self.parsedUserRequest.amURNs:
@@ -1027,7 +1039,7 @@ class StitchingHandler(object):
             if "exogeni" in agg.urn and not agg.alt_url:
 #                self.logger.debug("No alt url for Orca AM %s (URL %s) with URN synonyms:", agg, agg.url)
 #                for urn in agg.urn_syns:
-#                    self.logger.debug(urn)
+#                    self.logger.debug("\t%s", urn)
                 if not agg.isExoSM:
                     agg.alt_url = defs.EXOSM_URL
 
@@ -1151,7 +1163,7 @@ class StitchingHandler(object):
                 agg.url = agg.alt_url
                 agg.alt_url = amURL
                 agg.isExoSM = True
-                aggs.append(agg)
+                aggsc.append(agg)
                 continue
 #            else:
 #                self.logger.debug("%s is EG: %s, alt_url: %s, isExo: %s", agg, agg.isEG, agg.alt_url, agg.isExoSM)
@@ -1159,9 +1171,11 @@ class StitchingHandler(object):
             # Save off the aggregate nickname if possible
             agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
+ #           self.logger.debug("Remembering done getting extra info for %s", agg)
+
             # Remember we got the extra info for this AM
             self.amURNsAddedInfo.append(agg.urn)
-
+        # Done loop over aggs
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
