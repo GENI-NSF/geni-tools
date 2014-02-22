@@ -737,7 +737,7 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys [optiona: username] [Alias for listkeys]
+ 			 listmykeys [optional: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename>
