@@ -202,6 +202,8 @@ sa=https://ch.geni.net/SA
    didn't specify exactly one aggregate. (#395)
  - Update copyrights to 2014 (#463, #426)
  - Handle non string rspec when printing RSpec (#445)
+ - Allow `--optionsfile` with `createimage`, `deleteimage`, and
+   `listimages`. (#532)
 
 
 New in v2.4:
