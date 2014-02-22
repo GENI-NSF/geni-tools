@@ -277,14 +277,24 @@ def _listaggregates(handler):
         for aggURN in sliverAggs:
             handler.logger.debug("Look up CH recorded URN %s", aggURN)
             nick, url = _lookupAggNickURLFromURNInNicknames(handler.logger, handler.config, aggURN)
+            aggURNAlt = None
+            if aggURN.endswith('+cm'):
+                aggURNAlt = aggURN[:-2] + 'am'
+            elif aggURN.endswith('+am'):
+                aggURNAlt = aggURN[:-2] + 'cm'
             if url != '':
                 # Avoid duplicate aggregate entries
-                if url in ret.values() and ret.has_key(aggURN) and ret[aggURN]==url:
-                    continue
+                if url in ret.values():
+                    if (ret.has_key(aggURN) and ret[aggURN]==url) or \
+                            (aggURNAlt is not None and ret.has_key(aggURNAlt) and ret[aggURNAlt] == url):
+                        handler.logger.debug("Not adding duplicate agg %s", nick)
+                        continue
                 while aggURN in ret:
                     aggURN += "+"
                 ret[aggURN] = url
                 handler.logger.info("Adding aggregate %s to query list", nick)
+            else:
+                handler.logger.info("Aggregate %s unknown", aggURN)
         if not handler.opts.aggregate:
             return (ret, "%d aggregates known to have resources for slice %s" % (len(sliverAggs), handler.opts.sliceName))
     if handler.opts.aggregate:
@@ -295,10 +305,18 @@ def _listaggregates(handler):
             url, urn = _derefAggNick(handler, agg)
             url = url.strip()
             urn = urn.strip()
+            aggURNAlt = None
+            if urn.endswith('+cm'):
+                aggURNAlt = urn[:-2] + 'am'
+            elif urn.endswith('+am'):
+                aggURNAlt = urn[:-2] + 'cm'
             if url != '':
                 # Avoid duplicate aggregate entries
-                if url in ret.values() and ((ret.has_key(urn) and ret[urn]==url) or urn == "unspecified_AM_URN"):
-                    continue
+                if url in ret.values():
+                    if (ret.has_key(urn) and ret[urn]==url) or \
+                            (aggURNAlt is not None and ret.has_key(aggURNAlt) and ret[aggURNAlt] == url) or \
+                            urn == "unspecified_AM_URN":
+                        continue
                 while urn in ret:
                     urn += "+"
                 ret[urn] = url
@@ -408,7 +426,10 @@ def _get_slice_cred(handler, urn):
 
     # Check that the return is either None or a valid slice cred
     # Callers handle None - usually by raising an error
-    (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
+    if handler.opts.api_version < 3:
+        (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred, urn)
+    else:
+        (cred, message) = _do_ssl(handler.framework, None, "Get Slice Cred for slice %s" % urn, handler.framework.get_slice_cred_struct, urn)
     if type(cred) is dict:
         # Validate the cred inside the struct
         if not cred.has_key('geni_type') \

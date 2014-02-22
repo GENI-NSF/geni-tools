@@ -3991,7 +3991,8 @@ class AMCallHandler(object):
 
         creds = _maybe_add_abac_creds(self.framework, slice_cred)
         creds = self._maybe_add_creds_from_files(creds)
-        options = dict()
+        op = "CreateImage"
+        options = self._build_options(op, name, None)
         options['global'] = makePublic
         args = (sliceURN, imageName, sliverURN, creds, options)
 
@@ -4006,7 +4007,6 @@ class AMCallHandler(object):
 
         client = clientList[0]
         msg = "Create %s Image %s of sliver %s on " % (publicString, imageName, sliverURN)
-        op = "CreateImage"
 
         # FIXME: Confirm that AM is PG, complain if not?
         # pgeni gives an error 500 (Protocol Error). PLC gives error
@@ -4110,7 +4110,8 @@ class AMCallHandler(object):
         creds = _maybe_add_abac_creds(self.framework, cred)
         creds = self._maybe_add_creds_from_files(creds)
 
-        options = dict()
+        op = "DeleteImage"
+        options = self._build_options(op, None, None)
 
         # put creator_urn in the options list if we got one
         if creator_urn:
@@ -4132,7 +4133,6 @@ class AMCallHandler(object):
         if creator_urn:
             msg += " created by %s" % (creator_urn)
         msg += " on "
-        op = "DeleteImage"
 
         self.logger.debug("Doing deleteimage with image_urn %s, %d creds, options %r",
                           image_urn, len(creds), options)
@@ -4262,7 +4262,8 @@ class AMCallHandler(object):
 
         self.logger.info("ListImages using creator_urn %r", creator_urn)
 
-        options = dict()
+        op = "ListImages"
+        options = self._build_options(op, None, None)
 
         args = (creator_urn, creds, options)
 
@@ -4275,7 +4276,6 @@ class AMCallHandler(object):
         (clientList, message) = self._getclients()
         numClients = len(clientList)
         msg = "List Images created by %s on " % (creator_urn)
-        op = "ListImages"
 
         self.logger.debug("Doing listimages with creator_urn %s, %d creds, options %r",
                           creator_urn, len(creds), options)

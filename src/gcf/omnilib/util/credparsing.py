@@ -97,6 +97,8 @@ def is_valid_v3(logger, credString):
         logger.warn("Exception parsing cred to get target_urn: %s", exc)
         return False
 
+    return True
+
 # Determine if cred is geni_sfa or geni_abac based on type
 # return cred_type and cred_version
 # Currently we only recognize two types: SFA (version 3) and ABAC (version 1)

@@ -50,20 +50,20 @@ Highlights:
    option to specify that the aggregate action should be taken at all
    aggregates at which you have resources in this slice. (#507)
  * Added new options to allow installing SSH keys of all slice members
-   when using the new `chapi` framework. (#491)
+   when using the new `chapi` framework. (#491, #278)
  * Refactored the source code to make it easier to import Omni in
    other tools. Look in `src/gcf` for directories that were
    previously directly under `src`. (#388)
  * Added utilities for creating and processing 'Speaks For'
    credentials (which Omni can pass along to aggregates and to Uniform
    Federation API clearinghouses).
- * Timeout Omni calls to servers after 6 minutes (configurable)
+ * Timeout Omni calls to servers after 6 minutes (controlled by `--ssltimeout`)
 
 
 Details:
  - Add a new framework type `chapi` for talking the Uniform Federation API 
    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
-   to compliant clearinghouses (e.g. GENI Clearinghouse). (#345)
+   to compliant clearinghouses (e.g. GENI Clearinghouse). (#345, #440)
   - See `omni_config.sample` for config options required
   - To upgrade a `pgch` config for `ch.geni.net` to a `chapi` config:
    - Change `type = pgch` to `type = chapi`
@@ -84,7 +84,7 @@ sa=https://ch.geni.net/SA
     not to miss any reservations.
   - New function `listslicemembers <slice>`: lists the members of
     the given slice, with their email and registered SSH public
-    keys (if any) and role in the slice. (#421, #431)
+    keys (if any) and role in the slice. (#421, #431, #278)
   - New function `addslicemember <slice> <username> [optional: role]`:
     Adds the user with the given username to the named slice,
     with the given role (or `MEMBER` by default). Note this
@@ -114,7 +114,7 @@ sa=https://ch.geni.net/SA
    clearinghouse supports listing slice members (i.e. the new `chapi`
    type), then Omni will fetch the members of your slice from the
    clearinghouse and their public SSH keys, and send those to the
-   aggregate to install on new compute resources. 
+   aggregate to install on new compute resources. (#278, #441)
    By default, Omni will ''also'' read the users and SSH keys
    configured in your `omni_config` as usual, ''adding'' those users
    and keys to the set downloaded from the clearinghouse, if any.
@@ -166,7 +166,7 @@ sa=https://ch.geni.net/SA
    file, omni should fall back to reading `agg_nick_cache.base` (#384)
  - Look up AM URN by URL in the defined aggregate nicknames (#404)
  - Support named timezones when renewing, etc (#503)
- - Eliminated a repetitive log message (#384)
+ - Eliminated a repetitive log message (#384, #385)
  - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
  - Fit Omni result summaries in 80 character wide terminals (#409)
  - `ForceUseAggNickCache` avoids fetching new cache even if the agg
@@ -200,6 +200,10 @@ sa=https://ch.geni.net/SA
    the `output` slot, call `sliverstatus` to get it. (#527)
  - Bail early from `createsliver` or `createimage` if the user
    didn't specify exactly one aggregate. (#395)
+ - Update copyrights to 2014 (#463, #426)
+ - Handle non string rspec when printing RSpec (#445)
+ - Allow `--optionsfile` with `createimage`, `deleteimage`, and
+   `listimages`. (#532)
 
 
 New in v2.4:
@@ -735,7 +739,7 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys [optiona: username] [Alias for listkeys]
+ 			 listmykeys [optional: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename>
