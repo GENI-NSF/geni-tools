@@ -442,8 +442,25 @@ Options:
                         slices
     -r PROJECT, --project=PROJECT
                         Name of project. (For use with pgch framework.)
+    --alap              Request slivers be renewed as close to the requested
+                        time as possible, instead of failing if the requested
+                        time is not possible. Default is False.
     -V API_VERSION, --api-version=API_VERSION
                         Specify version of AM API to use (default 2)
+    --useSliceAggregates
+                        Perform the slice action at all aggregates the given
+                        slice is known to use according to clearinghouse
+                        records. Default is False.
+    --useSliceMembers   Create accounts and install slice members' SSH keys on
+                        reserved resources in createsliver, provision or
+                        performoperationalaction. Default is False. When true,
+                        adds these users and keys to those read from your
+                        omni_config (unless --ignoreConfigUsers).
+    --ignoreConfigUsers
+                        Ignore users and SSH keys listed in your omni_config
+                        when installing SSH keys on resources in createsliver
+                        or provision or performoperationalaction. Default is
+                        false - your omni_config users are read and used.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -518,11 +535,14 @@ Options:
     --usercredfile=USER_CRED_FILENAME
                         Name of user credential file to read from if it
                         exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'
+                        myUserCred.xml -o getusercred'. Defaults to value of
+                        'GENI_USERCRED' environment variable if defined.
     --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'
+                        mySliceCred.xml -o getslicecred mySliceName'. Defaults
+                        to value of 'GENI_SLICECRED' environment variable if
+                        defined.
 
   GetVersion Cache:
     Control GetVersion Cache
@@ -576,8 +596,13 @@ Options:
                         Use the given Orca slice id
     --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default False. For
-                        use by scripts.
+                        result code, raise an AMAPIError. Default is False.
+                        For use by scripts.
+    --ssltimeout=SSLTIMEOUT
+                        Seconds to wait before timing out AM and CH calls.
+                        Default is 360 seconds.
+    --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
+                        slivers. Default is False.
 
 
 $ ./am_api_accept_delegate.py -h      
