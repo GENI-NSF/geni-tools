@@ -1051,6 +1051,13 @@ class Aggregate(object):
                 self.inProcess = False
                 raise StitchingError(msg)
 
+
+#            # For testing VLAN Unavailable code, for the right AM, raise an AM API Error with code=24
+#            if self.nick == "utah-pg":
+#                # FIXME: Could try other codes/messages for other way to detect the failed hop
+#                errStruct = {code: {geni_code: 24, am_code: 24, am_type: 'protogeni'}, output: "Could not reserve vlan tags"}}
+#                raise AMAPIError("Fake VLAN Unavailable error at %s" % self.nick, errStruct)
+
             # May have changed URL versions - if so, save off the corrected URL?
             if result and self.api_version > 2:
                 url = result.iterkeys().next()
@@ -1176,7 +1183,7 @@ class Aggregate(object):
                         # FIXME: Add support for EG specific vlan unavail errors
                         # FIXME: Add support for EG specific fatal errors
 
-                        if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for link" in msg) and \
+                        if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
                                 code==2 and amcode==2 and amtype=="protogeni") or \
                                 ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                            self.logger.debug("Looks like a vlan availability issue")
@@ -1672,10 +1679,10 @@ class Aggregate(object):
             failedHop = iter(self.hops).next()
 #            self.logger.debug("handleVlanUnavail got no specific failed hop, but AM only has hop %s", failedHop)
 
-        # PG Error messages sometimes indicate the failed path, so we might be able to ID The failed hop.
+        # PG Error messages sometimes indicate the failed path, so we might be able to ID the failed hop.
         # That would let us be more conservative in what we mark unavailable.
         if not failedHop:
-            if len(self.paths) > 1 and isinstance(exception, AMAPIError) and exception.returnstruct:
+            if isinstance(exception, AMAPIError) and exception.returnstruct:
                 #self.logger.debug("handleVU: No failed hop, >1 paths. If this is a PG error that names the link, I should be able to set the failedHop")
                 try:
                     code = exception.returnstruct["code"]["geni_code"]
@@ -1683,7 +1690,26 @@ class Aggregate(object):
                     amtype = exception.returnstruct["code"]["am_type"]
                     msg = exception.returnstruct["output"]
 
-                    if 'vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni":
+                    if 'Error reserving vlan tag for ' in msg and code==2 and amcode==2 and amtype=='protogeni':
+                        import re
+                        match = re.match("^Error reserving vlan tag for '(.+)'", msg)
+                        if match:
+                            failedPath = match.group(1).strip()
+                            failedHopsnoXlate = []
+                            for hop in self.hops:
+                                if hop.path.id == failedPath:
+                                    if not hop._hop_link.vlan_xlate:
+                                        failedHopsnoXlate.append(hop)
+                            if len(failedHopsnoXlate) >= 1:
+                                # When PG U is transit net, the count will be 2. If I pick one to be the failed hop, I believe the right thing happens
+                                # Hence I can pick any of these hops
+                                failedHop = failedHopsnoXlate[0]
+                                self.logger.debug("Based on parsed error message: %s, setting failed hop to %s", msg, failedHop)
+                            else:
+                                self.logger.debug("Cannot set failedHop from parsed error message: %s: Got %d failed hops that don't do translation", msg, len(failedHopsnoXlate))
+                        else:
+                            self.logger.debug("Failed to parse failed from PG message: %s", msg)
+                    elif 'vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni":
                         #self.logger.debug("This was a PG error message that names the failed link/tag")
                         # Parse out the tag and link name
                         import re
