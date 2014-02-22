@@ -1727,7 +1727,6 @@ class Aggregate(object):
             if not failedHop._hop_link.vlan_xlate:
                 for hop in self.hops:
                     if hop.path.id == failedHop.path.id and not hop._hop_link.vlan_xlate:
-                        self.logger.debug("%s is same path as failed hop %s so it failed", hop, failedHop)
                         failedHops.append(hop)
         else:
             # No single failed hop - must treat them all as failed
@@ -2051,6 +2050,7 @@ class Aggregate(object):
         if False and canRedoRequestHere:
             self.logger.debug("Trying OLD code block for picking new tag")
 #            self.logger.debug("After all checks looks like we can locally redo request for %s", self)
+
             hop = None
             newSugByPath = dict()
             oldSugByPath = dict()
