@@ -1860,10 +1860,9 @@ class Aggregate(object):
                                 if failedHop and failedHop != depHop:
                                     # FIXME FIXME: We see this debug printout in a pg utah to ig utah 2 link topology
                                     # Turn down the message?
-                                    self.logger.debug("This %s is dependency for another AM's hop (%s) that in turn depends on a hop at this AM (%s), but that hop it depends on is not the single failed hop. So is this OK? Treating it as OK for local redo", self, depHop, hop)
+                                    self.logger.debug("This %s is a dependency for another AM's hop (%s) because of local hop (%s), but my hop the other AM depends on is not the single failed hop. Treating it as OK for local redo", self, hop, depHop)
                                     # But it isn't the failed hop that is a problem. Does this mean this is OK?
                                     # FIXME FIXME
-                                    pass
                                 break
                     if not thisAM:
                         # Can this be? For a particular hop, maybe. But not for all
@@ -1917,6 +1916,10 @@ class Aggregate(object):
                     oldSugByHop[hop] = hop._hop_link.vlan_suggested_request
                     nextRequestRangeByHop[hop] = hop._hop_link.vlan_range_request
 
+            # FIXME: for at least some cases (2 transit links both failed),
+            # Having each failed hop exclude hop.vlans_unavailable from its request ranges here would be more efficient.
+            # Then since each printout below only prints it if had to do something, logs might look cleaner
+
             # For each failed hop, make sure the failed tag is properly excluded everywhere
             for hop in failedHops:
                 # Remember the tag we used before
@@ -1936,9 +1939,10 @@ class Aggregate(object):
                 for hop2 in self.hops:
                     # Hop with same URN on different path must exclude the failed tag
                     if hop2.urn == hop.urn and hop2.path.id != hop.path.id and hop2 != hop:
-
+                        didRemove = False
                         if hop2._hop_link.vlan_suggested_request != VLANRange.fromString('any') and \
                                 hop2._hop_link.vlan_suggested_request <= nextRequestRangeByHop[hop]:
+                            didRemove = True
                             # Exclude tag on other paths same hop URN whether they failed or not.
                             # If they failed then I think they're bad here too
                             # If that hop did not fail, then we'll be using that tag agin
@@ -1947,10 +1951,12 @@ class Aggregate(object):
                         # Tell this other hop not to use this tag that failed
                         # FIXME: If I start having problems with hops out of tags, try removing this
                         if hop._hop_link.vlan_suggested_request <= hop2._hop_link.vlan_range_request:
+                            didRemove = True
                             hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                         # Already done above
 #                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-                        self.logger.debug("%s same URN as a failed hop, so excluding its failed tag %s. Also telling failed hop to not use my tag %s. New unavail %s, new range request %s", hop2, hop._hop_link.vlan_suggested_request, hop2._hop_link.vlan_suggested_request, hop2.vlans_unavailable, hop2._hop_link.vlan_range_request)
+                        if didRemove:
+                            self.logger.debug("%s same URN as a failed hop, so excluding its failed tag %s. Also telling failed hop to not use my tag %s. New unavail %s, new range request %s", hop2, hop._hop_link.vlan_suggested_request, hop2._hop_link.vlan_suggested_request, hop2.vlans_unavailable, hop2._hop_link.vlan_range_request)
                     # make all hops on same path no xlate exclude the failed hop
                     elif hop2.path.id == hop.path.id and hop2 != hop and (not hop2._hop_link.vlan_xlate or not hop._hop_link.vlan_xlate):
                         if hop2 not in failedHops:
