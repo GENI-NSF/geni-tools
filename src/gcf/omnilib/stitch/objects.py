@@ -1234,8 +1234,9 @@ class Aggregate(object):
                         elif self.dcn:
                             if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 2:
                                 # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
+                                # Raise a special error that says don't sleep before retrying
                                 self.inProcess = False
-                                raise StitchingRetryAggregateNewVlanError("SFA based %s had not seen your project before. Try again. (Error was %s)" % (self, msg))
+                                raise StitchingRetryAggregateNewVlanImmediatelyError("SFA based %s had not seen your project before. Try again. (Error was %s)" % (self, msg))
                             elif code == 7 and amcode == 7 and "CreateSliver: Existing record" in msg:
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
