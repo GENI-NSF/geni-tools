@@ -1962,14 +1962,19 @@ class Aggregate(object):
                         # FIXME: If I start having problems with hops out of tags, try removing this block
 
                         # edit hop2 range request and unavail to exclude the failed hop's tag
-                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-                        hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                        if not hop._hop_link.vlan_suggested_request <= hop2.vlans_unavailable or \
+                                hop._hop_link.vlan_suggested_request <= hop2._hop_link.vlan_range_request or \
+                                not hop2._hop_link.vlan_suggested_request <= hop.vlans_unavailable or \
+                                hop2._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request or \
+                                hop2._hop_link.vlan_suggested_request <= nextRequestRangeByHop[hop]:
+                            hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                            hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
 
-                        # edit hop range request and unavail to add hop2 prev sug
-                        hop.vlans_unavailable = hop.vlans_unavailable.union(hop2._hop_link.vlan_suggested_request)
-                        hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2._hop_link.vlan_suggested_request
-                        nextRequestRangeByHop[hop] = nextRequestRangeByHop[hop] - hop2._hop_link.vlan_suggested_request
-                        self.logger.debug("%s on same path as %s with no xlate, so each will probably exclude the others prev suggested (%s, %s). Hop1 new unavail: %s, range: %s. Hop2 New unavail: %s, range: %s", hop, hop2, hop._hop_link.vlan_suggested_request, hop2._hop_link.vlan_suggested_request, hop.vlans_unavailable, hop._hop_link.vlan_range_request, hop2.vlans_unavailable, hop2._hop_link.vlan_range_request)
+                            # edit hop range request and unavail to add hop2 prev sug
+                            hop.vlans_unavailable = hop.vlans_unavailable.union(hop2._hop_link.vlan_suggested_request)
+                            hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop2._hop_link.vlan_suggested_request
+                            nextRequestRangeByHop[hop] = nextRequestRangeByHop[hop] - hop2._hop_link.vlan_suggested_request
+                            self.logger.debug("%s on same path as %s with no xlate, so each will probably exclude the others prev suggested (%s, %s). Hop1 new unavail: %s, range: %s. Hop2 New unavail: %s, range: %s", hop, hop2, hop._hop_link.vlan_suggested_request, hop2._hop_link.vlan_suggested_request, hop.vlans_unavailable, hop._hop_link.vlan_range_request, hop2.vlans_unavailable, hop2._hop_link.vlan_range_request)
 
                 self.logger.debug("%s next request will be from %s", hop, nextRequestRangeByHop[hop])
             # End of initial loop over failed hops
@@ -2004,6 +2009,12 @@ class Aggregate(object):
                                 nextRequestRangeByHop[hop] = nextRequestRangeByHop[hop] - newSugByHop[hop2]
                                 self.logger.debug("For PG AM %s avoiding %s being used by %s", hop, newSugByHop[hop2], hop2)
 
+                # Some error checking
+                if len(hop._hop_link.vlan_range_request) == 0:
+                    self.logger.debug("%s request_range was empty with unavail %s", hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
+                    self.inProcess = False
+                    raise StitchingCircuitFailedError("Circuit reservation failed at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
+
                 pick = VLANRange.fromString('any')
 
                 # If we have a tag for this path and this hop doesn't translate, then re-use that tag
@@ -2012,14 +2023,12 @@ class Aggregate(object):
                     pick = newSugByPath[hop.path]
                     self.logger.debug("%s re-using already picked tag %s", hop, pick)
                 else:
+                    # Pick a new tag if we can
                     if hop._hop_link.vlan_producer:
                         self.logger.debug("%s is a vlan producer, so after all that let it pick any tag", hop)
-
-                    # Pick a new tag if we can
                     elif len(nextRequestRangeByHop[hop]) == 0:
                         self.inProcess = False
-                        if len(hop._hop_link.vlan_request_range) > 0:
-                            self.logger.debug("%s nextRequestRange was empty but vlan_request_range was %s", hop, hop._hop_link.vlan_request_range)
+                        self.logger.debug("%s nextRequestRange was empty but vlan_range_request was %s", hop, hop._hop_link.vlan_range_request)
                         raise StitchingCircuitFailedError("Circuit reservation failed at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
                     else:
                         import random
