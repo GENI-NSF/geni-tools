@@ -1767,6 +1767,7 @@ class Aggregate(object):
                 for hop2 in self.hops:
                     # Used to only do this if the other hop also failed. Unless an AM says a hop failed cause you requested
                     # it on another circuit, that seems wrong
+                    # FIXME: If I start having trouble consider removing this block
                     if hop2 != hop and hop2.urn == hop.urn:
                         hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                         self.logger.debug("%s is same URN but diff than failed hop. Marked failed sugg %s unavail here: %s", hop2, hop._hop_link.vlan_suggested_request, hop2.vlans_unavailable)
@@ -1819,7 +1820,7 @@ class Aggregate(object):
 
                 # FIXME Put in things for EG VLAN Unavail errors
 
-                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for link" in msg) and \
+                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
                                       code==2 and amcode==2 and amtype=="protogeni") or \
                                       ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
@@ -1888,8 +1889,6 @@ class Aggregate(object):
             self.logger.debug("Trying NEW code block for picking new tag")
 #            self.logger.debug("After all checks looks like we can locally redo request for %s", self)
 
-            # FIXME: Clean up this pseudocode
-
             # For each failed hop
             # Last sug is now unavail
             # request range exclude last sug (or whole unavail?)
@@ -1924,7 +1923,9 @@ class Aggregate(object):
 #                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                 self.logger.debug("%s added failed tag %s to unavail, removed from range request. New unavail %s, New range request %s", hop, hop._hop_link.vlan_suggested_request, hop.vlans_unavailable, hop._hop_link.vlan_range_request)
-                nextRequestRangeByHop[hop] = hop._hop_link.vlan_range_request
+                # Old code intersected other hops no xlate same path, which I think was too restrictive.
+                # This is a key difference between old code and new
+                nextRequestRangeByHop[hop] = hop._hop_link.vlan_range_request 
 
                 # Now for all hops on the AM make sure tags are excluded as needed
                 for hop2 in self.hops:
@@ -1938,6 +1939,7 @@ class Aggregate(object):
                             nextRequestRangeByHop[hop] = nextRequestRangeByHop[hop] - hop2._hop_link.vlan_suggested_request
 
                         # Tell this other hop not to use this tag that failed
+                        # FIXME: If I start having problems with hops out of tags, try removing this
                         hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                         # Already done above
 #                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
@@ -1950,6 +1952,7 @@ class Aggregate(object):
                             self.logger.debug("%s same path as failed %s and one doesn't xlate but had diff vlan sug %s != %s!!", hop2, hop, hop2._hop_link.vlan_suggested_request, hop._hop_link.vlan_suggested_request)
 
                         # Since both should be failed with same tag, further actions shouldn't be needed but are also harmless
+                        # FIXME: If I start having problems with hops out of tags, try removing this block
 
                         # edit hop2 range request and unavail to exclude the failed hop's tag
                         hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
@@ -2111,6 +2114,7 @@ class Aggregate(object):
                 if not hop._hop_link.vlan_xlate:
                     hopsNoXlateByPath[path].append(hop)
                     # New request range will be the intersection of the existing request ranges
+                    # FIXME: This may be a problem? Too restrictive?
                     overallRangeByPath[path] = overallRangeByPath[path].intersection(hop._hop_link.vlan_range_request)
                     # only subtract the request from last time if this hop is considered a failure
                     if not failedHop or hop == failedHop or (hop.path == failedHop.path and (not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate)):
@@ -2168,6 +2172,9 @@ class Aggregate(object):
                         self.logger.warn("%s already handled and has same URN as %s and same path", doneHop, hop)
                     if doneHop.urn == hop.urn and doneHop != hop and doneHop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                         if doneHop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+                            # FIXME: If I start having problems running out of tags, this may be part of the issue
+                            # This is where having a nextRequestRange helps the new code path - I can exclude
+                            # a tag from picking it without taking it out of the request range
                             hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - doneHop._hop_link.vlan_suggested_request
                             self.logger.debug("%s range request used to include new suggested %s for %s. New: %s", hop, doneHop._hop_link.vlan_suggested_request, doneHop, hop._hop_link.vlan_range_request)
                         else:
@@ -2185,6 +2192,9 @@ class Aggregate(object):
                         if doneHop.path.id != hop.path.id:
                             if doneHop._hop_link.vlan_suggested_request != VLANRange.fromString('any') and \
                                     doneHop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+                                # FIXME: If I start having problems running out of tags, this may be part of the issue
+                                # This is where having a nextRequestRange helps the new code path - I can exclude
+                                # a tag from picking it without taking it out of the request range
                                 hop._hop_link.vlan_range_request = hop._hop_link.vlan_range_request - doneHop._hop_link.vlan_suggested_request
                                 self.logger.debug("PG %s now excluding %s suggested %s from request range: %s", hop, doneHop, \
                                                       doneHop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
@@ -2230,6 +2240,9 @@ class Aggregate(object):
                         raise StitchingError("%s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, doneHop))
 
                     # FIXME: Does this overconstrain things in future?
+                    # FIXME: If I start having problems running out of tags, this may be part of the issue
+                    # This is where having a nextRequestRange helps the new code path - I can exclude
+                    # a tag from picking it without taking it out of the request range
                     if doneHop.urn == hop.urn and hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                         if hop._hop_link.vlan_suggested_request <= doneHop._hop_link.vlan_range_request:
                             doneHop._hop_link.vlan_range_request = doneHop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
@@ -2243,6 +2256,9 @@ class Aggregate(object):
                             if doneHop._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
                                 raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
                                                          self, hop, hop._hop_link.vlan_suggested_request, doneHop)
+                            # FIXME: If I start having problems running out of tags, consider removing this block
+                            # This is where having a nextRequestRange helps the new code path - I can exclude
+                            # a tag from picking it without taking it out of the request range
                             if hop._hop_link.vlan_suggested_request <= doneHop._hop_link.vlan_range_request:
                                 doneHop._hop_link.vlan_range_request = doneHop._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                                 self.logger.debug("PG AM: Must exclude %s sugg %s from %s range.", hop, hop._hop_link.vlan_suggested_request, doneHop)
@@ -2251,10 +2267,18 @@ class Aggregate(object):
             # End of Loop over hops to set new suggested request and range request
 
             self.inProcess = False
-            if failedHop:
-                msg = "Retry %s %dth time with %s new suggested %s (not %s)" % (self, self.localPickNewVlanTries, failedHop, newSugByPath[failedHop.path], oldSugByPath[failedHop.path])
+            if self.localPickNewVlanTries == 1:
+                timeStr = "1st"
+            elif self.localPickNewVlanTries == 2:
+                timeStr = "2nd"
+            elif self.localPickNewVlanTries == 3:
+                timeStr = "3rd"
             else:
-                msg = "Retry %s %dth time with new suggested VLANs" % (self, self.localPickNewVlanTries)
+                timeStr = "%dth" % self.localPickNewVlanTries
+            if failedHop:
+                msg = "Retry %s %s time with %s new suggested %s (not %s)" % (self, timeStr, failedHop, newSugByPath[failedHop.path], oldSugByPath[failedHop.path])
+            else:
+                msg = "Retry %s %s time with new suggested VLANs" % (self, timeStr)
             # This error is caught by Launcher, causing this AM to be put back in the ready pool
             raise StitchingRetryAggregateNewVlanError(msg)
 
