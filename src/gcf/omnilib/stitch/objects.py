@@ -1760,18 +1760,20 @@ class Aggregate(object):
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in failedHops:
+            if not hop._hop_link.vlan_suggested_request <= hop.vlans_unavailable:
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                 self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Mark sugg %s unavail: %s", hop, hop._hop_link.vlan_suggested_request, hop.vlans_unavailable)
-                # Must also remove this from its range request - done below
-                # Find other failed hops with same URN. Those should also avoid this failed tag
-                for hop2 in self.hops:
-                    # Used to only do this if the other hop also failed. Unless an AM says a hop failed cause you requested
-                    # it on another circuit, that seems wrong
-                    # FIXME: If I start having trouble consider removing this block
-                    if hop2 != hop and hop2.urn == hop.urn:
+            # Must also remove this from its range request - done below
+            # Find other failed hops with same URN. Those should also avoid this failed tag
+            for hop2 in self.hops:
+                # Used to only do this if the other hop also failed. Unless an AM says a hop failed cause you requested
+                # it on another circuit, that seems wrong
+                # FIXME: If I start having trouble consider removing this block
+                if hop2 != hop and hop2.urn == hop.urn:
+                    if not hop._hop_link.vlan_suggested_request <= hop2.vlans_unavailable:
                         hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-                        self.logger.debug("%s is same URN but diff than failed hop. Marked failed sugg %s unavail here: %s", hop2, hop._hop_link.vlan_suggested_request, hop2.vlans_unavailable)
-                        # Must also remove this from its range request - done below
+                        self.logger.debug("%s is same URN but diff than a failed hop. Marked failed sugg %s unavail here: %s", hop2, hop._hop_link.vlan_suggested_request, hop2.vlans_unavailable)
+                    # Must also remove this from its range request - done below
 
 # If this AM was a redo, this may be an irrecoverable failure. If vlanRangeAvailability was a range for the later AM, maybe.
   # Otherwise, raise StitchingCircuitFailedError to go back to the SCS and hope the SCS picks something else
@@ -1856,7 +1858,9 @@ class Aggregate(object):
                                 thisAM = True
                                 # depHop is the local hop that hop imports from / depends on
                                 if failedHop and failedHop != depHop:
-                                    self.logger.debug("%s is dependency for a hop (%s) that depends on a hop at this AM (%s), but that hop it depends on is not the single failed hop. So is this OK? Treating it as OK for local redo", self, depHop, hop)
+                                    # FIXME FIXME: We see this debug printout in a pg utah to ig utah 2 link topology
+                                    # Turn down the message?
+                                    self.logger.debug("This %s is dependency for another AM's hop (%s) that in turn depends on a hop at this AM (%s), but that hop it depends on is not the single failed hop. So is this OK? Treating it as OK for local redo", self, depHop, hop)
                                     # But it isn't the failed hop that is a problem. Does this mean this is OK?
                                     # FIXME FIXME
                                     pass
@@ -1933,7 +1937,8 @@ class Aggregate(object):
                     # Hop with same URN on different path must exclude the failed tag
                     if hop2.urn == hop.urn and hop2.path.id != hop.path.id and hop2 != hop:
 
-                        if hop2._hop_link.vlan_suggested_request != VLANRange.fromString('any'):
+                        if hop2._hop_link.vlan_suggested_request != VLANRange.fromString('any') and \
+                                hop2._hop_link.vlan_suggested_request <= nextRequestRangeByHop[hop]:
                             # Exclude tag on other paths same hop URN whether they failed or not.
                             # If they failed then I think they're bad here too
                             # If that hop did not fail, then we'll be using that tag agin
@@ -1941,7 +1946,8 @@ class Aggregate(object):
 
                         # Tell this other hop not to use this tag that failed
                         # FIXME: If I start having problems with hops out of tags, try removing this
-                        hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
+                        if hop._hop_link.vlan_suggested_request <= hop2._hop_link.vlan_range_request:
+                            hop2._hop_link.vlan_range_request = hop2._hop_link.vlan_range_request - hop._hop_link.vlan_suggested_request
                         # Already done above
 #                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
                         self.logger.debug("%s same URN as a failed hop, so excluding its failed tag %s. Also telling failed hop to not use my tag %s. New unavail %s, new range request %s", hop2, hop._hop_link.vlan_suggested_request, hop2._hop_link.vlan_suggested_request, hop2.vlans_unavailable, hop2._hop_link.vlan_range_request)
@@ -2023,7 +2029,8 @@ class Aggregate(object):
 
                 for hop2 in failedHops:
                     # For other failed hops with the same URN, make sure they cannot pick the tag we just picked
-                    if hop2.urn == hop.urn and hop2.path.id != hop.path.id and hop2 != hop and pick != VLANRange.fromString('any'):
+                    if hop2.urn == hop.urn and hop2.path.id != hop.path.id and hop2 != hop and pick != VLANRange.fromString('any') and \
+                            VLANRange(pick) <= nextRequestRangeByHop[hop2]:
                         nextRequestRangeByHop[hop2] = nextRequestRangeByHop[hop2] - VLANRange(pick)
                         self.logger.debug("%s telling %s not to pick its tag %s", hop, hop2, pick)
 
