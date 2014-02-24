@@ -561,6 +561,10 @@ def parseArgs(argv, options=None):
                       default=False, help="Lets you choose which project to "+ \
                       "use as default from the projects in the bundle "+ \
                       "downloaded from the portal")
+    parser.add_option("--not-use-chapi", dest="use_chapi", 
+                      action="store_false",
+                      default=True, help="If available, do not configure the "+ \
+                      "omni_config to use the common Clearinghouse API (CH API).")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
@@ -804,13 +808,19 @@ def fixNicknames(config) :
     # ExoGENI AMs
 
 def getPortalOmniSection(opts, config, user, projects) :
-
     omni_section = """
 [omni]
 default_cf=%s
 users=%s
 default_project=%s
+
 """ %(opts.framework, user, config['omni']['default_project'])
+
+    if config['selected_framework']['type'] == 'chapi':
+        omni_section += """
+# Over-ride the commandline setting of --useSliceMembers to force it True
+useslicemembers = %s
+""" %(True)
 
     for p in projects :
       if p != config['omni']['default_project'] :
@@ -819,7 +829,6 @@ default_project=%s
     return omni_section
 
 def getPortalSFSection(opts, config) :
-
     return """
 [portal]
 type = pgch
@@ -831,6 +840,42 @@ key = %s
 """ %(
       config['selected_framework']['authority'], 
       config['selected_framework']['ch'], 
+      config['selected_framework']['sa'],
+      opts.cert, opts.prcertkey)
+
+
+def getPortalCHAPISFSection(opts, config) :
+
+    return """
+[portal]
+# For use with the Uniform Federation API
+type = chapi
+# Authority part of the control framework's URN
+authority = %s
+# Where the CH API server's Clearinghouse service is listening.
+# This will be used to find the MA and SA
+ch = %s
+# Optionally you may explicitly specify where the MA and SA are
+#  running, in which case the Clearinghouse service is not used 
+#  to find them
+ma = %s
+sa = %s
+cert = %s
+key = %s
+# For debugging
+verbose=false
+
+# Some chapi Clearinghouses do not use projects
+# Uncomment this line for such servers (such as emulab.net)
+#useprojects=false
+
+# Some chapi Clearinghouses require you supply a credential in calls
+# Uncomment this line for such servers (such as emulab.net)
+#needcred=true
+""" %(
+      config['selected_framework']['authority'], 
+      config['selected_framework']['ch'], 
+      config['selected_framework']['ma'],
       config['selected_framework']['sa'],
       opts.cert, opts.prcertkey)
 
@@ -882,11 +927,21 @@ def getPortalConfig(opts, public_key_list, cert) :
     # The bundle contains and omni_config
     # extract it and load it
     omnizip = zipfile.ZipFile(opts.portal_bundle)
-    omnizip.extract('omni_config', '/tmp/omni_bundle')
+    bundle_omni_configs = ['omni_config']
+    if opts.use_chapi:
+        # if want to use CH API, then look in 'omni_config_chapi' first
+        bundle_omni_configs = ['omni_config_chapi'] + bundle_omni_configs
+    for config in bundle_omni_configs:
+        try:
+            omnizip.extract(config, '/tmp/omni_bundle')
+            config_path = os.path.join('/tmp/omni_bundle/', config)
+            config = loadConfigFile(config_path)
+            break
+        except:
+            pass
 
-    config = loadConfigFile('/tmp/omni_bundle/omni_config')
-    projects = loadProjects('/tmp/omni_bundle/omni_config')
-    os.remove('/tmp/omni_bundle/omni_config')
+    projects = loadProjects(config_path)
+    os.remove(config_path)
 
     if not config['selected_framework'].has_key('authority'):
       sys.exit("\nERROR: Your omni bundle is old, you must get a new version:\n"+
@@ -913,7 +968,10 @@ def getPortalConfig(opts, public_key_list, cert) :
 
     omni_section = getPortalOmniSection(opts, config, user, projects)
     user_section = getPortalUserSection(opts, user, user_urn, public_key_list)
-    cf_section = getPortalSFSection(opts, config)
+    if config['selected_framework']['type'] == 'chapi':
+        cf_section = getPortalCHAPISFSection(opts, config)
+    else:
+        cf_section = getPortalSFSection(opts, config)
     rspecnick_section = getRSpecNickSection(opts, config)
     amnick_section = getPortalAMNickSection(opts, config)
 
