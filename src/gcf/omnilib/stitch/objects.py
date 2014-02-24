@@ -418,7 +418,7 @@ class Aggregate(object):
                 for hop2 in self.hops:
                     if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
                         raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
-                                                 self, hop, hop._hop_link.vlan_suggested_request, hop2)
+                                                 (self, hop, hop._hop_link.vlan_suggested_request, hop2))
 
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
