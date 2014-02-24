@@ -1914,9 +1914,12 @@ class Aggregate(object):
             # For hops we are not changing, note the new and old suggested and the new request range
             for hop in self.hops:
                 if hop not in failedHops:
+                    self.logger.debug("Non failed %s. Old Sug: %s; Avail: %s", hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
                     newSugByHop[hop] = hop._hop_link.vlan_suggested_request
                     oldSugByHop[hop] = hop._hop_link.vlan_suggested_request
                     nextRequestRangeByHop[hop] = hop._hop_link.vlan_range_request
+                else:
+                    self.logger.debug("Failed %s. Old Sug: %s; Avail: %s", hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
 
             # FIXME: for at least some cases (2 transit links both failed),
             # Having each failed hop exclude hop.vlans_unavailable from its request ranges here would be more efficient.
