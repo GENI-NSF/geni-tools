@@ -1245,7 +1245,8 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
                                 # FIXME: Find out the real rule from Tony/Xi and say something better here
-                                fatalMsg = "Reservation impossible using this project name or slice name. Try a project without a hyphen? At %s: %s..." % (self, str(ae)[:120])
+                                # See http://groups.geni.net/geni/ticket/1199
+                                fatalMsg = "Reservation impossible using this project name. Try a project without a hyphen or a shorter project name. At %s: %s..." % (self, str(ae)[:120])
 
                     except Exception, e:
                         if isinstance(e, StitchingError):
