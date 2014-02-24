@@ -54,14 +54,14 @@ class Launcher(object):
                 except StitchingRetryAggregateNewVlanError, se:
                     self.logger.info("Will put %s back in the pool to allocate. Got %s", agg, se)
 
+                    # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
+                    # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
+                    secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                     if not isinstance(se, StitchingRetryAggregateNewVlanImmediatelyError):
-                        # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
-                        # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
-                        secs = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
                         if agg.dcn:
                             secs = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
-                        self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
-                        time.sleep(secs)
+                    self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", secs)
+                    time.sleep(secs)
 
             # FIXME: Do we need to sleep?
 
