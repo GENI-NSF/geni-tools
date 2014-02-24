@@ -4008,6 +4008,7 @@ class AMCallHandler(object):
         client = clientList[0]
         msg = "Create %s Image %s of sliver %s on " % (publicString, imageName, sliverURN)
 
+        self.logger.debug("Doing createimage with slice %s, image %s, sliver %s, %d creds, options %r", sliceURN, imageName, sliverURN, len(creds), options)
         # FIXME: Confirm that AM is PG, complain if not?
         # pgeni gives an error 500 (Protocol Error). PLC gives error
         # 13 (invalid method)
