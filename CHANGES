@@ -167,6 +167,7 @@ sa=https://ch.geni.net/SA
   - Handle non string rspec when printing RSpec (#445)
   - Allow `--optionsfile` with `createimage`, `deleteimage`, and
     `listimages`. (#532)
+  - Allow underscore in generated clean filenames (#533)
  
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -226,6 +227,8 @@ sa=https://ch.geni.net/SA
    - Cleaner error messages
    - For PG AMs (if we can tell), avoid using the same tag anywhere at
      the AM (except on the same path). (#355)
+  - Allow underscore in project names to generate different saved slice
+    credential files, so 2 slices aren't confused. (#533)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
