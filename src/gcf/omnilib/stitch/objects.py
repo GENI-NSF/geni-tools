@@ -46,7 +46,7 @@ from .utils import *
 from ... import oscript as omni
 
 from ..util import naiveUTC
-from ..util.handler_utils import _construct_output_filename, _writeRSpec, _getRSpecOutput, _printResults
+from ..util.handler_utils import _construct_output_filename, _printResults
 from ..util.dossl import is_busy_reply
 from ..util.omnierror import OmniError, AMAPIError
 from ...geni.util import rspec_schema, rspec_util
