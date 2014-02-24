@@ -295,9 +295,15 @@ class Aggregate(object):
 
     def __str__(self):
         if self.nick:
-            return "<Aggregate %s>" % (self.nick)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.nick, self.url)
+            else:
+                return "<Aggregate %s>" % (self.nick)
         else:
-            return "<Aggregate %s>" % (self.urn)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                return "<Aggregate %s: %s>" % (self.urn, self.url)
+            else:
+                return "<Aggregate %s>" % (self.urn)
 
     def __repr__(self):
         if self.nick:
@@ -1024,6 +1030,8 @@ class Aggregate(object):
                 pgInd = text.find("PG log url - look here for details on any failures: ")
                 self.pgLogUrl = text[pgInd + len("PG log url - look here for details on any failures: "):text.find(")", pgInd)]
                 self.logger.debug("Had PG log url in return text and recorded: %s", self.pgLogUrl)
+                if not self.isPG and not self.dcn and not self.isEG:
+                    self.isPG = True
             elif result and isinstance(result, dict) and len(result.keys()) == 1 and \
                     result.itervalues().next().has_key('code') and \
                     isinstance(result.itervalues().next()['code'], dict):
@@ -1031,6 +1039,8 @@ class Aggregate(object):
                 try:
                     self.pgLogUrl = code["protogeni_error_url"]
                     self.logger.debug("Got PG Log url from return struct %s", self.pgLogUrl)
+                    if not self.isPG and not self.dcn and not self.isEG:
+                        self.isPG = True
                 except:
                     pass
             elif self.api_version >= 3 or result is None:
@@ -1120,6 +1130,8 @@ class Aggregate(object):
                 # Try to get PG log url:
                 try:
                     if ae.returnstruct["code"]["am_type"] == "protogeni":
+                        if not self.isPG and not self.dcn and not self.isEG:
+                            self.isPG = True
                         self.pgLogUrl = ae.returnstruct["code"]["protogeni_error_url"]
                 except:
                     pass
