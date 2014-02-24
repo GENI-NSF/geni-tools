@@ -418,7 +418,7 @@ class Aggregate(object):
                 for hop2 in self.hops:
                     if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
                         raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
-                                                 self, hop, hop._hop_link.vlan_suggested_request, hop2)
+                                                 (self, hop, hop._hop_link.vlan_suggested_request, hop2))
 
         if self.allocateTries == self.MAX_TRIES:
             self.logger.warn("Doing allocate on %s for %dth time!", self, self.allocateTries)
@@ -2314,7 +2314,7 @@ class Aggregate(object):
 #                         if doneHop.path.id != hop.path.id and hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
 #                             if doneHop._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
 #                                 raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
-#                                                          self, hop, hop._hop_link.vlan_suggested_request, doneHop)
+#                                                          (self, hop, hop._hop_link.vlan_suggested_request, doneHop))
 #                             # FIXME: If I start having problems running out of tags, consider removing this block
 #                             # This is where having a nextRequestRange helps the new code path - I can exclude
 #                             # a tag from picking it without taking it out of the request range
