@@ -1075,16 +1075,24 @@ class StitchingHandler(object):
             # Query AM API versions supported, then set the maxVersion as a property on the aggregate
                 # then use that to pick allocate vs createsliver
             # Check GetVersion geni_am_type contains 'dcn'. If so, set flag on the agg
-            if options_copy.warn:
-                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
-            else:
-                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+ #           if options_copy.warn:
+            omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+#            else:
+#                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
                 
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
-                logging.disable(logging.INFO)
+#                logging.disable(logging.INFO)
+                oldLevel = logging.getLogger("omni").getEffectiveLevel()
+                for handler in logging.getLogger("omni").handlers:
+                    self.logger.info("Found omni log handler %s", handler)
+                    if isinstance(handler, logging.handlers.StreamHandler):
+                        handler.setLevel(logging.DEBUG)
                 (text, version) = omni.call(omniargs, options_copy)
-                logging.disable(logging.NOTSET)
+#                logging.disable(logging.NOTSET)
+                for handler in logging.getLogger("omni").handlers:
+                    if isinstance(handler, logging.handlers.StreamHandler):
+                        handler.setLevel(oldLevel)
                 if isinstance (version, dict) and version.has_key(agg.url) and isinstance(version[agg.url], dict) \
                         and version[agg.url].has_key('value') and isinstance(version[agg.url]['value'], dict):
                     if version[agg.url]['value'].has_key('geni_am_type') and isinstance(version[agg.url]['value']['geni_am_type'], list):
