@@ -204,6 +204,7 @@ sa=https://ch.geni.net/SA
  - Handle non string rspec when printing RSpec (#445)
  - Allow `--optionsfile` with `createimage`, `deleteimage`, and
    `listimages`. (#532)
+ - Allow underscore in generated clean filenames (#533)
 
 
 New in v2.4:

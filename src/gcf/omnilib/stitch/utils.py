@@ -37,6 +37,11 @@ class StitchingRetryAggregateNewVlanError(StitchingError):
     '''Allocation at a single AM failed cause VLAN unavailable. Try a different tag locally before going to the SCS.'''
     pass
 
+# For use EG when a DCN AM complains it has never seen your project before
+class StitchingRetryAggregateNewVlanImmediatelyError(StitchingRetryAggregateNewVlanError):
+    '''Allocation at a single AM failed cause VLAN unavailable. Try a different tag locally before going to the SCS - immediately.'''
+    pass
+
 class StitchingServiceFailedError(StitchingError):
     '''SCS service returned an error.'''
     def __init__(self, msg=None, struct=None):

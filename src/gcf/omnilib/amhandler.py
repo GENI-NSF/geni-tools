@@ -47,7 +47,7 @@ from .util.abac import get_abac_creds, save_abac_creds, save_proof, is_ABAC_fram
 from .util import credparsing as credutils
 from .util.handler_utils import _listaggregates, validate_url, _get_slice_cred, _derefAggNick, \
     _derefRSpecNick, _get_user_urn, \
-    _print_slice_expiration, _filename_part_from_am_url, _get_server_name, _construct_output_filename, \
+    _print_slice_expiration, _construct_output_filename, \
     _getRSpecOutput, _writeRSpec, _printResults, _load_cred, _lookupAggNick
 from .util.json_encoding import DateTimeAwareJSONEncoder, DateTimeAwareJSONDecoder
 from .xmlrpc import client as xmlrpcclient
@@ -4008,6 +4008,7 @@ class AMCallHandler(object):
         client = clientList[0]
         msg = "Create %s Image %s of sliver %s on " % (publicString, imageName, sliverURN)
 
+        self.logger.debug("Doing createimage with slice %s, image %s, sliver %s, %d creds, options %r", sliceURN, imageName, sliverURN, len(creds), options)
         # FIXME: Confirm that AM is PG, complain if not?
         # pgeni gives an error 500 (Protocol Error). PLC gives error
         # 13 (invalid method)
