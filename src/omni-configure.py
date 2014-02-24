@@ -808,21 +808,19 @@ def fixNicknames(config) :
     # ExoGENI AMs
 
 def getPortalOmniSection(opts, config, user, projects) :
-    if config['selected_framework']['type'] == 'chapi':
-        useSliceMembers = True
-    else:
-        useSliceMembers = False
-        
     omni_section = """
 [omni]
 default_cf=%s
 users=%s
 default_project=%s
 
+""" %(opts.framework, user, config['omni']['default_project'])
+
+    if config['selected_framework']['type'] == 'chapi':
+        omni_section += """
 # Over-ride the commandline setting of --useSliceMembers to force it True
 useslicemembers = %s
-
-""" %(opts.framework, user, config['omni']['default_project'], useSliceMembers)
+""" %(True)
 
     for p in projects :
       if p != config['omni']['default_project'] :
