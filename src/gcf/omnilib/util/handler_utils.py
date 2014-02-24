@@ -547,7 +547,7 @@ def _filename_part_from_am_url(url):
 
 def remove_bad_characters( input ):
     # remove punctuation. Handle both unicode and ascii gracefully
-    bad = u'!"#%\'()*+,-./:;<=>?@[\]^_`{|}~'
+    bad = u'!"#%\'()*+,./:;<=>?@[\]^`{|}~'
     if isinstance(input, unicode):
         table = dict((ord(char), unicode('-')) for char in bad)
     else:
