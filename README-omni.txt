@@ -205,6 +205,9 @@ sa=https://ch.geni.net/SA
  - Allow `--optionsfile` with `createimage`, `deleteimage`, and
    `listimages`. (#532)
  - Allow underscore in generated clean filenames (#533)
+ - Handle `createslice` errors at the GENI Clearinghouse that might
+   be due to having the wrong case, now the project and slice names 
+   are case sensitive. (#535)
 
 
 New in v2.4:
