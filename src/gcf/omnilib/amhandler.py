@@ -4515,8 +4515,7 @@ class AMCallHandler(object):
                     if not found:
                         nmember = dict()
                         nmember['urn'] = member['URN']
-                        if nmember['keys'] is None:
-                            nmember['keys'] = []
+                        nmember['keys'] = []
                         if member['KEYS'] is not None:
                             for key in member['KEYS']:
                                 nmember['keys'].append(key.strip())
