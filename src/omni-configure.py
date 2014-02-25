@@ -865,13 +865,6 @@ key = %s
 # For debugging
 verbose=false
 
-# Some chapi Clearinghouses do not use projects
-# Uncomment this line for such servers (such as emulab.net)
-#useprojects=false
-
-# Some chapi Clearinghouses require you supply a credential in calls
-# Uncomment this line for such servers (such as emulab.net)
-#needcred=true
 """ %(
       config['selected_framework']['authority'], 
       config['selected_framework']['ch'], 
