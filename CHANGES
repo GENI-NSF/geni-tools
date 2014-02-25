@@ -256,8 +256,9 @@ sa=https://ch.geni.net/SA
 
  * readyToLogin.py
   - Add support for v2 GRAM (#444)
-  - Fix error with called immediately after createsliver (#399)
-  - Make work with --useSliceAggregates (#534)
+  - Fix error with called immediately after `createsliver` (#399)
+  - Make work with `--useSliceAggregates` (#534)
+  - Avoid errors when reservations include SFA AMs with no nodes. (#536)
 
  * Added new script `examples/addMemberToSliceAndSlivers` (#508)
   - Given a slice and a username, add the user to the slice and then

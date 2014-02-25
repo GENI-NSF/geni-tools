@@ -312,7 +312,7 @@ def getInfoFromSliverStatusPL( sliverStat ):
       return loginInfo
 
     for resourceDict in sliverStat['geni_resources']: 
-      if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
+      if (not sliverStat.has_key('pl_login') or not sliverStat['pl_login']) or (not resourceDict.has_key('pl_hostname') or not resourceDict['pl_hostname']):
           continue
       loginInfo.append({'authentication':'ssh-keys', 
                           'hostname':resourceDict['pl_hostname'],
@@ -832,6 +832,9 @@ def main_no_print(argv=None, opts=None, slicen=None):
       options.aggregate = options.aggregate + newAggURLs
   else:
       options.aggregate = newAggURLs
+
+  # Disable useSliceAggregates at this point, because we already have the list - don't fetch it again
+  options.useSliceAggregates = False
       
   # Run equivalent of 'omni.py getversion'
   argv = ['getversion']
