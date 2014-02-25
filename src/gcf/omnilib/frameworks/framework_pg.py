@@ -279,7 +279,15 @@ class Framework(Framework_Base):
                 return None
             log = self._get_log_url(response)
             if response['code']:
-                self.logger.error('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                if response['code'] == 3 and 'Unknown project' in response['output']:
+                    self.logger.error("Unknown project in slice URN '%s'. Project names are case sensitive. Did you mis-type or mis-configure Omni?" % urn)
+                    self.logger.debug('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                elif response['code'] == 5 or \
+                        response['output'].startswith("[DUPLICATE] DUPLICATE_ERROR"):
+                    self.logger.error("Failed to create slice '%s' because a similarly named slice already exists. Slice names are case insensitive at creation time.", urn)
+                    self.logger.debug('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                else:
+                    self.logger.error('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
                 if log:
                     self.logger.info("%s log url: %s", self.fwtype, log)
             elif log:

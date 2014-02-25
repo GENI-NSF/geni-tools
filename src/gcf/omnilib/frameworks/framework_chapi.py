@@ -552,6 +552,8 @@ class Framework(Framework_Base):
                     msg = "Error from server creating slice. Code %d: %s" % ( res['code'], res['output'])
                     if message and message.strip() != "":
                         msg = msg + " (%s)" % message
+                    if res['code'] == 3 and "Unknown project" in res['output']:
+                        msg = "Unknown project '%s'. Project names are case sensitive. Did you mis-type or mis-configure Omni?" % project
                     if res.has_key('protogeni_error_url'):
                         msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                     self.logger.error(msg)
@@ -587,6 +589,9 @@ class Framework(Framework_Base):
                     self.logger.debug("Got %s", res)
             else:
                 msg = "Error from server getting credential for new slice %s: %d: %s (%s)" % (slice_name, res['code'], res['output'], message)
+                if res['code'] == 3:
+                    self.logger.debug(msg)
+                    msg = "Slice '%s' unknown. Does this slice already exist with a name using different case?" % slice_name
                 if res.has_key('protogeni_error_url'):
                     msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
                 self.logger.error(msg)
