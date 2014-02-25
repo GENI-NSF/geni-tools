@@ -208,6 +208,7 @@ sa=https://ch.geni.net/SA
  - Handle `createslice` errors at the GENI Clearinghouse that might
    be due to having the wrong case, now the project and slice names 
    are case sensitive. (#535)
+ - Trim trailing newlines before installing SSH keys (#537)
 
 
 New in v2.4:

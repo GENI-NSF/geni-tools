@@ -171,6 +171,7 @@ sa=https://ch.geni.net/SA
   - Handle `createslice` errors at the GENI Clearinghouse that might
     be due to having the wrong case, now the project and slice names 
     are case sensitive. (#535)
+  - Trim trailing newlines before installing SSH keys (#537)
  
  * stitcher
   - Completely parse workflows 3+ hops deep (#432)
@@ -232,6 +233,7 @@ sa=https://ch.geni.net/SA
      the AM (except on the same path). (#355)
   - Allow underscore in project names to generate different saved slice
     credential files, so 2 slices aren't confused. (#533)
+  - A `Malformed keys` error is fatal, so stop. (#537)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

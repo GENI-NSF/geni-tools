@@ -1205,6 +1205,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: You already have a reservation in slice %s at this aggregate - delete it first or use another aggregate. %s..." % (self, slicename, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and msg == "Malformed keys":
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Check your SSH keys: %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
