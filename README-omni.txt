@@ -211,6 +211,8 @@ sa=https://ch.geni.net/SA
    be due to having the wrong case, now the project and slice names 
    are case sensitive. (#535)
  - Trim trailing newlines before installing SSH keys (#537)
+ - Explicitly import framework files in `oscript.py` to support
+   Windows and Mac binaries. (#542)
 
 
 New in v2.4:
