@@ -1045,7 +1045,7 @@ class Aggregate(object):
                     pass
             elif self.api_version >= 3 or result is None:
                 # malformed result
-                msg = "%s got Malformed return from %s: %s" % (self, opName, text)
+                msg = "%s returned malformed return from %s: %s" % (self, opName, text)
                 self.logger.error(msg)
                 # FIXME: Retry before going to the SCS? Or bail altogether?
                 self.inProcess = False
@@ -1101,9 +1101,9 @@ class Aggregate(object):
                 #self.logger.debug("APIv3 proper result struct - success")
             else:
                 if self.api_version == 2:
-                    msg = "%s got Empty v2 return from %s: %s" % (self, opName, text)
+                    msg = "%s returned empty v2 return from %s: %s" % (self, opName, text)
                 else:
-                    msg = "%s got Malformed v3+ return from %s: %s" % (self, opName, text)
+                    msg = "%s returned Malformed v3+ return from %s: %s" % (self, opName, text)
                 self.logger.error(msg)
                 # FIXME: Retry before going to the SCS? Or bail altogether?
                 self.inProcess = False
@@ -1145,7 +1145,7 @@ class Aggregate(object):
 
                 if ae.returnstruct["code"]["geni_code"] == 24:
                     if not didInfo:
-                        self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                        self.logger.debug("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                         didInfo = True
                     # VLAN_UNAVAILABLE
                     self.logger.debug("Got VLAN_UNAVAILABLE from %s %s at %s", opName, slicename, self)
@@ -1192,15 +1192,15 @@ class Aggregate(object):
                             if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or 'Inconsistent ifacemap' in msg):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
                             elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. Try a shorter client_id and/or slice name: %s..." % (self, str(ae)[:120])
                             elif code == 1 and amcode == 1 and msg.startswith("Duplicate link "):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. Malformed request?: %s..." % (self, str(ae)[:120])
                             elif code == 7 and amcode == 7 and msg.startswith("Must delete existing sli"):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
@@ -1248,7 +1248,7 @@ class Aggregate(object):
                             elif code == 7 and amcode == 7 and "CreateSliver: Existing record" in msg:
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
-                                fatalMsg = "Reservation request impossible at %s: %s..." % (self, str(ae)[:120])
+                                fatalMsg = "Reservation request impossible at %s. You already have a reservation here in this slice: %s..." % (self, str(ae)[:120])
                             elif code == 5 and amcode == 5 and "AddSite: Invalid argument: Login base must be specified" in msg:
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
@@ -1275,12 +1275,12 @@ class Aggregate(object):
                         if not self.userRequested:
                             # If we've tried this AM a few times, set its hops to be excluded
                             if self.allocateTries > self.MAX_TRIES:
-                                self.logger.debug("%s allocation failed %d times - try excluding its hops", self, self.allocateTries)
+                                self.logger.debug("%s allocation failed %d times - will try finding a path without it.", self, self.allocateTries)
                                 for hop in self.hops:
                                     hop.excludeFromSCS = True
 
                             if isFatal:
-                                self.logger.debug("%s allocation failed fatally - exclude its hops. Got %s", self, fatalMsg)
+                                self.logger.debug("%s allocation failed fatally - will try finding a path without it. Got %s", self, fatalMsg)
                                 for hop in self.hops:
                                     hop.excludeFromSCS = True
                         # This says always go back to the SCS
@@ -1309,7 +1309,7 @@ class Aggregate(object):
             else:
                 # Malformed AMAPI return struct
                 # Exit to User
-                raise StitchingError("Stitching failed: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
+                raise StitchingError("Stitching failed due to aggregate error: Malformed error struct doing %s at %s: %s" % (opName, self, ae))
         except Exception, e:
             # Some other error (OmniError, StitchingError)
 
@@ -1485,12 +1485,12 @@ class Aggregate(object):
                         # FIXME: I don't really know how AMs will do v3 status' so wait
                     else:
                         # malformed
-                        raise StitchingError("%s had malformed %s result in handleDCN" % (self, opName))
+                        raise StitchingError("%s sent malformed %s result in handleDCN" % (self, opName))
             else:
                 # FIXME FIXME Big hack
                 if not opts.fakeModeDir:
                     # malformed
-                    raise StitchingError("%s had malformed %s result in handleDCN" % (self, opName))
+                    raise StitchingError("%s sent malformed %s result in handleDCN" % (self, opName))
 
             # FIXME: Big hack!!!
             if opts.fakeModeDir:
