@@ -1,8 +1,8 @@
-OMNI EXECUTABLES (BETA RELEASE) FOR WINDOWS AND MAC OS: SOFTWARE DISCLAIMER
+OMNI EXECUTABLES FOR WINDOWS AND MAC OS: SOFTWARE DISCLAIMER
 ------------------------------------------------------------------------
 
-RAYTHEON BBN grants you the following GENI Public License to the BETA
-versions of the Omni experimenter tool executables for Microsoft
+Raytheon BBN Technologies grants you the following GENI Public License 
+to the Omni experimenter tool executables for Microsoft
 Windows and Mac OS:
 
 Copyright (c) 2010-2014 Raytheon BBN Technologies
