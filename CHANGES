@@ -234,6 +234,7 @@ sa=https://ch.geni.net/SA
   - Allow underscore in project names to generate different saved slice
     credential files, so 2 slices aren't confused. (#533)
   - A `Malformed keys` error is fatal, so stop. (#537)
+  - "Signer certificate does not have a URL" is a fatal error. (#539)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to

@@ -1209,6 +1209,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Check your SSH keys: %s..." % (self, str(ae)[:120])
+                            elif code == 1 and amcode == 1 and msg == "Signer certificate does not have a URL":
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Use a different SA or different aggregate: %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
