@@ -1263,7 +1263,7 @@ class Aggregate(object):
 
                     if isVlanAvailableIssue:
                         if not didInfo:
-                            self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                            self.logger.info("A requested VLAN was unavailable doing %s %s at %s: %s", opName, slicename, self, ae)
                             didInfo = True
                         self.handleVlanUnavailable(opName, ae)
                     else:
@@ -1832,7 +1832,7 @@ class Aggregate(object):
                 if len(hop._hop_link.vlan_range_request) <= 1 and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # Only the 1 VLAN tag was in the available range and we need a different tag
                     canRedoRequestHere = False
-                    self.logger.info("Cannot redo request locally: %s available VLAN range too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
+                    self.logger.info("VLAN was unavailable, but cannot redo request locally. %s available VLAN range is too small: %s. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable))
                     break
 
         if canRedoRequestHere and not (failedHop and suggestedWasNull) and isinstance(exception, AMAPIError) and exception.returnstruct:
@@ -2047,7 +2047,7 @@ class Aggregate(object):
                 if len(hop._hop_link.vlan_range_request) == 0:
                     self.logger.debug("%s request_range was empty with unavail %s", hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
                     self.inProcess = False
-                    raise StitchingCircuitFailedError("Circuit reservation failed at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
+                    raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
 
                 pick = VLANRange.fromString('any')
 
@@ -2063,7 +2063,7 @@ class Aggregate(object):
                     elif len(nextRequestRangeByHop[hop]) == 0:
                         self.inProcess = False
                         self.logger.debug("%s nextRequestRange was empty but vlan_range_request was %s", hop, hop._hop_link.vlan_range_request)
-                        raise StitchingCircuitFailedError("Circuit reservation failed at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
+                        raise StitchingCircuitFailedError("VLAN was unavailable at %s and not enough available VLAN tags at %s to try again locally. Try again from the SCS" % (self, hop))
                     else:
                         import random
                         pick = random.choice(list(nextRequestRangeByHop[hop]))
@@ -2078,7 +2078,7 @@ class Aggregate(object):
                             # This other hop already picked!
                             if newSugByHop[hop2] == VLANRange(pick):
                                 # duplicate pick
-                                raise StitchingError("%s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
+                                raise StitchingError("VLAN was unavailable. Stitcher error: %s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
                             else:
                                 self.logger.debug("%s already picked! Thankfully, a different tag", hop2)
                         nextRequestRangeByHop[hop2] = nextRequestRangeByHop[hop2] - VLANRange(pick)
@@ -2092,7 +2092,7 @@ class Aggregate(object):
                                     # This other hop already picked!
                                     if newSugByHop[hop3] == VLANRange(pick):
                                         # duplicate pick
-                                        raise StitchingError("%s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop3))
+                                        raise StitchingError("VLAN was unavailable. Stitcher error: %s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop3))
                                     else:
                                         self.logger.debug("%s already picked! Thankfully, a different tag", hop3)
                                 nextRequestRangeByHop[hop3] = nextRequestRangeByHop[hop3] - VLANRange(pick)
@@ -2111,7 +2111,7 @@ class Aggregate(object):
                         if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                             # If we picked the same tag, that's an error
                             if hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
-                                raise StitchingError("%s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
+                                raise StitchingError("VLAN was unavailable. Stitcher error: %s picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
 #                            # If we picked a tag that is in the range of tags to pick from for the other hop
 #                            if hop._hop_link.vlan_suggested_request <= hop2._hop_link.vlan_range_request:
 #                                # FIXME: Really? Exclude? Or does that over constrain me in future?
@@ -2125,7 +2125,7 @@ class Aggregate(object):
                         if hop != hop2 and hop.path.id != hop2.path.id:
                             # If we picked the same tag, that's an error
                             if hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request and hop._hop_link.vlan_suggested_request != VLANRange.fromString('any'):
-                                raise StitchingError("%s (PG AM) picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
+                                raise StitchingError("VLAN was unavailable. Stitcher error: %s (PG AM) picked same new suggested VLAN tag %s at %s and %s" % (self, hop._hop_link.vlan_suggested_request, hop, hop2))
 
             # End loop over failed hops
 
@@ -2139,9 +2139,9 @@ class Aggregate(object):
             else:
                 timeStr = "%dth" % self.localPickNewVlanTries
             if failedHop:
-                msg = "Retry %s %s time with %s new suggested %s (not %s)" % (self, timeStr, failedHop, newSugByHop[failedHop], oldSugByHop[failedHop])
+                msg = "VLAN was unavailable. Retry %s %s time with %s new suggested %s (not %s)" % (self, timeStr, failedHop, newSugByHop[failedHop], oldSugByHop[failedHop])
             else:
-                msg = "Retry %s %s time with new suggested VLANs" % (self, timeStr)
+                msg = "VLAN was unavailable. Retry %s %s time with new suggested VLANs" % (self, timeStr)
             # This error is caught by Launcher, causing this AM to be put back in the ready pool
             raise StitchingRetryAggregateNewVlanError(msg)
 
