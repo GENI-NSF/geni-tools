@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.5:
+ * Released Windows and Mac OS X packages of the Omni experimenter
+   utilities. (Developer gcf components are not included.)
  * Omni adds the ability to contact clearinghouses that speak the
    Uniform Federation API using framework type `chapi`
  * When using the new `chapi` framework allow a `--useSliceAggregates`

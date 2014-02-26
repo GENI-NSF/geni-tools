@@ -44,6 +44,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.5:
 
 Highlights:
+ * Released Windows and Mac OS X packages of the Omni experimenter
+   utilities. (Developer gcf components are not included.)
  * Omni adds the ability to contact clearinghouses that speak the
    Uniform Federation API using framework type `chapi`
  * When using the new `chapi` framework allow a `--useSliceAggregates`

@@ -1,5 +1,9 @@
 == Mac OS X ==
 
+Pre-built binaries for Mac OS X Omni tools (not the developer gcf tools) are
+available for download from https://trac.gpolab.bbn.com/gcf. If
+that is not appropriate for you, follow the instructions below.
+
 === Using homebrew ===
 
 These instructions use [http://mxcl.github.com/homebrew/ homebrew].
