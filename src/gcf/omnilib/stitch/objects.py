@@ -989,10 +989,14 @@ class Aggregate(object):
         self.rspecfileName = Aggregate.REQ_RSPEC_DIR + "/" + self.rspecfileName
 
         # Set -o to ensure this request RSpec goes to a file, not logger or stdout
+        # Turn off info level logs for this rspec printout
         opts_copy = copy.deepcopy(opts)
         opts_copy.output = True
-
+        if not opts.debug:
+            logging.disable(logging.INFO)
         _printResults(opts_copy, self.logger, header, content, self.rspecfileName)
+        if not opts.debug:
+            logging.disable(logging.NOTSET)
         self.logger.debug("Saved AM %s new request RSpec to file %s", self.urn, self.rspecfileName)
 
         # Set opts.raiseErrorOnV2AMAPIError so we can see the error codes and respond directly
