@@ -213,6 +213,7 @@ sa=https://ch.geni.net/SA
  - Trim trailing newlines before installing SSH keys (#537)
  - Explicitly import framework files in `oscript.py` to support
    Windows and Mac binaries. (#542)
+ - Fix wording and licenses for Windows and Mac binaries (#541)
 
 
 New in v2.4:
