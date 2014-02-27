@@ -1197,6 +1197,8 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
+                                if 'Inconsistent ifacemap' in msg:
+                                    fatalMsg = "Reservation request impossible at %s. Try using the --fixedEndpoint option. %s..." % (self, str(ae)[:120])
                             elif code == 6 and amcode == 6 and msg.startswith("Hostname > 63 char"):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
