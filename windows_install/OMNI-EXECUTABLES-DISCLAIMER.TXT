@@ -8,11 +8,12 @@ Windows and Mac OS:
 Copyright (c) 2010-2014 Raytheon BBN Technologies
 
 Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and/or hardware specification (the “Work”) to
-deal in the Work without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Work, and to permit persons to whom the Work
-is furnished to do so, subject to the following conditions:
+a copy of this software and/or hardware specification, and associated documentation (the "Work")
+to deal in the Work without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Work, and to permit persons to
+whom the Work is furnished to do so, subject to the following
+conditions:
 
 The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Work.
@@ -30,14 +31,29 @@ trademark, and other proprietary notices, and your acceptance of any
 terms, conditions, and notices accompanying the Content or otherwise
 set forth in this site.
 
-The Work includes software covered by the following licenses:
-I. Python 2.7.5 License
-II. M2Crypto 0.20.2 License
-III. OpenSSL Dual License
- A. Windows OpenSSL 1.0.1e License
- B. Mac License
-IV. pyOpenSSL License
-V. dateutil 1.5 License
+The Work includes the following software:
+I. Python language libraries v2.7.5 distributed under the Python Software
+Foundation License Version 2
+(http://opensource.org/licenses/Python-2.0).
+
+II. Python M2Crypto 0.20.2 distributed under the license at
+http://svn.osafoundation.org/m2crypto/tags/0.20.2/LICENCE
+
+III. OpenSSL distributed under licenses:
+  A. Windows 1.0.1e license
+    Downloaded from installer here: http://slproweb.com/download/Win32OpenSSL-1_0_1e.exe
+  B. MacOS License
+    Downloaded from here: http://www.openssl.org/source/license.html
+
+IV. Python dateutil 1.5 distributed under the BSD 2-Clause License
+(Simplified BSD License) at
+http://opensource.org/licenses/BSD-2-Clause
+
+V. pyOpenSSL distributed under Apache License 2.0 at
+http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/head:/LICENSE.
+
+VI. Slice Federation Architecture (SFA) distributed under the license at
+http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD
 
 This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit. (http://www.openssl.org/)
 
@@ -45,7 +61,7 @@ This product includes cryptographic software written by Eric Young (eay@cryptsof
 
 Windows only: This product includes software written by Tim Hudson (tjh@cryptsoft.com).
 
-= Open Source Licenses for software libraries used with Windows distribution =
+= Open Source Licenses for software libraries used with Windows and Mac distributions =
 
 I. Python 2.7.5 License
 Retrieved from: http://docs.python.org/2/license.html#terms-and-conditions-for-accessing-or-otherwise-using-python
@@ -821,3 +837,72 @@ FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+VI. SFA License
+Introduction
+============
+
+This product (in the directory 'src/gcf/sfa') contains code from PlanetLab. The code in this
+directory is subject to the PlanetLab license (see "License"
+below). There are a small number of modifications to the code. These
+modifications are documented in the "Modifications" section below.
+
+This code is based on revision 3c41ad8f19f9d9d29a0157d36330671062a39c00
+(Apr. 3rd, 2013, tag sfa-2.1-25 ) of the master branch of the
+PlanetLab Git repository (git.planet-lab.org/git/sfa.git).
+
+License
+=======
+http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD
+
+Copyright (c) 2008-2013 Board of Trustees, Princeton University
+Copyright (c) 2010-2013 INRIA, Institut National d'Informatique et Automatique
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and/or hardware specification (the "Work") to
+deal in the Work without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Work, and to permit persons to whom the Work
+is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Work.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
+IN THE WORK.
+
+
+Modifications
+=============
+
+1. All Python source files were modified to include the following
+Princeton copyright notice:
+
+#----------------------------------------------------------------------
+# Copyright (c) 2008 Board of Trustees, Princeton University
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and/or hardware specification (the "Work") to
+# deal in the Work without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Work, and to permit persons to whom the Work
+# is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Work.
+#
+# THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+# OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS 
+# IN THE WORK.
+#----------------------------------------------------------------------
