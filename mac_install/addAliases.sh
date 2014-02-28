@@ -36,7 +36,7 @@ writeAliases () {
     echo "alias stitcher='/Applications/omniTools/stitcher.app/Contents/MacOS/stitcher'" >> $1
     echo "alias omni-configure='/Applications/omniTools/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
     echo "alias readyToLogin='/Applications/omniTools/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
-    echo "alias clear-passphrases~/='/Applications/omniTools/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
+    echo "alias clear-passphrases='/Applications/omniTools/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
 }
 
 wroteAliases=false
