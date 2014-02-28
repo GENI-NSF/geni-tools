@@ -243,6 +243,7 @@ sa=https://ch.geni.net/SA
   - Clarify error logs to be clear if it was a VLAN unavailable error,
     aggregate error, or stitcher error, and if there is something
     specific the experimenter should do to fix it. (#540)
+  - Internal API errors at DCN AMs are fatal (#546)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
