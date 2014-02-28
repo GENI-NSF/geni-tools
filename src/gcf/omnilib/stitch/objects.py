@@ -1261,6 +1261,10 @@ class Aggregate(object):
                                 # FIXME: Find out the real rule from Tony/Xi and say something better here
                                 # See http://groups.geni.net/geni/ticket/1199
                                 fatalMsg = "Reservation impossible using this project name. Try a project without a hyphen or a shorter project name. At %s: %s..." % (self, str(ae)[:120])
+                            elif code == 5 and amcode == 5 and msg.startswith("Internal API error"):
+                                self.logger.debug("Fatal error from DCN AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Aggregate had an internal error: %s..." % (self, str(ae)[:120])
 
                     except Exception, e:
                         if isinstance(e, StitchingError):
