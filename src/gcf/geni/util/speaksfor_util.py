@@ -452,6 +452,9 @@ if __name__ == "__main__":
     user_urn = options.user_urn
 
     # Get list of trusted rootcerts
+    if options.cred_file and not options.trusted_roots_directory:
+        sys.exit("Must supply --trusted_roots_directory to validate a credential")
+
     trusted_roots_directory = options.trusted_roots_directory
     trusted_roots = \
         [Certificate(filename=os.path.join(trusted_roots_directory, file)) \
