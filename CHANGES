@@ -244,6 +244,7 @@ sa=https://ch.geni.net/SA
     aggregate error, or stitcher error, and if there is something
     specific the experimenter should do to fix it. (#540)
   - Internal API errors at DCN AMs are fatal (#546)
+  - Try to handle a failed status that means vlan unavail in OSCARS (#547)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
