@@ -1,6 +1,6 @@
 ### DO NOT MODIFY THIS FILE BY HAND ###
 # This file lives at: http://trac.gpolab.bbn.com/gcf/raw-attachment/wiki/Omni/agg_nick_cache
-# Last updated on January 31, 2014
+# Last updated on March 4, 2014
 
 #------AM nicknames
 # Format :
@@ -305,3 +305,36 @@ cornell-ig3=urn:publicid:IDN+geni.it.cornell.edu+authority+cm,https://geni.it.co
 cornell-ig-of=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/2
 cornell-ig-of1=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/1
 cornell-ig-of2=urn:publicid:IDN+openflow:foam:foam.geni.it.cornell.edu+authority+am,https://foam.geni.it.cornell.edu:3626/foam/gapi/2
+
+# ============================================
+# Southern Crossroads (SoX) InstaGENI Rack
+# ============================================
+sox-ig=urn:publicid:IDN+instageni.sox.net+authority+cm,https://instageni.sox.net:12369/protogeni/xmlrpc/am/2.0
+sox-ig1=urn:publicid:IDN+instageni.sox.net+authority+cm,https://instageni.sox.net:12369/protogeni/xmlrpc/am/1.0
+sox-ig2=urn:publicid:IDN+instageni.sox.net+authority+cm,https://instageni.sox.net:12369/protogeni/xmlrpc/am/2.0
+sox-ig3=urn:publicid:IDN+instageni.sox.net+authority+cm,https://instageni.sox.net:12369/protogeni/xmlrpc/am/3.0
+sox-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.sox.net+authority+am,https://foam.instageni.sox.net:3626/foam/gapi/2
+sox-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.sox.net+authority+am,https://foam.instageni.sox.net:3626/foam/gapi/1
+sox-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.sox.net+authority+am,https://foam.instageni.sox.net:3626/foam/gapi/2
+
+# ============================================
+# University of Kansas InstaGENI Rack
+# ============================================
+kansas-ig=urn:publicid:IDN+instageni.ku.gpeni.net+authority+cm,https://instageni.ku.gpeni.net:12369/protogeni/xmlrpc/am/2.0
+kansas-ig1=urn:publicid:IDN+instageni.ku.gpeni.net+authority+cm,https://instageni.ku.gpeni.net:12369/protogeni/xmlrpc/am/1.0
+kansas-ig2=urn:publicid:IDN+instageni.ku.gpeni.net+authority+cm,https://instageni.ku.gpeni.net:12369/protogeni/xmlrpc/am/2.0
+kansas-ig3=urn:publicid:IDN+instageni.ku.gpeni.net+authority+cm,https://instageni.ku.gpeni.net:12369/protogeni/xmlrpc/am/3.0
+kansas-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.ku.gpeni.net+authority+am,https://foam.instageni.ku.gpeni.net:3626/foam/gapi/2
+kansas-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.ku.gpeni.net+authority+am,https://foam.instageni.ku.gpeni.net:3626/foam/gapi/1
+kansas-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.ku.gpeni.net+authority+am,https://foam.instageni.ku.gpeni.net:3626/foam/gapi/2
+
+# ============================================
+# Stanford University InstaGENI Rack
+# ============================================
+stanford-ig=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/2.0
+stanford-ig1=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/1.0
+stanford-ig2=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/2.0
+stanford-ig3=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instageni.stanford.edu:12369/protogeni/xmlrpc/am/3.0
+stanford-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/2
+stanford-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/1
+stanford-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/2
