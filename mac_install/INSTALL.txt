@@ -19,4 +19,4 @@ UNINSTALLING OMNI TOOLS
 1. Drag the old version of omniTools folder from your Applications folder to Trash.
 2. Optional: Delete the aliases created during the install.  These aliases are added to your 
    ~/.bash_profile or ~/.bash_login or ~/.profile.  Look for the comment:
-   "# Aliaes for commands in the GENI omniTools package" 
+   "# Aliases for commands in the GENI omniTools package" 
