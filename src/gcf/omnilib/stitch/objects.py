@@ -1601,9 +1601,11 @@ class Aggregate(object):
                             # Adjust msg
                             msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, origMsg)
                         elif unavailHopUrn:
-                            self.logger.info("%s says requested VLAN was unavailable at a hop named %s, but the hop was not found.", self, unavailHopUrn)
+                            self.logger.info(msg)
+                            self.logger.debug(".. at a hop with URN %s, but the hop was not found.", unavailHopUrn)
                         elif failedHopName:
-                            self.logger.info("%s says requested VLAN unavailable at %s, but could not identify the hop.", self, failedHopName)
+                            self.logger.info(msg)
+                            self.logger.debug(".. at a hop named %s, but could not ID the hop.", failedHopName)
 
             if msg is None:
                 msg = "Sliver status was (still): %s (and no circuits listed in status)" % status
