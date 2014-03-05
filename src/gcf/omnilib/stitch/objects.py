@@ -1576,12 +1576,15 @@ class Aggregate(object):
                     msg = msg + ": " + dcnerror
                     if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
                         self.logger.debug("Got the 'no VLANs available on link' error that means this tag was unavail")
+                        # adjust msg
+                        origMsg = msg
+                        msg = "%s reports a selected VLAN is unavailable: %s" % (self, origMsg)
                         wasVlanUnavail = True
                         # Can I figure out which hop failed from that error message?
                         import re
                         failedHopName = None
                         unavailHopUrn = None
-                        match = re.match("There are no VLANs available on link (.+) on reservation", dcnerror)
+                        match = re.match(r"^VLAN PCE\(PCE_CREATE_FAILED\)\: \'There are no VLANs available on link (\S+) +on reservation", dcnerror)
                         if match:
                             failedHopName = match.group(1).strip()
                             auth = urn_util.URN(urn=self.urn).getAuthority()
@@ -1595,6 +1598,8 @@ class Aggregate(object):
                                         break
                         if unavailHop:
                             self.logger.info("%s says requested VLAN was unavailable at %s", self, unavailHop)
+                            # Adjust msg
+                            msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, origMsg)
                         elif unavailHopUrn:
                             self.logger.info("%s says requested VLAN was unavailable at a hop named %s, but the hop was not found.", self, unavailHopUrn)
                         elif failedHopName:
@@ -1607,10 +1612,10 @@ class Aggregate(object):
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
             if wasVlanUnavail:
-                self.handleVlanUnavailable(opName, msg, unavailHop)
+                self.handleVlanUnavailable('createsliver', msg, unavailHop)
             elif self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
-                self.handleVlanUnavailable(opName, msg)
+                self.handleVlanUnavailable('createsliver', msg)
             else:
                 self.localPickNewVlanTries = self.localPickNewVlanTries + 1
                 self.inProcess = False
