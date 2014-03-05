@@ -49,7 +49,7 @@ from ..util import naiveUTC
 from ..util.handler_utils import _construct_output_filename, _printResults
 from ..util.dossl import is_busy_reply
 from ..util.omnierror import OmniError, AMAPIError
-from ...geni.util import rspec_schema, rspec_util
+from ...geni.util import rspec_schema, rspec_util, urn_util
 
 # Seconds to pause between calls to a DCN AM (ie ION)
 DCN_AM_RETRY_INTERVAL_SECS = 10 * 60 # Xi and Chad say ION routers take a long time to reset
@@ -1551,6 +1551,14 @@ class Aggregate(object):
 
             # FIXME: Check the return from delete for errors. If there are errors, raise StitchingError? Really I want to treat this like we had a previous sliver here
 
+            # Ticket #547: If I can detect the error means the vlan is unavail, set this true
+            # If I can detect which hop, set that
+            # dcnerror will have the string which will have something that I might be able to use to ID the hop
+            # VLAN PCE(PCE_CREATE_FAILED): 'There are no VLANs available on link ion.internet2.edu:rtr.atla:xe-0/3/0:al2s  on reservation ion.internet2.edu-71431 in VLAN PCE'
+
+            wasVlanUnavail = False
+            unavailHop = None
+
             msg = None
             for entry in circuitIDs.keys():
                 circuitid = circuitIDs[entry]
@@ -1566,6 +1574,39 @@ class Aggregate(object):
                     msg = msg + "Sliver status was (still): %s" % status
                 if dcnerror and dcnerror.strip() != '':
                     msg = msg + ": " + dcnerror
+                    if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
+                        self.logger.debug("Got the 'no VLANs available on link' error that means this tag was unavail")
+                        # adjust msg
+                        origMsg = msg
+                        msg = "%s reports a selected VLAN is unavailable: %s" % (self, origMsg)
+                        wasVlanUnavail = True
+                        # Can I figure out which hop failed from that error message?
+                        import re
+                        failedHopName = None
+                        unavailHopUrn = None
+                        match = re.match(r"^VLAN PCE\(PCE_CREATE_FAILED\)\: \'There are no VLANs available on link (\S+) +on reservation", dcnerror)
+                        if match:
+                            failedHopName = match.group(1).strip()
+                            auth = urn_util.URN(urn=self.urn).getAuthority()
+                            # auth:hopname instead of auth+interface+hopname
+                            if failedHopName.startswith(auth):
+                                hopName = failedHopName[len(auth)+1:]
+                                unavailHopUrn = "urn:publicid:IDN+" + auth + "+interface+ " + hopName
+                                for hop in self.hops:
+                                    if hop.urn == unavailHopUrn:
+                                        unavailHop = hop
+                                        break
+                        if unavailHop:
+                            self.logger.info("%s says requested VLAN was unavailable at %s", self, unavailHop)
+                            # Adjust msg
+                            msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, origMsg)
+                        elif unavailHopUrn:
+                            # This appears to be a common case - the switch that is unavailable may be intermediate within I2
+                            self.logger.info(msg)
+                            self.logger.debug(".. at a hop with URN %s, but the hop was not found.", unavailHopUrn)
+                        elif failedHopName:
+                            self.logger.info(msg)
+                            self.logger.debug(".. at a hop named %s, but could not ID the hop.", failedHopName)
 
             if msg is None:
                 msg = "Sliver status was (still): %s (and no circuits listed in status)" % status
@@ -1573,9 +1614,11 @@ class Aggregate(object):
             # ION failures are sometimes transient. If we haven't retried too many times, just try again
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
-            if self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
+            if wasVlanUnavail:
+                self.handleVlanUnavailable('createsliver', msg, unavailHop)
+            elif self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
-                self.handleVlanUnavailable(opName, msg)
+                self.handleVlanUnavailable('createsliver', msg)
             else:
                 self.localPickNewVlanTries = self.localPickNewVlanTries + 1
                 self.inProcess = False

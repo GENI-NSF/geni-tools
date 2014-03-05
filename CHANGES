@@ -246,6 +246,7 @@ sa=https://ch.geni.net/SA
   - Internal API errors at DCN AMs are fatal (#546)
   - Avoid DCN AMs as the basis for the combined manifest,
     to avoid namespace problems in DCN manifests. (#549)
+  - Try to handle a failed status that means vlan unavail in OSCARS (#547)
 
  * gcf
   - AM API v2 GCF AM now has a local policy limiting renewals to
