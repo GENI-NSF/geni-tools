@@ -338,3 +338,17 @@ stanford-ig3=urn:publicid:IDN+instageni.stanford.edu+authority+cm,https://instag
 stanford-ig-of=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/2
 stanford-ig-of1=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/1
 stanford-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.stanford.edu+authority+am,https://foam.instageni.stanford.edu:3626/foam/gapi/2
+
+# ============================================
+# Starlight OpenFlow
+# ============================================
+sl-of=urn:publicid:IDN+openflow:foam:sl-geni.northwestern.edu+authority+am,https://sl-geni.northwestern.edu:3626/foam/gapi/2
+sl-of1=urn:publicid:IDN+openflow:foam:sl-geni.northwestern.edu+authority+am,https://sl-geni.northwestern.edu:3626/foam/gapi/1
+sl-of2=urn:publicid:IDN+openflow:foam:sl-geni.northwestern.edu+authority+am,https://sl-geni.northwestern.edu:3626/foam/gapi/2
+
+# ============================================
+# CENIC OpenFlow
+# ============================================
+cenic-of=urn:publicid:IDN+openflow:foam:foam.cenic.net+authority+am,https://foam.cenic.net:3626/foam/gapi/2
+cenic-of1=urn:publicid:IDN+openflow:foam:foam.cenic.net+authority+am,https://foam.cenic.net:3626/foam/gapi/1
+cenic-of2=urn:publicid:IDN+openflow:foam:foam.cenic.net+authority+am,https://foam.cenic.net:3626/foam/gapi/2
