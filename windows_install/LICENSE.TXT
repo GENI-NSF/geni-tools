@@ -33,11 +33,10 @@ III. OpenSSL distributed under licenses:
   a. Windows 1.0.1e license     Downloaded from installer here:
   http://slproweb.com/download/Win32OpenSSL-1_0_1e.exe  
   b. MacOS License     Downloaded from here: http://www.openssl.org/source/license.html
-IV. Python dateutil 1.5 distributed under the BSD 2-Clause License
-(Simplified BSD License) at
-http://opensource.org/licenses/BSD-2-Clause 
-V. pyOpenSSL distributed under Apache License 2.0 at
+IV. pyOpenSSL distributed under Apache License 2.0 at
 http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/head:/LICENSE. 
+V. Python dateutil 1.5 distributed under the license found at: 
+http://bazaar.launchpad.net/~dateutil/dateutil/trunk/revision/62/LICENSE
 VI. Slice Federation Architecture (SFA) distributed under the license
 at
 http://git.planet-lab.org/?p=sfa.git;a=blob_plain;f=LICENSE.txt;hb=HEAD 
@@ -567,7 +566,7 @@ Downloaded from here: http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/
    limitations under the License.
 
 
-V. dateutil 1.5 License
+V. Python dateutil 1.5 License
 Retrieved from: http://bazaar.launchpad.net/~dateutil/dateutil/trunk/revision/62/LICENSE
 
 A. HISTORY OF THE SOFTWARE
