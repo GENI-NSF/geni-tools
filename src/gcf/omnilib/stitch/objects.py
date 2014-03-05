@@ -1593,7 +1593,7 @@ class Aggregate(object):
                                 hopName = failedHopName[len(auth)+1:]
                                 unavailHopUrn = "urn:publicid:IDN+" + auth + "+interface+ " + hopName
                                 for hop in self.hops:
-                                    if hop.urn == unavailHopURN:
+                                    if hop.urn == unavailHopUrn:
                                         unavailHop = hop
                                         break
                         if unavailHop:
