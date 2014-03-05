@@ -201,16 +201,18 @@ class StitchingHandler(object):
 
             # Construct a unified manifest
             # include AMs, URLs, API versions
-            if lastAM.isEG:
-                self.logger.debug("Last AM was an EG AM. Find another for the template.")
+            # Avoid EG manifests - they are incomplete
+            # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
+            if lastAM.isEG or lastAM.dcn:
+                self.logger.debug("Last AM was an EG or DCN AM. Find another for the template.")
                 i = 1
-                while lastAM.isEG and i <= len(self.ams_to_process):
+                while (lastAM.isEG or lastAM.dcn) and i <= len(self.ams_to_process):
                     # This has lost some hops and messed up hop IDs. Don't use it as the template
                     # I'd like to find another AM we did recently
                     lastAM = self.ams_to_process[-i]
                     i = i + 1
-                if lastAM.isEG:
-                    self.logger.debug("Still had an EG template AM?")
+                if lastAM.isEG or lastAM.dcn:
+                    self.logger.debug("Still had an EG or DCN template AM?")
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct

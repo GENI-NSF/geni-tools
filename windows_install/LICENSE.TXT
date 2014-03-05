@@ -30,8 +30,8 @@ Software Foundation License Version 2
 II. Python M2Crypto 0.20.2 distributed under the license at
 http://svn.osafoundation.org/m2crypto/tags/0.20.2/LICENCE   
 III. OpenSSL distributed under licenses:
-  a. Windows 1.0.1e license     Downloaded from installer here:
-  http://slproweb.com/download/Win32OpenSSL-1_0_1e.exe  
+  a. Windows 1.0.1f license     Downloaded from installer here:
+  http://slproweb.com/download/Win32OpenSSL-1_0_1f.exe
   b. MacOS License     Downloaded from here: http://www.openssl.org/source/license.html
 IV. pyOpenSSL distributed under Apache License 2.0 at
 http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/head:/LICENSE. 
@@ -99,8 +99,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 III. OpenSSL Dual License
 
-A. Windows 1.0.1e license
-Downloaded from installer here: http://slproweb.com/download/Win32OpenSSL-1_0_1e.exe
+A. Windows 1.0.1f license
+Downloaded from installer here: http://slproweb.com/download/Win32OpenSSL-1_0_1f.exe
 
 LICENSE ISSUES
   ==============
