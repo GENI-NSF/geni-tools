@@ -1601,6 +1601,7 @@ class Aggregate(object):
                             # Adjust msg
                             msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, origMsg)
                         elif unavailHopUrn:
+                            # This appears to be a common case - the switch that is unavailable may be intermediate within I2
                             self.logger.info(msg)
                             self.logger.debug(".. at a hop with URN %s, but the hop was not found.", unavailHopUrn)
                         elif failedHopName:
