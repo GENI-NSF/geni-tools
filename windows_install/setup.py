@@ -31,11 +31,11 @@ setup(console=['..\src\omni.py','..\src\omni-configure.py', '..\src\stitcher.py'
 
       options={
           'py2exe':{
-              'includes':'omnilib.frameworks.framework_apg, omnilib.frameworks.framework_base,\
-omnilib.frameworks.framework_gcf, omnilib.frameworks.framework_gch,\
-omnilib.frameworks.framework_gib, omnilib.frameworks.framework_of,\
-omnilib.frameworks.framework_pg, omnilib.frameworks.framework_pgch,\
- omnilib.frameworks.framework_sfa,omnilib,sfa,dateutil,geni,\
+              'includes':'gcf.omnilib.frameworks.framework_apg, gcf.omnilib.frameworks.framework_base,\
+gcf.omnilib.frameworks.framework_gcf, gcf.omnilib.frameworks.framework_gch,\
+gcf.omnilib.frameworks.framework_gib, gcf.omnilib.frameworks.framework_of,\
+gcf.omnilib.frameworks.framework_pg, gcf.omnilib.frameworks.framework_pgch,\
+ gcf.omnilib.frameworks.framework_sfa,gcf.omnilib,gcf.sfa,dateutil,gcf.geni,\
  copy,ConfigParser,logging,optparse,os,sys,string,re,platform,shutil,zipfile,logging,subprocess',
               }
             }
