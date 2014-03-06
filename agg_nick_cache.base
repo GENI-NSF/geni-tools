@@ -364,3 +364,9 @@ uh-eg2=urn:publicid:IDN+exogeni.net:uhvmsite+authority+am,https://uh-hn.exogeni.
 # ============================================
 fiu-eg=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
 fiu-eg2=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
+
+# ============================================
+# MAX Regional Network
+# ============================================
+max=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
+max2=urn:publicid:IDN+dragon.maxgigapop.net+authority+am,http://max-myplc.dragon.maxgigapop.net:12346
