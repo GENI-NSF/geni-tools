@@ -24,17 +24,26 @@ terms, conditions, and notices accompanying the Content or otherwise
 set forth in this site.
 
 The Work includes the following software:
-I. Python language libraries v2.7.5 distributed under the Python
-Software Foundation License Version 2
-(http://opensource.org/licenses/Python-2.0).  
-II. Python M2Crypto 0.20.2 distributed under the license at
-http://svn.osafoundation.org/m2crypto/tags/0.20.2/LICENCE   
+I. Python language libraries v2.7.6.
+  - Distributed under the Python Software Foundation License Version 2
+(http://docs.python.org/2/license.html#terms-and-conditions-for-accessing-or-otherwise-using-python )
+  - Mac version: http://python.org/ftp/python/2.7.6/python-2.7.6-macosx10.6.dmg
+  - Windows version: http://python.org/ftp/python/2.7.6/python-2.7.6.msi
+II. Python M2Crypto 
+  - Distributed under the license at http://svn.osafoundation.org/m2crypto/tags/0.20.2/LICENCE
+  - Windows version 0.20.2: http://chandlerproject.org/pub/Projects/MeTooCrypto/M2Crypto-0.20.2.win32-py2.7.exe
+  - Mac version 0.22.3: Installed via pip. See https://github.com/martinpaljak/M2Crypto
 III. OpenSSL distributed under licenses:
   a. Windows 1.0.1f license     Downloaded from installer here:
   http://slproweb.com/download/Win32OpenSSL-1_0_1f.exe
   b. MacOS License     Downloaded from here: http://www.openssl.org/source/license.html
 IV. pyOpenSSL distributed under Apache License 2.0 at
 http://bazaar.launchpad.net/~exarkun/pyopenssl/trunk/view/head:/LICENSE. 
+  - Mac version 0.13: http://pyopenssl.sourceforge.net
+    distributed under Apache License 2.0: https://raw.github.com/pyca/pyopenssl/master/LICENSE
+  - Windows version 0.11: https://launchpad.net/pyopenssl/main/0.11/+download/pyOpenSSL-0.11-py2.7-win32.egg
+     distributed under the GNU Lesser Public License version 2.1 as
+     included in that package.
 V. Python dateutil 1.5 distributed under the license found at: 
 http://bazaar.launchpad.net/~dateutil/dateutil/trunk/revision/62/LICENSE
 VI. Slice Federation Architecture (SFA) distributed under the license
