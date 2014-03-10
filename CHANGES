@@ -15,7 +15,7 @@ gcf 2.5:
    when using the new `chapi` framework. (#491, #278)
  * Refactored the source code to make it easier to import Omni in
    other tools. Look in `src/gcf` for directories that were
-   previously directly under `src`. (#388)
+   previously directly under `src`. (#388) Thanks to Nick Bastin.
  * Added utilities for creating and processing 'Speaks For'
    credentials (which Omni can pass along to aggregates and to Uniform
    Federation API clearinghouses).
@@ -96,10 +96,12 @@ sa=https://ch.geni.net/SA
     querying your clearinghouse for slice members, and by default 
     reading users and keys configured in your `omni_config`. (#491)
   - If set, `GENI_FRAMEWORK` environment variable is the default for
-    the `--framework` option (#315)
+    the `--framework` option (#315). Thanks to Nick Bastin.
   - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
-    set the default path to your saved user and slice credentials (#434)
-  - Handle `~` in `usercredfile` and `slicecredfile` (#455)
+    set the default path to your saved user and slice credentials
+    (#434) Thanks to Nick Bastin.
+  - Handle `~` in `usercredfile` and `slicecredfile` (#455) Thanks to
+    Nick Bastin.
   - Support querying for other users' SSH keys where the CH supports it (#472)
   - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
   - Allow `PerformOperationalAction` on v2 AMs (#412)
@@ -116,7 +118,7 @@ sa=https://ch.geni.net/SA
     compliance) (#482)
   - Refactored the source code to make it easier to import Omni in
     other tools. Look in `src/gcf` for directories that were
-    previously directly under `src`. (#388)
+    previously directly under `src`. (#388) Thanks to Nick Bastin.
    - Your Omni based tool no longer needs to include any of the top
      level scripts that Omni/GCF includes, nor to provide the existing
      Omni `main`.
