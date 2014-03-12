@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -46,11 +46,11 @@ import logging
 import optparse
 import os
 
-import geni
-import geni.am
-import geni.am.am2
-import geni.am.proxyam
-from geni.config import read_config
+from gcf import geni
+import gcf.geni.am
+import gcf.geni.am.am2
+import gcf.geni.am.proxyam
+from gcf.geni.config import read_config
 
 def parse_args(argv):
     parser = optparse.OptionParser()
@@ -145,7 +145,7 @@ def main(argv=None):
 
     logger = logging.getLogger('gcf-am');
     logger.info('Talking to AM ' + am_url);
-    pams = geni.am.proxyam.ProxyAggregateManagerServer((opts.host, int(opts.port)),
+    pams = gcf.geni.am.proxyam.ProxyAggregateManagerServer((opts.host, int(opts.port)),
                                                        am_url,
                                              keyfile=keyfile,
                                              certfile=certfile,

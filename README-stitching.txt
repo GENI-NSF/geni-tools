@@ -98,11 +98,13 @@ be passed directly to Omni.
 
 The same request RSpec will be submitted to every aggregate required
 for your topology. Stitcher will create reservations at each of these
-aggregates for you. NOTE however that stitcher only knows how to
+aggregates for you. NOTE however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
-a stitching link will not be reserved, because stitcher does not know
-the URL to contact that aggregate.
+a stitching link may not be reserved, because stitcher may not know
+the URL to contact that aggregate. If there is an aggregate nickname
+for the component manager URN in your RSpec with a matching URL,
+stitcher should find it.
 
 All calls use AM APIv2 (hard-coded) currently, due to aggregate
 limitations. If an aggregate does not speak AM API v2, `stitcher`
@@ -119,7 +121,10 @@ all resources reserved as a result of this request.
 
 stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
-logging. Currently, stitcher will write several files to the current
+logging. However, stitcher always saves your combined result manifest
+RSpec to a file (named
+'<slicename>-manifest-rspec-stitching-combined.xml'), unless you specify the `--tostdout` option.
+Currently, stitcher will write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs).
 
@@ -144,12 +149,17 @@ Note that stitcher will not delete reservations at other aggregates
 not involved in stitching. To partially delete your reservation or
 delete at these other aggregates, supply the necessary `-a` options.
 
+Be sure to see the Known Issues section below.
+
 === Options ===
 stitcher is a simple extension of Omni. As such, it uses all the same
 options as Omni. `stitcher` however adds several options:
  - `--excludehop <hop URN>`: When supplied, the Stitching Computation
  Service will exclude the specified switch/port from ANY computed
  stitching paths. You can supply this argument many times.
+  - Alternately, you can exclude only certain VLAN tags from being
+  used at a particular hop, by appending `=<VLAN range>` to the hop
+  URN. For example `--excludehop urn:publicid:IDN+instageni.gpolab.bbn.com+interface+procurve2:5.24=3747-3748`
  - `--includehop <hop URN>`: When supplied, the Stitching Computation
  Service will insist on including the specified switch/port on ANY computed
  stitching paths. You can supply this argument many times. Use this
@@ -158,6 +168,34 @@ options as Omni. `stitcher` however adds several options:
 Together, the above options should allow you some control over the
 paths used for your circuits, without requiring that you construct the
 full RSpec stitching extension yourself.
+
+Additionally, these options are used for some topologies:
+ - `--defaultCapacity`: If not specified, set all stitched links to
+ request the specified capacity (in Kbps). Default is '20000' meaning ~20Mbps.
+ - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
+ not at a node, but at a switch (E.G. because you have a static VLAN to a
+ fixed non-AM controlled host from there.). This option adds a fake
+ node and interface_ref to the link. Note that your request RSpec will
+ still need >= 2 `component_manager`s on the `<link>`, and you will need a
+ skeletal stitching extension with 1 hop being the switch/VLAN where
+ you want to end, and a 2nd being the AM where you want to end up.
+ - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
+ ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
+ instead use the local rack URL, and therefore only local rack
+ allocated VMs and VLANs. For this to work, your `omni_config` or the
+ base aggregate nicknames must have an entry for the local ExoGENI
+ rack that specifies both the aggregate URN as well as the URL, EG:
+{{{
+eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
+eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
+eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
+}}}
+ - `--useExoSM`: Try to use the ExoGENI ExoSM for ExoGENI
+ reservations. If we get an individual ExoGENI rack URL for an
+ aggregate, then try to use the ExoSM URL. For this to work, your
+ `omni_config`  or the base aggregate nicknames must have an entry for
+ the ExoGENI rack that specifies the URN and URL, as well as an entry
+ for the ExoSM.
 
 Other options you should not need to use:
  - `--fakeModeDir <directory>`: When supplied, does not make any
@@ -169,49 +207,36 @@ Other options you should not need to use:
  is 600 (10 minutes), to allow routers to reset.
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
- is 30.
- - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
- not at a node, but at a switch (EG because you have a static VLAN to a
- fixed non-AM controlled host from there.). This option adds a fake
- node and interface_ref to the link. Note that your request RSpec will
- still need >= 2 component_managers on the <link>, and you will need a
- skeletal stitching extension with 1 hop being the switch/VLAN where
- you want to end, and a 2nd being the AM where you want to end up.
- - `--noExoSM`: Avoid using the ExoGENI ExoSM. If an aggregate is an
- ExoGENI aggregate and the URL we get is the ExoSM URL, then try to
- instead use the local rack URL, and therefore only local rack
- allocated VMs and VLANs. For this to work, your `omni_config` must
- have an entry for the local ExoGENI rack that specifies both the
- aggregate URN as well as the URL, EG:
-{{{
-eg-bbn=urn:publicid:IDN+exogeni.net:bbnvmsite+authority+am,https://bbn-hn.exogeni.net:11443/orca/xmlrpc
-eg-renci=urn:publicid:IDN+exogeni.net:rencivmsite+authority+am,https://rci-hn.exogeni.net:11443/orca/xmlrpc
-eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogeni.net:11443/orca/xmlrpc
-}}}
+ is 30 (seconds).
+ - `--noReservation`: Do not try to reserve at aggregates; instead,
+   just save the expanded request RSpec.
 
 == Tips and Details ==
  - Create a single GENI v3 request RSpec for all aggregates you want linked
- - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in the `<link>`
- - Stitching currently only works at Utah InstaGENI, GPO InstaGENI,
- Kentucky ProtoGENI, and Utah ProtoGENI
+ - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in each `<link>`
+ - Stitching currently only works at a few aggregates, with more being
+ added regularly. Contact help@geni.net for a current list.
  - Use "src/stitcher.py" instead of "src/omni.py"
  - This script can take a while - it must make reservations at all the
- aggregates, and keep retrying at aggregates that can't provide
+ aggregates, and keeps retrying at aggregates that can't provide
  matching VLAN tags. Be patient.
  - When the script completes, you will have reservations at each of the
- aggregates involved in stitched linke in your request RSpec, plus any intermediate
+ aggregates involved in stitched links in your request RSpec, plus any intermediate
  aggregates required to complete your circuit (e.g. ION) - or none, if
  your request failed.
  - Stitcher sends the same request RSpec to all aggregates involved in
  your request.
  - Stitcher makes reservations at ''all'' aggregates involved in your
- stitching circuits. Note however that stitcher only knows how to
+ stitching circuits. Note however that stitcher generally only knows how to
  contact aggregates that are involved in the circuits you request -
  nodes you are trying to reserve in the RSpec that are not linked with
- a stitching link will not be reserved, because stitcher does not know
- the URL to contact that aggregate.
+ a stitching link may not be reserved, because stitcher may not know
+ the URL to contact that aggregate. If there is an aggregate nickname
+ for the component manager URN in your RSpec with a matching URL,
+ stitcher should find it.
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
- where you have reservations for this request.
+ where you have reservations for this request, saved to a file named
+ '<slicename>-manifest-rspec-stitching-combined.xml'
  - Stitcher will retry when something goes wrong, up to a point. If
  the failure is isolated to a single aggregate failing to find a VLAN,
  stitcher retries at just that aggregate (currently up to 50
@@ -222,8 +247,20 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
  stitcher will delete any existing reservations and exit.
  - Stitcher remembers the aggregates where it made reservations. If
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
- `deletesliver` or other calls, `stitcher will invoke the command at
+ `deletesliver` or other calls, stitcher will invoke the command at
  all the right aggregates.
+ - If you want to check what aggregates are stitchable, you should view
+ the [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI stitching sites list online].
+ You should only try to stitch among aggregates listed here - all
+ other requests will fail.
+ To check programmatically for a list of sites, including those still
+ in testing:
+{{{
+cd <omni install directory>
+export PYTHONPATH=$PYTHONPATH:.
+python src/gcf/omnilib/stitch/scs.py --listaggregates
+}}}
+ - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
 
@@ -233,7 +270,7 @@ need to do this themselves. Instead, there is a Stitching Computation
 Service (SCS) which will fill in these details, including any transit
 networks at which you need a reservation (like ION). For details on
 this service, see the
-[http://geni.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI MAX SCS wiki page].
+[https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingAPI MAX SCS wiki page].
 
 Experimenters can of course specify this information themselves, using
 [http://hpn.east.isi.edu/rspec/ext/stitch/0.1/stitch-schema.xsd the stitching extension]. 
@@ -252,12 +289,20 @@ Internet2 currently operates a ''prototype'' GENI aggregate over
 ION. This aggregate accepts calls using the GENI Aggregate Manager
 API, and translates those into calls to OSCARS (ION).
 
+This aggregate has no compute resources - it exists only to provision
+circuits between other aggregates. When you request a stitched link
+between 2 aggregates, often stitcher and the SCS will automatically
+add ION to your request to provide connectivity.
+
+This same software runs other aggregates for OSCARS networks,
+specifically the MAX aggregate.
+
 Known issues with this aggregate can be found on the
 [http://groups.geni.net/geni/query?status=new&status=assigned&status=reopened&component=I2AM GENI Trac]
 
 == Troubleshooting ==
 
-Stitching is new to GENI, and uses several prototype services (this
+Stitching is relatively new to GENI, and uses several prototype services (this
 client, the Stitching Computation Service, the ION aggregate, as well
 as stitching implementations at aggregates). Therefore, bugs and rough
 edges are expected. Please note failure conditions, expect occasional
@@ -268,7 +313,7 @@ detail as possible:
  - `python src/omni.py --version`
  - The exact commandline you used to invoke stitcher
  - The request RSpec you used with stitcher
- - The last few lines of your call to stitcher - all the logs if
+ - At least the last few lines of your call to stitcher, and all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
  - Listing of new rspec files created in `/tmp` and your current
@@ -283,31 +328,53 @@ Some sample error messages and their meaning:
     tried all available VLAN tags for one of your aggregates, and got
     a stitching failure on each - probably because that tag was not available.
 
+See the list of Known Issues below.
+
 == Known Issues and Limitations ==
- - Aggregate support is limited. Available aggregates as of 4/2013:
-  - Utah InstaGENI
-  - GPO InstaGENI
-  - Kentucky ProtoGENI
-  - Utah ProtoGENI
+ - Aggregate support is limited. See http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
  - Links are point to point only - each link connects an interface on
  a compute node to another interface on a node.
  - Links between aggregates use VLANs. QinQ is not supported at any
  current aggregates, and VLAN translation support is limited. VLAN
  tags available at each aggregate are limited, and may run out.
+ - If your circuit goes across ProtoGENI Utah (nickname `pg-utah`) to
+ `ig-utah` or `utah-ddc`, then you will need to explicitly set the
+ MTU on your link in order to exchange TCP traffic. Otherwise, while
+ `ping` will work, most other traffic will not pass. 
+  - Workaround: After reserving your circuit, log in to each of your nodes and
+  change the MTU to 1496 on your data plane interface.
+   - For example, `sudo /sbin/ifconfig eth1 mtu 1496`
+  - This is a known issue: http://groups.geni.net/geni/ticket/1086
+ - Stitching to ExoGENI is limited:
+  - Stitching within ExoGENI, by submitting a request to the ExoSM
+  with only ExoGENI resources, works fine.
+  - Stitching between ExoGENI and non ExoGENI resources only works at
+  a very few ExoGENI sites currently.
+  - You can have only 1 stitched link per ExoGENI node (though you can
+  have multiple nodes).
+   - See http://groups.geni.net/exogeni/ticket/193
+  - You cannot stitch to ExoGENI 'bare metal' nodes; stitching only
+  works at ExoGENI VMs.
+   - See http://groups.geni.net/exogeni/ticket/195
+  - Due to limitations in the `stitcher` tool, you cannot reserve some
+  ExoGENI resources from the ExoSM, and some from an individual
+  ExoGENI rack. You must either use all ExoSM resources, or all
+  resources at an individual rack. See options `--useExoSM` and `--noExoSM`
+ - Some aggregates require an explicit capacity to be requested on links. 
+   For this reason, stitcher ensures that all requests for stitched links include 
+   an explicit capacity (whose value defaults to the `--defaultCapacity` option).
+  - Works around issues http://groups.geni.net/geni/ticket/1039 and 
+    http://groups.geni.net/geni/ticket/1101
  - AM API v3 is not supported - VLAN tag selection is not optimal
  - AM API v1 only aggregates are not supported
  - Aggregates do not support `Update`, so you cannot add a link to
  an existing reservation.
- - Fatal errors are not recognized, so the script keeps trying longer
+ - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
- - The ION aggregate (across Internet2) does not support
- `RenewSliver`, but instead allocates resources until the slice
- expiration. Be sure to renew your slice to the desired expiration
- time before allocating resources.
 
 == To Do items ==
  - Handle known ExoGENI error messages - particularly those that are fatal, and
- those that mean the VLAN failed and we should retry witha different tag
+ those that mean the VLAN failed and we should retry with a different tag
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for
  success or failure, then get the manifest after that
  - Thread all calls to omni
@@ -317,21 +384,20 @@ Some sample error messages and their meaning:
  - Fully handle a `VLAN_UNAVAILABLE` error from an AM
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested
- - fakeMode is incomplete
+ - `fakeMode` is incomplete
  - Tune counters, sleep durations, etc
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
- - Get AM URLs from the clearinghouse
  - Use authentication with the SCS
  - Support stitching schema v2
- - Time out omni calls in case an AM hangs
- - `opts.warn` is used to suppress omni output. Clean that up. A scriptMode option?
+ - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates
  - Support multipoint circuits
- - Support GRE tunnels
+ - Support GRE tunnels or other stitching technologies
 
 == Related Reading ==
- - [http://geni.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
+ - [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI Stitching Sites]
+ - [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
  - [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
 

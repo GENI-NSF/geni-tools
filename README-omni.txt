@@ -28,7 +28,7 @@ http://trac.gpolab.bbn.com/gcf/wiki/OmniConfigure/Automatic for details about ho
 For 'stitching' support (experimenter defined custom topologies), see
 README-stitching.txt.
 
-The currently supported CFs are the GENI Portal,
+The currently supported CFs (clearinghouses) are the GENI Portal,
 ProtoGENI,  SFA (!PlanetLab), and GCF. Omni works with any GENI AM API compliant AM.
 These include InstaGENI and ExoGENI racks, ProtoGENI, !OpenFlow, SFA and GCF.
 
@@ -40,6 +40,181 @@ For the latest Omni documentation, examples, and trouble shooting
 tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
+
+New in v2.5:
+
+Highlights:
+ * Released Windows and Mac OS X packages of the Omni experimenter
+   utilities. (Developer gcf components are not included.)
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API using framework type `chapi`
+ * When using the new `chapi` framework allow a `--useSliceAggregates`
+   option to specify that the aggregate action should be taken at all
+   aggregates at which you have resources in this slice. (#507)
+ * Added new options to allow installing SSH keys of all slice members
+   when using the new `chapi` framework. (#491, #278)
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (controlled by `--ssltimeout`)
+
+
+Details:
+ - Add a new framework type `chapi` for talking the Uniform Federation API 
+   (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
+   to compliant clearinghouses (e.g. GENI Clearinghouse). (#345, #440)
+  - See `omni_config.sample` for config options required
+  - To upgrade a `pgch` config for `ch.geni.net` to a `chapi` config:
+   - Change `type = pgch` to `type = chapi`
+   - Change `ch = https://ch.geni.net...` to:
+{{{
+ch=https://ch.geni.net:8444/CH
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
+}}}
+  Included in this change:
+  - When creating or renewing or deleting slivers, tell the Slice Authority.
+    This allows the SA to know (non-authoritatively) where your slice
+    has resources. (#439)
+  - New function `listslivers <slice>`: lists the slivers reported to 
+    the slice authority in the given slice, by aggregate (with
+    the sliver expirations). Note that this information is not
+    authoritative - contact the aggregates if you want to be sure
+    not to miss any reservations.
+  - New function `listslicemembers <slice>`: lists the members of
+    the given slice, with their email and registered SSH public
+    keys (if any) and role in the slice. (#421, #431, #278)
+  - New function `addslicemember <slice> <username> [optional: role]`:
+    Adds the user with the given username to the named slice,
+    with the given role (or `MEMBER` by default). Note this
+    does not change what SSH keys are installed on any existing
+    slivers. (#422,#513)
+ - Support `geni_extend_alap` with new `--alap` option, allowing you to
+   request that slivers be renewed as long as possible, if your
+   requested time is not permitted by local AM policy. (#415)
+ - When using the new `chapi` framework allow a `--useSliceAggregates`
+   option to specify that the aggregate action should be taken at all
+   aggregates at which you have resources in this slice. (#507)
+  - Any `-a` aggregates are extra. 
+  - At other frameworks, this is ignored.
+  - This option is ignored for commands like `createsliver`,
+  `allocate`, `provision`, and `getversion`.
+ - Added new option `--noExtraCHCalls` to disable calls to the
+   clearinghouse to report slivers, query for slivers, or query
+   a list of aggregates; explicit CH calls and retrieving credentials
+   is not effected. (#514)
+ - Added new options controlling what SSH keys are installed on
+   compute resources. Default behavior is unchanged. These options
+   control what users are created and SSH keys installed in new
+   slivers from `createsliver` or `provision`, or when you update
+   the installed users and keys using 
+   `performoperationalaction <slice> geni_update_users`.
+   If you supply the new option `--useSliceMembers` and your
+   clearinghouse supports listing slice members (i.e. the new `chapi`
+   type), then Omni will fetch the members of your slice from the
+   clearinghouse and their public SSH keys, and send those to the
+   aggregate to install on new compute resources. (#278, #441)
+   By default, Omni will ''also'' read the users and SSH keys
+   configured in your `omni_config` as usual, ''adding'' those users
+   and keys to the set downloaded from the clearinghouse, if any.
+   You can skip reading the `omni_config` keys by supplying the new option
+   `--ignoreConfigUsers`.
+   As before, `performoperationalaction` allows you to specify a file
+   containing options with the `--optionsfile` option. If that file
+   specifies the `geni_users` option, then that is the only set of
+   users and keys that is supplied with `performoperationalaction`.
+   However, if you do not supply the `geni_users` option from a file,
+   Omni uses the same logic as for `createsliver`, optionally
+   querying your clearinghouse for slice members, and by default 
+   reading users and keys configured in your `omni_config`. (#491)
+ - If set, `GENI_FRAMEWORK` environment variable is the default for
+   the `--framework` option (#315)
+ - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+   set the default path to your saved user and slice credentials (#434)
+ - Handle `~` in `usercredfile` and `slicecredfile` (#455)
+ - Support querying for other users' SSH keys where the CH supports it (#472)
+ - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
+ - Allow `PerformOperationalAction` on v2 AMs (#412)
+ - Renew Slice returns actual new expiration (checks the SA, not just
+   assuming success means you got what you asked for) (#428)
+ - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+   allows changing this. (#407)
+  - If Omni hangs talking to a server you believe is up, try
+    specifying `--ssltimeout 0` to disable the timeout. Some servers
+    cannot handle the timeout request. (See ticket #506)
+  - Note this timeout does not work on old versions of python2.6 due
+    to a known python bug: http://bugs.python.org/issue5103
+ - Speed up `listaggregates` in `pgch` framework (don't test AM API
+   compliance) (#482)
+ - Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388)
+  - Your Omni based tool no longer needs to include any of the top
+    level scripts that Omni/GCF includes, nor to provide the existing
+    Omni `main`.
+  - Most of the code in `omni.py` has now been moved to
+    `gcf/oscript.py`
+  - To update your script that uses omni as a library:
+   - Change `import omni` to `import gcf.oscript as omni`
+ - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
+ - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+ - `renewslice` when given a slice credential replaces the saved 
+   slice credential in place, rather than in a new filename. (#386)
+ - Create any directories needed in the path to the agg_nick_cache (#383)
+ - If using `--AggNickCacheName` and can't read/write to the specified
+   file, omni should fall back to reading `agg_nick_cache.base` (#384)
+ - Look up AM URN by URL in the defined aggregate nicknames (#404)
+ - Support named timezones when renewing, etc (#503)
+ - Eliminated a repetitive log message (#384, #385)
+ - Fix bug in APIv3 calling status with slivers with different expiration times (#408)
+ - Fit Omni result summaries in 80 character wide terminals (#409)
+ - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+   nick cache is old (#391)
+ - SFA slice and user records changed: keys and slices moved (#429)
+ - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+ - Support unicode urns (#448)
+ - Return any error message from a CH on `getusercred` (#452)
+ - Return error on SA error in `listslices` (#456)
+ - Omni `cred_util.py` uses an omni logger (#460)
+ - URN testing requires 4 `+` separated pieces (#483)
+ - Log at debug when downloading the aggregate nickname cache fails (#485)
+ - `chapi` framework looks up the MA and SA at the clearinghouse,
+   though you can configure where they run. (#490)
+ - Warn when acting at all AMs in the clearinghouse - slow (#461)
+ - Speaks for option that Omni passes to aggregates has been renamed
+   `geni_speaking_for` (#466)
+ - Show the AM nickname instead of URL in output (#424, #504)
+ - Properly parse the verbose config option and let the commandline
+   `--verbosessl` over-ride it talking to clearinghouses. (#509)
+ - Ensure `geni_version` on credential structs is a string.
+   Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
+ - Notice invalid slice and member names earlier and suppress ugly
+   tracebacks on most `chapi` framework errors. (#517)
+ - Support AM API draft proposal O1 and allow '.' and '_' in sliver
+   names, and do not complain or stop needlessly on illegal sliver
+   names. (#518)
+ - Catch parse errors when determining credential type (#521)
+ - Using `chapi` framework, expired slice expirations are printed (#523)
+ - When doing `renewsliver --alap`, if the real expiration is not in
+   the `output` slot, call `sliverstatus` to get it. (#527)
+ - Bail early from `createsliver` or `createimage` if the user
+   didn't specify exactly one aggregate. (#395)
+ - Update copyrights to 2014 (#463, #426)
+ - Handle non string rspec when printing RSpec (#445)
+ - Allow `--optionsfile` with `createimage`, `deleteimage`, and
+   `listimages`. (#532)
+ - Allow underscore in generated clean filenames (#533)
+ - Handle `createslice` errors at the GENI Clearinghouse that might
+   be due to having the wrong case, now the project and slice names 
+   are case sensitive. (#535)
+ - Trim trailing newlines before installing SSH keys (#537)
+ - Explicitly import framework files in `oscript.py` to support
+   Windows and Mac binaries. (#542)
+ - Fix wording and licenses for Windows and Mac binaries (#541)
+
 
 New in v2.4:
  - Add nicknames for RSpecs; includes ability to specify a default
@@ -279,7 +454,7 @@ Detailed changes:
    (ticket #183)
  - A couple utility methods can take no slice name, just a slice
    credential filename, and read the slice name/urn from the
-   credential. See print_slice_expiration
+   credential. See `print_slice_expiration`
  - When reading a credential from a file, make sure it matches the
    expected slice.
  - Log clearly when a supplied credential filename was not used,
@@ -340,9 +515,13 @@ count).
 
 == Omni as a Library ==
 
-The omni.py file can be imported as a library, enabling programmatic
-access to Omni functions. To use Omni as a library, `import omni` and
-use the `omni.call` function.
+Omni is really a thin wrapper around `src/gcf/oscript.py`, which can
+be imported as a library, enabling programmatic
+access to Omni functions. To use Omni as a library, 
+`import gcf.oscript as omni` and use the `omni.call` function.
+
+Note that prior to v2.5, the import statement was `import omni` - be
+sure you have updated your scripts when you upgrade.
 
 {{{
   text, returnStruct = omni.call( ['listmyslices', username], options )  
@@ -350,7 +529,8 @@ use the `omni.call` function.
 
 The return from `omni.call` is a list of 2 items: a human readable string summarizing the result 
 (possibly an error message), and the result object (may be `None` on error). The result 
-object type varies by the underlying command called.
+object type varies by the underlying command called. See the docs in
+the source code for individual methods.
 
 Omni scripting allows a script to:
  * Have its own private options
@@ -366,15 +546,15 @@ and
 on the gcf wiki.
 
 '''NOTE''': Omni uses multiple command line options, and creates its
-own option names internally. Be sure not to pick the same option names. See omni.py and the
-getParser() function, around line 781 for all the option names.
+own option names internally. Be sure not to pick the same option names. See `gcf/oscript.py` and the
+`getParser()` function, around line 781 for all the option names.
 
 == Extending Omni ==
 
 Extending Omni to support additional frameworks with their own
 clearinghouse APIs requires adding a new Framework extension
 class. Adding other experiment management or utility functions can be
-done using Omni scripting, or by adding functions to amhandler.py
+done using Omni scripting, or by adding functions to `src/gcf/omnilib/amhandler.py`.
 
 == Omni workflow ==
 For a fully worked simple example of using Omni, see 
@@ -384,10 +564,10 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
     use (that is the control framework you will use). Get a user
     certificate and key pair.
  2. Configure Omni: Be sure the appropriate section of omni_config for
-    your framework (sfa/gcf/pg) has appropriate settings for
+    your framework (sfa/gcf/pg/chapi/pgch) has appropriate settings for
     contacting that CF, and user credentials that are valid for that
     CF. Make sure the `[omni]` section refers to your CF as the default.
-    If you ran src/omni-configure.py this should automatically be
+    If you ran `src/omni-configure.py` this should automatically be
     configured.
  3. Find available resources: Run `omni.py -o listresources`
   a. When you do this, Omni will contact your designated
@@ -494,7 +674,8 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
 
  Compute resources typically use SSH to let you log in to the
  machines. The SSH keys configured in your omni_config `users` section
- should be available for use.
+ should be available for use. See the options `--useSliceMembers` and
+ `--ignoreConfigUsers` to change this behavior.
 
 10. Delete slivers when you are done, freeing the resources for others:
 
@@ -507,16 +688,20 @@ http://groups.geni.net/geni/wiki/HowToUseOmni
  AM API v3:
 `omni.py -V 3 delete -a myV3AM MySlice`
 
-11. Optional: `listmyslices` and `print_slice_expiration`. 
+11. Optional commands:
 Occasionally you may run `listmyslices` to remind yourself of your
 outstanding slices. Then you can choose to delete or renew them as
 needed. If you don't recall when your slice expires, use
-`print_slice_expiration` to remind yourself. 
+`print_slice_expiration` to remind yourself. If you use a `chapi`
+framework (clearinghouse), you can additionally query the
+clearinghouse to be reminded of where you may have reservations, using `listslivers`
 
  To List your slices : `omni.py listmyslices`
 
  To Print slice expiration : `omni.py print_slice_expiration MySlice`
-    
+
+ To list slivers where you made reservations using Omni: `omni.py listslivers MySlice`
+
 == Running Omni ==
 
 === Supported options ===
@@ -526,8 +711,8 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.4
-Copyright (c) 2013 Raytheon BBN Technologies
+GENI Omni Command Line Aggregate Manager Tool Version 2.5
+Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
 
@@ -564,9 +749,13 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
- 			 listmykeys 
+ 			 listmykeys [optional: username] [Alias for listkeys]
+ 			 listkeys [optional: username]
  			 getusercred 
- 			 print_slice_expiration <slicename> 
+ 			 print_slice_expiration <slicename>
+			 listslivers <slicename>
+			 listslicemembers <slicename>
+			 addslicemember <slicename> <username> [optional: role]
  		Other functions: 
  			 nicknames 
 
@@ -588,10 +777,27 @@ Options:
                         slices
     -r PROJECT, --project=PROJECT
                         Name of project. (For use with pgch framework.)
+    --alap              Request slivers be renewed as close to the requested
+                        time as possible, instead of failing if the requested
+                        time is not possible. Default is False.
     -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
                         RSpec type and version to return, default 'GENI 3'
     -V API_VERSION, --api-version=API_VERSION
                         Specify version of AM API to use (default 2)
+    --useSliceAggregates
+                        Perform slice action at all aggregates the given slice
+                        is known to use according to clearinghouse records. Default is
+                        False.
+    --useSliceMembers   Put slice members' SSH keys on reserved resources in
+                        createsliver, provision or performoperationalaction.
+                        Default is False. When true, adds these users and keys to
+                        those read from your omni_config (unless
+                        --ignoreConfigUsers).
+    --ignoreConfigUsers
+                        Ignore users and SSH keys listed in your omni_config
+                        when installing SSH keys on resources in createsliver
+                        or provision or performoperationalaction. Default is
+                        false - your omni_config users are read and used.
 
   AM API v3+:
     Options used in AM API v3 or later
@@ -666,11 +872,14 @@ Options:
     --usercredfile=USER_CRED_FILENAME
                         Name of user credential file to read from if it
                         exists, or save to when running like '--usercredfile
-                        myUserCred.xml -o getusercred'
+                        myUserCred.xml -o getusercred'. Defaults to value of
+                        'GENI_USERCRED' environment variable if defined.
     --slicecredfile=SLICE_CRED_FILENAME
                         Name of slice credential file to read from if it
                         exists, or save to when running like '--slicecredfile
-                        mySliceCred.xml -o getslicecred mySliceName'
+                        mySliceCred.xml -o getslicecred mySliceName'. Defaults
+                        to value of 'GENI_SLICECRED' environment variable if
+                        defined.
 
   GetVersion Cache:
     Control GetVersion Cache
@@ -724,9 +933,113 @@ Options:
                         Use the given Orca slice id
     --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default False. For
+                        result code, raise an AMAPIError. Default is False. For
                         use by scripts.
+    --ssltimeout=SSLTIMEOUT
+                        Seconds to wait before timing out AM and CH calls.
+                        Default is 360 seconds.
+    --noExtraCHCalls    Disable extra Clearinghouse calls like reporting
+                        slivers. Default is False.
 }}}
+
+==== Notes on Options ====
+Most options are documented more fully with the commands where they
+are relevant. Some notes on select options are provided here.
+
+Commonly used options:
+Omni provides many options. However, most users will only use a very
+few of them. 
+ - `-a`: specify the aggregate at which to operate
+ - `-r`: over-ride your default project setting
+ - `--alap`: ask aggregates to renew your reservations as long as possible
+ - `-o`: to save manifest RSpecs to a file
+ - `--useSliceAggregates`: renew or delete at all aggregates where you
+ used Omni to reserve resources
+ - `--useSliceMembers`: Have all your slice members get accounts on
+ your compute resources
+ - `--optionsfile`: Specify custom options for commands
+ - `-u`: Specify a particular sliver to act on when using APIv3
+ - `--debug`: Turn on debug logging when resolving an Omni problem
+ - `--usercredfile`: Use a saved user credential (to save time
+ calling the clearinghouse re-retrieving it later)
+ - `--slicecredfile`: Use a saved slice credential (to save time
+ calling the clearinghouse re-retrieving it later)
+
+Basic Options:
+ - The `-a` option may be an aggregate nickname or URL. Nicknames are
+ defined in your `omni_config` plus some standard nicknames are
+ defined globally and updated automatically by Omni. Run the command
+ `nicknames` for a list.
+ - `--available` is for use with `listresources` and `describe`
+ - `-f` specifies the name of the framework in your `omni_config`,
+ such as "my_genich". It is not required if you want to use the
+ framework specified by `default_cf` in your `omni_config`.
+ - If set, the `GENI_FRAMEWORK` environment variable will be the
+ default for the `--framework` option, over-riding any default from
+ your Omni config file.
+ - `-r` / `--project` is used by framework types `pgch` and `chapi` which
+ use a 'project' to group slices. It is only required if you want to
+ use project other than your configured `default_project` from your `omni_config`.
+ - `--alap` is supported only at select aggregates with `renew` and
+ `renewsliver`
+ - `-t` is typically not required. See `createsliver`
+ - `-V` is typically not required as AM API v2 is the default. Specify
+ `-V3` if you are calling an AM API V3 command
+ - `--useSliceAggregates` is supported only when using framework type
+ `chapi`, and then only with commands after your resources have been
+ reserved, such as `renewsliver`, `sliverstatus`, and
+ `deletesliver`. It relies on the clearinghouse's advisory list of aggregates where
+ you have used Omni to reserve resources - reservations made using
+ other tools may not be reflected.
+ - `--useSliceMembers` is supported only by framework type
+ `chapi`. See `createsliver`
+ - `--ignoreConfigUsers: By default, `createsliver` and `provision`
+ tell the aggregate to create accounts for users listed in the users
+ section of your `omni_config`, and install the listed SSH keys. With
+ this option, Omni will not use those keys. Typically this is used
+ with `--useSliceMembers`.
+
+AM API v3 Options:
+ - `--best-effort`: In AM API v3 operations are on multiple
+ slivers. This option, when supported by the aggregate, allows the AM
+ to let the operation succeed on slivers where possible and only fail
+ the operation on select slivers, rather than having to fail the whole
+ request. For example, you might use this with `renew` to renew your
+ reservation for 3 nodes, and allow the aggregate to fail to extend
+ your reservation on a 4th node.
+ - `--cred` allows you to specify an extra credential to any call that
+ takes a list of credentials.
+ - `--optionsfile` allows you to specify arbitrary options to be
+ passed to aggregate calls. For example, use this to specify options
+ for `performoperationalaction`.
+
+File Output Options:
+ - `-o` specifies that many commands write their output to a
+ file. This includes RSpecs, sliver status, and slice and user
+ credentials. Not all commands support this. `-p` and `--outputfile`
+ work with `-o`.
+ - `--usercredfile` and `--slicecredfile`: Most aggregate operations
+ require a credential to prove your authorization. This credential
+ comes from your framework / clearinghouse. This credential typically
+ does not change frequently, so many users choose to save this
+ credential to a file using the commands `omni -o getusercred` and
+ `omni -o getslicecred`. Then by supplying the `--usercredfile` and
+ `--slicecredfile` options, Omni can uses the saved credential and
+ save the time required to re-fetch the credential from the
+ clearinghouse.
+
+Advanced / Developer Options:
+ - `--ssltimeout`: Omni times out calls to servers, by default after
+ 360 seconds (6 minutes). Use this option to change that timeout. If
+ commands to a server that you believe is up are failing, try
+ specifying a timeout of `0` to disable the timeout.
+  - `--noExtraCHCalls`: Omni makes multiple calls to the
+  clearinghouse, particularly when using framework type `chapi`. These
+  include reporting creation / renewal of slivers, querying for lists
+  of aggregates, etc. These functions are necessary to support some
+  Omni operations (such as provided by `--useSliceMembers` and
+  `--useSliceAggregates`). However, you can disable these calls with
+  this option.
 
 === Supported commands ===
 Omni supports the following commands.
@@ -739,6 +1052,9 @@ Format: `omni.py get_ch_version`
 
 ==== listaggregates ====
 List the URN and URL for all known aggregates.
+
+Note that this lists all known aggregates, not just those used by a
+particular slice.
 
 Format: `omni.py [-a AM_URL_or_nickname] listaggregates`
 
@@ -804,9 +1120,11 @@ Sample Usage:
 
 If you specify the -o option, the credential is saved to a file.
 The filename is `<slicename>-cred.xml`
-But you can specify the filename using the `--slicecredfile` option.
+But you can specify the filename using the `--slicecredfile` option or
+by defining the `GENI_SLICECRED` environment variable to the desired path.
 
-Additionally, if you specify the `--slicecredfile` option and that
+Additionally, if you specify the `--slicecredfile` option or define the
+`GENI_SLICECRED` environment variable, and that
 references a file that is not empty, then we do not query the Slice
 Authority for this credential, but instead read it from this file.
 
@@ -873,10 +1191,20 @@ With no `username` supplied, it will look up slices registered to you
 
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
-control framework for the current user.
-Not supported by all frameworks.
+control framework for the specified user, or current user if not defined.
+Not supported by all frameworks. Some frameworks only support querying
+the current user.
+Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
+
+==== listkeys ====
+Provides a list of SSH public keys registered at the configured
+control framework for the specified user, or current user if not defined.
+Not supported by all frameworks. Some frameworks only support querying
+the current user.
+
+Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -893,7 +1221,8 @@ Sample Usage:
 This is primarily useful for debugging.
 
 If you specify the `-o` option, the credential is saved to a file.
-  If you specify `--usercredfile`:
+  If you specify `--usercredfile` or define the `GENI_USERCRED`
+  environment variable:
     First, it tries to read the user credential from that file.
     Second, it saves the user credential to a file by that name (but
     with the appropriate extension).
@@ -902,8 +1231,8 @@ If you specify the `-o` option, the credential is saved to a file.
   If you specify the `--prefix` option then that string starts the filename.
 
 If instead of the `-o` option, you supply the `--tostdout` option, then
-the usercred is printed to STDOUT.  
-Otherwise the usercred is logged.
+the user credential is printed to STDOUT.  
+Otherwise the user credential is logged.
 
 ==== print_slice_expiration ====
 Print the expiration time of the given slice, and a warning if it is
@@ -921,6 +1250,98 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 With the `--slicecredfile` option the slice's credential is read from
 that file, if it exists. Otherwise the Slice Authority is queried.
 
+==== listslivers ====
+List all slivers of the given slice by aggregate, as recorded at the
+clearinghouse. Note that this is non-authoritative information.
+
+Notes:
+ - This is a function of the clearinghouse, and relies on information
+ reported by Omni and other tools.
+ - This is non-authoritative information: your slice may have other
+ reservations and some of these reservations may have since been
+ renewed or deleted.
+ - This command does not list all known aggregates, only those used by a
+ particular slice. For a list of all known aggregates, see `listaggregates`.
+
+Format: `omni.py listslivers <slice name>`
+
+Sample usage: `omni.py listslivers myslices`
+
+Return: String printout of slivers by aggregate, with the sliver expiration if known, AND
+a dictionary by aggregate URN of a dictionary by sliver URN of the sliver info records, 
+each of which is a dictionary possibly containing:
+ - `SLIVER_INFO_URN`: URN of the sliver
+ - `SLIVER_INFO_SLICE_URN`: Slice URN
+ - `SLIVER_INFO_AGGREGATE_URN`: Aggregate URN
+ - `SLIVER_INFO_CREATOR_URN`: URN of the user who reserved the sliver,
+ or who first reported the sliver if not known
+ - `SLIVER_INFO_EXPIRATION`: When the sliver expires, if known
+ - `SLIVER_INFO_CREATION`: When the sliver was created if known (or
+ sometimes when it was first reported to the clearinghouse)
+
+This is purely advisory information, that is voluntarily reported by
+some tools and some aggregates to the clearinghouse. As such, it is
+not authoritative. You may use it to look for reservations, but if you
+require accurate information you must query the aggregates. Note in
+particular that slivers reserved through Flack are currently not reported here.
+
+This function is only supported at some `chapi` style clearinghouses,
+including the GENI Clearinghouse.
+
+==== listslicemembers ====
+List all the members of the given slice, including their registered
+public SSH keys.
+
+Format: `omni.py listslicemembers <slicename>`
+
+Sample usage: `omni.py listslicemembers myslice>`
+
+Output prints out the slice members and their SSH keys, URN, and
+email.
+
+Return is a list of the members of the slice as registered at the
+clearinghouse. For each such user, the return includes:
+ - `KEYS`: a list of all public SSH keys registered at the clearinghouse
+ - `URN` identifier of the user
+ - `EMAIL` address of the user
+ - `ROLE` of the user in the slice.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+Note also that just because a slice member has SSH keys registered does not
+mean that those SSH keys have been installed on all reserved compute resources.
+
+==== addslicemember ====
+Add the named user to the named slice. The user's role in the
+slice will be `MEMBER` if not specified.
+
+Format: `omni.py addslicemember <slice name> <user username> [role]`
+
+Sample Usage: `omni.py addslicemember myslice jsmith`
+
+Return is a boolean indicating success or failure.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+Note also that `role` may be limited to certain values, typically
+`ADMIN`, `MEMBER`, or `AUDITOR`. Typically `AUDITOR` members may not
+get a slice credential and so may not act on slices, but may only see them.
+
+This function is typically a privileged operation at the
+clearinghouse, limited to slice members with the role `LEAD` or
+`ADMIN`.
+
+Note also that adding a user to a slice does not automatically add
+their public SSH keys to resources that have already been reserved.
+
 ==== getversion ====
 Call the AM API !GetVersion function at each aggregate.
 Get basic information about the aggregate and how to talk to it.
@@ -935,7 +1356,7 @@ Sample Usage:
     `omni.py -o getversion`
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1010,12 +1431,15 @@ create a reservation RSpec, suitable for use in a call to
 If a slice name is supplied, then resources for that slice only 
 will be displayed.  In this case, the slice credential is usually
 retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it
+with the `--slicecredfile` option it is read from the specified file, if it
 exists. Note that the slice name argument is only valid in AM API v1
 or v2; for v3, see `describe`.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1038,7 +1462,8 @@ Other options:
  is returned. Use `getversion` to see available types at that AM. Type
  and version are case-insensitive strings. This argument defaults to
  'GENI 3' if not supplied.
- - `--slicecredfile <filename>` says to use the given slicecredfile if it exists.
+ - `--slicecredfile <filename>` says to use the given slice credential
+ file if it exists.
  - `--no-compress`: Request the returned RSpec not be compressed (default is to compress)
  - `--available`: Return Advertisement consisting of only available resources
  - `-l <config file>` to specify a logging config file
@@ -1084,6 +1509,9 @@ Lists contents and state on 1+ aggregates and prints the result to stdout or to 
    described. Otherwise, all slivers in the slice will be described.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config `aggregates` option, if provided, ELSE
@@ -1146,6 +1574,12 @@ Sample Usage:
      omni.py -a pg-gpo -o -p myPrefix \
              createsliver myslice resources.rspec
 }}}
+ * Reserve resources, installing all slice members' keys on the new
+ nodes, but not any users listed in `omni_config`.
+{{{
+     omni.py -a ig-gpo --useSliceMembers --ignoreConfigUsers \
+             createsliver myslices resources.rspec
+}}}
 
 Note: 
 The request RSpec file argument should have been created by using
@@ -1155,12 +1589,12 @@ Warning: request RSpecs are often very different from advertisement
 RSpecs.
 
 When you call
-     omni.py createsliver myslice myrspec
+     `omni.py createsliver myslice myrspec`
 omni will try to read 'myrspec' by interpreting it in the following order:
 1. a URL or a file on the local filesystem
 2. an RSpec nickname specified in the omni_config
 3. a file in a location (file or url) defined as: 
-   <default_rspec_server>/<rspec_nickname>.<default_rspec_extension> 
+   `<default_rspec_server>/<rspec_nickname>.<default_rspec_extension>` 
 where <default_rspec_server> and <default_rspec_extension> are defined in the omni_config.
 
 For help creating GENI RSpecs, see
@@ -1202,9 +1636,16 @@ Options for development and testing:
 Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
-omni_config users section is used to get a set of SSH keys that
+Users and SSH Keys:
+By default, the omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this.
+remote resource and aggregate support this. 2 options control this:
+ - `--ignoreConfiguUsers': When supplied, ignore the omni_config
+ `users` and do not install any keys listed there.
+ - `--useSliceMembers`: When supplied and you use a
+ framework/clearinghouse that supports it (i.e. type `chapi), query
+ the clearinghouse for all configured members of the slice and their
+ public SSH keys. Also install those users and keys.
 
 Note you likely want to check `sliverstatus` to ensure your resource comes up.
 And check the sliver expiration time; you may want to call `renewsliver` to extend the expiration time.
@@ -1250,6 +1691,8 @@ Aggregates queried:
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+ - Note that `--useSliceAggregates` is not honored, as the desired
+   aggregate usually has no resources in this slice yet.
 
 Note that if multiple aggregates are supplied, the same RSpec will be submitted to each.
 Aggregates should ignore parts of the Rspec requesting specific non-local resources (bound requests), but each
@@ -1332,6 +1775,8 @@ Aggregates queried:
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+ - Note that `--useSliceAggregates` is not honored, as the desired
+   aggregate usually has no resources in this slice yet.
 
 Options:
  - `--sliver-urn` or `-u` option: each specifies a sliver URN to provision. If specified,
@@ -1348,9 +1793,16 @@ Options:
 Note that some aggregates may require provisioning all slivers in the same state at the same
 time, per the `geni_single_allocation` !GetVersion return.
 
-omni_config `users` section is used to get a set of SSH keys that
+Users and SSH Keys:
+By default, the omni_config `users` section is used to get a set of SSH keys that
 should be loaded onto the remote node to allow SSH login, if the
-remote resource and aggregate support this.
+remote resource and aggregate support this. 2 options control this:
+ - `--ignoreConfiguUsers': When supplied, ignore the omni_config
+ `users` and do not install any keys listed there.
+ - `--useSliceMembers`: When supplied and you use a
+ framework/clearinghouse that supports it (i.e. type `chapi), query
+ the clearinghouse for all configured members of the slice and their
+ public SSH keys. Also install those users and keys.
 
 Output directing options:
  - `-o`: Save result in per-aggregate files
@@ -1387,7 +1839,7 @@ For use with AM API v3+ only. For AM API v1 or v2 use `createsliver`.
 Perform the named operational action on the named slivers or slice, possibly changing
 the `geni_operational_status` of the named slivers. e.g. 'start' a VM. For valid
 operations and expected states, consult the state diagram advertised in the
-aggregate's advertisement RSpec.
+aggregate's advertisement RSpec. Commonly available actions are listed below.
 
 Sample usage:
  * Do `geni_start` on all slivers in myslice:
@@ -1401,6 +1853,25 @@ Sample usage:
 	   poa myslice geni_start
 }}}
 
+Common `poa` Actions:
+Some actions are well known and supported at many aggregates and
+resource types. Always check the Ad RSpec for an aggregate to verify
+what is supported.
+ - `geni_start`: Make the resources ready for use (like booting
+ machines). No options needed
+ - `geni_restart`: For example, reboot a machine. No options required.
+ - `geni_stop`: Stop a resource (e.g. shut it down). No options
+ needed.
+ - `geni_update_users`: Refresh the set of user accounts and installed
+ SSH keys on the resource. Takes the option `geni_users`. This action
+ creates any users specified that do not already exist, and sets the
+ SSH keys for all users per the list of keys specified - including
+ removing keys not explicitly listed. The `geni_users` option can be
+ supplied using the `--optionsfile` argument. If not supplied that
+ way, then users are read from the omni_config or clearinghouse slice
+ members, as documented under `createsliver`.
+
+Note:
 Clients must `renew` or use slivers before the expiration time
 (given in the return struct), or the aggregate will automatically delete them.
 
@@ -1409,6 +1880,9 @@ Options:
    only the listed slivers will be acted on. Otherwise, all slivers in
    the slice will be acted on.
    Note though that actions are state and resource type specific, so the action may not apply everywhere.
+ - `--optionsfile`: Path to a JSON format file defining options to be passed to
+ the aggregate. The specific required options depend on the action
+ specified.
 
 Slice name could be a full URN, but is usually just the slice name
 portion.
@@ -1416,6 +1890,9 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1476,10 +1953,13 @@ Note that PLC Web UI lists slices as <site name>_<slice name>
 (e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
 
 Slice credential is usually retrieved from the Slice Authority. But
-with the --slicecredfile option it is read from the specified file, if it exists.
+with the `--slicecredfile` option it is read from the specified file, if it exists.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1490,6 +1970,13 @@ Unqualified times are assumed to be in UTC. See below for an exception.
 Note that the expiration time cannot be past your slice expiration
 time (see `print_slice_expiration` and `renewslice`). Some aggregates will
 not allow you to _shorten_ your sliver expiration time.
+
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
 
 Note that older SFA-based aggregates (like the MyPLC aggregates in the
 GENI mesoscale deployment) fail to renew slivers when a timezone is
@@ -1533,7 +2020,10 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1543,6 +2033,13 @@ Unqualified times are assumed to be in UTC.  Note that the expiration
 time cannot be past your slice expiration time (see
 `print_slice_expiration` and `renewslice`). Some aggregates will not
 allow you to _shorten_ your sliver expiration time.
+
+Aggregates may have local policy that limits how long reservations may
+be renewed, possibly per resource type or even per user. By default,
+if your reservation cannot be extended to your requested time, the
+whole operation fails. To request that your reservation be extended as
+long as possible, supply the `--alap` option. Default is `False`. This
+option is not supported at all aggregates.
 
  - `--sliver-urn <urn>` / -u option: each specifies a sliver URN to renew. If specified,
    only the listed slivers will be renewed. Otherwise, all slivers in the slice will be renewed.
@@ -1604,7 +2101,10 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1642,7 +2142,10 @@ with the `--slicecredfile` option it is read from that file, if it exists.
    only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1733,7 +2236,10 @@ with the `--slicecredfile` option it is read from that file, if it exists.
    and slivers do not change.
 
 Aggregates queried:
- - Each URL given in an -a argument or URL listed under that given
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
    nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
@@ -1784,6 +2290,9 @@ Slice credential is usually retrieved from the Slice Authority. But
 with the `--slicecredfile` option it is read from that file, if it exists.
 
 Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
  - Single URL given in `-a` argument or URL listed under that given
  nickname in omni_config, if provided, ELSE
  - List of URLs given in omni_config aggregates option, if provided, ELSE
@@ -1829,7 +2338,7 @@ Only one aggregate should be queried.
  - You will likely get an error
 
 ==== snapshotimage ====
-Alias for createimage
+Alias for `createimage`
 
 ==== deleteimage ====
 Call the ProtoGENI / InstaGENI !DeleteImage method, to delete a disk
@@ -1840,7 +2349,7 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py deleteimage IMAGEURN [CREATORURN]
+Format: `omni.py deleteimage IMAGEURN [CREATORURN]`
 
 Deletes the image with the given URN. Use the image URN from the
 return of createimage, or the email ProtoGENI sends when the image
@@ -1868,12 +2377,12 @@ ProtoGENI AMs.
 
 See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
 
-Format: omni.py listimages [CREATORURN]
+Format: `omni.py listimages [CREATORURN]`
 
 List the disk images created by the given user. 
 Takes a user urn or name. If no user is supplied, uses the caller's urn. 
 Returns a list of all images created by that user, including the URN 
-for deleting the image. Return is a list of structs containing the url and urn of the iamge.
+for deleting the image. Return is a list of structs containing the `url` and `urn` of the iamge.
 Note that you should invoke this at the AM where the images were created.
 
 Aggregates queried:
@@ -1882,7 +2391,7 @@ Aggregates queried:
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
-=== nicknames ===
+==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
 the Omni config file(s). 
 

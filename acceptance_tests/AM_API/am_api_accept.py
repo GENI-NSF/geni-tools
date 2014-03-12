@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -36,18 +36,19 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as etree 
 
-from geni.util import rspec_util 
-from geni.util.rspec_schema import *
-from geni.util import urn_util
-from geni.util import error_util
+from gcf.geni.util import rspec_util 
+from gcf.geni.util.rspec_schema import *
+from gcf.geni.util import urn_util
+from gcf.geni.util import error_util
 
-import omni
+import gcf.oscript as omni
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, WrongRspecType
-from omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
-import omnilib.util.json_encoding as json_encoding
-import omnilib.util.credparsing as credparsing
+from gcf.omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
+import gcf.omnilib.util.json_encoding as json_encoding
+import gcf.omnilib.util.credparsing as credparsing
+from gcf.sfa.trust.credential import Credential
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"
@@ -334,7 +335,8 @@ class Test(ut.OmniUnittest):
                     geni_version = self.assertReturnKeyValueType( 
                         'GetVersion', agg, creds, 
                         'geni_version', str )
-                    if geni_type == 'geni_sfa' and (geni_version == '2' or geni_version == '3'):
+                    if geni_type == Credential.SFA_CREDENTIAL_TYPE \
+                            and (geni_version == '2' or geni_version == '3'):
                         hasSfa = True
                         continue
                 self.assertTrue( hasSfa,

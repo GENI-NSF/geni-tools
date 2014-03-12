@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Raytheon BBN Technologies
+# Copyright (c) 2013-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -65,16 +65,18 @@ import optparse
 import os
 import sys
 
-import omni
-from omnilib.util import OmniError, AMAPIError
-from omnilib.stitchhandler import StitchingHandler
-from omnilib.stitch.utils import StitchingError
-from omnilib.stitch.objects import Aggregate
-import omnilib.stitch.objects
-#from omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
+import gcf.oscript as omni
+from gcf.omnilib.util import OmniError, AMAPIError
+from gcf.omnilib.stitchhandler import StitchingHandler
+from gcf.omnilib.stitch.utils import StitchingError
+from gcf.omnilib.stitch.objects import Aggregate
+import gcf.omnilib.stitch.objects
+#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
+
+DEFAULT_CAPACITY = 20000 # in Kbps
 
 # Call is the way another script might call this.
 # It initializes the logger, options, config (using omni functions),
@@ -93,7 +95,7 @@ def call(argv, options=None):
     parser = omni.getParser()
     # update usage for help message
     omni_usage = parser.get_usage()
-    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2013 Raytheon BBN Technologies\n" + 
+    parser.set_usage("\n" + "GENI Omni Stitching Tool\n" + "Copyright (c) 2014 Raytheon BBN Technologies\n" + 
                      omni_usage+
                      "\nstitcher.py does stitching if the call is createsliver or allocate, else it just calls Omni.\n")
 
@@ -114,7 +116,7 @@ def call(argv, options=None):
                       help="Hop URN to include on every path - use with caution")
     parser.add_option("--ionRetryIntervalSecs", type="int", 
                       help="Seconds to sleep before retrying at ION (default 10*60)",
-                      default=omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+                      default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
     parser.add_option("--ionStatusIntervalSecs", type="int", 
                       help="Seconds to sleep between sliverstatus calls at ION (default 30)",
                       default=30)
@@ -122,6 +124,12 @@ def call(argv, options=None):
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
                       help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")
+    parser.add_option("--useExoSM", default=False, action="store_true",
+                      help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default False)")
+    parser.add_option("--defaultCapacity", default=DEFAULT_CAPACITY,
+                      type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
+    parser.add_option("--noReservation", default=False, action="store_true",
+                      help="Do no reservations: just generate the expanded request RSpec (default False)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -156,6 +164,9 @@ def call(argv, options=None):
     if options.debug:
         logger.info(omni.getSystemInfo())
 
+    if options.defaultCapacity < 1:
+        logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)
+    # FIXME: Warn about really big capacities too?
     handler = StitchingHandler(options, config, logger)
     return handler.doStitching(args)
 

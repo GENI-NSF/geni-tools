@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2013 Raytheon BBN Technologies
+# Copyright (c) 2010-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -49,10 +49,10 @@ import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
 
-from geni.config import read_config
-from omnilib.xmlrpc.client import make_client
-import sfa.trust.credential as cred
-import sfa.trust.gid as gid
+from gcf.geni.config import read_config
+from gcf.omnilib.xmlrpc.client import make_client
+import gcf.sfa.trust.credential as cred
+import gcf.sfa.trust.gid as gid
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -93,7 +93,7 @@ def test_create_sliver(server, slice_urn, slice_credential, dom):
         return
 
     # Otherwise make an unbounded request
-    # from src/geni/am/amapi2-request.xml
+    # from src/gcf/geni/am/amapi2-request.xml
     request_rspec = \
 '<?xml version="1.0" encoding="UTF-8"?>' + \
 '<rspec xmlns="http://www.geni.net/resources/rspec/3"' + \

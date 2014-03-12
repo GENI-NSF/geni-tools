@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2010-2013 Raytheon BBN Technologies
+# Copyright (c) 2010-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -46,9 +46,9 @@ import random
 import xml.dom.minidom as minidom
 import xmlrpclib
 import zlib
-from geni.config import read_config
-from omnilib.xmlrpc.client import make_client
-import sfa.trust.credential as cred
+from gcf.geni.config import read_config
+from gcf.omnilib.xmlrpc.client import make_client
+import gcf.sfa.trust.credential as cred
 
 def getAbsPath(path):
     """Return None or a normalized absolute path version of the argument string.
@@ -433,7 +433,8 @@ def exercise_am(ch_server, am_server, api_version=2):
     credentials = [slice_cred_string]
     if api_version > 2:
         # wrap the credential
-        credentials = [dict(geni_type="geni_sfa", geni_version="3", geni_value=slice_cred_string)]
+        credentials = [dict(geni_type=cred.Credential.SFA_CREDENTIAL_TYPE, 
+                            geni_version="3", geni_value=slice_cred_string)]
 
     test_get_version(am_server, api_version)
     dom = test_list_resources(am_server, credentials, apiver=api_version)
@@ -462,7 +463,8 @@ def exercise_am(ch_server, am_server, api_version=2):
     credentials = [slice_cred_string]
     if api_version > 2:
         # wrap the credential
-        credentials = [dict(geni_type="geni_sfa", geni_version="3", geni_value=slice_cred_string)]
+        credentials = [dict(geni_type=cred.CREDENTIAL.SFA_CREDENTIAL_TYPE, 
+                            geni_version="3", geni_value=slice_cred_string)]
     dom = test_list_resources(am_server, credentials, apiver=api_version)
     if dom is None:
         print 'No Ad RSpec - cannot create a sliver'

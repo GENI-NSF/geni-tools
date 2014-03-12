@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -46,9 +46,9 @@ import logging
 import optparse
 import os
 
-import geni
-from geni.gch import GENIClearinghouse
-from geni.config import read_config
+from gcf import geni
+from gcf.geni.gch import GENIClearinghouse
+from gcf.geni.config import read_config
 
 config = None
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,10 +26,12 @@
 import copy
 import string
 import sys
-import omni
 import os.path
 import time
+
 import readyToLogin
+
+import gcf.oscript as omni
 
 ################################################################################
 # Requires that you have omni installed and add the paths to gcf/src and
@@ -94,10 +96,10 @@ def modifyToIgnoreHostChecking(loginCommands) :
     loginCommands[k]['command'] = c.replace("ssh ", "ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ")
 
 def executeCommand( loginCommands, host, command) :
-  print "Send command %s to %s" % (command, host)
+  print "2. Send command '%s' to %s\n" % (command, host)
   finalCommand = loginCommands[host]["command"] + " '" + command +"'"
   os.system(finalCommand)
-  print "Done with command %s to %s" % (command, host)
+  print "... Done with command '%s' at %s" % (command, host)
   time.sleep(5)
 
 def getParser() : 
@@ -149,7 +151,7 @@ def main(argv=None):
     argv = sys.argv[1:]
 
   parseArguments(argv=argv)
-  print "Find login Info for hosts in slice %s" % slicename
+  print "1. Find login Info for hosts in slice %s" % slicename
   loginInfoDict, keyList = readyToLogin.main_no_print(argv=argv, opts=options, slicen = slicename)
   loginCommands = getLoginCommands(loginInfoDict, keyList)
   modifyToIgnoreHostChecking(loginCommands)

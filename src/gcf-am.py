@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -40,11 +40,12 @@ elif sys.version_info >= (3,):
 import logging
 import optparse
 import os
-import geni
-import geni.am
-import geni.am.am2
-import geni.am.am3
-from geni.config import read_config
+
+from gcf import geni
+import gcf.geni.am
+import gcf.geni.am.am2
+import gcf.geni.am.am3
+from gcf.geni.config import read_config
 
 
 def parse_args(argv):
@@ -137,14 +138,14 @@ def main(argv=None):
                                           ca_certs=comboCertsFile,
                                           base_name=config['global']['base_name'])
     elif opts.api_version == 2:
-        ams = geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
+        ams = gcf.geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
                                           keyfile=keyfile,
                                           certfile=certfile,
                                           trust_roots_dir=getAbsPath(opts.rootcadir),
                                           ca_certs=comboCertsFile,
                                           base_name=config['global']['base_name'])
     elif opts.api_version == 3:
-        ams = geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
+        ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                           keyfile=keyfile,
                                           certfile=certfile,
                                           trust_roots_dir=getAbsPath(opts.rootcadir),

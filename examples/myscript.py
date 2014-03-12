@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2012-2013 Raytheon BBN Technologies
+# Copyright (c) 2012-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -28,9 +28,9 @@ import pprint
 import re
 import sys
 
-import omni
-from omnilib.util.omnierror import OmniError
-from omnilib.util.files import *
+import gcf.oscript as omni
+from gcf.omnilib.util.omnierror import OmniError
+from gcf.omnilib.util.files import *
   
 
 ################################################################################

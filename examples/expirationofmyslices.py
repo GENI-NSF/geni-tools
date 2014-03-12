@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -24,7 +24,7 @@
 #----------------------------------------------------------------------
 
 import sys
-import omni
+import gcf.oscript as omni
 
 ################################################################################
 # Requires that you have omni installed or the path to gcf/src in your
@@ -48,7 +48,6 @@ def main(argv=None):
     username = args[0].strip()
   else:
     username = None
-#    username = sfa.util.xrn.get_leaf(omnilib.util.handler_utils._get_user_urn(self))
 #    if not username:
 #      sys.exit( "Must provide a username as the first argument of script" )
 

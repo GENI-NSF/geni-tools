@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -24,22 +24,24 @@
 #----------------------------------------------------------------------
 """ Acceptance tests for AM API v1."""
 
-import datetime
-from geni.util import rspec_util 
-import unittest
+from gcf.geni.util import rspec_util 
 import omni_unittest as ut
 from omni_unittest import NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError
-from omnilib.util import OmniError, NoSliceCredError
-import omni
+from gcf.omnilib.util import OmniError, NoSliceCredError
+import gcf.oscript as omni
+
+import am_api_accept as accept
+
+import datetime
 import os
 import pprint
 import re
 import sys
 import time
 import tempfile
+import unittest
 
-import am_api_accept as accept
 
 # Works at PLC
 PGV2_RSPEC_NAME = "ProtoGENI"

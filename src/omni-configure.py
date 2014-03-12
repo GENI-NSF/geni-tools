@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -32,7 +32,7 @@
     configuration is needed (multiple users, etc) this should still be done
     manually by editing the omni configuration file. 
 """
-
+from base64 import b64encode
 import string, re
 import sys, os, platform, shutil
 import zipfile
@@ -40,7 +40,8 @@ from subprocess import Popen, PIPE
 import ConfigParser
 import optparse
 import logging
-from sfa.trust.certificate import Certificate, Keypair
+from gcf.sfa.trust.certificate import Certificate, Keypair
+import M2Crypto
 
 logger = None
 
@@ -386,21 +387,17 @@ def get_pub_keys_from_bundle(omnizip) :
 
 
 def generatePublicKey(private_key_file):
-    """ This function generates a public key using ssh-keygen 
-        shell command. The public key is based on the 
+    """ This function generates a public key based on the 
         the private key in the 'private_key_file'
         The function returns the name of the public key file
         or None if the creation failed
     """
-    args = ['ssh-keygen', '-y', '-f']
-    args.append(private_key_file)
-    logger.debug("Create public key using ssh-keygen: '%s'", args)
-
+    logger.debug("Create public key based on private key.")
     succ = False
     for i in range(0,3) :
-        p = Popen(args, stdout=PIPE)
-        public_key = p.communicate()[0]
-        if p.returncode != 0:
+        try:
+            private_key = M2Crypto.RSA.load_key( private_key_file )
+        except:
             logger.warning("Error creating public key, passphrase might be wrong.")
             continue
         succ = True
@@ -410,12 +407,25 @@ def generatePublicKey(private_key_file):
         logger.warning("Unable to create public key.")
         return None
     public_key_file = private_key_file + '.pub'
+
+    # generate a public key based on the passed in private key
+    public_key = M2Crypto.RSA.new_pub_key( private_key.pub() )
+    # Output key in format:
+    # ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB <snip>
+    # The following is base64 encoding of three pairs of (len, string) where len is the length of the string:
+    #  * the string "rsa" (so this is "\x00\x00\x00\x07ssh-rsa")
+    #  * public_key.pub()[0] aka 'e' the "RSA public exponent"
+    #  * public_key.pub()[1] aka 'n' the "RSA composite of primes"
+    # .pub() generates the tuple (e,n) in the appropriate format.  See: 
+    #    http://nullege.com/codes/search/M2Crypto.RSA.new_pub_key
+    # The following line of code is from: http://stackoverflow.com/a/3939477/1804086
+    key_output = b64encode('\x00\x00\x00\x07ssh-rsa%s%s' % (public_key.pub()[0], public_key.pub()[1]))
     try :
         f = open(public_key_file,'w')
     except :
         logger.warning("Error opening file %s for writing. Make sure that you have the right permissions." % public_key_file)
         return None
-    f.write("%s" % public_key)
+    f.write("ssh-rsa %s\n" % key_output)
     f.close()
     logger.info("Public key stored at: %s", public_key_file)
     return public_key_file
@@ -506,8 +516,8 @@ def copyPrivateKeyFile(src_file, dst_file):
     logger.info("Private key stored at: %s", dst_file)
     # Change the permission to something appropriate for keys
     logger.debug("Changing permission on private key to 600")
-    os.chmod(dst_file, 0600)
-    os.chmod(src_file, 0600)
+    os.chmod(dst_file, 0o600)
+    os.chmod(src_file, 0o600)
     return dst_file
 
 def parseArgs(argv, options=None):
@@ -516,7 +526,12 @@ def parseArgs(argv, options=None):
     """
 
     usage = "\n Script for automatically configuring Omni."
-
+    
+    if platform.system().lower().find('windows') != -1 and  platform.release().lower().find('xp') != -1:
+        DEFAULT_DOWNLOADS_FLDR = "~/My Documents/Downloads"
+    else:
+        DEFAULT_DOWNLOADS_FLDR = "~/Downloads" 
+    DEFAULT_DOWNLOADS = DEFAULT_DOWNLOADS_FLDR+"/omni-bundle.zip"
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-c", "--configfile", default="~/.gcf/omni_config",
                       help="Config file location [DEFAULT: %default]", 
@@ -534,7 +549,7 @@ def parseArgs(argv, options=None):
                       help="Directory for the location of SSH keys for "+ \
                       "logging in to compute resources, [DEFAULT: %default]" ,
                       metavar="FILE")
-    parser.add_option("-z", "--portal-bundle", default="~/Downloads/omni-bundle.zip",
+    parser.add_option("-z", "--portal-bundle", default=DEFAULT_DOWNLOADS,
                       help="Bundle downloaded from the portal for "+ \
                       "configuring Omni [DEFAULT: %default]", metavar="FILE")
     parser.add_option("-f", "--framework", default="portal", type='choice',
@@ -546,6 +561,10 @@ def parseArgs(argv, options=None):
                       default=False, help="Lets you choose which project to "+ \
                       "use as default from the projects in the bundle "+ \
                       "downloaded from the portal")
+    parser.add_option("--not-use-chapi", dest="use_chapi", 
+                      action="store_false",
+                      default=True, help="If available, do not configure the "+ \
+                      "omni_config to use the common Clearinghouse API (CH API).")
     parser.add_option("-v", "--verbose", default=False, action="store_true",
                       help="Turn on verbose command summary for omni-configure script")
 
@@ -554,6 +573,11 @@ def parseArgs(argv, options=None):
         return
 
     (opts, args) = parser.parse_args(argv, options)
+    opts.configfile = os.path.normcase(os.path.expanduser(opts.configfile))    
+    opts.cert = os.path.normcase(os.path.expanduser(opts.cert))    
+    opts.prcertkey = os.path.normcase(os.path.expanduser(opts.prcertkey))    
+    opts.sshdir = os.path.normcase(os.path.expanduser(opts.sshdir))    
+    opts.portal_bundle = os.path.normcase(os.path.expanduser(opts.portal_bundle))    
     return opts, args
 
 def initialize(opts):
@@ -568,7 +592,7 @@ def initialize(opts):
     if not os.path.exists(configdir):
       # If the directory does not exist but it is the 
       # default directory, create it, if not print an error
-      if not cmp(os.path.expanduser('~/.gcf'), configdir):
+      if not cmp(os.path.normcase(os.path.expanduser('~/.gcf')), configdir):
         logger.info("Creating directory: %s", configdir)
         os.makedirs(configdir)
       else:
@@ -587,8 +611,6 @@ def initialize(opts):
     # Validate that the sshdir does not conflict with the tmp
     # folders used for the portal
     if opts.framework is 'portal':
-      print "PORTAL"
-      print opts.sshdir
       if opts.sshdir.startswith('/tmp/omni_bundle') :
             sys.exit("\n\nExit!\nYou can't use as your ssh directory "+\
                      opts.sshdir + ". It is used internally by the script, rerun "+\
@@ -687,7 +709,6 @@ def configureSSHKeys(opts):
         os.makedirs(ssh_dir)
 
     private_key_file = copyPrivateKeyFile(pkey, private_key_file)
-
     public_key_file = generatePublicKey(private_key_file)
     if not public_key_file:
         #we failed at generating a public key, remove the private key and exit
@@ -787,13 +808,19 @@ def fixNicknames(config) :
     # ExoGENI AMs
 
 def getPortalOmniSection(opts, config, user, projects) :
-
     omni_section = """
 [omni]
 default_cf=%s
 users=%s
 default_project=%s
+
 """ %(opts.framework, user, config['omni']['default_project'])
+
+    if config['selected_framework']['type'] == 'chapi':
+        omni_section += """
+# Over-ride the commandline setting of --useSliceMembers to force it True
+useslicemembers = %s
+""" %(True)
 
     for p in projects :
       if p != config['omni']['default_project'] :
@@ -802,7 +829,6 @@ default_project=%s
     return omni_section
 
 def getPortalSFSection(opts, config) :
-
     return """
 [portal]
 type = pgch
@@ -814,6 +840,35 @@ key = %s
 """ %(
       config['selected_framework']['authority'], 
       config['selected_framework']['ch'], 
+      config['selected_framework']['sa'],
+      opts.cert, opts.prcertkey)
+
+
+def getPortalCHAPISFSection(opts, config) :
+
+    return """
+[portal]
+# For use with the Uniform Federation API
+type = chapi
+# Authority part of the control framework's URN
+authority = %s
+# Where the CH API server's Clearinghouse service is listening.
+# This will be used to find the MA and SA
+ch = %s
+# Optionally you may explicitly specify where the MA and SA are
+#  running, in which case the Clearinghouse service is not used 
+#  to find them
+ma = %s
+sa = %s
+cert = %s
+key = %s
+# For debugging
+verbose=false
+
+""" %(
+      config['selected_framework']['authority'], 
+      config['selected_framework']['ch'], 
+      config['selected_framework']['ma'],
       config['selected_framework']['sa'],
       opts.cert, opts.prcertkey)
 
@@ -865,11 +920,21 @@ def getPortalConfig(opts, public_key_list, cert) :
     # The bundle contains and omni_config
     # extract it and load it
     omnizip = zipfile.ZipFile(opts.portal_bundle)
-    omnizip.extract('omni_config', '/tmp/omni_bundle')
+    bundle_omni_configs = ['omni_config']
+    if opts.use_chapi:
+        # if want to use CH API, then look in 'omni_config_chapi' first
+        bundle_omni_configs = ['omni_config_chapi'] + bundle_omni_configs
+    for config in bundle_omni_configs:
+        try:
+            omnizip.extract(config, '/tmp/omni_bundle')
+            config_path = os.path.join('/tmp/omni_bundle/', config)
+            config = loadConfigFile(config_path)
+            break
+        except:
+            pass
 
-    config = loadConfigFile('/tmp/omni_bundle/omni_config')
-    projects = loadProjects('/tmp/omni_bundle/omni_config')
-    os.remove('/tmp/omni_bundle/omni_config')
+    projects = loadProjects(config_path)
+    os.remove(config_path)
 
     if not config['selected_framework'].has_key('authority'):
       sys.exit("\nERROR: Your omni bundle is old, you must get a new version:\n"+
@@ -896,7 +961,10 @@ def getPortalConfig(opts, public_key_list, cert) :
 
     omni_section = getPortalOmniSection(opts, config, user, projects)
     user_section = getPortalUserSection(opts, user, user_urn, public_key_list)
-    cf_section = getPortalSFSection(opts, config)
+    if config['selected_framework']['type'] == 'chapi':
+        cf_section = getPortalCHAPISFSection(opts, config)
+    else:
+        cf_section = getPortalSFSection(opts, config)
     rspecnick_section = getRSpecNickSection(opts, config)
     amnick_section = getPortalAMNickSection(opts, config)
 
@@ -985,9 +1053,13 @@ def getPGConfig(opts, public_key_list, cert) :
 
     (user, user_urn) = getUserInfo(cert)
 
-    if user_urn.find('emulab.net') != -1 :
+    # UKY has to go first because emulab.net is a substring of uky.emulab.net
+    if user_urn.find('uky.emulab.net') != -1 :
+      sa = 'https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa'
+    else:
+      if user_urn.find('emulab.net') != -1 :
         sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
-    else :
+      else :
         if user_urn.find('pgeni.gpolab.bbn.com') != -1 :
             sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
         else : 

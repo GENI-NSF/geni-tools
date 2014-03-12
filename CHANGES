@@ -1,5 +1,307 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.5.1:
+ * Update licenses file for Windows and Mac Omni packages (#552)
+
+gcf 2.5:
+ * Released Windows and Mac OS X packages of the Omni experimenter
+   utilities. (Developer gcf components are not included.)
+ * Omni adds the ability to contact clearinghouses that speak the
+   Uniform Federation API using framework type `chapi`
+ * When using the new `chapi` framework allow a `--useSliceAggregates`
+   option to specify that the aggregate action should be taken at all
+   aggregates at which you have resources in this slice. (#507)
+ * Added new options to allow installing SSH keys of all slice members
+   when using the new `chapi` framework. (#491, #278)
+ * Refactored the source code to make it easier to import Omni in
+   other tools. Look in `src/gcf` for directories that were
+   previously directly under `src`. (#388) Thanks to Nick Bastin.
+ * Added utilities for creating and processing 'Speaks For'
+   credentials (which Omni can pass along to aggregates and to Uniform
+   Federation API clearinghouses).
+ * Timeout Omni calls to servers after 6 minutes (controlled by `--ssltimeout`)
+ * Stitcher adds an option to force use of the ExoSM for EG resources.
+ * Stitcher saves the manifest RSpec to a file by default.
+ * Stitcher fills in capacity on your links where it is missing
+   (amount is configurable)
+ * Stitcher adds the ability to query the Stitching Service for a list of
+   stitchable aggregates.
+
+ * omni
+  - Add a new framework type `chapi` for talking the Uniform Federation API 
+    (http://groups.geni.net/geni/wiki/UniformClearinghouseAPI)
+    to compliant clearinghouses (e.g. GENI Clearinghouse). (#345, #440)
+   - See `omni_config.sample` for config options required
+   - To upgrade a `pgch` config for `ch.geni.net` to a `chapi` config:
+    - Change `type = pgch` to `type = chapi`
+    - Change `ch = https://ch.geni.net...` to:
+{{{
+ch=https://ch.geni.net:8444/CH
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
+}}}
+   Included in this change:
+   - When creating or renewing or deleting slivers, tell the Slice Authority.
+     This allows the SA to know (non-authoritatively) where your slice
+     has resources. (#439)
+   - New function `listslivers <slice>`: lists the slivers reported to 
+     the slice authority in the given slice, by aggregate (with
+     the sliver expirations). Note that this information is not
+     authoritative - contact the aggregates if you want to be sure
+     not to miss any reservations.
+   - New function `listslicemembers <slice>`: lists the members of
+     the given slice, with their email and registered SSH public
+     keys (if any) and role in the slice. (#421, #431, #278)
+   - New function `addslicemember <slice> <usernane> [optional: role]`:
+     Adds the user with the given username to the named slice,
+     with the given role (or `MEMBER` by default). Note this
+     does not change what SSH keys are installed on any existing
+     slivers. (#422, #513)
+  - Support `geni_extend_alap` with new `--alap` option, allowing you to
+    request that slivers be renewed as long as possible, if your
+    requested time is not permitted by local AM policy. (#415)
+  - When using the new `chapi` framework allow a `--useSliceAggregates`
+    option to specify that the aggregate action should be taken at all
+    aggregates at which you have resources in this slice. (#507)
+   - Any `-a` aggregates are extra. 
+   - At other frameworks, this is ignored.
+   - This option is ignored for commands like `createsliver`,
+   `allocate`, `provision`, and `getversion`.
+  - Added new option `--noExtraCHCalls` to disable calls to the
+    clearinghouse to report slivers, query for slivers, or query
+    a list of aggregates; explicit CH calls and retrieving credentials
+    is not effected. (#514)
+  - Added new options controlling what SSH keys are installed on
+    compute resources. Default behavior is unchanged. These options
+    control what users are created and SSH keys installed in new
+    slivers from `createsliver` or `provision`, or when you update
+    the installed users and keys using 
+    `performoperationalaction <slice> geni_update_users`.
+    If you supply the new option `--useSliceMembers` and your
+    clearinghouse supports listing slice members (i.e. the new `chapi`
+    type), then Omni will fetch the members of your slice from the
+    clearinghouse and their public SSH keys, and send those to the
+    aggregate to install on new compute resources. (#278, #441)
+    By default, Omni will ''also'' read the users and SSH keys
+    configured in your `omni_config` as usual, ''adding'' those users
+    and keys to the set downloaded from the clearinghouse, if any.
+    You can skip reading the `omni_config` keys by supplying the new option
+    `--ignoreConfigUsers`.
+    As before, `performoperationalaction` allows you to specify a file
+    containing options with the `--optionsfile` option. If that file
+    specifies the `geni_users` option, then that is the only set of
+    users and keys that is supplied with `performoperationalaction`.
+    However, if you do not supply the `geni_users` option from a file,
+    Omni uses the same logic as for `createsliver`, optionally
+    querying your clearinghouse for slice members, and by default 
+    reading users and keys configured in your `omni_config`. (#491)
+  - If set, `GENI_FRAMEWORK` environment variable is the default for
+    the `--framework` option (#315). Thanks to Nick Bastin.
+  - If set, `GENI_USERCRED` and `GENI_SLICECRED` environment variables
+    set the default path to your saved user and slice credentials
+    (#434) Thanks to Nick Bastin.
+  - Handle `~` in `usercredfile` and `slicecredfile` (#455) Thanks to
+    Nick Bastin.
+  - Support querying for other users' SSH keys where the CH supports it (#472)
+  - Allow nicknames or URLs in the aggregates list in `omni_config` (#476)
+  - Allow `PerformOperationalAction` on v2 AMs (#412)
+  - Renew Slice returns actual new expiration (checks the SA, not just
+    assuming success means you got what you asked for) (#428, #447)
+  - Add a 360 second timeout on AM and CH calls. Option `--ssltimeout`
+    allows changing this. (#407)
+   - If Omni hangs talking to a server you believe is up, try
+     specifying `--ssltimeout 0` to disable the timeout. Some servers
+     cannot handle the timeout request. (See ticket #506)
+   - Note this timeout does not work on old versions of python2.6 due
+     to a known python bug: http://bugs.python.org/issue5103
+  - Speed up `listaggregates` in `pgch` framework (don't test AM API
+    compliance) (#482)
+  - Refactored the source code to make it easier to import Omni in
+    other tools. Look in `src/gcf` for directories that were
+    previously directly under `src`. (#388) Thanks to Nick Bastin.
+   - Your Omni based tool no longer needs to include any of the top
+     level scripts that Omni/GCF includes, nor to provide the existing
+     Omni `main`.
+   - Most of the code in `omni.py` has now been moved to
+     `gcf/oscript.py`
+   - To update your script that uses omni as a library:
+    - Change `import omni` to `import gcf.oscript as omni`
+  - Avoid sending options to `getversion` if there are none, to support querying v1 AMs (#375)
+  - Fix passing speaksfor and other options to `createsliver`, `renewsliver` (#377)
+  - `renewslice` when given a slice credential replaces the saved 
+    slice credential in place, rather than in a new filename. (#386)
+  - Create any directories needed in the path to the `agg_nick_cache` (#383)
+  - If using `--AggNickCacheName` and can't read/write to the specified
+    file, omni should fall back to reading `agg_nick_cache.base` (#384)
+  - Look up AM URN by URL in the defined aggregate nicknames (#404)
+  - Support named timezones when renewing, etc (#503)
+  - Eliminated a repetitive log message (#384, #385)
+  - Fix bug in APIv3 calling status with slivers with different
+    expiration times (#408)
+  - Fit Omni result summaries in 80 character wide terminals (#409)
+  - `ForceUseAggNickCache` avoids fetching new cache even if the agg
+    nick cache is old (#391)
+  - SFA slice and user records changed: keys and slices moved (#429)
+  - Fix bug in handling errors in `listimages` and `deleteimage` (#437)
+  - Support unicode urns (#448)
+  - Return any error message from a CH on `getusercred` (#452)
+  - Return error on SA error in `listslices` (#456)
+  - Omni `cred_util.py` uses an omni logger (#460)
+  - URN testing requires 4 `+` separated pieces (#483)
+  - Log at debug when downloading the aggregate nickname cache fails (#485)
+  - `chapi` framework looks up the MA and SA at the clearinghouse,
+    though you can configure where they run. (#490)
+  - Warn when acting at all AMs in the clearinghouse - slow (#461)
+  - Speaks for option that Omni passes to aggregates has been renamed
+    `geni_speaking_for` (#466)
+  - Show the AM nickname instead of URL in output (#424, #504)
+  - Properly parse the verbose config option and let the commandline
+    `--verbosessl` over-ride it talking to clearinghouses. (#509)
+  - Ensure `geni_version` on credential structs is a string.
+    Fix bug in `get_cred_type` and correct for a chapi bug. (#516)
+  - Notice invalid slice and member names earlier and suppress ugly
+    tracebacks on most `chapi` framework errors. (#517)
+  - Support AM API draft proposal O1 and allow '.' and '_' in sliver
+    names, and do not complain or stop needlessly on illegal sliver
+    names. (#518)
+  - Catch parse errors when determining credential type (#521)
+  - Using `chapi` framework, expired slice expirations are printed (#523)
+  - When doing `renewsliver --alap`, if the real expiration is not in
+    the `output` slot, call `sliverstatus` to get it. (#527)
+  - Bail early from `createsliver` or `createimage` if the user
+    didn't specify exactly one aggregate. (#395)
+  - Update copyrights to 2014 (#463, #426)
+  - Handle non string rspec when printing RSpec (#445)
+  - Allow `--optionsfile` with `createimage`, `deleteimage`, and
+    `listimages`. (#532)
+  - Allow underscore in generated clean filenames (#533)
+  - Handle `createslice` errors at the GENI Clearinghouse that might
+    be due to having the wrong case, now the project and slice names 
+    are case sensitive. (#535)
+  - Trim trailing newlines before installing SSH keys (#537)
+  - Explicitly import framework files in `oscript.py` to support
+    Windows and Mac binaries. (#542)
+  - Fix wording and licenses for Windows and Mac binaries (#541)
+ 
+ * stitcher
+  - Completely parse workflows 3+ hops deep (#432)
+  - Retry if SFA AM gives error indicating a new project (#433)
+  - scs.py supports monitoring style invocation. Invoke scs.py directly. 
+    `--monitoring` suppresses some output, and `--scs_url` changes the SCS URL.
+    Return 0 if SCS is up, 1 on error. (#394)
+  - Fix call to delete reservation at an EG AM on allocate error (#406)
+  - Handle empty range of VLANs in VLANRange (#471)
+  - Report per sliver errors at DCN AMs (#481)
+  - Fix circular imports in `RSpecParser` and `objects` (#459)
+  - Add option `--useExoSM` to force use of the ExoSM for EG racks,
+    where possible. Use this if you are reserving bare metal nodes. (#496)
+  - Change filenames to not use bad characters to support Windows (#497)
+  - `Could not verify topo` is fatal at PG AMs (#470)
+  - `Hostname > 63 characters` is fatal at PG AMs (#475)
+  - `Inconsistent ifacemap` is fatal at PG AMs (#477)
+  - `Duplicate link` is fatal at PG AMs (#479)
+  - `Must delete existing` is fatal at PG AMs (#438)
+  - Ensure we have an error message when a DCN reservation failed to
+    become ready and we have no circuitIDs. (#480)
+  - Save the result manifest RSpec to a file always (not to log)
+    unless the user specified `--tostdout` explicitly (#498)
+  - Show the AM nickname in addition to URL in output (#424)
+  - Suppress some useless log messages (#499)
+  - New option to the SCS main `--listaggregates` to list the
+    aggregates known to the SCS. (#501)
+  - Treat another PG error message as meaning the VLAN is
+    unavailable. (#285)
+  - `CreateSliver: Existing record` is fatal at DCN aggregates (#438)
+  - Note known issues in README-stitching (#469)
+  - Added option `--defaultCapacity` to specify the default capacity
+    to fill in on stitchable links that do not specify a capacity.
+    At some aggregates, you must explicitly specify a capacity for
+    stitching to work. Stitcher now ensures that all your stitchable
+    links have an explicit capacity. (#464)
+   - Works around issues http://groups.geni.net/geni/ticket/1039 and 
+     http://groups.geni.net/geni/ticket/1101
+  - Only add fake interface to a link for `--fixedEndpoint` option if
+    there is only 1 interface on the link. (#392)
+  - New option `--noReservation` to just get the expanded request
+    RSpec, and not actually talk to the aggregates. (#505)
+  - Be robust to SCS workflow having a fake all_paths path (#511)
+  - When adding a fake node, only do so if there are only interfaces
+    from a single AM - multiple interfaces at one AM counts as needing
+    the fake one. Similarly, when adding capacity on property elements,
+    set the destination based on an interface at a different aggregate. (#512)
+  - Stop changing AM URL based on getversion Ad (breaks if AM lists wrong
+    URL, as was happening). (#528)
+  - Error from DCN AM is fatal: 'Login base must be specified'. (#529)
+  - Avoid duplicating ExoSM in list of AMs when using `--useExoSM` (#530)
+  - Major rewrite of code to handle an unavailable VLAN tag (#486)
+   - Do not allow picking a tag already picked by same interface
+     on a different path
+   - Complain and bail if we run out of tags to pick from
+   - Distinguish between tags that are available and tags to pick from
+   - Cleaner error messages
+   - For PG AMs (if we can tell), avoid using the same tag anywhere at
+     the AM (except on the same path). (#355)
+  - Allow underscore in project names to generate different saved slice
+    credential files, so 2 slices aren't confused. (#533)
+  - A `Malformed keys` error is fatal, so stop. (#537)
+  - "Signer certificate does not have a URL" is a fatal error. (#539)
+  - Clarify error logs to be clear if it was a VLAN unavailable error,
+    aggregate error, or stitcher error, and if there is something
+    specific the experimenter should do to fix it. (#540)
+  - Internal API errors at DCN AMs are fatal (#546)
+  - Avoid DCN AMs as the basis for the combined manifest,
+    to avoid namespace problems in DCN manifests. (#549)
+  - Try to handle a failed status that means vlan unavail in OSCARS (#547)
+
+ * gcf
+  - AM API v2 GCF AM now has a local policy limiting renewals to
+    MAXLEASE days, set to 365. If `geni_extend_alap` is supplied, then
+    renew any slivers as long as possible, reporting the new expiration. (#414)
+  - Ensure that manifests include `client_id`, `component_id`,
+    `component_manager_id`, and `sliver_id`. Also ensure that the sliver
+    IDs are consistent with `sliverstatus` and between calls. Also clean
+    up manifest formatting. (#484)
+  - AM API v3 GCF AM must respect the `gcf_config` name of the AM authority (#487)
+  - Add support for ABAC speaks for credentials to libraries,
+    aggregates (#413)
+  - Support named timezones when renewing, etc (#503)
+
+ * acceptance tests
+  - `get_ch_version` should return an `int` for `api`, not a `float` (#449)
+ 
+ * omni-configure
+  - Added Kentucky as a CH/SA authority (#453)
+  - Add support for speaking the common Clearinghouse API (CH API) to
+    the GENI Clearinghouse/Portal.  Use `--not-use-chapi` to get the old behavior. (#519)
+
+ * readyToLogin.py
+  - Add support for v2 GRAM (#444)
+  - Fix error with called immediately after `createsliver` (#399)
+  - Make work with `--useSliceAggregates` (#534)
+  - Avoid errors when reservations include SFA AMs with no nodes. (#536)
+
+ * Added new script `examples/addMemberToSliceAndSlivers` (#508)
+  - Given a slice and a username, add the user to the slice and then
+    add their Clearinghouse registered SSH keys to all existing slivers.
+
+gcf 2.4.2:
+ v2.4.2 contains changes to support running omni on Windows.
+ * omni
+  - On Windows, fix bug in construction of urls from
+    `default_rspec_location` (#401)
+ * readyToLogin.py
+  - Better handle whitespaces between users' keys specified in the
+    omni_config (#396)
+ * omni-configure.py
+  - Remove dependences on outside call to `ssh-keygen` (#400)
+  - Set the default location of the `omni-bundle.zip` specified with the
+    `-z` option on Windows XP (#402)
+  - Fix bug that caused `.gcf` directory to not get created on Windows
+    (#403)
+ * acceptance tests
+  - Use crossplatform `getpass` module instead of UNIX-only `pwd`
+    modules in omni_unittest.py (#397)
+
 gcf 2.4.1:
  * Modify readyToLogin.py to work with new login info in InstaGENI
    manifests (#389)
@@ -142,27 +444,27 @@ gcf 2.3.1:
 
  * omni
   - Ticket #240: don't print ProtoGENI log URL in result summary on
-  success
+    success
   - Ticket #242: Be robust to malformed geni_api_versions
   - Refactor file saving utilities out of amhandler and into handler_utils (ticket #248)
   - getversion not caching from PG because the log url looks like an
- error (ticket #249)
+    error (ticket #249)
   - Busy results from XMLRPC calls missed: is_busy_result looking for
- geni_code in wrong spot (ticket #247)
+    geni_code in wrong spot (ticket #247)
   - Ensure RSpec test code can call rspeclint (ticket #246)
   - Ticket #245: Return slice URNs from listmyslices in all cases
   - Ticket #226: Look for python in environment in scripts in a more
- friendly way
+    friendly way
   - Update sample omni_config (ticket #258)
   - Added `listslices` alias for `listmyslices`, and made username
-  argument optional (defaults to your username). (ticket #256)
+    argument optional (defaults to your username). (ticket #256)
   - Log ProtoGENI log URL on clearinghouse errors (ticket #251)
   - Added new `get_ch_version` method for querying the the configured
   clearinghouse for its version, if supported. And add support to the
   GENI Clearinghouse interface. (ticket #270)
   - Various minor code cleanup changes
   - Add 3 more known InstaGENI racks to the `omni_config` nicknames
- (ticket #258)
+    (ticket #258)
   - Fix pgch handling of new `authority` field for GENI Portal
   accounts, for both slices and users (ticket #279)
   - Make the GENI Clearinghouse framework say 'GENI Clearinghouse', and
@@ -184,19 +486,19 @@ gcf 2.3.1:
 
  * clear-passphrases.py
   - Modified the script so that it works with the private key for the
-SSL cert if not part of the SSL cert file. (#280)
+    SSL cert if not part of the SSL cert file. (#280)
     Detailed modifications are:
       - replaced option -p with -k to specify a path for the private
-key that corresponds to the SSL cert
+        key that corresponds to the SSL cert
       - replaced option -k with -e to specify the path for the private
-SSH key
+        SSH key
       - added option -c to specify an omni_config file.
-      - be default the script works with an omni_config file where it
-parses the selected framework and users and finds the key for the SSL
-cert and of the private SSH keys that are available on the system and
-removes the passphrases
-      - if not options are specified it tries to find a default
-omni_config the order is the same as in omni.py
+      - by default the script works with an omni_config file where it
+        parses the selected framework and users and finds the key for the SSL
+        cert and of the private SSH keys that are available on the system and
+        removes the passphrases
+      - if no options are specified it tries to find a default
+        omni_config the order is the same as in omni.py
       - you can either run the script with an omni_config file or with
         the -k or -e options. If both -c and -k or -e options are
         specified, -c takes precedence. If -k or -e are specified
@@ -209,7 +511,7 @@ omni_config the order is the same as in omni.py
 
  * acceptance tests
   - Increased the default time to sleep between AM API calls to 30
- seconds, which appears to work more consistently.
+    seconds, which appears to work more consistently.
   - Suppress some verbose command output by sending results to files.
   - Use the getversion cache when not testing getversion (#236)
   - Update sample omni_config (ticket #258)
@@ -217,10 +519,10 @@ omni_config the order is the same as in omni.py
  * gcf
   - Restore missing gcf-ch options for specifying credential lifetimes.
   - gcf-pgch takes a new `--use-gpo-ch` option to force using the
- remote GPO Clearinghouse (ticket #255)
+    remote GPO Clearinghouse (ticket #255)
   - gcf-test supplies proper namespaces in request RSpecs (ticket #254)
   - pgch tests slice authority and project name for errors (ticket #243)
-  - cred_util CredentialVerifier does not raise XMLRPC faults (ticket #120)
+  - cred_util `CredentialVerifier` does not raise XMLRPC faults (ticket #120)
   - Fix handling of renew sliver error in pgch (ticket #277)
 
 gcf 2.2.1:
@@ -288,15 +590,14 @@ gcf 2.2:
  * gcf
   - Add new `list_my_slices` CH command for use from the Omni `listmyslices` command (ticket #214)
   - Add pgch: gcf CH with a ProtoGENI style CH API
-  - gcf-am v3: Require `geni_rspec_version` option to `Provision` (ticket
- # 216)
+  - gcf-am v3: Require `geni_rspec_version` option to `Provision` (ticket #216)
   - Print error if certificate or key file is empty (ticket #210)
   - APIv3 gcf-am Describe now correctly returns an empty manifest for
- an unknown slice (ticket #222)
+    an unknown slice (ticket #222)
 
  * AM API Acceptance Tests
   - Allow an empty return or error from some v3 methods, when slice has
- nothing locally (ticket #220)
+    nothing locally (ticket #220)
   - Added tests for use in monitoring with nagios.  Test `CreateSliver` and `SliverStatus` in
   v2 and v3 (ticket #225).
   - Change ProtoGENI Utah, GPO and Kentucky URLs to use port 12369 (ticket #227)
@@ -338,7 +639,7 @@ gcf 2.1:
   - Do not check /etc for gcf_config
 
  * AM API acceptance tests
-  - Add --skip-renew option to skip all Renew and !RenewSliver tests
+  - Add `--skip-renew` option to skip all `Renew` and `RenewSliver` tests
   - acceptance.log now includes a message of what test is starting, to
   help indicate which logs correspond to any test failures. (ticket #204)
 
@@ -358,12 +659,12 @@ gcf 2.0:
 
  * omni
   - Make AM API default to version 2, and RSpecs default to GENI 3 (in
- Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
- (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
+  Omni, gcf-am, gcf-test). To talk to an AM API v1 aggregate
+  (e.g. FOAM), you must supply an option: `-V1`. (ticket #173)
   AM API v2+ aggregates require that you specify the RSpec format you
- want, when using `ListResources`. Omni now specifies the RSpec format
- GENI 3 by default: you can always request a different format, if the
- AM supports it. (ticket #90, #141)
+  want, when using `ListResources`. Omni now specifies the RSpec format
+  GENI 3 by default: you can always request a different format, if the
+  AM supports it. (ticket #90, #141)
 
   - Omni no longer supports the deprecated 'omnispecs' RSpec
     format. Use GENI v3 format RSpecs. (ticket #97)
@@ -372,7 +673,7 @@ gcf 2.0:
    - `performoperationalaction` has a synonym: `poa`
    - Omni does not parse Ad RSpecs to reason about valid operational
      states or actions
-   - CreateSliver and other AM API v1&2 methods work only for AMs
+   - `CreateSliver` and other AM API v1&2 methods work only for AMs
      speaking those versions of the AM API.
    - Added new options `--best-effort`, `--sliver-urn` (`-u`) and `--end-time` to
      support passing `geni_best_effort`, individual sliver URNs to act on,
@@ -452,7 +753,7 @@ gcf 2.0:
     including checking AM API v3 rules restricting characters in
     URNs. (ticket #113)
   - Updated to latest SFA (from around July 20th, 2012)
-  - Clean up createsliver output (ticket #139)
+  - Clean up `createsliver` output (ticket #139)
   - `Listresources` notes if supplied slice credential is expired (ticket #162)
 
  * gcf
@@ -474,7 +775,7 @@ gcf 2.0:
 
  * AM API acceptance tests
   - Added AM API v3 support. Not all bad-input style tests are
- implemented yet. (ticket #181)
+  implemented yet. (ticket #181)
   - Fuller testing of the `geni_available` flag (ticket #153)
   - Check for `geni_api_version` in `getversion` (ticket #152)
   - Allow optional fields to be None (ticket #185)
@@ -506,12 +807,12 @@ gcf 1.6:
  * omni
    - Log malformed XML exception correctly (#95)
    - Make getversion AM API v2 implementation be consistent with other commands (#109)
-   - Added --arbitrary-option to allow testing whether an AM supports an arbitrary option (#111) 
+   - Added `--arbitrary-option` to allow testing whether an AM supports an arbitrary option (#111) 
    - Moved omni_config template to be omni_config.sample and changed instructions to match (#83)
    - Update libstitch to work with V2 AMs in some cases (#119)
-   - Updated get_aggregates() call due to changes in SFA (#94)
-   - Fix bug in _get_advertised_rspec() (#114)
-   - Add --logoutput option and corresponding ability to use %(logfilename)s in log configuration file (#118)
+   - Updated `get_aggregates()` call due to changes in SFA (#94)
+   - Fix bug in `_get_advertised_rspec()` (#114)
+   - Add `--logoutput` option and corresponding ability to use %(logfilename)s in log configuration file (#118)
    - readyToLogin.py example script now includes port info if ssh command is not port 22 (#115)
    - Fixed bug where if users attribute is empty in omni_config, then omni exited without a useful error (#116)
    - Improve busy response handling to AM's running AM API v2 and SAs (#123)
@@ -519,21 +820,21 @@ gcf 1.6:
    - Moved gcf_config template to be gcf_config.sample and changed instructions to match (#83)
    - Cleaned up TROUBLESHOOTING.txt (#110)
  * AM API v1 acceptance tests
-   - Changed sample RSpec files to end in .xml.sample instead of .xml (#83)
+   - Changed sample RSpec files to end in `.xml.sample` instead of `.xml` (#83)
    - Added a test that delegated credentials are used properly (#99)
-   - Added a test that exercises CreateSliver on an existing sliver (#87)
+   - Added a test that exercises `CreateSliver` on an existing sliver (#87)
    - Added AM API v2 support for acceptance tests (#100)
    - Fix bug in schemas passed into rspeclint (#112)
-   - Added --monitoring flag to acceptance tests to support their use in cross framework testing (#103)
+   - Added `--monitoring` flag to acceptance tests to support their use in cross framework testing (#103)
 
 gcf 1.5.2:
  * omni    
-   - validate the API version argument (#92)
- * gcf
+   - Validate the API version argument (#92)
+
  * AM API v1 acceptance tests
    - Exercise !ListResourcs with an untrusted authority (#93)
    - Exercise the !CreateSliver workflow with multiple simultaneous slivers (#84)
-   - Exercise Shutdown 	(#86)
+   - Exercise `Shutdown` (#86)
    - Exercise !ListResources with broken credentials (#85)
    - Verify that !ListResources(slice) returns a slice manifest RSpec (#88)
    - Verify that !CreateSliver returns a slice manifest RSpec (#88)
@@ -543,28 +844,28 @@ gcf 1.5.1:
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
   * Complete support of AM API v2 (ticket #69)
     - Default is AM API v1
-    - Use -V 2 or --api-version 2 to cause omni to use AM APIv2 to speak to aggregates
-   * Added --available to have listresources filter calls to only include available nodes (ticket #74)
-   * Added --no-compress to allow the user to specify that AM API call returns should not be compressed (ticket #73)
+    - Use `-V 2` or `--api-version 2` to cause omni to use AM APIv2 to speak to aggregates
+   * Added `--available` to have listresources filter calls to only include available nodes (ticket #74)
+   * Added `--no-compress` to allow the user to specify that AM API call returns should not be compressed (ticket #73)
  * gcf
   * Incorporated latest SFA library changes (tag sfa-2.0-4)
   * Complete support of AM API v2 in reference AM (ticket #68)  
  * AM API v1 acceptance tests
-  * Test common options on ListResources (ticket #75)
-  * Test CreateSliver workflow on deleted/non-existant slivers (ticket #79)
-  * Test CreateSliver with a variety of bad request RSpecs (ticket #76)
-  * Test CreateSliver succeeds under normal conditions (ticket #72)
-  * Test RenewSliver under normal conditions (#77)
-  * Added --sleep-time to adjust the time between AM API calls at the AM
+  * Test common options on `ListResources` (ticket #75)
+  * Test `CreateSliver` workflow on deleted/non-existant slivers (ticket #79)
+  * Test `CreateSliver` with a variety of bad request RSpecs (ticket #76)
+  * Test `CreateSliver` succeeds under normal conditions (ticket #72)
+  * Test `RenewSliver` under normal conditions (#77)
+  * Added `--sleep-time` to adjust the time between AM API calls at the AM
 
 gcf 1.5:
  * omni
   * Removed AM specific URL validation checks; they were confusing. (ticket #66)
   * Incorporated SFA library fixes
-  * Updated readyToLogin script to filter out nodes that aren't ready
+  * Updated `readyToLogin` script to filter out nodes that aren't ready
     and handle if !PlanetLab has no resources
-  * Improved check of manifest RSpec returned by CreateSliver
-  * Added --usercredfile to allow the user to provide their user credential as a file
+  * Improved check of manifest RSpec returned by `CreateSliver`
+  * Added `--usercredfile` to allow the user to provide their user credential as a file
   * Implemented preliminary (but incomplete) support of AM API v2
  * gcf
   * Added a reference AM which supports (most of) AM API v2
@@ -573,13 +874,13 @@ gcf 1.5:
 
 gcf 1.4:
  * omni
-  * Omni logging is configurable with a -l option, or from a script by calling applyLogConfig(). (ticket #61)
+  * Omni logging is configurable with a `-l` option, or from a script by calling applyLogConfig(). (ticket #61)
   * Omni aborts if it detects your slice has expired (ticket #51)
   * Omni config can define aggregate nicknames, to use instead of a URL in the -a argument. (ticket #62)
   * Solved a thread safety bug in omni - copy options list. (ticket #63)
   * SFA logger handles log file conflicts (ticket #48)
   * Handle expired user certs nicely in Omni (ticket #52)
-  * Write output filename when ListResources or GetVersion saves results to a file. (ticket #53)
+  * Write output filename when `ListResources` or `GetVersion` saves results to a file. (ticket #53)
   * Warn on common AM URL typos. (ticket #54)
   * Pause 10 seconds and retry (max 3x) if server says it is busy, as ProtoGENI often does. (ticket #55)
   * Added stitching script in examples. Uses Omni library to do VLAN stitching between aggregates using tree mode (no negotiation). The script functionality is provided as a library itself, and provides a complex Omni scripting example.
@@ -589,8 +890,8 @@ gcf 1.4:
   * Incorporated GEC 11 ABAC demonstration code
   * Added a "--no-tz" option for renewing slivers at older SFA-based aggregates. (ticket #65)
  * gcf
-  * Fix RenewSlice in gcf-ch.py to honor the requested time. (ticket #60)
-  * GCF tools option change: gen-certs, gcf-am, etc now use -c to specify the config file, not -f. -g lets you specify the cert file. (ticket #56)
+  * Fix `RenewSlice` in `gcf-ch.py` to honor the requested time. (ticket #60)
+  * GCF tools option change: gen-certs, gcf-am, etc now use `-c` to specify the config file, not -f. -g lets you specify the cert file. (ticket #56)
   * Certificate lifetime is configurable in gen-certs (ticket #57)
   * GCF slices are delegatable by default (library supports specifying this now) (ticket #58)
   * Changed certificate generation (src/gen-certs.py) to properly mark the ch certificate as a CA
@@ -616,7 +917,7 @@ gcf 1.3 May, 2011:
 	GCF:
 	- Fix certificates to be marked V3, instead of erroneously V1
 	(ticket #36)
-	- Support additional options in the AM's GetVersion
+	- Support additional options in the AM's `GetVersion`
 	- Bug fixes
 
 	Omni:
@@ -633,17 +934,21 @@ gcf 1.3 May, 2011:
 	format will not be included in results. (ticket #40)
 	- Ticket #41: --slicecredfile specifies the name of a file to
 	save/load a slice credential from.
+{{{
 	    createslice -o --slicecredfile <filename>
- 	  saves the new slice credential there. AM calls can use the
-	  credential. 
-          For example: omni.py  --slicecredfile mysavedcred.xml \
+}}}
+ 	saves the new slice credential there. AM calls can use the
+	credential. For example: 
+{{{
+            omni.py  --slicecredfile mysavedcred.xml \
 	               createsliver myslicename myRSpec.xml
+}}}
 	- New listmyslices command added to see what your framework's
 	registry has for you (ticket #38)
 	- Refactoring to allow re-use of omni functions as library
 	calls (ticket #37)
 	- User feedback is clearer
-	- Clean up error handling (tickets #25,28,29)
+	- Clean up error handling (tickets #25,#28,#29)
 	- Check slice expiration, print for user (ticket #35)
 	- New print_slice_expiration omni function
 	- New api_test script to test AM API compliance and server availability
@@ -654,18 +959,17 @@ gcf 1.3 May, 2011:
 	- Bug fixes
 
 gcf 1.0 September, 2010:
-        - RPM library install available, with dependencies
-        - Refactored URN, certificate and credential utilities into
-	library functions
-	- Renamed gam -> gcf-am, gch, client
-	- Refactored omni support files to parallel directory
-        - gcf_config configures URNs, file locations, etc.
-	- geni_aggregates incorporated into gcf_config
-	- omni_config is now a Python properties file format
-	- omni listresources takes optional AggregateManager URLs to contact
-        - Drop CH.Resolve - not used
-
-	- Dropped the CA certificate. The CH certificate is the
+       - RPM library install available, with dependencies
+       - Refactored URN, certificate and credential utilities into
+       library functions
+       - Renamed gam -> gcf-am, gch, client
+       - Refactored omni support files to parallel directory
+       - gcf_config configures URNs, file locations, etc.
+       - geni_aggregates incorporated into gcf_config
+       - omni_config is now a Python properties file format
+       - omni listresources takes optional Aggregate Manager URLs to contact
+       - Drop CH.Resolve - not used
+       - Dropped the CA certificate. The CH certificate is the
        self-signed root. Install only the CH certificate at all
        federated AMs to allow peering.
        - Dropped the -u user certificate argument to the GENI
@@ -674,12 +978,11 @@ gcf 1.0 September, 2010:
        into new src/geni/credential.py
        - Shutdown now requires the shutdown privilege (which proper
        user credentials will have)
-       - Omni supports OpenFlow Aggregate Managers and RSpecs (not yet
-       the OpenFlow Clearinghouse)
+       - Omni supports !OpenFlow Aggregate Managers and RSpecs (not yet
+       the !OpenFlow Clearinghouse)
        - More error checking of arguments and more helpful error messages 
        - omni_config now accepts # started comments
        - Comments and documentation
-       - 
 
 July, 2010:
 	Much more documentation, error checking, logging, and clearer error

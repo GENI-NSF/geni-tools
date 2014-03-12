@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,17 +26,18 @@
 
 import copy as docopy
 import datetime
-from geni.util import rspec_util 
-from geni.util import urn_util
-from geni.util import error_util
+from gcf.geni.util import rspec_util 
+from gcf.geni.util import urn_util
+from gcf.geni.util import error_util
 import inspect
 import sys
 import unittest
-import omni
 import os.path
-import pwd
+import getpass
 import dateutil.parser
-from omnilib.util import OmniError, naiveUTC, AMAPIError
+
+from gcf.omnilib.util import OmniError, naiveUTC, AMAPIError
+import gcf.oscript as omni
 
 SLICE_NAME = 'acc'
 LOG_CONFIG_FILE = "logging.conf"
@@ -148,7 +149,7 @@ class OmniUnittest(unittest.TestCase):
         if self.options.reuse_slice_name:
             return self.options.reuse_slice_name
         else:
-            user = pwd.getpwuid(os.getuid())[0]
+            user = getpass.getuser()
             pre = prefix+user[:3]
             return datetime.datetime.strftime(datetime.datetime.utcnow(), pre+"-%H%M%S")
 #            return prefix+pwd.getpwuid(os.getuid())[0]
@@ -377,8 +378,8 @@ class OmniUnittest(unittest.TestCase):
         self.assertTrue(type(dictionary[key])==valueType,
                         "Return from '%s' %s" \
                             "expected to have entry '%s' of type '%s' " \
-                            "but instead returned: %s" 
-                        % (method, agg, key, str(valueType), str(dictionary[key])))
+                            "but instead returned: '%s' of type %s" 
+                        % (method, agg, key, str(valueType), str(dictionary[key]), str(type(dictionary[key]))))
 
     def assertKeyValue( self, method, aggName, dictionary, key):
         """Check whether dictionary returned by method at aggName has_key( key )"""

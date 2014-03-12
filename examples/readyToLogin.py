@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #----------------------------------------------------------------------
-# Copyright (c) 2011-2013 Raytheon BBN Technologies
+# Copyright (c) 2011-2014 Raytheon BBN Technologies
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and/or hardware specification (the "Work") to
@@ -26,12 +26,15 @@
 import copy
 import string
 import sys, platform
-import omni
 import os.path
 from optparse import OptionParser
-import omnilib.util.omnierror as oe
 import xml.etree.ElementTree as etree
 import re
+
+import gcf.oscript as omni
+import gcf.omnilib.util.omnierror as oe
+from gcf.omnilib.handler import CallHandler
+from gcf.omnilib.util.handler_utils import _lookupAggNickURLFromURNInNicknames as lookupURL
 
 ################################################################################
 # Requires that you have omni installed and add the path to gcf/src in your
@@ -137,6 +140,7 @@ def getInfoFromManifest(manifestStr):
          try:
            loginInfo.append(login_el.attrib)
            loginInfo[-1]["client_id"] = node_el.attrib["client_id"]
+           loginInfo[-1]["sliver_urn"] = node_el.attrib["sliver_id"]
          except AttributeError, ae:
            print "Couldn't get login information, maybe your sliver is not ready.  Run sliverstatus."
            print "Error: %s" % ae
@@ -161,9 +165,10 @@ def findUsersAndKeys( ):
         # private keys (foo)
         username = user['urn'].split('+')[-1]
         keyList[username] = []
-        privuserkeys = string.replace(user['keys'].replace(" ",""), ".pub","")
+        privuserkeys = string.replace(user['keys'], ".pub","")
         privuserkeys = privuserkeys.split(",")
         for key in privuserkeys:
+            key = key.strip()
             if not os.path.exists(os.path.expanduser(key)):
                 if options.include_keys:
                     print "Key file [%s] does NOT exist." % key
@@ -307,7 +312,7 @@ def getInfoFromSliverStatusPL( sliverStat ):
       return loginInfo
 
     for resourceDict in sliverStat['geni_resources']: 
-      if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
+      if (not sliverStat.has_key('pl_login') or not sliverStat['pl_login']) or (not resourceDict.has_key('pl_hostname') or not resourceDict['pl_hostname']):
           continue
       loginInfo.append({'authentication':'ssh-keys', 
                           'hostname':resourceDict['pl_hostname'],
@@ -341,7 +346,15 @@ def getSliverStatus( amUrl, amType ) :
     tmpoptions.aggregate = [amUrl]
         
     # Run equivalent of 'omni.py sliverstatus username'
-    argv = ['sliverstatus', slicename]
+    if tmpoptions.api_version >=3:
+        # For AM API v3 and later:
+        #   Run equivalent of 'omni.py status slicename'
+        argv = ['status', slicename]
+    else: 
+        # For AM API v1 or v2:
+        #   Run equivalent of 'omni.py sliverstatus slicename'
+        argv = ['sliverstatus', slicename]
+        
     try:
       text, sliverStatus = omni.call( argv, tmpoptions )
     except (oe.AMAPIError, oe.OmniError) :
@@ -465,6 +478,8 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
     # a future release should remove the following line so that we don't fall back to SliverStatus
     if options.fallback_status_PG:
         amLoginInfo = addNodeStatusCheckForPGFallback( amLoginInfo, amSliverStat )
+  elif amType == "GRAM":
+      amLoginInfo = addNodeStatusGRAM( amLoginInfo, amSliverStat )
   else:
       print "NOT IMPLEMENTED YET"
   return amLoginInfo
@@ -488,6 +503,20 @@ def addNodeStatusPG( amLoginInfo, amSliverStat ):
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
+    return amLoginInfo
+
+def addNodeStatusGRAM( amLoginInfo, amSliverStat ):
+    for resourceDict in amSliverStat['geni_resources']:
+      client_id = ""
+      if resourceDict.has_key("geni_sliver_urn"):
+         sliver_id = resourceDict["geni_sliver_urn"]
+      geni_status = ""
+      if resourceDict.has_key("geni_status"):
+         geni_status = resourceDict["geni_status"]
+      for userLoginInfo in amLoginInfo:
+         if userLoginInfo['sliver_urn'] != sliver_id:
+            continue
+         userLoginInfo['geni_status'] = geni_status
     return amLoginInfo
 
 def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
@@ -654,9 +683,9 @@ def printLoginInfo( loginInfoDict, keyList ) :
             if firstTime[ item['client_id'] ]:
                 gsOut = ""
                 amsOut = ""
-                if item.has_key('geni_status'):
+                if item.has_key('geni_status') and item['geni_status'].strip()!="":
                     gsOut = "geni_status is: %s" % item['geni_status']
-                if item.has_key('am_status'):
+                if item.has_key('am_status') and item['am_status'].strip()!="":
                     amsOut = "am_status: %s" % item['am_status']
                 if gsOut:
                     if amsOut:
@@ -780,6 +809,33 @@ def main_no_print(argv=None, opts=None, slicen=None):
     print "ERROR: There are no keys. You can not login to your nodes."
     sys.exit(-1)
 
+  aggregateURNs = []
+  if options.useSliceAggregates:
+      # Find aggregates which have resources in this slice
+      # Run equivalent of 'omni.py listslivers'
+      argv = ['listslivers', slicename]
+      try:
+          text, slivers = omni.call( argv, options )
+      except (oe.AMAPIError, oe.OmniError) :
+          print "ERROR: There was an error executing listslivers, review the logs."
+          sys.exit(-1)
+
+      aggregateURNs = slivers.keys()
+  if len(aggregateURNs) == 0 and (not options.aggregate or (len(options.aggregate) == 0)):
+    print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
+    sys.exit(-1)      
+
+  # construct a list of aggregates to 
+  handler = CallHandler(framework,config,options)
+  newAggURLs = [ lookupURL( handler.logger, config, urn )[1] for urn in aggregateURNs ] 
+  if options.aggregate:
+      options.aggregate = options.aggregate + newAggURLs
+  else:
+      options.aggregate = newAggURLs
+
+  # Disable useSliceAggregates at this point, because we already have the list - don't fetch it again
+  options.useSliceAggregates = False
+      
   # Run equivalent of 'omni.py getversion'
   argv = ['getversion']
   try:
@@ -812,12 +868,12 @@ def main_no_print(argv=None, opts=None, slicen=None):
                                 'info' : amLoginInfo
                                }
       continue
-    if amType == "orca" or (amType == "protogeni"): 
-      #print "Getting login info from manifest for %s" % amUrl
+    else:
+      # Getting login info from manifest"
       amLoginInfo = getInfoFromSliceManifest(amUrl)
       # Get the status only if we care
       if len(amLoginInfo) > 0 :
-        if options.readyonly or (amType == "protogeni"):
+        if options.readyonly or (amType == "protogeni") or (amType == "GRAM"):
           amLoginInfo = addNodeStatus(amUrl, amType, amLoginInfo)
         loginInfoDict[amUrl] = {'amType':amType,
                                 'info':amLoginInfo
