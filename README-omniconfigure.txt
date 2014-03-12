@@ -12,6 +12,10 @@ You SHOULD manually configure Omni if :
   * you want multiple users to have access to the reserved compute resources. 
 
 == Release Notes ==
+As of GCF v2.5, omni-configure by default uses the new `chapi`
+interface for talking to the GENI Portal, which enables several new
+features. To use the old style interface, supply the option `--not-use-chapi`.
+
 GCF v2.2.1 and later also supports automatic configuration of omni 
 for portal credentials. 
 
@@ -45,7 +49,7 @@ omni-configure.py will :
     key pair will be created based on your SSL cert (name geni_cert_portal_key)
 
 === Running omni-configure.py ===
-omni-configure.py needs only one file as input, the certificate file, or
+omni-configure.py needs only one file as input: the certificate file, or
 the omni bundle file downloaded from the portal
 
 If you have an account with a ProtoGENI site then:
@@ -91,6 +95,8 @@ Options:
                         [options: [pg, pl, portal], DEFAULT: portal]
   --pick-project        Lets you choose which project to use as default from
                         the projects in the bundle downloaded from the portal
+  --not-use-chapi       If available, do not configure the omni_config to use
+                        the common Clearinghouse API (CH API).
   -v, --verbose         Turn on verbose command summary for omni-configure
 
 == Manually configuring Omni ==

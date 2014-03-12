@@ -113,6 +113,18 @@ from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
 from .omnilib.util.handler_utils import validate_url, printNicknames
 
+# Explicitly import framework files so py2exe is happy
+from .omnilib.frameworks import framework_apg
+from .omnilib.frameworks import framework_base
+from .omnilib.frameworks import framework_gcf
+from .omnilib.frameworks import framework_gch
+from .omnilib.frameworks import framework_gib
+from .omnilib.frameworks import framework_of
+from .omnilib.frameworks import framework_pg
+from .omnilib.frameworks import framework_pgch
+from .omnilib.frameworks import framework_sfa
+from .omnilib.frameworks import framework_chapi
+
 OMNI_VERSION="2.5"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               

@@ -4504,10 +4504,10 @@ class AMCallHandler(object):
                                 self.logger.debug("CH had no keys for member %s", member['URN'])
                                 break
                             for mkey in member['KEYS']:
-                                if mkey in user['keys']:
+                                if mkey.strip() in user['keys']:
                                     continue
                                 else:
-                                    user['keys'].append(mkey)
+                                    user['keys'].append(mkey.strip())
                                     self.logger.debug("Adding a CH key for member %s", member['URN'])
                             # Done unioning keys for existing user
                             break
@@ -4515,9 +4515,10 @@ class AMCallHandler(object):
                     if not found:
                         nmember = dict()
                         nmember['urn'] = member['URN']
-                        nmember['keys'] = member['KEYS']
-                        if nmember['keys'] is None:
-                            nmember['keys'] = []
+                        nmember['keys'] = []
+                        if member['KEYS'] is not None:
+                            for key in member['KEYS']:
+                                nmember['keys'].append(key.strip())
                         slice_users.append(nmember)
                 # Done looping of slice members
             # Done if got sliceMembers
@@ -4552,7 +4553,7 @@ class AMCallHandler(object):
                 if user.has_key('keys'):
                     for key in user['keys'].split(','):
                         try:
-                            newkeys.append(file(os.path.expanduser(key.strip())).read())
+                            newkeys.append(file(os.path.expanduser(key.strip())).read().strip())
                         except Exception, exc:
                             self.logger.error("Failed to read user key from %s: %s" %(user['keys'], exc))
                     user['keys'] = newkeys
@@ -4578,11 +4579,10 @@ class AMCallHandler(object):
                     if found:
                         if user.has_key('keys'):
                             if not member.has_key('keys'):
-                                member['keys'] = user['keys']
-                            else:
-                                for key in user['keys']:
-                                    if key not in member['keys']:
-                                        member['keys'].append(key)
+                                member['keys'] = []
+                            for key in user['keys']:
+                                if key.strip() not in member['keys']:
+                                    member['keys'].append(key.strip())
                         break
                 if not found:
                     slice_users.append(user)

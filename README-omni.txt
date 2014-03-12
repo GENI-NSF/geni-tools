@@ -44,6 +44,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 New in v2.5:
 
 Highlights:
+ * Released Windows and Mac OS X packages of the Omni experimenter
+   utilities. (Developer gcf components are not included.)
  * Omni adds the ability to contact clearinghouses that speak the
    Uniform Federation API using framework type `chapi`
  * When using the new `chapi` framework allow a `--useSliceAggregates`
@@ -208,6 +210,10 @@ sa=https://ch.geni.net/SA
  - Handle `createslice` errors at the GENI Clearinghouse that might
    be due to having the wrong case, now the project and slice names 
    are case sensitive. (#535)
+ - Trim trailing newlines before installing SSH keys (#537)
+ - Explicitly import framework files in `oscript.py` to support
+   Windows and Mac binaries. (#542)
+ - Fix wording and licenses for Windows and Mac binaries (#541)
 
 
 New in v2.4:
