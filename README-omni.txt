@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.6:
+
 New in v2.5:
 
 Highlights:
@@ -711,7 +713,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.5
+GENI Omni Command Line Aggregate Manager Tool Version 2.6
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 

@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.6:
+
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)
 

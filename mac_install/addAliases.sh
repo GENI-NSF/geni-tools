@@ -31,12 +31,12 @@
 ## Function that writes aliases to the specified rc file
 writeAliases () {
     echo $'\n' >> $1
-    echo "# Aliases for commands in the GENI omniTools-2.5 package" >> $1
-    echo "alias omni='/Applications/omniTools-2.5/omni.app/Contents/MacOS/omni'" >> $1
-    echo "alias stitcher='/Applications/omniTools-2.5/stitcher.app/Contents/MacOS/stitcher'" >> $1
-    echo "alias omni-configure='/Applications/omniTools-2.5/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
-    echo "alias readyToLogin='/Applications/omniTools-2.5/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
-    echo "alias clear-passphrases='/Applications/omniTools-2.5/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
+    echo "# Aliases for commands in the GENI omniTools-2.6 package" >> $1
+    echo "alias omni='/Applications/omniTools-2.6/omni.app/Contents/MacOS/omni'" >> $1
+    echo "alias stitcher='/Applications/omniTools-2.6/stitcher.app/Contents/MacOS/stitcher'" >> $1
+    echo "alias omni-configure='/Applications/omniTools-2.6/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
+    echo "alias readyToLogin='/Applications/omniTools-2.6/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
+    echo "alias clear-passphrases='/Applications/omniTools-2.6/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
 }
 
 wroteAliases=false
