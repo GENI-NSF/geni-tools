@@ -1590,8 +1590,8 @@ class Aggregate(object):
                             auth = urn_util.URN(urn=self.urn).getAuthority()
                             # auth:hopname instead of auth+interface+hopname
                             if failedHopName.startswith(auth):
-                                hopName = failedHopName[len(auth)+1:]
-                                unavailHopUrn = "urn:publicid:IDN+" + auth + "+interface+ " + hopName
+                                hopName = failedHopName[len(auth)+1:].strip()
+                                unavailHopUrn = "urn:publicid:IDN+" + auth + "+interface+" + hopName
                                 for hop in self.hops:
                                     if hop.urn == unavailHopUrn:
                                         unavailHop = hop
