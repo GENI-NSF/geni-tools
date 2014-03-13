@@ -5,6 +5,8 @@ gcf 2.6:
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
+  * Pass the usual `verbosessl` option to create the SCS client,
+    allowing verbose logging of SSL connections to the SCS. (#557)
 
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)

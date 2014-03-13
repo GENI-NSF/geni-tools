@@ -185,7 +185,7 @@ class StitchingHandler(object):
         # Here is where we used to add the expires attribute. No
         # longer necessary (or a good idea).
 
-        self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout)
+        self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known

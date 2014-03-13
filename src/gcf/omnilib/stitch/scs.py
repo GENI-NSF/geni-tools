@@ -66,12 +66,13 @@ class Result(object):
 
 # FIXME: Support authentication by the service at some point
 class Service(object):
-    def __init__(self, url, timeout=None):
+    def __init__(self, url, timeout=None, verbose=False):
         self.url = url
         self.timeout=timeout
+        self.verbose=verbose
 
     def GetVersion(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
+        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
@@ -85,7 +86,7 @@ class Service(object):
         return result
 
     def ListAggregates(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
+        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.ListAggregates()
         except xmlrpclib.Error as v:
@@ -102,7 +103,7 @@ class Service(object):
         """Invoke the XML-RPC service with the request rspec.
         Create an SCS PathInfo from the result.
         """
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
+        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
         arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
                    request_options=options)
 #        import json
