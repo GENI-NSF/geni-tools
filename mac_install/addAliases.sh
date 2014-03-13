@@ -31,6 +31,12 @@
 ## Function that writes aliases to the specified rc file
 writeAliases () {
     echo $'\n' >> $1
+    echo "# Unset any old Omni *.py aliases" >> $1
+    echo "unalias omni.py" >> $1
+    echo "unalias stitcher.py" >> $1
+    echo "unalias omni-configure.py" >> $1
+    echo "unalias readyToLogin.py" >> $1
+    echo "unalias clear-passphrases.py" >> $1
     echo "# Aliases for commands in the GENI omniTools-2.6 package" >> $1
     echo "alias omni='/Applications/omniTools-2.6/omni.app/Contents/MacOS/omni'" >> $1
     echo "alias stitcher='/Applications/omniTools-2.6/stitcher.app/Contents/MacOS/stitcher'" >> $1

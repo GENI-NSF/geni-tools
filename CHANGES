@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.6:
+ * Mac install clears old `omni.py` and similar aliases (#556)
+
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
 
