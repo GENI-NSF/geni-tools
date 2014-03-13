@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.6:
+ * stitcher
+  * Remove the MTU bug as a known issue, since it is fixed. (#555)
 
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)
