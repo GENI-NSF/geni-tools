@@ -2098,8 +2098,10 @@ class Aggregate(object):
                         continue
                     # FIXME: Intersect with the next request range? or vlan_range_request?
                     newRange = nextRequestRangeByHop[hop].intersection(hop2._hop_link.vlan_range_request)
+#                    newRange = nextRequestRangeByHop[hop].intersection(nextRequestRangeByHop[hop2])
                     if newRange < nextRequestRangeByHop[hop]:
                         self.logger.debug("%s next range being limited by intersection with %s avail range %s. Was %s, now %s", hop, hop2, hop2._hop_link.vlan_range_request, nextRequestRangeByHop[hop], newRange)
+#                        self.logger.debug("%s next range being limited by intersection with %s next range %s. Was %s, now %s", hop, hop2, nextRequestRangeByHop[hop2], nextRequestRangeByHop[hop], newRange)
                         nextRequestRangeByHop[hop] = newRange
             # End of loop over failed hops to intersect avail ranges
 
