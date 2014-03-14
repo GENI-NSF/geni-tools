@@ -2085,6 +2085,26 @@ class Aggregate(object):
                 self.logger.debug("%s next request will be from %s", hop, nextRequestRangeByHop[hop])
             # End of initial loop over failed hops
 
+            # The range to pick from for a hop must include only tags available on other
+            # hops on the same path that don't translate. Because later we'll copy the tag we pick on one hop to
+            # that other hop, so it better work there
+            for hop in failedHops:
+                for hop2 in failedHops:
+                    # Only merge hops on same path that are different
+                    if hop.path != hop2.path or hop == hop2:
+                        continue
+                    # If there is translation we don't copy tags
+                    if hop._hop_link.vlan_xlate or hop2._hop_link.vlan_xlate:
+                        continue
+                    # FIXME: Intersect with the next request range? or vlan_range_request?
+                    newRange = nextRequestRangeByHop[hop].intersection(hop2._hop_link.vlan_range_request)
+#                    newRange = nextRequestRangeByHop[hop].intersection(nextRequestRangeByHop[hop2])
+                    if newRange < nextRequestRangeByHop[hop]:
+                        self.logger.debug("%s next range being limited by intersection with %s avail range %s. Was %s, now %s", hop, hop2, hop2._hop_link.vlan_range_request, nextRequestRangeByHop[hop], newRange)
+#                        self.logger.debug("%s next range being limited by intersection with %s next range %s. Was %s, now %s", hop, hop2, nextRequestRangeByHop[hop2], nextRequestRangeByHop[hop], newRange)
+                        nextRequestRangeByHop[hop] = newRange
+            # End of loop over failed hops to intersect avail ranges
+
             # Pick a new tag For each failed hop
             newSugByPath = dict() # To store the tag for a path to make sure it is re-used as necessary
             for hop in failedHops:
