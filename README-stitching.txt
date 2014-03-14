@@ -6,7 +6,7 @@ N.B. This page is formatted for a Trac Wiki.
 
 [[PageOutline]]
 
-= The Omni GENI Experimenter-Defined Cross-Aggregate Topologies Client =
+= Stitcher: The Omni GENI Experimenter-Defined Cross-Aggregate Topologies Client =
 
 '''stitcher''' is an Omni based script for instantiating experimenter
 defined topologies that cross multiple aggregates, aka 'network
@@ -25,8 +25,8 @@ particular compute nodes. Over time, multipoint circuits may be
 possible at certain locations in the GENI network.
 
 GENI stitching uses VLANs to create these circuits. Depending on where
-you are connecting resources, there may be very few VLANs available -
-as few as 1. In this case, your circuit may fail because other
+you are connecting resources, there may be very few VLANs
+available. In this case, your circuit may fail because other 
 experimenters are using the VLANs. Over time, more VLANs will become
 available to GENI.
 
@@ -44,7 +44,8 @@ To use stitcher:
 
  1. Be sure you can run Omni.
 
- 2. Design a topology. Write a standard GENI v3 RSpec. Include 1 or more `<link>`s
+ 2. Design a topology. Write a standard GENI v3 RSpec or build one
+ with a graphical tool like Flack. Include 1 or more `<link>`s
  between interfaces on 2 compute nodes. E.G.
 {{{
 #!xml
@@ -60,7 +61,7 @@ To use stitcher:
 
  4. Call stitcher just like Omni, but using `stitcher.py`:
 {{{
-    $ python ./src/stitcher.py -o createsliver <valid slice name> <path to RSpec>
+    $ python ./src/stitcher.py createsliver <valid slice name> <path to RSpec>
 }}}
 (assuming a valid `omni_config` in one of the usual spots)
 
@@ -80,15 +81,16 @@ To use stitcher:
  `stitcher.py` to delete your resources and supply no `-a` argument,
  `stitcher` will delete from all aggregates at which it reserved
  resources. If you use `omni`, you must specify which aggregates to invoke. 
+
 For example, to fully delete your reservation:
 {{{
     $ python ./src/stitcher.py deletesliver <valid slice name>
 }}}
+
 To delete from only 1 aggregate:
 {{{
     $ python ./src/stitcher.py -a <URL> deletesliver <valid slice name>
 }}}
-
 
 === Notes ===
 
@@ -98,7 +100,7 @@ be passed directly to Omni.
 
 The same request RSpec will be submitted to every aggregate required
 for your topology. Stitcher will create reservations at each of these
-aggregates for you. NOTE however that in general stitcher only knows how to
+aggregates for you. ''Note'' however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
 a stitching link may not be reserved, because stitcher may not know
@@ -123,7 +125,7 @@ stitcher output is controlled using the same options as Omni,
 including `-o` to send RSpecs to files, and `--WARN` to turn down most
 logging. However, stitcher always saves your combined result manifest
 RSpec to a file (named
-'<slicename>-manifest-rspec-stitching-combined.xml'), unless you specify the `--tostdout` option.
+'`<slicename>-manifest-rspec-stitching-combined.xml`'), unless you specify the `--tostdout` option.
 Currently, stitcher will write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs).
@@ -145,6 +147,7 @@ to do using:
 {{{
     $ python ./src/stitcher.py deletesliver <valid slice name>
 }}}
+
 Note that stitcher will not delete reservations at other aggregates
 not involved in stitching. To partially delete your reservation or
 delete at these other aggregates, supply the necessary `-a` options.
@@ -159,7 +162,8 @@ options as Omni. `stitcher` however adds several options:
  stitching paths. You can supply this argument many times.
   - Alternately, you can exclude only certain VLAN tags from being
   used at a particular hop, by appending `=<VLAN range>` to the hop
-  URN. For example `--excludehop urn:publicid:IDN+instageni.gpolab.bbn.com+interface+procurve2:5.24=3747-3748`
+  URN. For example: 
+`--excludehop urn:publicid:IDN+instageni.gpolab.bbn.com+interface+procurve2:5.24=3747-3748`
  - `--includehop <hop URN>`: When supplied, the Stitching Computation
  Service will insist on including the specified switch/port on ANY computed
  stitching paths. You can supply this argument many times. Use this
@@ -175,7 +179,7 @@ Additionally, these options are used for some topologies:
  - `--fixedEndpoint`: Use this if you want a dynamic circuit that ends
  not at a node, but at a switch (E.G. because you have a static VLAN to a
  fixed non-AM controlled host from there.). This option adds a fake
- node and interface_ref to the link. Note that your request RSpec will
+ `node` and `interface_ref` to the link. Note that your request RSpec will
  still need >= 2 `component_manager`s on the `<link>`, and you will need a
  skeletal stitching extension with 1 hop being the switch/VLAN where
  you want to end, and a 2nd being the AM where you want to end up.
@@ -212,20 +216,29 @@ Other options you should not need to use:
    just save the expanded request RSpec.
 
 == Tips and Details ==
- - Create a single GENI v3 request RSpec for all aggregates you want linked
- - Include the necessary 2 `<component_manager>` elements for the 2 different AMs in each `<link>`
- - Stitching currently only works at a few aggregates, with more being
- added regularly. Contact help@geni.net for a current list.
- - Use "src/stitcher.py" instead of "src/omni.py"
+
+In running stitcher, follow these various tips:
+ - Create a single GENI v3 request RSpec for all aggregates you want linked.
+ Stitcher sends the same request RSpec to all aggregates involved in
+ your request.
+ - Include the necessary 2 `<component_manager>` elements for the 2
+ different AMs in each `<link>`
  - This script can take a while - it must make reservations at all the
  aggregates, and keeps retrying at aggregates that can't provide
- matching VLAN tags. Be patient.
+ matching VLAN tags. Stitcher must pause 30 seconds or more between
+ retries. Be patient.
+ - Stitcher will retry when something goes wrong, up to a point. If
+ the failure is isolated to a single aggregate failing to find a VLAN,
+ stitcher retries at just that aggregate (currently up to 50
+ times). If the problem is larger, stitcher will go back to the
+ Stitching Computation Service for a new path recommendation (possibly
+ excluding a failed hop or a set of failed VLAN tags). Stitcher will
+ retry that up to 5 times. After that or on other kinds of errors,
+ stitcher will delete any existing reservations and exit.
  - When the script completes, you will have reservations at each of the
  aggregates involved in stitched links in your request RSpec, plus any intermediate
  aggregates required to complete your circuit (e.g. ION) - or none, if
  your request failed.
- - Stitcher sends the same request RSpec to all aggregates involved in
- your request.
  - Stitcher makes reservations at ''all'' aggregates involved in your
  stitching circuits. Note however that stitcher generally only knows how to
  contact aggregates that are involved in the circuits you request -
@@ -237,14 +250,6 @@ Other options you should not need to use:
  - The script return is a single GENI v3 manifest RSpec for all the aggregates
  where you have reservations for this request, saved to a file named
  '<slicename>-manifest-rspec-stitching-combined.xml'
- - Stitcher will retry when something goes wrong, up to a point. If
- the failure is isolated to a single aggregate failing to find a VLAN,
- stitcher retries at just that aggregate (currently up to 50
- times). If the problem is larger, stitcher will go back to the
- Stitching Computation Service for a new path recommendation (possibly
- excluding a failed hop or a set of failed VLAN tags). Stitcher will
- retry that up to 5 times. After that or on other kinds of errors,
- stitcher will delete any existing reservations and exit.
  - Stitcher remembers the aggregates where it made reservations. If
  you use `stitcher.py` for later `renewsliver` or `sliverstatus` or
  `deletesliver` or other calls, stitcher will invoke the command at
@@ -265,7 +270,8 @@ python src/gcf/omnilib/stitch/scs.py --listaggregates
 === Stitching Computation Service ===
 
 For stitching, the request RSpec must specify the exact switches and
-ports to use to connect each aggregate. However, experimenters do not
+ports to use to connect each aggregate, specifying a full path between
+the aggregates. However, experimenters do not
 need to do this themselves. Instead, there is a Stitching Computation
 Service (SCS) which will fill in these details, including any transit
 networks at which you need a reservation (like ION). For details on
@@ -320,7 +326,10 @@ detail as possible:
  working directory
 
 Some sample error messages and their meaning:
- - `StitchingServiceFailedError: Error from Stitching Service: code 3: MxTCE ComputeWorker return error message ' Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.`
+{{{
+StitchingServiceFailedError: Error from Stitching Service: code 3: MxTCE ComputeWorker return error message 
+'Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.
+}}}
   - Errors like this mean there is no GENI layer 2 path possible
     between your specified endpoints. Did you specify an `excludehop`
     or `includehop` you shouldn't have? Follow the set of supported
@@ -363,17 +372,16 @@ See the list of Known Issues below.
  an existing reservation.
  - Some fatal errors at aggregates are not recognized, so the script keeps trying longer
  than it should.
+ - [http://trac.gpolab.bbn.com/gcf/query?status=accepted&status=assigned&status=new&status=reopened&component=stitcher&order=priority&col=id&col=summary&col=status&col=type&col=priority&col=milestone&col=component Known stitcher defects] 
+ are listed on the gcf trac.
 
 == To Do items ==
- - Handle known ExoGENI error messages - particularly those that are fatal, and
- those that mean the VLAN failed and we should retry with a different tag
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for
  success or failure, then get the manifest after that
  - Thread all calls to omni
  - Add Aggregate specific top level RSpec elements in combined manifest
  - Support AM API v3
  - Consolidate constants
- - Fully handle a `VLAN_UNAVAILABLE` error from an AM
  - Fully handle negotiating among AMs for a VLAN tag to use
   - As in when the returned `suggestedVLANRange` is not what was requested
  - `fakeMode` is incomplete
@@ -389,7 +397,9 @@ See the list of Known Issues below.
  - Support GRE tunnels or other stitching technologies
 
 == Related Reading ==
+ - [http://groups.geni.net/geni/wiki/GENIExperimenter/Tutorials/StitchingTutorial Stitching Tutorial]
  - [http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites GENI Stitching Sites]
+ - [http://groups.geni.net/geni/browser/trunk/stitch-examples Sample Stitching RSpecs]
+ - [http://groups.geni.net/geni/wiki/GENIExperimenter/ExperimentExample-stitching A sample use of stitching]
  - [https://wiki.maxgigapop.net/twiki/bin/view/GENI/NetworkStitchingOverview MAX Stitching Architecture and Stitching Service pages]
  - [http://groups.geni.net/geni/wiki/GeniNetworkStitching GENI Network Stitching Design Page]
-
