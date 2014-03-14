@@ -265,6 +265,16 @@ cd <omni install directory>
 export PYTHONPATH=$PYTHONPATH:.
 python src/gcf/omnilib/stitch/scs.py --listaggregates
 }}}
+ - Stitching to fixed endpoints
+  - A fixed endpoint is any switch/port that happens to connect to
+  other things but not an explicit node. Use the `--fixedEndpoint`
+  option to be sure aggregates can handle this.
+ - Stitching to ExoGENI aggregates
+  - Note that in ExoGENI, capacity is in ''bps''.
+  - ExoGENI reservations can come from the specific rack, or from the
+  ExoSM's allocation of resources at that rack. You can control in
+  stitcher whether you use the local racks or the ExoSM, by using the
+  `--useExoSM` or `--noExoSM` options.
  - Be sure to see the list of Known Issues below.
 
 === Stitching Computation Service ===
@@ -325,19 +335,93 @@ detail as possible:
  - Listing of new rspec files created in `/tmp` and your current
  working directory
 
-Some sample error messages and their meaning:
+See the list of Known Issues below.
+
+== Common Error Messages ==
+
+=== Fatal errors – something is wrong with your request ===
+
 {{{
-StitchingServiceFailedError: Error from Stitching Service: code 3: MxTCE ComputeWorker return error message 
-'Action_ProcessRequestTopology_MP2P::Finish() Cannot find the set of paths for the RequestTopology. '.
+StitchingServiceFailedError: Error from Stitching Service: code 3: 
+MxTCE ComputeWorker return error message
+'Action_ProcessRequestTopology_MP2P::Finish() 
+Cannot find the set of paths for the RequestTopology. '.
 }}}
   - Errors like this mean there is no GENI layer 2 path possible
-    between your specified endpoints. Did you specify an `excludehop`
-    or `includehop` you shouldn't have? Follow the set of supported
-    aggregates (below)? Alternatively, it may mean that `stitcher`
-    tried all available VLAN tags for one of your aggregates, and got
-    a stitching failure on each - probably because that tag was not available.
+  between your specified endpoints. Did you specify an `excludehop` or
+  `includehop` you shouldn't have? Or include an aggregate that does
+  not support stitching? Alternatively, it may mean that `stitcher`
+  tried all available VLAN tags for one of your aggregates, and got a
+  stitching failure on each - probably because all tags were not
+  available.
 
-See the list of Known Issues below.
+`Reservation request impossible at <Aggregate ...>`
+ - Something about your request cannot be satisfied. The rest of the message may say more.
+
+`Inconsistent ifacemap`
+ - Your request is impossible. Try the `-–fixedEndpoint` option if that is relevant.
+
+`*** ERROR: mapper` OR 
+`Could not verify topo` OR 
+`Could not map to resources`
+ - You may have asked for more nodes or bandwidth than are
+ available. Or your request may be malformed. The error message may
+ say more, or you can ask on geni-users@googlegroups.com
+
+`Hostname > 63 char`
+ - Try a shorter client_id (node name) or slice name
+
+`Duplicate link`
+ - Do you have 2 links with the same client_id? Edit your request.
+
+`Must delete existing slice/sliver` OR 
+`CreateSliver: Existing record`
+ - You already have a reservation in this slice at this aggregate. Delete it first.
+
+`Malformed keys`
+ - Your SSH keys (from your omni_config usually) are malformed.
+
+`Edge domain does not exist`
+ - Your ExoGENI request is malformed in some way
+
+`check_image_size error` OR 
+`Incorrect image URL in ImageProxy`
+ - Check your ExoGENI disk image specification
+
+`Insufficient numCPUCores`
+ - The ExoGENI AM has no room for your VM. Stitcher will try the ExoSM / the local rack to see if it has room.
+
+=== Errors in the tool – you may need to report this as a bug ===
+
+` … has request tag XXX that is already in use by …`
+ - Stitcher made an error and picked a tag that is in use. Report this bug.
+
+`SCS gave error: …`
+ - The Stitching Computation Service had an error. You may need to report it.
+
+=== Transient errors – stitcher can handle these ===
+
+`Circuit reservation failed at … (…..). Try again from the SCS`
+ - An aggregate reported an error. Stitcher will try a new path from
+ the SCS to see if that solves your problem (it may not).
+
+`Could not reserve vlan tags` OR 
+`Error reserving vlan tag for …` OR 
+`Vlan tag … not available`
+ - Some VLAN tag you requested in not available. Stitcher will try to
+ find another and try again.
+
+`AddPersonToSite: Invalid argument: No such site`
+ - This is the first time this aggregate has seen your
+ project. Stitcher will retry and the error should go away.
+
+=== After too many transient errors, stitcher gives up ===
+
+`Stitching reservation failed X times. Last error: …`
+ - Stitcher goes to the Stitching Service for a path a limited number
+ of times. After that, it gives up with this error. Typically this
+ means there are not enough VLANs or bandwidth to get to your
+ aggregates.
 
 == Known Issues and Limitations ==
  - Aggregate support is limited. See http://groups.geni.net/geni/wiki/GeniNetworkStitchingSites
