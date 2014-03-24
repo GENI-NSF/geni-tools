@@ -84,12 +84,16 @@ def run_subprocess(cmd, stdout, stderr):
     except Exception as e:
         raise Exception("Failed call to subprocess '%s': %s" % (" ".join(cmd), e))
 
-# Pull the keyid (sha1 hash of the bits of the cert public key) from given cert
-# Requires openssl be installed and in the path
-# Fixme: are there pyopenssl or m2crypto ways of doing some of these things?
 def get_cert_keyid(gid):
+    """Extract the subject key identifier from the given certificate.
+    Return they key id as lowercase string with no colon separators
+    between pairs. The key id as shown in the text output of a
+    certificate are in uppercase with colon separators.
+
+    """
     raw_key_id = gid.get_extension('subjectKeyIdentifier')
-    # Raw has colons separating pairs, and all characters are upper case
+    # Raw has colons separating pairs, and all characters are upper case.
+    # Remove the colons and convert to lower case.
     keyid = raw_key_id.replace(':', '').lower()
     return keyid
 
