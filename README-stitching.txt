@@ -438,9 +438,6 @@ Cannot find the set of paths for the RequestTopology. '.
   - You can have only 1 stitched link per ExoGENI node (though you can
   have multiple nodes).
    - See http://groups.geni.net/exogeni/ticket/193
-  - You cannot stitch to ExoGENI 'bare metal' nodes; stitching only
-  works at ExoGENI VMs.
-   - See http://groups.geni.net/exogeni/ticket/195
   - Due to limitations in the `stitcher` tool, you cannot reserve some
   ExoGENI resources from the ExoSM, and some from an individual
   ExoGENI rack. You must either use all ExoSM resources, or all
