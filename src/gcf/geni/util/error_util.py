@@ -53,3 +53,4 @@ err_codes[ 21 ] = { 'label': 'CREDENTIAL_EXPIRED', 'description': "Not authorize
 err_codes[ 22 ] = { 'label': 'CREDENTIAL_MISMATCH', 'description': "Not authorized: Supplied credential does not match the supplied client certificate or does not match the given slice URN" }
 err_codes[ 23 ] = { 'label': 'CREDENTIAL_SIGNER_UNTRUSTED', 'description': "Not authorized: Supplied credential not signed by trusted authority" } 
 err_codes[ 24 ] = { 'label': 'VLAN_UNAVAILABLE', 'description': "VLAN tag(s) requested not available (likely stitching failure)" } 
+err_codes[ 25 ] = { 'label': 'INSUFFICIENT_BANDWIDTH', 'description': "Requested capacity for link(s) not available" } 
