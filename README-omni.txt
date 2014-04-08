@@ -41,6 +41,12 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.5.2:
+ * Update the OpenSSL version used in the Windows package to 1.0.1g,
+   avoiding the heartbleed vulnerability. (#593)
+ * Update various packages in Windows/Mac binaries to be
+   consistent versions. (#594)
+
 New in v2.5:
 
 Highlights:
@@ -711,7 +717,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.5
+GENI Omni Command Line Aggregate Manager Tool Version 2.5.2
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
