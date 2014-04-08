@@ -32,9 +32,9 @@ The Work includes the following software:
 
 I. Python language libraries
   A. Windows
-Version 2.7.5
+Version 2.7.6
 Software was retrieved from:
-http://python.org/ftp/python/2.7.5/python-2.7.5.msi
+http://python.org/ftp/python/2.7.6/python-2.7.6.msi
 Distributed under the Python
 Software Foundation License Version 2
 (http://opensource.org/licenses/Python-2.0).
@@ -65,28 +65,17 @@ https://github.com/martinpaljak/M2Crypto/blob/v0.22.3/LICENCE
 III. OpenSSL
 
   A. Windows 
-Version 1.0.1f
+Version 1.0.1g
 Software retrieved from   http://slproweb.com/download/Win32OpenSSL-1_0_1f.exe
 Distributed under the license in the installer.
 OpenSSL Toolkit license downloaded from here: http://www.openssl.org/source/license.html
 
-  B. MacOS
-Software was retrieved using 'pip'
-Distributed under the license found at
-http://www.openssl.org/source/license.html
 
 IV. pyOpenSSL
 
   A. Windows
-Version 0.11
-Software retrieved from
-https://launchpad.net/pyopenssl/main/0.11/+download/pyOpenSSL-0.11.winxp32-py2.7.msi
-Distributed under the 
-GNU Library or Lesser General Public License version 2.0 (LGPLv2)
-https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt
-
   B. Mac
-Version: 0.13
+Version 0.14
 Software was retrieved using 'pip'
 Distributed under Apache License 2.0 at
 http://raw.github.com/pyca/pyopenssl/master/LICENSE
