@@ -1219,6 +1219,18 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Use a different SA or different aggregate: %s..." % (self, str(ae)[:120])
+                            elif code == 2 and amcode == 2 and "Need node id for links" in msg:
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                badlink = None
+                                import re
+                                match = re.match("^(.+): Need node id for links$", msg)
+                                if match:
+                                    badlink = match.group(1).strip()
+                                    fatalMsg = "Reservation request impossible at %s. Link %s likely has a typo in one of the client_ids?: %s..." % (self, badlink, str(ae)[:120])
+                                else:
+                                    fatalMsg = "Reservation request impossible at %s. A link likely has a typo in one of the client_ids?: %s..." % (self, str(ae)[:120])
+
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
