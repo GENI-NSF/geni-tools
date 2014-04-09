@@ -1360,10 +1360,10 @@ class StitchingHandler(object):
                     # Note this next doesn't avoid the dup of a nickname
                     if not url in self.opts.aggregate:
                         if addOptions:
-                            self.logger.info("Adding aggregate option %s (%s)", url, urn)
+                            self.logger.debug("Adding aggregate option %s (%s)", url, urn)
                             self.opts.aggregate.append(url)
                         else:
-                            self.logger.info("NOTE not adding aggregate %s", url)
+                            self.logger.debug("NOTE not adding aggregate %s", url)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         '''Set the expires attribute on the rspec to the slice
