@@ -14,6 +14,8 @@ gcf 2.6:
     where it is illegal. (#558)
   * Make "Adding aggregate option" messages debug level (#584)
   * At PG/IG, 'Need node id for links' is fatal (#583)
+  * Request from the SCS the merged paths workflow, although we
+    do not use it, as this forces SCS to detect workflow loops. (#580)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

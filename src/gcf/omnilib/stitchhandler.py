@@ -804,6 +804,15 @@ class StitchingHandler(object):
 
         options = {}
         # options is a struct
+
+        # Supply the SCS option that requests the
+        # '##all_paths_merged##' path in the workflow.
+        # Doing so forces SCS to detect cross path workflow loops for
+        # us.
+        # Note that in omnilib/stitch/workflow we ignore that "path"
+        # currently, and construct our own workflow
+        options[scs.GENI_PATHS_MERGED_TAG] = True
+
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops

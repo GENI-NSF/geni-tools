@@ -37,6 +37,7 @@ from gcf.omnilib.xmlrpc.client import make_client
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
 HOP_INCLUSION_TAG = 'hop_inclusion_list'
 GENI_PROFILE_TAG = 'geni_routing_profile'
+GENI_PATHS_MERGED_TAG = 'geni_workflow_paths_merged'
 
 class Result(object):
     '''Hold and parse the raw result from the SCS'''
