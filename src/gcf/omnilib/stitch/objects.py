@@ -1187,13 +1187,23 @@ class Aggregate(object):
                         # FIXME: Add support for EG specific vlan unavail errors
                         # FIXME: Add support for EG specific fatal errors
 
-                        if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
-                                code==2 and amcode==2 and amtype=="protogeni") or \
-                                ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
-#                            self.logger.debug("Looks like a vlan availability issue")
-                            isVlanAvailableIssue = True
+                        # Handle INSUFFICIENT_BANDWIDTH: Call it
+                        # isFatal, so that if it is user requested, we
+                        # quit, and if it is not, we try to exclude
+                        # the hops.
+                        if code == 25:
+                            # FIXME: Does the error message help me ID
+                            # which hop?
+                            self.logger.debug("Insufficent Bandwidth error")
+                            isFatal = True
+                            fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
                         elif amtype == "protogeni":
-                            if code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or 'Inconsistent ifacemap' in msg):
+                            if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
+                                    code==2 and amcode==2) or \
+                                    ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1):
+                                #                            self.logger.debug("Looks like a vlan availability issue")
+                                isVlanAvailableIssue = True
+                            elif code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or 'Inconsistent ifacemap' in msg):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])

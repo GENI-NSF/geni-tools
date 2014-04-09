@@ -16,6 +16,8 @@ gcf 2.6:
   * At PG/IG, 'Need node id for links' is fatal (#583)
   * Request from the SCS the merged paths workflow, although we
     do not use it, as this forces SCS to detect workflow loops. (#580)
+  * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
+    advise the user to try less bandwidth. (#579)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
