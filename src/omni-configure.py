@@ -1054,19 +1054,19 @@ def getPGConfig(opts, public_key_list, cert) :
     (user, user_urn) = getUserInfo(cert)
 
     # UKY has to go first because emulab.net is a substring of uky.emulab.net
-    if user_urn.find('uky.emulab.net') != -1 :
-      sa = 'https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa'
-    else:
-      if user_urn.find('emulab.net') != -1 :
+    if user_urn.find('uky.emulab.net') != -1:
+        sa = 'https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa'
+    elif user_urn.find('emulab.net') != -1:
         sa = 'https://www.emulab.net:12369/protogeni/xmlrpc/sa'
-      else :
-        if user_urn.find('pgeni.gpolab.bbn.com') != -1 :
-            sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
-        else : 
-          if user_urn.find('loni.org') != -1 :
-            sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
-          else:
-            raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-2]) 
+    elif user_urn.find('pgeni.gpolab.bbn.com') != -1:
+        sa = 'https://www.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa'
+    elif user_urn.find('loni.org') != -1 :
+        sa = 'https://cron.loni.org:443/protogeni/xmlrpc/sa'
+    elif user_urn.find('wall2.ilabt.iminds.be') != -1 :
+        sa = 'https://www.wall2.ilabt.iminds.be:12369/protogeni/xmlrpc/sa'
+    else:
+        raise Exception("Creation of omni_config for users at %s is not supported. Please contact omni-users@geni.net" % user_urn.split('+')[-3])
+
     logger.debug("Framework is ProtoGENI, use as SA: %s", sa)
 
     cf_section = """

@@ -13,6 +13,10 @@ gcf 2.6:
     Avoid picking a tag on one hop and copying it to another
     where it is illegal. (#558)
 
+ * omni-configure
+  * Support iMinds PG instance, and fix error message on unsupported
+    PG SA (#597)
+
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)
 
