@@ -391,6 +391,9 @@ Cannot find the set of paths for the RequestTopology. '.
 `Insufficient numCPUCores`
  - The ExoGENI AM has no room for your VM. Stitcher will try the ExoSM / the local rack to see if it has room.
 
+`Need node id for links`
+ - You likely have a typo in an interface `client_id` in your link.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
