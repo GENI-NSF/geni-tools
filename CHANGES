@@ -12,6 +12,7 @@ gcf 2.6:
     tags on other hops on the same path if they don't translate.
     Avoid picking a tag on one hop and copying it to another
     where it is illegal. (#558)
+  * Make "Adding aggregate option" messages debug level (#584)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
