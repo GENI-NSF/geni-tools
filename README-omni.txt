@@ -42,6 +42,10 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.6:
+  * Mac install clears old `omni.py` and similar aliases (#556)
+  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+  * `renewslice` properly warns if your new expiration is not what you
+    requested (#575)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
