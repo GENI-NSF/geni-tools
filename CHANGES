@@ -18,6 +18,8 @@ gcf 2.6:
     do not use it, as this forces SCS to detect workflow loops. (#580)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
+  * Clearer error messages when there are no more VLANs for stitcher
+    to try. (#561)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
