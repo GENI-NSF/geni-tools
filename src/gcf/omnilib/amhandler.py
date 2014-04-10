@@ -2755,7 +2755,7 @@ class AMCallHandler(object):
                             newExpO = naiveUTC(newExpO)
                             newExpO_tz = newExpO.replace(tzinfo=dateutil.tz.tzutc())
                             newExp = newExpO_tz.isoformat()
-                            if time - newExpO > datetime.timedelta.resolution:
+                            if abs(time - newExpO) > datetime.timedelta.resolution:
                                 gotALAP = True
                                 self.logger.debug("Got new sliver expiration from output field. Orig %s != new %s", time, newExpO)
                         except:

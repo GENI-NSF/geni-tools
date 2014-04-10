@@ -906,7 +906,7 @@ class Framework(Framework_Base):
                     'SLICE_EXPIRED': 'f',
                     }}
         options['filter'] = ['SLICE_URN', 'SLICE_EXPIRATION', 'SLICE_EXPIRED']
-        self.logger.debug("Submitting with options: %s", options)
+        self.logger.debug("Submitting lookup_slices with options: %s", options)
         scred, options = self._add_credentials_and_speaksfor(scred, options)
         res = None
         (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
@@ -929,6 +929,7 @@ class Framework(Framework_Base):
                                 self.logger.warn("CH says slice %s expired at %s UTC", urn, slice_expiration)
 #                            elif expired:
 #                                self.logger.debug('CH says slice expired, but expiration %s is not in past?', slice_expiration)
+#                            self.logger.debug("lookup_slices on %s found expiration %s", urn, exp)
                             return exp
                     else:
                         self.logger.error("Slice %s was not found - has it already expired?" % urn)
@@ -1001,10 +1002,18 @@ class Framework(Framework_Base):
                 try:
                     sliceexp = naiveUTC(slice_expiration)
                     # If request is diff from sliceexp then log a warning
-                    if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
-                        self.logger.warn("Renewed %s slice %s expiration %s is different than requested: %s", self.fwtype, urn, sliceexp, expiration_dt)
-                except:
+                    if abs(sliceexp - naiveUTC(expiration_dt)) > datetime.timedelta.resolution:
+                        self.logger.warn("Renewed %s slice %s expiration %s UTC is different than requested: %s UTC", self.fwtype, urn, sliceexp, expiration_dt)
+                        return sliceexp
+#                    else:
+#                        self.logger.debug("Requested %s close to new %s", expiration_dt, slice_expiration)
+                except Exception, e:
+                    self.logger.debug("Exception checking if requested %s is close to new %s: %s", expiration_dt, slice_expiration, e)
                     pass
+
+                # Was able to look up new expiration and either it is close or had an error comparing it. Report what they got.
+                return slice_expiration
+            # Did not manage to look up the new expiration, but the SA said the renew succeeded. Tell user they got their request
             return expiration_dt
         else:
             # FIXME: use any message?

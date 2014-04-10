@@ -434,7 +434,7 @@ class Framework(Framework_Base):
                 # that and return that
                 sliceexp = naiveUTC(credutils.get_cred_exp(self.logger, response['value']))
                 # If request is diff from sliceexp then log a warning
-                if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
+                if abs(sliceexp - naiveUTC(expiration_dt)) > datetime.timedelta.resolution:
                     self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
                 return sliceexp
 

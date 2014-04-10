@@ -1,8 +1,11 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.6:
- * Mac install clears old `omni.py` and similar aliases (#556)
- * Fix get_cert_keyid to get the key id from the certificate (#573)
+ * Omni
+  * Mac install clears old `omni.py` and similar aliases (#556)
+  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+  * `renewslice` properly warns if your new expiration is not what you
+    requested (#575)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
