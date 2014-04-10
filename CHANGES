@@ -6,6 +6,8 @@ gcf 2.6:
   * Fix `get_cert_keyid` to get the key id from the certificate (#573)
   * `renewslice` properly warns if your new expiration is not what you
     requested (#575)
+  * Record FOAM reservations at the clearinghouse when using the
+    `chapi` framework, by using fake sliver URNs. (#574)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
