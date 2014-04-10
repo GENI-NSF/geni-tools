@@ -48,9 +48,10 @@ import datetime
 import dateutil
 import logging
 import os
+from pprint import pprint
 import string
 import sys
-from pprint import pprint
+import uuid
 
 class Framework(Framework_Base):
     def __init__(self, config, opts):
@@ -1390,6 +1391,7 @@ class Framework(Framework_Base):
             # APIv1/2: find slivers in manifest
             self.logger.debug("Finding new slivers to record in manifest")
             # Loop through manifest finding all slivers to record
+            foundSlivers = False
             while True:
                 idx1 = manifest.find('sliver_id=') # Start of 'sliver_id='
                 if idx1 < 0: break # No more slivers
@@ -1407,9 +1409,30 @@ class Framework(Framework_Base):
                     continue
                 sliver_urn = manifest[idx2 : idx3]
                 manifest = manifest[idx3+1:]
+                foundSlivers = True
                 msg = msg + str(self._record_one_new_sliver(sliver_urn,
                                                         slice_urn, agg_urn, creator_urn, expiration))
             # End of while loop over slivers in manifest
+
+            # Ticket #574
+            # If we have an am_urn and have a manifest and this is a FOAM manifest/AM, then we have no sliver_urns yet probably.
+            # If we call sliverstatus here, we could get from geni_urn the UID that really IDs the sliver.
+            # But that would be expensive, and we don't really care.
+            # Instead, create a UID and attach that to the AM URN piece and record that as the sliver URN.
+            # A hack, but it works
+            if not foundSlivers and "resources/rspec/ext/openflow" in manifest and "manifest" in manifest and "sliver" in manifest and is_valid_urn(agg_urn):
+                # Extract the authority from the agg_urn
+                amURNO = URN(urn=agg_urn)
+                auth = amURNO.getAuthority()
+                # generate a UID
+                sliver_uuid = uuid.uuid1() # uid based on current host and current time
+                # Make a sliver URN from that
+                sliver_urn = URN(authority=auth, type="sliver", name=str(sliver_uuid)).urn_string()
+                self.logger.debug("Recording sliver_info had manifest with no sliver_ids (FOAM?). Created a single sliver urn to record: %s", sliver_urn)
+                # Record one new sliver with that
+                msg = msg + str(self._record_one_new_sliver(sliver_urn,
+                                                        slice_urn, agg_urn, creator_urn, expiration))
+
         elif slivers and len(slivers) > 0:
             # APIv3 style sliver to record
             self.logger.debug("Recording new slivers in struct")
