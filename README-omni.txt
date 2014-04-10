@@ -43,6 +43,12 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 New in v2.6:
 
+New in v2.5.2:
+ * Update the OpenSSL version used in the Windows package to 1.0.1g,
+   avoiding the heartbleed vulnerability. (#593)
+ * Update various packages in Windows/Mac binaries to be
+   consistent versions. (#594)
+
 New in v2.5:
 
 Highlights:
