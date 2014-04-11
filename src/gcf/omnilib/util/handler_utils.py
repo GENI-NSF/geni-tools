@@ -589,9 +589,10 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
     if opts and opts.outputfile:
         filename = opts.outputfile
         if "%a" in opts.outputfile:
-            # replace %a with server
-            filename = string.replace(filename, "%a", server)
-        elif clientcount > 1:
+            if server is not None:
+                # replace %a with server
+                filename = string.replace(filename, "%a", server)
+        elif clientcount > 1 and server is not None:
             # FIXME: How do we distinguish? Let's just prefix server
             filename = server + "-" + filename
         if "%s" in opts.outputfile:
@@ -601,7 +602,10 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
             filename = string.replace(filename, "%s", slicename)
         return filename
 
-    filename = methodname + "-" + server + filetype
+    if server is None:
+        filename = methodname + filetype
+    else:
+        filename = methodname + "-" + server + filetype
 #--- AM API specific
     if slicename:
         filename = slicename+"-" + filename
