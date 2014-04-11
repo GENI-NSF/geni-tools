@@ -49,6 +49,7 @@ New in v2.6:
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
  * `listslicemembers` honors the `-o option to save results to a file (#489)
+ * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
