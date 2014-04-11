@@ -48,6 +48,7 @@ New in v2.6:
    requested (#575)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
+ * `listslicemembers` honors the `-o option to save results to a file (#489)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -1319,6 +1320,14 @@ clearinghouse. For each such user, the return includes:
  - `URN` identifier of the user
  - `EMAIL` address of the user
  - `ROLE` of the user in the slice.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile` If supplied, use this output file name: substitute slicename for any '`%s`'.
+ * If not saving results to a file, they are logged.
+ * File names will indicate the slice name
+  * e.g.: `myprefix-myslice-slicemembers.txt`
 
 Note that slice membership is only supported at some `chapi` type
 clearinghouses, including the GENI Clearinghouse. Slice membership

@@ -44,7 +44,8 @@ from ..sfa.util.xrn import get_leaf
 from .util import OmniError
 from .util.dossl import _do_ssl
 from .util import credparsing as credutils
-from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick
+from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick, \
+    _construct_output_filename, _printResults
 
 class CHCallHandler(object):
     """
@@ -612,6 +613,16 @@ class CHCallHandler(object):
         Args: slicename
         Return summary string and list of member dictionaries
         containing KEYS (list), URN, EMAIL, and ROLE
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute slicename for any %s.
+        If not saving results to a file, they are logged.
+
+        File names will indicate the slice name
+        e.g.: myprefix-myslice-slicemembers.txt
+
         """
         if len(args) < 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listslicemembers missing args: Supply <slice name>')
@@ -628,15 +639,26 @@ class CHCallHandler(object):
             self._raise_omni_error("listslicemembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 
         if members and len(members) > 0:
-            prtStr = "Members of slice %s are:\n" % (slice_name)
+            # Save/print out result
+            prettyResult = "Members of slice %s are:\n" % (slice_name)
             for i, member in enumerate(members):
-                prtStr += 'Member ' + str(i + 1) + ':\n'
-                prtStr += '   URN = ' + member['URN'] + '\n'
-                prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
-                prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
+                prettyResult += 'Member ' + str(i + 1) + ':\n'
+                prettyResult += '   URN = ' + member['URN'] + '\n'
+                prettyResult += '   Email = ' + str(member['EMAIL']) + '\n'
                 if member.has_key('ROLE'):
-                    prtStr += '   Role = ' + str(member['ROLE']) + '\n'
-#            self.logger.info(prtStr)
+                    prettyResult += '   Role = ' + str(member['ROLE']) + '\n'
+                prettyResult += '   Keys = ' + str(member['KEYS']) + '\n'
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, slice_name, None, None, "slicemembers", ".txt", 0)
+
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+                prtStr = "Saved members of slice %s to file %s. \n" % (slice_name, filename)
+            else:
+                prtStr = prettyResult
+
         else:
             prtStr = "Failed to find members of slice %s" % (slice_name)
             if message != "":
