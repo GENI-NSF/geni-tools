@@ -1,22 +1,22 @@
 [Setup]
 OutputDir=C:\Users\local_user\gcf\executables
-OutputBaseFilename=omniTools-2.6-win-setup
+OutputBaseFilename=omniTools-2.5.2-rc1-win-setup
 AppCopyright=2010-2014
-AppName=omniTools-2.6
-AppVerName=omniTools-2.6
+AppName=omniTools-2.5.2
+AppVerName=omniTools-2.5.2
 InfoAfterFile=C:\Users\local_user\gcf\windows_install\infoAfterFile.rtf
 LicenseFile=C:\Users\local_user\gcf\windows_install\LICENSE.TXT
-DefaultDirName={pf}\omniTools-2.6
-DefaultGroupName=omniTools-2.6
+DefaultDirName={pf}\omniTools-2.5.2
+DefaultGroupName=omniTools-2.5.2
 ShowLanguageDialog=no
 UsePreviousAppDir=false
 [Run]
 Filename: {app}\install.vbs; Flags: shellexec
 [Icons]
 Name: {group}\Documentation; Filename: http://trac.gpolab.bbn.com/gcf/wiki; Comment: omni wiki
-Name: {group}\How To Configure omniTools-2.6; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omniTools-2.6
+Name: {group}\How To Configure omniTools-2.5.2; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omniTools-2.5.2
 Name: {group}\Disclaimer; Filename: {app}\LICENSE.TXT
-Name: {group}\{cm:UninstallProgram, omniTools-2.6}; Filename: {uninstallexe}
+Name: {group}\{cm:UninstallProgram, omniTools-2.5.2}; Filename: {uninstallexe}
 [Files]
 Source: LICENSE.TXT; DestDir: {app}
 Source: ..\README-omni.txt; DestDir: {app}
@@ -43,6 +43,7 @@ Source: ..\src\dist\readyToLogin.exe; DestDir: {app}
 Source: ..\src\dist\select.pyd; DestDir: {app}
 Source: ..\src\dist\SSLEAY32.dll; DestDir: {app}
 Source: ..\src\dist\stitcher.exe; DestDir: {app}
+Source: ..\src\dist\addMemberToSliceandSlivers.exe; DestDir: {app}
 Source: ..\src\dist\tcl85.dll; DestDir: {app}
 Source: ..\src\dist\tk85.dll; DestDir: {app}
 Source: ..\src\dist\unicodedata.pyd; DestDir: {app}
