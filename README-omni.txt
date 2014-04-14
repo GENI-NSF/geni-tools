@@ -48,9 +48,13 @@ New in v2.6:
    requested (#575)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
- * `listslicemembers` honors the `-o` option to save results to a file (#489)
+ * `listslicemembers` honors the `-o` option to save results to a
+   file, and `--tostdout` to instead go to STDOUT. (#489)
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
- * `listslivers` honors the `-o` option to save results to a faile (#488)
+ * `listslivers` honors the `-o` option to save results to a file,
+   and `--tostdout` to instead go to STDOUT. (#488)
+ * `get_ch_version` honors the `-o` option to save results to a file,
+   and `--tostdout` to instead to to STDOUT. (#371)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -1067,6 +1071,15 @@ clearinghouse, if supported. Return is a dictionary.
 
 Format: `omni.py get_ch_version`
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config 
+  * e.g.: myprefix-portal-chversion.txt
+
 ==== listaggregates ====
 List the URN and URL for all known aggregates.
 
@@ -1301,8 +1314,9 @@ Output directing options:
  - `-p` (used with `-o`) Prefix for resulting filename
  - `--outputfile` If supplied, use this output file name: substitute slicename for any `%s`.
  - If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
  - File names will indicate the slice name
- - e.g.: `myprefix-myslice-slivers.txt`
+  - e.g.: `myprefix-myslice-slivers.txt`
 
 This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
@@ -1336,6 +1350,7 @@ Output directing options:
  * `-p` (used with `-o`) Prefix for resulting filename
  * `--outputfile` If supplied, use this output file name: substitute slicename for any '`%s`'.
  * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
  * File names will indicate the slice name
   * e.g.: `myprefix-myslice-slicemembers.txt`
 

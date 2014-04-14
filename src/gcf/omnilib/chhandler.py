@@ -89,17 +89,40 @@ class CHCallHandler(object):
         return getattr(self,call)(args[1:])
 
     def get_ch_version(self, args):
-        '''Call GetVersion at the Clearinghouse (if implemented).'''
+        '''Call GetVersion at the Clearinghouse (if implemented).
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-chversion.txt
+        '''
         retVal = ""
         (ver, message) = self.framework.get_version()
         if ver and ver != dict():
             pp = pprint.PrettyPrinter(indent=4)
             prettyVersion = pp.pformat(ver)
-            printStr = "CH has version %s" % prettyVersion
-            retVal += printStr + "\n"
-            self.logger.info(printStr)
+
+            # Save/print out result
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "chversion", ".json", 0)
+
+            if filename is None:
+                self.logger.info("Printing clearinghouse %s version", self.opts.framework)
+
+            _printResults(self.opts, self.logger, header, prettyVersion, filename)
+            if filename:
+                retVal += "Saved Clearinghouse %s Version to file %s. \n" % (self.opts.framework, filename)
+            else:
+                retVal += "Printed Clearinghouse %s version" % self.opts.framework
+
         else:
-            printStr = "GetVersion failed at CH: %s" % message
+            printStr = "GetVersion failed at CH %s: %s" % (self.opts.framework, message)
             retVal += printStr + "\n"
             self.logger.error(printStr)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -580,6 +603,7 @@ class CHCallHandler(object):
         -p (used with -o) Prefix for resulting filename
         --outputfile If supplied, use this output file name: substitute slicename for any %s.
         If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
         File names will indicate the slice name
         e.g.: myprefix-myslice-slivers.txt
@@ -621,8 +645,16 @@ class CHCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, slice_name, None, None, "slivers", ".txt", 0)
 
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing list of slivers in slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
                 _printResults(self.opts, self.logger, header, pretty_result, filename)
+
+            if filename is not None:
                 result_string = "Saved list of slivers/aggregates in slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                result_string = "Printed list of slivers in slice %s" % slice_name
             else:
                 result_string = pretty_result
 
@@ -639,6 +671,7 @@ class CHCallHandler(object):
         -p (used with -o) Prefix for resulting filename
         --outputfile If supplied, use this output file name: substitute slicename for any %s.
         If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
         File names will indicate the slice name
         e.g.: myprefix-myslice-slicemembers.txt
@@ -674,8 +707,16 @@ class CHCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, slice_name, None, None, "slicemembers", ".txt", 0)
 
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing members of slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
                 _printResults(self.opts, self.logger, header, prettyResult, filename)
+
+            if filename is not None:
                 prtStr = "Saved members of slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                prtStr = "Printed list of members in slice %s" % slice_name
             else:
                 prtStr = prettyResult
 
