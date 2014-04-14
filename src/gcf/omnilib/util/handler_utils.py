@@ -727,7 +727,8 @@ def _printResults(opts, logger, header, content, filename=None):
                     print header + "\n"
         elif content is not None:
             if not opts.tostdout:
-                logger.info(content[:cstart])
+                if cstart > 0 and content[:cstart].strip() != "":
+                    logger.info(content[:cstart])
             else:
                 print content[:cstart] + "\n"
         if content is not None:
