@@ -137,18 +137,41 @@ class CHCallHandler(object):
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
            This is the aggregates that registered with the framework.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-aggregates.txt
+
         """
         retStr = ""
         retVal = {}
         (aggs, message) = _listaggregates(self)
         aggList = aggs.items()
-        self.logger.info("Listing %d aggregates..."%len(aggList))
         aggCnt = 0
+        pretty_result = "%d aggregates listed at the %s clearinghouse:\n" % (len(aggList), self.opts.framework)
         for (urn, url) in aggList:
             aggCnt += 1
-            self.logger.info( "  Aggregate %d:\n \t%s \n \t%s" % (aggCnt, urn, url) )
-#            retStr += "%s: %s\n" % (urn, url)
+            agg_nickname = _lookupAggNick(self, urn)
+            if agg_nickname:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s \n \t%s\n" % (aggCnt, agg_nickname, urn, url) 
+            else:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s\n" % (aggCnt, urn, url) 
             retVal[urn] = url
+
+        # Save/print out result
+        header=None
+        filename = None
+        if self.opts.output:
+            filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "aggregates", ".txt", 0)
+
+        _printResults(self.opts, self.logger, header, pretty_result, filename)
+
         if aggs == {} and message != "":
             retStr += ("No aggregates found: %s" % message)
         elif len(aggList)==0:
@@ -156,7 +179,9 @@ class CHCallHandler(object):
         elif len(aggList) == 1:
             retStr = "Found 1 aggregate. URN: %s; URL: %s" % (retVal.keys()[0], retVal[retVal.keys()[0]])
         else:
-            retStr = "Found %d aggregates." % len(aggList)
+            retStr = "Found %d aggregates. " % len(aggList)
+            if filename:
+                retStr += "Saved Aggregate List to file %s." % (filename)
         return retStr, retVal
 
     def createslice(self, args):

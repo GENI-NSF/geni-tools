@@ -53,7 +53,7 @@ New in v2.6:
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
- * `get_ch_version` honors the `-o` option to save results to a file,
+ * `get_ch_version`, `listaggregates` honors the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
 
 New in v2.5.2:
@@ -1102,6 +1102,15 @@ Gets aggregates from:
  - omni_config `aggregates` entry (1+, no URNs available), OR
  - Specified control framework (via remote query). This is the
  aggregates that registered with the framework.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config
+  * e.g.: `myprefix-portal-aggregates.txt`
 
 ==== createslice ====
 Creates the slice in your chosen control framework (cf) - that is, at
