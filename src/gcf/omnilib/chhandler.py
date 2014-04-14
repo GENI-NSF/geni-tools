@@ -574,6 +574,16 @@ class CHCallHandler(object):
          - SLIVER_INFO_CREATOR_URN
          - SLIVER_INFO_EXPIRATION
          - SLIVER_INFO_CREATION
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute slicename for any %s.
+        If not saving results to a file, they are logged.
+
+        File names will indicate the slice name
+        e.g.: myprefix-myslice-slivers.txt
+
          """
         if len(args) == 0 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error("listslivers requires a slice name argument")
@@ -588,23 +598,33 @@ class CHCallHandler(object):
         if len(slivers_by_agg) == 0:
             result_string = "No slivers found for slice %s" % slice_urn
         else:
-            result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
+            pretty_result = "Slivers by aggregate for slice %s:\n\n" % slice_urn
             for agg_urn in slivers_by_agg:
-                result_string += "Aggregate: " + agg_urn
+                pretty_result += "Aggregate: " + agg_urn
                 agg_nickname = _lookupAggNick(self, agg_urn)
                 if agg_nickname:
-                    result_string += " ( %s )" % agg_nickname
-                result_string += "\n"
+                    pretty_result += " ( %s )" % agg_nickname
+                pretty_result += "\n"
                 for sliver_urn in slivers_by_agg[agg_urn].keys():
-                    result_string += "    Sliver: " + sliver_urn
+                    pretty_result += "    Sliver: " + sliver_urn + "\n"
                     if slivers_by_agg[agg_urn][sliver_urn] is not None and slivers_by_agg[agg_urn][sliver_urn].has_key('SLIVER_INFO_EXPIRATION') and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] is not None and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "" and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "None":
-                        result_string += " expires on " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " UTC\n"
+                        pretty_result += "\tExpires at: " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " (UTC)\n"
                     else:
-                        result_string += "\n"
-                result_string += "\n"
+                        pretty_result += "\n"
+                pretty_result += "\n"
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, slice_name, None, None, "slivers", ".txt", 0)
+
+                _printResults(self.opts, self.logger, header, pretty_result, filename)
+                result_string = "Saved list of slivers/aggregates in slice %s to file %s. \n" % (slice_name, filename)
+            else:
+                result_string = pretty_result
 
         return result_string, slivers_by_agg
 

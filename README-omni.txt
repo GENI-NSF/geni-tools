@@ -48,8 +48,9 @@ New in v2.6:
    requested (#575)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
- * `listslicemembers` honors the `-o option to save results to a file (#489)
+ * `listslicemembers` honors the `-o` option to save results to a file (#489)
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
+ * `listslivers` honors the `-o` option to save results to a faile (#488)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -1294,6 +1295,14 @@ each of which is a dictionary possibly containing:
  - `SLIVER_INFO_EXPIRATION`: When the sliver expires, if known
  - `SLIVER_INFO_CREATION`: When the sliver was created if known (or
  sometimes when it was first reported to the clearinghouse)
+
+Output directing options:
+ - `-o` Save result in a file
+ - `-p` (used with `-o`) Prefix for resulting filename
+ - `--outputfile` If supplied, use this output file name: substitute slicename for any `%s`.
+ - If not saving results to a file, they are logged.
+ - File names will indicate the slice name
+ - e.g.: `myprefix-myslice-slivers.txt`
 
 This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
