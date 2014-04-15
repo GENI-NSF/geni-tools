@@ -4191,14 +4191,26 @@ class AMCallHandler(object):
         Gives a list of all images created by that user, including the URN 
         for deleting the image. Return is a list of structs containing the url and urn of the image.
         Note that you should invoke this at the AM where the images were created.
-        See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo'''
+        See http://www.protogeni.net/trac/protogeni/wiki/ImageHowTo
+
+        Output directing options:
+        -o Save result in per-Aggregate files
+        -p (used with -o) Prefix for resulting files
+        --outputfile If supplied, use this output file name: substitute the AM for any %a
+
+        If not saving results to a file, they are logged.
+        If --tostdout option is supplied (not -o), then instead of logging, print to STDOUT.
+
+        File names will indicate the user and which aggregate is represented.
+        e.g.: myprefix-imageowner-listimages-localhost-8001.json
+        '''
 
         creator_urn = None
 
         # If we got a creator argument, use it
         if len(args) >= 1:
             creator_urn = args[0]
-            self.logger.info("ListImages got creator_urn %r", creator_urn)
+            self.logger.debug("ListImages got creator_urn %r", creator_urn)
 
         # get the user credential
         cred = None
@@ -4316,12 +4328,24 @@ class AMCallHandler(object):
                 # success
                 success = True
                 prettyResult = json.dumps(realres, ensure_ascii=True, indent=2)
-                if numClients == 1:
+
+                # Save/print out result
+                imgCnt = len(realres)
+                header="Found %d images created by %s at %s" % (imgCnt, creator_urn, client.str)
+                filename = None
+                if self.opts.output:
+                    creator_name = urn_util.nameFromURN(creator_urn)
+                    filename = _construct_output_filename(self.opts, creator_name, client.url, client.urn, "listimages", ".json", numClients)
+
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+                if filename:
+                    prStr = "Saved list of images created by %s at AM %s to file %s. \n" % (creator_urn, client.str, filename)
+                elif numClients == 1:
                     prStr = "Images created by %s at %s:\n%s" % (creator_urn, client.str, prettyResult)
                 else:
                     imgCnt = len(realres)
-                    prStr = "Found %d images created by %s at %s" % (imgCnt, creator_urn, client.str)
-                self.logger.info(prettyResult)
+                    prStr = "Found %d images created by %s at %s. \n" % (imgCnt, creator_urn, client.str)
+
                 retVal += prStr
 
         if numClients == 0:

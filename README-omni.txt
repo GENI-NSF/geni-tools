@@ -48,9 +48,15 @@ New in v2.6:
    requested (#575)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
- * `listslicemembers` honors the `-o` option to save results to a file (#489)
+ * `listslicemembers` honors the `-o` option to save results to a
+   file, and `--tostdout` to instead go to STDOUT. (#489)
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
- * `listslivers` honors the `-o` option to save results to a faile (#488)
+ * `listslivers` honors the `-o` option to save results to a file,
+   and `--tostdout` to instead go to STDOUT. (#488)
+ * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
+   `listkeys`, `listmykeys`, `listimages`, and `nicknames`
+   honor the `-o` option to save results to a file,
+   and `--tostdout` to instead to to STDOUT. (#371)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -1067,6 +1073,15 @@ clearinghouse, if supported. Return is a dictionary.
 
 Format: `omni.py get_ch_version`
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config 
+  * e.g.: myprefix-portal-chversion.txt
+
 ==== listaggregates ====
 List the URN and URL for all known aggregates.
 
@@ -1089,6 +1104,15 @@ Gets aggregates from:
  - omni_config `aggregates` entry (1+, no URNs available), OR
  - Specified control framework (via remote query). This is the
  aggregates that registered with the framework.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config
+  * e.g.: `myprefix-portal-aggregates.txt`
 
 ==== createslice ====
 Creates the slice in your chosen control framework (cf) - that is, at
@@ -1206,6 +1230,15 @@ Sample Usage: `omni.py listmyslices jdoe`
 With no `username` supplied, it will look up slices registered to you
 (the user whose certificate is supplied).
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose slices are listed
+  * e.g.: `myprefix-jsmith-slices.txt`
+
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
@@ -1215,6 +1248,15 @@ Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed
+  * e.g.: `myprefix-jsmith-keys.txt`
+
 ==== listkeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
@@ -1222,6 +1264,15 @@ Not supported by all frameworks. Some frameworks only support querying
 the current user.
 
 Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed
+  * e.g.: `myprefix-jsmith-keys.txt`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -1301,8 +1352,9 @@ Output directing options:
  - `-p` (used with `-o`) Prefix for resulting filename
  - `--outputfile` If supplied, use this output file name: substitute slicename for any `%s`.
  - If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
  - File names will indicate the slice name
- - e.g.: `myprefix-myslice-slivers.txt`
+  - e.g.: `myprefix-myslice-slivers.txt`
 
 This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
@@ -1336,6 +1388,7 @@ Output directing options:
  * `-p` (used with `-o`) Prefix for resulting filename
  * `--outputfile` If supplied, use this output file name: substitute slicename for any '`%s`'.
  * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
  * File names will indicate the slice name
   * e.g.: `myprefix-myslice-slicemembers.txt`
 
@@ -2424,9 +2477,29 @@ Aggregates queried:
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
+Output directing options:
+ - `-o`: Save result in per-Aggregate files
+ - `-`p (used with `-o`): Prefix for resulting files
+ - `--outputfile`: If supplied, use this output file name: substitute the AM for any `%a`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option is supplied (and not `-o`), then instead of logging, print to STDOUT.
+ - File names will indicate the user and which aggregate is represented.
+  - e.g.: `myprefix-imageowner-listimages-localhost-8001.json`
+
 ==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
 the Omni config file(s). 
+
+If you specify nicknames in `-a` arguments, it will look up that
+nickname and print any matching aggregate URN/URL.
+
+Output directing options:
+ * `-o`: Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File name will be `nicknames.txt` (plus any requested prefix)
 
 Sample Output:
 {{{

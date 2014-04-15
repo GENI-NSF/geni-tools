@@ -8,9 +8,15 @@ gcf 2.6:
     requested (#575)
   * Record FOAM reservations at the clearinghouse when using the
     `chapi` framework, by using fake sliver URNs. (#574)
-  * `listslicemembers` honors the `-o` option to save results to a file (#489)
+  * `listslicemembers` honors the `-o` option to save results to a
+    file, and `--tostdout` to instead go to STDOUT. (#489)
   * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
-  * `listslivers` honors the `-o` option to save results to a faile (#488)
+  * `listslivers` honors the `-o` option to save results to a file,
+    and `--tostdout` to instead go to STDOUT. (#488)
+  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
+    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
+    honor the `-o` option to save results to a file,
+    and `--tostdout` to instead to to STDOUT. (#371)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)

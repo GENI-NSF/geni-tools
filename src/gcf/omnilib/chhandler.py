@@ -89,17 +89,40 @@ class CHCallHandler(object):
         return getattr(self,call)(args[1:])
 
     def get_ch_version(self, args):
-        '''Call GetVersion at the Clearinghouse (if implemented).'''
+        '''Call GetVersion at the Clearinghouse (if implemented).
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-chversion.txt
+        '''
         retVal = ""
         (ver, message) = self.framework.get_version()
         if ver and ver != dict():
             pp = pprint.PrettyPrinter(indent=4)
             prettyVersion = pp.pformat(ver)
-            printStr = "CH has version %s" % prettyVersion
-            retVal += printStr + "\n"
-            self.logger.info(printStr)
+
+            # Save/print out result
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "chversion", ".json", 0)
+
+            if filename is None:
+                self.logger.info("Printing clearinghouse %s version", self.opts.framework)
+
+            _printResults(self.opts, self.logger, header, prettyVersion, filename)
+            if filename:
+                retVal += "Saved Clearinghouse %s Version to file %s. \n" % (self.opts.framework, filename)
+            else:
+                retVal += "Printed Clearinghouse %s version" % self.opts.framework
+
         else:
-            printStr = "GetVersion failed at CH: %s" % message
+            printStr = "GetVersion failed at CH %s: %s" % (self.opts.framework, message)
             retVal += printStr + "\n"
             self.logger.error(printStr)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -114,18 +137,41 @@ class CHCallHandler(object):
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
            This is the aggregates that registered with the framework.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-aggregates.txt
+
         """
         retStr = ""
         retVal = {}
         (aggs, message) = _listaggregates(self)
         aggList = aggs.items()
-        self.logger.info("Listing %d aggregates..."%len(aggList))
         aggCnt = 0
+        pretty_result = "%d aggregates listed at the %s clearinghouse:\n" % (len(aggList), self.opts.framework)
         for (urn, url) in aggList:
             aggCnt += 1
-            self.logger.info( "  Aggregate %d:\n \t%s \n \t%s" % (aggCnt, urn, url) )
-#            retStr += "%s: %s\n" % (urn, url)
+            agg_nickname = _lookupAggNick(self, urn)
+            if agg_nickname:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s \n \t%s\n" % (aggCnt, agg_nickname, urn, url) 
+            else:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s\n" % (aggCnt, urn, url) 
             retVal[urn] = url
+
+        # Save/print out result
+        header=None
+        filename = None
+        if self.opts.output:
+            filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "aggregates", ".txt", 0)
+
+        _printResults(self.opts, self.logger, header, pretty_result, filename)
+
         if aggs == {} and message != "":
             retStr += ("No aggregates found: %s" % message)
         elif len(aggList)==0:
@@ -133,7 +179,9 @@ class CHCallHandler(object):
         elif len(aggList) == 1:
             retStr = "Found 1 aggregate. URN: %s; URL: %s" % (retVal.keys()[0], retVal[retVal.keys()[0]])
         else:
-            retStr = "Found %d aggregates." % len(aggList)
+            retStr = "Found %d aggregates. " % len(aggList)
+            if filename:
+                retStr += "Saved Aggregate List to file %s." % (filename)
         return retStr, retVal
 
     def createslice(self, args):
@@ -297,7 +345,18 @@ class CHCallHandler(object):
     def listmyslices(self, args):
         """Provides a list of slices of user provided as first
         argument, or current user if no username supplied.
-        Not supported by all frameworks."""
+        Not supported by all frameworks.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose slices are listed
+        e.g.: myprefix-jsmith-slices.txt
+        """
         if len(args) > 0:
             username = args[0].strip()
         elif self.opts.speaksfor:
@@ -316,19 +375,42 @@ class CHCallHandler(object):
             retStr += "Server error: %s. " % message
         elif len(slices) > 0:
             slices = sorted(slices)
-            self.logger.info("User '%s' has slice(s): \n\t%s"%(username,"\n\t".join(slices)))
+            result="User '%s' has %d slice(s): \n" % (username, len(slices))
+            result += "\t%s" % ("\n\t".join(slices))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, None, None, "slices", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s slices to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s slices. " % username
         else:
             self.logger.info("User '%s' has NO slices."%username)
 
         # summary
-        retStr += "Found %d slice(s) for user '%s'.\n"%(len(slices), username)
+        retStr += "Found %d slice(s) for user '%s'. "%(len(slices), username)
 
         return retStr, slices
 
     def listkeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
-        Not supported by all frameworks, and some frameworks insist on only the current user."""
+        Not supported by all frameworks, and some frameworks insist on only the current user.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose keys are listed
+        e.g.: myprefix-jsmith-keys.txt
+        """
         username = None
         if len(args) > 0:
             username = args[0].strip()
@@ -354,7 +436,20 @@ class CHCallHandler(object):
                 retStr += "Failed to list keys - Server error. "
 
         elif len(keys) > 0:
-            self.logger.info("User %s has key(s): \n\t%s"%(printusername, "\n\t".join(keys)))
+            result="User '%s' has %d key(s): \n" % (printusername, len(keys))
+            result += "\t%s" % ("\n\t".join(keys))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, printusername, None, None, "keys", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s keys to file %s. " % (printusername, filename)
+            else:
+                retStr += "Printed user %s keys. " % printusername
+
         else:
             self.logger.info("User %s has NO keys.", printusername)
 
@@ -580,6 +675,7 @@ class CHCallHandler(object):
         -p (used with -o) Prefix for resulting filename
         --outputfile If supplied, use this output file name: substitute slicename for any %s.
         If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
         File names will indicate the slice name
         e.g.: myprefix-myslice-slivers.txt
@@ -621,8 +717,16 @@ class CHCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, slice_name, None, None, "slivers", ".txt", 0)
 
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing list of slivers in slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
                 _printResults(self.opts, self.logger, header, pretty_result, filename)
+
+            if filename is not None:
                 result_string = "Saved list of slivers/aggregates in slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                result_string = "Printed list of slivers in slice %s" % slice_name
             else:
                 result_string = pretty_result
 
@@ -639,6 +743,7 @@ class CHCallHandler(object):
         -p (used with -o) Prefix for resulting filename
         --outputfile If supplied, use this output file name: substitute slicename for any %s.
         If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
         File names will indicate the slice name
         e.g.: myprefix-myslice-slicemembers.txt
@@ -674,8 +779,16 @@ class CHCallHandler(object):
             if self.opts.output:
                 filename = _construct_output_filename(self.opts, slice_name, None, None, "slicemembers", ".txt", 0)
 
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing members of slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
                 _printResults(self.opts, self.logger, header, prettyResult, filename)
+
+            if filename is not None:
                 prtStr = "Saved members of slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                prtStr = "Printed list of members in slice %s" % slice_name
             else:
                 prtStr = prettyResult
 
