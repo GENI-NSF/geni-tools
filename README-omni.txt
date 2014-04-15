@@ -54,7 +54,7 @@ New in v2.6:
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
-   `listkeys`, and `listmykeys`
+   `listkeys`, `listmykeys`, and `nicknames`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
 
@@ -2480,6 +2480,17 @@ Aggregates queried:
 ==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
 the Omni config file(s). 
+
+If you specify nicknames in `-a` arguments, it will look up that
+nickname and print any matching aggregate URN/URL.
+
+Output directing options:
+ * `-o`: Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File name will be `nicknames.txt` (plus any requested prefix)
 
 Sample Output:
 {{{

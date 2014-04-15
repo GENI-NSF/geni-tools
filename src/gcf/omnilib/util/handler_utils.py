@@ -858,8 +858,19 @@ def _get_user_urn(logger, config):
         return None
 
 def printNicknames(config, opts):
-    '''Get the known aggregate and rspec nicknames and return them as a string and a struct'''
+    '''Get the known aggregate and rspec nicknames and return them as a string and a struct.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File name will be nicknames.txt (plus any requested prefix)
+    '''
     retStruct = dict()
+    result_string = ""
     retStruct['aggregate_nicknames'] = config['aggregate_nicknames']
     retString = "Omni knows the following Aggregate Nicknames:\n\n"
     retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
@@ -883,12 +894,28 @@ def printNicknames(config, opts):
         retString += "\n(Default RSpec extension: %s )\n" % config["default_rspec_extension"]
 
     if opts.aggregate and len(opts.aggregate) > 0:
-        retString += "\nRequested aggregate nicknames:\n"
+        result_string += "\nRequested aggregate nicknames:\n"
         for nick in opts.aggregate:
             if nick in config['aggregate_nicknames'].keys():
                 (urn, url) = config['aggregate_nicknames'][nick]
-                retString += "\t%s = %s (%s)\n" % (nick, url, urn)
+                result_string += "\t%s = %s (%s)\n" % (nick, url, urn)
             else:
-                retString += "\t%s = Not a known aggregate nickname\n" % nick
+                result_string += "\t%s = Not a known aggregate nickname\n" % nick
+        result_string += "\n"
 
-    return retString, retStruct
+    header=None
+    filename = None
+    if opts.output:
+        filename = _construct_output_filename(opts, None, None, None, "nicknames", ".txt", 0)
+
+    if filename is not None or opts.tostdout:
+        _printResults(opts, config['logger'], header, retString, filename)
+
+    if filename is not None:
+        result_string += "Saved list of known nicknames to file %s. \n" % (filename)
+    elif opts.tostdout:
+        result_string += "Printed list of known nicknames. \n"
+    else:
+        result_string = retString + result_string
+
+    return result_string, retStruct
