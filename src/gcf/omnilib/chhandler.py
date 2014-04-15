@@ -399,7 +399,18 @@ class CHCallHandler(object):
     def listkeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
-        Not supported by all frameworks, and some frameworks insist on only the current user."""
+        Not supported by all frameworks, and some frameworks insist on only the current user.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose keys are listed
+        e.g.: myprefix-jsmith-keys.txt
+        """
         username = None
         if len(args) > 0:
             username = args[0].strip()
@@ -425,7 +436,20 @@ class CHCallHandler(object):
                 retStr += "Failed to list keys - Server error. "
 
         elif len(keys) > 0:
-            self.logger.info("User %s has key(s): \n\t%s"%(printusername, "\n\t".join(keys)))
+            result="User '%s' has %d key(s): \n" % (printusername, len(keys))
+            result += "\t%s" % ("\n\t".join(keys))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, printusername, None, None, "keys", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s keys to file %s. " % (printusername, filename)
+            else:
+                retStr += "Printed user %s keys. " % printusername
+
         else:
             self.logger.info("User %s has NO keys.", printusername)
 

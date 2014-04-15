@@ -53,7 +53,8 @@ New in v2.6:
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
- * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`
+ * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
+   `listkeys`, and `listmykeys`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
 
@@ -1247,6 +1248,15 @@ Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed
+  * e.g.: `myprefix-jsmith-keys.txt`
+
 ==== listkeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
@@ -1254,6 +1264,15 @@ Not supported by all frameworks. Some frameworks only support querying
 the current user.
 
 Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed
+  * e.g.: `myprefix-jsmith-keys.txt`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
