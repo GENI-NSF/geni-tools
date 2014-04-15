@@ -14,7 +14,7 @@ gcf 2.6:
   * `listslivers` honors the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#488)
   * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
-    `listkeys`, `listmykeys`, and `nicknames`
+    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
     honor the `-o` option to save results to a file,
     and `--tostdout` to instead to to STDOUT. (#371)
 

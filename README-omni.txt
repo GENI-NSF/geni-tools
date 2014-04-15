@@ -54,7 +54,7 @@ New in v2.6:
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
-   `listkeys`, `listmykeys`, and `nicknames`
+   `listkeys`, `listmykeys`, `listimages`, and `nicknames`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
 
@@ -2476,6 +2476,15 @@ Aggregates queried:
    nickname in `omni_config`, if provided, ELSE
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
+
+Output directing options:
+ - `-o`: Save result in per-Aggregate files
+ - `-`p (used with `-o`): Prefix for resulting files
+ - `--outputfile`: If supplied, use this output file name: substitute the AM for any `%a`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option is supplied (and not `-o`), then instead of logging, print to STDOUT.
+ - File names will indicate the user and which aggregate is represented.
+  - e.g.: `myprefix-imageowner-listimages-localhost-8001.json`
 
 ==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
