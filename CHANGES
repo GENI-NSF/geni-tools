@@ -13,7 +13,8 @@ gcf 2.6:
   * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
   * `listslivers` honors the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#488)
-  * `get_ch_version`, `listaggregates` honors the `-o` option to save results to a file,
+  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`
+    honor the `-o` option to save results to a file,
     and `--tostdout` to instead to to STDOUT. (#371)
 
  * stitcher

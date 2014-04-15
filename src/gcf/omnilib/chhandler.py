@@ -345,7 +345,18 @@ class CHCallHandler(object):
     def listmyslices(self, args):
         """Provides a list of slices of user provided as first
         argument, or current user if no username supplied.
-        Not supported by all frameworks."""
+        Not supported by all frameworks.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose slices are listed
+        e.g.: myprefix-jsmith-slices.txt
+        """
         if len(args) > 0:
             username = args[0].strip()
         elif self.opts.speaksfor:
@@ -364,12 +375,24 @@ class CHCallHandler(object):
             retStr += "Server error: %s. " % message
         elif len(slices) > 0:
             slices = sorted(slices)
-            self.logger.info("User '%s' has slice(s): \n\t%s"%(username,"\n\t".join(slices)))
+            result="User '%s' has %d slice(s): \n" % (username, len(slices))
+            result += "\t%s" % ("\n\t".join(slices))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, None, None, "slices", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s slices to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s slices. " % username
         else:
             self.logger.info("User '%s' has NO slices."%username)
 
         # summary
-        retStr += "Found %d slice(s) for user '%s'.\n"%(len(slices), username)
+        retStr += "Found %d slice(s) for user '%s'. "%(len(slices), username)
 
         return retStr, slices
 
