@@ -16,7 +16,7 @@ gcf 2.6:
   * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
     `listkeys`, `listmykeys`, `listimages`, and `nicknames`
     honor the `-o` option to save results to a file,
-    and `--tostdout` to instead to to STDOUT. (#371)
+    and `--tostdout` to instead go to STDOUT. (#371)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
