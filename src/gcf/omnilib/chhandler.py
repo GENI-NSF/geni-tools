@@ -37,6 +37,7 @@ import logging
 import os
 import pprint
 import re
+import string
 
 from ..geni.util.tz_util import tzd
 from ..geni.util.urn_util import nameFromURN, is_valid_urn_bytype
@@ -354,8 +355,9 @@ class CHCallHandler(object):
         If not saving results to a file, they are logged.
         If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
-        File names will indicate the username whose slices are listed
-        e.g.: myprefix-jsmith-slices.txt
+        File names will indicate the username whose slices are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-slices-portal.txt
         """
         if len(args) > 0:
             username = args[0].strip()
@@ -381,7 +383,7 @@ class CHCallHandler(object):
             header = None
             filename = None
             if self.opts.output:
-                filename = _construct_output_filename(self.opts, username, None, None, "slices", ".txt", 0)
+                filename = _construct_output_filename(self.opts, username, self.opts.framework, None, "slices", ".txt", 0)
 
             _printResults(self.opts, self.logger, header, result, filename)
             if filename:
@@ -396,6 +398,116 @@ class CHCallHandler(object):
 
         return retStr, slices
 
+    def listprojects(self, args):
+        """Alias for listmyprojects.
+        Provides a list of projects of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks."""
+        return self.listmyprojects(args)
+
+    def listmyprojects(self, args):
+        """Provides a list of projects of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose projects are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-projects-portal.txt
+        """
+        if len(args) > 0:
+            username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
+        else:
+            username = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not username:
+                self._raise_omni_error("listmyprojects failed to find your username")
+
+        retStr = ""
+        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        if projects is None:
+            # only end up here if call to _do_ssl failed
+            projects = []
+            self.logger.error("Failed to list projects for user '%s'"%(username))
+            if samsg:
+                retStr += "Server error: %s. " % samsg
+                if message:
+                    retStr += "(%s) " % message
+            else:
+                retStr += "Server error: %s. " % message
+        elif len(projects) > 0:
+            projectnames = list()
+            expiredprojects = list()
+            for tup in projects:
+                expired = False
+                project = tup['PROJECT_URN']
+                projectlower = string.lower(project)
+                if not string.find(projectlower, "+project+"):
+                    self.logger.debug("Skipping non project URN '%s'", project)
+                    continue
+
+                # Use the project name, not URN, for the pretty result
+#                projectname = project
+                projectname = nameFromURN(project)
+
+                # Returning this key is non-standard..
+                if tup.has_key('EXPIRED'):
+                    exp = tup['EXPIRED']
+                    if exp == True:
+                        expired = True
+                if tup.has_key('PROJECT_ROLE'):
+                    role = tup['PROJECT_ROLE']
+                    projectname += " \t(%s)" % role.lower()
+                if expired:
+                    expiredprojects.append(projectname)
+                else:
+                    projectnames.append(projectname)
+
+            # FIXME: Need a custom sort that accounts for role?
+            projectnames = sorted(projectnames)
+            expiredprojects = sorted(expiredprojects)
+
+            if len(expiredprojects) > 0:
+                result="User '%s' has %d project(s) and %d expired project(s). \n" % (username, len(projectnames), len(expiredprojects))
+            else:
+                result="User '%s' has %d project(s) \n" % (username, len(projectnames))
+            if len(projectnames) > 0:
+                result += "User's active project(s): \n"
+                result += "\t%s" % ("\n\t".join(projectnames))
+
+            # Suppress expired projects by default
+            if self.opts.debug or self.opts.devmode:
+                if len(expiredprojects) > 0:
+                    result += "\n\nUser's expired project(s): \n"
+                    result += "\t%s" % ("\n\t".join(expiredprojects))
+
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, self.opts.framework, None, "projects", ".txt", 0)
+
+            # FIXME: Is it better if we are writing to a file to write out the full projects struct?
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s projects to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s projects. " % username
+        else:
+            self.logger.info("User '%s' has NO projects."%username)
+
+        # summary
+        retStr += "Found %d project(s) for user '%s'. "%(len(projectnames), username)
+
+        return retStr, projects
+
     def listkeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
@@ -408,8 +520,9 @@ class CHCallHandler(object):
         If not saving results to a file, they are logged.
         If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
 
-        File names will indicate the username whose keys are listed
-        e.g.: myprefix-jsmith-keys.txt
+        File names will indicate the username whose keys are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-keys-portal.txt
         """
         username = None
         if len(args) > 0:
@@ -442,7 +555,7 @@ class CHCallHandler(object):
             header = None
             filename = None
             if self.opts.output:
-                filename = _construct_output_filename(self.opts, printusername, None, None, "keys", ".txt", 0)
+                filename = _construct_output_filename(self.opts, printusername, self.opts.framework, None, "keys", ".txt", 0)
 
             _printResults(self.opts, self.logger, header, result, filename)
             if filename:

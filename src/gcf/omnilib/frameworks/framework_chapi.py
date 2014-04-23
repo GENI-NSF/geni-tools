@@ -788,6 +788,50 @@ class Framework(Framework_Base):
                 slicenames.append(slicename)
         return slicenames
 
+    def list_my_projects(self, user):
+        '''List projects owned by the user (name or URN) provided, returning a list of structs, containing
+        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.'''
+
+        if not self.useProjects:
+            msg = "%s at %s does not support projects: no projects to list" % (self.fwtype, self.sa_url())
+            self.logger.info(msg)
+            return (None, msg)
+
+        scred = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                scred.append(uc)
+
+        userurn = self.member_name_to_urn(user)
+
+        options = {}
+        scred, options = self._add_credentials_and_speaksfor(scred, options)
+
+        (res, message) = _do_ssl(self, None, ("List Projects for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                    self.sa().lookup_for_member, "PROJECT", userurn, scred, options)
+
+        projects = None
+        if res is not None:
+            if res['code'] == 0:
+                projects = res['value']
+            else:
+                msg = "Failed to list projects for %s" % user
+                msg += ". Server said: %s" % res['output']
+                if res.has_key('protogeni_error_url'):
+                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                raise OmniError(msg)
+        else:
+            msg = "Failed to list projects for %s" % user
+            if message is not None and message.strip() != "":
+                msg += ": %s" % message
+            raise OmniError(msg)
+
+        # listslices returned just a list of URNs
+        # listprojects in the patch returned the full tuple that adds the user's role, if the project is expired, and the project UID
+
+        return (projects, res['output'])
+
     def slice_name_to_urn(self, name):
         """Convert a slice name to a slice urn."""
 
@@ -865,6 +909,46 @@ class Framework(Framework_Base):
         urnstr = URN(auth, "slice", name).urn_string()
         if not is_valid_urn_bytype(urnstr, 'slice', self.logger):
             raise OmniError("Invalid slice name '%s'" % name)
+        return urnstr
+
+    def project_name_to_urn(self, name):
+        """Convert a project name to a project urn."""
+
+        if name is None or name.strip() == '':
+            raise OmniError('Empty project name')
+
+        auth = None
+
+        if is_valid_urn(name):
+            urn = URN(None, None, None, name)
+            if not urn.getType() == "project":
+                raise OmniError("Invalid Project name: got a non Project URN %s" % name)
+            if not is_valid_urn_bytype(name, 'project', self.logger):
+                raise OmniError("Invalid project name '%s'" % name)
+
+            urn_fmt_auth = string_to_urn_format(urn.getAuthority())
+
+            # if config has an authority, make sure it matches
+            if self.config.has_key('authority'):
+                auth = self.config['authority']
+                if not urn_fmt_auth == auth:
+                    self.logger.warn("CAREFUL: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+                    self.logger.info("This may be OK though if you are using delegated slice credentials...")
+#                    raise OmniError("Invalid project name: slice' authority (%s) doesn't match current configured authority (%s)" % (urn_fmt_auth, auth))
+
+                # Valid project URN - use it
+                return name
+
+        # No valid project urn provided
+
+        if not auth:
+            if not self.config.has_key('authority'):
+                raise OmniError("Invalid configuration: no authority defined")
+            else:
+                auth = self.config['authority']
+        urnstr = URN(auth, "project", name).urn_string()
+        if not is_valid_urn_bytype(urnstr, 'project', self.logger):
+            raise OmniError("Invalid project name '%s'" % name)
         return urnstr
 
     def member_name_to_urn(self, name):
@@ -1182,6 +1266,45 @@ class Framework(Framework_Base):
             mess = logr
         if (not mess or mess.strip() == "") and expmess != "":
             mess = expmess
+        return members, mess
+
+    # get the members (urn, email) and their role in the project
+    def get_members_of_project(self, urn):
+        # Bail if projects not supported
+        if not self.useProjects:
+            return [], "%s %s does not use projects" % (self.fwtype, self.sa_url())
+        # FIXME: return the raw struct and do the member lookup as a separate thing?
+        # FIXME: Note if the project is expired and when it expired?
+        project_urn = self.project_name_to_urn(urn)
+
+        creds = []
+        if self.needcred:
+            uc, msg = self.get_user_cred(True)
+            if uc is not None:
+                creds.append(uc)
+
+        options = {'match': 
+                   {'PROJECT_URN': project_urn,
+                    'PROJECT_EXPIRED': 'f',  # FIXME: This gets ignored
+                    }}
+
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
+        res, mess = _do_ssl(self, None, "Looking up %s project %s members at %s" % (self.fwtype, project_urn, self.sa_url()),
+                            self.sa().lookup_members, "PROJECT", project_urn, 
+                            creds, options)
+        members = []
+        logr = self._log_results((res, mess), 'Get members for %s project %s' % (self.fwtype, project_urn))
+        if logr == True:
+            if res['value']:
+                for member_vals in res['value']:
+                    member_urn = member_vals['PROJECT_MEMBER']
+                    member_role = member_vals['PROJECT_ROLE']
+                    member = {'URN': member_urn}
+                    member['EMAIL'] = self._get_member_email(member_urn)
+                    member['ROLE'] = member_role
+                    members.append(member)
+        else:
+            mess = logr
         return members, mess
 
     # add a new member to a slice

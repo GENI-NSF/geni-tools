@@ -1236,8 +1236,40 @@ Output directing options:
  * `--outputfile`: If supplied, use this output file name
  * If not saving results to a file, they are logged.
  * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
- * File names will indicate the username whose slices are listed
-  * e.g.: `myprefix-jsmith-slices.txt`
+ * File names will indicate the username whose slices are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-slices-portal.txt`
+
+==== listprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Alias for `listmyprojects`.
+
+==== listmyprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Not supported by all frameworks.
+
+Format: `omni.py listmyprojects [optional: username]`
+
+Sample Usage: `omni.py listmyprojects jdoe`
+
+With no `username` supplied, it will look up projects registered to you
+(the user whose certificate is supplied).
+
+Printed output shows the names of your projects and your role in the
+project. Supply `--debug` or `--devmode` to see a listing of your
+expired projects as well.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose projects are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-projects-portal.txt`
 
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
@@ -1271,8 +1303,9 @@ Output directing options:
  * `--outputfile`: If supplied, use this output file name
  * If not saving results to a file, they are logged.
  * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
- * File names will indicate the username whose keys are listed
-  * e.g.: `myprefix-jsmith-keys.txt`
+ * File names will indicate the username whose keys are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-keys-portal.txt`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from

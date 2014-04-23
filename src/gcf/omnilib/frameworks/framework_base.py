@@ -181,6 +181,13 @@ class Framework_Base():
         """
         raise NotImplementedError('list_my_slices')
 
+    def list_my_projects(self, username):
+        """
+        '''List projects owned by the user (name or URN) provided, returning a list of structs, containing
+        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.'''
+        """
+        raise NotImplementedError('list_my_projects')
+
     def list_ssh_keys(self, username=None):
         """
         Get a list of SSH public keys for the given user or the configured current user if not specified.
