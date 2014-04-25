@@ -1203,7 +1203,7 @@ class Aggregate(object):
                         if code == 25:
                             # FIXME: Does the error message help me ID
                             # which hop?
-                            self.logger.debug("Insufficent Bandwidth error")
+                            self.logger.debug("Insufficient Bandwidth error")
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
                         elif amtype == "protogeni":
