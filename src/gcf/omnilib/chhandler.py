@@ -410,6 +410,9 @@ class CHCallHandler(object):
         argument, or current user if no username supplied.
         Not supported by all frameworks.
 
+        Return object is a list of structs, containing
+        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.
+
         Output directing options:
         -o Save result in a file
         -p (used with -o) Prefix for resulting filename
@@ -844,6 +847,74 @@ class CHCallHandler(object):
                 result_string = pretty_result
 
         return result_string, slivers_by_agg
+
+    def listprojectmembers(self, args):
+        """List all the members of a project
+        Args: projectname
+        Return summary string and list of member dictionaries
+        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute projectname for any %s.
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the project name
+        e.g.: myprefix-myproject-projectmembers.txt
+
+        """
+        if len(args) < 1 or args[0] is None or args[0].strip() == "":
+            if self.opts.project and self.opts.project.strip() != "":
+                project_name = self.opts.project
+            else:
+                self._raise_omni_error('listprojectmembers missing args: Supply <project name>')
+        else:
+            project_name = args[0]
+
+        try:
+            # Try to get all the members of this project
+            members, message = self.framework.get_members_of_project(project_name)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listprojectmembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
+
+        if members and len(members) > 0:
+            # Save/print out result
+            prettyResult = "Project %s has %d members:\n" % (project_name, len(members))
+            for i, member in enumerate(members):
+                prettyResult += 'Member ' + str(i + 1) + ':\n'
+                prettyResult += '   URN = ' + member['PROJECT_MEMBER'] + '\n'
+                prettyResult += '   Email = ' + str(member['EMAIL']) + '\n'
+                if member.has_key('PROJECT_ROLE'):
+                    prettyResult += '   Role = ' + str(member['PROJECT_ROLE']) + '\n'
+                if self.opts.debug or self.opts.devmode:
+                    prettyResult += '   UID = ' + member['PROJECT_MEMBER_UID'] + '\n'
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, project_name, None, None, "projectmembers", ".txt", 0)
+
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing members of project %s", project_name)
+
+            if filename is not None or self.opts.tostdout:
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+
+            if filename is not None:
+                prtStr = "Saved list of %d members of project %s to file %s. \n" % (len(members), project_name, filename)
+            elif self.opts.tostdout:
+                prtStr = "Printed list of %d members in project %s" % (len(members), project_name)
+            else:
+                prtStr = prettyResult
+
+        else:
+            prtStr = "Failed to find members of project %s" % (project_name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', members
 
     def listslicemembers(self, args):
         """List all the members of a slice

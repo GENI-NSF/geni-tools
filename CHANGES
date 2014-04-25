@@ -17,6 +17,9 @@ gcf 2.6:
     `listkeys`, `listmykeys`, `listimages`, and `nicknames`
     honor the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#371)
+  * Add `listprojects` to list your projects, and `listprojectmembers`
+    to list the members of a project and their role in the project and
+    email address. (#495)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)

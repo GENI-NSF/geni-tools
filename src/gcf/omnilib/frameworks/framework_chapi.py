@@ -1269,13 +1269,17 @@ class Framework(Framework_Base):
         return members, mess
 
     # get the members (urn, email) and their role in the project
-    def get_members_of_project(self, urn):
+    def get_members_of_project(self, project_name):
+        '''Look up members of the project with the given name.
+        Return is a list of member dictionaries
+        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+        '''
         # Bail if projects not supported
         if not self.useProjects:
             return [], "%s %s does not use projects" % (self.fwtype, self.sa_url())
         # FIXME: return the raw struct and do the member lookup as a separate thing?
         # FIXME: Note if the project is expired and when it expired?
-        project_urn = self.project_name_to_urn(urn)
+        project_urn = self.project_name_to_urn(project_name)
 
         creds = []
         if self.needcred:
@@ -1297,11 +1301,14 @@ class Framework(Framework_Base):
         if logr == True:
             if res['value']:
                 for member_vals in res['value']:
+                    # Entries: PROJECT_MEMBER, PROJECT_ROLE, PROJECT_MEMBER_UID
+                    # self.logger.debug("Got member value: %s", member_vals)
                     member_urn = member_vals['PROJECT_MEMBER']
                     member_role = member_vals['PROJECT_ROLE']
-                    member = {'URN': member_urn}
+                    member = {'PROJECT_MEMBER': member_urn}
                     member['EMAIL'] = self._get_member_email(member_urn)
-                    member['ROLE'] = member_role
+                    member['PROJECT_ROLE'] = member_role
+                    member['PROJECT_MEMBER_UID'] = member_vals['PROJECT_MEMBER_UID']
                     members.append(member)
         else:
             mess = logr

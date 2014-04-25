@@ -94,6 +94,7 @@ from __future__ import absolute_import
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
 
@@ -854,6 +855,7 @@ def getParser():
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\t\t listslivers <slicename> \n\
+ \t\t\t listprojectmembers <projectname> \n\
  \t\t\t listslicemembers <slicename> \n\
  \t\t\t addslicemember <slicename> <username> [optional: role] \n\
  \t\tOther functions: \n\
