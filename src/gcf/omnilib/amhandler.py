@@ -2785,6 +2785,7 @@ class AMCallHandler(object):
                             # an extra AM API call.
                             if len(sliver_urns) == 0:
                                 st = None
+                                streal = None
                                 try:
                                     args2 = [urn, creds]
                                     ops = self._build_options('SliverStatus', name, None)

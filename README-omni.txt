@@ -57,6 +57,9 @@ New in v2.6:
    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
+ * Add `listprojects` to list your projects, and `listprojectmembers`
+   to list the members of a project and their role in the project and
+   email address. (#495)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -772,11 +775,14 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
+ 			 listprojects [optional: username] [Alias for listmyprojects]
+ 			 listmyprojects [optional: username] 
  			 listmykeys [optional: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
  			 print_slice_expiration <slicename>
 			 listslivers <slicename>
+ 			 listprojectmembers <projectname> 
 			 listslicemembers <slicename>
 			 addslicemember <slicename> <username> [optional: role]
  		Other functions: 
@@ -1236,8 +1242,43 @@ Output directing options:
  * `--outputfile`: If supplied, use this output file name
  * If not saving results to a file, they are logged.
  * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
- * File names will indicate the username whose slices are listed
-  * e.g.: `myprefix-jsmith-slices.txt`
+ * File names will indicate the username whose slices are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-slices-portal.txt`
+
+==== listprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Alias for `listmyprojects`.
+
+==== listmyprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Not supported by all frameworks.
+
+Format: `omni.py listmyprojects [optional: username]`
+
+Sample Usage: `omni.py listmyprojects jdoe`
+
+With no `username` supplied, it will look up projects registered to you
+(the user whose certificate is supplied).
+
+Printed output shows the names of your projects and your role in the
+project. Supply `--debug` or `--devmode` to see a listing of your
+expired projects as well.
+
+Return object is a list of structs, containing
+`PROJECT_URN`, `PROJECT_UID`, `EXPIRED`, and `PROJECT_ROLE`. `EXPIRED` is a boolean.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose projects are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-projects-portal.txt`
 
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
@@ -1271,8 +1312,9 @@ Output directing options:
  * `--outputfile`: If supplied, use this output file name
  * If not saving results to a file, they are logged.
  * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
- * File names will indicate the username whose keys are listed
-  * e.g.: `myprefix-jsmith-keys.txt`
+ * File names will indicate the username whose keys are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-keys-portal.txt`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -1364,6 +1406,37 @@ particular that slivers reserved through Flack are currently not reported here.
 
 This function is only supported at some `chapi` style clearinghouses,
 including the GENI Clearinghouse.
+
+==== listprojectmembers ====
+List all the members of the given project.
+
+Format: `omni.py listprojectmembers <projectname>`
+
+Sample usage: `omni.py listprojectmembers myproject>`
+
+Output prints out the project members and their project role, and
+email.
+
+Return is a list of the members of the project as registered at the
+clearinghouse. For each such user, the return includes:
+ - `PROJECT_MEMBER`: URN identifier of the user
+ - `EMAIL` address of the user
+ - `PROJECT_ROLE` of the user in the project.
+ - `PROJECT_MEMBER_UID`: Internal UID identifier of the member
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile` If supplied, use this output file name: substitute projectname for any '`%s`'.
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the project name
+  * e.g.: `myprefix-myproject-projectmembers.txt`
+
+Note that project membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Project membership
+determines who has rights to create a slice in the
+named project. 
 
 ==== listslicemembers ====
 List all the members of the given slice, including their registered
