@@ -515,6 +515,7 @@ class CHCallHandler(object):
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
         Not supported by all frameworks, and some frameworks insist on only the current user.
+        At some frameworks will return the caller's private SSH key if known.
 
         Output directing options:
         -o Save result in a file
@@ -553,7 +554,15 @@ class CHCallHandler(object):
 
         elif len(keys) > 0:
             result="User '%s' has %d key(s): \n" % (printusername, len(keys))
-            result += "\t%s" % ("\n\t".join(keys))
+            i = 0
+            for key in keys:
+                i += 1
+                result += "    Key (pair) %d:\n" % i
+                if key.has_key("public_key"):
+                    result += "\tPublic key %d: %s\n" % (i, key["public_key"])
+                if key.has_key("private_key"):
+                    result += "\tPrivate key %d: \n%s\n" % (i, key["private_key"])
+#            result += "\t%s" % ("\n\t".join(keys))
             # Save/print out result
             header = None
             filename = None

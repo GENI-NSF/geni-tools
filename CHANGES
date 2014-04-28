@@ -20,6 +20,9 @@ gcf 2.6:
   * Add `listprojects` to list your projects, and `listprojectmembers`
     to list the members of a project and their role in the project and
     email address. (#495)
+  * `listkeys` return is a list of structs of ('`public_key`',
+    '`private_key`'), where `private_key` is omitted for most
+    frameworks and most cases where not available. (#600)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)

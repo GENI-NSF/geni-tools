@@ -190,8 +190,9 @@ class Framework_Base():
 
     def list_ssh_keys(self, username=None):
         """
-        Get a list of SSH public keys for the given user or the configured current user if not specified.
-        Returns: a list of SSH public keys
+        Get a list of SSH key pairs for the given user or the configured current user if not specified.
+        Private key will be omitted if not known or found.
+        Returns: a list of structs containing SSH key pairs ('public_key', 'private_key' (may be omitted))
         """
         raise NotImplementedError('list_ssh_keys')
 
