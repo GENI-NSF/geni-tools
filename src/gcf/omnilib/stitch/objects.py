@@ -1208,6 +1208,7 @@ class Aggregate(object):
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
                         elif amtype == "protogeni":
+                            # FIXME: What about "Error trying to reserve a vlan tag for ..." code 2 amcode 2?
                             if amcode==24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg or \
                                                    "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
                                                   code==2 and (amcode==2 or amcode==24)) or \
