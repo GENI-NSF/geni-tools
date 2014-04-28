@@ -361,6 +361,17 @@ Cannot find the set of paths for the RequestTopology. '.
 `Inconsistent ifacemap`
  - Your request is impossible. Try the `-–fixedEndpoint` option if that is relevant.
 
+`Not enough bandwidth to connect some nodes`:
+ - You requested a link with more bandwidth than is available. Edit
+ the `capacity` attribute in your RSpec, or try specifying
+ `--defaultCapacity` with a smaller number, or pick a different
+ aggregate, or try again later.
+
+`Too many VMs requested on physical host` OR
+`Not enough nodes with fast enough interfaces`
+ - You have asked for more nodes than are available. Use fewer nodes or
+ a different aggregate, or try again later.
+
 `*** ERROR: mapper` OR 
 `Could not verify topo` OR 
 `Could not map to resources`
@@ -410,13 +421,16 @@ Cannot find the set of paths for the RequestTopology. '.
 
 `Could not reserve vlan tags` OR 
 `Error reserving vlan tag for …` OR 
-`Vlan tag … not available`
- - Some VLAN tag you requested in not available. Stitcher will try to
+`vlan tag … not available` OR
+`Could not find a free vlan tag` OR
+`Could not reserve a vlan tag for`
+ - Some VLAN tag you requested is not available. Stitcher will try to
  find another and try again.
 
 `AddPersonToSite: Invalid argument: No such site`
  - This is the first time this aggregate has seen your
- project. Stitcher will retry and the error should go away.
+ project. Stitcher will retry and the error should go away. If not,
+ try again.
 
 === After too many transient errors, stitcher gives up ===
 

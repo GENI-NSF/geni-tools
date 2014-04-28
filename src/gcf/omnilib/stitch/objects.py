@@ -1147,7 +1147,7 @@ class Aggregate(object):
                 except:
                     pass
 
-                if ae.returnstruct["code"]["geni_code"] == 24:
+                if ae.returnstruct["code"]["geni_code"] == 24 or (ae.returnstruct["code"]["am_type"] == "protogeni" and ae.returnstruct["code"]["am_code"] == 24):
                     if not didInfo:
                         self.logger.debug("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                         didInfo = True
@@ -1200,19 +1200,25 @@ class Aggregate(object):
                         # isFatal, so that if it is user requested, we
                         # quit, and if it is not, we try to exclude
                         # the hops.
-                        if code == 25:
+                        if code == 25 or (amtype == "protogeni" and amcode==25):
                             # FIXME: Does the error message help me ID
                             # which hop?
                             self.logger.debug("Insufficient Bandwidth error")
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
-                        elif amtype == "protogeni":
-                            if (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
-                                    code==2 and amcode==2) or \
-                                    ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1):
+                       elif amtype == "protogeni":
+                            if amcode==24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg or \
+                                     "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
+                                    code==2 and (amcode==2 or amcode==24)) or \
+                                    ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
+                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
                                 #                            self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
-                            elif code == 2 and amcode == 2 and (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or 'Inconsistent ifacemap' in msg):
+                            elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
+                                    (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
+                                         'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
+                                         "Too many VMs requested on physical host" in msg or \
+                                         "Not enough nodes with fast enough interfaces" in msg)):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
@@ -1807,9 +1813,16 @@ class Aggregate(object):
                     amtype = exception.returnstruct["code"]["am_type"]
                     msg = exception.returnstruct["output"]
 
-                    if 'Error reserving vlan tag for ' in msg and code==2 and amcode==2 and amtype=='protogeni':
+                    if ('Error reserving vlan tag for ' in msg or "Could not find a free vlan tag for " in msg \
+                            or "Could not reserve a vlan tag for " in msg) and (code == 24 or code==2 or code == 1) and \
+                            (amcode==2 or amcode==24 or amcode == 1) and amtype=='protogeni':
                         import re
-                        match = re.match("^Error reserving vlan tag for '(.+)'", msg)
+                        if "Error reserving vlan tag for" in msg:
+                            match = re.match("^Error reserving vlan tag for '(.+)'", msg)
+                        elif "Could not find a free vlan tag for" in msg:
+                            match = re.match("^Could not find a free vlan tag for '(.+)'", msg)
+                        elif "Could not reserve a vlan tag for" in msg:
+                            match = re.match("^Could not reserve a vlan tag for '(.+)'", msg)
                         if match:
                             failedPath = match.group(1).strip()
                             failedHopsnoXlate = []
@@ -1826,7 +1839,7 @@ class Aggregate(object):
                                 self.logger.debug("Cannot set failedHop from parsed error message: %s: Got %d failed hops that don't do translation", msg, len(failedHopsnoXlate))
                         else:
                             self.logger.debug("Failed to parse failed from PG message: %s", msg)
-                    elif 'vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni":
+                    elif 'vlan tag ' in msg and ' not available' in msg and (code==1 or code==24 or code==2) and (amcode==1 or amcode==24) and amtype=="protogeni":
                         #self.logger.debug("This was a PG error message that names the failed link/tag")
                         # Parse out the tag and link name
                         import re
@@ -1950,9 +1963,12 @@ class Aggregate(object):
 
                 # FIXME Put in things for EG VLAN Unavail errors
 
-                if code == 24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg) and \
-                                      code==2 and amcode==2 and amtype=="protogeni") or \
-                                      ('vlan tag ' in msg and ' not available' in msg and code==1 and amcode==1 and amtype=="protogeni"):
+                if code == 24 or (amtype=="protogeni" and amcode==24) or \
+                        (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg or \
+                              "Could not find a free vlan tag for " in msg or \
+                              "Could not reserve a vlan tag for " in msg) and \
+                             (code==2 or code == 1) and (amcode==1 or amcode==2 or amcode==24) and amtype=="protogeni") or \
+                             ('vlan tag ' in msg and ' not available' in msg and (code==1 or code==2) and (amcode==1 or amcode==24) and amtype=="protogeni"):
 #                    self.logger.debug("Looks like a vlan availability issue")
                     pass
                 # See handleDCN where it checks wasVlanUnavail:
