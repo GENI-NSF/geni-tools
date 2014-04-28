@@ -60,6 +60,9 @@ New in v2.6:
  * Add `listprojects` to list your projects, and `listprojectmembers`
    to list the members of a project and their role in the project and
    email address. (#495)
+ * `listkeys` return is a list of structs of ('`public_key`',
+   '`private_key`'), where `private_key` is omitted for most
+   frameworks and most cases where not available. (#600)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
@@ -1285,6 +1288,7 @@ Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
 Not supported by all frameworks. Some frameworks only support querying
 the current user.
+At some frameworks will return the caller's private SSH key if known.
 Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
@@ -1303,6 +1307,7 @@ Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
 Not supported by all frameworks. Some frameworks only support querying
 the current user.
+At some frameworks will return the caller's private SSH key if known.
 
 Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
 
