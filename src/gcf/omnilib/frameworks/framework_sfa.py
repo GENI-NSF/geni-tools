@@ -592,10 +592,16 @@ class Framework(Framework_Base):
             self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
         if record.has_key("keys"):
             self.logger.debug("Found keys in field 'keys'")
-            return record['keys'], None
+            keys = []
+            for key in record['keys']:
+                keys.append({'public_key': key})
+            return keys, None
         elif record.has_key('reg-keys'):
             self.logger.debug("Found keys in field 'reg-keys'")
-            return record['reg-keys'], None
+            keys = []
+            for key in record['reg-keys']:
+                keys.append({'public_key': key})
+            return keys, None
         else:
             msg = "Cannot get SFA SSH keys - malformed return (missing keys entry)"
             self.logger.error(msg)

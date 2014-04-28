@@ -414,13 +414,13 @@ class Framework(Framework_Base):
             if not is_valid_urn_bytype(fetch_urn, 'user', self.logger):
                 return [], "%s is not a valid user name or urn" % username
 
-        options = {'match': {'KEY_MEMBER': fetch_urn}, 'filter': ['KEY_PUBLIC']}
+        options = {'match': {'KEY_MEMBER': fetch_urn}, 'filter': ['KEY_PUBLIC','KEY_PRIVATE']}
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
         self.logger.debug("Getting %s SSH keys from %s MA %s",
                           username, self.fwtype, self.ma_url())
-        (res, message) = _do_ssl(self, None, ("Get %s public SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
+        (res, message) = _do_ssl(self, None, ("Get %s SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
                                  self.ma().lookup_keys,
                                  scred,
                                  options)
@@ -433,10 +433,17 @@ class Framework(Framework_Base):
                     d = res['value']
                     for uid, key_tups in d.items():
                         for key_tup in key_tups:
+                            kstr = {}
                             if 'KEY_PUBLIC' in key_tup:
-                                keys.append(key_tup['KEY_PUBLIC'])
+                                kstr['public_key'] = key_tup['KEY_PUBLIC']
                             else:
                                 self.logger.debug("No public key? %s", key_tup)
+                            if 'KEY_PRIVATE' in key_tup and key_tup['KEY_PRIVATE']:
+                                kstr['private_key'] = key_tup['KEY_PRIVATE']
+                            else:
+                                self.logger.debug("No private key")
+                            if kstr != {}:
+                                keys.append(kstr)
                 else:
                     msg = "Malformed server return getting SSH keys"
                     if message is not None and message.strip() != "":
@@ -1190,6 +1197,7 @@ class Framework(Framework_Base):
         # FIXME: Duplicates logic in list_ssh_keys, which has more
         # error checking
         creds = []
+        # Could grab KEY_PRIVATE here too, but not useful I think
         options = {'match': {'KEY_MEMBER': urn}, 'filter': ['KEY_PUBLIC']}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)

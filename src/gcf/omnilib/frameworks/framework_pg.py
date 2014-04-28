@@ -524,7 +524,7 @@ class Framework(Framework_Base):
             if not key.has_key('key'):
                 self.logger.error("GetKeys list missing key value?");
                 continue
-            keys.append(key['key'])
+            keys.append({'public_key': key['key']})
         return keys, None
         
     def _get_components(self):
