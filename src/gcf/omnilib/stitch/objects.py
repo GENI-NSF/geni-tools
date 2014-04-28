@@ -1216,8 +1216,12 @@ class Aggregate(object):
                                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
                                 #                            self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
+                            elif code == 2 and amcode == 2 and "does not run on this hardware type" in msg:
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Did you request sliver_type emulab-openvz when emulab-xen is required? %s..." % (self, str(ae)[:120])
                             elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
-                                                                  (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
+                                                                  (val.startswith("Could not map to resources") or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
                                                                        'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
                                                                        "Too many VMs requested on physical host" in msg or \
                                                                        "Not enough nodes with fast enough interfaces" in msg)):
@@ -1257,7 +1261,10 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s. Link %s likely has a typo in one of the client_ids?: %s..." % (self, badlink, str(ae)[:120])
                                 else:
                                     fatalMsg = "Reservation request impossible at %s. A link likely has a typo in one of the client_ids?: %s..." % (self, str(ae)[:120])
-
+                            elif code == 2 and amcode == 2 and ("No possible mapping for " in msg or "Could not map to resources" in val):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
