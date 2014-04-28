@@ -460,15 +460,15 @@ class StitchingHandler(object):
         # While doing this, make sure the tells for whether we can tell the hop to pick the tag are consistent.
         for am in self.ams_to_process:
             # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
-            if len(am.dependsOn) == 0:
-                self.logger.debug("%s says it depends on no other AMs", am)
+#            if len(am.dependsOn) == 0:
+#                self.logger.debug("%s says it depends on no other AMs", am)
             for hop in am.hops:
                 requestAny = True
                 isConsumer = False
                 isProducer = False
                 imports = False
                 if hop._hop_link.vlan_consumer:
-                    self.logger.debug("%s says it is a vlan consumer. In itself, that is OK", hop)
+#                    self.logger.debug("%s says it is a vlan consumer. In itself, that is OK", hop)
                     isConsumer = True
                 if hop._import_vlans:
                     if hop.import_vlans_from._aggregate != hop._aggregate:
@@ -494,7 +494,7 @@ class StitchingHandler(object):
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
                         if am.isEG:
-                            self.logger.debug("%s doesn't import and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
                             # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -512,20 +512,20 @@ class StitchingHandler(object):
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
                     if am.isEG:
-                        self.logger.debug("%s doesn't import and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
                         # assume it is willing to produce a VLAN tag
-                        self.logger.debug("%s doesn't import and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
                         requestAny = True
                 if requestAny:
                     if len(am.dependsOn) != 0:
-                        self.logger.debug("*** %s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
+                        self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
                     if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
-                        self.logger.debug("*** Changing suggested request tag from %s to 'any' on %s", hop._hop_link.vlan_suggested_request, hop)
+                        self.logger.debug("Changing suggested request tag from %s to 'any' on %s", hop._hop_link.vlan_suggested_request, hop)
                         hop._hop_link.vlan_suggested_request = VLANRange.fromString("any")
-                    else:
-                        self.logger.debug("%s suggested request was already 'any'.", hop)
+#                    else:
+#                        self.logger.debug("%s suggested request was already 'any'.", hop)
 
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
