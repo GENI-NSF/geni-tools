@@ -49,7 +49,7 @@ gcf 2.6:
     to avoid misleading warnings on paths that cross 2 DCN AMs (like
     MAX and ION). (#582)
   * Fix handling of ProtoGENI error messages and codes to reflect new
-  * use of VLAN_UNAVAILABLE and other error codes. (#602)
+    use of VLAN_UNAVAILABLE and other error codes. (#602)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
