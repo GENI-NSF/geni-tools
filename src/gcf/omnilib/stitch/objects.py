@@ -72,6 +72,7 @@ class Path(GENIObject):
         # FIXME: Do we need getAttributeNS?
         id = element.getAttribute(cls.ID_TAG)
         path = Path(id)
+        globId = None
         for child in element.childNodes:
             if child.localName == cls.HOP_TAG:
                 hop = Hop.fromDOM(child)
@@ -80,9 +81,10 @@ class Path(GENIObject):
                 path.hops.append(hop)
             elif child.localName == cls.GLOBAL_ID_TAG:
                 globID = str(child.firstChild.nodeValue).strip()
-                path.globalId = globId
 
         for hop in path.hops:
+            if globId is not None:
+                hop.globalId = globId
             next_hop = path.find_hop(hop._next_hop)
             if next_hop:
                 hop._next_hop = next_hop
@@ -93,7 +95,6 @@ class Path(GENIObject):
         self.id = id
         self._hops = []
         self._aggregates = set()
-        self.globalId = None
 
     def __str__(self):
         return "<Path %s with %d hops across %d AMs>" % (self.id, len(self._hops), len(self._aggregates))
@@ -477,9 +478,9 @@ class Aggregate(object):
             rangeValue = str(range_suggested[1]).strip()
             suggestedValue = str(range_suggested[2]).strip()
             if pathGlobalId and pathGlobalId is not None and pathGlobalId != "None" and pathGlobalId != '':
-                if hop.path.globalId and hop.path.globalId is not None and hop.path.globalId != "None" and hop.path.globalId != pathGlobalId:
-                    self.logger.warn("Changing Path %s global ID from %s to %s", hop.path.id, hop.path.globalId, pathGlobalId)
-                hop.path.globalId = pathGlobalId
+                if hop.globalId and hop.globalId is not None and hop.globalId != "None" and hop.globalId != pathGlobalId:
+                    self.logger.warn("Changing Hop %s global ID from %s to %s", hop, hop.globalId, pathGlobalId)
+                hop.globalId = pathGlobalId
 
             if not suggestedValue:
                 self.logger.error("Didn't find suggested value in rspec for hop %s", hop)
@@ -1203,7 +1204,7 @@ class Aggregate(object):
                         if code == 25:
                             # FIXME: Does the error message help me ID
                             # which hop?
-                            self.logger.debug("Insufficent Bandwidth error")
+                            self.logger.debug("Insufficient Bandwidth error")
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
                         elif amtype == "protogeni":
@@ -1442,7 +1443,9 @@ class Aggregate(object):
                 raise StitchingError("%s %s failed at %s: %s" % (opName, slicename, self, e))
 
             dcnErrors = dict() # geni_error by geni_urn of individual resource
-            circuitIDs = dict() # DCN circuit ID by geni_urn (one parse from the other)
+            # DCN circuit ID by geni_urn (one parsed from the other)
+            # These should match the globalIDs on the hops at this AM.
+            circuitIDs = dict()
             statuses = dict() # per sliver status
 
             # Parse out sliver status / status
@@ -1660,7 +1663,7 @@ class Aggregate(object):
                 circuitid = circuitIDs[entry]
                 dcnerror = dcnErrors[entry]
                 if circuitid:
-                    self.logger.info("DCN circuit %s is ready", circuitid)
+                    self.logger.info("DCN circuit %s is ready at %s", circuitid, self)
 
             # Status is ready
             # generate args for listresources
@@ -2767,6 +2770,7 @@ class Hop(object):
         self.idx = None
         self.logger = logging.getLogger('stitch.Hop')
         self.import_vlans_from = None # a pointer to another hop
+        self.globalId = None
 
         # If True, then next request to SCS should explicitly
         # mark this hop as loose

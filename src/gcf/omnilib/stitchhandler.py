@@ -1277,10 +1277,10 @@ class StitchingHandler(object):
             self.logger.debug( "\n===== Hops =====")
             for path in stitching.paths:
                 self.logger.debug( "Path %s" % (path.id))
-                if path.globalId:
-                    self.logger.debug( "   GlobalId: %s" % path.globalId)
                 for hop in path.hops:
                     self.logger.debug( "  Hop %s" % (hop))
+                    if hop.globalId:
+                        self.logger.debug( "   GlobalId: %s" % hop.globalId)
                     # FIXME: don't use the private variable
                     self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))

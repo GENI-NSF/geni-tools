@@ -17,6 +17,9 @@ gcf 2.6:
     `listkeys`, `listmykeys`, `listimages`, and `nicknames`
     honor the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#371)
+  * Add `listprojects` to list your projects, and `listprojectmembers`
+    to list the members of a project and their role in the project and
+    email address. (#495)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
@@ -34,6 +37,9 @@ gcf 2.6:
     advise the user to try less bandwidth. (#579)
   * Clearer error messages when there are no more VLANs for stitcher
     to try. (#561)
+  * Global IDs are per DCN AM, so record them on the hop not the path,
+    to avoid misleading warnings on paths that cross 2 DCN AMs (like
+    MAX and ION). (#582)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

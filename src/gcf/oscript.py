@@ -87,11 +87,14 @@ from __future__ import absolute_import
        [string Boolean] = omni.py deleteslice SLICENAME
        [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listprojects USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listmyprojects USER
        [string listOfSSHPublicKeys] = omni.py listmykeys
        [string listOfSSHPublicKeys] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
 
@@ -845,11 +848,14 @@ def getParser():
  \t\t\t deleteslice <slicename> \n\
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
+ \t\t\t listprojects [optional: username] [Alias for listmyprojects]\n\
+ \t\t\t listmyprojects [optional: username] \n\
  \t\t\t listmykeys [optional: username] [Alias for listkeys]\n\
  \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\t\t listslivers <slicename> \n\
+ \t\t\t listprojectmembers <projectname> \n\
  \t\t\t listslicemembers <slicename> \n\
  \t\t\t addslicemember <slicename> <username> [optional: role] \n\
  \t\tOther functions: \n\

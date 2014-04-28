@@ -181,6 +181,13 @@ class Framework_Base():
         """
         raise NotImplementedError('list_my_slices')
 
+    def list_my_projects(self, username):
+        """
+        '''List projects owned by the user (name or URN) provided, returning a list of structs, containing
+        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.'''
+        """
+        raise NotImplementedError('list_my_projects')
+
     def list_ssh_keys(self, username=None):
         """
         Get a list of SSH public keys for the given user or the configured current user if not specified.
@@ -291,6 +298,14 @@ class Framework_Base():
     # slice role
     def get_members_of_slice(self, slice_urn):
         raise NotImplementedError('get_members_of_slice')
+
+    # get the members (urn, email) and their role in the project
+    def get_members_of_project(self, project_name):
+        '''Look up members of the project with the given name.
+        Return is a list of member dictionaries
+        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+        '''
+        raise NotImplementedError('get_members_of_project')
 
     # add a new member to a slice (giving them rights to get a slice credential)
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
