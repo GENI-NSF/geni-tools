@@ -1207,19 +1207,19 @@ class Aggregate(object):
                             self.logger.debug("Insufficient Bandwidth error")
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
-                       elif amtype == "protogeni":
+                        elif amtype == "protogeni":
                             if amcode==24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg or \
-                                     "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
-                                    code==2 and (amcode==2 or amcode==24)) or \
-                                    ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
-                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
+                                                   "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
+                                                  code==2 and (amcode==2 or amcode==24)) or \
+                                                  ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
+                                                        "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
                                 #                            self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
                             elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
-                                    (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
-                                         'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
-                                         "Too many VMs requested on physical host" in msg or \
-                                         "Not enough nodes with fast enough interfaces" in msg)):
+                                                                  (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
+                                                                       'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
+                                                                       "Too many VMs requested on physical host" in msg or \
+                                                                       "Not enough nodes with fast enough interfaces" in msg)):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
@@ -1284,7 +1284,8 @@ class Aggregate(object):
 
                             pass
                         elif self.dcn:
-                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 2:
+                            # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
+                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 4:
                                 # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
                                 # Raise a special error that says don't sleep before retrying
                                 self.inProcess = False
