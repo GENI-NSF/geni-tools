@@ -47,6 +47,7 @@ from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
 from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
+from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
 from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
@@ -446,6 +447,86 @@ class StitchingHandler(object):
         if self.opts.fixedEndpoint:
             self.addFakeNode()
 
+        # Check the AMs: For each hop that says it is a VLAN producer / imports no VLANs, lets change the suggested request to "any".
+        # That should ensure that that hop succeeds the first time through. Hopefully the SCS has set up the avail ranges to work throughout
+        # the path, so everything else will just work as well.
+
+        # In APIv3, a failure later is just a negotiation case (we'll get a new tag to try). In APIv2, a later failure is a pseudo negotiation case.
+        # That is, we can go back to the 'any' hop and exclude the failed tag, deleting that reservation, and try again.
+
+        # FIXME: In schema v2, the logic for where to figure out if it is a consumer or producer is more complex. But for now, the hoplink says,
+        # and the hop indicates if it imports vlans.
+
+        # While doing this, make sure the tells for whether we can tell the hop to pick the tag are consistent.
+        for am in self.ams_to_process:
+            # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
+#            if len(am.dependsOn) == 0:
+#                self.logger.debug("%s says it depends on no other AMs", am)
+            for hop in am.hops:
+                requestAny = True
+                isConsumer = False
+                isProducer = False
+                imports = False
+                if hop._hop_link.vlan_consumer:
+#                    self.logger.debug("%s says it is a vlan consumer. In itself, that is OK", hop)
+                    isConsumer = True
+                if hop._import_vlans:
+                    if hop.import_vlans_from._aggregate != hop._aggregate:
+                        imports = True
+                        self.logger.debug("%s imports VLANs from another AM, %s. Don't request 'any'.", hop, hop.import_vlans_from)
+                        if len(am.dependsOn) == 0:
+                            self.logger.warn("%s imports VLANs from %s but the AM says it depends on no AMs?!", hop, hop.import_vlans_from)
+                        requestAny = False
+                    else:
+                        # This hop imports tags from another hop on the same AM.
+                        # So we want this hop to do what that other hop does. So if that other hop is changing to any, this this
+                        # hop should change to any.
+                        hop2 = hop.import_vlans_from
+                        if hop2._import_vlans and hop2.import_vlans_from._aggregate != hop2._aggregate:
+                            imports = True
+                            requestAny = False
+                            self.logger.debug("%s imports VLANs from %s which imports VLANs from a different AM (%s) so don't request 'any'.", hop, hop2, hop2._import_vlans_from)
+                        elif not hop2._hop_link.vlan_producer:
+                            self.logger.debug("%s imports VLANs from %s which does not say it is a vlan producer. Don't request 'any'.", hop, hop2)
+                            requestAny = False
+                        else:
+                            self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
+                if not hop._hop_link.vlan_producer:
+                    if not imports and not isConsumer:
+                        if am.isEG:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                            requestAny = False
+                        else:
+                            # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
+                            # assume it is willing to produce a VLAN tag
+                            self.logger.debug("%s doesn't import and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
+                            requestAny = True
+                    else:
+                        if requestAny:
+                            self.logger.debug("%s does not say it is a vlan producer. Don't request 'any'.", hop)
+                            requestAny = False
+                        else:
+                            self.logger.debug("%s does not say it is a vlan producer. Still not requesting 'any'.", hop)
+                else:
+                    isProducer = True
+                    self.logger.debug("%s marked as a VLAN producer", hop)
+                if not requestAny and not imports and not isConsumer and not isProducer:
+                    if am.isEG:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                    else:
+                        # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
+                        # assume it is willing to produce a VLAN tag
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
+                        requestAny = True
+                if requestAny:
+                    if len(am.dependsOn) != 0:
+                        self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
+                    if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        self.logger.debug("Changing suggested request tag from %s to 'any' on %s", hop._hop_link.vlan_suggested_request, hop)
+                        hop._hop_link.vlan_suggested_request = VLANRange.fromString("any")
+#                    else:
+#                        self.logger.debug("%s suggested request was already 'any'.", hop)
+
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
             # Write the request rspec to a string that we save to a file
@@ -463,6 +544,7 @@ class StitchingHandler(object):
             self.logger.setLevel(lvl)
             self.logger.info("Saved expanded request RSpec to file %s", rspecfileName)
             raise StitchingError("Requested no reservation")
+
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)

@@ -477,7 +477,15 @@ Cannot find the set of paths for the RequestTopology. '.
  - With ExoGENI AMs: After reservation, loop checking sliverstatus for
  success or failure, then get the manifest after that
  - Thread all calls to omni
- - Add Aggregate specific top level RSpec elements in combined manifest
+ - Add Aggregate specific top level RSpec elements in combined
+ manifest
+ - Store output files in a consistent location, named by slice, and
+ with support for scripts to use a temp directory.
+ - Suppress most log messages (push to an output file), summarizing
+ errors at the end of the run.
+ - Support stitch-to-aggregate at ProtoGENI based aggregates
+ - Support GRE tunels
+ - Support recreating the combined manifest RSpec
  - Support AM API v3
  - Consolidate constants
  - Fully handle negotiating among AMs for a VLAN tag to use
@@ -492,7 +500,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates
  - Support multipoint circuits
- - Support GRE tunnels or other stitching technologies
 
 == Related Reading ==
  - [http://groups.geni.net/geni/wiki/GENIExperimenter/Tutorials/StitchingTutorial Stitching Tutorial]

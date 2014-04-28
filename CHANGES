@@ -26,6 +26,11 @@ gcf 2.6:
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
+  * Where possible, request that the AM pick the VLAN tag,
+    by requesting 'any'. Therefore, many fewer VLAN unavailable
+    errors. This only works at AMs that are VLAN producers or
+    per the SCS do not depend on other AMs. This does not currently work at
+    ExoGENI AMs. (#576)
   * Pass the usual `verbosessl` option to create the SCS client,
     allowing verbose logging of SSL connections to the SCS. (#557)
   * New range to pick a tag from must be limited by the available

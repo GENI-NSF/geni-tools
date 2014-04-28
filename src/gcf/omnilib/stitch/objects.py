@@ -392,7 +392,7 @@ class Aggregate(object):
 
         # Check that all hops have reasonable vlan inputs
         for hop in self.hops:
-            if not hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request:
+            if not (hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") or hop._hop_link.vlan_suggested_request <= hop._hop_link.vlan_range_request):
                 raise StitchingError("%s hop %s suggested %s not in avail %s" % (self, hop, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request))
 
         # Check that if a hop has the same URN as another on this AM, that it has a different VLAN tag
@@ -402,8 +402,9 @@ class Aggregate(object):
             if hop.urn in tagByURN.keys():
                 tags = tagByURN[hop.urn]
                 if hop._hop_link.vlan_suggested_request in tags:
-                    # This could happen due to an apparent SCS bug (#1100). I suppose I could treat this as VLANUnavailable?
-                    raise StitchingError("%s %s has request tag %s that is already in use by %s" % (self, hop, hop._hop_link.vlan_suggested_request, hopByURN[hop.urn][tags.index(hop._hop_link.vlan_suggested_request)]))
+                    if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        # This could happen due to an apparent SCS bug (#1100). I suppose I could treat this as VLANUnavailable?
+                        raise StitchingError("%s %s has request tag %s that is already in use by %s" % (self, hop, hop._hop_link.vlan_suggested_request, hopByURN[hop.urn][tags.index(hop._hop_link.vlan_suggested_request)]))
                 else:
                     self.logger.debug("%s %s has same URN as other hop(s) on this AM %s. But this hop uses request tag %s, that hop(s) used %s", self, hop, str(hopByURN[hop.urn][0]), hop._hop_link.vlan_suggested_request, str(tagByURN[hop.urn][0]))
                     tagByURN[hop.urn].append(hop._hop_link.vlan_suggested_request)
@@ -417,7 +418,7 @@ class Aggregate(object):
             # Ticket #355: If this is PG/IG, then complain if any hop on a different path uses the same VLAN tag
             if self.isPG:
                 for hop2 in self.hops:
-                    if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request:
+                    if hop2.path.id != hop.path.id and hop2._hop_link.vlan_suggested_request == hop._hop_link.vlan_suggested_request and hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                         raise StitchingError("%s is a ProtoGENI AM and %s is requesting the same tag (%s) as a hop on a different path %s" % \
                                                  (self, hop, hop._hop_link.vlan_suggested_request, hop2))
 
@@ -591,7 +592,7 @@ class Aggregate(object):
                 self.logger.error("%s computed availVlanRange is empty" % hop)
                 raise StitchingError("%s computed availVlanRange is empty" % hop)
 
-            if not new_suggested <= new_avail:
+            if not (new_suggested <= new_avail or new_suggested == VLANRange.fromString("any")):
                 # We're somehow asking for something not in the avail range we're asking for.
                 self.logger.error("%s Calculated suggested %s not in available range %s", hop, new_suggested, new_avail)
                 raise StitchingError("%s could not be processed: calculated a suggested VLAN of %s that is not in the calculated available range %s" % (hop, new_suggested, new_avail))
@@ -633,7 +634,7 @@ class Aggregate(object):
                 if hop._hop_link.vlan_range_request != new_avail:
                     # If we already have a result but used different input, then this result is suspect. Redo?
                     self.logger.debug("%s had previous manifest and used different avail VLAN range for hop %s (old request %s != new request %s)", self, hop, hop._hop_link.vlan_range_request, new_avail)
-                    if hop._hop_link.vlan_suggested_manifest and hop._hop_link.vlan_suggested_manifest not in new_avail:
+                    if hop._hop_link.vlan_suggested_manifest and not hop._hop_link.vlan_suggested_manifest <= new_avail:
                         # new avail doesn't contain the previous manifest suggested. So new avail would have precluded
                         # using the suggested we picked before. So we have to redo
                         mustDelete = True
@@ -1206,19 +1207,24 @@ class Aggregate(object):
                             self.logger.debug("Insufficient Bandwidth error")
                             isFatal = True
                             fatalMsg = "Insufficient bandwidth for request at %s. Try specifying --defaultCapacity < 20000: %s..." % (self, str(ae)[:120])
-                       elif amtype == "protogeni":
+                        elif amtype == "protogeni":
+                            # FIXME: What about "Error trying to reserve a vlan tag for ..." code 2 amcode 2?
                             if amcode==24 or (("Could not reserve vlan tags" in msg or "Error reserving vlan tag for " in msg or \
-                                     "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
-                                    code==2 and (amcode==2 or amcode==24)) or \
-                                    ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
-                                         "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
+                                                   "Could not find a free vlan tag for" in msg or "Could not reserve a vlan tag for " in msg) and \
+                                                  code==2 and (amcode==2 or amcode==24)) or \
+                                                  ((('vlan tag ' in msg and ' not available' in msg) or "Could not find a free vlan tag for" in msg or \
+                                                        "Could not reserve a vlan tag for " in msg) and (code==1 or code==2) and (amcode==1 or amcode==24)):
                                 #                            self.logger.debug("Looks like a vlan availability issue")
                                 isVlanAvailableIssue = True
+                            elif code == 2 and amcode == 2 and "does not run on this hardware type" in msg:
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Did you request sliver_type emulab-openvz when emulab-xen is required? %s..." % (self, str(ae)[:120])
                             elif amcode==25 or amcode==26 or ((code == 2 or code==26) and (amcode == 2 or amcode==25 or amcode==26) and \
-                                    (val == "Could not map to resources" or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
-                                         'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
-                                         "Too many VMs requested on physical host" in msg or \
-                                         "Not enough nodes with fast enough interfaces" in msg)):
+                                                                  (val.startswith("Could not map to resources") or msg.startswith("*** ERROR: mapper") or 'Could not verify topo' in msg or \
+                                                                       'Inconsistent ifacemap' in msg or "Not enough bandwidth to connect some nodes" in msg or \
+                                                                       "Too many VMs requested on physical host" in msg or \
+                                                                       "Not enough nodes with fast enough interfaces" in msg)):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request or insufficient resources: %s..." % (self, str(ae)[:120])
@@ -1255,7 +1261,10 @@ class Aggregate(object):
                                     fatalMsg = "Reservation request impossible at %s. Link %s likely has a typo in one of the client_ids?: %s..." % (self, badlink, str(ae)[:120])
                                 else:
                                     fatalMsg = "Reservation request impossible at %s. A link likely has a typo in one of the client_ids?: %s..." % (self, str(ae)[:120])
-
+                            elif code == 2 and amcode == 2 and ("No possible mapping for " in msg or "Could not map to resources" in val):
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request? %s..." % (self, str(ae)[:120])
                         elif self.isEG:
                             # AM said success but manifest said failed
                             # FIXME: Other fatal errors?
@@ -1283,7 +1292,8 @@ class Aggregate(object):
 
                             pass
                         elif self.dcn:
-                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 2:
+                            # Really a 2nd time should be something else. But see http://groups.geni.net/geni/ticket/1207
+                            if "AddPersonToSite: Invalid argument: No such site" in msg and self.allocateTries < 4:
                                 # This happens at an SFA AM the first time it sees your project. If it happens a 2nd time that is something else.
                                 # Raise a special error that says don't sleep before retrying
                                 self.inProcess = False
@@ -1718,7 +1728,7 @@ class Aggregate(object):
         # note what we tried that failed (ie what was requested but not given at this hop)
         for hop in self.hops:
             if hop._hop_link.vlan_suggested_manifest and len(hop._hop_link.vlan_suggested_manifest) > 0 and \
-                    hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest:
+                    hop._hop_link.vlan_suggested_request != hop._hop_link.vlan_suggested_manifest and hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
                 self.logger.debug("handleSuggVLANNotRequest: On %s adding last request %s to unavailable VLANs", hop, hop._hop_link.vlan_suggested_request)
                 hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
 
@@ -1890,21 +1900,34 @@ class Aggregate(object):
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in failedHops:
-            if not hop._hop_link.vlan_suggested_request <= hop.vlans_unavailable:
-                hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-                self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Mark sugg %s unavail: %s", hop, hop._hop_link.vlan_suggested_request, hop.vlans_unavailable)
+            if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                if not hop._hop_link.vlan_suggested_request <= hop.vlans_unavailable:
+                    hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                    self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Mark sugg %s unavail: %s", hop, hop._hop_link.vlan_suggested_request, hop.vlans_unavailable)
+            else:
+                # If the request was 'any' then all the avail range is failed / unavail
+                if not hop._hop_link.vlan_range_request <= hop.vlans_unavailable:
+                    hop.vlans_unavailable = hop.vlans_unavailable.union(hop._hop_link.vlan_range_request)
+                    self.logger.debug("%s: This hop failed or does not do vlan translation and is on the failed path. Sugg was 'any' so mark requested avail %s as unavail: %s", hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
 
             # Must also remove this from its range request - done below
+
             # Find other failed hops with same URN. Those should also avoid this failed tag
             for hop2 in self.hops:
                 # Used to only do this if the other hop also failed. Unless an AM says a hop failed cause you requested
                 # it on another circuit, that seems wrong
                 # FIXME: If I start having trouble consider removing this block
                 if hop2 != hop and hop2.urn == hop.urn:
-                    if not hop._hop_link.vlan_suggested_request <= hop2.vlans_unavailable:
-                        hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
-                        self.logger.debug("%s is same URN but diff than a failed hop. Marked failed sugg %s unavail here: %s", hop2, hop._hop_link.vlan_suggested_request, hop2.vlans_unavailable)
-                    # Must also remove this from its range request - done below
+                    if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        if not hop._hop_link.vlan_suggested_request <= hop2.vlans_unavailable:
+                            hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_suggested_request)
+                            self.logger.debug("%s is same URN but diff than a failed hop. Marked failed sugg %s unavail here: %s", hop2, hop._hop_link.vlan_suggested_request, hop2.vlans_unavailable)
+                        # Must also remove this from its range request - done below
+                    else:
+                        if not hop._hop_link.vlan_range_request <= hop2.vlans_unavailable:
+                            hop2.vlans_unavailable = hop2.vlans_unavailable.union(hop._hop_link.vlan_range_request)
+                            self.logger.debug("%s is same URN but diff than a failed hop. Sugg was 'any' so marked failed requested avail %s unavail here: %s", hop2, hop._hop_link.vlan_range_request, hop2.vlans_unavailable)
+                        # Must also remove this from its range request - done below
 
 # Now comes a large block of code trying to figure out if canRedoRequestHere.
 
@@ -1928,16 +1951,38 @@ class Aggregate(object):
             # If any hop here imported its VLAN selections from another, then give up
             for hop in self.hops:
                 if hop.import_vlans:
+                    # If this hop did not fail, then who cares. Continue
+                    if not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path):
+                        continue
+
                     # Some hops here depend on other AMs. This is a negotiation kind of case
-                    self.logger.debug("%s uses the vlans picked elsewhere - so stitcher cannot redo the request locally.", hop)
+
+                    # FIXME! Call out to some negotiation code!
+
+                    if hop.import_vlans_from._hop_link.vlan_suggested_request == VLANRange.fromString("any"):
+                        self.logger.debug("FIXME: %s failed and imports from a hop where we asked for 'any'. Mark the failed tag unavail there and redo there.", hop)
+# If the hop this imports from's suggested_request was "any",
+#    then this is a negotiation scenario but in APIv2 - we could go
+#    back to that AM, marking the tag that failed unavail there (remove
+#    from request avail range), delete the reservation at that other AM
+#    and mark it incomplete in some way
+                    self.logger.debug("%s uses the VLANs picked elsewhere - so stitcher cannot redo the request locally.", hop)
                     errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere = False
                     break
-                # If a hop only has one tag left to pick from, cannot redo locally
+                # If a hop has one tag left to pick from, cannot redo locally
                 if len(hop._hop_link.vlan_range_request) <= 1 and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # Only the 1 VLAN tag was in the available range and we need a different tag
                     canRedoRequestHere = False
                     errMsg = "No more VLANs available for stitcher to try. %s available VLAN range is too small: '%s'. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
+                    self.logger.warn(errMsg)
+                    errMsg = errMsg + " (%s)" % exception
+                    break
+                # If a hop was an 'any' request, cannot redo locally
+                if hop.hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
+                    # We said any tag is OK, but none worked.
+                    canRedoRequestHere = False
+                    errMsg = "AM says none of the VLAN tags usable on this circuit are available. Asked %s for any tag from '%s' and none worked. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
                     self.logger.warn(errMsg)
                     errMsg = errMsg + " (%s)" % exception
                     break
@@ -3182,9 +3227,8 @@ class HopLink(object):
         self.vlan_range_manifest = ""
         self.vlan_suggested_manifest = None
 
-        # If nothing advertised, assume AM only accepts tags
         self.vlan_producer = False
-        self.vlan_consumer = True
+        self.vlan_consumer = False
         self.capabilities = [] # list of string capabilities
 
         self.logger = logging.getLogger('stitch.HopLink')

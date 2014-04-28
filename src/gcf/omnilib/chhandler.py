@@ -559,12 +559,10 @@ class CHCallHandler(object):
                 if not key.has_key("public_key"):
                     continue
                 i += 1
+                result += "    Key pair %d:\n" % i
+                result += "\tPublic key %d: %s\n" % (i, key["public_key"])
                 if key.has_key("private_key"):
-                    result += "    Key pair %d:\n" % i
-                    result += "\tPublic key %d: %s\n" % (i, key["public_key"])
                     result += "\tPrivate key %d: \n%s\n" % (i, key["private_key"])
-                else:
-                    result += "\t%s\n" % key["public_key"]
 #            result += "\t%s" % ("\n\t".join(keys))
             # Save/print out result
             header = None
