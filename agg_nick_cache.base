@@ -9,13 +9,6 @@
 [aggregate_nicknames]
 
 # ProtoGENI AMs
-pg-gpo1=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
-pg-gpo2=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-pg-gpo=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-pg-bbn1=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/1.0
-pg-bbn2=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-pg-bbn=urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm,https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
-
 pg-utah1=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/1.0
 pg-utah2=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 pg-utah3=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/3.0
