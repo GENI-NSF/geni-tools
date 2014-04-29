@@ -702,15 +702,37 @@ class Aggregate(object):
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
 #                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
-        # FIXME: Look for an rspec element and see if it has the stiche schema on it
+        changing1To2 = False # FIXME: Use this later to determine how to write attributes?
+        changing2To1 = False
+        # Look for an rspec element and see if it has the stich schema on it
         rspecNodes = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
         if rspecNodes and len(rspecNodes) > 0:
             rspecNode = rspecNodes[0]
         else:
             raise StitchingError("Couldn't find rspec element in rspec for %s request" % self)
-        # FIXME: For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        # For v2/v1, right here check if this is v2 and we want v1 or vice versa
         # Loop through all attributes checking against the stitch schema
         # Also check xsi:schemaLocation
+        for attr in rspecNode.attributes:
+            if "hpn.east.isi.edu/rspec/ext/stitch/0.1" in attr.value:
+                self.logger.debug("Found stitch schema v1 attr on rspec: %s=%s", attr.name, attr.value)
+                if not self.doesSchemaV1:
+                    # Must change
+                    self.logger.debug("But %s does not support v1. Change Rspec to v2", self)
+                    changing1To2 = True
+                    # FIXME: Must use regex as this might be a multi=valued schemaLocation attribute
+                    if attr.value.endswith("schema.xsd"):
+                        attr.value = "http://www.geni.net/resources/rspec/ext/stitch/2/stitch-schema.xsd";
+                    else:
+                        attr.value = "http://www.geni.net/resources/rspec/ext/stitch/2/";
+                    pass
+            elif "geni.net/resources/rspec/ext/stitch/2" in attr.value:
+                self.logger.debug("Found stitch schema v2 attr on rspec: %s=%s", attr.name, attr.value)
+                if not self.doesSchemaV2:
+                    # Must change
+                    self.logger.debug("But %s does not support v2. Change Rspec to v1", self)
+                    changing2To1 = True
+                    pass
 
         stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
@@ -718,12 +740,25 @@ class Aggregate(object):
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
-        # FIXME: For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        # For v2/v1, right here check if this is v2 and we want v1 or vice versa
         if stitchNode.hasAttribute("xmlns") or stitchNode.hasAttribute("xsi:schemaLocation"):
             # schema is marked direct on this node
             # If the value says v1 and we want v2 or vice versa, then change
-            # FIXME
-            pass
+            for attr in stitchNode.attributes:
+                if "hpn.east.isi.edu/rspec/ext/stitch/0.1" in attr.value:
+                    self.logger.debug("Found stitch schema v1 attr on stitching node: %s=%s", attr.name, attr.value)
+                    if not self.doesSchemaV1:
+                        # Must change
+                        self.logger.debug("But %s does not support v1. Change Rspec to v2", self)
+                        # FIXME
+                        pass
+                elif "geni.net/resources/rspec/ext/stitch/2" in attr.value:
+                    self.logger.debug("Found stitch schema v2 attr on stitching node: %s=%s", attr.name, attr.value)
+                    if not self.doesSchemaV2:
+                        # Must change
+                        self.logger.debug("But %s does not support v2. Change Rspec to v1", self)
+                        # FIXME
+                        pass
 
         domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
 #        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)
