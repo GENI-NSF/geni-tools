@@ -57,6 +57,7 @@ from ..sfa.util.xrn import urn_to_hrn, get_leaf
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 PG_AM_TYPE = 'protogeni' # geni_am_type / am_type from ProtoGENI based AMs
+GRAM_AM_TYPE = 'gram' # geni_am_type value from AMs that use the GRAM codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
@@ -493,8 +494,8 @@ class StitchingHandler(object):
                             self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
-                        if am.isEG:
-                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                        if am.isEG or am.isGRAM:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
                             # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -511,8 +512,8 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG:
-                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                    if am.isEG or am.isGRAM:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
                         # assume it is willing to produce a VLAN tag
@@ -1190,6 +1191,9 @@ class StitchingHandler(object):
                         elif PG_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is ProtoGENI", agg)
                             agg.isPG = True
+                        elif GRAM_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is GRAM", agg)
+                            agg.isGRAM = True
                     elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
@@ -1240,6 +1244,9 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+                    if version['agg.url']['value'].has_key('GRAM_version'):
+                        agg.isGRAM = True
+                        self.logger.debug("AM %s is GRAM", agg)
             except StitchingError, se:
                 # FIXME: Return anything different for stitching error?
                 # Do we want to return a geni triple struct?
@@ -1309,6 +1316,8 @@ class StitchingHandler(object):
                     self.logger.debug("   A DCN Aggregate")
                 if agg.isPG:
                     self.logger.debug("   A ProtoGENI Aggregate")
+                if agg.isGRAM:
+                    self.logger.debug("   A GRAM Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:

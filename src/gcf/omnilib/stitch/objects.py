@@ -288,6 +288,7 @@ class Aggregate(object):
         self.isEG = False # Handle EG AMs differently - manifests are different
         self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
         self.isPG = False
+        self.isGRAM = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
