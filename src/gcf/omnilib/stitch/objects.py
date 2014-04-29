@@ -292,6 +292,8 @@ class Aggregate(object):
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
+        self.doesSchemaV1 = True # Supports stitching schema v1?
+        self.doesSchemaV2 = False # Supports stitching schema v2?
 
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
@@ -700,11 +702,28 @@ class Aggregate(object):
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
 #                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
+        # FIXME: Look for an rspec element and see if it has the stiche schema on it
+        rspecNodes = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+        if rspecNodes and len(rspecNodes) > 0:
+            rspecNode = rspecNodes[0]
+        else:
+            raise StitchingError("Couldn't find rspec element in rspec for %s request" % self)
+        # FIXME: For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        # Loop through all attributes checking against the stitch schema
+        # Also check xsi:schemaLocation
+
         stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
+
+        # FIXME: For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        if stitchNode.hasAttribute("xmlns") or stitchNode.hasAttribute("xsi:schemaLocation"):
+            # schema is marked direct on this node
+            # If the value says v1 and we want v2 or vice versa, then change
+            # FIXME
+            pass
 
         domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
 #        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)

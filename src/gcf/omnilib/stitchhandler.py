@@ -46,7 +46,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -1247,6 +1247,22 @@ class StitchingHandler(object):
                     if version['agg.url']['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
+                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
+                        for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
+                            if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and rVer.has_key('extensions') and lower(rVer['type']) == 'geni' and str(rVer['version']) == '3' and isinstance(rVer['extensions'], list):
+                                v2 = False
+                                v1 = False
+                                for ext in rVer['extensions']:
+                                    if "hpn.east.isi.edu/rspec/ext/stitch/0.1" in ext:
+                                        v1 = True
+                                    if "geni.net/resources/rspec/ext/stitch/2" in ext:
+                                        v2 = True
+                                if v2:
+                                    self.logger.debug("%s supports stitch schema v2", agg)
+                                    agg.doesSchemaV2 = True
+                                if not v1:
+                                    self.logger.debug("%s does NOT support stitch schema v1", agg)
+                                    agg.doesSchemaV1 = False
             except StitchingError, se:
                 # FIXME: Return anything different for stitching error?
                 # Do we want to return a geni triple struct?
@@ -1327,6 +1343,10 @@ class StitchingHandler(object):
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                if not agg.doesSchemaV1:
+                    self.logger.debug("   Does NOT support Stitch Schema V1")
+                if agg.doesSchemaV2:
+                    self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
                 for h in agg.hops:

@@ -82,3 +82,11 @@ def stripBlankLines(strWithBlanks):
         if l != '':
             str2 = str2 + line + '\n'
     return str2
+
+def isRSpecStitchingSchemaV2(rspec):
+    '''Does the given RSpec mention stitch schema v2?'''
+    if rspec is None:
+        return False
+    if "geni.net/resources/rspec/ext/stitch/2" in str(rspec):
+        return True
+    return False
