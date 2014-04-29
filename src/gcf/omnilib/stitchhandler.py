@@ -187,6 +187,8 @@ class StitchingHandler(object):
         # Here is where we used to add the expires attribute. No
         # longer necessary (or a good idea).
 
+        if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+            self.logger.info("Using SCS at %s", self.opts.scsURL)
         self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
         self.scsCalls = 0
 
