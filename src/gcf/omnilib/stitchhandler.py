@@ -1246,7 +1246,7 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
-                    if version['agg.url']['value'].has_key('GRAM_version'):
+                    if version[agg.url]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
                     if version[agg.url]['value'].has_key('geni_request_rspec_versions') and isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):

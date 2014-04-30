@@ -1203,7 +1203,9 @@ class Aggregate(object):
                 except:
                     pass
 
-                if ae.returnstruct["code"]["geni_code"] == 24 or (ae.returnstruct["code"]["am_type"] == "protogeni" and ae.returnstruct["code"]["am_code"] == 24):
+                if ae.returnstruct["code"]["geni_code"] == 24 or (ae.returnstruct["code"].has_key("am_type") and \
+                        ae.returnstruct["code"].has_key("am_code") and \
+                        ae.returnstruct["code"]["am_type"] == "protogeni" and ae.returnstruct["code"]["am_code"] == 24):
                     if not didInfo:
                         self.logger.debug("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                         didInfo = True
@@ -1233,10 +1235,16 @@ class Aggregate(object):
                     # PG based AMs seem to return a particular error code and string when the VLAN isn't available
                     try:
                         code = ae.returnstruct["code"]["geni_code"]
-                        amcode = ae.returnstruct["code"]["am_code"]
-                        amtype = ae.returnstruct["code"]["am_type"]
-                        msg = ae.returnstruct["output"]
-                        val = None
+                        amcode = None
+                        if ae.returnstruct["code"].has_key("am_code"):
+                            amcode = ae.returnstruct["code"]["am_code"]
+                        amtype = None
+                        if ae.returnstruct["code"].has_key("am_type"):
+                            amtype = ae.returnstruct["code"]["am_type"]
+                        msg = ""
+                        if ae.returnstruct.has_key("output"):
+                            msg = ae.returnstruct["output"]
+                        val = ""
                         if ae.returnstruct.has_key("value"):
                             val = ae.returnstruct["value"]
 #                        self.logger.debug("Error was code %s (am code
@@ -1367,7 +1375,12 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from DCN AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Aggregate had an internal error: %s..." % (self, str(ae)[:120])
-
+                        elif self.isGRAM:
+                            # GRAM specific error message handling
+                            if "Rspec error: VM with name " in msg and " already exists" in msg:
+                                self.logger.debug("Fatal error from GRAM AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. You already have a reservation here in this slice using the specified node client_id. Consider calling deletesliver at this AM: %s..." % (self, str(ae)[:120])
                     except Exception, e:
                         if isinstance(e, StitchingError):
                             raise e
@@ -1797,7 +1810,7 @@ class Aggregate(object):
 #            thatAM.deleteReservation(opts, slicename)
 #        set request VLAN tags on that AM
             # See logic in copyVLANsAndDetectRedo
-#            thatAM.somehop.hop_link.vlan_suggested_request = self.someOtherHop.hop_link.vlan_suggested_manifest
+#            thatAM.somehop._hop_link.vlan_suggested_request = self.someOtherHop._hop_link.vlan_suggested_manifest
 #         In avail, be sure not to include VLANs we already had once that clearly failed (see vlans_unavailable)
 #        exit from this AM without setting complete, so we recheck VLAN tag consistency later
 #      else (no AM to redo) gracefully exit: raiseStitchingCircuitFailedError
@@ -1874,9 +1887,15 @@ class Aggregate(object):
                 #self.logger.debug("handleVU: No failed hop, >1 paths. If this is a PG error that names the link, I should be able to set the failedHop")
                 try:
                     code = exception.returnstruct["code"]["geni_code"]
-                    amcode = exception.returnstruct["code"]["am_code"]
-                    amtype = exception.returnstruct["code"]["am_type"]
-                    msg = exception.returnstruct["output"]
+                    amcode = None
+                    if exception.returnstruct["code"].has_key("am_code"):
+                        amcode = exception.returnstruct["code"]["am_code"]
+                    amtype = None
+                    if exception.returnstruct["code"].has_key("am_type"):
+                        amtype = exception.returnstruct["code"]["am_type"]
+                    msg = ""
+                    if exception.returnstruct.has_key("output"):
+                        msg = exception.returnstruct["output"]
 
                     if ('Error reserving vlan tag for ' in msg or "Could not find a free vlan tag for " in msg \
                             or "Could not reserve a vlan tag for " in msg) and (code == 24 or code==2 or code == 1) and \
@@ -2034,7 +2053,7 @@ class Aggregate(object):
                     errMsg = errMsg + " (%s)" % exception
                     break
                 # If a hop was an 'any' request, cannot redo locally
-                if hop.hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
+                if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # We said any tag is OK, but none worked.
                     canRedoRequestHere = False
                     errMsg = "AM says none of the VLAN tags usable on this circuit are available. Asked %s for any tag from '%s' and none worked. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
@@ -2047,9 +2066,15 @@ class Aggregate(object):
             # Does the error look like the particular tag just wasn't currently available?
             try:
                 code = exception.returnstruct["code"]["geni_code"]
-                amcode = exception.returnstruct["code"]["am_code"]
-                amtype = exception.returnstruct["code"]["am_type"]
-                msg = exception.returnstruct["output"]
+                amcode = None
+                if exception.returnstruct["code"].has_key("am_code"):
+                    amcode = exception.returnstruct["code"]["am_code"]
+                amtype = None
+                if exception.returnstruct["code"].has_key("am_type"):
+                    amtype = exception.returnstruct["code"]["am_type"]
+                msg = ""
+                if exception.returnstruct.has_key("output"):
+                    msg = exception.returnstruct["output"]
                 self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
