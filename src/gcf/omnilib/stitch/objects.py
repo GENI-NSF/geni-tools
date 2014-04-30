@@ -1756,7 +1756,7 @@ class Aggregate(object):
 #            thatAM.deleteReservation(opts, slicename)
 #        set request VLAN tags on that AM
             # See logic in copyVLANsAndDetectRedo
-#            thatAM.somehop.hop_link.vlan_suggested_request = self.someOtherHop.hop_link.vlan_suggested_manifest
+#            thatAM.somehop._hop_link.vlan_suggested_request = self.someOtherHop._hop_link.vlan_suggested_manifest
 #         In avail, be sure not to include VLANs we already had once that clearly failed (see vlans_unavailable)
 #        exit from this AM without setting complete, so we recheck VLAN tag consistency later
 #      else (no AM to redo) gracefully exit: raiseStitchingCircuitFailedError
@@ -1999,7 +1999,7 @@ class Aggregate(object):
                     errMsg = errMsg + " (%s)" % exception
                     break
                 # If a hop was an 'any' request, cannot redo locally
-                if hop.hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
+                if hop._hop_link.vlan_suggested_request == VLANRange.fromString("any") and (not failedHop or hop == failedHop or ((not hop._hop_link.vlan_xlate or not failedHop._hop_link.vlan_xlate) and failedHop.path == hop.path)): # FIXME: And failedHop no xlate?
                     # We said any tag is OK, but none worked.
                     canRedoRequestHere = False
                     errMsg = "AM says none of the VLAN tags usable on this circuit are available. Asked %s for any tag from '%s' and none worked. VLANs unavailable: %s" % (hop, hop._hop_link.vlan_range_request, hop.vlans_unavailable)
