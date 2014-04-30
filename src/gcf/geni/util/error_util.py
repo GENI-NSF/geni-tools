@@ -54,3 +54,4 @@ err_codes[ 22 ] = { 'label': 'CREDENTIAL_MISMATCH', 'description': "Not authoriz
 err_codes[ 23 ] = { 'label': 'CREDENTIAL_SIGNER_UNTRUSTED', 'description': "Not authorized: Supplied credential not signed by trusted authority" } 
 err_codes[ 24 ] = { 'label': 'VLAN_UNAVAILABLE', 'description': "VLAN tag(s) requested not available (likely stitching failure)" } 
 err_codes[ 25 ] = { 'label': 'INSUFFICIENT_BANDWIDTH', 'description': "Requested capacity for link(s) not available" } 
+err_codes[ 26 ] = { 'label': 'INSUFFICIENT_NODES', 'description': "Not enough nodes available for request" } 
