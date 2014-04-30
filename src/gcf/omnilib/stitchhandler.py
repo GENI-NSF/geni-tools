@@ -46,7 +46,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -496,8 +496,8 @@ class StitchingHandler(object):
                             self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
-                        if am.isEG or am.isGRAM:
-                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                        if am.isEG:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
                             # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -514,8 +514,8 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG or am.isGRAM:
-                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                    if am.isEG:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
                         # assume it is willing to produce a VLAN tag
@@ -1249,27 +1249,36 @@ class StitchingHandler(object):
                     if version[agg.url]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
-                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
+                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and \
+                            isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
                         for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
-                            if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and rVer.has_key('extensions') and lower(rVer['type']) == 'geni' and str(rVer['version']) == '3' and isinstance(rVer['extensions'], list):
+                            if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and \
+                                    rVer.has_key('extensions') and rVer['type'].lower() == 'geni' and str(rVer['version']) == '3' and \
+                                    isinstance(rVer['extensions'], list):
                                 v2 = False
                                 v1 = False
                                 for ext in rVer['extensions']:
-                                    if "hpn.east.isi.edu/rspec/ext/stitch/0.1" in ext:
+                                    if defs.STITCH_V1_BASE in ext:
                                         v1 = True
-                                    if "geni.net/resources/rspec/ext/stitch/2" in ext:
+                                    if defs.STITCH_V2_BASE in ext:
                                         v2 = True
                                 if v2:
                                     self.logger.debug("%s supports stitch schema v2", agg)
                                     agg.doesSchemaV2 = True
                                 if not v1:
-                                    self.logger.debug("%s does NOT support stitch schema v1", agg)
+                                    self.logger.debug("%s does NOT say it supports stitch schema v1", agg)
                                     agg.doesSchemaV1 = False
+                            # End of if block
+                        # Done with loop over versions
+                    if not agg.doesSchemaV2 and not agg.doesSchemaV1:
+                        self.logger.debug("%s doesn't say whether it supports either stitching schema, so assume v1", agg)
+                        agg.doesSchemaV1 = True
             except StitchingError, se:
                 # FIXME: Return anything different for stitching error?
                 # Do we want to return a geni triple struct?
                 raise
-            except:
+            except Exception, e:
+                self.logger.debug("Got error extracting extra AM info: %s", e)
                 pass
             finally:
                 logging.disable(logging.NOTSET)
@@ -1306,6 +1315,12 @@ class StitchingHandler(object):
                     self.logger.debug( "  Hop %s" % (hop))
                     if hop.globalId:
                         self.logger.debug( "   GlobalId: %s" % hop.globalId)
+                    if hop._hop_link.isOF:
+                        self.logger.debug( "   An Openflow controlled hop")
+                        if hop._hop_link.controllerUrl:
+                            self.logger.debug( "   Controller: %s", hop._hop_link.controllerUrl)
+                        if hop._hop_link.ofAMUrl:
+                            self.logger.debug( "   Openflow AM URL: %s", hop._hop_link.ofAMUrl)
                     # FIXME: don't use the private variable
                     self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))

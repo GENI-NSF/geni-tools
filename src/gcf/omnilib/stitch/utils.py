@@ -25,6 +25,8 @@ from __future__ import absolute_import
 
 from ..util import OmniError
 
+from xml.dom.minidom import Node as XMLNode
+
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
     pass
@@ -87,6 +89,6 @@ def isRSpecStitchingSchemaV2(rspec):
     '''Does the given RSpec mention stitch schema v2?'''
     if rspec is None:
         return False
-    if "geni.net/resources/rspec/ext/stitch/2" in str(rspec):
+    if defs.STITCH_V2_BASE in str(rspec):
         return True
     return False
