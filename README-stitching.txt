@@ -214,6 +214,8 @@ Other options you should not need to use:
  is 30 (seconds).
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
+ - `--savedSCSResults`: Use the specified JSON file of saved results
+   from calling the SCS, instead of actually calling the SCS.
 
 == Tips and Details ==
 

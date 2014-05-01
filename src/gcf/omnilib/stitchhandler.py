@@ -28,6 +28,7 @@ from __future__ import absolute_import
 parsing RSpecs and creating objects. See doStitching().'''
 import copy
 import datetime
+import json
 import logging
 import os
 import string
@@ -38,6 +39,7 @@ from .util import OmniError, naiveUTC
 from .util import credparsing as credutils
 from .util.files import readFile
 from .util import handler_utils
+from .util.json_encoding import DateTimeAwareJSONEncoder
 
 from . import stitch
 from .stitch import defs
@@ -864,8 +866,10 @@ class StitchingHandler(object):
         self.scsService.result = None # Avoid any unexpected issues
 
         self.logger.debug("Calling SCS with options %s", scsOptions)
+        if self.opts.savedSCSResults:
+            self.logger.debug("** Not actually calling SCS, using results from %s", self.opts.savedSCSResults)
         try:
-            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
+            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions, self.opts.savedSCSResults)
         except StitchingError as e:
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
@@ -878,7 +882,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             self.logger.debug("Writing SCS result JSON to scs-result.json")
             with open ("scs-result.json", 'w') as file:
-                file.write(stripBlankLines(str(self.scsService.result)))
+                file.write(stripBlankLines(str(json.dumps(self.scsService.result, encoding='ascii', cls=DateTimeAwareJSONEncoder))))
 
         self.scsService.result = None # Clear memory/state
         return scsResponse
