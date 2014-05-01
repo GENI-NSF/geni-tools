@@ -388,7 +388,8 @@ Cannot find the set of paths for the RequestTopology. '.
  - Do you have 2 links with the same client_id? Edit your request.
 
 `Must delete existing slice/sliver` OR 
-`CreateSliver: Existing record`
+`CreateSliver: Existing record` OR
+`Rspec error: VM with name ... already exists`
  - You already have a reservation in this slice at this aggregate. Delete it first.
 
 `Malformed keys`
@@ -497,7 +498,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Return a struct with detailed results (not just comments in manifest)
  - Return a struct on errors
  - Use authentication with the SCS
- - Support stitching schema v2
  - `opts.warn` is used to suppress omni output. Clean that up. A `scriptMode` option?
  - Implement `confirmSafeRequest()` to ensure no dangerous requests are made
  - Expand to additional aggregates
