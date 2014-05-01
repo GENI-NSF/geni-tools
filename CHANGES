@@ -50,6 +50,11 @@ gcf 2.6:
     MAX and ION). (#582)
   * Fix handling of ProtoGENI error messages and codes to reflect new
     use of VLAN_UNAVAILABLE and other error codes. (#602)
+  * Add support for stitching schema v2: change schema versions to
+    make AM happy as needed, find VLAN tags in the openflowl2sc
+    capabilityDescriptor OR the l2sc descriptor (not both). Also added
+    new option `--savedSCSResults` for running from saved SCS
+    results. (#578)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
