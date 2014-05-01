@@ -1322,13 +1322,13 @@ class StitchingHandler(object):
                 for hop in path.hops:
                     self.logger.debug( "  Hop %s" % (hop))
                     if hop.globalId:
-                        self.logger.debug( "   GlobalId: %s" % hop.globalId)
+                        self.logger.debug( "    GlobalId: %s" % hop.globalId)
                     if hop._hop_link.isOF:
-                        self.logger.debug( "   An Openflow controlled hop")
+                        self.logger.debug( "    An Openflow controlled hop")
                         if hop._hop_link.controllerUrl:
-                            self.logger.debug( "   Controller: %s", hop._hop_link.controllerUrl)
+                            self.logger.debug( "      Controller: %s", hop._hop_link.controllerUrl)
                         if hop._hop_link.ofAMUrl:
-                            self.logger.debug( "   Openflow AM URL: %s", hop._hop_link.ofAMUrl)
+                            self.logger.debug( "      Openflow AM URL: %s", hop._hop_link.ofAMUrl)
                     if len(hop._hop_link.capabilities) > 0:
                         self.logger.debug( "    Capabilities: %s", hop._hop_link.capabilities)
                     # FIXME: don't use the private variable
