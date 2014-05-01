@@ -46,14 +46,6 @@ of-gpo=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://f
 of-bbn=urn:publicid:IDN+openflow:foam:foam.gpolab.bbn.com+authority+am,https://foam.gpolab.bbn.com:3626/foam/gapi/2
 
 # ============================================
-# NLR OpenFlow
-# ============================================
-nlr-of=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
-nlr-of1=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/1
-nlr-of2=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
-of-nlr=urn:publicid:IDN+openflow:foam:foam.nlr.net+authority+am,https://foam.nlr.net:3626/foam/gapi/2
-
-# ============================================
 # Internet2 OpenFlow
 # ============================================
 i2-of=urn:publicid:IDN+openflow:foam:foam.net.internet2.edu+authority+am,https://foam.net.internet2.edu:3626/foam/gapi/2
