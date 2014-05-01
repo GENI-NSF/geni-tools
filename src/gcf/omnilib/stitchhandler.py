@@ -498,8 +498,8 @@ class StitchingHandler(object):
                             self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
                 if not hop._hop_link.vlan_producer:
                     if not imports and not isConsumer:
-                        if am.isEG:
-                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                        if am.isEG or am.isGRAM:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
                             requestAny = False
                         else:
                             # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
@@ -516,8 +516,8 @@ class StitchingHandler(object):
                     isProducer = True
                     self.logger.debug("%s marked as a VLAN producer", hop)
                 if not requestAny and not imports and not isConsumer and not isProducer:
-                    if am.isEG:
-                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG AM, where we cannot assume 'any' works.", hop)
+                    if am.isEG or am.isGRAM:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
                     else:
                         # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
                         # assume it is willing to produce a VLAN tag
