@@ -26,12 +26,16 @@
 
 from __future__ import absolute_import
 
+import json
+import os.path
 import pprint
 import sys
 import xmlrpclib
 
 from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
 from gcf.omnilib.xmlrpc.client import make_client
+
+from ..util.json_encoding import DateTimeAwareJSONDecoder
 
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
@@ -100,22 +104,35 @@ class Service(object):
             print pp.pformat(result)
         return result
 
-    def ComputePath(self, slice_urn, request_rspec, options):
+    def ComputePath(self, slice_urn, request_rspec, options, savedFile=None):
         """Invoke the XML-RPC service with the request rspec.
         Create an SCS PathInfo from the result.
         """
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
-        arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
-                   request_options=options)
+        result = None
+        if savedFile and os.path.exists(savedFile) and os.path.getsize(savedFile) > 0:
+            # read it in
+            try:
+                savedSCSResults = None
+                with open(savedFile, 'r') as sfP:
+                    savedStr = str(sfP.read())
+                    result = json.loads(savedStr, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+            except Exception, e:
+                import traceback
+                print "ERROR", e, traceback.format_exc()
+                raise
+        if result is None:
+            server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+            arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
+                       request_options=options)
 #        import json
 #        print "Calling SCS with arg: %s" % (json.dumps(arg,
 #                                                       ensure_ascii=True,
 #                                                       indent=2))
-        try:
-            result = server.ComputePath(arg)
-        except xmlrpclib.Error as v:
-            print "ERROR", v
-            raise
+            try:
+                result = server.ComputePath(arg)
+            except xmlrpclib.Error as v:
+                print "ERROR", v
+                raise
 
         self.result = result # save the raw result for stitchhandler to print
         geni_result = Result(result) # parse result

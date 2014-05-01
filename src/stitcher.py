@@ -130,6 +130,8 @@ def call(argv, options=None):
                       type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default False)")
+    parser.add_option("--savedSCSResults", default=None,
+                      help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)

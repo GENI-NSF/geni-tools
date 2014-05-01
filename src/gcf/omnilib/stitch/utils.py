@@ -24,6 +24,9 @@
 from __future__ import absolute_import
 
 from ..util import OmniError
+from . import defs
+
+from xml.dom.minidom import Node as XMLNode
 
 class StitchingError(OmniError):
     '''Errors due to stitching problems'''
@@ -82,3 +85,11 @@ def stripBlankLines(strWithBlanks):
         if l != '':
             str2 = str2 + line + '\n'
     return str2
+
+def isRSpecStitchingSchemaV2(rspec):
+    '''Does the given RSpec mention stitch schema v2?'''
+    if rspec is None:
+        return False
+    if defs.STITCH_V2_BASE in str(rspec):
+        return True
+    return False

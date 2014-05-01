@@ -292,6 +292,8 @@ class Aggregate(object):
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
+        self.doesSchemaV1 = True # Supports stitching schema v1?
+        self.doesSchemaV2 = False # Supports stitching schema v2?
 
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
@@ -664,6 +666,86 @@ class Aggregate(object):
         # End of loop over hops to copy VLAN tags over and see if this is a redo or we need to delete
         return mustDelete, alreadyDone
 
+    def changeStitchSchemaVersion(self, attr, nodeName):
+        # Change the value of the given attribute to use the stitching schema version used by this AM
+        # return attr, newVersionNumber
+        if defs.STITCH_V1_BASE in attr.value:
+            if not self.doesSchemaV1:
+                # Must change
+                self.logger.debug("Found stitch schema v1 attr on %s: %s='%s'", nodeName, attr.name, attr.value)
+                self.logger.debug("But %s does not support v1. Change Rspec to v2", self)
+
+                sLStr = defs.STITCH_V1_SCHEMA
+                v2sLStr = defs.STITCH_V2_SCHEMA
+                ind = attr.value.find(sLStr)
+                if ind > -1:
+                    attr.value = attr.value[:ind] + v2sLStr + attr.value[ind + len(sLStr):]
+                    self.logger.debug("New value: '%s'", attr.value)
+                    return attr, 2
+                else:
+                    sLStr = defs.STITCH_V1_SCHEMA
+                    v2sLStr = defs.STITCH_V2_SCHEMA
+                    ind = attr.value.find(sLStr)
+                    if ind > -1:
+                        attr.value = attr.value[:ind] + v2sLStr + attr.value[ind + len(sLStr):]
+                        self.logger.debug("New value: '%s'", attr.value)
+                        return attr, 2
+                    else:
+                        schemaStr = defs.STITCH_V1_NS
+                        v2schemaStr = defs.STITCH_V2_NS
+                        ind = attr.value.find(schemaStr)
+                        if ind > -1:
+                            attr.value = attr.value[:ind] + v2schemaStr + attr.value[ind + len(schemaStr):]
+                            self.logger.debug("New value: '%s'", attr.value)
+                            return attr, 2
+                        else:
+                            self.logger.debug("Failed to change v1 to v2!")
+                            return attr, -2
+            else:
+                # This AM does v1 and the attribute says v1. Nothing to do
+                return attr, 0
+        elif defs.STITCH_V2_BASE in attr.value:
+            if not self.doesSchemaV2:
+                # Must change
+                self.logger.debug("Found stitch schema v2 attr on %s: %s='%s'", nodeName, attr.name, attr.value)
+                self.logger.debug("But %s does not support v2. Change Rspec to v1", self)
+                for hop in self.hops:
+                    if hop._hop_link.isOF:
+                        # FIXME: What do we do?
+                        self.logger.debug("***But one hop uses OF! %s", hop)
+                sLStr = defs.STITCH_V1_SCHEMA
+                v2sLStr = defs.STITCH_V2_SCHEMA
+                ind = attr.value.find(v2sLStr)
+                if ind > -1:
+                    attr.value = attr.value[:ind] + sLStr + attr.value[ind + len(v2sLStr):]
+                    self.logger.debug("New value: '%s'", attr.value)
+                    return attr, 1
+                else:
+                    sLStr = defs.STITCH_V1_SCHEMA
+                    v2sLStr = defs.STITCH_V2_SCHEMA
+                    ind = attr.value.find(v2sLStr)
+                    if ind > -1:
+                        attr.value = attr.value[:ind] + sLStr + attr.value[ind + len(v2sLStr):]
+                        self.logger.debug("New value: '%s'", attr.value)
+                        return attr, 1
+                    else:
+                        schemaStr = defs.STITCH_V1_NS
+                        v2schemaStr = defs.STITCH_V2_NS
+                        ind = attr.value.find(v2schemaStr)
+                        if ind > -1:
+                            attr.value = attr.value[:ind] + schemaStr + attr.value[ind + len(v2schemaStr):]
+                            self.logger.debug("New value: '%s'", attr.value)
+                            return attr, 1
+                        else:
+                            self.logger.debug("Failed to change v2 to v1!")
+                            return attr, -1
+            else:
+                # nothing to do. This says v2 and the AM does v2
+                return attr, 0
+        else:
+#            self.logger.debug("No stitching schema in this attribute value: %s='%s'", attr.name, attr.value)
+            return attr, 0
+
     def getEditedRSpecDom(self, originalRSpec):
         # For each path on this AM, get that Path to write whatever it thinks necessary into a
         # deep clone of the incoming RSpec Dom
@@ -700,11 +782,58 @@ class Aggregate(object):
 #                                     "will expire earlier than at other aggregates - requested expiration being reset from %s to %s", expires, newExpires)
 #                    rspecs[0].setAttribute(defs.EXPIRES_ATTRIBUTE, newExpires)
 
+        changing1To2 = False # FIXME: Use this later to determine how to write attributes?
+        changing2To1 = False
+        # Look for an rspec element and see if it has the stich schema on it
+        rspecNodes = requestRSpecDom.getElementsByTagName(defs.RSPEC_TAG)
+        if rspecNodes and len(rspecNodes) > 0:
+            rspecNode = rspecNodes[0]
+        else:
+            raise StitchingError("Couldn't find rspec element in rspec for %s request" % self)
+
+        # For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        # Loop through all attributes checking against the stitch schema
+        # Also check xsi:schemaLocation
+        if rspecNode.hasAttributes():
+            for i in range(rspecNode.attributes.length):
+                attr = rspecNode.attributes.item(i)
+                attr, newVer = self.changeStitchSchemaVersion(attr, 'rspec')
+                if newVer == 2:
+                    changing1To2 = True
+                elif newVer == 1:
+                    changing2To1 = True
+                else:
+                    if newVer < 0:
+                        # Error changing schema version
+                        pass
+                    else:
+                        # No stitching schema in this attribute. Nothing to do
+                        pass
+
         stitchNodes = requestRSpecDom.getElementsByTagName(defs.STITCHING_TAG)
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
             raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
+
+        # For v2/v1, right here check if this is v2 and we want v1 or vice versa
+        # schema is marked direct on this node
+        # If the value says v1 and we want v2 or vice versa, then change
+        if stitchNode.hasAttributes():
+            for i in range(stitchNode.attributes.length):
+                attr = stitchNode.attributes.item(i)
+                attr, newVer = self.changeStitchSchemaVersion(attr, 'stitching')
+                if newVer == 2:
+                    changing1To2 = True
+                elif newVer == 1:
+                    changing2To1 = True
+                else:
+                    if newVer < 0:
+                        # Error changing schema version
+                        pass
+                    else:
+                        # No stitching schema in this attribute. Nothing to do
+                        pass
 
         domPaths = stitchNode.getElementsByTagName(defs.PATH_TAG)
 #        domPaths = stitchNode.getElementsByTagNameNS(rspec_schema.STITCH_SCHEMA_V1, defs.PATH_TAG)
@@ -818,8 +947,13 @@ class Aggregate(object):
 
         if scsi_node:
             for child in scsi_node.childNodes:
+                # FIXME: We assume a single l2 or ofl2 node here
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == HopLink.SCSI_L2_TAG:
+                    scsil2_node = child
+                    break
+                elif child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_OFL2_TAG:
                     scsil2_node = child
                     break
         else:
@@ -834,7 +968,7 @@ class Aggregate(object):
                     elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in hop '%s' in manifest rspec" % (self, hop_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc or OpenflowL2sc in hop '%s' in manifest rspec" % (self, hop_id))
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
@@ -941,8 +1075,13 @@ class Aggregate(object):
 
         if scsi_node:
             for child in scsi_node.childNodes:
+                # FIXME: We assume a single l2 or ofl2 node here
                 if child.nodeType == XMLNode.ELEMENT_NODE and \
                         child.localName == HopLink.SCSI_L2_TAG:
+                    scsil2_node = child
+                    break
+                elif child.nodeType == XMLNode.ELEMENT_NODE and \
+                        child.localName == HopLink.SCSI_OFL2_TAG:
                     scsil2_node = child
                     break
         else:
@@ -957,7 +1096,7 @@ class Aggregate(object):
                     elif child.localName == HopLink.VLAN_SUGGESTED_TAG:
                         suggested_vlan_range = child_text
         else:
-            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc in link '%s' in manifest rspec" % (self, link_id))
+            raise StitchingError("%s: Couldn't find switchingCapabilitySpecificInfo_L2sc of OpenflowL2sc in link '%s' in manifest rspec" % (self, link_id))
 
         return (path_globalId, vlan_range_availability, suggested_vlan_range)
 
@@ -3006,6 +3145,9 @@ class LinkProperty(GENIObject):
         self.dest_id = d_id
         self.latency = lat
         self.packet_loss = pl
+        # Note that in v2 this string could include units
+        #  Support these (case insensitive): G, g, Gbps, gbps, M, M, Mbps,
+        #	mbps, K, k, Kbps, kbps, B, b, bps 
         self.capacity = cap
         self.link = None
 
@@ -3109,6 +3251,7 @@ class Link(GENIObject):
                 if child.hasAttribute(LinkProperty.PACKETLOSS_TAG):
                     pl = child.getAttribute(LinkProperty.PACKETLOSS_TAG)
                 if child.hasAttribute(LinkProperty.CAPACITY_TAG):
+                    # Note that in v2 this could include units
                     cap = child.getAttribute(LinkProperty.CAPACITY_TAG)
 #                print "Link %s Parsed property s %s d %s cap %s" % (client_id, s_id, d_id, cap)
                 prop = LinkProperty(s_id, d_id, lat, pl, cap)
@@ -3185,8 +3328,7 @@ class HopLink(object):
     SCD_TAG = 'switchingCapabilityDescriptor'
     SCSI_TAG = 'switchingCapabilitySpecificInfo'
     SCSI_L2_TAG = 'switchingCapabilitySpecificInfo_L2sc'
-    CAPABILITIES_TAG = 'capabilities'
-    CAPABILITY_TAG = 'capability'
+    SCSI_OFL2_TAG = 'switchingCapabilitySpecificInfo_OpenflowL2sc'
 
     @classmethod
     def fromDOM(cls, element):
@@ -3228,20 +3370,40 @@ class HopLink(object):
         hoplink.vlan_suggested_request = vlan_suggested_obj
 
         # Extract the advertised capabilities
-        capabilities = element.getElementsByTagName(cls.CAPABILITIES_TAG)
-        if capabilities and len(capabilities) > 0 and capabilities[0].childNodes:
-            hoplink.vlan_producer = False
-            hoplink.vlan_consumer = False
-            capabilityNodes = capabilities[0].getElementsByTagName(cls.CAPABILITY_TAG)
+        capabilities = element.getElementsByTagName(defs.CAPABILITIES_TAG)
+        if capabilities and len(capabilities) > 0:
+            if capabilities[0].hasAttribute("value"):
+                cap = str(capabilities[0].getAttribute("value")).strip()
+                hoplink.capabilities.append(cap)
+            capabilityNodes = None
+            if capabilities[0].childNodes:
+                capabilityNodes = capabilities[0].getElementsByTagName(defs.CAPABILITY_TAG)
             if capabilityNodes and len(capabilityNodes) > 0:
                 for capability in capabilityNodes:
                     if capability.firstChild:
-                        cap = str(capability.firstChild.nodeValue).strip().lower()
+                        cap = str(capability.firstChild.nodeValue).strip()
                         hoplink.capabilities.append(cap)
-                        if cap == defs.PRODUCER_VALUE or cap == defs.VLANPRODUCER_VALUE:
-                            hoplink.vlan_producer = True
-                        elif cap == defs.CONSUMER_VALUE or cap == defs.VLANCONSUMER_VALUE:
-                            hoplink.vlan_consumer = True
+            for cap in hoplink.capabilities:
+                if cap.lower() == defs.PRODUCER_VALUE or cap.lower() == defs.VLANPRODUCER_VALUE:
+                    hoplink.vlan_producer = True
+                elif cap.lower() == defs.CONSUMER_VALUE or cap.lower() == defs.VLANCONSUMER_VALUE:
+                    hoplink.vlan_consumer = True
+
+        # We assume here that a hop link has the openflowl2sc OR the l2sc, not both
+        ofl2 = element.getElementsByTagName(cls.SCSI_OFL2_TAG)
+        if ofl2 and len(ofl2) > 0:
+            hoplink.isOF = True
+            ctrlN = ofl2[0].getElementsByTagName("controllerUrl")
+            if ctrlN and len(ctrlN) > 0:
+                val = str(ctrlN[0].firstChild.nodeValue).strip()
+                if val != "":
+                    hoplink.controllerUrl = val
+            ofamN = ofl2[0].getElementsByTagName("ofAMUrl")
+            if ofamN and len(ofamN) > 0:
+                val = str(ofamN[0].firstChild.nodeValue).strip()
+                if val != "":
+                    hoplink.ofAMUrl = val
+
         return hoplink
 
     def __init__(self, urn):
@@ -3256,6 +3418,9 @@ class HopLink(object):
         self.vlan_producer = False
         self.vlan_consumer = False
         self.capabilities = [] # list of string capabilities
+        self.isOF = False
+        self.controllerUrl = None
+        self.ofAMUrl = None
 
         self.logger = logging.getLogger('stitch.HopLink')
 
@@ -3277,6 +3442,24 @@ class HopLink(object):
             newVlanRangeString = str(self.vlan_range_manifest).strip()
             newVlanSuggestedString = str(self.vlan_suggested_manifest).strip()
 
+        # Find the single capability we want to attach to
+        # FIXME: We assume here there is no more than 1 switchingCapabilitySpecificInfo node on a hop
+        capSpecInfol2Node = None
+        # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
+        l2scNodes = domNode.getElementsByTagName(HopLink.SCSI_L2_TAG)
+        if l2scNodes and len(l2scNodes) > 0:
+            if len(l2scNodes) > 1:
+                self.logger.debug("Got >1 l2sc nodes? Using first")
+            capSpecInfol2Node = l2scNodes[0]
+        l2ofNodes = domNode.getElementsByTagName(HopLink.SCSI_OFL2_TAG)
+        if l2ofNodes and len(l2ofNodes) > 0:
+            if capSpecInfol2Node != None:
+                self.logger.debug("Already found an l2sc node. Ignoring %d ofl2sc nodes.", len(l2ofNodes))
+            else:
+                if len(l2ofNodes) > 1:
+                    self.logger.debug("Got >1 ofl2sc nodes? Using first")
+                capSpecInfol2Node = l2ofNodes[0]
+
         vlan_range = domNode.getElementsByTagName(self.VLAN_RANGE_TAG)
         if vlan_range and len(vlan_range) > 0:
             # vlan_range may have no child or no nodeValue. Meaning would then be 'any'
@@ -3289,10 +3472,8 @@ class HopLink(object):
         else:
             vlanRangeNode = domNode.ownerDocument.createElement(self.VLAN_RANGE_TAG)
             vlanRangeNode.appendChild(domNode.ownerDocument.createTextNode(newVlanRangeString))
-            # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
-            l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
-            if l2scNodes and len(l2scNodes) > 0:
-                l2scNodes[0].appendChild(vlanRangeNode)
+            if capSpecInfol2Node != None:
+                capSpecInfol2Node.appendChild(vlanRangeNode)
 
         vlan_suggested = domNode.getElementsByTagName(self.VLAN_SUGGESTED_TAG)
         if vlan_suggested and len(vlan_suggested) > 0:
@@ -3306,8 +3487,6 @@ class HopLink(object):
         else:
             vlanSuggestedNode = domNode.ownerDocument.createElement(self.VLAN_RANGE_TAG)
             vlanSuggestedNode.appendChild(domNode.ownerDocument.createTextNode(newVlanSuggestedString))
-            # Find the switchingCapabilitySpecificInfo_L2sc node and append it there
-            l2scNodes = domNode.getElementsByTagName('switchingCapabilitySpecificInfo_L2sc')
-            if l2scNodes and len(l2scNodes) > 0:
-                l2scNodes[0].appendChild(vlanSuggestedNode)
+            if capSpecInfol2Node != None:
+                capSpecInfol2Node.appendChild(vlanSuggestedNode)
 

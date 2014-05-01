@@ -28,6 +28,7 @@ from __future__ import absolute_import
 parsing RSpecs and creating objects. See doStitching().'''
 import copy
 import datetime
+import json
 import logging
 import os
 import string
@@ -38,6 +39,7 @@ from .util import OmniError, naiveUTC
 from .util import credparsing as credutils
 from .util.files import readFile
 from .util import handler_utils
+from .util.json_encoding import DateTimeAwareJSONEncoder
 
 from . import stitch
 from .stitch import defs
@@ -46,7 +48,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -864,8 +866,10 @@ class StitchingHandler(object):
         self.scsService.result = None # Avoid any unexpected issues
 
         self.logger.debug("Calling SCS with options %s", scsOptions)
+        if self.opts.savedSCSResults:
+            self.logger.debug("** Not actually calling SCS, using results from %s", self.opts.savedSCSResults)
         try:
-            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
+            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions, self.opts.savedSCSResults)
         except StitchingError as e:
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
@@ -878,7 +882,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             self.logger.debug("Writing SCS result JSON to scs-result.json")
             with open ("scs-result.json", 'w') as file:
-                file.write(stripBlankLines(str(self.scsService.result)))
+                file.write(stripBlankLines(str(json.dumps(self.scsService.result, encoding='ascii', cls=DateTimeAwareJSONEncoder))))
 
         self.scsService.result = None # Clear memory/state
         return scsResponse
@@ -1022,6 +1026,10 @@ class StitchingHandler(object):
         expandedRSpec = scsResponse.rspec()
 
         if self.opts.debug or self.opts.fakeModeDir:
+
+            if isRSpecStitchingSchemaV2(expandedRSpec):
+                self.logger.debug("SCS RSpec uses v2 stitching schema")
+
             # Write the RSpec the SCS gave us to a file
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
@@ -1249,11 +1257,36 @@ class StitchingHandler(object):
                     if version[agg.url]['value'].has_key('GRAM_version'):
                         agg.isGRAM = True
                         self.logger.debug("AM %s is GRAM", agg)
+                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and \
+                            isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
+                        for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
+                            if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and \
+                                    rVer.has_key('extensions') and rVer['type'].lower() == 'geni' and str(rVer['version']) == '3' and \
+                                    isinstance(rVer['extensions'], list):
+                                v2 = False
+                                v1 = False
+                                for ext in rVer['extensions']:
+                                    if defs.STITCH_V1_BASE in ext:
+                                        v1 = True
+                                    if defs.STITCH_V2_BASE in ext:
+                                        v2 = True
+                                if v2:
+                                    self.logger.debug("%s supports stitch schema v2", agg)
+                                    agg.doesSchemaV2 = True
+                                if not v1:
+                                    self.logger.debug("%s does NOT say it supports stitch schema v1", agg)
+                                    agg.doesSchemaV1 = False
+                            # End of if block
+                        # Done with loop over versions
+                    if not agg.doesSchemaV2 and not agg.doesSchemaV1:
+                        self.logger.debug("%s doesn't say whether it supports either stitching schema, so assume v1", agg)
+                        agg.doesSchemaV1 = True
             except StitchingError, se:
                 # FIXME: Return anything different for stitching error?
                 # Do we want to return a geni triple struct?
                 raise
-            except:
+            except Exception, e:
+                self.logger.debug("Got error extracting extra AM info: %s", e)
                 pass
             finally:
                 logging.disable(logging.NOTSET)
@@ -1289,7 +1322,15 @@ class StitchingHandler(object):
                 for hop in path.hops:
                     self.logger.debug( "  Hop %s" % (hop))
                     if hop.globalId:
-                        self.logger.debug( "   GlobalId: %s" % hop.globalId)
+                        self.logger.debug( "    GlobalId: %s" % hop.globalId)
+                    if hop._hop_link.isOF:
+                        self.logger.debug( "    An Openflow controlled hop")
+                        if hop._hop_link.controllerUrl:
+                            self.logger.debug( "      Controller: %s", hop._hop_link.controllerUrl)
+                        if hop._hop_link.ofAMUrl:
+                            self.logger.debug( "      Openflow AM URL: %s", hop._hop_link.ofAMUrl)
+                    if len(hop._hop_link.capabilities) > 0:
+                        self.logger.debug( "    Capabilities: %s", hop._hop_link.capabilities)
                     # FIXME: don't use the private variable
                     self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
@@ -1329,6 +1370,10 @@ class StitchingHandler(object):
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                if not agg.doesSchemaV1:
+                    self.logger.debug("   Does NOT support Stitch Schema V1")
+                if agg.doesSchemaV2:
+                    self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
                 for h in agg.hops:
