@@ -48,7 +48,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -1026,6 +1026,10 @@ class StitchingHandler(object):
         expandedRSpec = scsResponse.rspec()
 
         if self.opts.debug or self.opts.fakeModeDir:
+
+            if isRSpecStitchingSchemaV2(expandedRSpec):
+                self.logger.debug("SCS RSpec uses v2 stitching schema")
+
             # Write the RSpec the SCS gave us to a file
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
@@ -1325,6 +1329,8 @@ class StitchingHandler(object):
                             self.logger.debug( "   Controller: %s", hop._hop_link.controllerUrl)
                         if hop._hop_link.ofAMUrl:
                             self.logger.debug( "   Openflow AM URL: %s", hop._hop_link.ofAMUrl)
+                    if len(hop._hop_link.capabilities) > 0:
+                        self.logger.debug( "    Capabilities: %s", hop._hop_link.capabilities)
                     # FIXME: don't use the private variable
                     self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))

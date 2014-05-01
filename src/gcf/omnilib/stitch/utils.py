@@ -24,6 +24,7 @@
 from __future__ import absolute_import
 
 from ..util import OmniError
+from . import defs
 
 from xml.dom.minidom import Node as XMLNode
 

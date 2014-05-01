@@ -3371,19 +3371,23 @@ class HopLink(object):
 
         # Extract the advertised capabilities
         capabilities = element.getElementsByTagName(defs.CAPABILITIES_TAG)
-        if capabilities and len(capabilities) > 0 and capabilities[0].childNodes:
-            hoplink.vlan_producer = False
-            hoplink.vlan_consumer = False
-            capabilityNodes = capabilities[0].getElementsByTagName(defs.CAPABILITY_TAG)
+        if capabilities and len(capabilities) > 0:
+            if capabilities[0].hasAttribute("value"):
+                cap = str(capabilities[0].getAttribute("value")).strip()
+                hoplink.capabilities.append(cap)
+            capabilityNodes = None
+            if capabilities[0].childNodes:
+                capabilityNodes = capabilities[0].getElementsByTagName(defs.CAPABILITY_TAG)
             if capabilityNodes and len(capabilityNodes) > 0:
                 for capability in capabilityNodes:
                     if capability.firstChild:
-                        cap = str(capability.firstChild.nodeValue).strip().lower()
+                        cap = str(capability.firstChild.nodeValue).strip()
                         hoplink.capabilities.append(cap)
-                        if cap == defs.PRODUCER_VALUE or cap == defs.VLANPRODUCER_VALUE:
-                            hoplink.vlan_producer = True
-                        elif cap == defs.CONSUMER_VALUE or cap == defs.VLANCONSUMER_VALUE:
-                            hoplink.vlan_consumer = True
+            for cap in hoplink.capabilities:
+                if cap.lower() == defs.PRODUCER_VALUE or cap.lower() == defs.VLANPRODUCER_VALUE:
+                    hoplink.vlan_producer = True
+                elif cap.lower() == defs.CONSUMER_VALUE or cap.lower() == defs.VLANCONSUMER_VALUE:
+                    hoplink.vlan_consumer = True
 
         # We assume here that a hop link has the openflowl2sc OR the l2sc, not both
         ofl2 = element.getElementsByTagName(cls.SCSI_OFL2_TAG)
