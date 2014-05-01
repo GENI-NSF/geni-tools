@@ -2765,7 +2765,7 @@ class Aggregate(object):
                 self.inProcess = False
                 if self.api_version == 2:
                     (successList, fail) = result
-                    if not self.url in successList:
+                    if self.url in fail or (len(successList) == 0 and len(fail) > 0):
                         raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
                     else:
                         self.logger.debug("%s %s Result: %s", opName, self, text)
