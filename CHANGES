@@ -55,6 +55,7 @@ gcf 2.6:
     capabilityDescriptor OR the l2sc descriptor (not both). Also added
     new option `--savedSCSResults` for running from saved SCS
     results. (#578)
+  * Support producing integrated manifest RSpec when using a GRAM AM. (#605)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

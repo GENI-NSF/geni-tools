@@ -209,16 +209,18 @@ class StitchingHandler(object):
             # include AMs, URLs, API versions
             # Avoid EG manifests - they are incomplete
             # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
-            if lastAM.isEG or lastAM.dcn:
-                self.logger.debug("Last AM was an EG or DCN AM. Find another for the template.")
+            # GRAM AMs seems to also miss nodes. Avoid if possible.
+            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+                self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
                 i = 1
-                while (lastAM.isEG or lastAM.dcn) and i <= len(self.ams_to_process):
+                while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM) and i <= len(self.ams_to_process):
                     # This has lost some hops and messed up hop IDs. Don't use it as the template
                     # I'd like to find another AM we did recently
                     lastAM = self.ams_to_process[-i]
                     i = i + 1
-                if lastAM.isEG or lastAM.dcn:
-                    self.logger.debug("Still had an EG or DCN template AM?")
+                if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+                    self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
+                    lastAM = None
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
@@ -1398,7 +1400,25 @@ class StitchingHandler(object):
         # Nodes and hops come from the AM that owns those
         # interface_ref elements on link elements also come from the responsible AM
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
-        lastDom = lastAM.manifestDom
+        if lastAM is None:
+            self.logger.debug("Combined manifest will start from SCS expanded request RSpec")
+            lastDom = self.parsedSCSRSpec.dom
+            # Change that dom to be a manifest RSpec
+            # for each attribute on the dom root node, change "request" to "manifest"
+            doc_root = lastDom.documentElement
+            for i in range(doc_root.attributes.length):
+                attr = doc_root.attributes.item(i)
+                doingChange = False
+                ind = attr.value.find('request')
+                if ind > -1:
+                    doingChange = True
+                while ind > -1:
+                    attr.value = attr.value[:ind] + 'manifest' + attr.value[ind+len('request'):]
+                    ind = attr.value.find('request', ind+len('request'))
+                if doingChange:
+                    self.logger.debug("Reset original request rspec attr %s='%s'", attr.name, attr.value)
+        else:
+            lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
         manString = combinedManifestDom.toprettyxml(encoding="utf-8")
 

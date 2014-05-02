@@ -81,8 +81,10 @@ class ManifestRSpecCombiner:
 
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
+        template_node_cids=[]
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
+        # Find all the client_ids for nodes in the template too
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == defs.NODE_TAG:
@@ -90,6 +92,9 @@ class ManifestRSpecCombiner:
                 if not template_nodes_by_cmid.has_key(cmid):
                     template_nodes_by_cmid[cmid] = []
                 template_nodes_by_cmid[cmid].append(child)
+                cid = child.getAttribute(CLIENT_ID)
+                if not cid in template_node_cids:
+                    template_node_cids.append(cid)
 
 #        print "DICT = " + str(template_nodes_by_cmid)
         
@@ -97,10 +102,22 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
+            am_manifest_dom = am.manifestDom
+            am_doc_root = am_manifest_dom.documentElement
+
+            # For each node in this AMs manifest for which this AM
+            # is the component manager, if that client_id
+            # was not in the template, then append this node
+            for child in am_doc_root.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == defs.NODE_TAG:
+                    cid = child.getAttribute(CLIENT_ID)
+                    cmid = child.getAttribute(COMPONENT_MGR_ID)
+                    if not cid in template_node_cids and cmid in am.urn_syns:
+                        doc_root.appendChild(child)
+            # Now do the node replacing as necessary
             for urn in am.urn_syns:
                 if template_nodes_by_cmid.has_key(urn):
-                    am_manifest_dom = am.manifestDom
-                    am_doc_root = am_manifest_dom.documentElement
                     for template_node in template_nodes_by_cmid[urn]:
                         template_client_id = template_node.getAttribute(CLIENT_ID)
                         for child in am_doc_root.childNodes:
@@ -120,6 +137,40 @@ class ManifestRSpecCombiner:
 
         # For each link in template by component_manager_id
         doc_root = dom_template.documentElement
+        children = doc_root.childNodes
+        # Collect the link client_ids in the template
+        template_link_cids=[]
+        for child in children:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.localName == defs.LINK_TAG:
+                link = child
+                # Get first 'component_manager' child element
+#                print "LINK = " + str(link) + " " + cmid
+                client_id = str(link.getAttribute(CLIENT_ID))
+                template_link_cids.append(client_id)
+
+        # loop over AMs. If an AM has a link client_id not in template_link_ids
+        # and the link has that AM as a component_manager, then append this link to the template
+        for agg in ams_list:
+            man = agg.manifestDom
+            link_elements = man.getElementsByTagName(defs.LINK_TAG)
+            for link2 in link_elements:
+                cid = link2.getAttribute(CLIENT_ID)
+                # If the manifest has this link, then we're good
+                if cid in template_link_cids:
+                    continue
+                component_manager_elements = link.getElementsByTagName(COMP_MGR)
+                myLink = False
+                for cme in component_manager_elements:
+                    cmid = str(cme.getAttribute(COMP_MGR_NAME))
+                    if cmid in agg.urn_syns:
+                        myLink = True
+                        break
+                if myLink:
+                    doc_root.appendChild(link2)
+                    template_link_cids.append(cid)
+
+        # Now go through the links in the template, swapping in info from the appropriate manifest RSpecs
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
