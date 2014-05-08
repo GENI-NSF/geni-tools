@@ -278,7 +278,7 @@ wisconsin-ig-of2=urn:publicid:IDN+openflow:foam:foam.instageni.wisc.edu+authorit
 # ============================================
 # Internet2 ION Aggregate for stitching
 # ============================================
-ion=urn:publicid:IDN+ion.internet2.edu+authority+am,https://geni-am.net.internet2.edu:12346
+ion=urn:publicid:IDN+ion.internet2.edu+authority+am,http://geni-am.net.internet2.edu:12346
 
 # ============================================
 # Cornell InstaGENI Rack
