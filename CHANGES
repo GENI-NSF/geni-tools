@@ -23,6 +23,7 @@ gcf 2.6:
   * `listkeys` return is a list of structs of ('`public_key`',
     '`private_key`'), where `private_key` is omitted for most
     frameworks and most cases where not available. (#600)
+  * rspec_util utility takes optional logger (#612)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)

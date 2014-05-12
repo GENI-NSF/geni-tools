@@ -619,6 +619,7 @@ class StitchingHandler(object):
         if not is_rspec_string(requestString, None, None, logger=self.logger):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
         if not is_rspec_of_type(requestString, rspecType):
+#        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
             raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
 
         # Run rspeclint
@@ -1400,6 +1401,7 @@ class StitchingHandler(object):
         # Nodes and hops come from the AM that owns those
         # interface_ref elements on link elements also come from the responsible AM
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
+        lastDom = None
         if lastAM is None:
             self.logger.debug("Combined manifest will start from SCS expanded request RSpec")
             lastDom = self.parsedSCSRSpec.dom
@@ -1417,6 +1419,7 @@ class StitchingHandler(object):
                     ind = attr.value.find('request', ind+len('request'))
                 if doingChange:
                     self.logger.debug("Reset original request rspec attr %s='%s'", attr.name, attr.value)
+#            self.logger.debug(stripBlankLines(lastDom.toprettyxml(encoding="utf-8")))
         else:
             lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
