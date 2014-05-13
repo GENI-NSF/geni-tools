@@ -53,7 +53,7 @@ from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlan
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
-from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
+from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
@@ -1041,8 +1041,6 @@ class StitchingHandler(object):
             # Write the RSpec the SCS gave us to a file
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
-                # This line seems to insert extra \ns - GCF ticket #202
-#                content = getPrettyRSpec(expandedRSpec)
                 content = stripBlankLines(string.replace(expandedRSpec, "\\n", '\n'))
             else:
                 content = "<!-- No valid RSpec returned. -->"

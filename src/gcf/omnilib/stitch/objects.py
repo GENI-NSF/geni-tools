@@ -1118,8 +1118,6 @@ class Aggregate(object):
         requestString = self.requestDom.toxml(encoding="utf-8")
         header = "<!-- Resource request for stitching for:\n\tSlice: %s\n\t at AM:\n\tURN: %s\n\tURL: %s\n -->" % (slicename, self.urn, self.url)
         if requestString and rspec_util.is_rspec_string( requestString, None, None, logger=self.logger ):
-            # This line seems to insert extra \ns - GCF ticket #202
-#            content = rspec_util.getPrettyRSpec(requestString)
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
         else:
             raise StitchingError("%s: Constructed request RSpec malformed? Begins: %s" % (self, requestString[:100]))

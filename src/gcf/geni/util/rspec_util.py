@@ -357,6 +357,7 @@ def getPrettyRSpec(rspec):
         newl = ''
         if '\n' not in rspec:
             newl = '\n'
+        # Parsing the RSpec is memory intensive, particularly for large RSpecs. Like the PG Ad
         prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
     except:
         pass

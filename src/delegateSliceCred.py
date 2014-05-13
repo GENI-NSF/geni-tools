@@ -58,7 +58,6 @@ import optparse
 import os
 import string
 import sys
-from xml.dom.minidom import Document, parseString
 
 import gcf.sfa.trust.credential as cred
 import gcf.sfa.trust.rights as privs
