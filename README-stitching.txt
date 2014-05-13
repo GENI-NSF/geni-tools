@@ -431,7 +431,8 @@ Cannot find the set of paths for the RequestTopology. '.
 `Error reserving vlan tag for …` OR 
 `vlan tag … not available` OR
 `Could not find a free vlan tag` OR
-`Could not reserve a vlan tag for`
+`Could not reserve a vlan tag for` OR
+`Error in building the dependency tree, probably not available vlan path`
  - Some VLAN tag you requested is not available. Stitcher will try to
  find another and try again.
 

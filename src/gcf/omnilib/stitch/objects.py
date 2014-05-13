@@ -1441,6 +1441,10 @@ class Aggregate(object):
                                 else:
                                     isFatal = True
                                     fatalMsg = "Reservation request impossible at %s: geni_sliver_info contained error: %s..." % (self, msg)
+                            # Ticket #606
+                            if 'Error in building the dependency tree, probably not available vlan path' in msg:
+                                isVlanAvailableIssue = True
+                                self.logger.debug("Assuming EG error meant VLAN unavailable: %s", msg)
 
                             pass
                         elif self.dcn:
