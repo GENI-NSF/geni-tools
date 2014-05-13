@@ -384,6 +384,11 @@ Cannot find the set of paths for the RequestTopology. '.
 `Hostname > 63 char`
  - Try a shorter client_id (node name) or slice name
 
+`no edge hop`
+ - Your request RSpec likely lists a `component_manager` naming an
+ aggregate which has no interface on the given link. Perhaps a
+ copy-and-paste error?
+
 `Duplicate link`
  - Do you have 2 links with the same client_id? Edit your request.
 
