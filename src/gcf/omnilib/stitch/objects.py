@@ -1398,6 +1398,10 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Use a different SA or different aggregate: %s..." % (self, str(ae)[:120])
+                            elif code == 2 and amcode == 2 and "no edge hop" in msg:
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request lists this AM under the named link, but the AM has no interface on the link: %s..." % (self, str(ae)[:120])
                             elif code == 2 and amcode == 2 and "Need node id for links" in msg:
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
