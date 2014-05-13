@@ -57,6 +57,8 @@ gcf 2.6:
     new option `--savedSCSResults` for running from saved SCS
     results. (#578)
   * Support producing integrated manifest RSpec when using a GRAM AM. (#605)
+  * `no edge hop` message at ProtoGENI AMs is fatal. (#611)
+  * `--noReservation` exits with code `0`. (#609)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

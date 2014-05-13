@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import string
+import sys
 import time
 
 from .. import oscript as omni
@@ -156,7 +157,7 @@ class StitchingHandler(object):
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
-                raise StitchingError("Requested no reservation")
+                sys.exit()
 
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
@@ -250,7 +251,11 @@ class StitchingHandler(object):
                 self.logger.error("Root cause error: %s", self.lastException)
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
-            raise se
+            if "Requested no reservation" in str(se):
+                print str(se)
+                sys.exit(0)
+            else:
+                raise se
         finally:
             # Save a file with the aggregates used in this slice
             self.saveAggregateList(sliceurn)
