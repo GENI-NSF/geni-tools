@@ -59,6 +59,8 @@ gcf 2.6:
   * Support producing integrated manifest RSpec when using a GRAM AM. (#605)
   * `no edge hop` message at ProtoGENI AMs is fatal. (#611)
   * `--noReservation` exits with code `0`. (#609)
+  * `Error in building the dependency tree, probably not available
+    vlan path` at EG means the VLAN is unavailable. (#606)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
