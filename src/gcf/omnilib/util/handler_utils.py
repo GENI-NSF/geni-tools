@@ -630,6 +630,8 @@ def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
 
     # Create BODY
     if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=logger ):
+        # This line seems to insert extra \ns - GCF ticket #202
+#        content = rspec_util.getPrettyRSpec(rspec)
         content = string.replace(rspec, "\\n", '\n')
 #        content = rspec
         if slicename:

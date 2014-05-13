@@ -350,7 +350,9 @@ def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None,
             return False
     return True
 
-def getPrettyRSpec(rspec):
+# prettify arg is whether to parse and reprint the rspec to format it nicely.
+# Default True
+def getPrettyRSpec(rspec, prettify=True):
     '''Produce a pretty print string for an XML RSpec'''
     prettyrspec = rspec
     try:
@@ -358,7 +360,8 @@ def getPrettyRSpec(rspec):
         if '\n' not in rspec:
             newl = '\n'
         # Parsing the RSpec is memory intensive, particularly for large RSpecs. Like the PG Ad
-        prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
+        if prettify:
+            prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
     except:
         pass
     # set rspec to be UTF-8
