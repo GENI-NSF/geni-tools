@@ -1280,7 +1280,15 @@ class AMCallHandler(object):
                     self.logger.debug("Decompressed RSpec")
                 if rspec and rspec_util.is_rspec_string( rspec, None, None, logger=self.logger ):
                     successCnt += 1
-                    rspec = rspec_util.getPrettyRSpec(rspec)
+                    doPretty = (slicename is not None) # True on Manifests
+                    if doPretty and rspec.count('\n') > 10:
+                        # Are there newlines in the manifest already? Then set it false. Good enough.
+                        doPretty = False
+                    elif not doPretty and rspec.count('\n') <= 10:
+                        # Are there no newlines in the Ad? Then set it true to make the ad prettier,
+                        # but usually don't bother. FOAM ads are messy otherwise.
+                        doPretty = True
+                    rspec = rspec_util.getPrettyRSpec(rspec, doPretty)
                 else:
                     self.logger.warn("Didn't get a valid RSpec!")
                     if mymessage != "":
@@ -1818,6 +1826,8 @@ class AMCallHandler(object):
         if result:
             self.logger.info("Got return from CreateSliver for slice %s at %s:", slicename, client.str)
 
+            if rspec_util.is_rspec_string( result, None, None, logger=self.logger ):
+                result = rspec_util.getPrettyRSpec(result)
             (retVal, filename) = _writeRSpec(self.opts, self.logger, result, slicename, clienturn, url, message)
             if filename:
                 self.logger.info("Wrote result of createsliver for slice: %s at AM: %s to file %s", slicename, client.str, filename)

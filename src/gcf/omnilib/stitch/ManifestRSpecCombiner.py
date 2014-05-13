@@ -31,7 +31,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from xml.dom.minidom import getDOMImplementation, parseString, Node
+from xml.dom.minidom import getDOMImplementation, Node
 
 from . import objects
 from . import defs

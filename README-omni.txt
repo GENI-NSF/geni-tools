@@ -63,6 +63,11 @@ New in v2.6:
  * `listkeys` return is a list of structs of ('`public_key`',
    '`private_key`'), where `private_key` is omitted for most
    frameworks and most cases where not available. (#600)
+ * rspec_util utility takes optional logger (#612)
+ * Ensure manifest from `createsliver` is printed prettily.
+   `getPrettyRSpec` takes a flag on whether it does pretty
+   printing, default True. Do not do pretty printing on most
+   Ads, and some manifests. Uses less memory. (#610)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
