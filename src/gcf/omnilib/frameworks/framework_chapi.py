@@ -100,6 +100,7 @@ class Framework(Framework_Base):
             self._sa_url = config['sa']
             self.logger.info("Slice Authority is %s (from config)", self._sa_url)
 
+        # FIXME: Pull truth from GetVersion if possible
         if not config.has_key('useprojects'):
             config['useprojects'] = 'True'
         if config['useprojects'].strip().lower() in ['f', 'false']:
@@ -108,13 +109,22 @@ class Framework(Framework_Base):
             self.useProjects = True
 
         # Does this CH need a usercred / slicecred passed to methods
-        # Default False
+        # Default False. Right thing would be to try to get this from GetVersion if possible.
         if not config.has_key('needcred'):
             config['needcred'] = 'False'
         if config['needcred'].strip().lower() in ['t', 'true']:
             self.needcred = True
         else:
             self.needcred = False
+
+        # Does this CH speak APIv2 APIs, in which case use them
+        # Default False for now. Right thing would be to query GetVersion to determine truth.
+        if not config.has_key('speakv2'):
+            config['speakv2'] = 'False'
+        if config['speakv2'].strip().lower() in ['t', 'true']:
+            self.speakV2 = True
+        else:
+            self.speakV2 = False
 
         self.cert = config['cert']
         try:
@@ -159,9 +169,17 @@ class Framework(Framework_Base):
     def list_slice_authorities(self):
         self.logger.debug("Looking up SAs at %s %s", self.fwtype, self.ch_url)
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
-        (res, message) = _do_ssl(self, None, ("List slice authorities at %s %s" % (self.fwtype, self.ch_url)),
-                                 self.ch.lookup_slice_authorities,
-                                 options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List slice authorities at %s %s" % (self.fwtype, self.ch_url)),
+                                     self.ch.lookup_slice_authorities,
+                                     options)
+        else:
+            # FIXME: Is 1 the right type integer at all CHs?
+            options['match'] = {'SERVICE_TYPE': 1}
+            self.logger.debug("Using API v2, with options: %s", options)
+            (res, message) = _do_ssl(self, None, ("List slice authorities at %s %s" % (self.fwtype, self.ch_url)),
+                                     self.ch.lookup, 'SERVICE', [],
+                                     options)
         auths = dict()
         if res is not None:
             if res['value'] is not None and res['code'] == 0:
