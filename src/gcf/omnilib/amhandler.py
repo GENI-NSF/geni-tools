@@ -1282,10 +1282,11 @@ class AMCallHandler(object):
                     successCnt += 1
                     doPretty = (slicename is not None) # True on Manifests
                     if doPretty and rspec.count('\n') > 10:
-                        # Are there newlines in the manifest already? Then set it false
+                        # Are there newlines in the manifest already? Then set it false. Good enough.
                         doPretty = False
                     elif not doPretty and rspec.count('\n') <= 10:
-                        # Are there no newlines in the Ad? Then set it true
+                        # Are there no newlines in the Ad? Then set it true to make the ad prettier,
+                        # but usually don't bother. FOAM ads are messy otherwise.
                         doPretty = True
                     rspec = rspec_util.getPrettyRSpec(rspec, doPretty)
                 else:
