@@ -413,6 +413,11 @@ Cannot find the set of paths for the RequestTopology. '.
 `Need node id for links`
  - You likely have a typo in an interface `client_id` in your link.
 
+`....: Edge iface mismatch when stitching`
+ - You have listed 2 nodes at the same AM on the same stitched
+ link. Each stitched link should be between 2 interfaces on 2
+ different nodes/AMs.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
