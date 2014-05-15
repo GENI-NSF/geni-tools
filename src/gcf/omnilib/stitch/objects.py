@@ -3123,7 +3123,9 @@ class Node(GENIObject):
         """Parse a Node from a DOM element."""
         # FIXME: getAttributeNS?
         client_id = element.getAttribute(cls.CLIENT_ID_TAG)
-        amID = element.getAttribute(cls.COMPONENT_MANAGER_ID_TAG)
+        amID = None
+        if element.hasAttribute(cls.COMPONENT_MANAGER_ID_TAG):
+            amID = element.getAttribute(cls.COMPONENT_MANAGER_ID_TAG)
         # Get the interfaces. Need those to get the client_id so from the link I can find the AM
         ifcs = []
         for child in element.childNodes:

@@ -1571,6 +1571,46 @@ class StitchingHandler(object):
         not be allowed, dangerous things should get a warning.'''
 
         # FIXME FIXME
+
+        # Ticket #570: to stitch multiple VMs at same PG AM on same VLAN, ensure component IDs are eth0-3 on interfaces
+        # to force it to go through hardware
+
+        # for link in self.parsedUserRequest.links:
+        # Only care about stitching links with more than 2 interfaces
+        #  if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE and len(link.interfaces) > 2:
+        #   ifcsByNode = {}
+        #   for ifc in link.interfaces:
+        #       theNode = None
+        #       for node in self.parseUserRequest.nodes:
+        #            if ifc in node.interface_ids
+        #               theNode = node
+        #               break
+        #       if theNode is None:
+        #            error
+        #       ifcsByNode[theNode] = [ifc]
+        #   for node in ifcsByNode.keys():
+        #       if len(ifcsByNode[node] < 2:
+        #           continue
+        #       agg = Aggregate.find(theNode.amURN)
+        #       if not agg.isPG:
+        #           self.logger.warn("%s is not a PG AM and may not support stitching multiple Nodes on same link", agg)
+        #           continue
+        #       # Now we have a PG node with >2 interfaces on the same stitched link
+        #       # Find the node in the rspec XML
+        #       # find the interface
+        #       # Add the component_id if it is not already there
+        #          # FIXME: If some ifc on the node has the component_id, then I need to avoid using the same ones!
+        #          #      Maybe for now, if any ifc has a component_id in the original rspec, skip this node?
+# FIXME: we call rspec.getLinkEditedDom() to build what we send to the SCS. So the object / dom there needs to put the 
+# component_id in in the right way. So probably I need to do this via objects.
+# So: objects.py class Node: store the interface_ref as an object that has both client_id (the id) and component_id.
+# Make that class have a toDOM method that writes in the correct interface_ref sub-elements as needed, and call that method
+# from clas RSpec.getLinkEditedDom
+
+            # ethcnt = 0
+            # For each ifc
+            #   If ifc in the current link, then add component_id attribute using ethcnt, and then increment
+
         pass
 
     def saveAggregateState(self, oldAggs, newAggs):
