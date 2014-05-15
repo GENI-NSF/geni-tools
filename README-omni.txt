@@ -68,6 +68,8 @@ New in v2.6:
    `getPrettyRSpec` takes a flag on whether it does pretty
    printing, default True. Do not do pretty printing on most
    Ads, and some manifests. Uses less memory. (#610)
+ * Clean up error getting slice credential for unknown slice from
+  `chapi` clearinghouses. (#538)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
