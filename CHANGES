@@ -66,6 +66,7 @@ gcf 2.6:
   * `Error in building the dependency tree, probably not available
     vlan path` at EG means the VLAN is unavailable. (#606)
   * `Edge iface mismatch when stitching` is fatal at PG AMs. (#615)
+  * Exit if any nodes are unbound in the request. (#614)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

@@ -116,7 +116,9 @@ Your input request RSpec does ''not'' need a stitching extension, but
 should be a single RSpec for all resources that you want in your slice.
 To create a request that needs stitching, include at least 1 `<link>` elements with 
 more than 1 different `<component_manager>` elements (and no
-`<shared_vlan>` element and no `<link_type>` element of other than `VLAN`).
+`<shared_vlan>` element and no `<link_type>` element of other than
+`VLAN`). Also note that since the same request RSpec goes to all
+aggregates, that all nodes must be bound to specific aggregates.
 
 The result of stitcher is a single combined GENI v3 manifest RSpec, showing
 all resources reserved as a result of this request.
@@ -223,6 +225,7 @@ In running stitcher, follow these various tips:
  - Create a single GENI v3 request RSpec for all aggregates you want linked.
  Stitcher sends the same request RSpec to all aggregates involved in
  your request.
+ - Be sure all nodes in the request are bound to specific nodes.
  - Include the necessary 2 `<component_manager>` elements for the 2
  different AMs in each `<link>`
  - This script can take a while - it must make reservations at all the
@@ -359,6 +362,11 @@ Cannot find the set of paths for the RequestTopology. '.
 
 `Reservation request impossible at <Aggregate ...>`
  - Something about your request cannot be satisfied. The rest of the message may say more.
+
+`Node %s is unbound in request`
+ - One of the nodes in your request did not specify an
+ aggregate at which to reserve the resources. All nodes must be bound
+ to a specific aggregates (include a `component_manager_id` attribute).
 
 `Inconsistent ifacemap`
  - Your request is impossible. Try the `-–fixedEndpoint` option if that is relevant.
@@ -498,7 +506,7 @@ Cannot find the set of paths for the RequestTopology. '.
  - Suppress most log messages (push to an output file), summarizing
  errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates
- - Support GRE tunels
+ - Support GRE tunnels
  - Support recreating the combined manifest RSpec
  - Support AM API v3
  - Consolidate constants

@@ -830,7 +830,7 @@ class StitchingHandler(object):
             found = False
             for node in requestRSpecObject.nodes:
                 if ifc.client_id in node.interface_ids:
-                    if node.amURN not in ams:
+                    if node.amURN is not None and node.amURN not in ams:
                         ams.append(node.amURN)
                     found = True
                     self.logger.debug("Link %s interface %s found on node %s", link.id, ifc.client_id, node.id)
@@ -1570,7 +1570,19 @@ class StitchingHandler(object):
         '''Confirm this request is not asking for a loop. Bad things should
         not be allowed, dangerous things should get a warning.'''
 
-        # FIXME FIXME
+        # If any node is unbound, then all AMs will try to allocate it.
+        for node in self.parsedUserRequest.nodes:
+            if node.amURN is None:
+                if self.opts.devmode:
+                    # Note that SCS likely will fail with something like:
+                    # code 65535: std::exception
+                    self.logger.warn("Node %s is unbound in request", node.id)
+                else:
+                    raise OmniError("Node %s is unbound in request - all nodes must be bound as all aggregates get the same request RSpec" % node.id)
+#            else:
+#                self.logger.debug("Node %s is on AM %s", node.id, node.amURN)
+
+        # FIXME FIXME - what other checks go here?
 
         # Ticket #570: to stitch multiple VMs at same PG AM on same VLAN, ensure component IDs are eth0-3 on interfaces
         # to force it to go through hardware
