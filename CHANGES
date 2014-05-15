@@ -65,6 +65,7 @@ gcf 2.6:
   * `--noReservation` exits with code `0`. (#609)
   * `Error in building the dependency tree, probably not available
     vlan path` at EG means the VLAN is unavailable. (#606)
+  * `Edge iface mismatch when stitching` is fatal at PG AMs. (#615)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

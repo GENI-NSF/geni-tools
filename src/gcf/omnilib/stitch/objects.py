@@ -1396,6 +1396,11 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Use a different SA or different aggregate: %s..." % (self, str(ae)[:120])
+                            elif code == 2 and amcode == 2 and "Edge iface mismatch when stitching" in msg:
+                                # See ticket #570: happens when 2 VMs at an AM on same link
+                                self.logger.debug("Fatal error from PG AM")
+                                isFatal = True
+                                fatalMsg = "Reservation request impossible at %s. Malformed request has 2 nodes at same AM on same named link: %s..." % (self, str(ae)[:120])
                             elif code == 2 and amcode == 2 and "no edge hop" in msg:
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
