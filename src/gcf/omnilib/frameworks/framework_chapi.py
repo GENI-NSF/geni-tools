@@ -388,9 +388,14 @@ class Framework(Framework_Base):
                     self.logger.debug("Malformed slice cred return. Got: %s", res)
                     raise OmniError("Malformed return getting slice credential")
             else:
-                msg = "Server Error getting slice %s credential: %d: %s (%s)" % (slice_urn, res['code'], res['output'], message)
+                msg1 = "Server Error getting slice %s credential: %d: %s" % (slice_urn, res['code'], res['output'])
+                if message is not None and str(message).strip() != "":
+                    msg1 += " (%s)" % message
                 if res.has_key('protogeni_error_url'):
-                    msg += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                    msg1 += " (Log url - look here for details on any failures: %s)" % res['protogeni_error_url']
+                if res['code'] == 3 and 'Unknown slice urn' in res['output']:
+                    msg = "Server says: Unknown slice %s" % slice_urn
+                    self.logger.debug(msg1)
                 raise OmniError(msg)
         else:
             msg = "Server Error getting slice %s credential" % slice_urn
