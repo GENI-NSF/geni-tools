@@ -523,7 +523,7 @@ class ManifestRSpecCombiner:
                             am_link = child2
                             break
             if am_link is None:
-                self.logger.info("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
+                self.logger.debug("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
                 return
         else:
             self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
@@ -532,7 +532,8 @@ class ManifestRSpecCombiner:
             self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
             template_hop.replaceChild(am_link, template_link)
         else:
-            self.logger.warn("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
+            # This error happens at EG AMs and is harmless. See ticket #321
+            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None
