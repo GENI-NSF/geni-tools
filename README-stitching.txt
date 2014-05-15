@@ -363,7 +363,7 @@ Cannot find the set of paths for the RequestTopology. '.
 `Reservation request impossible at <Aggregate ...>`
  - Something about your request cannot be satisfied. The rest of the message may say more.
 
-`Node %s is unbound in request`
+`Node ... is unbound in request`
  - One of the nodes in your request did not specify an
  aggregate at which to reserve the resources. All nodes must be bound
  to a specific aggregates (include a `component_manager_id` attribute).
