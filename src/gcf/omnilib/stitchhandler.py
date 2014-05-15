@@ -230,7 +230,10 @@ class StitchingHandler(object):
 
             # FIXME: This prepends a header on an RSpec that might already have a header
             # -- maybe replace any existing header
-            # FIXME: Without the -o option this is really verbose! Maybe set -o?
+
+            # FIXME: We force -o here and keep it from logging the
+            # RSpec. Do we need an option to not write the RSpec to a file?
+
             ot = self.opts.output
             if not self.opts.tostdout:
                 self.opts.output = True
@@ -239,6 +242,7 @@ class StitchingHandler(object):
             retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
             self.logger.setLevel(lvl)
             self.opts.output = ot
+
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
