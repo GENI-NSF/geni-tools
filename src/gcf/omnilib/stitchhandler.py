@@ -549,16 +549,28 @@ class StitchingHandler(object):
             requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
             header = "<!-- Expanded Resource request for stitching for:\n\tSlice: %s -->" % (self.slicename)
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
-            rspecfileName = "%s-expanded-request.xml" % self.slicename
+            filename = None
 
-            # Set -o to ensure this request RSpec goes to a file, not logger or stdout
-            opts_copy = copy.deepcopy(self.opts)
-            opts_copy.output = True
+            ot = self.opts.output
+            if not self.opts.tostdout:
+                self.opts.output = True
+
+            if self.opts.output:
+                filename = handler_utils._construct_output_filename(self.opts, self.slicename, '', None, "expanded-request-rspec", ".xml", 1)
+            if filename:
+                self.logger.info("Saving expanded request RSpec to file %s", filename)
+            else:
+                self.logger.info("Expanded request RSpec:")
+
             lvl = self.logger.getEffectiveLevel()
             self.logger.setLevel(logging.WARN)
-            handler_utils._printResults(opts_copy, self.logger, header, content, rspecfileName)
+
+            # Create FILE
+            # This prints or logs results, depending on whether filename is None
+            handler_utils._printResults(self.opts, self.logger, header, content, filename)
             self.logger.setLevel(lvl)
-            self.logger.info("Saved expanded request RSpec to file %s", rspecfileName)
+            self.opts.output = ot
+
             raise StitchingError("Requested no reservation")
 
 
