@@ -602,7 +602,7 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
             filename = string.replace(filename, "%s", slicename)
         return filename
 
-    if server is None:
+    if server is None or server.strip() == '':
         filename = methodname + filetype
     else:
         filename = methodname + "-" + server + filetype
