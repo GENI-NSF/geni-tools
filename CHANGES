@@ -1,5 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.6.1:
+ * Omni
+   * New function `rmoveslicemember <slice> <usernane>':
+     Remove the user with the given username from the named slice, (#515)
+
 gcf 2.6:
  * Omni
   * Mac install clears old `omni.py` and similar aliases (#556)
