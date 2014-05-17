@@ -97,6 +97,7 @@ from __future__ import absolute_import
        [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
+       [string Boolean] = omni.py removeslicemember SLICENAME USER 
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
@@ -858,6 +859,7 @@ def getParser():
  \t\t\t listprojectmembers <projectname> \n\
  \t\t\t listslicemembers <slicename> \n\
  \t\t\t addslicemember <slicename> <username> [optional: role] \n\
+ \t\t\t removeslicemember <slicename> <username>  \n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
 \n\t See README-omni.txt for details.\n\

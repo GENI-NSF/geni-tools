@@ -1034,6 +1034,44 @@ class CHCallHandler(object):
             self.logger.warn(prtStr)
         return prtStr + '\n', success
 
+    def removeslicemember(self, args):
+        """Remove a user froma slice
+        Args: slicename username 
+        Return summary string and whether successful
+        """
+        if len(args) != 2 and len(args) != 3:
+            self._raise_omni_error('removeslicemember missing args: Supply <slice name> <username>')
+        slice_name = args[0].strip()
+        member_name = args[1].strip()
+
+        # convert the slice and member name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        # Try to add the member to the slice
+        (res, m2) = _do_ssl(self.framework, None, "Add user %s to slice %s" % (member_name, slice_name), self.framework.remove_member_from_slice, slice_urn, member_name)
+        if res is None:
+            success = False
+            message = None
+        else:
+            (success, message) = res
+
+        if success:
+            prtStr = "User %s has been removed from slice %s" % (member_name, slice_name)
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to remove user %s from slice %s" % (member_name, slice_name)
+            if message and message.strip() != "":
+                prtStr += ". " + message
+            if m2 and m2.strip() != "":
+                if "NotImplementedError" in m2:
+                    prtStr += ". Framework type %s does not support remove_member_from_slice." % self.config['selected_framework']['type']
+                else:
+                    prtStr += ". " + m2
+            self.logger.warn(prtStr)
+        return prtStr + '\n', success
+
+
 #########
 ## Helper functions follow
 

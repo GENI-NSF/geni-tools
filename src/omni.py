@@ -91,6 +91,7 @@
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
+       [string Boolean] = omni.py removeslicemember SLICENAME USER
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    

@@ -1362,6 +1362,32 @@ class Framework(Framework_Base):
             mess = logr
         return (success, mess)
 
+    # remove a new member fromo a slice
+    def remove_member_from_slice(self, slice_urn, member_name):
+        slice_urn = self.slice_name_to_urn(slice_urn)
+        creds = []
+        if self.needcred:
+            # FIXME: Neither user or slice cred work at PG. Which is correct?
+            sc = self.get_slice_cred_struct(slice_urn)
+            if sc is not None:
+                creds.append(sc)
+        member_urn = self.member_name_to_urn(member_name)
+        options = {'members_to_remove': [ member_urn]}
+        creds, options = self._add_credentials_and_speaksfor(creds, options)
+        res, mess = _do_ssl(self, None, "Removing member %s from %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                            self.sa().modify_slice_membership,
+                            slice_urn, creds, options)
+
+        # FIXME: do own result checking to detect DUPLICATE
+
+        logr = self._log_results((res, mess), 'Remove member %s from %s slice %s' % (member_urn, self.fwtype, slice_urn))
+        if logr == True:
+            success = logr
+        else:
+            success = False
+            mess = logr
+        return (success, mess)
+
     # handle logging or results for db functions
     def _log_results(self, results, action):
         (res, message) = results
