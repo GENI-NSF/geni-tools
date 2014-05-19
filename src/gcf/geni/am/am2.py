@@ -479,47 +479,23 @@ class ReferenceAggregateManager(object):
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
             requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
-            # Per the AM API, the input time should be TZ-aware
-            # But since the slice cred may not (per ISO8601), convert
-            # it to naiveUTC for comparison
             requested = self._naiveUTC(requested)
-            requested2 = requested
-            expiration_time2 = requested2.isoformat()
 
-            # Find the diff between current expiration and requested. 
-            # If that is > max_lease, then unless alap, reduce the
-            # request to current_max_lease
-            # Note that then we also need to stuff the new expiration
-            # in the output slot
-#            expiration = datetime.datetime.utcnow() + self.max_lease
-            if requested - sliver.expiration > self.max_lease:
-                if 'geni_extend_alap' in options and options['geni_extend_alap'] == True:
-                    requested2 = sliver.expiration + self.max_lease
-                    expiration_time2 = requested2.isoformat()
-                    self.logger.info("Got geni_extend_alap: revising slice %s renew request from %s to %s", slice_urn, expiration_time, expiration_time2)
+            min_expiration = self.min_expire(creds, self.max_lease)
+
+            # if requested > min_expiration, 
+            # If alap, set to min of requested and min_expiration
+            # Otherwise error
+            if requested > min_expiration:
+                if 'geni_extend_alap' in options and options['geni_extend_alap']:
+                    self.logger.info("Got geni_extend_alap: revising slice %s renew request from %s to %s", slice_urn, requested, min_expiration)
+                    requested = min_expiration
                 else:
                     self.logger.info("Cannot renew %r: %s past maxlease %s", slice_urn, expiration_time, self.max_lease)
                     return self.errorResult(19, "Out of range: Expiration %s is out of range (AM policy limits renewals to %s)." % (expiration_time, self.max_lease))
-
-            maxexp = datetime.datetime.min
-            for cred in creds:
-                credexp = self._naiveUTC(cred.expiration)
-                if credexp > maxexp:
-                    maxexp = credexp
-                maxexp = credexp
-                if credexp >= requested2:
-                    sliver.expiration = requested2
-                    self.logger.info("Sliver %r now expires on %r", slice_urn, expiration_time2)
-                    return self.successResult(True, expiration_time2)
-                else:
-                    self.logger.debug("Valid cred %r expires at %r before %r", cred, credexp, requested2)
-
-            # Fell through then no credential expires at or after
-            # newly requested expiration time
-            self.logger.info("Can't renew sliver %r until %r because none of %d credential(s) valid until then (latest expires at %r)", slice_urn, expiration_time2, len(creds), maxexp)
-            # FIXME: raise an exception so the client knows what
-            # really went wrong?
-            return self.errorResult(19, "Out of range: Expiration %s is out of range (past last credential expiration of %s)." % (expiration_time2, maxexp))
+                    
+            sliver.expiration = requested
+            return self.successResult(True, requested)
 
         else:
             return self._no_such_slice(slice_urn)
@@ -651,6 +627,22 @@ class ReferenceAggregateManager(object):
         return self.manifest_header() + \
             self.manifest_slice(slice_urn) + \
             self.manifest_footer()
+
+    def min_expire(self, creds, max_duration=None, requested=None):
+        """Compute the expiration time from the supplied credentials,
+        a max duration, and an optional requested duration. The shortest
+        time amongst all of these is the resulting expiration.
+        """
+        now = datetime.datetime.utcnow()
+        expires = [self._naiveUTC(c.expiration) for c in creds]
+        if max_duration:
+            expires.append(now + max_duration)
+        if requested:
+            requested = self._naiveUTC(dateutil.parser.parse(str(requested), tzinfos=tzd))
+            # Ignore requested time in the past.
+            if requested > now:
+                expires.append(self._naiveUTC(requested))
+        return min(expires)
 
 
 class AggregateManager(object):
