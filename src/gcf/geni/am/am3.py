@@ -51,6 +51,7 @@ from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential
+from gcf_version import GCF_VERSION
 
 from ...omnilib.util import credparsing as credutils
 
@@ -292,7 +293,7 @@ class ReferenceAggregateManager(object):
         versions = dict(geni_api=self._api_version,
                         geni_api_versions=api_versions,
                         geni_am_type='gcf',
-                        geni_am_code='2.6.1',
+                        geni_am_code=GCF_VERSION,
                         geni_request_rspec_versions=reqver,
                         geni_ad_rspec_versions=adver,
                         geni_credential_types=credential_types)

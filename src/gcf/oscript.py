@@ -128,8 +128,7 @@ from .omnilib.frameworks import framework_pg
 from .omnilib.frameworks import framework_pgch
 from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
-
-OMNI_VERSION="2.6"
+from gcf_version import GCF_VERSION
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -807,7 +806,7 @@ def getSystemInfo():
     return "Python: " + pver + "\nOS: " + osinfo
 
 def getOmniVersion():
-    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
+    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % GCF_VERSION
     version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
