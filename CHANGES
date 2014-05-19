@@ -5,6 +5,9 @@ gcf 2.6.1:
    * New function `rmoveslicemember <slice> <usernane>':
      Remove the user with the given username from the named slice, (#515)
 
+ * GCF
+   * Support for geni_extend_alap option in renew on GCF AMv3 
+
 gcf 2.6:
  * Omni
   * Mac install clears old `omni.py` and similar aliases (#556)
