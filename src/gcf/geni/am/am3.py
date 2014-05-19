@@ -829,10 +829,21 @@ class ReferenceAggregateManager(object):
         # All the credentials we just got are valid
         expiration = self.min_expire(creds, self.max_lease)
         requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
+
+
         # Per the AM API, the input time should be TZ-aware
         # But since the slice cred may not (per ISO8601), convert
         # it to naiveUTC for comparison
         requested = self._naiveUTC(requested)
+
+
+        # If geni_extend_alap option provided, use the earlier 
+        # of the requested time and max expiration as the expiration time
+        if 'geni_extend_alap' in options and options['geni_extend_alap']:
+            if expiration < requested:
+                self.logger.info("Got geni_extend_alap: revising slice %s renew request from %s to %s", urns, requested, expiration)
+                requested = expiration
+
         now = datetime.datetime.utcnow()
         if requested > expiration:
             # Fail the call, the requested expiration exceeds the slice expir.
