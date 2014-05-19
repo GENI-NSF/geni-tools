@@ -6,7 +6,7 @@ gcf 2.6.1:
      Remove the user with the given username from the named slice, (#515)
 
  * GCF
-   * Support for geni_extend_alap option in renew on GCF AMv3 
+   * Support for geni_extend_alap option in renew on GCF AMv2 and AMv3
 
 gcf 2.6:
  * Omni
