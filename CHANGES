@@ -2,11 +2,12 @@
 
 gcf 2.6.1:
  * Omni
-   * New function `rmoveslicemember <slice> <usernane>':
+   * New function `removeslicemember <slice> <usernane>':
      Remove the user with the given username from the named slice, (#515)
 
  * GCF
-   * Support for geni_extend_alap option in renew on GCF AMv2 and AMv3
+   * Support for geni_extend_alap option in renew on GCF AMv2 and AMv3 (#414)
+   * Support for geni_am_type and geni_am_code in GCF AMv3 (#568)
 
 gcf 2.6:
  * Omni
