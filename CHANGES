@@ -1,37 +1,30 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
-gcf 2.6.1:
- * Omni
-   * New function `removeslicemember <slice> <usernane>':
-     Remove the user with the given username from the named slice, (#515)
-
- * GCF
-   * Support for geni_extend_alap option in renew on GCF AMv2 and AMv3 (#414)
-   * Support for geni_am_type and geni_am_code in GCF AMv3 (#568)
-
 gcf 2.6:
  * Omni
-  * Mac install clears old `omni.py` and similar aliases (#556)
-  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
-  * `renewslice` properly warns if your new expiration is not what you
-    requested (#575)
+  * New function `removeslicemember <slice> <usernane>`: 
+    Remove the user with the given username from the named slice. (#515)
+  * Add functions `listprojects` to list your projects, and `listprojectmembers`
+    to list the members of a project and their role in the project and
+    email address. (#495)
+  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
   * Record FOAM reservations at the clearinghouse when using the
     `chapi` framework, by using fake sliver URNs. (#574)
   * `listslicemembers` honors the `-o` option to save results to a
     file, and `--tostdout` to instead go to STDOUT. (#489)
-  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
   * `listslivers` honors the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#488)
   * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
     `listkeys`, `listmykeys`, `listimages`, and `nicknames`
     honor the `-o` option to save results to a file,
     and `--tostdout` to instead go to STDOUT. (#371)
-  * Add `listprojects` to list your projects, and `listprojectmembers`
-    to list the members of a project and their role in the project and
-    email address. (#495)
   * `listkeys` return is a list of structs of ('`public_key`',
     '`private_key`'), where `private_key` is omitted for most
     frameworks and most cases where not available. (#600)
+  * Mac install clears old `omni.py` and similar aliases (#556)
+  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+  * `renewslice` properly warns if your new expiration is not what you
+    requested (#575)
   * rspec_util utility takes optional logger (#612)
   * Ensure manifest from `createsliver` is printed prettily.
     `getPrettyRSpec` takes a flag on whether it does pretty
@@ -86,6 +79,10 @@ gcf 2.6:
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
     PG SA (#597)
+
+ * gcf
+  * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
+  * Support for `geni_am_type` and `geni_am_code` in GCF AMv3 (#568)
 
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,

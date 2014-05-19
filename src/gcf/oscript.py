@@ -128,7 +128,7 @@ from .omnilib.frameworks import framework_pg
 from .omnilib.frameworks import framework_pgch
 from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
-from gcf_version import GCF_VERSION
+from .gcf_version import GCF_VERSION
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
