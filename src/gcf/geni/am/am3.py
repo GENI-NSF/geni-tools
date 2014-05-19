@@ -291,6 +291,8 @@ class ReferenceAggregateManager(object):
                                  geni_version = "3")]
         versions = dict(geni_api=self._api_version,
                         geni_api_versions=api_versions,
+                        geni_am_type='gcf',
+                        geni_am_code='2.6.1',
                         geni_request_rspec_versions=reqver,
                         geni_ad_rspec_versions=adver,
                         geni_credential_types=credential_types)
