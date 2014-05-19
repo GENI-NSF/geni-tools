@@ -42,27 +42,29 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.6:
- * Mac install clears old `omni.py` and similar aliases (#556)
- * Fix `get_cert_keyid` to get the key id from the certificate (#573)
- * `renewslice` properly warns if your new expiration is not what you
-   requested (#575)
+ * New function `removeslicemember <slice> <usernane>`: 
+   Remove the user with the given username from the named slice. (#515)
+ * Add functions `listprojects` to list your projects, and `listprojectmembers`
+   to list the members of a project and their role in the project and
+   email address. (#495)
+ * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
  * `listslicemembers` honors the `-o` option to save results to a
    file, and `--tostdout` to instead go to STDOUT. (#489)
- * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
- * Add `listprojects` to list your projects, and `listprojectmembers`
-   to list the members of a project and their role in the project and
-   email address. (#495)
  * `listkeys` return is a list of structs of ('`public_key`',
    '`private_key`'), where `private_key` is omitted for most
    frameworks and most cases where not available. (#600)
+ * Mac install clears old `omni.py` and similar aliases (#556)
+ * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+ * `renewslice` properly warns if your new expiration is not what you
+   requested (#575)
  * rspec_util utility takes optional logger (#612)
  * Ensure manifest from `createsliver` is printed prettily.
    `getPrettyRSpec` takes a flag on whether it does pretty
@@ -795,6 +797,7 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 listprojectmembers <projectname> 
 			 listslicemembers <slicename>
 			 addslicemember <slicename> <username> [optional: role]
+			 removeslicemember <slicename> <username>
  		Other functions: 
  			 nicknames 
 
@@ -1512,6 +1515,28 @@ clearinghouse, limited to slice members with the role `LEAD` or
 
 Note also that adding a user to a slice does not automatically add
 their public SSH keys to resources that have already been reserved.
+
+==== removeslicemember ====
+Remove the named user from the named slice. 
+
+Format: `omni.py removeslicemember <slice name> <user username>`
+
+Sample Usage: `omni.py removeslicemember myslice jsmith`
+
+Return is a boolean indicating success or failure.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+This function is typically a privileged operation at the
+clearinghouse, limited to slice members with the role `LEAD` or
+`ADMIN`.
+
+Note also that removing a user from a slice does not automatically remove
+their public SSH keys from resources that have already been reserved.
 
 ==== getversion ====
 Call the AM API !GetVersion function at each aggregate.
