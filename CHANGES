@@ -88,6 +88,7 @@ gcf 2.6:
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
   * Support for `geni_am_type` and `geni_am_code` in GCF AMv3 (#568)
+  * Fix gcf-test to work with AM API v3 again. (#616)
 
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
