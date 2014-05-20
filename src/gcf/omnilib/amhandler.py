@@ -4492,7 +4492,7 @@ class AMCallHandler(object):
                     exps = expires_from_status(status, self.logger)
                     if len(exps) > 1:
                         # More than 1 distinct sliver expiration found
-                        # FIXME: Sort and take first?
+                        # Sort and take first
                         exps = exps.sort()
                         outputstr = exps[0].isoformat()
                         msg = "Resources in slice %s at AM %s expire at %d different times. Next expiration is %s UTC" % (name, client.str, len(exps), outputstr)
