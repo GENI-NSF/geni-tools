@@ -1011,7 +1011,7 @@ def expires_from_status(status, logger):
     # GRAM: per resource geni_expires
     # FOAM: top level foam_expires
     # EG: per resource orca_expires
-    # SFA: pl_expires
+    # SFA: pl_expires (also check sfa_expires to be safe)
 
     # Caller will likely want to report # expirations and soonest and if they are all same/diff
     # See logic in amhandler._getSliverExpirations and .status() around line 3397
