@@ -46,7 +46,8 @@ from .utils import *
 from ... import oscript as omni
 
 from ..util import naiveUTC
-from ..util.handler_utils import _construct_output_filename, _printResults
+from ..util.handler_utils import _construct_output_filename, _printResults, _naiveUTCFromString, \
+    expires_from_status, expires_from_rspec
 from ..util.dossl import is_busy_reply
 from ..util.omnierror import OmniError, AMAPIError
 from ...geni.util import rspec_schema, rspec_util, urn_util
@@ -297,6 +298,9 @@ class Aggregate(object):
 
         self.pgLogUrl = None # For PG AMs, any log url returned by Omni that we could capture
 
+        # Will be a single or list of naive UTC datetime objects
+        self.sliverExpirations = None
+
     def __str__(self):
         if self.nick:
             if self.logger.isEnabledFor(logging.DEBUG):
@@ -441,6 +445,9 @@ class Aggregate(object):
         # This method handles fakeMode, retrying on BUSY, polling SliverStatus for DCN AMs,
         # VLAN_UNAVAILABLE errors, other errors
         manifestString = self.doReservation(opts, slicename, scsCallCount)
+
+        # Look for and save any sliver expiration
+        self.sliverExpirations = expires_from_rspec(manifestString, self.logger)
 
         # Save it on the Agg
         try:
@@ -1631,6 +1638,10 @@ class Aggregate(object):
             if isinstance(result, dict) and result.has_key(self.url) and result[self.url] and \
                     isinstance(result[self.url], dict):
                 if self.api_version == 2:
+
+                    # Save off the sliver expiration if found
+                    self.sliverExpirations = expires_from_status(result[self.url], self.logger)
+
                     if result[self.url].has_key("geni_status"):
                         status = result[self.url]["geni_status"]
                     else:
@@ -1673,6 +1684,24 @@ class Aggregate(object):
                 else:
                     if result[self.url].has_key("value") and isinstance(result[self.url]["value"], dict) and \
                             result[self.url]["value"].has_key("geni_slivers") and isinstance(result[self.url]["value"]["geni_slivers"], list):
+
+                        # Want to do something like this, but _getSliverExpirations is in amhandler
+                        # Put it in handler_utils? Requires _datetimeFromString and getSliverResultList
+                        # And maybe make it called by expires_from_status?
+#                        (orderedDates, sliverExps) = handler_utils._getSliverExpirations(result[self.url]["value"], None)
+#                        self.sliverExpirations = orderedDates
+                        # For now, reproduce the stuff I care about here
+                        self.sliverExpirations = []
+                        for sliver in result[self.url]["value"]["geni_slivers"]:
+                            if isinstance(sliver, dict) and sliver.has_key("geni_expires"):
+                                sliver_expires = sliver['geni_expires']
+                                if isinstance(sliver_expires, str):
+                                    # parse it
+                                    expObj = _naiveUTCFromString(sliver_expires)
+                                    if expObj and expObj not in self.sliverExpirations:
+                                        self.sliverExpirations.append(expObj)
+                        self.sliverExpirations = self.sliverExpirations.sort()
+
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
                                 status = sliver["geni_allocation_status"]

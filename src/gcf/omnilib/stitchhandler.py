@@ -246,6 +246,32 @@ class StitchingHandler(object):
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
+            # Print something about sliver expiration times
+            # FIXME: Fix these messages and ensure they are printed
+            # And we print something for all ams
+            soonest = None
+            for am in self.ams_to_process:
+                exps = am.sliver_expirations
+                if exps:
+                    if len(exps) > 1:
+                        # More than 1 distinct sliver expiration found
+                        # Sort and take first
+                        exps = exps.sort()
+                        nextTime = exps[0]
+                        if nextTime:
+                            if soonest is None or nextTime < soonest[0]:
+                                soonest = (nextTime, str(am))
+                        outputstr = exps[0].isoformat()
+                        msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC" % (name, am, len(exps), outputstr)
+                    elif len(exps) == 0:
+                        msg = "Failed to get sliver expiration from %s - try print_sliver_expirations" % am
+                        self.logger.debug("Failed to parse a sliver expiration from status")
+                    else:
+                        outputstr = exps[0].isoformat()
+                        msg = "Resources in slice %s at %s expire at %s UTC" % (name, am, outputstr)
+            if soonest:
+                retVal += "Next resources expire at %s (UTC) at %s.\n" % (soonest[0], soonest[1])
+
         except StitchingError, se:
             if lvl:
                 self.logger.setLevel(lvl)
@@ -1398,6 +1424,22 @@ class StitchingHandler(object):
                     self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
+                if agg.sliverExpirations:
+                    if isinstance(agg.sliverExpirations, list):
+                        if len(agg.sliverExpirations) > 1:
+                            # More than 1 distinct sliver expiration found
+                            # Sort and take first
+                            agg.sliverExpirations = agg.sliverExpirations.sort()
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %d different times. Next expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
+                        elif len(agg.sliverExpirations) == 0:
+                            pass
+                        else:
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %s UTC" % (name, client.str, outputstr)
+                        pass
+                    else:
+                        self.logger.debug("    Resources here expire at %s UTC", agg.sliverExpirations)
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
