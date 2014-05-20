@@ -63,7 +63,7 @@ New in v2.6:
    frameworks and most cases where not available. (#600)
  * Added `print_sliver_expirations` to print the expirations of your
    slivers at requested aggregates. Also print sliver expirations from
-   `sliverstatus`, `listresources` and `createsliver` calls. (#465, #571)
+   `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
   * Added new utilities in `handler_utils` to extract sliver
     expiration from the manifest and sliverstatus.
  * Mac install clears old `omni.py` and similar aliases (#556)
