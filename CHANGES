@@ -21,6 +21,11 @@ gcf 2.6:
   * `listkeys` return is a list of structs of ('`public_key`',
     '`private_key`'), where `private_key` is omitted for most
     frameworks and most cases where not available. (#600)
+  * Added `print_sliver_expirations` to print the expirations of your
+    slivers at requested aggregates. Also print sliver expirations from
+    `sliverstatus`, `listresources` and `createsliver` calls. (#465, #571)
+   * Added new utilities in `handler_utils` to extract sliver
+     expiration from the manifest and sliverstatus.
   * Mac install clears old `omni.py` and similar aliases (#556)
   * Fix `get_cert_keyid` to get the key id from the certificate (#573)
   * `renewslice` properly warns if your new expiration is not what you
