@@ -247,9 +247,8 @@ class StitchingHandler(object):
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
             # Print something about sliver expiration times
-            # FIXME: Fix these messages and ensure they are printed
-            # And we print something for all ams
             soonest = None
+            msg = None
             for am in self.ams_to_process:
                 exps = am.sliver_expirations
                 if exps:
@@ -262,13 +261,15 @@ class StitchingHandler(object):
                             if soonest is None or nextTime < soonest[0]:
                                 soonest = (nextTime, str(am))
                         outputstr = exps[0].isoformat()
-                        msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC" % (name, am, len(exps), outputstr)
+                        msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC." % (name, am, len(exps), outputstr)
                     elif len(exps) == 0:
-                        msg = "Failed to get sliver expiration from %s - try print_sliver_expirations" % am
-                        self.logger.debug("Failed to parse a sliver expiration from status")
+                        msg = "Failed to get sliver expiration from %s - try print_sliver_expirations." % am
                     else:
                         outputstr = exps[0].isoformat()
-                        msg = "Resources in slice %s at %s expire at %s UTC" % (name, am, outputstr)
+                        msg = "Resources in slice %s at %s expire at %s UTC." % (name, am, outputstr)
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
             if soonest:
                 retVal += "Next resources expire at %s (UTC) at %s.\n" % (soonest[0], soonest[1])
 
