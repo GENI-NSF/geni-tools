@@ -945,13 +945,13 @@ def expires_from_rspec(result, logger=None):
             match2 = re.search("<rspec [^>]*generated\s*=\s*[\'\"]([^\'\"]+)[\'\"]", rspec)
             if match2:
                 genStr = match2.group(1).strip()
-                if logger:
-                    logger.debug("Found generated %s", genStr)
+                #if logger:
+                #    logger.debug("Found generated %s", genStr)
                 try:
                     genObj = _naiveUTCFromString(genStr)
                     if expObj - genObj > datetime.timedelta.resolution:
-                        if logger:
-                            logger.debug("Expires diff from gen, use it")
+                        #if logger:
+                        #    logger.debug("Expires diff from gen, use it")
                         return expObj
                     else:
                         if logger:
@@ -962,8 +962,8 @@ def expires_from_rspec(result, logger=None):
                         logger.debug("Unparsabled generated timestamp %s: %s", genStr, e2)
                     return expObj
             else:
-                if logger:
-                    logger.debug("Found no generated")
+                #if logger:
+                #    logger.debug("Found no generated")
                 return expObj
         except Exception, e:
             if logger:
