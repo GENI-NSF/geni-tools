@@ -80,6 +80,8 @@ gcf 2.6:
   * Honor `--tostdout`, `--prefix`, and `--outputfile` in
     controlling where expanded request RSpecs are written
     when using `--noReservation`. (#608)
+  * At run end, print sliver expiration times for each AM, and warn if there are
+    differences across AMs. (#572)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
