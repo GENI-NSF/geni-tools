@@ -45,7 +45,7 @@ import gcf.oscript as omni
 import omni_unittest as ut
 from omni_unittest import NotSuccessError, NotDictAssertionError, NotNoneAssertionError
 from omni_unittest import NotXMLAssertionError, NoResourcesAssertionError, WrongRspecType
-from gcf.omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError
+from gcf.omnilib.util import OmniError, NoSliceCredError, RefusedError, AMAPIError, naiveUTC
 import gcf.omnilib.util.json_encoding as json_encoding
 import gcf.omnilib.util.credparsing as credparsing
 from gcf.sfa.trust.credential import Credential
@@ -1394,14 +1394,14 @@ class Test(ut.OmniUnittest):
             print "Skipping renew tests"
             return
 
-        now = ut.OmniUnittest.now_in_seconds()
+        now = ut.OmniUnittest.now_in_seconds() # utcnow()
         fivemin = (now + datetime.timedelta(minutes=5)).isoformat()            
         twodays = (now + datetime.timedelta(days=2)).isoformat()            
         fivedays = (now + datetime.timedelta(days=5)).isoformat()
         sixDaysRaw = now + datetime.timedelta(days=6)
         # If the slice already expires >= 6 days from now, do not try to renew the slice - it will fail and isn't needed
-        sliceExpiration = self.getSliceExpiration( slicename )
-        if sliceExpiration < sixDaysRaw:
+        sliceExpiration = self.getSliceExpiration( slicename ) # parser.parse with tzinfos=tzd
+        if naiveUTC(sliceExpiration) < naiveUTC(sixDaysRaw):
             sixdays = sixDaysRaw.isoformat()
             self.subtest_RenewSlice( slicename, sixdays )
         time.sleep(self.options_copy.sleep_time)
@@ -1423,7 +1423,7 @@ class Test(ut.OmniUnittest):
         sixDaysRaw = now + datetime.timedelta(days=6)
         # If the slice already expires >= 6 days from now, do not try to renew the slice - it will fail and isn't needed
         sliceExpiration = self.getSliceExpiration( slicename )
-        if sliceExpiration < sixDaysRaw:
+        if naiveUTC(sliceExpiration) < naiveUTC(sixDaysRaw):
             sixdays = sixDaysRaw.isoformat()
             self.subtest_RenewSlice( slicename, sixdays )
         time.sleep(self.options_copy.sleep_time)

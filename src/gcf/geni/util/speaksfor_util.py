@@ -127,7 +127,7 @@ def grab_toplevel_cert(cert):
 #      (None otherwise)
 #   Error message indicating why the speaks_for call failed ("" otherwise)
 def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
-                          trusted_roots, schema=None):
+                          trusted_roots, schema=None, logger=None):
 
     # Credential has not expired
     if cred.expiration and cred.expiration < datetime.datetime.utcnow():
@@ -261,13 +261,13 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
                                   caller_gid, speaking_for_urn, \
-                                      trusted_roots, schema)
+                                      trusted_roots, schema, logger)
 
             if is_valid_speaks_for:
                 return user_gid # speaks-for
             else:
                 if logger:
-                    logger.info("Got speaks-for option but not a valid speaks_for with this credential: %s", msg)
+                    logger.info("Got speaks-for option but not a valid speaks_for with this credential: %s" % msg)
                 else:
                     print "Got a speaks-for option but not a valid speaks_for with this credential: " + msg
     return caller_gid # Not speaks-for

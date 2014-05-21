@@ -2837,12 +2837,12 @@ class AMCallHandler(object):
                                                                   "Sliverstatus of %s at %s" % (urn, agg_urn),
                                                                   'SliverStatus', args2)
                                     (streal, m2) = self._retrieve_value(st, m, self.framework)
-                                    self.logger.debug("Got st %s", streal)
+                                    #self.logger.debug("Got st %s", streal)
                                 except Exception, e:
                                     self.logger.debug("Failed Sliverstatus to list slivers after renew of %s at %s: %s", urn, agg_urn, e)
                                 if streal and isinstance(streal, dict) and streal.has_key('geni_resources'):
                                     for s in streal['geni_resources']:
-                                        self.logger.debug("Got s %s", s)
+                                        #self.logger.debug("Got s %s", s)
                                         if s.has_key('geni_urn') and urn_util.is_valid_urn_bytype(s['geni_urn'], 'sliver'):
                                             if not s['geni_urn'] in sliver_urns:
                                                 sliver_urns.append(s['geni_urn'])
@@ -4492,7 +4492,7 @@ class AMCallHandler(object):
                     exps = expires_from_status(status, self.logger)
                     if len(exps) > 1:
                         # More than 1 distinct sliver expiration found
-                        # FIXME: Sort and take first?
+                        # Sort and take first
                         exps = exps.sort()
                         outputstr = exps[0].isoformat()
                         msg = "Resources in slice %s at AM %s expire at %d different times. Next expiration is %s UTC" % (name, client.str, len(exps), outputstr)
@@ -5528,8 +5528,11 @@ class AMCallHandler(object):
         if not urn_util.is_valid_urn(agg_urn):
             # Check if get_version has a geni_urn and use that?
             (gvurn, gvmess) = self._get_getversion_key(client, 'geni_urn', helper=True)
+            (gvuurn, gvmess) = self._get_getversion_key(client, 'urn', helper=True) # For SFA AMs
             if urn_util.is_valid_urn(gvurn):
                 agg_urn = gvurn
+            elif urn_util.is_valid_urn(gvuurn):
+                agg_urn = gvuurn
             elif not self.opts.noExtraCHCalls:
                 # Else, ask the CH
                 try:
