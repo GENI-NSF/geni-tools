@@ -261,9 +261,19 @@ class StitchingHandler(object):
                             if soonest is None:
                                 soonest = (nextTime, str(am), 1)
                             elif nextTime < soonest[0]:
-                                soonest = (nextTime, str(am), soonest[2]+1)
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (nextTime, str(am), count)
                             elif nextTime > soonest[0]:
-                                soonest = (soonest[0], soonest[1], soonest[2]+1)
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
 
                             outputstr = nextTime.isoformat()
                             msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
@@ -275,9 +285,19 @@ class StitchingHandler(object):
                             if soonest is None:
                                 soonest = (exps[0], str(am), 1)
                             elif exps[0] < soonest[0]:
-                                soonest = (exps[0], str(am), soonest[2]+1)
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (exps[0], str(am), count)
                             elif exps[0] > soonest[0]:
-                                soonest = (soonest[0], soonest[1], soonest[2]+1)
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
                     else:
                         outputstr = exps.isoformat()
                         msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
@@ -285,9 +305,19 @@ class StitchingHandler(object):
                         if soonest is None:
                             soonest = (exps, str(am), 1)
                         elif exps < soonest[0]:
-                            soonest = (exps, str(am), soonest[2]+1)
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (exps, str(am), count)
                         elif exps > soonest[0]:
-                            soonest = (soonest[0], soonest[1], soonest[2]+1)
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (soonest[0], soonest[1], count)
                 else:
                     # else got no sliver expiration for this AM
                     # Like at EG or GRAM AMs. See ticket #318
