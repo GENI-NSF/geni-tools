@@ -5531,7 +5531,7 @@ class AMCallHandler(object):
             (gvuurn, gvmess) = self._get_getversion_key(client, 'urn', helper=True) # For SFA AMs
             if urn_util.is_valid_urn(gvurn):
                 agg_urn = gvurn
-            if urn_util.is_valid_urn(gvuurn):
+            elif urn_util.is_valid_urn(gvuurn):
                 agg_urn = gvuurn
             elif not self.opts.noExtraCHCalls:
                 # Else, ask the CH
