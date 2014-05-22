@@ -125,6 +125,7 @@ class Framework(Framework_Base):
             self.speakV2 = True
         else:
             self.speakV2 = False
+        self.logger.info("CH speaks v2 = %s" % self.speakV2)
 
         self.cert = config['cert']
         try:
@@ -167,6 +168,7 @@ class Framework(Framework_Base):
         self.user_cred = self.init_user_cred( opts )
 
     def list_slice_authorities(self):
+
         self.logger.debug("Looking up SAs at %s %s", self.fwtype, self.ch_url)
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
         if not self.speakV2:
@@ -174,8 +176,7 @@ class Framework(Framework_Base):
                                      self.ch.lookup_slice_authorities,
                                      options)
         else:
-            # FIXME: Is 1 the right type integer at all CHs?
-            options['match'] = {'SERVICE_TYPE': 1}
+            options['match'] = {'SERVICE_TYPE': "SLICE_AUTHORITY"}
             self.logger.debug("Using API v2, with options: %s", options)
             (res, message) = _do_ssl(self, None, ("List slice authorities at %s %s" % (self.fwtype, self.ch_url)),
                                      self.ch.lookup, 'SERVICE', [],
@@ -201,9 +202,16 @@ class Framework(Framework_Base):
     def list_member_authorities(self):
         self.logger.debug("Looking up MAs at %s %s", self.fwtype, self.ch_url)
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
-        (res, message) = _do_ssl(self, None, ("List member authorities at %s %s" % (self.fwtype, self.ch_url)),
-                                 self.ch.lookup_member_authorities,
-                                 options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List member authorities at %s %s" % (self.fwtype, self.ch_url)),
+                                     self.ch.lookup_member_authorities,
+                                     options)
+        else:
+            options['match'] = {'SERVICE_TYPE':"MEMBER_AUTHORITY"}
+            self.logger.debug("Using API v2, with options: %s", options)
+            (res, message) = _do_ssl(self, None, ("List member authorities at %s %s" % (self.fwtype, self.ch_url)), 
+                                     self.ch.lookup, "SERVICE", [],
+                                     options)
         auths = dict()
         if res is not None:
             if res['value'] is not None and res['code'] == 0:
@@ -325,6 +333,7 @@ class Framework(Framework_Base):
             creds, options = self._add_credentials_and_speaksfor(creds, options)
             self.logger.debug("Getting user credential from %s MA %s",
                               self.fwtype, self.ma_url())
+            # This call is the same for CHAPI V1 and V2
             (res, message) = _do_ssl(self, None, ("Get user credential from %s %s" % (self.fwtype, self.ma_url())),
                                      self.ma().get_credentials,
                                      self.user_urn,
@@ -378,6 +387,7 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
+        # This call is the same for CHAPI v1 and V2
         (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s SA %s" % (slice_urn,
                                                                                             self.fwtype, self.sa_url())),
                                  self.sa().get_credentials, slice_urn, scred, 
@@ -443,10 +453,22 @@ class Framework(Framework_Base):
 
         self.logger.debug("Getting %s SSH keys from %s MA %s",
                           username, self.fwtype, self.ma_url())
-        (res, message) = _do_ssl(self, None, ("Get %s SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
-                                 self.ma().lookup_keys,
-                                 scred,
-                                 options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Get %s SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
+                                     self.ma().lookup_keys,
+                                     scred,
+                                     options)
+        else:
+            (res, message) = _do_ssl(self, None, 
+                                     ("Get %s SSH keys from %s %s" % (username, self.fwtype, self.ma_url())),
+                                     self.ma().lookup,
+                                     "KEY", 
+                                     scred, options)
+            # In V2, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
+            # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
+            # We only asked for one person so flip back to V1 format
+            if res['code'] == 0:
+                res['value'] = {fetch_urn : res['value'].values()}
 
         keys = []
         msg = None
@@ -556,8 +578,12 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),\
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),
                                      self.sa().create_slice, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("Create slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),
+                                     self.sa().create, "SLICE", scred, options)
         if res is not None:
             if res['code'] == 0:
                 d = res['value']
@@ -601,8 +627,9 @@ class Framework(Framework_Base):
                             }
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Get credentials for slice %s on %s %s" % (slice_name,
-                                                                                         self.fwtype, self.sa_url())),
+        # This call is the same in V1 and V2
+        (res, message) = _do_ssl(self, None, 
+                                 ("Get credentials for slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),
                                  self.sa().get_credentials, slice_urn, scred, 
                                  options)
 
@@ -695,8 +722,12 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),\
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),
                                      self.sa().lookup_slices, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (slice_name, self.fwtype, self.sa_url())),
+                                     self.sa().lookup, "SLICE", scred, options)
         slice_expiration = None
         msg = None
         if res is not None:
@@ -743,10 +774,17 @@ class Framework(Framework_Base):
     def list_aggregates(self):
         # TODO: list of field names from getVersion - should we get all or assume we have URN and URL
         options = {'filter':['SERVICE_URN', 'SERVICE_URL']}
-        (res, message) = _do_ssl(self, None, ("List Aggregates at %s %s" % (self.fwtype, self.ch_url)), 
-                                 self.ch.lookup_aggregates,
-                                 options
-                                 )
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List Aggregates at %s %s" % (self.fwtype, self.ch_url)), 
+                                     self.ch.lookup_aggregates,
+                                     options
+                                     )
+        else:
+            options['match']= {'SERVICE_TYPE' : 'AGGREGATE_MANAGER'}
+            (res, message) = _do_ssl(self, None, ("List Aggregates at %s %s" % (self.fwtype, self.ch_url)), 
+                                     self.ch.lookup, "SERVICE",
+                                     [], options # Empty credential list
+                                     )
         if message and message.strip() != "":
             self.logger.warn(message)
         aggs = dict()
@@ -780,8 +818,13 @@ class Framework(Framework_Base):
                         }}
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
-                                    self.sa().lookup_slices_for_member, userurn, scred, options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_slices_for_member, userurn, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("List Slices for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_for_member, "SLICE", userurn, scred, options)
+
 
         slices = None
         if res is not None:
@@ -838,8 +881,12 @@ class Framework(Framework_Base):
         options = {}
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("List Projects for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
-                                    self.sa().lookup_for_member, "PROJECT", userurn, scred, options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("List Projects for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_projects_for_member, userurn, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("List Projects for %s at %s %s" % (user, self.fwtype, self.sa_url())), 
+                                     self.sa().lookup_for_member, "PROJECT", userurn, scred, options)
 
         projects = None
         if res is not None:
@@ -1024,8 +1071,13 @@ class Framework(Framework_Base):
         self.logger.debug("Submitting lookup_slices with options: %s", options)
         scred, options = self._add_credentials_and_speaksfor(scred, options)
         res = None
-        (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
-                                     self.sa().lookup_slices, scred, options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup_slices, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, ("Lookup slice %s on %s %s" % (urn, self.fwtype,self.sa_url())),\
+                                         self.sa().lookup, "SLICE", scred, options)
+
         slice_expiration = None
         msg = None
         if res is not None:
@@ -1094,9 +1146,14 @@ class Framework(Framework_Base):
 
         scred, options = self._add_credentials_and_speaksfor(scred, options)
 
-        (res, message) = _do_ssl(self, None, ("Renew slice %s on %s %s until %s" % (urn, 
-                                                                                    self.fwtype, self.sa_url(), expiration_dt)), 
-                                  self.sa().update_slice, urn, scred, options)
+        if not self.speakV2:
+            (res, message) = _do_ssl(self, None, 
+                                     ("Renew slice %s on %s %s until %s" % (urn, self.fwtype, self.sa_url(), expiration_dt)), 
+                                     self.sa().update_slice, urn, scred, options)
+        else:
+            (res, message) = _do_ssl(self, None, 
+                                     ("Renew slice %s on %s %s until %s" % (urn, self.fwtype, self.sa_url(), expiration_dt)), 
+                                     self.sa().update, "SLICE", urn, scred, options)
 
         b = False
         if res is not None:
@@ -1201,8 +1258,12 @@ class Framework(Framework_Base):
             if uc is not None:
                 creds.append(uc)
         options = {'match': {'MEMBER_URN': urn}, 'filter': ['MEMBER_EMAIL']}
-        res, mess = _do_ssl(self, None, "Looking up member email",
-                            self.ma().lookup_identifying_member_info, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Looking up member email",
+                                self.ma().lookup_identifying_member_info, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Looking up member email",
+                                self.ma().lookup, "MEMBER", creds, options)
 
         logr = self._log_results((res, mess), 'Lookup member email')
         if logr == True:
@@ -1225,8 +1286,19 @@ class Framework(Framework_Base):
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
 
-        res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
-                            self.ma().lookup_keys, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
+                                self.ma().lookup_keys, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
+                                self.ma().lookup, "KEY", creds, options)
+            # In V2, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
+            # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
+            # We only asked for one person so flip back to V1 format
+            if res['code'] == 0:
+                res['value'] = {urn : res['value'].values()}
+
+
 
         logr = self._log_results((res, mess), 'Lookup member %s SSH keys' % urn)
         if logr == True:
@@ -1278,9 +1350,14 @@ class Framework(Framework_Base):
                     }}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Looking up %s slice %s members at %s" % (self.fwtype, slice_urn, self.sa_url()),
-                            self.sa().lookup_slice_members, slice_urn, 
-                            creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Looking up %s slice %s members at %s" % (self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().lookup_slice_members, slice_urn, 
+                                creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Looking up %s slice %s members at %s" % (self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().lookup_members, "SLICE", slice_urn, 
+                                creds, options)
         members = []
         logr = self._log_results((res, mess), 'Get members for %s slice %s%s' % (self.fwtype, slice_urn, expmess))
         if logr == True:
@@ -1324,9 +1401,14 @@ class Framework(Framework_Base):
                     }}
 
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Looking up %s project %s members at %s" % (self.fwtype, project_urn, self.sa_url()),
-                            self.sa().lookup_members, "PROJECT", project_urn, 
-                            creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Looking up %s project %s members at %s" % (self.fwtype, project_urn, self.sa_url()),
+                                self.sa().lookup_project_members, project_urn, 
+                                creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Looking up %s project %s members at %s" % (self.fwtype, project_urn, self.sa_url()),
+                                self.sa().lookup_members, "PROJECT", project_urn, 
+                                creds, options)
         members = []
         logr = self._log_results((res, mess), 'Get members for %s project %s' % (self.fwtype, project_urn))
         if logr == True:
@@ -1366,9 +1448,14 @@ class Framework(Framework_Base):
 #                            'SLICE_EXPIRED': 'f',
 #                            }
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
-                            self.sa().modify_slice_membership,
-                            slice_urn, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().modify_slice_membership,
+                                slice_urn, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Adding member %s to %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().modify_membership, "SLICE",
+                                slice_urn, creds, options)
 
         # FIXME: do own result checking to detect DUPLICATE
 
@@ -1392,9 +1479,14 @@ class Framework(Framework_Base):
         member_urn = self.member_name_to_urn(member_name)
         options = {'members_to_remove': [ member_urn]}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Removing member %s from %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
-                            self.sa().modify_slice_membership,
-                            slice_urn, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Removing member %s from %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().modify_slice_membership,
+                                slice_urn, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Removing member %s from %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
+                                self.sa().modify_membership, "SLICE", 
+                                slice_urn, creds, options)
 
         # FIXME: do own result checking to detect DUPLICATE
 
@@ -1533,8 +1625,12 @@ class Framework(Framework_Base):
 
         self.logger.debug("Recording new slivers with options: %s", options)
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver '%s' creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
-                      self.sa().create_sliver_info, creds, options)
+        if not self.speakV2:
+            res = _do_ssl(self, None, "Recording sliver '%s' creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
+                          self.sa().create_sliver_info, creds, options)
+        else:
+            res = _do_ssl(self, None, "Recording sliver '%s' creation at %s %s" % (sliver_urn, self.fwtype, self.sa_url()),
+                          self.sa().create, "SLIVER_INFO", creds, options)
         return self._log_results(res, "Record sliver '%s' creation at %s" % (sliver_urn, self.fwtype))
 
     # write new sliver_info to the database using chapi
@@ -1651,8 +1747,13 @@ class Framework(Framework_Base):
 
         options = {'filter': ['SERVICE_URN'],
                    'match': {'SERVICE_URL': agg_url}}
-        res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for '%s'" % (self.fwtype, agg_url),
-                            self.ch.lookup_aggregates, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for '%s'" % (self.fwtype, agg_url),
+                                self.ch.lookup_aggregates, options)
+        else:
+            options['match']['SERVICE_TYPE'] = 'AGGREGATE_MANAGER'
+            res, mess = _do_ssl(self, None, "Lookup aggregate urn at %s for '%s'" % (self.fwtype, agg_url),
+                                self.ch.lookup, "SERVICE", [], options)
         logr = self._log_results((res, mess), "Convert aggregate url '%s' to urn using %s DB" % (agg_url, self.fwtype))
         if logr == True:
             self.logger.debug("Got CH AM listing '%s' for URL '%s'", res['value'], agg_url)
@@ -1703,8 +1804,13 @@ class Framework(Framework_Base):
                              "SLIVER_INFO_AGGREGATE_URN": aggregate_urn}}
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
-                            self.sa().lookup_sliver_info, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
+                                self.sa().lookup_sliver_info, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Lookup slivers in %s%s at %s" % (slice_urn, expmess,aggregate_urn),
+                                self.sa().lookup, "SLIVER_INFO", creds, options)
+
         logr = self._log_results((res, mess), 'Lookup slivers in %s%s at %s' % (slice_urn, expmess,aggregate_urn))
         if logr == True:
             self.logger.debug("Slice %s AM %s found slivers: %s", slice_urn, aggregate_urn, res['value'])
@@ -1749,8 +1855,12 @@ class Framework(Framework_Base):
         options = {'fields' : fields}
         creds, options = self._add_credentials_and_speaksfor(creds, options)
         self.logger.debug("Passing options: %s", options)
-        res = _do_ssl(self, None, "Recording sliver '%s' updated expiration" % sliver_urn, \
-                self.sa().update_sliver_info, sliver_urn, creds, options)
+        if not self.speakV2:
+            res = _do_ssl(self, None, "Recording sliver '%s' updated expiration" % sliver_urn, \
+                              self.sa().update_sliver_info, sliver_urn, creds, options)
+        else:
+            res = _do_ssl(self, None, "Recording sliver '%s' updated expiration" % sliver_urn, \
+                              self.sa().update, "SLIVER_INFO", sliver_urn, creds, options)
         msg = self._log_results(res, "Update sliver '%s' expiration" % sliver_urn)
         if "Register the sliver" in str(msg) and "ARGUMENT_ERROR" in str(msg) and is_valid_urn(slice_urn) and is_valid_urn(agg_urn):
             # SA didn't know about this sliver
@@ -1797,8 +1907,12 @@ class Framework(Framework_Base):
 # Delete it anyway
 #            return
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res = _do_ssl(self, None, "Recording sliver '%s' deleted" % sliver_urn,
-                      self.sa().delete_sliver_info, sliver_urn, creds, options)
+        if not self.speakV2:
+            res = _do_ssl(self, None, "Recording sliver '%s' deleted" % sliver_urn,
+                          self.sa().delete_sliver_info, sliver_urn, creds, options)
+        else:
+            res = _do_ssl(self, None, "Recording sliver '%s' deleted" % sliver_urn,
+                          self.sa().delete, "SLIVER_INFO", sliver_urn, creds, options)
         return self._log_results(res, "Record sliver '%s' deleted" % sliver_urn)
 
     # Find all slivers the SA lists for the given slice
@@ -1833,8 +1947,12 @@ class Framework(Framework_Base):
 
         # FIXME: Limit to SLICE_EXPIRED: 'f'?
         creds, options = self._add_credentials_and_speaksfor(creds, options)
-        res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
-                          self.sa().lookup_sliver_info, creds, options)
+        if not self.speakV2:
+            res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
+                                    self.sa().lookup_sliver_info, creds, options)
+        else:
+            res, mess = _do_ssl(self, None, "Find slivers for slice %s%s" % (slice_urn,expmess), \
+                                    self.sa().lookup, "SLIVER_INFO", creds, options)
 
         logr = self._log_results((res, mess), "Find slivers for slice %s%s" % (slice_urn,expmess))
  
