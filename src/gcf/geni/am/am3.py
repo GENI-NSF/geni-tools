@@ -51,7 +51,7 @@ from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential
-from gcf_version import GCF_VERSION
+from ...gcf_version import GCF_VERSION
 
 from ...omnilib.util import credparsing as credutils
 
@@ -269,6 +269,7 @@ class ReferenceAggregateManager(object):
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
         self.logger = logging.getLogger('gcf.am3')
+        self.logger.info("Running %s AM v%d code version %s", self._am_type, self._api_version, GCF_VERSION)
 
     def GetVersion(self, options):
         '''Specify version information about this AM. That could

@@ -479,8 +479,12 @@ class ReferenceAggregateManager(object):
                                  slice_urn)
                 return self.errorResult(11, "Unavailable: Slice %s is unavailable." % (slice_urn))
             requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
+            # Per the AM API, the input time should be TZ-aware
+            # But since the slice cred may not (per ISO8601), convert
+            # it to naiveUTC for comparison
             requested = self._naiveUTC(requested)
 
+            # Find the minimum allowable expiration based on credential expiration and policy
             min_expiration = self.min_expire(creds, self.max_lease)
 
             # if requested > min_expiration, 

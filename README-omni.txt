@@ -42,27 +42,34 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.6:
- * Mac install clears old `omni.py` and similar aliases (#556)
- * Fix `get_cert_keyid` to get the key id from the certificate (#573)
- * `renewslice` properly warns if your new expiration is not what you
-   requested (#575)
+ * New function `removeslicemember <slice> <usernane>`: 
+   Remove the user with the given username from the named slice. (#515)
+ * Add functions `listprojects` to list your projects, and `listprojectmembers`
+   to list the members of a project and their role in the project and
+   email address. (#495)
+ * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
  * `listslicemembers` honors the `-o` option to save results to a
    file, and `--tostdout` to instead go to STDOUT. (#489)
- * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
  * `listslivers` honors the `-o` option to save results to a file,
    and `--tostdout` to instead go to STDOUT. (#488)
  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
    honor the `-o` option to save results to a file,
    and `--tostdout` to instead to to STDOUT. (#371)
- * Add `listprojects` to list your projects, and `listprojectmembers`
-   to list the members of a project and their role in the project and
-   email address. (#495)
  * `listkeys` return is a list of structs of ('`public_key`',
    '`private_key`'), where `private_key` is omitted for most
    frameworks and most cases where not available. (#600)
+ * Added `print_sliver_expirations` to print the expirations of your
+   slivers at requested aggregates. Also print sliver expirations from
+   `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
+  * Added new utilities in `handler_utils` to extract sliver
+    expiration from the manifest and sliverstatus.
+ * Mac install clears old `omni.py` and similar aliases (#556)
+ * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+ * `renewslice` properly warns if your new expiration is not what you
+   requested (#575)
  * rspec_util utility takes optional logger (#612)
  * Ensure manifest from `createsliver` is printed prettily.
    `getPrettyRSpec` takes a flag on whether it does pretty
@@ -795,8 +802,10 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 listprojectmembers <projectname> 
 			 listslicemembers <slicename>
 			 addslicemember <slicename> <username> [optional: role]
+			 removeslicemember <slicename> <username>
  		Other functions: 
  			 nicknames 
+			 print_sliver_expirations <slicename>
 
 	 See README-omni.txt for details.
 	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
@@ -1512,6 +1521,28 @@ clearinghouse, limited to slice members with the role `LEAD` or
 
 Note also that adding a user to a slice does not automatically add
 their public SSH keys to resources that have already been reserved.
+
+==== removeslicemember ====
+Remove the named user from the named slice. 
+
+Format: `omni.py removeslicemember <slice name> <user username>`
+
+Sample Usage: `omni.py removeslicemember myslice jsmith`
+
+Return is a boolean indicating success or failure.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+This function is typically a privileged operation at the
+clearinghouse, limited to slice members with the role `LEAD` or
+`ADMIN`.
+
+Note also that removing a user from a slice does not automatically remove
+their public SSH keys from resources that have already been reserved.
 
 ==== getversion ====
 Call the AM API !GetVersion function at each aggregate.
@@ -2605,3 +2636,41 @@ Omni knows the following RSpec Nicknames:
 
 (Default RSpec extension: rspec )
 }}}
+
+==== print_sliver_expirations ====
+Print the expiration of any slivers in the given slice.
+Return is a string, and a struct by AM URL of the list of sliver expirations.
+
+Format: 
+`omni.py [-a amURNOrNick] [--useSliceAggregates] [-u sliverurn] print_sliver_expirations mySlice`
+
+Sample output:
+{{{
+  Result Summary: Slice urn:publicid:IDN+ch.geni.net:ahscaletest+slice+ahtest expires on 2014-05-21 18:37:12 UTC
+Resources in slice ahtest at AM utahddc-ig expire at 2014-05-21T00:00:00 UTC.
+ Next resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
+}}}
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN to get status on. If specified, 
+   only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+   nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename

@@ -312,8 +312,8 @@ class Framework_Base():
     def add_member_to_slice(self, slice_urn, member_name, role = 'MEMBER'):
         raise NotImplementedError('add_member_to_slice')
 
-    # remove a new member from a slice 
-    def remove_member_fromx_slice(self, slice_urn, member_name):
+    # remove a member from a slice 
+    def remove_member_from_slice(self, slice_urn, member_name):
         raise NotImplementedError('remove_member_from_slice')
 
     # Record new slivers at the CH database 

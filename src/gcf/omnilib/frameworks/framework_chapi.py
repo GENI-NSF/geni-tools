@@ -1467,7 +1467,7 @@ class Framework(Framework_Base):
             mess = logr
         return (success, mess)
 
-    # remove a new member fromo a slice
+    # remove a member from a slice
     def remove_member_from_slice(self, slice_urn, member_name):
         slice_urn = self.slice_name_to_urn(slice_urn)
         creds = []
@@ -1487,8 +1487,6 @@ class Framework(Framework_Base):
             res, mess = _do_ssl(self, None, "Removing member %s from %s slice %s at %s" %  (member_urn, self.fwtype, slice_urn, self.sa_url()),
                                 self.sa().modify_membership, "SLICE", 
                                 slice_urn, creds, options)
-
-        # FIXME: do own result checking to detect DUPLICATE
 
         logr = self._log_results((res, mess), 'Remove member %s from %s slice %s' % (member_urn, self.fwtype, slice_urn))
         if logr == True:

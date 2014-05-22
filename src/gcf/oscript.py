@@ -101,6 +101,7 @@ from __future__ import absolute_import
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
+       [string dictionary] = omni.py print_sliver_expirations SLICENAME
 """
 
 import ConfigParser
@@ -128,7 +129,7 @@ from .omnilib.frameworks import framework_pg
 from .omnilib.frameworks import framework_pgch
 from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
-from gcf_version import GCF_VERSION
+from .gcf_version import GCF_VERSION
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -861,6 +862,7 @@ def getParser():
  \t\t\t removeslicemember <slicename> <username>  \n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
+ \t\t\t print_sliver_expirations <slicename> \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 

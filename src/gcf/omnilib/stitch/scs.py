@@ -35,7 +35,7 @@ import xmlrpclib
 from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
 from gcf.omnilib.xmlrpc.client import make_client
 
-from ..util.json_encoding import DateTimeAwareJSONDecoder
+from gcf.omnilib.util.json_encoding import DateTimeAwareJSONDecoder
 
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'

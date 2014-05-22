@@ -246,6 +246,97 @@ class StitchingHandler(object):
             if filename:
                 self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
 
+            # Print something about sliver expiration times
+            soonest = None
+            msg = None
+            for am in self.ams_to_process:
+                exps = am.sliverExpirations
+                if exps:
+                    if isinstance(exps, list):
+                        if len(exps) > 1:
+                            # More than 1 distinct sliver expiration found
+                            # Sort and take first
+                            exps = exps.sort()
+                            nextTime = exps[0]
+                            if soonest is None:
+                                soonest = (nextTime, str(am), 1)
+                            elif nextTime < soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (nextTime, str(am), count)
+                            elif nextTime > soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
+
+                            outputstr = nextTime.isoformat()
+                            msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
+                        elif len(exps) == 0:
+                            msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
+                        else:
+                            outputstr = exps[0].isoformat()
+                            msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
+                            if soonest is None:
+                                soonest = (exps[0], str(am), 1)
+                            elif exps[0] < soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (exps[0], str(am), count)
+                            elif exps[0] > soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
+                    else:
+                        outputstr = exps.isoformat()
+                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
+
+                        if soonest is None:
+                            soonest = (exps, str(am), 1)
+                        elif exps < soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (exps, str(am), count)
+                        elif exps > soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (soonest[0], soonest[1], count)
+                else:
+                    # else got no sliver expiration for this AM
+                    # Like at EG or GRAM AMs. See ticket #318
+                    msg = "Resource expiration at %s unknown - try print_sliver_expirations. " % am
+
+                self.logger.info(msg)
+                retVal += msg + "\n"
+            # End of loop over AMs
+            msg = None
+            if soonest is not None and soonest[2] > 1:
+                # Diff parts of the slice expire at different times
+                msg = "\nYour resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
+            elif soonest:
+                msg = "\nYour resources expire at %s (UTC). " % (soonest[0])
+
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
+
         except StitchingError, se:
             if lvl:
                 self.logger.setLevel(lvl)
@@ -1398,6 +1489,22 @@ class StitchingHandler(object):
                     self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
+                if agg.sliverExpirations:
+                    if isinstance(agg.sliverExpirations, list):
+                        if len(agg.sliverExpirations) > 1:
+                            # More than 1 distinct sliver expiration found
+                            # Sort and take first
+                            agg.sliverExpirations = agg.sliverExpirations.sort()
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %d different times. Next expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
+                        elif len(agg.sliverExpirations) == 0:
+                            pass
+                        else:
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %s UTC" % (name, client.str, outputstr)
+                        pass
+                    else:
+                        self.logger.debug("    Resources here expire at %s UTC", agg.sliverExpirations)
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:

@@ -1035,7 +1035,7 @@ class CHCallHandler(object):
         return prtStr + '\n', success
 
     def removeslicemember(self, args):
-        """Remove a user froma slice
+        """Remove a user from a slice.
         Args: slicename username 
         Return summary string and whether successful
         """
@@ -1048,8 +1048,8 @@ class CHCallHandler(object):
         # FIXME: catch errors getting URN's to give prettier error msg?
         slice_urn = self.framework.slice_name_to_urn(slice_name)
 
-        # Try to add the member to the slice
-        (res, m2) = _do_ssl(self.framework, None, "Add user %s to slice %s" % (member_name, slice_name), self.framework.remove_member_from_slice, slice_urn, member_name)
+        # Try to remove the member from the slice
+        (res, m2) = _do_ssl(self.framework, None, "Remove user %s from slice %s" % (member_name, slice_name), self.framework.remove_member_from_slice, slice_urn, member_name)
         if res is None:
             success = False
             message = None
@@ -1065,7 +1065,7 @@ class CHCallHandler(object):
                 prtStr += ". " + message
             if m2 and m2.strip() != "":
                 if "NotImplementedError" in m2:
-                    prtStr += ". Framework type %s does not support remove_member_from_slice." % self.config['selected_framework']['type']
+                    prtStr += ". Framework type %s does not support 'removeslicemember'." % self.config['selected_framework']['type']
                 else:
                     prtStr += ". " + m2
             self.logger.warn(prtStr)
