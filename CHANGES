@@ -37,6 +37,7 @@ gcf 2.6:
     Ads, and some manifests. Uses less memory. (#610)
   * Clean up error getting slice credential for unknown slice from
    `chapi` clearinghouses. (#538)
+  * Clarify error messages in `delegateSliceCred`. (#619)
 
  * stitcher
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
