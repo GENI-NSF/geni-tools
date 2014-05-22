@@ -63,12 +63,13 @@ import json
 import logging
 import optparse 
 import os
+import os.path
 import sys
 
 import gcf.oscript as omni
 from gcf.omnilib.util import OmniError, AMAPIError
 from gcf.omnilib.stitchhandler import StitchingHandler
-from gcf.omnilib.stitch.utils import StitchingError
+from gcf.omnilib.stitch.utils import StitchingError, prependFilePrefix
 from gcf.omnilib.stitch.objects import Aggregate
 import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
@@ -132,6 +133,8 @@ def call(argv, options=None):
                       help="Do no reservations: just generate the expanded request RSpec (default False)")
     parser.add_option("--savedSCSResults", default=None,
                       help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
+    parser.add_option("--filePrefix", default=None,
+                      help="Prefix for all output files generated. May include a directory. Default is some go in /tmp, some in the CWD, some in ~/.gcf.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -152,6 +155,24 @@ def call(argv, options=None):
     config = omni.load_config(options, logger, config)
 
     #logger.info("Using AM API version %d", options.api_version)
+
+    # Make any file prefix be part of the output file prefix so files go in the right spot
+    options.prefix = prependFilePrefix(options.filePrefix, options.prefix)
+    if options.filePrefix:
+        fpDir = os.path.dirname(options.filePrefix)
+        if fpDir and fpDir != "" and not os.path.exists(fpDir):
+            try:
+                os.makedirs(fpDir)
+            except Exception, e:
+                sys.exit("Failed to create %s for saving files per --filePrefix option: %s" % (fpDir, e))
+
+    if options.prefix:
+        fpDir = os.path.dirname(options.prefix)
+        if fpDir and fpDir != "" and not os.path.exists(fpDir):
+            try:
+                os.makedirs(fpDir)
+            except Exception, e:
+                sys.exit("Failed to create %s for saving files per --prefix option: %s" % (fpDir, e))
 
     if options.fakeModeDir:
         if not os.path.isdir(options.fakeModeDir):

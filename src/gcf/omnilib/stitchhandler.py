@@ -49,7 +49,7 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2, prependFilePrefix
 from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
@@ -421,8 +421,9 @@ class StitchingHandler(object):
         if self.opts.debug:
             return
         
-        if os.path.exists(Aggregate.FAKEMODESCSFILENAME):
-            os.unlink(Aggregate.FAKEMODESCSFILENAME)
+        scsres = prependFilePrefix(self.opts.filePrefix, Aggregate.FAKEMODESCSFILENAME)
+        if os.path.exists(scsres):
+            os.unlink(scsres)
 
         if self.savedSliceCred and os.path.exists(self.opts.slicecredfile):
             os.unlink(self.opts.slicecredfile)
@@ -790,6 +791,8 @@ class StitchingHandler(object):
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
             if "%slicehrn" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
+            if self.opts.filePrefix:
+                self.opts.slicecredfile = prependFilePrefix(self.opts.filePrefix, self.opts.slicecredfile)
             trim = -4
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
@@ -995,8 +998,9 @@ class StitchingHandler(object):
         self.logger.debug("SCS successfully returned.");
 
         if self.opts.debug:
-            self.logger.debug("Writing SCS result JSON to scs-result.json")
-            with open ("scs-result.json", 'w') as file:
+            scsresfile = prependFilePrefix(self.opts.filePrefix, "scs-result.json")
+            self.logger.debug("Writing SCS result JSON to %s" % scsresfile)
+            with open (scsresfile, 'w') as file:
                 file.write(stripBlankLines(str(json.dumps(self.scsService.result, encoding='ascii', cls=DateTimeAwareJSONEncoder))))
 
         self.scsService.result = None # Clear memory/state
@@ -1157,14 +1161,15 @@ class StitchingHandler(object):
             # Set -o to ensure this goes to a file, not logger or stdout
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
+            scsreplfile = prependFilePrefix(self.opts.filePrefix, Aggregate.FAKEMODESCSFILENAME)
             handler_utils._printResults(opts_copy, self.logger, header, \
                                             content, \
-                                            Aggregate.FAKEMODESCSFILENAME)
+                                            scsreplfile)
             # In debug mode, keep copies of old SCS expanded requests
             if self.logger.isEnabledFor(logging.DEBUG):
-                handler_utils._printResults(opts_copy, self.logger, header, content, Aggregate.FAKEMODESCSFILENAME + str(self.scsCalls))
+                handler_utils._printResults(opts_copy, self.logger, header, content, scsreplfile + str(self.scsCalls))
             self.logger.debug("Wrote SCS expanded RSpec to %s", \
-                                  Aggregate.FAKEMODESCSFILENAME)
+                                  scsreplfile)
 
             # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
             if self.logger.isEnabledFor(logging.DEBUG):
@@ -1579,10 +1584,17 @@ class StitchingHandler(object):
                              sliceurn)
             return
         # ./$slicehrn-amlist.txt
-        fname = "%s-amlist.txt" % slicehrn
+        fname = prependFilePrefix(self.opts.filePrefix, "~/.gcf/%s-amlist.txt" % slicehrn)
         if not self.ams_to_process or len(self.ams_to_process) == 0:
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
+
+        listdir = os.path.dirname(fname)
+        if not os.path.exists(listdir):
+            try:
+                os.makedirs(listdir)
+            except Exception, e:
+                self.logger.warn("Failed to create %s to save list of used AMs: %s", listdir, e)
 
         # URL,URN
         with open (fname, 'w') as file:
@@ -1626,7 +1638,7 @@ class StitchingHandler(object):
             return
 
         # ./$slicehrn-amlist.txt
-        fname = "%s-amlist.txt" % slicehrn
+        fname = prependFilePrefix(self.opts.filePrefix, "~/.gcf/%s-amlist.txt" % slicehrn)
 
         # look to see if $slicehrn-amlist.txt exists
         if not os.path.exists(fname) or not os.path.getsize(fname) > 0:
