@@ -355,8 +355,8 @@ def load_config(opts, logger, config={}, filename=None):
                 files1 = temp.split("\n")
                 files2 = []
                 for item in files1:
-                    fdesc,fname = item.split(",")
-                    files2.append((fdesc.strip(),fname.strip()))
+                    fdesc,fname,oktodelete = item.split(",")
+                    files2.append((fdesc.strip(),fname.strip(),oktodelete.strip()))
                 config['omni_configure_files'] = files2
 
     return config
