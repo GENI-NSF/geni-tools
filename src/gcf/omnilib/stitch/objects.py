@@ -301,6 +301,11 @@ class Aggregate(object):
         # Will be a single or list of naive UTC datetime objects
         self.sliverExpirations = None
 
+        # Have we tried an allocation at this AM in this latest round?
+        # Used by stitchhandler to decide which AMs were tried the last time through, 
+        # particularly if any were DCN
+        self.triedRes = False
+
     def __str__(self):
         if self.nick:
             if self.logger.isEnabledFor(logging.DEBUG):
@@ -1111,6 +1116,9 @@ class Aggregate(object):
         '''Reserve at this AM. Construct omni args, save RSpec to a file, call Omni,
         handle raised Exceptions, DCN AMs wait for status ready, and return the manifest
         '''
+
+        # We've tried a reservation at this AM now
+        self.triedRes = True
 
         # Ensure we have the right URL / API version / command combo
         # If this AM does APIv3, I'd like to use it
@@ -2840,6 +2848,7 @@ class Aggregate(object):
         # FIXME: Fake mode delete results from a file?
 
         # FIXME: Set a flag marking this AM was deleted?
+
         return
 
     # This needs to handle createsliver, allocate, sliverstatus, listresources at least

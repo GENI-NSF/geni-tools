@@ -484,9 +484,12 @@ class StitchingHandler(object):
             # If one of the AMs is a DCN AM, use that sleep time instead - longer
             sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
             for agg in existingAggs:
-                if agg.dcn:
+                if agg.dcn and agg.triedRes:
+                    # Only need to sleep this much longer time
+                    # If this is a DCN AM that we tried a reservation on (whether it worked or failed)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
-                    break
+                # Reset whether we've tried this AM this time through
+                agg.triedRes = False
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)
 
