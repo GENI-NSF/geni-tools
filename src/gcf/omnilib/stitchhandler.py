@@ -150,9 +150,12 @@ class StitchingHandler(object):
         else:
             raise OmniError("No request RSpec found, or slice name missing!")
 
+        self.isStitching = self.mustCallSCS(self.parsedUserRequest)
+        self.isGRE = self.hasGRELink(self.parsedUserRequest)
+
         # If this is not a real stitching thing, just let Omni handle this.
         # This will also ensure each stitched link has an explicit capacity on 2 properties
-        if not self.mustCallSCS(self.parsedUserRequest) and not self.hasGRELink(self.parsedUserRequest):
+        if not self.isStitching and not self.isGRE:
             self.logger.info("Not a stitching or GRE request - let Omni handle this.")
 
             if self.opts.noReservation:
@@ -190,9 +193,10 @@ class StitchingHandler(object):
         # Here is where we used to add the expires attribute. No
         # longer necessary (or a good idea).
 
-        if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
-            self.logger.info("Using SCS at %s", self.opts.scsURL)
-        self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
+        if self.isStitching:
+            if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+                self.logger.info("Using SCS at %s", self.opts.scsURL)
+            self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -373,7 +377,10 @@ class StitchingHandler(object):
         for am in self.ams_to_process:
             if not am.userRequested:
                 scs_added_amcnt = scs_added_amcnt + 1
-        retMsg = "Stitching success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request), creating %d link(s)." % (self.slicename, amcnt, scs_added_amcnt, pathcnt)
+        if scs_added_amcnt > 0:
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request), creating %d stitched link(s)." % (self.slicename, amcnt, scs_added_amcnt, pathcnt)
+        else:
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates, creating %d stitched link(s)." % (self.slicename, amcnt, pathcnt)
  
         # FIXME: What do we want to return?
 # Make it something like createsliver / allocate, with the code/value/output triple plus a string
@@ -475,7 +482,8 @@ class StitchingHandler(object):
             else:
                 self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
-        scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
+        if self.isStitching:
+            scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
         self.lastException = None # Clear any last exception from the last run through
 
         if self.scsCalls > 1 and existingAggs:
@@ -494,8 +502,20 @@ class StitchingHandler(object):
             time.sleep(sTime)
 
         # Parse SCS Response, constructing objects and dependencies, validating return
-        self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
-        scsResponse = None # Just to note we are done with this here (keep no state)
+        if self.isStitching:
+            self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
+            scsResponse = None # Just to note we are done with this here (keep no state)
+        else:
+            # FIXME: with the user rspec
+            self.parsedSCSRSpec = self.rspecParser.parse(requestDOM.toxml())
+            workflow_parser = WorkflowParser(self.logger)
+
+            # Parse the workflow, creating Path/Hop/etc objects
+            # In the process, fill in a tree of which hops depend on which,
+            # and which AMs depend on which
+            # Also mark each hop with what hop it imports VLANs from,
+            # And check for AM dependency loops
+            workflow_parser.parse({}, self.parsedSCSRSpec)
 
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
@@ -570,7 +590,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
-        self.logger.info("Stitched reservation will include resources from these aggregates:")
+        self.logger.info("Multi-AM reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
             self.logger.info("\t%s", am)
 
@@ -987,12 +1007,13 @@ class StitchingHandler(object):
                 self.ensureLinkListsAMs(link, requestRSpecObject)
                 if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
                     # Not GRE
+#                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
                     continue
                 if len(link.aggregates) != 2:
-                    self.logger.warn("Link %s is a GRE link with %d AMs?", link, len(link.aggregates))
+                    self.logger.warn("Link %s is a GRE link with %d AMs?", link.id, len(link.aggregates))
                     continue
                 if len(link.interfaces) != 2:
-                    self.logger.warn("Link %s is a GRE link with %d interfaces?", link, len(link.interfaces))
+                    self.logger.warn("Link %s is a GRE link with %d interfaces?", link.id, len(link.interfaces))
                     continue
                 isGRE = True
                 for ifc in link.interfaces:
@@ -1001,15 +1022,22 @@ class StitchingHandler(object):
                         if ifc.client_id in node.interface_ids:
                             found = True
                             # This is the node
-                            am = Aggregate.find(node.amURN)
-                            if not am.isPG:
-                                self.logger.warn("Bad GRE link %s: interface_ref %s is on a non PG node", link, ifc.client_id)
-                                isGRE = False
+
+                            # I'd like to ensure the node is a PG node.
+                            # But at this point we haven't called getversion yet
+                            # So we don't really know if this is a PG node
+#                            am = Aggregate.find(node.amURN)
+#                            if not am.isPG:
+#                                self.logger.warn("Bad GRE link %s: interface_ref %s is on a non PG node: %s", link.id, ifc.client_id, am)
+#                                isGRE = False
+
                             # We do not currently parse sliver-type off of nodes to validate that
                             break
                     if not found:
-                        self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link, ifc.client_id)
+                        self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link.id, ifc.client_id)
                 if isGRE:
+                    self.logger.debug("Link %s is GRE", link.id)
+                    self.isGRE = True
                     return True
 
         # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
@@ -1493,7 +1521,7 @@ class StitchingHandler(object):
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
-        if rspec:
+        if rspec and rspec.stitching:
             stitching = rspec.stitching
             self.logger.debug( "\n===== Hops =====")
             for path in stitching.paths:
@@ -1659,7 +1687,7 @@ class StitchingHandler(object):
 
         # URL,URN
         with open (fname, 'w') as file:
-            file.write("# AM List for stitched slice %s\n" % sliceurn)
+            file.write("# AM List for multi-AM slice %s\n" % sliceurn)
             file.write("# Slice allocated at %s\n" % datetime.datetime.utcnow().isoformat())
             for am in self.ams_to_process:
                 file.write("%s,%s\n" % (am.url, am.urn) )
@@ -1706,7 +1734,7 @@ class StitchingHandler(object):
             self.logger.debug("File of AMs for slice %s not found or empty: %s", slicename, fname)
             return
 
-        self.logger.info("Reading stitching slice %s aggregates from file %s", slicename, fname)
+        self.logger.info("Reading slice %s aggregates from file %s", slicename, fname)
 
         self.opts.ensure_value('aggregate', [])
         addOptions = True

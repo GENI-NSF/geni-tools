@@ -826,7 +826,9 @@ class Aggregate(object):
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
-            raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
+            return requestRSpecDom
+        # For GRE requests, there won't be one
+#            raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
         # For v2/v1, right here check if this is v2 and we want v1 or vice versa
         # schema is marked direct on this node
