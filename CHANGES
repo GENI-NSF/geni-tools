@@ -93,6 +93,8 @@ gcf 2.6:
     and current working directory otherwise used. This prefix also modifies 
     the value from `--prefix`, so other output files are written to this directory. 
     Therefore 2 stitcher instances can run in parallel. (#588)
+  * Pause between calls to the SCS the full 600 seconds only if we tried
+    a reservation at a DCN AM - not just if any AM in the topology is a DCN AM. (#351)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
