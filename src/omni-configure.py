@@ -400,12 +400,17 @@ class OmniConfigure( object ):
             logger.warn("`omni_config` file does not exist at location specified: `%s`" % (self._opts.configfile))
             logger.warn("Try using the `-c` option to specify an alternative location.")
             return
+        filestodelete = []
         if not config.has_key("omni_configure_files"):
             # if command line options are provided, use those instead of omni_config values
             if self._opts.cert != "":
                 SSLcert = self._opts.cert
             else:
                 SSLcert = config['selected_framework']['cert']
+
+            if config['selected_framework']['type'].strip() == "chapi":
+                print "Ok to Delete SSL cert"
+                filestodelete.append(('SSL certificate',SSLcert, str(True)))
             if self._opts.prcertkey != "":
                 SSLprivatekey = self._opts.prcertkey
             else:
@@ -413,17 +418,15 @@ class OmniConfigure( object ):
 
             # find all of the public keys
             # NOTE: -s option is not honor because it points to a directory
-            users = config['users']
-            SSHpublickeys = []
-            for user in users:
-                keys = user['keys']
-                keys = [key.strip() for key in keys.split(",")]
-                SSHpublickeys += keys
+            # users = config['users']
+            # SSHpublickeys = []
+            # for user in users:
+            #    keys = user['keys']
+            #   keys = [key.strip() for key in keys.split(",")]
+            #   SSHpublickeys += keys
 
-            filestodelete = [
-            ('SSL certificate',SSLcert, True),
             # ('SSL certificate private key',SSLprivatekey, False)
-            ]
+
             #i = 1
             # for pub in SSHpublickeys:
             #    priv = pub.strip().rsplit('.',1)[0]
@@ -795,7 +798,9 @@ default_rspec_extension = rspec
 #boston=urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm,https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0
 """ % omni_config_dict
 
-        return omni_config_file
+        omniconfigure_section = self.getOmniConfigureSection()
+
+        return omni_config_file + omniconfigure_section
 
 
     def getUserInfo(self, cert) :
@@ -848,6 +853,26 @@ default_rspec_extension = rspec
             opts.prcertkey = os.path.abspath(opts.prcertkey)
 
         logger.debug("Using as private key for the cert file: %s" %opts.prcertkey)
+    def getOmniConfigureSection(self):
+        currdate = datetime.datetime.utcnow()
+        datestr = datetime.datetime.isoformat(currdate)
+        filelist = [str(fdesc)+", "+str(fname)+", "+str(oktodelete) for fdesc, fname, oktodelete in writtenfiles]
+        return """
+#------ omni-configure
+# Information about how this file was generated.
+# Includes version, date, and other files created
+#
+
+[omni_configure]
+# Omni Version
+version=%s
+# Date
+date=%s
+# Files Written
+# Description of File, Location of File, Ok to Delete by --clean?
+files=
+%s
+""" %(OMNI_VERSION, datestr,"\t"+"\n\t".join(filelist))
 
 class PGFramework( ConfigFramework_Base ):
     def validate(self, opts):
@@ -1301,26 +1326,6 @@ default_rspec_extension = rspec
 
 """
 
-    def getOmniConfigureSection(self, opts, config):
-        currdate = datetime.datetime.utcnow()
-        datestr = datetime.datetime.isoformat(currdate)
-        filelist = [str(fdesc)+", "+str(fname)+", "+str(oktodelete) for fdesc, fname, oktodelete in writtenfiles]
-        return """
-#------ omni-configure
-# Information about how this file was generated.
-# Includes version, date, and other files created
-#
-
-[omni_configure]
-# Omni Version
-version=%s
-# Date
-date=%s
-# Files Written
-# Description of File, Location of File, Ok to Delete by --clean?
-files=
-%s
-""" %(OMNI_VERSION, datestr,"\t"+"\n\t".join(filelist))
 
     def getConfig(self, opts, public_key_list, cert) :
         # The bundle contains and omni_config
