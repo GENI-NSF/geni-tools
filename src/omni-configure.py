@@ -71,12 +71,12 @@ DEFAULT_OMNI_CONFIG = "~/.gcf/omni_config"
 
 writtenfiles = []
 
-def wrotefile(desc, nameoffile):
+def wrotefile(desc, nameoffile, oktodelete=False):
     """
     Track the file written by omni_configure.
     """
-    #print "XX %s, %s XX" % (desc,nameoffile)
-    writtenfiles.append((desc,nameoffile))
+    #print "XX %s, %s XX" % (desc,nameoffile, oktodelete)
+    writtenfiles.append((desc,nameoffile,oktodelete))
 
 def getYNAns( question, defaultY=True):
     valid_ans=['','y', 'n']
@@ -99,7 +99,7 @@ def getYNAns( question, defaultY=True):
             return False
 
 
-def copyPrivateKeyFile(src_file, dst_file, msg="Private key", replaceAll=False):
+def copyPrivateKeyFile(src_file, dst_file, msg="Private key", oktodelete=False, replaceAll=False):
     """ This function creates a copy of a private key file
         from 'src_file' to 'dst_file'. The src_file might be in .pem format
         so it is not a simple file copy, but we parse the file to only get
@@ -133,8 +133,8 @@ def copyPrivateKeyFile(src_file, dst_file, msg="Private key", replaceAll=False):
     # Use only the first key, if multiple are present
     f.write(keyList[0])
     f.close()
-    logger.info("%s stored at: \n\t%s\n", msg, dst_file)
-    wrotefile(msg,dst_file)
+    logger.info("%s stored at: \n\t%s", msg, dst_file)
+    wrotefile(msg,dst_file,oktodelete)
     # Change the permission to something appropriate for keys
     logger.debug("Changing permission on private key to 600")
     os.chmod(dst_file, 0o600)
@@ -182,8 +182,8 @@ def generatePublicKey(private_key_file):
     f.write("ssh-rsa %s\n" % key_output)
     f.close()
     fdesc = "Public SSH key from your SSL cert"
-    logger.info("%s stored at: \n\t%s\n", fdesc, public_key_file)
-    wrotefile(fdesc,public_key_file)
+    logger.info("%s stored at: \n\t%s", fdesc, public_key_file)
+    wrotefile(fdesc,public_key_file,True)
     return public_key_file
 def getFileName(filename, replaceAll=False):
     """ This function takes as input a filename and if it already
@@ -196,7 +196,7 @@ def getFileName(filename, replaceAll=False):
     filename = os.path.abspath(filename)
     if os.path.exists(filename):
         (basename, extension) = os.path.splitext(filename)
-        question = "File " + filename + " exists, do you want to replace it "
+        question = "\nFile " + filename + " exists, do you want to replace it "
         if not replaceAll and not getYNAns(question):
             i = 1
             if platform.system().lower().find('darwin') != -1 :
@@ -400,36 +400,40 @@ class OmniConfigure( object ):
             logger.warn("`omni_config` file does not exist at location specified: `%s`" % (self._opts.configfile))
             logger.warn("Try using the `-c` option to specify an alternative location.")
             return
+        if not config.has_key("omni_configure_files"):
+            # if command line options are provided, use those instead of omni_config values
+            if self._opts.cert != "":
+                SSLcert = self._opts.cert
+            else:
+                SSLcert = config['selected_framework']['cert']
+            if self._opts.prcertkey != "":
+                SSLprivatekey = self._opts.prcertkey
+            else:
+                SSLprivatekey = config['selected_framework']['key']
 
-        # if command line options are provided, use those instead of omni_config values
-        if self._opts.cert != "":
-            SSLcert = self._opts.cert
-        else:
-            SSLcert = config['selected_framework']['cert']
-        if self._opts.prcertkey != "":
-            SSLprivatekey = self._opts.prcertkey
-        else:
-            SSLprivatekey = config['selected_framework']['key']
+            # find all of the public keys
+            # NOTE: -s option is not honor because it points to a directory
+            users = config['users']
+            SSHpublickeys = []
+            for user in users:
+                keys = user['keys']
+                keys = [key.strip() for key in keys.split(",")]
+                SSHpublickeys += keys
 
-        # find all of the public keys
-        # NOTE: -s option is not honor because it points to a directory
-        users = config['users']
-        SSHpublickeys = []
-        for user in users:
-            keys = user['keys']
-            keys = [key.strip() for key in keys.split(",")]
-            SSHpublickeys += keys
-
-        filestodelete = [
+            filestodelete = [
             ('SSL certificate',SSLcert, True),
             # ('SSL certificate private key',SSLprivatekey, False)
             ]
-        #i = 1
-        # for pub in SSHpublickeys:
-        #    priv = pub.strip().rsplit('.',1)[0]
-        #    filestodelete.append(('SSH public key  %s' % i, pub, True))
-        #    filestodelete.append(('SSH private key %s' % i, priv, False))
-        #    i += 1
+            #i = 1
+            # for pub in SSHpublickeys:
+            #    priv = pub.strip().rsplit('.',1)[0]
+            #    filestodelete.append(('SSH public key  %s' % i, pub, True))
+            #    filestodelete.append(('SSH private key %s' % i, priv, False))
+            #    i += 1
+        else:
+            filestodelete = config["omni_configure_files"]
+            # Fix this
+            filestodelete = [(desc,name,oktodelete) for desc, name, oktodelete in filestodelete if oktodelete=="True"]
 
         # if --clean-all, then also look for files of form omni-bundle.zip and omni.bundle
         if self._opts.clean_all:
@@ -526,7 +530,7 @@ class OmniConfigure( object ):
         print >>f, omni_config_str
         f.close()
         logger.info("Wrote omni configuration file at: \n\t%s\n", opts.configfile)
-        wrotefile("omni_config",opts.configfile)
+        wrotefile("omni_config",opts.configfile,True)
 
     def configureSSHKeys(self):
         global logger
@@ -554,7 +558,7 @@ class OmniConfigure( object ):
           # omni_config
             pubkey_list = self.framework.bundle_extract_keys(omnizip, opts)
             logger.info("Script will create an extra public key file, based "+
-                        "on the private key of the SSL cert:\n\t%s\n " % opts.cert)
+                        "on the private key of the SSL cert:\n\t%s " % opts.cert)
             #return pubkey_list
 
         #logger.info("CREATING SSH KEYPAIR")
@@ -575,7 +579,7 @@ class OmniConfigure( object ):
             os.makedirs(ssh_dir)
 
         fdesc = "Private SSH key from your SSL cert"
-        private_key_file = copyPrivateKeyFile(pkey, private_key_file, msg=fdesc, replaceAll=opts.replace_all)
+        private_key_file = copyPrivateKeyFile(pkey, private_key_file, msg=fdesc, oktodelete=True, replaceAll=opts.replace_all)
         public_key_file = generatePublicKey(private_key_file)
         if not public_key_file:
             #we failed at generating a public key, remove the private key and exit
@@ -632,7 +636,7 @@ class OmniConfigure( object ):
           if opts.sshdir.startswith('/tmp/omni_bundle') :
                 sys.exit("\n\nExit!\nYou can't use as your ssh directory "+\
                          opts.sshdir + ". It is used internally by the script, rerun "+\
-                         "and choose a direcory is not under "+\
+                         "and choose a directory is not under "+\
                          "'/tmp/omni_bundle' to store your "+\
                          "ssh keys." )
 
@@ -976,8 +980,8 @@ class PortalFramework( ConfigFramework_Base ):
         opts.cert = getFileName(opts.cert, replaceAll=opts.replace_all)
         self.extract_cert_from_bundle(opts.portal_bundle, opts.cert)
         fdesc = "SSL certificate"
-        logger.info("%s stored at: \n\t%s\n", fdesc, opts.cert)
-        wrotefile(fdesc, opts.cert)
+        logger.info("%s stored at: \n\t%s", fdesc, opts.cert)
+        wrotefile(fdesc, opts.cert,True) # in the portal case the cert is ok to delete
         self.setPrivateCertKey(opts)
 
         # If the private key for the cert is not in the cert, check
@@ -990,7 +994,7 @@ class PortalFramework( ConfigFramework_Base ):
     Either place your key in the above file or use\n \
     the '-k' option to specify a custom location for the key.\n")
 
-        logger.info("Using portal bundle: %s\n", opts.portal_bundle)
+        logger.info("Using portal bundle: %s", opts.portal_bundle)
 
     def bundle_extract_keys(self, omnizip, opts) :
        """ function that will extract any key files in zip bundle
@@ -1023,7 +1027,7 @@ class PortalFramework( ConfigFramework_Base ):
             omnizip.extract(x, '/tmp/omni_bundle')
             prkeyfname = os.path.join(opts.sshdir, DEFAULT_PRIVATE_KEY[opts.framework])
             fdesc = "Private SSH key"
-            prkeyfname = copyPrivateKeyFile(os.path.join('/tmp/omni_bundle/', x), prkeyfname, msg=fdesc, replaceAll=opts.replace_all)
+            prkeyfname = copyPrivateKeyFile(os.path.join('/tmp/omni_bundle/', x), prkeyfname, msg=fdesc, oktodelete=False,replaceAll=opts.replace_all)
 
             # Place the public key in the right place
             omnizip.extract(xpub, '/tmp/omni_bundle')
@@ -1044,8 +1048,8 @@ class PortalFramework( ConfigFramework_Base ):
 
             shutil.move(os.path.join('/tmp/omni_bundle/', xpub), pubname)
             fdesc="Public SSH key"
-            logger.info("%s stored at:\n\t%s\n",fdesc, pubname)
-            wrotefile(fdesc,pubname)
+            logger.info("%s stored at:\n\t%s",fdesc, pubname)
+            wrotefile(fdesc,pubname,False)
             pubkey_list.append(pubname)
             pubkey_of_priv_inbundle = xpub
             logger.debug("Place public key %s at %s" \
@@ -1072,8 +1076,8 @@ class PortalFramework( ConfigFramework_Base ):
             logger.debug("Copy public key %s to %s" %(x, xfullpath))
             shutil.move(os.path.join('/tmp/omni_bundle/', x), xfullpath)
             fdesc = "Public SSH key"
-            logger.info("%s stored at:\n\t%s\n", fdesc, xfullpath)
-            wrotefile(fdesc,xfullpath)
+            logger.info("%s stored at:\n\t%s", fdesc, xfullpath)
+            wrotefile(fdesc,xfullpath,False)
             pubkey_list.append(xfullpath)
 
        shutil.rmtree('/tmp/omni_bundle/ssh')
@@ -1300,7 +1304,7 @@ default_rspec_extension = rspec
     def getOmniConfigureSection(self, opts, config):
         currdate = datetime.datetime.utcnow()
         datestr = datetime.datetime.isoformat(currdate)
-        filelist = [str(fdesc)+", "+str(fname) for fdesc, fname in writtenfiles]
+        filelist = [str(fdesc)+", "+str(fname)+", "+str(oktodelete) for fdesc, fname, oktodelete in writtenfiles]
         return """
 #------ omni-configure
 # Information about how this file was generated.
@@ -1313,6 +1317,7 @@ version=%s
 # Date
 date=%s
 # Files Written
+# Description of File, Location of File, Ok to Delete by --clean?
 files=
 %s
 """ %(OMNI_VERSION, datestr,"\t"+"\n\t".join(filelist))
@@ -1408,6 +1413,7 @@ def main():
         else:
             oconfig.configureSSHKeys()
             oconfig.createConfigFile()
+            logger.info("="*80+"\n")
             logger.info("Omni is now configured!\n")
             cloc = ""
             if oconfig._opts.configfile != os.path.abspath(os.path.expanduser(DEFAULT_OMNI_CONFIG)):
