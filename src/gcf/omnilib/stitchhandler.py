@@ -152,8 +152,8 @@ class StitchingHandler(object):
 
         # If this is not a real stitching thing, just let Omni handle this.
         # This will also ensure each stitched link has an explicit capacity on 2 properties
-        if not self.mustCallSCS(self.parsedUserRequest):
-            self.logger.info("Not a stitching request - let Omni handle this.")
+        if not self.mustCallSCS(self.parsedUserRequest) and not self.hasGRELink(self.parsedUserRequest):
+            self.logger.info("Not a stitching or GRE request - let Omni handle this.")
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
@@ -978,6 +978,43 @@ class StitchingHandler(object):
             if am not in link.aggregates:
                 self.logger.debug("Adding missing AM %s to link %s", amURN, link.id)
                 link.aggregates.append(am)
+
+    def hasGRELink(self, requestRSpecObject):
+        # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                # Make sure this link explicitly lists all its aggregates, so this test is valid
+                self.ensureLinkListsAMs(link, requestRSpecObject)
+                if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
+                    # Not GRE
+                    continue
+                if len(link.aggregates) != 2:
+                    self.logger.warn("Link %s is a GRE link with %d AMs?", link, len(link.aggregates))
+                    continue
+                if len(link.interfaces) != 2:
+                    self.logger.warn("Link %s is a GRE link with %d interfaces?", link, len(link.interfaces))
+                    continue
+                isGRE = True
+                for ifc in link.interfaces:
+                    found = False
+                    for node in requestRSpecObject.nodes:
+                        if ifc.client_id in node.interface_ids:
+                            found = True
+                            # This is the node
+                            am = Aggregate.find(node.amURN)
+                            if not am.isPG:
+                                self.logger.warn("Bad GRE link %s: interface_ref %s is on a non PG node", link, ifc.client_id)
+                                isGRE = False
+                            # We do not currently parse sliver-type off of nodes to validate that
+                            break
+                    if not found:
+                        self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link, ifc.client_id)
+                if isGRE:
+                    return True
+
+        # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
+
+        return False
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
