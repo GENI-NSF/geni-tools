@@ -51,19 +51,19 @@ OMNI_VERSION="2.5.3"
 
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",
-                            'pl' : "~/.ssh/geni_cert_key_pl",
+                            # 'pl' : "~/.ssh/geni_cert_key_pl",
                             'portal' : "~/.ssl/geni_ssl_portal.key"
                            }
 
 DEFAULT_PRIVATE_KEY = {
                         'pg' : "geni_key_pg",
-                        'pl' : "geni_key_pl",
+                        # 'pl' : "geni_key_pl",
                         'portal' : "geni_key_portal"
                       }
 
 DEFAULT_CERT = {
                  'pg' : "~/.ssl/geni_cert_pg.pem",
-                 'pl' : "~/.ssl/geni_cert_pl.gid",
+                 # 'pl' : "~/.ssl/geni_cert_pl.gid",
                  'portal' : "~/.ssl/geni_cert_portal.pem"
                }
 
@@ -689,9 +689,9 @@ class OmniConfigure( object ):
                           help="Bundle downloaded from the portal for "+ \
                           "configuring Omni [DEFAULT: %default]", metavar="FILE")
         parser.add_option("-f", "--framework", default="portal", type='choice',
-                          choices=['pg', 'pl', 'portal'],
+                          choices=['pg', 'portal'],
                           help="Control framework that you have an account " + \
-                          "with [options: [pg, pl, portal], DEFAULT: %default]")
+                          "with [options: [pg, portal], DEFAULT: %default]")
         parser.add_option("--pick-project", dest="pick_project",
                           action="store_true",
                           default=False, help="Lets you choose which project to "+ \
