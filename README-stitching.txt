@@ -128,9 +128,9 @@ including `-o` to send RSpecs to files, and `--WARN` to turn down most
 logging. However, stitcher always saves your combined result manifest
 RSpec to a file (named
 '`<slicename>-manifest-rspec-stitching-combined.xml`'), unless you specify the `--tostdout` option.
-Currently, stitcher will write several files to the current
+Currently, stitcher will (at least temporarily) write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
-several manifest RSpecs) (change this directory using `--filePrefix`).
+several manifest RSpecs) (change this directory using `--fileDir`).
 
 `./stitcherTestFiles` contains a selection of sample request RSpecs
 for use with stitching. Note this is not exhaustive; multiple links
@@ -217,10 +217,9 @@ Other options you should not need to use:
    just save the expanded request RSpec.
  - `--savedSCSResults`: Use the specified JSON file of saved results
    from calling the SCS, instead of actually calling the SCS.
- - `--filePrefix`: Put this string in front of the path of any output
- files. If this string specifies a directory, it replaces the usual
- directory used by stitcher (`/tmp`, CWD or `~`). If this path is a
- temporary directory, then multiple stitcher instances can be run in parallel.
+ - `--fileDir`: Save _all_ files to this directory, and not the usual
+ directory used by stitcher (`/tmp`, CWD or `~`).
+ This allows multiple stitcher instances to be run in parallel.
 
 == Tips and Details ==
 
@@ -340,8 +339,8 @@ detail as possible:
  - At least the last few lines of your call to stitcher, and all the logs if
  possible
  - The resulting manifest RSpec if the script succeeded
- - Listing of new rspec files created in `/tmp` and your current
- working directory (or your custom directory from `--filePrefix`)
+ - Listing of any new rspec or other files created in `/tmp` and your current
+ working directory (or your custom directory from `--fileDir`)
 
 See the list of Known Issues below.
 

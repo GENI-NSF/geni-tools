@@ -86,10 +86,11 @@ gcf 2.6:
   * Put the list of AMs used by the stitched slice in `~/.gcf`, not
     the current directory. So you can be in a different directory later 
     to find it. (#462)
-  * Added new option `--filePrefix`. This prefix goes on every output file from 
-    stitcher. If it includes a directory, it replaces the `/tmp` and `~/.gcf` 
+  * Added new option `--fileDir`. If provided, all stitcher files go in this directory,
+    and not the `/tmp` and `~/.gcf` 
     and current working directory otherwise used. This prefix also modifies 
-    the value from `--prefix`. Therefore 2 stitcher instances can run in parallel. (#588)
+    the value from `--prefix`, so other output files are written to this directory. 
+    Therefore 2 stitcher instances can run in parallel. (#588)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

@@ -243,9 +243,6 @@ class StitchingHandler(object):
             self.logger.setLevel(lvl)
             self.opts.output = ot
 
-            if filename:
-                self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
-
             # Print something about sliver expiration times
             soonest = None
             msg = None
@@ -323,19 +320,25 @@ class StitchingHandler(object):
                     # Like at EG or GRAM AMs. See ticket #318
                     msg = "Resource expiration at %s unknown - try print_sliver_expirations. " % am
 
-                self.logger.info(msg)
-                retVal += msg + "\n"
+                self.logger.debug(msg)
+                #retVal += msg + "\n"
             # End of loop over AMs
+
             msg = None
             if soonest is not None and soonest[2] > 1:
                 # Diff parts of the slice expire at different times
-                msg = "\nYour resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
+                msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
             elif soonest:
-                msg = "\nYour resources expire at %s (UTC). " % (soonest[0])
+                msg = "Your resources expire at %s (UTC). " % (soonest[0])
 
             if msg:
                 self.logger.info(msg)
                 retVal += msg + "\n"
+
+            if filename:
+                msg = "Saved combined reservation RSpec at %d AMs to file %s" % (len(self.ams_to_process), filename)
+                self.logger.info(msg)
+                retVal += msg
 
         except StitchingError, se:
             if lvl:
@@ -421,7 +424,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             return
         
-        scsres = prependFilePrefix(self.opts.filePrefix, Aggregate.FAKEMODESCSFILENAME)
+        scsres = prependFilePrefix(self.opts.fileDir, Aggregate.FAKEMODESCSFILENAME)
         if os.path.exists(scsres):
             os.unlink(scsres)
 
@@ -433,14 +436,32 @@ class StitchingHandler(object):
 
         for am in self.ams_to_process:
             # Remove getversion files
-            filename = handler_utils._construct_output_filename(self.opts, None, am.url, None, "getversion", ".json", 1)
+            # Note the AM URN here may not be right, so we might miss a file
+            filename = handler_utils._construct_output_filename(self.opts, None, am.url, am.urn, "getversion", ".json", 1)
+#            self.logger.debug("Deleting AM getversion: %s", filename)
             if os.path.exists(filename):
                 os.unlink(filename)
 
-            # Remove any RSpec
+            # Remove any per AM request RSpecs
             if am.rspecfileName and not self.opts.output:
+#                self.logger.debug("Deleting AM request: %s", am.rspecfileName)
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
+
+            # v2.5 left these manifest & status files there. Leave them still? Remove them?
+
+            # Now delete the per AM saved manifest rspec file
+            if not self.opts.output:
+                manfile = handler_utils._construct_output_filename(self.opts, self.slicename, am.url, am.urn, "manifest-rspec", ".xml", 1)
+#                self.logger.debug("Deleting AM manifest: %s", manfile)
+                if os.path.exists(manfile):
+                    os.unlink(manfile)
+
+                # Now delete per AM saved status files
+                statusfilename = handler_utils._construct_output_filename(self.opts, self.slicename, am.url, am.urn, "sliverstatus", ".json", 1)
+#                self.logger.debug("Deleting AM status: %s", statusfilename)
+                if os.path.exists(statusfilename):
+                    os.unlink(statusfilename)
 
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
@@ -791,8 +812,8 @@ class StitchingHandler(object):
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
             if "%slicehrn" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
-            if self.opts.filePrefix:
-                self.opts.slicecredfile = prependFilePrefix(self.opts.filePrefix, self.opts.slicecredfile)
+            if self.opts.fileDir:
+                self.opts.slicecredfile = prependFilePrefix(self.opts.fileDir, self.opts.slicecredfile)
             trim = -4
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
@@ -998,7 +1019,7 @@ class StitchingHandler(object):
         self.logger.debug("SCS successfully returned.");
 
         if self.opts.debug:
-            scsresfile = prependFilePrefix(self.opts.filePrefix, "scs-result.json")
+            scsresfile = prependFilePrefix(self.opts.fileDir, "scs-result.json")
             self.logger.debug("Writing SCS result JSON to %s" % scsresfile)
             with open (scsresfile, 'w') as file:
                 file.write(stripBlankLines(str(json.dumps(self.scsService.result, encoding='ascii', cls=DateTimeAwareJSONEncoder))))
@@ -1161,7 +1182,7 @@ class StitchingHandler(object):
             # Set -o to ensure this goes to a file, not logger or stdout
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
-            scsreplfile = prependFilePrefix(self.opts.filePrefix, Aggregate.FAKEMODESCSFILENAME)
+            scsreplfile = prependFilePrefix(self.opts.fileDir, Aggregate.FAKEMODESCSFILENAME)
             handler_utils._printResults(opts_copy, self.logger, header, \
                                             content, \
                                             scsreplfile)
@@ -1584,7 +1605,7 @@ class StitchingHandler(object):
                              sliceurn)
             return
         # ./$slicehrn-amlist.txt
-        fname = prependFilePrefix(self.opts.filePrefix, "~/.gcf/%s-amlist.txt" % slicehrn)
+        fname = prependFilePrefix(self.opts.fileDir, "~/.gcf/%s-amlist.txt" % slicehrn)
         if not self.ams_to_process or len(self.ams_to_process) == 0:
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
@@ -1638,7 +1659,7 @@ class StitchingHandler(object):
             return
 
         # ./$slicehrn-amlist.txt
-        fname = prependFilePrefix(self.opts.filePrefix, "~/.gcf/%s-amlist.txt" % slicehrn)
+        fname = prependFilePrefix(self.opts.fileDir, "~/.gcf/%s-amlist.txt" % slicehrn)
 
         # look to see if $slicehrn-amlist.txt exists
         if not os.path.exists(fname) or not os.path.getsize(fname) > 0:

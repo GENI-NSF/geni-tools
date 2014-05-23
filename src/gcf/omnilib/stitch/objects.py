@@ -1133,7 +1133,7 @@ class Aggregate(object):
 
         # Put request RSpecs in /tmp - ensure writable
         # FIXME: Commandline users would prefer something else?
-        self.rspecfileName = prependFilePrefix(opts.filePrefix, Aggregate.REQ_RSPEC_DIR + "/" + self.rspecfileName)
+        self.rspecfileName = prependFilePrefix(opts.fileDir, Aggregate.REQ_RSPEC_DIR + "/" + self.rspecfileName)
 
         # Set -o to ensure this request RSpec goes to a file, not logger or stdout
         # Turn off info level logs for this rspec printout
@@ -2897,7 +2897,7 @@ class Aggregate(object):
         # derive filename
         # FIXME: Take the expanded request from the SCS and pretend it is the manifest
         # That way, we get the VLAN we asked for
-        resultPath = prependFilePrefix(opts.filePrefix, Aggregate.FAKEMODESCSFILENAME)
+        resultPath = prependFilePrefix(opts.fileDir, Aggregate.FAKEMODESCSFILENAME)
 
 #        # For now, results file only has a manifest. No JSON
 #        resultFileName = _construct_output_filename(opts, slicename, self.url, self.urn, opName+'-result'+str(ctr), '.json', 1)
