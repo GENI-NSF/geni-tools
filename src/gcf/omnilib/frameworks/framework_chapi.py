@@ -125,7 +125,10 @@ class Framework(Framework_Base):
             self.speakV2 = True
         else:
             self.speakV2 = False
-        self.logger.info("CH speaks v2 = %s" % self.speakV2)
+        if self.speakV2:
+            self.logger.debug("CH speaks CHAPI v2")
+        else:
+            self.logger.debug("CH speaks CHAPI v1")
 
         self.cert = config['cert']
         try:
@@ -465,7 +468,7 @@ class Framework(Framework_Base):
                                      self.ma().lookup,
                                      "KEY", 
                                      scred, options)
-            # In V2, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
+            # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
             if res['code'] == 0:
@@ -1293,7 +1296,7 @@ class Framework(Framework_Base):
         else:
             res, mess = _do_ssl(self, None, "Looking up member %s SSH keys" % urn,
                                 self.ma().lookup, "KEY", creds, options)
-            # In V2, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
+            # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
             if res['code'] == 0:
