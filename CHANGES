@@ -1,5 +1,15 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.5.3:
+ * omni-configure:
+  * New option `--clean`
+  * New option `--replace-all`
+  * Refactored 
+
+ * omni
+  * Can now parse omni-configure sections of omni_config. (#436)
+
+
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
    avoiding the heartbleed vulnerability. (#593)

@@ -47,7 +47,7 @@ import M2Crypto
 
 logger = None
 
-OMNI_VERSION="2.6"
+OMNI_VERSION="2.5.3"
 
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",

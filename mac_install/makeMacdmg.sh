@@ -1,5 +1,5 @@
 SRCDIR=~/gcf
-DESTDIR=~/omniTools/omniTools-2.5
+DESTDIR=~/omniTools/omniTools-2.5.3
 COVERDIR=~/omniTools
 
 cd ${SRCDIR}/src
