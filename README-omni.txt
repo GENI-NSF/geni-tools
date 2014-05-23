@@ -71,6 +71,8 @@ New in v2.6:
  * `renewslice` properly warns if your new expiration is not what you
    requested (#575)
  * rspec_util utility takes optional logger (#612)
+ * Add support for talking to SA/MA that speak Federation API v2.
+   To use the v2 APIs, add to your `omni_config`: `speakv2=true`. (#613)
  * Ensure manifest from `createsliver` is printed prettily.
    `getPrettyRSpec` takes a flag on whether it does pretty
    printing, default True. Do not do pretty printing on most
