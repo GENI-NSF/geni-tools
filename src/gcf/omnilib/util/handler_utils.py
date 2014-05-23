@@ -29,6 +29,7 @@ import dateutil
 import json
 import logging
 import os
+import re
 import string
 
 from . import json_encoding
@@ -558,6 +559,7 @@ def remove_bad_characters( input ):
     input = input.translate(table)
     if input.endswith('-'):
         input = input[:-1]
+    input = re.sub("--", "-", input)
     return input
 
 def _get_server_name(clienturl, clienturn):
@@ -613,7 +615,10 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
         filename = slicename+"-" + filename
 #--- 
     if opts and opts.prefix and opts.prefix.strip() != "":
-        filename  = opts.prefix.strip() + "-" + filename
+        if not opts.prefix.strip().endswith('/'):
+            filename  = opts.prefix.strip() + "-" + filename
+        else:
+            filename  = opts.prefix.strip() + filename
     return filename
 
 def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
@@ -932,7 +937,6 @@ def expires_from_rspec(result, logger=None):
     if result is None or str(result).strip() == "":
         return None
     rspec = str(result)
-    import re
     match = re.search("<rspec [^>]*expires\s*=\s*[\'\"]([^\'\"]+)[\'\"]", rspec)
     if match:
         expStr = match.group(1).strip()
