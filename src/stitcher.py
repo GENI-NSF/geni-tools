@@ -63,7 +63,6 @@ import json
 import logging
 import optparse 
 import os
-import os.path
 import sys
 
 import gcf.oscript as omni
@@ -160,8 +159,8 @@ def call(argv, options=None):
     if options.fileDir:
         fpDir = os.path.normpath(os.path.expanduser(options.fileDir))
         if fpDir and fpDir != "":
-            if not fpDir.endswith('/'):
-                fpDir += '/'
+            if not fpDir.endswith(os.sep):
+                fpDir += os.sep
             if not os.path.exists(fpDir):
                 try:
                     os.makedirs(fpDir)
@@ -172,10 +171,14 @@ def call(argv, options=None):
 
     # Make any file prefix be part of the output file prefix so files go in the right spot
     if options.prefix and options.fileDir:
-        pIsDir = (options.prefix and options.prefix.endswith('/'))
-        options.prefix = os.path.normpath(options.fileDir + options.prefix)
+        pIsDir = (options.prefix and options.prefix.endswith(os.sep))
+        if not os.path.isabs(options.prefix):
+            options.prefix = os.path.normpath(os.path.join(options.fileDir, options.prefix))
+        else:
+            # replace any directory in prefix and use the fileDir
+            options.prefix = prependFilePrefix(options.fileDir, options.prefix)
         if pIsDir:
-            options.prefix += '/'
+            options.prefix += os.sep
     elif options.fileDir:
         options.prefix = options.fileDir
 
@@ -185,7 +188,7 @@ def call(argv, options=None):
 # This drops any directory in options.prefix
 #    options.prefix = prependFilePrefix(options.fileDir, options.prefix)
 
-#        logger.debug("--prefix is now %s", options.prefix)
+#    logger.debug("--prefix is now %s", options.prefix)
 
     # Create the dirs needed for options.prefix if specified
     if options.prefix:

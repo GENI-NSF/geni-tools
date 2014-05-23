@@ -1139,9 +1139,13 @@ class Aggregate(object):
         self.rspecfileName = _construct_output_filename(opts, slicename, self.url, self.urn, \
                                                        opName + '-request-'+str(scsCallCount) + str(self.allocateTries), '.xml', 1)
 
-        # Put request RSpecs in /tmp - ensure writable
-        # FIXME: Commandline users would prefer something else?
-        self.rspecfileName = prependFilePrefix(opts.fileDir, Aggregate.REQ_RSPEC_DIR + "/" + self.rspecfileName)
+        if opts.fileDir and self.rspecfileName.startswith(opts.fileDir):
+            # no need to do this combination of dirs - the full path is already set
+            pass
+        else:
+            # Put request RSpecs in /tmp - ensure writable
+            # FIXME: Commandline users would prefer something else?
+            self.rspecfileName = prependFilePrefix(opts.fileDir, os.path.join(Aggregate.REQ_RSPEC_DIR, self.rspecfileName))
 
         # Set -o to ensure this request RSpec goes to a file, not logger or stdout
         # Turn off info level logs for this rspec printout

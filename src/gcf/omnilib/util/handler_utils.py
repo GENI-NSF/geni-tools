@@ -615,7 +615,7 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
         filename = slicename+"-" + filename
 #--- 
     if opts and opts.prefix and opts.prefix.strip() != "":
-        if not opts.prefix.strip().endswith('/'):
+        if not opts.prefix.strip().endswith(os.sep):
             filename  = opts.prefix.strip() + "-" + filename
         else:
             filename  = opts.prefix.strip() + filename
