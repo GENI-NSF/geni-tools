@@ -354,7 +354,12 @@ class OmniConfigure( object ):
         # match "omni (1).bundle" as well as "omni(1).bundle"
         DEFAULT_DOWNLOADS_NUM = "*(*)"
     DEFAULT_DOWNLOADS = [ DEFAULT_DOWNLOADS_FLDR+"/omni.bundle", DEFAULT_DOWNLOADS_FLDR+"/omni-bundle.zip" ]
-    DEFAULT_DOWNLOADS_SEARCH = [ DEFAULT_DOWNLOADS_FLDR+"/omni"+DEFAULT_DOWNLOADS_NUM+".bundle", DEFAULT_DOWNLOADS_FLDR+"/omni-bundle"+DEFAULT_DOWNLOADS_NUM+".zip" ]
+    DEFAULT_DOWNLOADS_SEARCH1 = [ DEFAULT_DOWNLOADS_FLDR+"/omni.bundle",
+                                 DEFAULT_DOWNLOADS_FLDR+"/omni"+DEFAULT_DOWNLOADS_NUM+".bundle"]
+    DEFAULT_DOWNLOADS_SEARCH2 = [ DEFAULT_DOWNLOADS_FLDR+"/omni-bundle.zip",
+                                 DEFAULT_DOWNLOADS_FLDR+"/omni-bundle"+DEFAULT_DOWNLOADS_NUM+".zip" ]
+    DEFAULT_DOWNLOADS_SEARCH1 = [os.path.normcase(os.path.expanduser(tmp)) for tmp in DEFAULT_DOWNLOADS_SEARCH1]
+    DEFAULT_DOWNLOADS_SEARCH2 = [os.path.normcase(os.path.expanduser(tmp)) for tmp in DEFAULT_DOWNLOADS_SEARCH2]
 
     def __init__(self):
         self.framework = None
@@ -409,7 +414,6 @@ class OmniConfigure( object ):
                 SSLcert = config['selected_framework']['cert']
 
             if config['selected_framework']['type'].strip() == "chapi":
-                print "Ok to Delete SSL cert"
                 filestodelete.append(('SSL certificate',SSLcert, str(True)))
             if self._opts.prcertkey != "":
                 SSLprivatekey = self._opts.prcertkey
@@ -444,7 +448,7 @@ class OmniConfigure( object ):
                 allfiles = []
                 # search through the DEFAULT_DOWNLOADS files and ...
                 # also search through the wildcarded DEFAULT_DOWNLOADS_SEARCH
-                for search in self.DEFAULT_DOWNLOADS+self.DEFAULT_DOWNLOADS_SEARCH:
+                for search in self.DEFAULT_DOWNLOADS_SEARCH1 + self.DEFAULT_DOWNLOADS_SEARCH2:
                     search = os.path.abspath(os.path.expanduser(search))
                     allfiles += glob.glob(search)
             else:
@@ -606,7 +610,7 @@ class OmniConfigure( object ):
         # Expand the configfile to a full path
         opts.configfile= os.path.expanduser(opts.configfile)
         opts.configfile= os.path.abspath(opts.configfile)
-        logger.info("Using configfile: %s", opts.configfile)
+        logger.info("Creating omni_config: %s", opts.configfile)
         configdir = os.path.dirname(opts.configfile)
 
         if not opts.clean and not os.path.exists(configdir):
@@ -649,7 +653,13 @@ class OmniConfigure( object ):
 
         #validate we have all the information we need per framework
         if not opts.clean:
-            self.framework.validate(opts)
+            if self.framework.type == "portal":
+                searchPattern1 = self.DEFAULT_DOWNLOADS_SEARCH1
+                searchPattern2 = self.DEFAULT_DOWNLOADS_SEARCH2
+                # print searchPattern1, searchPattern2
+            else:
+                searchPattern1 = searchPattern2 = None
+            self.framework.validate(opts, searchPattern1, searchPattern2)
 
         # Expand the prcertkey file to a full path
         # In order to properly set the private key for the cert
@@ -687,7 +697,7 @@ class OmniConfigure( object ):
         parser.add_option("-z", "--portal-bundle", default=[],
                           action="append", dest="portal_bundle_list",
                           help="Bundle downloaded from the portal for "+ \
-                          "configuring Omni [DEFAULT: %default]", metavar="FILE")
+                          "configuring Omni [DEFAULT: %s]"%self.DEFAULT_DOWNLOADS, metavar="FILE")
         parser.add_option("-f", "--framework", default="portal", type='choice',
                           choices=['pg', 'portal'],
                           help="Control framework that you have an account " + \
@@ -740,6 +750,7 @@ class OmniConfigure( object ):
         return opts, args
 
 class ConfigFramework_Base(object):
+    type='base'
     def getConfig(self):
         raise NotImplemented, "getConfig not implemented in %s" % (self.__class__)
     def validate(self):
@@ -875,7 +886,8 @@ files=
 """ %(OMNI_VERSION, datestr,"\t"+"\n\t".join(filelist))
 
 class PGFramework( ConfigFramework_Base ):
-    def validate(self, opts):
+    type='pg'
+    def validate(self, opts, *args):
         """ This function verifies that the we have everything we need
             to run if framework is 'pg'
         """
@@ -925,7 +937,8 @@ key = %s
         return self.createConfigStr(opts, public_key_list, cert, cf_section)
 
 class PLFramework( ConfigFramework_Base ):
-    def validate(self, opts):
+    type='pl'
+    def validate(self, opts, *args):
         """ This function verifies that the we have everything we need
             to run if framework is 'pl'
         """
@@ -973,8 +986,11 @@ slicemgr=http://www.planet-lab.org:12347
         return self.createConfigStr(opts, public_key_list, cert, cf_section)
 
 class PortalFramework( ConfigFramework_Base ):
-
+    type='portal'
     def validate_portal_bundle_location(self, portal_bundle):
+        """
+        Is the file at `portal_bundle` a valid omni bundle?
+        """
         # If framework is portal, check that the bundle file is in the right place
         if not os.path.exists(portal_bundle) or \
                os.path.getsize(portal_bundle) < 1 :
@@ -985,21 +1001,58 @@ class PortalFramework( ConfigFramework_Base ):
             return False, "\nFile '"+portal_bundle+"' not a valid zip file.\n"+\
                      "Exit!"
         return True, portal_bundle
-    def validate(self, opts):
+    def validate_possible_bundle_locations(self, searchlist):
+        """
+        Go through each file in `searchlist` looking for the first file which is
+        a valid omni bundle zip file.
+        """
+        for bundle in searchlist:
+            retVal, retStr = self.validate_portal_bundle_location( bundle )
+            if retVal:
+                break
+        return retVal, retStr
+    def order_possible_bundle_locations(self, searchPattern):
+        """
+        Return a list of all files which match `searchPattern`
+        ordered by most recent first.
+        """
+        searchlist = []
+        searchPattern = [os.path.abspath(os.path.expanduser(pattern)) for pattern in searchPattern]
+        # loop over all search strings
+        for searchitem in searchPattern:
+            # loop over all files which match this search string
+            for fname in glob.glob(searchitem):
+                modified = os.path.getmtime(fname)
+                searchlist.append( (modified, fname) )
+        searchlist.sort()
+        searchlist.reverse()
+        # for item in searchlist:
+        #    print item
+        searchlist = [fname for modified, fname in searchlist]
+        return searchlist
+
+    def validate(self, opts, searchPattern1, searchPattern2, *args):
         """ This function verifies that the we have everything we need
             to run if framework is 'portal'
         """
-
-        for bundle in opts.portal_bundle_list:
-            retVal, retStr = self.validate_portal_bundle_location( bundle )
-            if retVal:
-                opts.portal_bundle = retStr
-                break
-        if not retVal:
+        if len(opts.portal_bundle_list) == 1:
+            searchlist = opts.portal_bundle_list
+            retVal, retStr = self.validate_possible_bundle_locations(searchlist)
+        else:
+            searchlist1 = self.order_possible_bundle_locations(searchPattern1)
+            retVal, retStr = self.validate_possible_bundle_locations(searchlist1)
+            if not retVal:
+                searchlist2 = self.order_possible_bundle_locations(searchPattern2)
+                retVal, retStr = self.validate_possible_bundle_locations(searchlist2)
+        if retVal:
+            opts.portal_bundle = retStr
+        else:
             sys.exit("\nPortal bundle not in '"+str(bundle)+"'.\n\
     Make sure you place the bundle downloaded from the portal there,\nor \
     use the '-z' option to specify a custom location.\n")
         self.validate_bundle(opts.portal_bundle)
+        logger.info("Using portal bundle: %s", opts.portal_bundle)
+
         # In the case of the portal there is no cert
         # file yet, extract it
         opts.cert = getFileName(opts.cert, replaceAll=opts.replace_all)
@@ -1018,8 +1071,6 @@ class PortalFramework( ConfigFramework_Base ):
             sys.exit("\nPrivate SSL key not in '"+opts.prcertkey+"'.\n\
     Either place your key in the above file or use\n \
     the '-k' option to specify a custom location for the key.\n")
-
-        logger.info("Using portal bundle: %s", opts.portal_bundle)
 
     def bundle_extract_keys(self, omnizip, opts) :
        """ function that will extract any key files in zip bundle
@@ -1379,7 +1430,7 @@ default_rspec_extension = rspec
             cf_section = self.getPortalSFSection(opts, config)
         rspecnick_section = self.getRSpecNickSection(opts, config)
         amnick_section = self.getPortalAMNickSection(opts, config)
-        omniconfigure_section = self.getOmniConfigureSection(opts, config)
+        omniconfigure_section = self.getOmniConfigureSection()
 
         return omni_section + user_section + cf_section + rspecnick_section + amnick_section + omniconfigure_section
 
