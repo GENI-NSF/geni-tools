@@ -1475,7 +1475,7 @@ def main():
             logger.info("="*80+"\n")
             logger.info("Omni is now configured!\n")
             cloc = ""
-            if oconfig._opts.configfile != os.path.abspath(os.path.expanduser(DEFAULT_OMNI_CONFIG)):
+            if oconfig._opts.configfile != os.path.normcase(os.path.abspath(os.path.expanduser(DEFAULT_OMNI_CONFIG))):
                 cloc = "-c %s " % oconfig._opts.configfile
             logger.info("To test your configuration, run: \n\tomni %s-a gpo-ig getversion \n"%cloc)
             if oconfig._opts.framework is 'portal' :
