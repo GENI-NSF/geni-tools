@@ -656,10 +656,11 @@ class OmniConfigure( object ):
             if self.framework.type == "portal":
                 searchPattern1 = self.DEFAULT_DOWNLOADS_SEARCH1
                 searchPattern2 = self.DEFAULT_DOWNLOADS_SEARCH2
+                defaultDownloads = self.DEFAULT_DOWNLOADS
                 # print searchPattern1, searchPattern2
             else:
-                searchPattern1 = searchPattern2 = None
-            self.framework.validate(opts, searchPattern1, searchPattern2)
+                searchPattern1 = searchPattern2 = defaultDownloads = None
+            self.framework.validate(opts, searchPattern1, searchPattern2, defaultDownloads)
 
         # Expand the prcertkey file to a full path
         # In order to properly set the private key for the cert
@@ -1033,7 +1034,7 @@ class PortalFramework( ConfigFramework_Base ):
         searchlist = [fname for modified, fname in searchlist]
         return searchlist
 
-    def validate(self, opts, searchPattern1, searchPattern2, *args):
+    def validate(self, opts, searchPattern1, searchPattern2, defaultLocations, *args):
         """ This function verifies that the we have everything we need
             to run if framework is 'portal'
         """
@@ -1049,9 +1050,10 @@ class PortalFramework( ConfigFramework_Base ):
         if retVal:
             opts.portal_bundle = retStr
         else:
-            sys.exit("\nPortal bundle not in '"+str(bundle)+"'.\n\
-    Make sure you place the bundle downloaded from the portal there,\nor \
-    use the '-z' option to specify a custom location.\n")
+            bundle="\n\t".join(defaultLocations)
+            sys.exit("\nPortal bundle not in a default location:\n\t"+str(bundle)+"\n\n\
+Make sure you place the bundle downloaded from the portal \nin one of the above locations, or \
+use the '-z' option to\nspecify a custom location.\n")
         self.validate_bundle(opts.portal_bundle)
         logger.info("Using portal bundle: %s", opts.portal_bundle)
 
