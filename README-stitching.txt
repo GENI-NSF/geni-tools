@@ -508,7 +508,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Suppress most log messages (push to an output file), summarizing
  errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates
- - Support GRE tunnels
  - Support recreating the combined manifest RSpec
  - Support AM API v3
  - Consolidate constants
