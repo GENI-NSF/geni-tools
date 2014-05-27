@@ -1478,7 +1478,7 @@ def main():
             cloc = ""
             if oconfig._opts.configfile != os.path.abspath(os.path.expanduser(DEFAULT_OMNI_CONFIG)):
                 cloc = "-c %s " % oconfig._opts.configfile
-            logger.info("To test your configuration, run: \n\tomni %s-a ig-gpo getversion \n"%cloc)
+            logger.info("To test your configuration, run: \n\tomni %s-a gpo-ig getversion \n"%cloc)
             if oconfig._opts.framework is 'portal' :
                 shutil.rmtree('/tmp/omni_bundle')
     except KeyboardInterrupt:
