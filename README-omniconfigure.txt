@@ -1,6 +1,6 @@
 = Configuring Omni = 
 
-GCF v1.6.2 and later comes with a configuration script (omni-configure.py)
+GCF/Omni comes with a configuration script (omni-configure)
 that will automatically configure Omni for users with a standard setup.
 Users with more complicated setups should manually configure Omni. 
 
@@ -36,18 +36,18 @@ GCF v2.2.1 and later also supports automatic configuration of omni
 for portal credentials. 
 
 Look at help for more info. 
-== omni-configure.py script ==
+== omni-configure script ==
 
-omni-configure.py is a script that will automatically create
+omni-configure is a script that will automatically create
 the configuration file that Omni requires to run. 
 
 The script is intended for users that want a standard configuration
 for using omni. 
 
-Currently the omni-configure.py script fully supports ProtoGENI certificates
+Currently the omni-configure script fully supports ProtoGENI certificates
 and certificates from the GENI Portal.
 
-omni-configure.py will :
+omni-configure will :
   * create an omni_config file and place it under ~/.gcf by default. If file
     ~/.gcf/omni_config already exists the user will be prompted about whether a
     backup of the existing file should be created (unless run with `--replace-all`).
@@ -63,8 +63,8 @@ omni-configure.py will :
   * If you are using your account from the GENI portal, then an extra SSH 
     key pair will be created based on your SSL cert (named geni_cert_portal_key)
 
-=== Running omni-configure.py ===
-omni-configure.py needs only one file as input: the certificate file for ProtoGENI
+=== Running omni-configure ===
+omni-configure needs only one file as input: the certificate file for ProtoGENI
 accounts, or the omni bundle file downloaded from the GENI Portal for Portal accounts.
 
 If you have an account with a ProtoGENI site then:
@@ -79,7 +79,7 @@ If you have an account at the GENI Portal then:
   * run `omni-configure`
 
 
-=== Usage of omni-configure.py ===
+=== Usage of omni-configure ===
 Usage:
  Script for automatically configuring Omni.
 
