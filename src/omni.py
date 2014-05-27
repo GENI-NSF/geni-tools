@@ -73,6 +73,7 @@
        [string dictionary] = omni.py deleteimage IMAGEURN [CREATORURN]
        [string dictionary] = omni.py listimages [CREATORURN]
 
+
       Clearinghouse functions:
        [string dictionary] = omni.py get_ch_version # dict of CH specific version information
        [string dictionary urn->url] = omni.py listaggregates
@@ -91,9 +92,11 @@
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
+       [string Boolean] = omni.py removeslicemember SLICENAME USER
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
+       [string dictionary] = omni.py print_sliver_expirations SLICENAME
 """
 
 # Explicitly import framework files so py2exe is happy

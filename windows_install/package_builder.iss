@@ -1,24 +1,28 @@
 [Setup]
-OutputDir=C:\Program Files\gcf\executables
-OutputBaseFilename=omni-tools-2.5-setup
+OutputDir=C:\Users\local_user\gcf\executables
+OutputBaseFilename=omniTools-2.5.2-rc1-win-setup
 AppCopyright=2010-2014
-AppName=Omni Tools
-AppVerName=Omni Tools v2.5
-InfoAfterFile=C:\gcf\windows_install\infoAfterFile.rtf
-LicenseFile=C:\gcf\windows_install\OMNI-EXECUTABLES-DISCLAIMER.TXT
-DefaultDirName={pf}\omniTools
-DefaultGroupName=Omni Tools
+AppName=omniTools-2.5.2
+AppVerName=omniTools-2.5.2
+InfoAfterFile=C:\Users\local_user\gcf\windows_install\infoAfterFile.rtf
+LicenseFile=C:\Users\local_user\gcf\windows_install\LICENSE.TXT
+DefaultDirName={pf}\omniTools-2.5.2
+DefaultGroupName=omniTools-2.5.2
 ShowLanguageDialog=no
 UsePreviousAppDir=false
 [Run]
 Filename: {app}\install.vbs; Flags: shellexec
 [Icons]
 Name: {group}\Documentation; Filename: http://trac.gpolab.bbn.com/gcf/wiki; Comment: omni wiki
-Name: {group}\How To Configure Omni; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omni
-Name: {group}\Disclaimer; Filename: {app}\OMNI-EXECUTABLES-DISCLAIMER.TXT
-Name: {group}\{cm:UninstallProgram, omni}; Filename: {uninstallexe}
+Name: {group}\How To Configure omniTools-2.5.2; Filename: http://trac.gpolab.bbn.com/gcf/wiki/Windows; Comment: Instructions for configuring omniTools-2.5.2
+Name: {group}\Disclaimer; Filename: {app}\LICENSE.TXT
+Name: {group}\{cm:UninstallProgram, omniTools-2.5.2}; Filename: {uninstallexe}
 [Files]
-Source: OMNI-EXECUTABLES-DISCLAIMER.TXT; DestDir: {app}
+Source: LICENSE.TXT; DestDir: {app}
+Source: ..\README-omni.txt; DestDir: {app}
+Source: ..\README-omniconfigure.txt; DestDir: {app}
+Source: ..\README-stitching.txt; DestDir: {app}
+Source: ..\README-clearpassphrases.txt; DestDir: {app}
 Source: ..\src\dist\_hashlib.pyd; DestDir: {app}
 Source: ..\src\dist\_socket.pyd; DestDir: {app}
 Source: ..\src\dist\_ssl.pyd; DestDir: {app}
@@ -39,10 +43,10 @@ Source: ..\src\dist\readyToLogin.exe; DestDir: {app}
 Source: ..\src\dist\select.pyd; DestDir: {app}
 Source: ..\src\dist\SSLEAY32.dll; DestDir: {app}
 Source: ..\src\dist\stitcher.exe; DestDir: {app}
+Source: ..\src\dist\addMemberToSliceandSlivers.exe; DestDir: {app}
 Source: ..\src\dist\tcl85.dll; DestDir: {app}
 Source: ..\src\dist\tk85.dll; DestDir: {app}
 Source: ..\src\dist\unicodedata.pyd; DestDir: {app}
-Source: ..\src\dist\w9xpopen.exe; DestDir: {app}
 Source: ..\src\dist\tcl\tcl8.5\encoding\ascii.enc; DestDir: {app}\tcl\tcl8.5\encoding
 Source: ..\src\dist\tcl\tcl8.5\encoding\big5.enc; DestDir: {app}\tcl\tcl8.5\encoding
 Source: ..\src\dist\tcl\tcl8.5\encoding\cp1250.enc; DestDir: {app}\tcl\tcl8.5\encoding

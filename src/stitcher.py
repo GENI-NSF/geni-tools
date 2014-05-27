@@ -68,7 +68,7 @@ import sys
 import gcf.oscript as omni
 from gcf.omnilib.util import OmniError, AMAPIError
 from gcf.omnilib.stitchhandler import StitchingHandler
-from gcf.omnilib.stitch.utils import StitchingError
+from gcf.omnilib.stitch.utils import StitchingError, prependFilePrefix
 from gcf.omnilib.stitch.objects import Aggregate
 import gcf.omnilib.stitch.objects
 #from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
@@ -130,6 +130,10 @@ def call(argv, options=None):
                       type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
     parser.add_option("--noReservation", default=False, action="store_true",
                       help="Do no reservations: just generate the expanded request RSpec (default False)")
+    parser.add_option("--savedSCSResults", default=None,
+                      help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
+    parser.add_option("--fileDir", default=None,
+                      help="Directory for all output files generated. By default some files go in /tmp, some in the CWD, some in ~/.gcf.")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -150,6 +154,50 @@ def call(argv, options=None):
     config = omni.load_config(options, logger, config)
 
     #logger.info("Using AM API version %d", options.api_version)
+
+    # Create the dirs for fileDir option as needed
+    if options.fileDir:
+        fpDir = os.path.normpath(os.path.expanduser(options.fileDir))
+        if fpDir and fpDir != "":
+            if not fpDir.endswith(os.sep):
+                fpDir += os.sep
+            if not os.path.exists(fpDir):
+                try:
+                    os.makedirs(fpDir)
+                except Exception, e:
+                    sys.exit("Failed to create %s for saving files per --fileDir option: %s" % (fpDir, e))
+        options.fileDir = fpDir
+        logger.info("All files will be saved in the directory '%s'", options.fileDir)
+
+    # Make any file prefix be part of the output file prefix so files go in the right spot
+    if options.prefix and options.fileDir:
+        pIsDir = (options.prefix and options.prefix.endswith(os.sep))
+        if not os.path.isabs(options.prefix):
+            options.prefix = os.path.normpath(os.path.join(options.fileDir, options.prefix))
+        else:
+            # replace any directory in prefix and use the fileDir
+            options.prefix = prependFilePrefix(options.fileDir, options.prefix)
+        if pIsDir:
+            options.prefix += os.sep
+    elif options.fileDir:
+        options.prefix = options.fileDir
+
+# This means if options.prefix starts with a / we lose options.fileDir
+    #options.prefix = os.path.join(options.fileDir, options.prefix)
+
+# This drops any directory in options.prefix
+#    options.prefix = prependFilePrefix(options.fileDir, options.prefix)
+
+#    logger.debug("--prefix is now %s", options.prefix)
+
+    # Create the dirs needed for options.prefix if specified
+    if options.prefix:
+        fpDir = os.path.dirname(options.prefix)
+        if fpDir and fpDir != "" and not os.path.exists(fpDir):
+            try:
+                os.makedirs(fpDir)
+            except Exception, e:
+                sys.exit("Failed to create %s for saving files per --prefix option: %s" % (fpDir, e))
 
     if options.fakeModeDir:
         if not os.path.isdir(options.fakeModeDir):

@@ -144,6 +144,10 @@ verbose=false
 # Uncomment this line for such servers (such as emulab.net)
 #needcred=true
 
+# Does this Clearinghouse speak the Common Federation API v2?
+# Default is false, so use v1
+#speakv2=true
+
 [my_gcf]
 type=gcf
 

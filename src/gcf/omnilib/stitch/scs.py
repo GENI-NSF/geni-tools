@@ -26,6 +26,8 @@
 
 from __future__ import absolute_import
 
+import json
+import os.path
 import pprint
 import sys
 import xmlrpclib
@@ -33,10 +35,13 @@ import xmlrpclib
 from gcf.omnilib.stitch.utils import StitchingError, StitchingServiceFailedError
 from gcf.omnilib.xmlrpc.client import make_client
 
+from gcf.omnilib.util.json_encoding import DateTimeAwareJSONDecoder
+
 # Tags used in the options to the SCS
 HOP_EXCLUSION_TAG = 'hop_exclusion_list'
 HOP_INCLUSION_TAG = 'hop_inclusion_list'
 GENI_PROFILE_TAG = 'geni_routing_profile'
+GENI_PATHS_MERGED_TAG = 'geni_workflow_paths_merged'
 
 class Result(object):
     '''Hold and parse the raw result from the SCS'''
@@ -66,12 +71,13 @@ class Result(object):
 
 # FIXME: Support authentication by the service at some point
 class Service(object):
-    def __init__(self, url, timeout=None):
+    def __init__(self, url, timeout=None, verbose=False):
         self.url = url
         self.timeout=timeout
+        self.verbose=verbose
 
     def GetVersion(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
+        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.GetVersion()
         except xmlrpclib.Error as v:
@@ -85,7 +91,7 @@ class Service(object):
         return result
 
     def ListAggregates(self, printResult=True):
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
+        server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
         try:
             result = server.ListAggregates()
         except xmlrpclib.Error as v:
@@ -98,22 +104,35 @@ class Service(object):
             print pp.pformat(result)
         return result
 
-    def ComputePath(self, slice_urn, request_rspec, options):
+    def ComputePath(self, slice_urn, request_rspec, options, savedFile=None):
         """Invoke the XML-RPC service with the request rspec.
         Create an SCS PathInfo from the result.
         """
-        server = make_client(self.url, keyfile=None, certfile=None, verbose=False, timeout=self.timeout)
-        arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
-                   request_options=options)
+        result = None
+        if savedFile and os.path.exists(savedFile) and os.path.getsize(savedFile) > 0:
+            # read it in
+            try:
+                savedSCSResults = None
+                with open(savedFile, 'r') as sfP:
+                    savedStr = str(sfP.read())
+                    result = json.loads(savedStr, encoding='ascii', cls=DateTimeAwareJSONDecoder)
+            except Exception, e:
+                import traceback
+                print "ERROR", e, traceback.format_exc()
+                raise
+        if result is None:
+            server = make_client(self.url, keyfile=None, certfile=None, verbose=self.verbose, timeout=self.timeout)
+            arg = dict(slice_urn=slice_urn, request_rspec=request_rspec,
+                       request_options=options)
 #        import json
 #        print "Calling SCS with arg: %s" % (json.dumps(arg,
 #                                                       ensure_ascii=True,
 #                                                       indent=2))
-        try:
-            result = server.ComputePath(arg)
-        except xmlrpclib.Error as v:
-            print "ERROR", v
-            raise
+            try:
+                result = server.ComputePath(arg)
+            except xmlrpclib.Error as v:
+                print "ERROR", v
+                raise
 
         self.result = result # save the raw result for stitchhandler to print
         geni_result = Result(result) # parse result

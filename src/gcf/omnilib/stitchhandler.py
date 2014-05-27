@@ -28,9 +28,11 @@ from __future__ import absolute_import
 parsing RSpecs and creating objects. See doStitching().'''
 import copy
 import datetime
+import json
 import logging
 import os
 import string
+import sys
 import time
 
 from .. import oscript as omni
@@ -38,6 +40,7 @@ from .util import OmniError, naiveUTC
 from .util import credparsing as credutils
 from .util.files import readFile
 from .util import handler_utils
+from .util.json_encoding import DateTimeAwareJSONEncoder
 
 from . import stitch
 from .stitch import defs
@@ -46,16 +49,18 @@ from .stitch.objects import Aggregate, Link, Node, LinkProperty
 from .stitch.RSpecParser import RSpecParser
 from .stitch import scs
 from .stitch.workflow import WorkflowParser
-from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines
+from .stitch.utils import StitchingError, StitchingCircuitFailedError, stripBlankLines, isRSpecStitchingSchemaV2, prependFilePrefix
+from .stitch.VLANRange import *
 
 from ..geni.util import rspec_schema
-from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec, getPrettyRSpec
+from ..geni.util.rspec_util import is_rspec_string, is_rspec_of_type, rspeclint_exists, validate_rspec
 
 from ..sfa.util.xrn import urn_to_hrn, get_leaf
 
 DCN_AM_TYPE = 'dcn' # geni_am_type value from AMs that use the DCN codebase
 ORCA_AM_TYPE = 'orca' # geni_am_type value from AMs that use the Orca codebase
 PG_AM_TYPE = 'protogeni' # geni_am_type / am_type from ProtoGENI based AMs
+GRAM_AM_TYPE = 'gram' # geni_am_type value from AMs that use the GRAM codebase
 
 # Max # of times to call the stitching service
 MAX_SCS_CALLS = 5
@@ -145,14 +150,17 @@ class StitchingHandler(object):
         else:
             raise OmniError("No request RSpec found, or slice name missing!")
 
+        self.isStitching = self.mustCallSCS(self.parsedUserRequest)
+        self.isGRE = self.hasGRELink(self.parsedUserRequest)
+
         # If this is not a real stitching thing, just let Omni handle this.
         # This will also ensure each stitched link has an explicit capacity on 2 properties
-        if not self.mustCallSCS(self.parsedUserRequest):
-            self.logger.info("Not a stitching request - let Omni handle this.")
+        if not self.isStitching and not self.isGRE:
+            self.logger.info("Not a stitching or GRE request - let Omni handle this.")
 
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
-                raise StitchingError("Requested no reservation")
+                sys.exit()
 
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
@@ -185,7 +193,10 @@ class StitchingHandler(object):
         # Here is where we used to add the expires attribute. No
         # longer necessary (or a good idea).
 
-        self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout)
+        if self.isStitching:
+            if not "oingo.dragon.maxgigapop.net:8081" in self.opts.scsURL:
+                self.logger.info("Using SCS at %s", self.opts.scsURL)
+            self.scsService = scs.Service(self.opts.scsURL, self.opts.ssltimeout, self.opts.verbosessl)
         self.scsCalls = 0
 
         # Compare the list of AMs in the request with AMs known
@@ -201,16 +212,20 @@ class StitchingHandler(object):
 
             # Construct a unified manifest
             # include AMs, URLs, API versions
-            if lastAM.isEG:
-                self.logger.debug("Last AM was an EG AM. Find another for the template.")
+            # Avoid EG manifests - they are incomplete
+            # Avoid DCN manifests - they do funny things with namespaces (ticket #549)
+            # GRAM AMs seems to also miss nodes. Avoid if possible.
+            if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+                self.logger.debug("Last AM was an EG or DCN or GRAM AM. Find another for the template.")
                 i = 1
-                while lastAM.isEG and i <= len(self.ams_to_process):
+                while (lastAM.isEG or lastAM.dcn or lastAM.isGRAM) and i <= len(self.ams_to_process):
                     # This has lost some hops and messed up hop IDs. Don't use it as the template
                     # I'd like to find another AM we did recently
                     lastAM = self.ams_to_process[-i]
                     i = i + 1
-                if lastAM.isEG:
-                    self.logger.debug("Still had an EG template AM?")
+                if lastAM.isEG or lastAM.dcn or lastAM.isGRAM:
+                    self.logger.debug("Still had an EG or DCN or GRAM template AM - use the raw SCS request")
+                    lastAM = None
             combinedManifest = self.combineManifests(self.ams_to_process, lastAM)
 
             # FIXME: Handle errors. Maybe make return use code/value/output struct
@@ -219,7 +234,10 @@ class StitchingHandler(object):
 
             # FIXME: This prepends a header on an RSpec that might already have a header
             # -- maybe replace any existing header
-            # FIXME: Without the -o option this is really verbose! Maybe set -o?
+
+            # FIXME: We force -o here and keep it from logging the
+            # RSpec. Do we need an option to not write the RSpec to a file?
+
             ot = self.opts.output
             if not self.opts.tostdout:
                 self.opts.output = True
@@ -228,8 +246,103 @@ class StitchingHandler(object):
             retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
             self.logger.setLevel(lvl)
             self.opts.output = ot
+
+            # Print something about sliver expiration times
+            soonest = None
+            msg = None
+            for am in self.ams_to_process:
+                exps = am.sliverExpirations
+                if exps:
+                    if isinstance(exps, list):
+                        if len(exps) > 1:
+                            # More than 1 distinct sliver expiration found
+                            # Sort and take first
+                            exps = exps.sort()
+                            nextTime = exps[0]
+                            if soonest is None:
+                                soonest = (nextTime, str(am), 1)
+                            elif nextTime < soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (nextTime, str(am), count)
+                            elif nextTime > soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
+
+                            outputstr = nextTime.isoformat()
+                            msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
+                        elif len(exps) == 0:
+                            msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
+                        else:
+                            outputstr = exps[0].isoformat()
+                            msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
+                            if soonest is None:
+                                soonest = (exps[0], str(am), 1)
+                            elif exps[0] < soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (exps[0], str(am), count)
+                            elif exps[0] > soonest[0]:
+                                # Only increment soonest[2] if the difference is more than a few minutes
+                                # - that is, more than the stitcher runtime
+                                count = soonest[2]
+                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                    count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
+                    else:
+                        outputstr = exps.isoformat()
+                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
+
+                        if soonest is None:
+                            soonest = (exps, str(am), 1)
+                        elif exps < soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (exps, str(am), count)
+                        elif exps > soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                            soonest = (soonest[0], soonest[1], count)
+                else:
+                    # else got no sliver expiration for this AM
+                    # Like at EG or GRAM AMs. See ticket #318
+                    msg = "Resource expiration at %s unknown - try print_sliver_expirations. " % am
+
+                self.logger.debug(msg)
+                #retVal += msg + "\n"
+            # End of loop over AMs
+
+            msg = None
+            if soonest is not None and soonest[2] > 1:
+                # Diff parts of the slice expire at different times
+                msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
+            elif soonest:
+                msg = "Your resources expire at %s (UTC). " % (soonest[0])
+
+            if msg:
+                self.logger.info(msg)
+                retVal += msg + "\n"
+
             if filename:
-                self.logger.info("Saved combined reservation RSpec at %d AMs to file %s", len(self.ams_to_process), filename)
+                msg = "Saved combined reservation RSpec at %d AMs to file %s" % (len(self.ams_to_process), filename)
+                self.logger.info(msg)
+                retVal += msg
 
         except StitchingError, se:
             if lvl:
@@ -240,7 +353,11 @@ class StitchingHandler(object):
                 self.logger.error("Root cause error: %s", self.lastException)
                 newError = StitchingError("%s which caused %s" % (str(self.lastException), str(se)))
                 se = newError
-            raise se
+            if "Requested no reservation" in str(se):
+                print str(se)
+                sys.exit(0)
+            else:
+                raise se
         finally:
             # Save a file with the aggregates used in this slice
             self.saveAggregateList(sliceurn)
@@ -255,12 +372,26 @@ class StitchingHandler(object):
         amcnt = len(self.ams_to_process)
         scs_added_amcnt = 0
         pathcnt = 0
+        grecnt = 0
         if self.parsedSCSRSpec and self.parsedSCSRSpec.stitching:
             pathcnt = len(self.parsedSCSRSpec.stitching.paths)
+        if self.parsedSCSRSpec and self.parsedSCSRSpec.links:
+            for link in self.parsedSCSRSpec.links:
+                if link.typeName in (link.GRE_LINK_TYPE, link.EGRE_LINK_TYPE):
+                    grecnt += 1
         for am in self.ams_to_process:
             if not am.userRequested:
                 scs_added_amcnt = scs_added_amcnt + 1
-        retMsg = "Stitching success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request), creating %d link(s)." % (self.slicename, amcnt, scs_added_amcnt, pathcnt)
+        greStr = ""
+        if grecnt > 0:
+            greStr = ", creating %d GRE link(s)" % grecnt
+        stitchStr = ""
+        if pathcnt > 0:
+            stitchStr = ", creating %d stitched link(s)" % pathcnt
+        if scs_added_amcnt > 0:
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request)%s%s." % (self.slicename, amcnt, scs_added_amcnt, greStr, stitchStr)
+        else:
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates%s%s." % (self.slicename, amcnt, greStr, stitchStr)
  
         # FIXME: What do we want to return?
 # Make it something like createsliver / allocate, with the code/value/output triple plus a string
@@ -311,8 +442,9 @@ class StitchingHandler(object):
         if self.opts.debug:
             return
         
-        if os.path.exists(Aggregate.FAKEMODESCSFILENAME):
-            os.unlink(Aggregate.FAKEMODESCSFILENAME)
+        scsres = prependFilePrefix(self.opts.fileDir, Aggregate.FAKEMODESCSFILENAME)
+        if os.path.exists(scsres):
+            os.unlink(scsres)
 
         if self.savedSliceCred and os.path.exists(self.opts.slicecredfile):
             os.unlink(self.opts.slicecredfile)
@@ -322,14 +454,32 @@ class StitchingHandler(object):
 
         for am in self.ams_to_process:
             # Remove getversion files
-            filename = handler_utils._construct_output_filename(self.opts, None, am.url, None, "getversion", ".json", 1)
+            # Note the AM URN here may not be right, so we might miss a file
+            filename = handler_utils._construct_output_filename(self.opts, None, am.url, am.urn, "getversion", ".json", 1)
+#            self.logger.debug("Deleting AM getversion: %s", filename)
             if os.path.exists(filename):
                 os.unlink(filename)
 
-            # Remove any RSpec
+            # Remove any per AM request RSpecs
             if am.rspecfileName and not self.opts.output:
+#                self.logger.debug("Deleting AM request: %s", am.rspecfileName)
                 if os.path.exists(am.rspecfileName):
                     os.unlink(am.rspecfileName)
+
+            # v2.5 left these manifest & status files there. Leave them still? Remove them?
+
+            # Now delete the per AM saved manifest rspec file
+            if not self.opts.output:
+                manfile = handler_utils._construct_output_filename(self.opts, self.slicename, am.url, am.urn, "manifest-rspec", ".xml", 1)
+#                self.logger.debug("Deleting AM manifest: %s", manfile)
+                if os.path.exists(manfile):
+                    os.unlink(manfile)
+
+                # Now delete per AM saved status files
+                statusfilename = handler_utils._construct_output_filename(self.opts, self.slicename, am.url, am.urn, "sliverstatus", ".json", 1)
+#                self.logger.debug("Deleting AM status: %s", statusfilename)
+                if os.path.exists(statusfilename):
+                    os.unlink(statusfilename)
 
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
@@ -343,7 +493,8 @@ class StitchingHandler(object):
             else:
                 self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
 
-        scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
+        if self.isStitching:
+            scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
         self.lastException = None # Clear any last exception from the last run through
 
         if self.scsCalls > 1 and existingAggs:
@@ -352,15 +503,30 @@ class StitchingHandler(object):
             # If one of the AMs is a DCN AM, use that sleep time instead - longer
             sTime = Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS
             for agg in existingAggs:
-                if agg.dcn:
+                if agg.dcn and agg.triedRes:
+                    # Only need to sleep this much longer time
+                    # If this is a DCN AM that we tried a reservation on (whether it worked or failed)
                     sTime = Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
-                    break
+                # Reset whether we've tried this AM this time through
+                agg.triedRes = False
             self.logger.info("Pausing for %d seconds for Aggregates to free up resources...\n\n", sTime)
             time.sleep(sTime)
 
         # Parse SCS Response, constructing objects and dependencies, validating return
-        self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
-        scsResponse = None # Just to note we are done with this here (keep no state)
+        if self.isStitching:
+            self.parsedSCSRSpec, workflow_parser = self.parseSCSResponse(scsResponse)
+            scsResponse = None # Just to note we are done with this here (keep no state)
+        else:
+            # FIXME: with the user rspec
+            self.parsedSCSRSpec = self.rspecParser.parse(requestDOM.toxml())
+            workflow_parser = WorkflowParser(self.logger)
+
+            # Parse the workflow, creating Path/Hop/etc objects
+            # In the process, fill in a tree of which hops depend on which,
+            # and which AMs depend on which
+            # Also mark each hop with what hop it imports VLANs from,
+            # And check for AM dependency loops
+            workflow_parser.parse({}, self.parsedSCSRSpec)
 
         if existingAggs:
             # Copy existingAggs.hops.vlans_unavailable to workflow_parser.aggs.hops.vlans_unavailable? Other state?
@@ -373,9 +539,10 @@ class StitchingHandler(object):
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
 
-        self.logger.debug("SCS workflow said to include resources from these aggregates:")
-        for am in self.ams_to_process:
-            self.logger.debug("\t%s", am)
+        if self.isStitching:
+            self.logger.debug("SCS workflow said to include resources from these aggregates:")
+            for am in self.ams_to_process:
+                self.logger.debug("\t%s", am)
 
         addedAMs = []
         for amURN in self.parsedSCSRSpec.amURNs:
@@ -402,9 +569,13 @@ class StitchingHandler(object):
                     # Try to pull from agg nicknames in the omni_config
                     for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
                         if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
-                            am.url = amURLNick
-                            self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
-                            break
+                            # Avoid apparent v1 URLs
+                            if amURLNick.strip().endswith('/1') or amURLNick.strip().endswith('/1.0'):
+                                self.logger.debug("Skipping apparent v1 URL %s for URN %s", amURLNick, amURN)
+                            else:
+                                am.url = amURLNick
+                                self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, amURLNick)
+                                break
 
                 if not am.url:
                     # Try asking our CH for AMs to get the URL for the
@@ -435,7 +606,7 @@ class StitchingHandler(object):
         if self.opts.debug:
             self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
-        self.logger.info("Stitched reservation will include resources from these aggregates:")
+        self.logger.info("Multi-AM reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
             self.logger.info("\t%s", am)
 
@@ -444,23 +615,116 @@ class StitchingHandler(object):
         if self.opts.fixedEndpoint:
             self.addFakeNode()
 
+        # Check the AMs: For each hop that says it is a VLAN producer / imports no VLANs, lets change the suggested request to "any".
+        # That should ensure that that hop succeeds the first time through. Hopefully the SCS has set up the avail ranges to work throughout
+        # the path, so everything else will just work as well.
+
+        # In APIv3, a failure later is just a negotiation case (we'll get a new tag to try). In APIv2, a later failure is a pseudo negotiation case.
+        # That is, we can go back to the 'any' hop and exclude the failed tag, deleting that reservation, and try again.
+
+        # FIXME: In schema v2, the logic for where to figure out if it is a consumer or producer is more complex. But for now, the hoplink says,
+        # and the hop indicates if it imports vlans.
+
+        # While doing this, make sure the tells for whether we can tell the hop to pick the tag are consistent.
+        for am in self.ams_to_process:
+            # Could a complex topology have some hops producing VLANs and some accepting VLANs at the same AM?
+#            if len(am.dependsOn) == 0:
+#                self.logger.debug("%s says it depends on no other AMs", am)
+            for hop in am.hops:
+                requestAny = True
+                isConsumer = False
+                isProducer = False
+                imports = False
+                if hop._hop_link.vlan_consumer:
+#                    self.logger.debug("%s says it is a vlan consumer. In itself, that is OK", hop)
+                    isConsumer = True
+                if hop._import_vlans:
+                    if hop.import_vlans_from._aggregate != hop._aggregate:
+                        imports = True
+                        self.logger.debug("%s imports VLANs from another AM, %s. Don't request 'any'.", hop, hop.import_vlans_from)
+                        if len(am.dependsOn) == 0:
+                            self.logger.warn("%s imports VLANs from %s but the AM says it depends on no AMs?!", hop, hop.import_vlans_from)
+                        requestAny = False
+                    else:
+                        # This hop imports tags from another hop on the same AM.
+                        # So we want this hop to do what that other hop does. So if that other hop is changing to any, this this
+                        # hop should change to any.
+                        hop2 = hop.import_vlans_from
+                        if hop2._import_vlans and hop2.import_vlans_from._aggregate != hop2._aggregate:
+                            imports = True
+                            requestAny = False
+                            self.logger.debug("%s imports VLANs from %s which imports VLANs from a different AM (%s) so don't request 'any'.", hop, hop2, hop2._import_vlans_from)
+                        elif not hop2._hop_link.vlan_producer:
+                            self.logger.debug("%s imports VLANs from %s which does not say it is a vlan producer. Don't request 'any'.", hop, hop2)
+                            requestAny = False
+                        else:
+                            self.logger.debug("%s imports VLANs from %s which is OK to request 'any', so this hop should request 'any'.", hop, hop2)
+                if not hop._hop_link.vlan_producer:
+                    if not imports and not isConsumer:
+                        if am.isEG or am.isGRAM:
+                            self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                            requestAny = False
+                        else:
+                            # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
+                            # assume it is willing to produce a VLAN tag
+                            self.logger.debug("%s doesn't import and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
+                            requestAny = True
+                    else:
+                        if requestAny:
+                            self.logger.debug("%s does not say it is a vlan producer. Don't request 'any'.", hop)
+                            requestAny = False
+                        else:
+                            self.logger.debug("%s does not say it is a vlan producer. Still not requesting 'any'.", hop)
+                else:
+                    isProducer = True
+                    self.logger.debug("%s marked as a VLAN producer", hop)
+                if not requestAny and not imports and not isConsumer and not isProducer:
+                    if am.isEG or am.isGRAM:
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. But it is an EG or GRAM AM, where we cannot assume 'any' works.", hop)
+                    else:
+                        # If this hop doesn't import and isn't explicitly marked as either a consumer or a producer, then
+                        # assume it is willing to produce a VLAN tag
+                        self.logger.debug("%s doesn't import VLANs and not marked as either a VLAN producer or consumer. Assuming 'any' is OK.", hop)
+                        requestAny = True
+                if requestAny:
+                    if len(am.dependsOn) != 0:
+                        self.logger.debug("%s appears OK to request tag 'any', but the AM says it depends on other AMs?", hop)
+                    if hop._hop_link.vlan_suggested_request != VLANRange.fromString("any"):
+                        self.logger.debug("Changing suggested request tag from %s to 'any' on %s", hop._hop_link.vlan_suggested_request, hop)
+                        hop._hop_link.vlan_suggested_request = VLANRange.fromString("any")
+#                    else:
+#                        self.logger.debug("%s suggested request was already 'any'.", hop)
+
         if self.opts.noReservation:
             self.logger.info("Not reserving resources")
             # Write the request rspec to a string that we save to a file
             requestString = self.parsedSCSRSpec.dom.toxml(encoding="utf-8")
             header = "<!-- Expanded Resource request for stitching for:\n\tSlice: %s -->" % (self.slicename)
             content = stripBlankLines(string.replace(requestString, "\\n", '\n'))
-            rspecfileName = "%s-expanded-request.xml" % self.slicename
+            filename = None
 
-            # Set -o to ensure this request RSpec goes to a file, not logger or stdout
-            opts_copy = copy.deepcopy(self.opts)
-            opts_copy.output = True
+            ot = self.opts.output
+            if not self.opts.tostdout:
+                self.opts.output = True
+
+            if self.opts.output:
+                filename = handler_utils._construct_output_filename(self.opts, self.slicename, '', None, "expanded-request-rspec", ".xml", 1)
+            if filename:
+                self.logger.info("Saving expanded request RSpec to file %s", filename)
+            else:
+                self.logger.info("Expanded request RSpec:")
+
             lvl = self.logger.getEffectiveLevel()
             self.logger.setLevel(logging.WARN)
-            handler_utils._printResults(opts_copy, self.logger, header, content, rspecfileName)
+
+            # Create FILE
+            # This prints or logs results, depending on whether filename is None
+            handler_utils._printResults(self.opts, self.logger, header, content, filename)
             self.logger.setLevel(lvl)
-            self.logger.info("Saved expanded request RSpec to file %s", rspecfileName)
+            self.opts.output = ot
+
             raise StitchingError("Requested no reservation")
+
 
         # The launcher handles calling the aggregates to do their allocation
         launcher = stitch.Launcher(self.opts, self.slicename, self.ams_to_process)
@@ -528,6 +792,7 @@ class StitchingHandler(object):
         if not is_rspec_string(requestString, None, None, logger=self.logger):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
         if not is_rspec_of_type(requestString, rspecType):
+#        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
             raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
 
         # Run rspeclint
@@ -586,6 +851,8 @@ class StitchingHandler(object):
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
             if "%slicehrn" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
+            if self.opts.fileDir:
+                self.opts.slicecredfile = prependFilePrefix(self.opts.fileDir, self.opts.slicecredfile)
             trim = -4
             if self.opts.slicecredfile.endswith("json"):
                 trim = -5
@@ -733,7 +1000,7 @@ class StitchingHandler(object):
             found = False
             for node in requestRSpecObject.nodes:
                 if ifc.client_id in node.interface_ids:
-                    if node.amURN not in ams:
+                    if node.amURN is not None and node.amURN not in ams:
                         ams.append(node.amURN)
                     found = True
                     self.logger.debug("Link %s interface %s found on node %s", link.id, ifc.client_id, node.id)
@@ -747,6 +1014,51 @@ class StitchingHandler(object):
             if am not in link.aggregates:
                 self.logger.debug("Adding missing AM %s to link %s", amURN, link.id)
                 link.aggregates.append(am)
+
+    def hasGRELink(self, requestRSpecObject):
+        # has a link that has 2 interface_refs and has a link type of *gre_tunnel and endpoint nodes are PG
+        if requestRSpecObject:
+            for link in requestRSpecObject.links:
+                # Make sure this link explicitly lists all its aggregates, so this test is valid
+                self.ensureLinkListsAMs(link, requestRSpecObject)
+                if not (link.typeName == link.GRE_LINK_TYPE or link.typeName == link.EGRE_LINK_TYPE):
+                    # Not GRE
+#                    self.logger.debug("Link %s not GRE but %s", link.id, link.typeName)
+                    continue
+                if len(link.aggregates) != 2:
+                    self.logger.warn("Link %s is a GRE link with %d AMs?", link.id, len(link.aggregates))
+                    continue
+                if len(link.interfaces) != 2:
+                    self.logger.warn("Link %s is a GRE link with %d interfaces?", link.id, len(link.interfaces))
+                    continue
+                isGRE = True
+                for ifc in link.interfaces:
+                    found = False
+                    for node in requestRSpecObject.nodes:
+                        if ifc.client_id in node.interface_ids:
+                            found = True
+                            # This is the node
+
+                            # I'd like to ensure the node is a PG node.
+                            # But at this point we haven't called getversion yet
+                            # So we don't really know if this is a PG node
+#                            am = Aggregate.find(node.amURN)
+#                            if not am.isPG:
+#                                self.logger.warn("Bad GRE link %s: interface_ref %s is on a non PG node: %s", link.id, ifc.client_id, am)
+#                                isGRE = False
+
+                            # We do not currently parse sliver-type off of nodes to validate that
+                            break
+                    if not found:
+                        self.logger.warn("GRE link %s has unknown interface_ref %s - assuming it is OK", link.id, ifc.client_id)
+                if isGRE:
+                    self.logger.debug("Link %s is GRE", link.id)
+                    self.isGRE = True
+                    return True
+
+        # Extra: ensure endpoints are xen for link type egre, openvz or rawpc for gre
+
+        return False
 
     def mustCallSCS(self, requestRSpecObject):
         '''Does this request actually require stitching?
@@ -777,8 +1089,10 @@ class StitchingHandler(object):
         self.scsService.result = None # Avoid any unexpected issues
 
         self.logger.debug("Calling SCS with options %s", scsOptions)
+        if self.opts.savedSCSResults:
+            self.logger.debug("** Not actually calling SCS, using results from %s", self.opts.savedSCSResults)
         try:
-            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions)
+            scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions, self.opts.savedSCSResults)
         except StitchingError as e:
             self.logger.debug("Error from slice computation service: %s", e)
             raise 
@@ -789,9 +1103,10 @@ class StitchingHandler(object):
         self.logger.debug("SCS successfully returned.");
 
         if self.opts.debug:
-            self.logger.debug("Writing SCS result JSON to scs-result.json")
-            with open ("scs-result.json", 'w') as file:
-                file.write(stripBlankLines(str(self.scsService.result)))
+            scsresfile = prependFilePrefix(self.opts.fileDir, "scs-result.json")
+            self.logger.debug("Writing SCS result JSON to %s" % scsresfile)
+            with open (scsresfile, 'w') as file:
+                file.write(stripBlankLines(str(json.dumps(self.scsService.result, encoding='ascii', cls=DateTimeAwareJSONEncoder))))
 
         self.scsService.result = None # Clear memory/state
         return scsResponse
@@ -802,6 +1117,15 @@ class StitchingHandler(object):
 
         options = {}
         # options is a struct
+
+        # Supply the SCS option that requests the
+        # '##all_paths_merged##' path in the workflow.
+        # Doing so forces SCS to detect cross path workflow loops for
+        # us.
+        # Note that in omnilib/stitch/workflow we ignore that "path"
+        # currently, and construct our own workflow
+        options[scs.GENI_PATHS_MERGED_TAG] = True
+
         # To exclude a hop, add a geni_routing_profile struct
         # This in turn should have a struct per path whose name is the path name
         # Each shuld have a hop_exclusion_list array, containing the names of hops
@@ -926,11 +1250,13 @@ class StitchingHandler(object):
         expandedRSpec = scsResponse.rspec()
 
         if self.opts.debug or self.opts.fakeModeDir:
+
+            if isRSpecStitchingSchemaV2(expandedRSpec):
+                self.logger.debug("SCS RSpec uses v2 stitching schema")
+
             # Write the RSpec the SCS gave us to a file
             header = "<!-- SCS expanded stitching request for:\n\tSlice: %s\n -->" % (self.slicename)
             if expandedRSpec and is_rspec_string( expandedRSpec, None, None, logger=self.logger ):
-                # This line seems to insert extra \ns - GCF ticket #202
-#                content = getPrettyRSpec(expandedRSpec)
                 content = stripBlankLines(string.replace(expandedRSpec, "\\n", '\n'))
             else:
                 content = "<!-- No valid RSpec returned. -->"
@@ -940,14 +1266,15 @@ class StitchingHandler(object):
             # Set -o to ensure this goes to a file, not logger or stdout
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
+            scsreplfile = prependFilePrefix(self.opts.fileDir, Aggregate.FAKEMODESCSFILENAME)
             handler_utils._printResults(opts_copy, self.logger, header, \
                                             content, \
-                                            Aggregate.FAKEMODESCSFILENAME)
+                                            scsreplfile)
             # In debug mode, keep copies of old SCS expanded requests
             if self.logger.isEnabledFor(logging.DEBUG):
-                handler_utils._printResults(opts_copy, self.logger, header, content, Aggregate.FAKEMODESCSFILENAME + str(self.scsCalls))
+                handler_utils._printResults(opts_copy, self.logger, header, content, scsreplfile + str(self.scsCalls))
             self.logger.debug("Wrote SCS expanded RSpec to %s", \
-                                  Aggregate.FAKEMODESCSFILENAME)
+                                  scsreplfile)
 
             # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
             if self.logger.isEnabledFor(logging.DEBUG):
@@ -1105,6 +1432,9 @@ class StitchingHandler(object):
                         elif PG_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is ProtoGENI", agg)
                             agg.isPG = True
+                        elif GRAM_AM_TYPE in version[agg.url]['value']['geni_am_type']:
+                            self.logger.debug("AM %s is GRAM", agg)
+                            agg.isGRAM = True
                     elif version[agg.url]['value'].has_key('geni_am_type') and ORCA_AM_TYPE in version[agg.url]['value']['geni_am_type']:
                             self.logger.debug("AM %s is Orca", agg)
                             agg.isEG = True
@@ -1155,11 +1485,39 @@ class StitchingHandler(object):
 #                            self.logger.warn("Testing v3 support")
 #                            agg.api_version = 3
 #                        agg.api_version = maxVer
+                    if version[agg.url]['value'].has_key('GRAM_version'):
+                        agg.isGRAM = True
+                        self.logger.debug("AM %s is GRAM", agg)
+                    if version[agg.url]['value'].has_key('geni_request_rspec_versions') and \
+                            isinstance(version[agg.url]['value']['geni_request_rspec_versions'], list):
+                        for rVer in version[agg.url]['value']['geni_request_rspec_versions']:
+                            if isinstance(rVer, dict) and rVer.has_key('type') and rVer.has_key('version') and \
+                                    rVer.has_key('extensions') and rVer['type'].lower() == 'geni' and str(rVer['version']) == '3' and \
+                                    isinstance(rVer['extensions'], list):
+                                v2 = False
+                                v1 = False
+                                for ext in rVer['extensions']:
+                                    if defs.STITCH_V1_BASE in ext:
+                                        v1 = True
+                                    if defs.STITCH_V2_BASE in ext:
+                                        v2 = True
+                                if v2:
+                                    self.logger.debug("%s supports stitch schema v2", agg)
+                                    agg.doesSchemaV2 = True
+                                if not v1:
+                                    self.logger.debug("%s does NOT say it supports stitch schema v1", agg)
+                                    agg.doesSchemaV1 = False
+                            # End of if block
+                        # Done with loop over versions
+                    if not agg.doesSchemaV2 and not agg.doesSchemaV1:
+                        self.logger.debug("%s doesn't say whether it supports either stitching schema, so assume v1", agg)
+                        agg.doesSchemaV1 = True
             except StitchingError, se:
                 # FIXME: Return anything different for stitching error?
                 # Do we want to return a geni triple struct?
                 raise
-            except:
+            except Exception, e:
+                self.logger.debug("Got error extracting extra AM info: %s", e)
                 pass
             finally:
                 logging.disable(logging.NOTSET)
@@ -1179,6 +1537,9 @@ class StitchingHandler(object):
             # Save off the aggregate nickname if possible
             agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
+            if not agg.isEG and not agg.isGRAM and not agg.dcn and "protogeni/xmlrpc" in agg.url:
+                agg.isPG = True
+
  #           self.logger.debug("Remembering done getting extra info for %s", agg)
 
             # Remember we got the extra info for this AM
@@ -1187,15 +1548,23 @@ class StitchingHandler(object):
 
     def dump_objects(self, rspec, aggs):
         '''Print out the hops, aggregates, and dependencies'''
-        if rspec:
+        if rspec and rspec.stitching:
             stitching = rspec.stitching
             self.logger.debug( "\n===== Hops =====")
             for path in stitching.paths:
                 self.logger.debug( "Path %s" % (path.id))
-                if path.globalId:
-                    self.logger.debug( "   GlobalId: %s" % path.globalId)
                 for hop in path.hops:
                     self.logger.debug( "  Hop %s" % (hop))
+                    if hop.globalId:
+                        self.logger.debug( "    GlobalId: %s" % hop.globalId)
+                    if hop._hop_link.isOF:
+                        self.logger.debug( "    An Openflow controlled hop")
+                        if hop._hop_link.controllerUrl:
+                            self.logger.debug( "      Controller: %s", hop._hop_link.controllerUrl)
+                        if hop._hop_link.ofAMUrl:
+                            self.logger.debug( "      Openflow AM URL: %s", hop._hop_link.ofAMUrl)
+                    if len(hop._hop_link.capabilities) > 0:
+                        self.logger.debug( "    Capabilities: %s", hop._hop_link.capabilities)
                     # FIXME: don't use the private variable
                     self.logger.debug( "    VLAN Suggested (requested): %s" % (hop._hop_link.vlan_suggested_request))
                     self.logger.debug( "    VLAN Available Range (requested): %s" % (hop._hop_link.vlan_range_request))
@@ -1224,6 +1593,8 @@ class StitchingHandler(object):
                     self.logger.debug("   A DCN Aggregate")
                 if agg.isPG:
                     self.logger.debug("   A ProtoGENI Aggregate")
+                if agg.isGRAM:
+                    self.logger.debug("   A GRAM Aggregate")
                 if agg.isEG:
                     self.logger.debug("   An Orca Aggregate")
                 if agg.isExoSM:
@@ -1233,8 +1604,28 @@ class StitchingHandler(object):
                 self.logger.debug("   Using AM API version %d", agg.api_version)
                 if agg.manifestDom:
                     self.logger.debug("   Have a reservation here (%s)!", agg.url)
+                if not agg.doesSchemaV1:
+                    self.logger.debug("   Does NOT support Stitch Schema V1")
+                if agg.doesSchemaV2:
+                    self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
+                if agg.sliverExpirations:
+                    if isinstance(agg.sliverExpirations, list):
+                        if len(agg.sliverExpirations) > 1:
+                            # More than 1 distinct sliver expiration found
+                            # Sort and take first
+                            agg.sliverExpirations = agg.sliverExpirations.sort()
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %d different times. Next expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
+                        elif len(agg.sliverExpirations) == 0:
+                            pass
+                        else:
+                            outputstr = agg.sliverExpirations[0].isoformat()
+                            msg = "Resources here expire at %s UTC" % (name, client.str, outputstr)
+                        pass
+                    else:
+                        self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
@@ -1257,7 +1648,27 @@ class StitchingHandler(object):
         # Nodes and hops come from the AM that owns those
         # interface_ref elements on link elements also come from the responsible AM
         # Top level link element is effectively arbitrary, but with comments on what other AMs said
-        lastDom = lastAM.manifestDom
+        lastDom = None
+        if lastAM is None:
+            self.logger.debug("Combined manifest will start from SCS expanded request RSpec")
+            lastDom = self.parsedSCSRSpec.dom
+            # Change that dom to be a manifest RSpec
+            # for each attribute on the dom root node, change "request" to "manifest"
+            doc_root = lastDom.documentElement
+            for i in range(doc_root.attributes.length):
+                attr = doc_root.attributes.item(i)
+                doingChange = False
+                ind = attr.value.find('request')
+                if ind > -1:
+                    doingChange = True
+                while ind > -1:
+                    attr.value = attr.value[:ind] + 'manifest' + attr.value[ind+len('request'):]
+                    ind = attr.value.find('request', ind+len('request'))
+                if doingChange:
+                    self.logger.debug("Reset original request rspec attr %s='%s'", attr.name, attr.value)
+#            self.logger.debug(stripBlankLines(lastDom.toprettyxml(encoding="utf-8")))
+        else:
+            lastDom = lastAM.manifestDom
         combinedManifestDom = combineManifestRSpecs(ams, lastDom)
         manString = combinedManifestDom.toprettyxml(encoding="utf-8")
 
@@ -1289,14 +1700,21 @@ class StitchingHandler(object):
                              sliceurn)
             return
         # ./$slicehrn-amlist.txt
-        fname = "%s-amlist.txt" % slicehrn
+        fname = prependFilePrefix(self.opts.fileDir, "~/.gcf/%s-amlist.txt" % slicehrn)
         if not self.ams_to_process or len(self.ams_to_process) == 0:
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
+        listdir = os.path.dirname(fname)
+        if not os.path.exists(listdir):
+            try:
+                os.makedirs(listdir)
+            except Exception, e:
+                self.logger.warn("Failed to create %s to save list of used AMs: %s", listdir, e)
+
         # URL,URN
         with open (fname, 'w') as file:
-            file.write("# AM List for stitched slice %s\n" % sliceurn)
+            file.write("# AM List for multi-AM slice %s\n" % sliceurn)
             file.write("# Slice allocated at %s\n" % datetime.datetime.utcnow().isoformat())
             for am in self.ams_to_process:
                 file.write("%s,%s\n" % (am.url, am.urn) )
@@ -1336,14 +1754,14 @@ class StitchingHandler(object):
             return
 
         # ./$slicehrn-amlist.txt
-        fname = "%s-amlist.txt" % slicehrn
+        fname = prependFilePrefix(self.opts.fileDir, "~/.gcf/%s-amlist.txt" % slicehrn)
 
         # look to see if $slicehrn-amlist.txt exists
         if not os.path.exists(fname) or not os.path.getsize(fname) > 0:
             self.logger.debug("File of AMs for slice %s not found or empty: %s", slicename, fname)
             return
 
-        self.logger.info("Reading stitching slice %s aggregates from file %s", slicename, fname)
+        self.logger.info("Reading slice %s aggregates from file %s", slicename, fname)
 
         self.opts.ensure_value('aggregate', [])
         addOptions = True
@@ -1366,10 +1784,10 @@ class StitchingHandler(object):
                     # Note this next doesn't avoid the dup of a nickname
                     if not url in self.opts.aggregate:
                         if addOptions:
-                            self.logger.info("Adding aggregate option %s (%s)", url, urn)
+                            self.logger.debug("Adding aggregate option %s (%s)", url, urn)
                             self.opts.aggregate.append(url)
                         else:
-                            self.logger.info("NOTE not adding aggregate %s", url)
+                            self.logger.debug("NOTE not adding aggregate %s", url)
 
     def addExpiresAttribute(self, rspecDOM, sliceexp):
         '''Set the expires attribute on the rspec to the slice
@@ -1403,7 +1821,59 @@ class StitchingHandler(object):
         '''Confirm this request is not asking for a loop. Bad things should
         not be allowed, dangerous things should get a warning.'''
 
-        # FIXME FIXME
+        # If any node is unbound, then all AMs will try to allocate it.
+        for node in self.parsedUserRequest.nodes:
+            if node.amURN is None:
+                if self.opts.devmode:
+                    # Note that SCS likely will fail with something like:
+                    # code 65535: std::exception
+                    self.logger.warn("Node %s is unbound in request", node.id)
+                else:
+                    raise OmniError("Node %s is unbound in request - all nodes must be bound as all aggregates get the same request RSpec" % node.id)
+#            else:
+#                self.logger.debug("Node %s is on AM %s", node.id, node.amURN)
+
+        # FIXME FIXME - what other checks go here?
+
+        # Ticket #570: to stitch multiple VMs at same PG AM on same VLAN, ensure component IDs are eth0-3 on interfaces
+        # to force it to go through hardware
+
+        # for link in self.parsedUserRequest.links:
+        # Only care about stitching links with more than 2 interfaces
+        #  if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE and len(link.interfaces) > 2:
+        #   ifcsByNode = {}
+        #   for ifc in link.interfaces:
+        #       theNode = None
+        #       for node in self.parseUserRequest.nodes:
+        #            if ifc in node.interface_ids
+        #               theNode = node
+        #               break
+        #       if theNode is None:
+        #            error
+        #       ifcsByNode[theNode] = [ifc]
+        #   for node in ifcsByNode.keys():
+        #       if len(ifcsByNode[node] < 2:
+        #           continue
+        #       agg = Aggregate.find(theNode.amURN)
+        #       if not agg.isPG:
+        #           self.logger.warn("%s is not a PG AM and may not support stitching multiple Nodes on same link", agg)
+        #           continue
+        #       # Now we have a PG node with >2 interfaces on the same stitched link
+        #       # Find the node in the rspec XML
+        #       # find the interface
+        #       # Add the component_id if it is not already there
+        #          # FIXME: If some ifc on the node has the component_id, then I need to avoid using the same ones!
+        #          #      Maybe for now, if any ifc has a component_id in the original rspec, skip this node?
+# FIXME: we call rspec.getLinkEditedDom() to build what we send to the SCS. So the object / dom there needs to put the 
+# component_id in in the right way. So probably I need to do this via objects.
+# So: objects.py class Node: store the interface_ref as an object that has both client_id (the id) and component_id.
+# Make that class have a toDOM method that writes in the correct interface_ref sub-elements as needed, and call that method
+# from clas RSpec.getLinkEditedDom
+
+            # ethcnt = 0
+            # For each ifc
+            #   If ifc in the current link, then add component_id attribute using ethcnt, and then increment
+
         pass
 
     def saveAggregateState(self, oldAggs, newAggs):

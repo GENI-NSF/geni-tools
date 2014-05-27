@@ -279,7 +279,15 @@ class Framework(Framework_Base):
                 return None
             log = self._get_log_url(response)
             if response['code']:
-                self.logger.error('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                if response['code'] == 3 and 'Unknown project' in response['output']:
+                    self.logger.error("Unknown project in slice URN '%s'. Project names are case sensitive. Did you mis-type or mis-configure Omni?" % urn)
+                    self.logger.debug('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                elif response['code'] == 5 or \
+                        response['output'].startswith("[DUPLICATE] DUPLICATE_ERROR"):
+                    self.logger.error("Failed to create slice '%s' because a similarly named slice already exists. Slice names are case insensitive at creation time.", urn)
+                    self.logger.debug('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
+                else:
+                    self.logger.error('Failed to create new %s slice %s: %s (code %d)', self.fwtype, urn, response['output'], response['code'])
                 if log:
                     self.logger.info("%s log url: %s", self.fwtype, log)
             elif log:
@@ -426,7 +434,7 @@ class Framework(Framework_Base):
                 # that and return that
                 sliceexp = naiveUTC(credutils.get_cred_exp(self.logger, response['value']))
                 # If request is diff from sliceexp then log a warning
-                if sliceexp - naiveUTC(expiration_dt) > datetime.timedelta.resolution:
+                if abs(sliceexp - naiveUTC(expiration_dt)) > datetime.timedelta.resolution:
                     self.logger.warn("Renewed %s slice %s expiration %s different than request %s", self.fwtype, urn, sliceexp, expiration_dt)
                 return sliceexp
 
@@ -516,7 +524,7 @@ class Framework(Framework_Base):
             if not key.has_key('key'):
                 self.logger.error("GetKeys list missing key value?");
                 continue
-            keys.append(key['key'])
+            keys.append({'public_key': key['key']})
         return keys, None
         
     def _get_components(self):

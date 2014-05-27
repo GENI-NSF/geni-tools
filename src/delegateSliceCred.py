@@ -58,7 +58,6 @@ import optparse
 import os
 import string
 import sys
-from xml.dom.minidom import Document, parseString
 
 import gcf.sfa.trust.credential as cred
 import gcf.sfa.trust.rights as privs
@@ -205,7 +204,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         slicecredstr = credutils.get_cred_xml(slicecredstr)
 
     if (not (type(slicecredstr) is str and slicecredstr.startswith("<"))):
-        sys.exit("Not a slice cred in file %s" % opts.slicecred)
+        sys.exit("Not a slice cred in file %s - cannot delegate" % opts.slicecred)
 
     slicecred = cred.Credential(string=slicecredstr)
 
@@ -214,7 +213,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         try:
             newExpiration = naiveUTC(dateutil.parser.parse(opts.newExpiration, tzinfos=tzd))
         except Exception, exc:
-            sys.exit("Failed to parse desired new expiration %s: %s" % (opts.newExpiration, exc))
+            sys.exit("Failed to parse desired new expiration %s - cannot delegate: %s" % (opts.newExpiration, exc))
 
     # Confirm desired new expiration <= existing expiration
     slicecred_exp = naiveUTC(slicecred.get_expiration())
@@ -237,31 +236,31 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     # confirm cert hasn't expired
     if owner_cert.cert.has_expired():
-        sys.exit("Cred owner %s cert has expired at %s" % (owner_cert.cert.get_subject(), owner_cert.cert.get_notAfter()))
+        sys.exit("Cred owner %s cert has expired at %s - cannot delegate" % (owner_cert.cert.get_subject(), owner_cert.cert.get_notAfter()))
 
     # confirm cert to delegate to hasn't expired
     if delegee_cert.cert.has_expired():
-        sys.exit("Delegee %s cert has expired at %s" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
+        sys.exit("Delegee %s cert has expired at %s - cannot delegate" % (delegee_cert.cert.get_subject(), delegee_cert.cert.get_notAfter()))
 
     if len(root_objects) > 0:
         try:
             owner_cert.verify_chain(trusted_certs=root_objects)
         except Exception, exc:
-            logger.warn("Owner cert did not validate: %s", exc)
+            logger.warn("Owner cert did not validate - cannot delegate: %s", exc)
             raise
 
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
         if not slicecred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
-            sys.exit("Failed to validate credential")
+            sys.exit("Failed to validate credential - cannot delegate")
     except Exception, exc:
-        logger.warn("Supplied slice cred didn't verify")
+        logger.warn("Supplied slice cred didn't verify - cannot delegate")
         raise
 #        sys.exit("Failed to validate credential: %s" % exc)
 
     # confirm cred says rights are delegatable
     if not slicecred.get_privileges().get_all_delegate():
-        sys.exit("Slice says not all privileges are delegatable")
+        sys.exit("Slice says not all privileges are delegatable - cannot delegate.")
 
     # owned by user whose cert we got
     if not owner_cert.get_urn() == slicecred.get_gid_caller().get_urn():
@@ -275,7 +274,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
         try:
             delegee_cert.verify_chain(trusted_certs=root_objects)
         except Exception, exc:
-            logger.warn("Delegee cert did not validate: %s", exc)
+            logger.warn("Delegee cert did not validate - cannot delegate: %s", exc)
             raise
 
     # OK, inputs are verified
@@ -306,9 +305,9 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
     try:
         # Note roots may be None if user supplied None, in which case we don't actually verify everything
         if not dcred.verify(trusted_certs=roots, trusted_certs_required=False, schema=os.path.abspath("src/gcf/sfa/trust/credential.xsd")):
-            sys.exit("Failed to validate credential")
+            sys.exit("Failed to validate delegated credential - not saving")
     except Exception, exc:
-        logger.warn("Delegated slice cred does not verify")
+        logger.warn("Delegated slice cred does not verify - not saving")
         raise
 #        sys.exit("Failed to validate credential: %s" % exc)
 

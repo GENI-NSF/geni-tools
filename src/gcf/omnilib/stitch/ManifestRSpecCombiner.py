@@ -31,7 +31,7 @@ from __future__ import absolute_import
 import json
 import logging
 import sys
-from xml.dom.minidom import getDOMImplementation, parseString, Node
+from xml.dom.minidom import getDOMImplementation, Node
 
 from . import objects
 from . import defs
@@ -81,8 +81,10 @@ class ManifestRSpecCombiner:
 
         # Set up a dictionary mapping node by component_manager_id
         template_nodes_by_cmid={}
+        template_node_cids=[]
         doc_root = dom_template.documentElement
         children = doc_root.childNodes
+        # Find all the client_ids for nodes in the template too
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
                     child.localName == defs.NODE_TAG:
@@ -90,6 +92,9 @@ class ManifestRSpecCombiner:
                 if not template_nodes_by_cmid.has_key(cmid):
                     template_nodes_by_cmid[cmid] = []
                 template_nodes_by_cmid[cmid].append(child)
+                cid = child.getAttribute(CLIENT_ID)
+                if not cid in template_node_cids:
+                    template_node_cids.append(cid)
 
 #        print "DICT = " + str(template_nodes_by_cmid)
         
@@ -97,10 +102,22 @@ class ManifestRSpecCombiner:
         # Match the manifest from a given AMs manifest if that AM's urn is the 
         # component_manager_id attribute on that node and the client_ids match
         for am in ams_list:
+            am_manifest_dom = am.manifestDom
+            am_doc_root = am_manifest_dom.documentElement
+
+            # For each node in this AMs manifest for which this AM
+            # is the component manager, if that client_id
+            # was not in the template, then append this node
+            for child in am_doc_root.childNodes:
+                if child.nodeType == Node.ELEMENT_NODE and \
+                        child.localName == defs.NODE_TAG:
+                    cid = child.getAttribute(CLIENT_ID)
+                    cmid = child.getAttribute(COMPONENT_MGR_ID)
+                    if not cid in template_node_cids and cmid in am.urn_syns:
+                        doc_root.appendChild(child)
+            # Now do the node replacing as necessary
             for urn in am.urn_syns:
                 if template_nodes_by_cmid.has_key(urn):
-                    am_manifest_dom = am.manifestDom
-                    am_doc_root = am_manifest_dom.documentElement
                     for template_node in template_nodes_by_cmid[urn]:
                         template_client_id = template_node.getAttribute(CLIENT_ID)
                         for child in am_doc_root.childNodes:
@@ -120,6 +137,40 @@ class ManifestRSpecCombiner:
 
         # For each link in template by component_manager_id
         doc_root = dom_template.documentElement
+        children = doc_root.childNodes
+        # Collect the link client_ids in the template
+        template_link_cids=[]
+        for child in children:
+            if child.nodeType == Node.ELEMENT_NODE and \
+                    child.localName == defs.LINK_TAG:
+                link = child
+                # Get first 'component_manager' child element
+#                print "LINK = " + str(link) + " " + cmid
+                client_id = str(link.getAttribute(CLIENT_ID))
+                template_link_cids.append(client_id)
+
+        # loop over AMs. If an AM has a link client_id not in template_link_ids
+        # and the link has that AM as a component_manager, then append this link to the template
+        for agg in ams_list:
+            man = agg.manifestDom
+            link_elements = man.getElementsByTagName(defs.LINK_TAG)
+            for link2 in link_elements:
+                cid = link2.getAttribute(CLIENT_ID)
+                # If the manifest has this link, then we're good
+                if cid in template_link_cids:
+                    continue
+                component_manager_elements = link.getElementsByTagName(COMP_MGR)
+                myLink = False
+                for cme in component_manager_elements:
+                    cmid = str(cme.getAttribute(COMP_MGR_NAME))
+                    if cmid in agg.urn_syns:
+                        myLink = True
+                        break
+                if myLink:
+                    doc_root.appendChild(link2)
+                    template_link_cids.append(cid)
+
+        # Now go through the links in the template, swapping in info from the appropriate manifest RSpecs
         children = doc_root.childNodes
         for child in children:
             if child.nodeType == Node.ELEMENT_NODE and \
@@ -382,7 +433,16 @@ class ManifestRSpecCombiner:
         url = am.url
         api_version = am.api_version
         user_requested = am.userRequested
-        hops_info = [{'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'path_global_id':hop.path.globalId, 'id':hop._id}  for hop in am._hops]
+        hops_info = []
+        for hop in am._hops:
+            tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
+            if hop.globalId:
+                tEntry['path_global_id'] = hop.globalId
+            if hop._hop_link.ofAMUrl:
+                tEntry['ofAMUrl'] = hop._hop_link.ofAMUrl
+            if hop._hop_link.controllerUrl:
+                tEntry['controllerUrl'] = hop._hop_link.controllerUrl
+            hops_info.append(tEntry)
         ret = {'urn':urn, 'url': url, 'api_version':api_version, 'user_requested':user_requested, 'hops_info':hops_info}
         if am.pgLogUrl:
             ret["PG Log URL"] = am.pgLogUrl
@@ -465,7 +525,7 @@ class ManifestRSpecCombiner:
                             am_link = child2
                             break
             if am_link is None:
-                self.logger.info("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
+                self.logger.debug("Did not find HopLink %s in AM's Man RSpec, though found AM's path %s (usually harmless; happens 2+ times for ExoGENI aggregates)", link_id, path_id)
                 return
         else:
             self.logger.warn("Did not find path %s in AM's Man RSpec to replace HopLink %s", path_id, link_id)
@@ -474,7 +534,8 @@ class ManifestRSpecCombiner:
             self.logger.debug("Replacing " + template_link.toxml(encoding="utf-8") + " with " + am_link.toxml(encoding="utf-8"))
             template_hop.replaceChild(am_link, template_link)
         else:
-            self.logger.warn("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
+            # This error happens at EG AMs and is harmless. See ticket #321
+            self.logger.debug("Can't replace hop link %s in path %s in template: AM HOP LINK %s; TEMPLATE HOP %s; TEMPLATE HOP LINK %s" % (link_id, path_id, am_link, template_hop, template_link))
 
     def findPathByID(self, stitching, path_id):
         path = None

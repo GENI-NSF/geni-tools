@@ -37,6 +37,7 @@ import logging
 import os
 import pprint
 import re
+import string
 
 from ..geni.util.tz_util import tzd
 from ..geni.util.urn_util import nameFromURN, is_valid_urn_bytype
@@ -44,7 +45,8 @@ from ..sfa.util.xrn import get_leaf
 from .util import OmniError
 from .util.dossl import _do_ssl
 from .util import credparsing as credutils
-from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick
+from .util.handler_utils import _get_slice_cred, _listaggregates, _print_slice_expiration, _maybe_save_slicecred, _save_cred, _get_user_urn, _lookupAggNick, \
+    _construct_output_filename, _printResults
 
 class CHCallHandler(object):
     """
@@ -88,17 +90,40 @@ class CHCallHandler(object):
         return getattr(self,call)(args[1:])
 
     def get_ch_version(self, args):
-        '''Call GetVersion at the Clearinghouse (if implemented).'''
+        '''Call GetVersion at the Clearinghouse (if implemented).
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-chversion.txt
+        '''
         retVal = ""
         (ver, message) = self.framework.get_version()
         if ver and ver != dict():
             pp = pprint.PrettyPrinter(indent=4)
             prettyVersion = pp.pformat(ver)
-            printStr = "CH has version %s" % prettyVersion
-            retVal += printStr + "\n"
-            self.logger.info(printStr)
+
+            # Save/print out result
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "chversion", ".json", 0)
+
+            if filename is None:
+                self.logger.info("Printing clearinghouse %s version", self.opts.framework)
+
+            _printResults(self.opts, self.logger, header, prettyVersion, filename)
+            if filename:
+                retVal += "Saved Clearinghouse %s Version to file %s. \n" % (self.opts.framework, filename)
+            else:
+                retVal += "Printed Clearinghouse %s version" % self.opts.framework
+
         else:
-            printStr = "GetVersion failed at CH: %s" % message
+            printStr = "GetVersion failed at CH %s: %s" % (self.opts.framework, message)
             retVal += printStr + "\n"
             self.logger.error(printStr)
             if not self.logger.isEnabledFor(logging.DEBUG):
@@ -113,18 +138,41 @@ class CHCallHandler(object):
         - omni_config (1+, no URNs available), OR
         - Specified control framework (via remote query).
            This is the aggregates that registered with the framework.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the CH name from the omni config
+        e.g.: myprefix-portal-aggregates.txt
+
         """
         retStr = ""
         retVal = {}
         (aggs, message) = _listaggregates(self)
         aggList = aggs.items()
-        self.logger.info("Listing %d aggregates..."%len(aggList))
         aggCnt = 0
+        pretty_result = "%d aggregates listed at the %s clearinghouse:\n" % (len(aggList), self.opts.framework)
         for (urn, url) in aggList:
             aggCnt += 1
-            self.logger.info( "  Aggregate %d:\n \t%s \n \t%s" % (aggCnt, urn, url) )
-#            retStr += "%s: %s\n" % (urn, url)
+            agg_nickname = _lookupAggNick(self, urn)
+            if agg_nickname:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s \n \t%s\n" % (aggCnt, agg_nickname, urn, url) 
+            else:
+                pretty_result += "  Aggregate %d:\n \t%s \n \t%s\n" % (aggCnt, urn, url) 
             retVal[urn] = url
+
+        # Save/print out result
+        header=None
+        filename = None
+        if self.opts.output:
+            filename = _construct_output_filename(self.opts, self.opts.framework, None, None, "aggregates", ".txt", 0)
+
+        _printResults(self.opts, self.logger, header, pretty_result, filename)
+
         if aggs == {} and message != "":
             retStr += ("No aggregates found: %s" % message)
         elif len(aggList)==0:
@@ -132,7 +180,9 @@ class CHCallHandler(object):
         elif len(aggList) == 1:
             retStr = "Found 1 aggregate. URN: %s; URL: %s" % (retVal.keys()[0], retVal[retVal.keys()[0]])
         else:
-            retStr = "Found %d aggregates." % len(aggList)
+            retStr = "Found %d aggregates. " % len(aggList)
+            if filename:
+                retStr += "Saved Aggregate List to file %s." % (filename)
         return retStr, retVal
 
     def createslice(self, args):
@@ -296,7 +346,19 @@ class CHCallHandler(object):
     def listmyslices(self, args):
         """Provides a list of slices of user provided as first
         argument, or current user if no username supplied.
-        Not supported by all frameworks."""
+        Not supported by all frameworks.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose slices are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-slices-portal.txt
+        """
         if len(args) > 0:
             username = args[0].strip()
         elif self.opts.speaksfor:
@@ -315,19 +377,157 @@ class CHCallHandler(object):
             retStr += "Server error: %s. " % message
         elif len(slices) > 0:
             slices = sorted(slices)
-            self.logger.info("User '%s' has slice(s): \n\t%s"%(username,"\n\t".join(slices)))
+            result="User '%s' has %d slice(s): \n" % (username, len(slices))
+            result += "\t%s" % ("\n\t".join(slices))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, self.opts.framework, None, "slices", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s slices to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s slices. " % username
         else:
             self.logger.info("User '%s' has NO slices."%username)
 
         # summary
-        retStr += "Found %d slice(s) for user '%s'.\n"%(len(slices), username)
+        retStr += "Found %d slice(s) for user '%s'. "%(len(slices), username)
 
         return retStr, slices
+
+    def listprojects(self, args):
+        """Alias for listmyprojects.
+        Provides a list of projects of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks."""
+        return self.listmyprojects(args)
+
+    def listmyprojects(self, args):
+        """Provides a list of projects of user provided as first
+        argument, or current user if no username supplied.
+        Not supported by all frameworks.
+
+        Return object is a list of structs, containing
+        PROJECT_URN, PROJECT_UID, EXPIRED, and PROJECT_ROLE. EXPIRED is a boolean.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose projects are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-projects-portal.txt
+        """
+        if len(args) > 0:
+            username = args[0].strip()
+        elif self.opts.speaksfor:
+            username = get_leaf(self.opts.speaksfor)
+        else:
+            username = get_leaf(_get_user_urn(self.logger, self.framework.config))
+            if not username:
+                self._raise_omni_error("listmyprojects failed to find your username")
+
+        retStr = ""
+        ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
+        if projects is None:
+            # only end up here if call to _do_ssl failed
+            projects = []
+            self.logger.error("Failed to list projects for user '%s'"%(username))
+            if samsg:
+                retStr += "Server error: %s. " % samsg
+                if message:
+                    retStr += "(%s) " % message
+            else:
+                retStr += "Server error: %s. " % message
+        elif len(projects) > 0:
+            projectnames = list()
+            expiredprojects = list()
+            for tup in projects:
+                expired = False
+                project = tup['PROJECT_URN']
+                projectlower = string.lower(project)
+                if not string.find(projectlower, "+project+"):
+                    self.logger.debug("Skipping non project URN '%s'", project)
+                    continue
+
+                # Use the project name, not URN, for the pretty result
+#                projectname = project
+                projectname = nameFromURN(project)
+
+                # Returning this key is non-standard..
+                if tup.has_key('EXPIRED'):
+                    exp = tup['EXPIRED']
+                    if exp == True:
+                        expired = True
+                if tup.has_key('PROJECT_ROLE'):
+                    role = tup['PROJECT_ROLE']
+                    projectname += " \t(%s)" % role.lower()
+                if expired:
+                    expiredprojects.append(projectname)
+                else:
+                    projectnames.append(projectname)
+
+            # FIXME: Need a custom sort that accounts for role?
+            projectnames = sorted(projectnames)
+            expiredprojects = sorted(expiredprojects)
+
+            if len(expiredprojects) > 0:
+                result="User '%s' has %d project(s) and %d expired project(s). \n" % (username, len(projectnames), len(expiredprojects))
+            else:
+                result="User '%s' has %d project(s) \n" % (username, len(projectnames))
+            if len(projectnames) > 0:
+                result += "User's active project(s): \n"
+                result += "\t%s" % ("\n\t".join(projectnames))
+
+            # Suppress expired projects by default
+            if self.opts.debug or self.opts.devmode:
+                if len(expiredprojects) > 0:
+                    result += "\n\nUser's expired project(s): \n"
+                    result += "\t%s" % ("\n\t".join(expiredprojects))
+
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, username, self.opts.framework, None, "projects", ".txt", 0)
+
+            # FIXME: Is it better if we are writing to a file to write out the full projects struct?
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s projects to file %s. " % (username, filename)
+            else:
+                retStr += "Printed user %s projects. " % username
+        else:
+            self.logger.info("User '%s' has NO projects."%username)
+
+        # summary
+        retStr += "Found %d project(s) for user '%s'. "%(len(projectnames), username)
+
+        return retStr, projects
 
     def listkeys(self, args):
         """Provides a list of SSH public keys registered at the CH for the specified user,
         or the current user if not specified.
-        Not supported by all frameworks, and some frameworks insist on only the current user."""
+        Not supported by all frameworks, and some frameworks insist on only the current user.
+        At some frameworks will return the caller's private SSH key if known.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the username whose keys are listed and the configuration
+        file name of the framework
+        e.g.: myprefix-jsmith-keys-portal.txt
+        """
         username = None
         if len(args) > 0:
             username = args[0].strip()
@@ -353,7 +553,29 @@ class CHCallHandler(object):
                 retStr += "Failed to list keys - Server error. "
 
         elif len(keys) > 0:
-            self.logger.info("User %s has key(s): \n\t%s"%(printusername, "\n\t".join(keys)))
+            result="User '%s' has %d key(s): \n" % (printusername, len(keys))
+            i = 0
+            for key in keys:
+                if not key.has_key("public_key"):
+                    continue
+                i += 1
+                result += "    Key pair %d:\n" % i
+                result += "\tPublic key %d: %s\n" % (i, key["public_key"])
+                if key.has_key("private_key"):
+                    result += "\tPrivate key %d: \n%s\n" % (i, key["private_key"])
+#            result += "\t%s" % ("\n\t".join(keys))
+            # Save/print out result
+            header = None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, printusername, self.opts.framework, None, "keys", ".txt", 0)
+
+            _printResults(self.opts, self.logger, header, result, filename)
+            if filename:
+                retStr += "Saved user %s keys to file %s. " % (printusername, filename)
+            else:
+                retStr += "Printed user %s keys. " % printusername
+
         else:
             self.logger.info("User %s has NO keys.", printusername)
 
@@ -573,6 +795,17 @@ class CHCallHandler(object):
          - SLIVER_INFO_CREATOR_URN
          - SLIVER_INFO_EXPIRATION
          - SLIVER_INFO_CREATION
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute slicename for any %s.
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name
+        e.g.: myprefix-myslice-slivers.txt
+
          """
         if len(args) == 0 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error("listslivers requires a slice name argument")
@@ -587,31 +820,128 @@ class CHCallHandler(object):
         if len(slivers_by_agg) == 0:
             result_string = "No slivers found for slice %s" % slice_urn
         else:
-            result_string = "Slivers by aggregate for slice %s\n\n" % slice_urn
+            pretty_result = "Slivers by aggregate for slice %s:\n\n" % slice_urn
             for agg_urn in slivers_by_agg:
-                result_string += "Aggregate: " + agg_urn
+                pretty_result += "Aggregate: " + agg_urn
                 agg_nickname = _lookupAggNick(self, agg_urn)
                 if agg_nickname:
-                    result_string += " ( %s )" % agg_nickname
-                result_string += "\n"
+                    pretty_result += " ( %s )" % agg_nickname
+                pretty_result += "\n"
                 for sliver_urn in slivers_by_agg[agg_urn].keys():
-                    result_string += "    Sliver: " + sliver_urn
+                    pretty_result += "    Sliver: " + sliver_urn + "\n"
                     if slivers_by_agg[agg_urn][sliver_urn] is not None and slivers_by_agg[agg_urn][sliver_urn].has_key('SLIVER_INFO_EXPIRATION') and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] is not None and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "" and \
                             slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'].strip() != "None":
-                        result_string += " expires on " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " UTC\n"
+                        pretty_result += "\tExpires at: " + slivers_by_agg[agg_urn][sliver_urn]['SLIVER_INFO_EXPIRATION'] + " (UTC)\n"
                     else:
-                        result_string += "\n"
-                result_string += "\n"
+                        pretty_result += "\n"
+                pretty_result += "\n"
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, slice_name, None, None, "slivers", ".txt", 0)
+
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing list of slivers in slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
+                _printResults(self.opts, self.logger, header, pretty_result, filename)
+
+            if filename is not None:
+                result_string = "Saved list of slivers/aggregates in slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                result_string = "Printed list of slivers in slice %s" % slice_name
+            else:
+                result_string = pretty_result
 
         return result_string, slivers_by_agg
+
+    def listprojectmembers(self, args):
+        """List all the members of a project
+        Args: projectname
+        Return summary string and list of member dictionaries
+        containing PROJECT_MEMBER (URN), EMAIL, PROJECT_MEMBER_UID, and PROJECT_ROLE.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute projectname for any %s.
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the project name
+        e.g.: myprefix-myproject-projectmembers.txt
+
+        """
+        if len(args) < 1 or args[0] is None or args[0].strip() == "":
+            if self.opts.project and self.opts.project.strip() != "":
+                project_name = self.opts.project
+            else:
+                self._raise_omni_error('listprojectmembers missing args: Supply <project name>')
+        else:
+            project_name = args[0]
+
+        try:
+            # Try to get all the members of this project
+            members, message = self.framework.get_members_of_project(project_name)
+        except NotImplementedError, nie:
+            self._raise_omni_error("listprojectmembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
+
+        if members and len(members) > 0:
+            # Save/print out result
+            prettyResult = "Project %s has %d members:\n" % (project_name, len(members))
+            for i, member in enumerate(members):
+                prettyResult += 'Member ' + str(i + 1) + ':\n'
+                prettyResult += '   URN = ' + member['PROJECT_MEMBER'] + '\n'
+                prettyResult += '   Email = ' + str(member['EMAIL']) + '\n'
+                if member.has_key('PROJECT_ROLE'):
+                    prettyResult += '   Role = ' + str(member['PROJECT_ROLE']) + '\n'
+                if self.opts.debug or self.opts.devmode:
+                    prettyResult += '   UID = ' + member['PROJECT_MEMBER_UID'] + '\n'
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, project_name, None, None, "projectmembers", ".txt", 0)
+
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing members of project %s", project_name)
+
+            if filename is not None or self.opts.tostdout:
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+
+            if filename is not None:
+                prtStr = "Saved list of %d members of project %s to file %s. \n" % (len(members), project_name, filename)
+            elif self.opts.tostdout:
+                prtStr = "Printed list of %d members in project %s" % (len(members), project_name)
+            else:
+                prtStr = prettyResult
+
+        else:
+            prtStr = "Failed to find members of project %s" % (project_name)
+            if message != "":
+                prtStr += ". " + message
+            self.logger.warn(prtStr)
+        return prtStr + '\n', members
 
     def listslicemembers(self, args):
         """List all the members of a slice
         Args: slicename
         Return summary string and list of member dictionaries
         containing KEYS (list), URN, EMAIL, and ROLE
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name: substitute slicename for any %s.
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File names will indicate the slice name
+        e.g.: myprefix-myslice-slicemembers.txt
+
         """
         if len(args) < 1 or args[0] is None or args[0].strip() == "":
             self._raise_omni_error('listslicemembers missing args: Supply <slice name>')
@@ -628,15 +958,34 @@ class CHCallHandler(object):
             self._raise_omni_error("listslicemembers is not supported at this clearinghouse using framework type %s" % self.config['selected_framework']['type'])
 
         if members and len(members) > 0:
-            prtStr = "Members of slice %s are:\n" % (slice_name)
+            # Save/print out result
+            prettyResult = "Members of slice %s are:\n" % (slice_name)
             for i, member in enumerate(members):
-                prtStr += 'Member ' + str(i + 1) + ':\n'
-                prtStr += '   URN = ' + member['URN'] + '\n'
-                prtStr += '   Email = ' + str(member['EMAIL']) + '\n'
-                prtStr += '   Keys = ' + str(member['KEYS']) + '\n'
+                prettyResult += 'Member ' + str(i + 1) + ':\n'
+                prettyResult += '   URN = ' + member['URN'] + '\n'
+                prettyResult += '   Email = ' + str(member['EMAIL']) + '\n'
                 if member.has_key('ROLE'):
-                    prtStr += '   Role = ' + str(member['ROLE']) + '\n'
-#            self.logger.info(prtStr)
+                    prettyResult += '   Role = ' + str(member['ROLE']) + '\n'
+                prettyResult += '   Keys = ' + str(member['KEYS']) + '\n'
+
+            header=None
+            filename = None
+            if self.opts.output:
+                filename = _construct_output_filename(self.opts, slice_name, None, None, "slicemembers", ".txt", 0)
+
+            if filename is None and self.opts.tostdout:
+                self.logger.info("Printing members of slice %s", slice_name)
+
+            if filename is not None or self.opts.tostdout:
+                _printResults(self.opts, self.logger, header, prettyResult, filename)
+
+            if filename is not None:
+                prtStr = "Saved members of slice %s to file %s. \n" % (slice_name, filename)
+            elif self.opts.tostdout:
+                prtStr = "Printed list of members in slice %s" % slice_name
+            else:
+                prtStr = prettyResult
+
         else:
             prtStr = "Failed to find members of slice %s" % (slice_name)
             if message != "":
@@ -684,6 +1033,44 @@ class CHCallHandler(object):
                     prtStr += ". " + m2
             self.logger.warn(prtStr)
         return prtStr + '\n', success
+
+    def removeslicemember(self, args):
+        """Remove a user from a slice.
+        Args: slicename username 
+        Return summary string and whether successful
+        """
+        if len(args) != 2 and len(args) != 3:
+            self._raise_omni_error('removeslicemember missing args: Supply <slice name> <username>')
+        slice_name = args[0].strip()
+        member_name = args[1].strip()
+
+        # convert the slice and member name to a framework urn
+        # FIXME: catch errors getting URN's to give prettier error msg?
+        slice_urn = self.framework.slice_name_to_urn(slice_name)
+
+        # Try to remove the member from the slice
+        (res, m2) = _do_ssl(self.framework, None, "Remove user %s from slice %s" % (member_name, slice_name), self.framework.remove_member_from_slice, slice_urn, member_name)
+        if res is None:
+            success = False
+            message = None
+        else:
+            (success, message) = res
+
+        if success:
+            prtStr = "User %s has been removed from slice %s" % (member_name, slice_name)
+            self.logger.info(prtStr)
+        else:
+            prtStr = "Failed to remove user %s from slice %s" % (member_name, slice_name)
+            if message and message.strip() != "":
+                prtStr += ". " + message
+            if m2 and m2.strip() != "":
+                if "NotImplementedError" in m2:
+                    prtStr += ". Framework type %s does not support 'removeslicemember'." % self.config['selected_framework']['type']
+                else:
+                    prtStr += ". " + m2
+            self.logger.warn(prtStr)
+        return prtStr + '\n', success
+
 
 #########
 ## Helper functions follow

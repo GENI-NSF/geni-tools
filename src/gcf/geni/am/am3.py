@@ -51,6 +51,7 @@ from ..SecureXMLRPCServer import SecureXMLRPCServer
 
 from ...sfa.trust.credential import Credential
 from ...sfa.trust.abac_credential import ABACCredential
+from ...gcf_version import GCF_VERSION
 
 from ...omnilib.util import credparsing as credutils
 
@@ -268,6 +269,7 @@ class ReferenceAggregateManager(object):
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
         self.logger = logging.getLogger('gcf.am3')
+        self.logger.info("Running %s AM v%d code version %s", self._am_type, self._api_version, GCF_VERSION)
 
     def GetVersion(self, options):
         '''Specify version information about this AM. That could
@@ -291,6 +293,8 @@ class ReferenceAggregateManager(object):
                                  geni_version = "3")]
         versions = dict(geni_api=self._api_version,
                         geni_api_versions=api_versions,
+                        geni_am_type='gcf',
+                        geni_am_code=GCF_VERSION,
                         geni_request_rspec_versions=reqver,
                         geni_ad_rspec_versions=adver,
                         geni_credential_types=credential_types)
@@ -829,10 +833,21 @@ class ReferenceAggregateManager(object):
         # All the credentials we just got are valid
         expiration = self.min_expire(creds, self.max_lease)
         requested = dateutil.parser.parse(str(expiration_time), tzinfos=tzd)
+
+
         # Per the AM API, the input time should be TZ-aware
         # But since the slice cred may not (per ISO8601), convert
         # it to naiveUTC for comparison
         requested = self._naiveUTC(requested)
+
+
+        # If geni_extend_alap option provided, use the earlier 
+        # of the requested time and max expiration as the expiration time
+        if 'geni_extend_alap' in options and options['geni_extend_alap']:
+            if expiration < requested:
+                self.logger.info("Got geni_extend_alap: revising slice %s renew request from %s to %s", urns, requested, expiration)
+                requested = expiration
+
         now = datetime.datetime.utcnow()
         if requested > expiration:
             # Fail the call, the requested expiration exceeds the slice expir.

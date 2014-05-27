@@ -89,16 +89,24 @@ def get_expected_schema_info( version="GENI 3" ):
                 GENI_3_MAN_SCHEMA)
 
 
-def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
+def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False, logger=None ):
     try:
         root = etree.fromstring(xml)
-    except:
-        #print "Failed to make an XML doc"
+    except Exception, e:
+        if logger is None:
+            pass
+            #print "Failed to make an XML doc"
+        else:
+            logger.warn("Failed to parse XML doc: %s", e)
         return False
 
     actual_type = root.get('type')
     if actual_type is None or actual_type.lower() != type.lower():
-       # print "RSpec claimed type %s doesn't match expected %s" % (actual_type, type)
+        if logger is None:
+            pass
+            #print "RSpec claimed type %s doesn't match expected %s" % (actual_type, type)
+        else:
+            logger.warn("RSpec claimed type '%s' doesn't match expected '%s'" % (actual_type, type))
         return False
     elif typeOnly:
         # only checking the type in the RSpec
@@ -109,7 +117,12 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         # location can contain many items
         location = root.get( "{"+XSI+"}"+"schemaLocation" )
         if location is None:
-            #print "Failed to get schemaLocation from RSpec: %s" % xml[:100]
+            if logger is None:
+                pass
+                #print "Failed to get schemaLocation from RSpec: %s" % xml[:160]
+            else:
+                logger.warn("Failed to get schemaLocation from RSpec: %s" % xml[:160])
+
             # Note that rspeclint might still pass for this RSpec if you supply the schema location
             # info manually to rspeclint. So is this OK or not? FIXME FIXME!
             return False
@@ -126,7 +139,11 @@ def is_rspec_of_type( xml, type=REQUEST, version="GENI 3", typeOnly=False ):
         if schema.lower() in location.lower():
             return True
         else:
-            #print "RSpec did not list expected schema %s in schemaLocation %s" % (schema, location)
+            if logger is None:
+                pass
+                #print "RSpec did not list expected schema %s in schemaLocation %s" % (schema, location)
+            else:
+                logger.warn("RSpec did not list expected schema '%s' in schemaLocation '%s'" % (schema, location))
             return False
 
 def get_comp_ids_from_rspec( xml, version="GENI 3" ):
@@ -333,14 +350,18 @@ def is_rspec_string( rspec, rspec_namespace=None, rspec_schema=None,
             return False
     return True
 
-def getPrettyRSpec(rspec):
+# prettify arg is whether to parse and reprint the rspec to format it nicely.
+# Default True
+def getPrettyRSpec(rspec, prettify=True):
     '''Produce a pretty print string for an XML RSpec'''
     prettyrspec = rspec
     try:
         newl = ''
         if '\n' not in rspec:
             newl = '\n'
-        prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
+        # Parsing the RSpec is memory intensive, particularly for large RSpecs. Like the PG Ad
+        if prettify:
+            prettyrspec = md.parseString(rspec).toprettyxml(indent=' '*2, newl=newl)
     except:
         pass
     # set rspec to be UTF-8

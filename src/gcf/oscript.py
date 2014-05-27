@@ -87,16 +87,21 @@ from __future__ import absolute_import
        [string Boolean] = omni.py deleteslice SLICENAME
        [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
-       [string listOfSSHPublicKeys] = omni.py listmykeys
-       [string listOfSSHPublicKeys] = omni.py listkeys USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listprojects USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listmyprojects USER
+       [string listOfSSHKeyPairs] = omni.py listmykeys
+       [string listOfSSHKeyPairs] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
+       [string Boolean] = omni.py removeslicemember SLICENAME USER 
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
+       [string dictionary] = omni.py print_sliver_expirations SLICENAME
 """
 
 import ConfigParser
@@ -113,7 +118,18 @@ from .omnilib.util import OmniError, AMAPIError
 from .omnilib.handler import CallHandler
 from .omnilib.util.handler_utils import validate_url, printNicknames
 
-OMNI_VERSION="2.5"
+# Explicitly import framework files so py2exe is happy
+from .omnilib.frameworks import framework_apg
+from .omnilib.frameworks import framework_base
+from .omnilib.frameworks import framework_gcf
+from .omnilib.frameworks import framework_gch
+from .omnilib.frameworks import framework_gib
+from .omnilib.frameworks import framework_of
+from .omnilib.frameworks import framework_pg
+from .omnilib.frameworks import framework_pgch
+from .omnilib.frameworks import framework_sfa
+from .omnilib.frameworks import framework_chapi
+from .gcf_version import GCF_VERSION
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -791,7 +807,7 @@ def getSystemInfo():
     return "Python: " + pver + "\nOS: " + osinfo
 
 def getOmniVersion():
-    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
+    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % GCF_VERSION
     version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
@@ -833,15 +849,20 @@ def getParser():
  \t\t\t deleteslice <slicename> \n\
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
+ \t\t\t listprojects [optional: username] [Alias for listmyprojects]\n\
+ \t\t\t listmyprojects [optional: username] \n\
  \t\t\t listmykeys [optional: username] [Alias for listkeys]\n\
  \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\t\t listslivers <slicename> \n\
+ \t\t\t listprojectmembers <projectname> \n\
  \t\t\t listslicemembers <slicename> \n\
  \t\t\t addslicemember <slicename> <username> [optional: role] \n\
+ \t\t\t removeslicemember <slicename> <username>  \n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
+ \t\t\t print_sliver_expirations <slicename> \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 

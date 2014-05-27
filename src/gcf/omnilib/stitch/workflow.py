@@ -65,6 +65,7 @@ class WorkflowParser(object):
             # Skip the 'path' that is really all the paths merged together
             # FIXME: Use this information!
             if link_id == '##all_paths_merged##':
+#                self.logger.debug("*** had the all paths")
                 continue
             path = rspec.find_path(link_id)
             if not path:

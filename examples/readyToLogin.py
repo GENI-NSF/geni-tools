@@ -33,6 +33,8 @@ import re
 
 import gcf.oscript as omni
 import gcf.omnilib.util.omnierror as oe
+from gcf.omnilib.handler import CallHandler
+from gcf.omnilib.util.handler_utils import _lookupAggNickURLFromURNInNicknames as lookupURL
 
 ################################################################################
 # Requires that you have omni installed and add the path to gcf/src in your
@@ -310,7 +312,7 @@ def getInfoFromSliverStatusPL( sliverStat ):
       return loginInfo
 
     for resourceDict in sliverStat['geni_resources']: 
-      if (not sliverStat['pl_login']) or (not resourceDict['pl_hostname']):
+      if (not sliverStat.has_key('pl_login') or not sliverStat['pl_login']) or (not resourceDict.has_key('pl_hostname') or not resourceDict['pl_hostname']):
           continue
       loginInfo.append({'authentication':'ssh-keys', 
                           'hostname':resourceDict['pl_hostname'],
@@ -807,6 +809,33 @@ def main_no_print(argv=None, opts=None, slicen=None):
     print "ERROR: There are no keys. You can not login to your nodes."
     sys.exit(-1)
 
+  aggregateURNs = []
+  if options.useSliceAggregates:
+      # Find aggregates which have resources in this slice
+      # Run equivalent of 'omni.py listslivers'
+      argv = ['listslivers', slicename]
+      try:
+          text, slivers = omni.call( argv, options )
+      except (oe.AMAPIError, oe.OmniError) :
+          print "ERROR: There was an error executing listslivers, review the logs."
+          sys.exit(-1)
+
+      aggregateURNs = slivers.keys()
+  if len(aggregateURNs) == 0 and (not options.aggregate or (len(options.aggregate) == 0)):
+    print "ERROR: There are no known resources at any aggregates. Try using '-a' to specify an aggregate."
+    sys.exit(-1)      
+
+  # construct a list of aggregates to 
+  handler = CallHandler(framework,config,options)
+  newAggURLs = [ lookupURL( handler.logger, config, urn )[1] for urn in aggregateURNs ] 
+  if options.aggregate:
+      options.aggregate = options.aggregate + newAggURLs
+  else:
+      options.aggregate = newAggURLs
+
+  # Disable useSliceAggregates at this point, because we already have the list - don't fetch it again
+  options.useSliceAggregates = False
+      
   # Run equivalent of 'omni.py getversion'
   argv = ['getversion']
   try:
