@@ -826,7 +826,9 @@ class Aggregate(object):
         if stitchNodes and len(stitchNodes) > 0:
             stitchNode = stitchNodes[0]
         else:
-            raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
+            return requestRSpecDom
+        # For GRE requests, there won't be one
+#            raise StitchingError("Couldn't find stitching element in rspec for %s request" % self)
 
         # For v2/v1, right here check if this is v2 and we want v1 or vice versa
         # schema is marked direct on this node
@@ -3261,6 +3263,8 @@ class Link(GENIObject):
     SHARED_VLAN_TAG = 'link_shared_vlan'
     LINK_TYPE_TAG = 'link_type'
     VLAN_LINK_TYPE = 'vlan'
+    GRE_LINK_TYPE = 'gre-tunnel'
+    EGRE_LINK_TYPE = 'egre-tunnel'
     PROPERTY_TAG = 'property'
 
     @classmethod

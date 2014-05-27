@@ -941,7 +941,7 @@ def expires_from_rspec(result, logger=None):
     if match:
         expStr = match.group(1).strip()
         if logger:
-            logger.debug("Found expires %s", expStr)
+            logger.debug("Found rspec expires attribute: '%s'", expStr)
         try:
             expObj = _naiveUTCFromString(expStr)
 

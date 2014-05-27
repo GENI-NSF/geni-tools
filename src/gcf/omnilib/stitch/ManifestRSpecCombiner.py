@@ -435,7 +435,9 @@ class ManifestRSpecCombiner:
         user_requested = am.userRequested
         hops_info = []
         for hop in am._hops:
-            tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'path_global_id':hop.globalId, 'id':hop._id}
+            tEntry = {'urn':hop._hop_link.urn, 'vlan_tag':str(hop._hop_link.vlan_suggested_manifest), 'path_id':hop.path.id, 'id':hop._id}
+            if hop.globalId:
+                tEntry['path_global_id'] = hop.globalId
             if hop._hop_link.ofAMUrl:
                 tEntry['ofAMUrl'] = hop._hop_link.ofAMUrl
             if hop._hop_link.controllerUrl:
