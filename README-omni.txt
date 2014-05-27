@@ -1586,7 +1586,7 @@ Sample Usage:
  * Reserve resources, installing all slice members' keys on the new
  nodes, but not any users listed in `omni_config`.
 {{{
-     omni.py -a ig-gpo --useSliceMembers --ignoreConfigUsers \
+     omni.py -a gpo-ig --useSliceMembers --ignoreConfigUsers \
              createsliver myslices resources.rspec
 }}}
 
