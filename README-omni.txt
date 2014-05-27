@@ -1565,22 +1565,22 @@ Sample Usage:
     `omni.py createsliver myslice resources.rspec`
  * Reserve the resources defined in an RSpec file at a particular
  aggregate (specifying aggregate with a nickname):
-    `omni.py -a pg-gpo createsliver myslice resources.rspec`
+    `omni.py -a gpo-ig createsliver myslice resources.rspec`
  * Specify using GENI AM API v1 to reserve a sliver in `myslice`
  from a particular AM (specifying aggregate with a nickname), using
  the request rspec in `resources.rspec`:
 {{{
-     omni.py -a pg-gpo2 --api-version 1 createsliver \
+     omni.py -a gpo-ig2 --api-version 1 createsliver \
               myslice resources.rspec
 }}}
  * Use a saved (possibly delegated) slice credential: 
 {{{
      omni.py --slicecredfile myslice-credfile.xml \
-             -a pg-gpo createsliver myslice resources.rspec
+             -a gpo-ig createsliver myslice resources.rspec
 }}}
  * Save manifest RSpec to a file with a particular prefix: 
 {{{
-     omni.py -a pg-gpo -o -p myPrefix \
+     omni.py -a gpo-ig -o -p myPrefix \
              createsliver myslice resources.rspec
 }}}
  * Reserve resources, installing all slice members' keys on the new
