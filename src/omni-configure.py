@@ -1006,6 +1006,8 @@ class PortalFramework( ConfigFramework_Base ):
         Go through each file in `searchlist` looking for the first file which is
         a valid omni bundle zip file.
         """
+        retVal=False
+        retStr="No files searched"
         for bundle in searchlist:
             retVal, retStr = self.validate_portal_bundle_location( bundle )
             if retVal:
