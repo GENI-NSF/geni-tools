@@ -372,15 +372,26 @@ class StitchingHandler(object):
         amcnt = len(self.ams_to_process)
         scs_added_amcnt = 0
         pathcnt = 0
+        grecnt = 0
         if self.parsedSCSRSpec and self.parsedSCSRSpec.stitching:
             pathcnt = len(self.parsedSCSRSpec.stitching.paths)
+        if self.parsedSCSRSpec and self.parsedSCSRSpec.links:
+            for link in self.parsedSCSRSpec.links:
+                if link.typeName in (link.GRE_LINK_TYPE, link.EGRE_LINK_TYPE):
+                    grecnt += 1
         for am in self.ams_to_process:
             if not am.userRequested:
                 scs_added_amcnt = scs_added_amcnt + 1
+        greStr = ""
+        if grecnt > 0:
+            greStr = ", creating %d GRE link(s)" % grecnt
+        stitchStr = ""
+        if pathcnt > 0:
+            stitchStr = ", creating %d stitched link(s)" % pathcnt
         if scs_added_amcnt > 0:
-            retMsg = "Success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request), creating %d stitched link(s)." % (self.slicename, amcnt, scs_added_amcnt, pathcnt)
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates (including %d intermediate aggregate(s) not in the original request)%s%s." % (self.slicename, amcnt, scs_added_amcnt, greStr, stitchStr)
         else:
-            retMsg = "Success: Reserved resources in slice %s at %d Aggregates, creating %d stitched link(s)." % (self.slicename, amcnt, pathcnt)
+            retMsg = "Success: Reserved resources in slice %s at %d Aggregates%s%s." % (self.slicename, amcnt, greStr, stitchStr)
  
         # FIXME: What do we want to return?
 # Make it something like createsliver / allocate, with the code/value/output triple plus a string
@@ -528,9 +539,10 @@ class StitchingHandler(object):
         # the workflow
         self.ams_to_process = copy.copy(workflow_parser.aggs)
 
-        self.logger.debug("SCS workflow said to include resources from these aggregates:")
-        for am in self.ams_to_process:
-            self.logger.debug("\t%s", am)
+        if self.isStitching:
+            self.logger.debug("SCS workflow said to include resources from these aggregates:")
+            for am in self.ams_to_process:
+                self.logger.debug("\t%s", am)
 
         addedAMs = []
         for amURN in self.parsedSCSRSpec.amURNs:
@@ -557,9 +569,13 @@ class StitchingHandler(object):
                     # Try to pull from agg nicknames in the omni_config
                     for (amURNNick, amURLNick) in self.config['aggregate_nicknames'].values():
                         if amURNNick and amURNNick.strip() in am.urn_syns and amURLNick.strip() != '':
-                            am.url = amURLNick
-                            self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, am.url)
-                            break
+                            # Avoid apparent v1 URLs
+                            if amURLNick.strip().endswith('/1') or amURLNick.strip().endswith('/1.0'):
+                                self.logger.debug("Skipping apparent v1 URL %s for URN %s", amURLNick, amURN)
+                            else:
+                                am.url = amURLNick
+                                self.logger.debug("Found AM %s URL from omni_config AM nicknames: %s", amURN, amURLNick)
+                                break
 
                 if not am.url:
                     # Try asking our CH for AMs to get the URL for the
@@ -1513,6 +1529,9 @@ class StitchingHandler(object):
             # Save off the aggregate nickname if possible
             agg.nick = handler_utils._lookupAggNick(self, agg.url)
 
+            if not agg.isEG and not agg.isGRAM and not agg.dcn and "protogeni/xmlrpc" in agg.url:
+                agg.isPG = True
+
  #           self.logger.debug("Remembering done getting extra info for %s", agg)
 
             # Remember we got the extra info for this AM
@@ -1598,7 +1617,7 @@ class StitchingHandler(object):
                             msg = "Resources here expire at %s UTC" % (name, client.str, outputstr)
                         pass
                     else:
-                        self.logger.debug("    Resources here expire at %s UTC", agg.sliverExpirations)
+                        self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:
