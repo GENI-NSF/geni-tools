@@ -348,11 +348,10 @@ class OmniConfigure( object ):
 
     if platform.system().lower().find('windows') != -1 and  platform.release().lower().find('xp') != -1:
         DEFAULT_DOWNLOADS_FLDR = "~/My Documents/Downloads"
-        DEFAULT_DOWNLOADS_NUM = "-*"
     else:
         DEFAULT_DOWNLOADS_FLDR = "~/Downloads"
-        # match "omni (1).bundle" as well as "omni(1).bundle"
-        DEFAULT_DOWNLOADS_NUM = "*(*)"
+    # match "omni (1).bundle" as well as "omni(1).bundle"
+    DEFAULT_DOWNLOADS_NUM = "*(*)"
     DEFAULT_DOWNLOADS = [ DEFAULT_DOWNLOADS_FLDR+"/omni.bundle", DEFAULT_DOWNLOADS_FLDR+"/omni-bundle.zip" ]
     DEFAULT_DOWNLOADS_SEARCH1 = [ DEFAULT_DOWNLOADS_FLDR+"/omni.bundle",
                                  DEFAULT_DOWNLOADS_FLDR+"/omni"+DEFAULT_DOWNLOADS_NUM+".bundle"]
