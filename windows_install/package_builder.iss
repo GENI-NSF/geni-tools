@@ -1,6 +1,6 @@
 [Setup]
 OutputDir=C:\Users\local_user\gcf\executables
-OutputBaseFilename=omniTools-2.5.3-win-setup
+OutputBaseFilename=omniTools-2.5.3-win-rc4-setup
 AppCopyright=2010-2014
 AppName=omniTools-2.5.3
 AppVerName=omniTools-2.5.3
@@ -43,6 +43,7 @@ Source: ..\src\dist\readyToLogin.exe; DestDir: {app}
 Source: ..\src\dist\select.pyd; DestDir: {app}
 Source: ..\src\dist\SSLEAY32.dll; DestDir: {app}
 Source: ..\src\dist\stitcher.exe; DestDir: {app}
+Source: ..\src\dist\addMemberToSliceandSlivers.exe; DestDir: {app}
 Source: ..\src\dist\tcl85.dll; DestDir: {app}
 Source: ..\src\dist\tk85.dll; DestDir: {app}
 Source: ..\src\dist\unicodedata.pyd; DestDir: {app}

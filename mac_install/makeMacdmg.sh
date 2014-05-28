@@ -24,6 +24,10 @@ py2applet --make-setup readyToLogin.py
 python setup.py py2app --no-chdir
 mv dist/readyToLogin.app $DESTDIR
 rm -r dist build setup.py 
+py2applet --make-setup addMemberToSliceAndSlivers.py
+python setup.py py2app --no-chdir
+mv dist/addMemberToSliceAndSlivers.app $DESTDIR
+rm -r dist build setup.py 
 
 #copy License and make Applications link
 ln -s /Applications $COVERDIR
