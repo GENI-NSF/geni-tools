@@ -2626,7 +2626,7 @@ Sample Output:
 
         Nickname | URL                                                                    | URN
 =============================================================================================================
-          pg-bbn | https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0             | urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm
+          gpo-ig | https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0    | urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm
 ....
 Omni knows the following RSpec Nicknames:
 
