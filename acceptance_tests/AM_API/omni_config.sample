@@ -51,7 +51,7 @@ sa=https://ch.geni.net/SA
 
 # CONFIGURATION: If necessary, replace the next two lines with the
 #  location of your combined cert/key file you downloaded from
-#  http://pgeni.gpolab.bbn.com
+#  http://portal.geni.net
 cert=~/.gcf/encrypted.pem
 key=~/.gcf/encrypted.pem
 
