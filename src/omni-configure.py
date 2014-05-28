@@ -1396,17 +1396,15 @@ default_rspec_extension = rspec
                 config = loadConfigFile(config_path)
                 break
             except:
-                raise
                 pass
 
-        projects = self.loadProjects(config_path)
-        os.remove(config_path)
-
-        if not config['selected_framework'].has_key('authority'):
+        if not config and not config['selected_framework'].has_key('authority'):
           sys.exit("\nERROR: Your omni bundle is old, you must get a new version:\n"+
                       "\t 1. Download new omni-bundle.zip from the Portal\n"+
                       "\t 2. Rerun omni-configure.py"+
                       "\nExiting!")
+        projects = self.loadProjects(config_path)
+        os.remove(config_path)
 
         if len(projects) == 0 :
           logger.warn("\nWARNING: You are not a member of any projects! You will need to:\n"+
