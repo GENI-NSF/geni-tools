@@ -1,6 +1,6 @@
 [Setup]
 OutputDir=C:\Users\local_user\gcf\executables
-OutputBaseFilename=omniTools-2.5.3-rc4-win-setup
+OutputBaseFilename=omniTools-2.5.3-win-rc4-setup
 AppCopyright=2010-2014
 AppName=omniTools-2.5.3
 AppVerName=omniTools-2.5.3
