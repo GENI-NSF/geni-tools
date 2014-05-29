@@ -356,11 +356,12 @@ failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@g
 As with Omni errors, when reporting problems please include as much
 detail as possible:
  - Attach the stitcher debug logs found by default in `stitcher.log`
- - `python src/omni.py --version`
- - The exact commandline you used to invoke stitcher
+  - If you cannot send us this file, please send:
+   - `python src/omni.py --version`
+   - The exact commandline you used to invoke stitcher
+   - At least the last few lines of your call to stitcher, and all the logs if
+   possible
  - The request RSpec you used with stitcher
- - At least the last few lines of your call to stitcher, and all the logs if
- possible
  - The resulting manifest RSpec if the script succeeded
  - Listing of any new rspec or other files created in `/tmp` and your current
  working directory (or your custom directory from `--fileDir`)
@@ -528,8 +529,7 @@ Cannot find the set of paths for the RequestTopology. '.
  manifest
  - Store output files in a consistent location, named by slice, and
  with support for scripts to use a temp directory.
- - Suppress most log messages (push to an output file), summarizing
- errors at the end of the run.
+ - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates
  - Support recreating the combined manifest RSpec
  - Support AM API v3
