@@ -611,6 +611,58 @@ if __name__ == "__main__":
     # process the user's call
     return API_call( framework, config, args, opts, verbose=verbose )
 
+def getOptsUsed(parser, opts, logger=None):
+    '''Get string to print out the options supplied'''
+    #sys.argv when called as a library is
+    # uninteresting/misleading. So args is better, but this misses
+    # the options.
+    # We print here all non-default options
+    nondef = ""
+    for attr in dir(opts):
+        import types
+        if attr.startswith("_"):
+            continue
+        if isinstance(getattr(opts, attr), types.MethodType):
+            continue
+        # if the parser has no option with a dest==attr,
+        # then continue
+        # This means that the user supplied an option the parser didn't
+        # handle, and typically there would have been an error,
+        # but lets not complain here
+        has = False
+        for opt in parser.option_list:
+            if opt.dest == attr:
+                has=True
+                break
+
+        if has == False:
+            for group in parser.option_groups:
+                for opt in group.option_list:
+                    if opt.dest == attr:
+                        has = True
+                        break
+                if has:
+                    break
+            if not has:
+                continue
+        if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
+            # If default is a relative path we expanded,
+            # then it looks like it changed here. So try expanding
+            # any defaults to see if that makes it match
+            try:
+                defVal = parser.defaults[attr]
+                defVal = os.path.normcase(os.path.expanduser(defVal))
+                if defVal == getattr(opts, attr):
+                    continue
+            except:
+                pass
+            # non-default value
+            nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
+
+    if nondef != "":
+        nondef = "\n  Options as run:" + nondef + "\n\n  "
+    return nondef
+
 def API_call( framework, config, args, opts, verbose=False ):
     """Call the function from the given args list. 
     Apply the options from the given optparse.Values opts argument
@@ -643,46 +695,7 @@ def API_call( framework, config, args, opts, verbose=False ):
 
     # Print the summary of the command result
     if verbose:
-        #sys.argv when called as a library is
-        # uninteresting/misleading. So args is better, but this misses
-        # the options.
-        # We print here all non-default options
-        parser = getParser()
-        nondef = ""
-        for attr in dir(opts):
-            import types
-            if attr.startswith("_"):
-                continue
-            if isinstance(getattr(opts, attr), types.MethodType):
-                continue
-            # if the parser has no option with a dest==attr,
-            # then continue
-            # This means that the user supplied an option the parser didn't
-            # handle, and typically there would have been an error,
-            # but lets not complain here
-            has = False
-            for opt in parser.option_list:
-                if opt.dest == attr:
-                    has=True
-            if has == False:
-                continue
-            if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
-                # If default is a relative path we expanded,
-                # then it looks like it changed here. So try expanding
-                # any defaults to see if that makes it match
-                try:
-                    defVal = parser.defaults[attr]
-                    defVal = os.path.normcase(os.path.expanduser(defVal))
-                    if defVal == getattr(opts, attr):
-                        continue
-                except:
-                    pass
-                # non-default value
-                nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
-
-        if nondef != "":
-            nondef = "\n  Options as run:" + nondef + "\n\n  "
-
+        nondef = getOptsUsed(getParser(), opts, logger)
         cmd = None
         if len(args) > 0:
             cmd = args[0]
@@ -745,7 +758,8 @@ def configure_logging(opts):
         applyLogConfig(opts.logconfig, defaults=deft)
     else:
         # Ticket 296: Add timestamps to log messages
-        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
+#        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
+        fmt = '%(asctime)s %(levelname)-8s: %(message)s'
         logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
@@ -886,14 +900,14 @@ def getParser():
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
     basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
-                      help="RSpec type and version to return, default 'GENI 3'")
+                      help="RSpec type and version to return, default: '%default'")
     # This goes in options.api_version. Also causes setting options.explicitAPIVersion
     basicgroup.add_option("-V", "--api-version", type="int", default=2,
-                      help="Specify version of AM API to use (default 2)")
+                      help="Specify version of AM API to use (default v%default)")
     basicgroup.add_option("--useSliceAggregates", default=False, action="store_true",
-                          help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is False.")
+                          help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is %default.")
     basicgroup.add_option("--useSliceMembers", default=False, action="store_true",
-                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is False. " + \
+                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
                               "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers).")
     basicgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
                           help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
@@ -943,9 +957,9 @@ def getParser():
     loggroup.add_option("--verbosessl", default=False, action="store_true",
                       help="Turn on verbose SSL / XMLRPC logging")
     loggroup.add_option("-l", "--logconfig", default=None,
-                      help="Python logging config file")
+                      help="Python logging config file. Default: '%default'")
     loggroup.add_option("--logoutput", default='omni.log',
-                      help="Python logging output file [use %(logfilename)s in logging config file]")
+                      help="Python logging output file [use %(logfilename)s in logging config file]. Default: '%default'")
     loggroup.add_option("--tostdout", default=False, action="store_true",
                       help="Print results like rspecs to STDOUT instead of to log stream")
     parser.add_option_group( loggroup )
@@ -979,10 +993,10 @@ def getParser():
     # This causes setting options.GetVersionCacheOldestDate
     gvgroup.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
                       default=7,
-                      help="Age in days of GetVersion cache info before refreshing (default is 7)")
+                      help="Age in days of GetVersion cache info before refreshing (default is %default)")
     gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
-                      help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
+                      help="File where GetVersion info will be cached, default is %default")
     parser.add_option_group( gvgroup )
 
     # AggNick
@@ -1027,11 +1041,11 @@ def getParser():
                       help="Use the given Orca slice id")
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
-                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is False. For use by scripts.")
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
     devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
-                        help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
+                        help="Seconds to wait before timing out AM and CH calls. Default is %default seconds.")
     devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
-                        help="Disable extra Clearinghouse calls like reporting slivers. Default is False.")
+                        help="Disable extra Clearinghouse calls like reporting slivers. Default is %default.")
     parser.add_option_group( devgroup )
     return parser
 
