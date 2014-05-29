@@ -61,6 +61,7 @@ the combined manifest RSpec.'''
 
 import json
 import logging
+import logging.handlers
 import optparse 
 import os
 import sys
@@ -104,36 +105,38 @@ def call(argv, options=None):
     # Be sure not to re-use options already in use by omni for
     # different meanings, otherwise you'll raise an OptionConflictError
     ##############################################################################
-    parser.add_option("--fakeModeDir",
-                      help="If supplied, use canned server responses from this directory",
-                      default=None)
-    parser.add_option("--scsURL",
-                      help="URL to the SCS service",
-                      default=SCS_URL)
+    parser.add_option("--defaultCapacity", default=DEFAULT_CAPACITY,
+                      type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
     parser.add_option("--excludehop", metavar="HOP_EXCLUDE", action="append",
                       help="Hop URN to exclude from any path")
     parser.add_option("--includehop", metavar="HOP_INCLUDE", action="append",
                       help="Hop URN to include on every path - use with caution")
-    parser.add_option("--ionRetryIntervalSecs", type="int", 
-                      help="Seconds to sleep before retrying at ION (default 10*60)",
-                      default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
-    parser.add_option("--ionStatusIntervalSecs", type="int", 
-                      help="Seconds to sleep between sliverstatus calls at ION (default 30)",
-                      default=30)
     parser.add_option("--fixedEndpoint", default=False, action="store_true",
                       help="RSpec uses a static endpoint - add a fake node with an interface on every link")
     parser.add_option("--noExoSM", default=False, action="store_true",
-                      help="Always use local ExoGENI racks, not the ExoSM, where possible (default False)")
+                      help="Always use local ExoGENI racks, not the ExoSM, where possible (default %default)")
     parser.add_option("--useExoSM", default=False, action="store_true",
-                      help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default False)")
-    parser.add_option("--defaultCapacity", default=DEFAULT_CAPACITY,
-                      type="int", help="Default stitched link capacity in Kbps - default is 20000 meaning ~20Mbps")
-    parser.add_option("--noReservation", default=False, action="store_true",
-                      help="Do no reservations: just generate the expanded request RSpec (default False)")
-    parser.add_option("--savedSCSResults", default=None,
-                      help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
+                      help="Always use the ExoGENI ExoSM, not the individual EG racks, where possible (default %default)")
     parser.add_option("--fileDir", default=None,
                       help="Directory for all output files generated. By default some files go in /tmp, some in the CWD, some in ~/.gcf.")
+    parser.add_option("--logFileCount", default=5, type="int",
+                      help="Number of backup log files to keep, Default %default")
+    parser.add_option("--ionRetryIntervalSecs", type="int", 
+                      help="Seconds to sleep before retrying at ION (default: %default)",
+                      default=gcf.omnilib.stitch.objects.DCN_AM_RETRY_INTERVAL_SECS)
+    parser.add_option("--ionStatusIntervalSecs", type="int", 
+                      help="Seconds to sleep between sliverstatus calls at ION (default %default)",
+                      default=30)
+    parser.add_option("--noReservation", default=False, action="store_true",
+                      help="Do no reservations: just generate the expanded request RSpec (default %default)")
+    parser.add_option("--scsURL",
+                      help="URL to the SCS service. Default: %default",
+                      default=SCS_URL)
+    parser.add_option("--fakeModeDir",
+                      help="If supplied, use canned server responses from this directory",
+                      default=None)
+    parser.add_option("--savedSCSResults", default=None,
+                      help="Developers only: Use this saved file of SCS results instead of calling SCS (saved previously using --debug)")
     #  parser.add_option("--script",
     #                    help="If supplied, a script is calling this",
     #                    action="store_true", default=False)
@@ -141,19 +144,11 @@ def call(argv, options=None):
     # Put our logs in a different file by default
     parser.set_defaults(logoutput='stitcher.log')
 
+    # Configure stitcher with a specific set of configs by default
+    parser.set_defaults(logconfig="gcf/stitcher_logging.conf")
+
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
-
-    # Set up the logger
-    omni.configure_logging(options)
-    logger = logging.getLogger("stitcher")
-
-    # We use the omni config file
-    # First load the agg nick cache
-    config = omni.load_agg_nick_config(options, logger)
-    config = omni.load_config(options, logger, config)
-
-    #logger.info("Using AM API version %d", options.api_version)
 
     # Create the dirs for fileDir option as needed
     if options.fileDir:
@@ -167,7 +162,65 @@ def call(argv, options=None):
                 except Exception, e:
                     sys.exit("Failed to create %s for saving files per --fileDir option: %s" % (fpDir, e))
         options.fileDir = fpDir
+        options.logoutput = os.path.normpath(os.path.join(options.fileDir, options.logoutput))
+
+    # Set up the logger
+    # First, rotate the logfile if necessary
+    if options.logoutput and os.path.exists(options.logoutput) and options.logFileCount > 0:
+        backupCount = options.logFileCount
+        bfn = options.logoutput
+        # Code from python logging.handlers.RotatingFileHandler.doRollover()
+        for i in range(backupCount - 1, 0, -1):
+            sfn = "%s.%d" % (bfn, i)
+            dfn = "%s.%d" % (bfn, i + 1)
+            if os.path.exists(sfn):
+                if os.path.exists(dfn):
+                    os.remove(dfn)
+                os.rename(sfn, dfn)
+        dfn = bfn + ".1"
+        if os.path.exists(dfn):
+            os.remove(dfn)
+        if os.path.exists(bfn):
+            os.rename(bfn, dfn)
+
+    omni.configure_logging(options)
+
+    # Now that we've configured logging, reset this to None to avoid later log messages about configuring logging
+    options.logconfig = None
+
+    logger = logging.getLogger("stitcher")
+
+    if options.fileDir:
         logger.info("All files will be saved in the directory '%s'", options.fileDir)
+
+    # We use the omni config file
+    # First load the agg nick cache
+
+    # First, suppress all but WARN+ messages on console
+    if not options.debug:
+        lvl = logging.INFO
+        handlers = logger.handlers
+        if len(handlers) == 0:
+            handlers = logging.getLogger().handlers
+        for handler in handlers:
+            if isinstance(handler, logging.StreamHandler):
+                lvl = handler.level
+                handler.setLevel(logging.WARN)
+                break
+
+    config = omni.load_agg_nick_config(options, logger)
+    config = omni.load_config(options, logger, config)
+
+    if not options.debug:
+        handlers = logger.handlers
+        if len(handlers) == 0:
+            handlers = logging.getLogger().handlers
+        for handler in handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(lvl)
+                break
+
+    #logger.info("Using AM API version %d", options.api_version)
 
     # Make any file prefix be part of the output file prefix so files go in the right spot
     if options.prefix and options.fileDir:
@@ -181,12 +234,6 @@ def call(argv, options=None):
             options.prefix += os.sep
     elif options.fileDir:
         options.prefix = options.fileDir
-
-# This means if options.prefix starts with a / we lose options.fileDir
-    #options.prefix = os.path.join(options.fileDir, options.prefix)
-
-# This drops any directory in options.prefix
-#    options.prefix = prependFilePrefix(options.fileDir, options.prefix)
 
 #    logger.debug("--prefix is now %s", options.prefix)
 
@@ -209,8 +256,14 @@ def call(argv, options=None):
     Aggregate.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS = options.ionRetryIntervalSecs
     Aggregate.SLIVERSTATUS_POLL_INTERVAL_SEC = options.ionStatusIntervalSecs
 
+    nondefOpts = omni.getOptsUsed(parser, options)
     if options.debug:
-        logger.info(omni.getSystemInfo())
+        logger.info(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
+        logger.info("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
+    else:
+        # Force this to the debug log file only
+        logger.debug(omni.getSystemInfo() + "\nStitcher: " + omni.getOmniVersion())
+        logger.debug("Running stitcher ... %s Args: %s" % (nondefOpts, " ".join(args)))
 
     if options.defaultCapacity < 1:
         logger.warn("Specified a tiny default link capacity of %dKbps!", options.defaultCapacity)

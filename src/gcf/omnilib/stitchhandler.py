@@ -87,7 +87,29 @@ class StitchingHandler(object):
         self.lastException = None
         self.ams_to_process = []
         self.opts = opts # command line options as parsed
+
+        # Get the framework
+        if not self.opts.debug:
+            # First, suppress all but WARN+ messages on console
+            lvl = logging.INFO
+            handlers = logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    lvl = handler.level
+                    handler.setLevel(logging.WARN)
+                    break
         self.framework = omni.load_framework(self.config, self.opts)
+        if not self.opts.debug:
+            handlers = logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(lvl)
+                    break
+
         # FIXME: How many times is right to go back to the SCS
         self.maxSCSCalls = MAX_SCS_CALLS
 
@@ -112,6 +134,23 @@ class StitchingHandler(object):
                 self.logger.debug("Passing call to Omni")
                 # Add -a options from the saved file, if none already supplied
                 self.addAggregateOptions(args)
+
+                # Try to force a call that falls through to omni to log at info level,
+                # or whatever level the main stitcher is using on the console
+                ologger = logging.getLogger("omni")
+                myLevel = logging.INFO
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        myLevel = handler.level
+                        break
+                for handler in ologger.handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        handler.setLevel(myLevel)
+                        break
+
                 return omni.call(args, self.opts)
 
         if len(args) > 1:
@@ -161,6 +200,22 @@ class StitchingHandler(object):
             if self.opts.noReservation:
                 self.logger.info("Not reserving resources")
                 sys.exit()
+
+            # Try to force a call that falls through to omni to log at info level,
+            # or whatever level the main stitcher is using on the console
+            ologger = logging.getLogger("omni")
+            myLevel = logging.INFO
+            handlers = self.logger.handlers
+            if len(handlers) == 0:
+                handlers = logging.getLogger().handlers
+            for handler in handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    myLevel = handler.level
+                    break
+            for handler in ologger.handlers:
+                if isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(myLevel)
+                    break
 
             # Warning: If this is createsliver and you specified multiple aggregates,
             # then omni only contacts 1 aggregate. That is likely not what you wanted.
@@ -241,10 +296,28 @@ class StitchingHandler(object):
             ot = self.opts.output
             if not self.opts.tostdout:
                 self.opts.output = True
-            lvl = self.logger.getEffectiveLevel()
-            self.logger.setLevel(logging.WARN)
+
+            if not self.opts.debug:
+                # Suppress all but WARN on console here
+                lvl = self.logger.getEffectiveLevel()
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        lvl = handler.level
+                        handler.setLevel(logging.WARN)
+                        break
+
             retVal, filename = handler_utils._writeRSpec(self.opts, self.logger, combinedManifest, self.slicename, 'stitching-combined', '', None)
-            self.logger.setLevel(lvl)
+            if not self.opts.debug:
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        handler.setLevel(lvl)
+                        break
             self.opts.output = ot
 
             # Print something about sliver expiration times
@@ -277,7 +350,7 @@ class StitchingHandler(object):
                                 soonest = (soonest[0], soonest[1], count)
 
                             outputstr = nextTime.isoformat()
-                            msg = "Resources in slice %s at %s expire at %d different times. Next expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
+                            msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
                         elif len(exps) == 0:
                             msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
                         else:
@@ -355,6 +428,7 @@ class StitchingHandler(object):
                 se = newError
             if "Requested no reservation" in str(se):
                 print str(se)
+                self.logger.debug(se)
                 sys.exit(0)
             else:
                 raise se
@@ -365,8 +439,7 @@ class StitchingHandler(object):
             # Clean up temporary files
             self.cleanup()
 
-            if self.opts.debug:
-                self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
+            self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         # Construct return
         amcnt = len(self.ams_to_process)
@@ -406,6 +479,7 @@ class StitchingHandler(object):
 #  Error code / message (standard GENI triple)
 #  If the error was after SCS, include the expanded request from the SCS
 #  If particular AMs had errors, ID those AMs and the errors
+        self.logger.debug(retMsg)
         return (retMsg, combinedManifest)
 
     # Compare the list of AMs in the request with AMs known
@@ -484,7 +558,9 @@ class StitchingHandler(object):
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
-        if self.scsCalls > 1:
+        if self.scsCalls == 1:
+            self.logger.info("Calling SCS...")
+        else:
             thStr = 'th'
             if self.scsCalls == 2 or self.scsCalls == 3:
                 thStr = 'rd'
@@ -603,8 +679,7 @@ class StitchingHandler(object):
 
         # FIXME: check each AM reachable, and we know the URL/API version to use
 
-        if self.opts.debug:
-            self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
+        self.dump_objects(self.parsedSCSRSpec, self.ams_to_process)
 
         self.logger.info("Multi-AM reservation will include resources from these aggregates:")
         for am in self.ams_to_process:
@@ -714,13 +789,29 @@ class StitchingHandler(object):
             else:
                 self.logger.info("Expanded request RSpec:")
 
-            lvl = self.logger.getEffectiveLevel()
-            self.logger.setLevel(logging.WARN)
+            if not self.opts.debug:
+                # Suppress all but WARN on console here
+                lvl = self.logger.getEffectiveLevel()
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        lvl = handler.level
+                        handler.setLevel(logging.WARN)
+                        break
 
             # Create FILE
             # This prints or logs results, depending on whether filename is None
             handler_utils._printResults(self.opts, self.logger, header, content, filename)
-            self.logger.setLevel(lvl)
+            if not self.opts.debug:
+                handlers = self.logger.handlers
+                if len(handlers) == 0:
+                    handlers = logging.getLogger().handlers
+                for handler in handlers:
+                    if isinstance(handler, logging.StreamHandler):
+                        handler.setLevel(lvl)
+                        break
             self.opts.output = ot
 
             raise StitchingError("Requested no reservation")
@@ -813,7 +904,7 @@ class StitchingHandler(object):
         '''Ensure the given slice name corresponds to a current valid slice,
         and return the Slice URN and expiration datetime.'''
 
-        self.logger.info("Checking that slice %s is valid...", self.slicename)
+        self.logger.info("Reading slice %s credential...", self.slicename)
 
         # Get slice URN from name
         try:
@@ -1249,7 +1340,7 @@ class StitchingHandler(object):
 
         expandedRSpec = scsResponse.rspec()
 
-        if self.opts.debug or self.opts.fakeModeDir:
+        if self.opts.debug or self.opts.fakeModeDir or self.logger.isEnabledFor(logging.DEBUG):
 
             if isRSpecStitchingSchemaV2(expandedRSpec):
                 self.logger.debug("SCS RSpec uses v2 stitching schema")
@@ -1263,6 +1354,7 @@ class StitchingHandler(object):
                 if expandedRSpec is not None:
                     content += "\n<!-- \n" + expandedRSpec + "\n -->"
 
+        if self.opts.debug or self.opts.fakeModeDir:
             # Set -o to ensure this goes to a file, not logger or stdout
             opts_copy = copy.deepcopy(self.opts)
             opts_copy.output = True
@@ -1270,29 +1362,31 @@ class StitchingHandler(object):
             handler_utils._printResults(opts_copy, self.logger, header, \
                                             content, \
                                             scsreplfile)
+
             # In debug mode, keep copies of old SCS expanded requests
-            if self.logger.isEnabledFor(logging.DEBUG):
+            if self.opts.debug:
                 handler_utils._printResults(opts_copy, self.logger, header, content, scsreplfile + str(self.scsCalls))
+
             self.logger.debug("Wrote SCS expanded RSpec to %s", \
                                   scsreplfile)
 
-            # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
-            if self.logger.isEnabledFor(logging.DEBUG):
-                start = 0
-                while True:
-                    if not content.find("<link id=", start) >= start:
-                        break
-                    hopIdStart = content.find('<link id=', start) + len('<link id=') + 1
-                    hopIdEnd = content.find(">", hopIdStart)-1
-                    # Print the link ID
-                    hop = content[hopIdStart:hopIdEnd]
-                    # find suggestedVLANRange
-                    suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
-                    suggestedEnd = content.find("</suggested", suggestedStart)
-                    suggested = content[suggestedStart:suggestedEnd]
-                    # print that
-                    self.logger.debug("SCS gave hop %s suggested VLAN %s", hop, suggested)
-                    start = suggestedEnd
+        # A debugging block: print out the VLAN tag the SCS picked for each hop, independent of objects
+        if self.logger.isEnabledFor(logging.DEBUG):
+            start = 0
+            while True:
+                if not content.find("<link id=", start) >= start:
+                    break
+                hopIdStart = content.find('<link id=', start) + len('<link id=') + 1
+                hopIdEnd = content.find(">", hopIdStart)-1
+                # Print the link ID
+                hop = content[hopIdStart:hopIdEnd]
+                # find suggestedVLANRange
+                suggestedStart = content.find("suggestedVLANRange>", hopIdEnd) + len("suggestedVLANRange>")
+                suggestedEnd = content.find("</suggested", suggestedStart)
+                suggested = content[suggestedStart:suggestedEnd]
+                # print that
+                self.logger.debug("SCS gave hop %s suggested VLAN %s", hop, suggested)
+                start = suggestedEnd
 
        # parseRequest
         parsed_rspec = self.rspecParser.parse(expandedRSpec)
@@ -1302,10 +1396,11 @@ class StitchingHandler(object):
         # parseWorkflow
         workflow = scsResponse.workflow_data()
         scsResponse = None # once workflow extracted, done with that object
-        if self.opts.debug:
-            import pprint
-            pp = pprint.PrettyPrinter(indent=2)
-            pp.pprint(workflow)
+
+        # Dump the formatted workflow at debug level
+        import pprint
+        pp = pprint.PrettyPrinter(indent=2)
+        self.logger.debug(pp.pformat(workflow))
 
         workflow_parser = WorkflowParser(self.logger)
 
@@ -1399,27 +1494,16 @@ class StitchingHandler(object):
 #            if 'alpha.dragon' in agg.url:
 #                agg.url =  'http://alpha.dragon.maxgigapop.net:12346/'
 
-            # Query AM API versions supported, then set the maxVersion as a property on the aggregate
-                # then use that to pick allocate vs createsliver
-            # Check GetVersion geni_am_type contains 'dcn'. If so, set flag on the agg
- #           if options_copy.warn:
-            omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
-#            else:
-#                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
+            # Use GetVersion to determine AM type, AM API versions spoken, etc
+            if options_copy.warn:
+                omniargs = ['--ForceUseGetVersionCache', '-a', agg.url, 'getversion']
+            else:
+                omniargs = ['--ForceUseGetVersionCache', '-o', '--warn', '-a', agg.url, 'getversion']
                 
             try:
                 self.logger.debug("Getting extra AM info from Omni for AM %s", agg)
-#                logging.disable(logging.INFO)
-                oldLevel = logging.getLogger("omni").getEffectiveLevel()
-                for handler in logging.getLogger("omni").handlers:
-                    self.logger.info("Found omni log handler %s", handler)
-                    if isinstance(handler, logging.handlers.StreamHandler):
-                        handler.setLevel(logging.DEBUG)
                 (text, version) = omni.call(omniargs, options_copy)
-#                logging.disable(logging.NOTSET)
-                for handler in logging.getLogger("omni").handlers:
-                    if isinstance(handler, logging.handlers.StreamHandler):
-                        handler.setLevel(oldLevel)
+
                 if isinstance (version, dict) and version.has_key(agg.url) and isinstance(version[agg.url], dict) \
                         and version[agg.url].has_key('value') and isinstance(version[agg.url]['value'], dict):
                     if version[agg.url]['value'].has_key('geni_am_type') and isinstance(version[agg.url]['value']['geni_am_type'], list):
@@ -1519,8 +1603,8 @@ class StitchingHandler(object):
             except Exception, e:
                 self.logger.debug("Got error extracting extra AM info: %s", e)
                 pass
-            finally:
-                logging.disable(logging.NOTSET)
+#            finally:
+#                logging.disable(logging.NOTSET)
 
             if agg.isEG and self.opts.useExoSM and not agg.isExoSM:
                 agg.alt_url = defs.EXOSM_URL
@@ -1617,7 +1701,7 @@ class StitchingHandler(object):
                             # Sort and take first
                             agg.sliverExpirations = agg.sliverExpirations.sort()
                             outputstr = agg.sliverExpirations[0].isoformat()
-                            msg = "Resources here expire at %d different times. Next expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
+                            msg = "Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
                         elif len(agg.sliverExpirations) == 0:
                             pass
                         else:
