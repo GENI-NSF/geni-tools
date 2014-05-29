@@ -59,9 +59,9 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     otherwise returns None. And (2) A message explaining any errors."""
 
     # Change exception name?
-    max_attempts = 2
+    max_attempts = 3
     attempt = 0
-    retry_pause_seconds = 10
+    retry_pause_seconds = 15
 
     failMsg = "Call for %s failed." % reason
     while(attempt <= max_attempts):
