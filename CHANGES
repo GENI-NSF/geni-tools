@@ -26,6 +26,10 @@ gcf 2.6:
     `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
    * Added new utilities in `handler_utils` to extract sliver
      expiration from the manifest and sliverstatus.
+  * Clean up console log messages.
+  * Retry on AM busy message one more time, sleeping 15 seconds instead of 10.
+  * Restore printing of non-standard options used in command summary.
+  * Help specifies defaults for more options.
   * Mac install clears old `omni.py` and similar aliases (#556)
   * Fix `get_cert_keyid` to get the key id from the certificate (#573)
   * `renewslice` properly warns if your new expiration is not what you
@@ -47,6 +51,18 @@ gcf 2.6:
     errors. This only works at AMs that are VLAN producers or
     per the SCS do not depend on other AMs. This does not currently work at
     ExoGENI or GRAM AMs. (#576,#604)
+  * Put the list of AMs used by the stitched slice in `~/.gcf`, not
+    the current directory. So you can be in a different directory later 
+    to find it. (#462)
+  * Added new option `--fileDir`. If provided, all stitcher files go in this directory,
+    and not the `/tmp` and `~/.gcf` 
+    and current working directory otherwise used. This prefix also modifies 
+    the value from `--prefix`, so other output files are written to this directory. 
+    Therefore 2 stitcher instances can run in parallel. (#588)
+  * Support GRE links (instead of or in addition to stitched links). (#562)
+  * Clean up logging: console log messages are cleaner and fewer. 
+    Stitcher produces a debug-level log file named `stitcher.log`
+    suitable for use in reporting problems. (#450)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
@@ -59,15 +75,6 @@ gcf 2.6:
     results. (#578)
   * At run end, print sliver expiration times for each AM, and warn if there are
     differences across AMs. (#572)
-  * Put the list of AMs used by the stitched slice in `~/.gcf`, not
-    the current directory. So you can be in a different directory later 
-    to find it. (#462)
-  * Added new option `--fileDir`. If provided, all stitcher files go in this directory,
-    and not the `/tmp` and `~/.gcf` 
-    and current working directory otherwise used. This prefix also modifies 
-    the value from `--prefix`, so other output files are written to this directory. 
-    Therefore 2 stitcher instances can run in parallel. (#588)
-  * Support GRE links (instead of or in addition to stitched links). (#562)
   * Exit if any nodes are unbound in the request. (#614)
   * Pass the usual `verbosessl` option to create the SCS client,
     allowing verbose logging of SSL connections to the SCS. (#557)

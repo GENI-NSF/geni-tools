@@ -132,12 +132,27 @@ Currently, stitcher will (at least temporarily) write several files to the curre
 working directory (results from `GetVersion` and `SliverStatus`, plus
 several manifest RSpecs) (change this directory using `--fileDir`).
 
+stitcher output can be all placed in a single directory by using the
+`--fileDir` option. This is particularly useful when running multiple
+stitcher instances in parallel.
+
+By default, stitcher logs basic information to the console, and
+detailed debug information to a file named `stitcher.log`, using the
+logging config file `gcf\sticher_logging.conf`. Log format
+and content can be controlled with the omni options `--logoutput`,
+`--logconfig`, and `--debug`. If you run into problems with stitcher,
+you may be asked to submit the debug logs found in
+`stitcher.log`. (Logs from your last few runs of stitcher are saved in
+backup files. Control the number of backups using the `--logFileCount`
+option.)
+
 `./stitcherTestFiles` contains a selection of sample request RSpecs
 for use with stitching. Note this is not exhaustive; multiple links
 between the same aggregate pairs are possible for example.
 
-When complete, `stitcher` writes a file to `~/.gcf`, listing the aggregates at which it made reservations. This
-file is used by `stitcher` later to drive calls, e.g. to `sliverstatus` or
+When complete, `stitcher` writes a file to `~/.gcf`, listing the
+aggregates at which it made reservations. This file is used by
+`stitcher` later to drive calls, e.g. to `sliverstatus` or 
 `renewsliver` or `deletesliver`. This file is named something like
 `slice.hrn-amlist.txt`.
 
@@ -220,6 +235,13 @@ Other options you should not need to use:
  - `--fileDir`: Save _all_ files to this directory, and not the usual
  directory used by stitcher (`/tmp`, CWD or `~`).
  This allows multiple stitcher instances to be run in parallel.
+ - `--logconfig` to use a non standard logging configuration. Stitcher
+ expects one StreamHandler for the console. Default configuration is
+ in `gcf\stitcher_logging.conf`.
+ - `--logoutput` to change the name of the stitcher logging file
+ (default is `stitcher.log`).
+ - `--logFileCount` to change the number of backup stitcher log files
+ to keep (default is 5).
 
 == Tips and Details ==
 
@@ -333,6 +355,7 @@ failures, and report any apparent bugs to [mailto:omni-help@geni.net omni-help@g
 
 As with Omni errors, when reporting problems please include as much
 detail as possible:
+ - Attach the stitcher debug logs found by default in `stitcher.log`
  - `python src/omni.py --version`
  - The exact commandline you used to invoke stitcher
  - The request RSpec you used with stitcher
