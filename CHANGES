@@ -26,10 +26,11 @@ gcf 2.6:
     `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
    * Added new utilities in `handler_utils` to extract sliver
      expiration from the manifest and sliverstatus.
-  * Clean up console log messages.
-  * Retry on AM busy message one more time, sleeping 15 seconds instead of 10.
-  * Restore printing of non-standard options used in command summary.
-  * Help specifies defaults for more options.
+  * Clean up console log messages. (#623)
+  * Retry on AM busy message one more time, sleeping 15 seconds instead 
+    of 10. (#624)
+  * Restore printing of non-standard options used in command summary. (#625)
+  * Help specifies defaults for more options. (#626)
   * Mac install clears old `omni.py` and similar aliases (#556)
   * Fix `get_cert_keyid` to get the key id from the certificate (#573)
   * `renewslice` properly warns if your new expiration is not what you
