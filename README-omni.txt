@@ -41,6 +41,9 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.5.3:
+ * Can now parse omni-configure sections of omni_config. (#436)
+
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
    avoiding the heartbleed vulnerability. (#593)
@@ -717,7 +720,7 @@ Omni supports the following command-line options.
 
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.5.2
+GENI Omni Command Line Aggregate Manager Tool Version 2.5.3
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
@@ -1562,28 +1565,28 @@ Sample Usage:
     `omni.py createsliver myslice resources.rspec`
  * Reserve the resources defined in an RSpec file at a particular
  aggregate (specifying aggregate with a nickname):
-    `omni.py -a pg-gpo createsliver myslice resources.rspec`
+    `omni.py -a gpo-ig createsliver myslice resources.rspec`
  * Specify using GENI AM API v1 to reserve a sliver in `myslice`
  from a particular AM (specifying aggregate with a nickname), using
  the request rspec in `resources.rspec`:
 {{{
-     omni.py -a pg-gpo2 --api-version 1 createsliver \
+     omni.py -a gpo-ig2 --api-version 1 createsliver \
               myslice resources.rspec
 }}}
  * Use a saved (possibly delegated) slice credential: 
 {{{
      omni.py --slicecredfile myslice-credfile.xml \
-             -a pg-gpo createsliver myslice resources.rspec
+             -a gpo-ig createsliver myslice resources.rspec
 }}}
  * Save manifest RSpec to a file with a particular prefix: 
 {{{
-     omni.py -a pg-gpo -o -p myPrefix \
+     omni.py -a gpo-ig -o -p myPrefix \
              createsliver myslice resources.rspec
 }}}
  * Reserve resources, installing all slice members' keys on the new
  nodes, but not any users listed in `omni_config`.
 {{{
-     omni.py -a ig-gpo --useSliceMembers --ignoreConfigUsers \
+     omni.py -a gpo-ig --useSliceMembers --ignoreConfigUsers \
              createsliver myslices resources.rspec
 }}}
 

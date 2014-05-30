@@ -125,7 +125,7 @@ from .omnilib.frameworks import framework_pgch
 from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
 
-OMNI_VERSION="2.5.2"
+OMNI_VERSION="2.5.3"
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -208,8 +208,8 @@ def load_agg_nick_config(opts, logger):
     config = load_aggregate_nicknames( config, confparser, filename, logger, opts )
     return config
 
-def load_config(opts, logger, config={}):
-    """Load the omni config file.
+def locate_config( opts, logger, config={}):
+    """Locate the omni config file.
     Search path:
     - filename from commandline
       - in current directory
@@ -238,17 +238,24 @@ def load_config(opts, logger, config={}):
                      % (opts.configfile, configfile))
 
     # Find the first valid config file
-    for cf in configfiles:         
+    for cf in configfiles:
         filename = os.path.expanduser(cf)
         if os.path.exists(filename):
             break
-    
+
     # Did we find a valid config file?
     if not os.path.exists(filename):
         prtStr = """ Could not find an omni configuration file in local directory or in ~/.gcf/omni_config
      An example config file can be found in the source tarball or on the wiki"""
         logger.error( prtStr )
         raise OmniError, prtStr
+
+    return filename
+def load_config(opts, logger, config={}, filename=None):
+    """Load the omni_config file specified by the `filename` option.
+    """
+    if filename is None:
+        filename = locate_config(opts, logger, config)
 
     logger.info("Loading config file %s", filename)
     
@@ -300,12 +307,12 @@ def load_config(opts, logger, config={}):
         opts.framework = config['omni']['default_cf']
 
     # Fill in the project if it is configured
-    if not opts.project:
+    if hasattr(opts,'project') and not opts.project:
         if config['omni'].has_key('default_project'):
             opts.project = config['omni']['default_project']
 
     # Config of useslicemembers some value of true sets the option
-    if config['omni'].has_key('useslicemembers'):
+    if hasattr(opts,'useslicemembers') and config['omni'].has_key('useslicemembers'):
         usm = config['omni']['useslicemembers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
@@ -313,7 +320,7 @@ def load_config(opts, logger, config={}):
                 logger.info("Setting option useSliceMembers based on omni_config setting")
                 opts.useSliceMembers = True
     # Config of ignoreconfigusers some value of true sets the option
-    if config['omni'].has_key('ignoreconfigusers'):
+    if  hasattr(opts,'ignoreconfigusers') and config['omni'].has_key('ignoreconfigusers'):
         usm = config['omni']['ignoreconfigusers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
@@ -333,6 +340,24 @@ def load_config(opts, logger, config={}):
     config['selected_framework'] = {}
     for (key,val) in confparser.items(cf):
         config['selected_framework'][key] = val
+
+    # This portion of the config is only of interest for `omni-configure`
+    # but is included here for completeness
+    if confparser.has_section('omni_configure'):
+        for (key,val) in confparser.items('omni_configure'):
+            key = key.strip()
+            temp = val.strip()
+            if key == "version":
+                config['omni_configure_version'] = temp
+            elif key == "date":
+                config['omni_configure_date'] = temp
+            elif key == "files":
+                files1 = temp.split("\n")
+                files2 = []
+                for item in files1:
+                    fdesc,fname,oktodelete = item.split(",")
+                    files2.append((fdesc.strip(),fname.strip(),oktodelete.strip()))
+                config['omni_configure_files'] = files2
 
     return config
 

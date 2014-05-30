@@ -1,5 +1,5 @@
 SRCDIR=~/gcf
-DESTDIR=~/omniTools/omniTools-2.5
+DESTDIR=~/omniTools/omniTools-2.5.3
 COVERDIR=~/omniTools
 
 cd ${SRCDIR}/src
@@ -23,6 +23,10 @@ cd ../examples/
 py2applet --make-setup readyToLogin.py
 python setup.py py2app --no-chdir
 mv dist/readyToLogin.app $DESTDIR
+rm -r dist build setup.py 
+py2applet --make-setup addMemberToSliceAndSlivers.py
+python setup.py py2app --no-chdir
+mv dist/addMemberToSliceAndSlivers.app $DESTDIR
 rm -r dist build setup.py 
 
 #copy License and make Applications link
