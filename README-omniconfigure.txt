@@ -1,6 +1,6 @@
 = Configuring Omni = 
 
-GCF v1.6.2 and later comes with a configuration script (omni-configure.py)
+GCF/Omni comes with a configuration script (omni-configure)
 that will automatically configure Omni for users with a standard setup.
 Users with more complicated setups should manually configure Omni. 
 
@@ -12,6 +12,22 @@ You SHOULD manually configure Omni if :
   * you want multiple users to have access to the reserved compute resources. 
 
 == Release Notes ==
+
+As of GCF v.2.5.3, `omni-configure` better handles being run on a system that
+is already configured for use with omni.  This is useful, for example, when
+renewing a certificate.
+
+To reconfigure an existing config and be asked before overwriting any relevant
+files run:
+      `omni-configure`
+
+To reconfigure an existing config and overwrite any relevant
+files without being asked run:
+      `omni-configure --replace-all`
+
+To delete most files created by `omni-configure`, run:
+      `omni-configure --clean`
+
 As of GCF v2.5, omni-configure by default uses the new `chapi`
 interface for talking to the GENI Portal, which enables several new
 features. To use the old style interface, supply the option `--not-use-chapi`.
@@ -20,52 +36,51 @@ GCF v2.2.1 and later also supports automatic configuration of omni
 for portal credentials. 
 
 Look at help for more info. 
-== omni-configure.py script ==
+== omni-configure script ==
 
-omni-configure.py is a script that will automatically create
+omni-configure is a script that will automatically create
 the configuration file that Omni requires to run. 
 
-The script is intended for new users that want a standard configuration 
+The script is intended for users that want a standard configuration
 for using omni. 
 
-Currently the omni-configure.py script fully supports ProtoGENI certificates
-and certificates from the GENI Portal. It also supports configuration 
-using existing SFA certs.
+Currently the omni-configure script fully supports ProtoGENI certificates
+and certificates from the GENI Portal.
 
-omni-configure.py will :
+omni-configure will :
   * create an omni_config file and place it under ~/.gcf by default. If file
     ~/.gcf/omni_config already exists the user will be prompted about whether a
-    backup of the existing file should be created. 
+    backup of the existing file should be created (unless run with `--replace-all`).
   * create an SSH public key based on the private key of your certificate
     and place it under ~/.ssh (The names of the keys will start with geni_key). 
     If the files already exist the user will be prompted about whether to 
-    overwrite them or not. If the user chooses not to overwrite them, a new 
-    location will be picked. If you are running with a bundle from the portal
-    it will use the SSH key-pair created by the portal. 
+    overwrite them or not (unless run with `--replace-all`). If the user chooses
+    not to overwrite them, a new location will be picked. If you are running
+    with a bundle from the portal it will use the SSH key-pair created by the portal.
     This public key is uploaded to any compute nodes that the user reserves
-    using Omni and gives ssh access to the nodes, through the private key.
-    key created by the script to login to nodes. 
+    using Omni and gives ssh access to the nodes, through the private key created by
+    the script.
   * If you are using your account from the GENI portal, then an extra SSH 
-    key pair will be created based on your SSL cert (name geni_cert_portal_key)
+    key pair will be created based on your SSL cert (named geni_cert_portal_key)
 
-=== Running omni-configure.py ===
-omni-configure.py needs only one file as input: the certificate file, or
-the omni bundle file downloaded from the portal
+=== Running omni-configure ===
+omni-configure needs only one file as input: the certificate file for ProtoGENI
+accounts, or the omni bundle file downloaded from the GENI Portal for Portal accounts.
 
 If you have an account with a ProtoGENI site then:
-  * login to the web UI (e.g. www.pgeni.gpolab.bbn.com, www.emulab.net)
+  * login to the web UI (e.g. www.emulab.net)
   * download and save a copy of the cert under ~/.ssl/geni_cert.pem
-  * run omni-configure.py
+  * run `omni-configure -f pg`
 
 If you have an account at the GENI Portal then:
-  * login to the portal (e.g. at panther.gpolab.bbn.com)
+  * login to the portal (e.g. at portal.geni.net)
   * under your profile tab, follow instruction about downloading the omni bundle
-    and save it at ~/Downloads/omni-bundle.zip
-  * run omni-configure.py -f portal
+    and save it at ~/Downloads/omni.bundle (or ~/Downloads/omni-bundle.zip)
+  * run `omni-configure`
 
 
-=== Usage of omni-configure.py ===
-Usage: 
+=== Usage of omni-configure ===
+Usage:
  Script for automatically configuring Omni.
 
 Options:
@@ -89,7 +104,7 @@ Options:
                         to compute resources, [DEFAULT: ~/.ssh/]
   -z FILE, --portal-bundle=FILE
                         Bundle downloaded from the portal for configuring Omni
-                        [DEFAULT: ~/Downloads/omni-bundle.zip]
+                        [DEFAULT: []]
   -f FRAMEWORK, --framework=FRAMEWORK
                         Control framework that you have an account with
                         [options: [pg, pl, portal], DEFAULT: portal]
@@ -98,6 +113,12 @@ Options:
   --not-use-chapi       If available, do not configure the omni_config to use
                         the common Clearinghouse API (CH API).
   -v, --verbose         Turn on verbose command summary for omni-configure
+                        script
+  --clean               Clean up files generated by this script. (Does not
+                        honor -s/-f options.)
+  --clean-all           In addition to files deleted by --clean, also remove
+                        input files (i.e. omni bundle files).
+  --replace-all         Answer yes to all questions about replacing a file.
 
 == Manually configuring Omni ==
 
