@@ -558,18 +558,20 @@ class StitchingHandler(object):
     def mainStitchingLoop(self, sliceurn, requestDOM, existingAggs=None):
         # existingAggs are Aggregate objects
         self.scsCalls = self.scsCalls + 1
-        if self.scsCalls == 1:
-            self.logger.info("Calling SCS...")
-        else:
-            thStr = 'th'
-            if self.scsCalls == 2 or self.scsCalls == 3:
-                thStr = 'rd'
-            if self.scsCalls == self.maxSCSCalls:
-                self.logger.info("Calling SCS for the %d%s and last time...", self.scsCalls, thStr)
-            else:
-                self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
-
         if self.isStitching:
+            if self.scsCalls == 1:
+                self.logger.info("Calling SCS...")
+            else:
+                thStr = 'th'
+                if self.scsCalls == 2:
+                    thStr = 'nd'
+                elif self.scsCalls == 3:
+                    thStr = 'rd'
+                if self.scsCalls == self.maxSCSCalls:
+                    self.logger.info("Calling SCS for the %d%s and last time...", self.scsCalls, thStr)
+                else:
+                    self.logger.info("Calling SCS for the %d%s time...", self.scsCalls, thStr)
+
             scsResponse = self.callSCS(sliceurn, requestDOM, existingAggs)
         self.lastException = None # Clear any last exception from the last run through
 
@@ -861,14 +863,18 @@ class StitchingHandler(object):
     def deleteAllReservations(self, launcher):
         '''On error exit, ensure all outstanding reservations are deleted.'''
         ret = True
+        loggedDeleting = False
         for am in launcher.aggs:
             if am.manifestDom:
-                self.logger.warn("Had reservation at %s", am.url)
+                if not loggedDeleting:
+                    loggedDeleting = True
+                    self.logger.info("Deleting existing reservations...")
+                self.logger.debug("Had reservation at %s", am)
                 try:
                     am.deleteReservation(self.opts, self.slicename)
-                    self.logger.warn("Deleted reservation at %s", am.url)
+                    self.logger.info("Deleted reservation at %s.", am)
                 except StitchingError, se2:
-                    self.logger.warn("Failed to delete reservation at %s: %s", am.url, se2)
+                    self.logger.warn("Failed to delete reservation at %s: %s", am, se2)
                     ret = False
         return ret
 
@@ -1706,7 +1712,7 @@ class StitchingHandler(object):
                             pass
                         else:
                             outputstr = agg.sliverExpirations[0].isoformat()
-                            msg = "Resources here expire at %s UTC" % (name, client.str, outputstr)
+                            msg = "Resources here expire at %s UTC" % (outputstr)
                         pass
                     else:
                         self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
