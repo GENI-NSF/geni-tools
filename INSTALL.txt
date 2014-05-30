@@ -29,16 +29,26 @@ Section that is different is Section 3
       [sudo] mv gcf-2.6 <install-dir>
       }}}
       * Create a symbolic link  called `gcf` to your installation directory. This will make the process of upgrading omni easier.
+         - If this is your first time installing gcf, do:
       {{{
       cd <install-dir>
       rm gcf; ln -s gcf-2.6 gcf
       }}}
-
+         - If you are upgrading your gcf, do:
+      {{{
+      cd <install-dir>
+      ln -s gcf-2.6 gcf
+      }}}
 ==  2. Add GCF to your path == 
 
 In order to be able to run omni.py, gcf-am.py and any of the scripts
 (e.g. readyToLogin.py) you will need to modify the `PATH` and the
 `PYTHONPATH` environment variables. 
+
+Also it is useful to add aliases to the commonly used commands so that you 
+don't have to specify the `.py` in your commands; e.g. you can
+configure omni by just running `omni-configure` instead of
+`omni-configure.py`
 
 It is recommended that you make these modifications in a configuration file so that they are set every
 time you login to your host.  The name of the configuration file is
@@ -64,6 +74,13 @@ if [ -d "<PATH-TO-GCF-DIR>/src" ] ; then
     PATH="<PATH-TO-GCF-DIR>/src:<PATH-TO-GCF-DIR>/examples:$PATH"
     export PYTHONPATH="<PATH-TO-GCF-DIR>/src:$PYTHONPATH" 
 fi
+
+alias omni='omni.py'
+alias omni-configure='omni-configure.py'
+alias readyToLogin='readyToLogin.py'
+alias clear-passphrases='clear-passphrases.py'
+alias stitcher='stitcher.py'
+alias remote-execute='remote-execute.py'
 }}}
 
 For the changes to take effect in your current terminal run:
