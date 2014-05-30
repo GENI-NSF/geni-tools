@@ -104,6 +104,9 @@ gcf 2.6:
     when using `--noReservation`. (#608)
   * Pause between calls to the SCS the full 600 seconds only if we tried
     a reservation at a DCN AM - not just if any AM in the topology is a DCN AM. (#351)
+  * On `VLAN PCE` error from a DCN AM, if we had asked for 'any' from the endpoints,
+    then re-request asking for a different tag. Note that this still fails
+    due to an IG bug. (#622)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

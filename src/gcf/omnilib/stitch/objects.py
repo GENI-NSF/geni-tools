@@ -542,6 +542,17 @@ class Aggregate(object):
                 self.handleSuggestedVLANNotRequest(opts, slicename)
                 hadSuggestedNotRequest = True
 
+            # See instageni ticket #137
+            if suggestedObject <= hop.vlans_unavailable:
+                self.logger.error("%s gave VLAN %s for hop %s which was explicitly marked unavailable.", self, suggestedObject, hop)
+                self.logger.debug("VLANs unavailable were %s, request suggested was %s, request range was %s", hop.vlans_unavailable, hop._hop_link.vlan_suggested_request, hop._hop_link.vlan_range_request)
+ 
+#                # FIXME: If I could tell this was really that VLAN PCE case, then I could try re-doing from the SCS here?
+#                # The problem is I'll still reset this to any and still get a bad tag
+#                if hop._hop_link.vlan_suggested_request == VLANRange.fromString('any'):
+#                    raise StitchingCircuitFailedError("%s assigned unavailable VLAN %s for hop %s" % (self, suggestedObject, hop))
+                raise StitchingError("%s assigned unavailable VLAN %s for hop %s" % (self, suggestedObject, hop))
+ 
         # Mark AM not busy
         self.inProcess = False
 
@@ -2167,8 +2178,19 @@ class Aggregate(object):
 
             if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
                 self.logger.debug("Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                self.logger.debug("Marking failed tag %s unavail at %s and %s", failedHop._hop_link.vlan_suggested_request, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
+                failedHop.vlans_unavailable = failedHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+
+                # Reset the failedHop vlan_range_request and other intermediate hops
+                # Want that to be the range the SCS gave us, less any unavails
+                thisHop = failedHop
+                while thisHop is not None:
+                    thisHop._hop_link.vlan_range_request = thisHop._hop_link.scs_vlan_range_request - thisHop.vlans_unavailable
+                    self.logger.debug("Reset %s range request to %s", thisHop, thisHop._hop_link.vlan_range_request)
+                    thisHop = thisHop.import_vlans_from
+
                 self.logger.info("Deleting some reservations to retry, avoiding failed VLAN...")
                 for am in toDelete:
                     if am.completed:
@@ -3282,6 +3304,7 @@ class HopLink(object):
         hoplink = HopLink(id)
         hoplink.vlan_xlate = vlan_translate
         hoplink.vlan_range_request = vlan_range_obj
+        hoplink.scs_vlan_range_request = vlan_range_obj
         hoplink.vlan_suggested_request = vlan_suggested_obj
 
         # Extract the advertised capabilities
@@ -3326,6 +3349,7 @@ class HopLink(object):
         self.vlan_xlate = False
 
         self.vlan_range_request = ""
+        self.scs_vlan_range_request = VLANRange.fromString("2-4092")
         self.vlan_suggested_request = None
         self.vlan_range_manifest = ""
         self.vlan_suggested_manifest = None
