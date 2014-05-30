@@ -52,7 +52,7 @@ class Launcher(object):
                 try:
                     agg.allocate(self.opts, self.slicename, rspec.dom, scsCallCount)
                 except StitchingRetryAggregateNewVlanError, se:
-                    self.logger.info("Will put %s back in the pool to allocate. Got %s", agg, se)
+                    self.logger.info("Will put %s back in the pool to allocate. Got: %s", agg, se)
 
                     # Aggregate.BUSY_POLL_INTERVAL_SEC = 10 # dossl does 10
                     # Aggregate.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS = 30
