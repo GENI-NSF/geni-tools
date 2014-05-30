@@ -83,7 +83,7 @@ gcf 2.6:
     Avoid picking a tag on one hop and copying it to another
     where it is illegal. (#558)
   * Make "Adding aggregate option" messages debug level (#584)
-  * At PG/IG, 'Need node id for links' is fatal (#583)
+  * At PG/IG, `Need node id for links` is fatal (#583)
   * Request from the SCS the merged paths workflow, although we
     do not use it, as this forces SCS to detect workflow loops. (#580)
   * Clearer error messages when there are no more VLANs for stitcher
@@ -114,14 +114,14 @@ gcf 2.6:
   * Fix gcf-test to work with AM API v3 again. (#616)
 
  * acceptance
-  * Use your GENI Clearinghouse/Portal account for acceptance testing, not pgeni.
+  * Use your GENI Clearinghouse and Portal account for acceptance testing, not pgeni.
     And use resources from utahddc, not the GPO PL nodes. (#617)
   * Document scripts `am_api_accept_scaling.py` and `am_api_accept_nagios.py`. (#618)
 
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
    avoiding the heartbleed vulnerability. (#593)
- * Update various packages in Windows / Mac binaries to be
+ * Update various packages in Windows and Mac binaries to be
    consistent versions. (#594)
 
 gcf 2.5.1:

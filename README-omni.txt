@@ -88,7 +88,7 @@ New in v2.6:
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
    avoiding the heartbleed vulnerability. (#593)
- * Update various packages in Windows/Mac binaries to be
+ * Update various packages in Windows and Mac binaries to be
    consistent versions. (#594)
 
 New in v2.5:
@@ -2655,7 +2655,7 @@ Sample output:
 {{{
   Result Summary: Slice urn:publicid:IDN+ch.geni.net:ahscaletest+slice+ahtest expires on 2014-05-21 18:37:12 UTC
 Resources in slice ahtest at AM utahddc-ig expire at 2014-05-21T00:00:00 UTC.
- Next resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
+ First resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.

@@ -95,7 +95,7 @@ To delete from only 1 aggregate:
 === Notes ===
 
 `createsliver` or `allocate` commands with an RSpec that requires
-stitching will be processed by the stitcher code. All other calls will
+stitching or GRE links will be processed by the stitcher code. All other calls will
 be passed directly to Omni.
 
 The same request RSpec will be submitted to every aggregate required
@@ -104,7 +104,7 @@ aggregates for you. ''Note'' however that in general stitcher only knows how to
 contact aggregates that are involved in the circuits you request -
 nodes you are trying to reserve in the RSpec that are not linked with
 a stitching link may not be reserved, because stitcher may not know
-the URL to contact that aggregate. If there is an aggregate nickname
+the URL to contact that aggregate. HOWEVER, if there is an aggregate nickname
 for the component manager URN in your RSpec with a matching URL,
 stitcher should find it.
 
@@ -130,7 +130,7 @@ RSpec to a file (named
 '`<slicename>-manifest-rspec-stitching-combined.xml`'), unless you specify the `--tostdout` option.
 Currently, stitcher will (at least temporarily) write several files to the current
 working directory (results from `GetVersion` and `SliverStatus`, plus
-several manifest RSpecs) (change this directory using `--fileDir`).
+several manifest RSpecs) (change this directory using the option `--fileDir`).
 
 stitcher output can be all placed in a single directory by using the
 `--fileDir` option. This is particularly useful when running multiple
@@ -218,30 +218,30 @@ eg-fiu=urn:publicid:IDN+exogeni.net:fiuvmsite+authority+am,https://fiu-hn.exogen
  for the ExoSM.
 
 Other options you should not need to use:
- - `--fakeModeDir <directory>`: When supplied, does not make any
- actual reservations at aggregates. For testing only.
- - `--scsURL <url>`: URL at which the Stitching Computation Service
- runs. Use the default.
+ - `--fileDir`: Save _all_ files to this directory, and not the usual
+ directory used by stitcher (`/tmp`, CWD or `~`).
+ This allows multiple stitcher instances to be run in parallel.
+ - `--logoutput` to change the name of the stitcher logging file
+ (default is `stitcher.log`).
+ - `--logFileCount` to change the number of backup stitcher log files
+ to keep (default is 5).
  - `--ionRetryIntervalSecs <# seconds>`: # of seconds to sleep between
  reservation attempts at ION or another DCN based aggregate. Default
  is 600 (10 minutes), to allow routers to reset.
  - `--ionStatusIntervalSecs <# seconds>`: # of seconds to sleep between
  sliverstatus calls at ION or another DCN based aggregate. Default
  is 30 (seconds).
+ - `--scsURL <url>`: URL at which the Stitching Computation Service
+ runs. Use the default.
  - `--noReservation`: Do not try to reserve at aggregates; instead,
    just save the expanded request RSpec.
+ - `--fakeModeDir <directory>`: When supplied, does not make any
+ actual reservations at aggregates. For testing only.
  - `--savedSCSResults`: Use the specified JSON file of saved results
    from calling the SCS, instead of actually calling the SCS.
- - `--fileDir`: Save _all_ files to this directory, and not the usual
- directory used by stitcher (`/tmp`, CWD or `~`).
- This allows multiple stitcher instances to be run in parallel.
  - `--logconfig` to use a non standard logging configuration. Stitcher
- expects one StreamHandler for the console. Default configuration is
+ expects one `StreamHandler` for the console. Default configuration is
  in `gcf\stitcher_logging.conf`.
- - `--logoutput` to change the name of the stitcher logging file
- (default is `stitcher.log`).
- - `--logFileCount` to change the number of backup stitcher log files
- to keep (default is 5).
 
 == Tips and Details ==
 
@@ -527,8 +527,6 @@ Cannot find the set of paths for the RequestTopology. '.
  - Thread all calls to omni
  - Add Aggregate specific top level RSpec elements in combined
  manifest
- - Store output files in a consistent location, named by slice, and
- with support for scripts to use a temp directory.
  - Summarize errors at the end of the run.
  - Support stitch-to-aggregate at ProtoGENI based aggregates
  - Support recreating the combined manifest RSpec
