@@ -406,7 +406,7 @@ class Aggregate(object):
             sleepSecs = self.PAUSE_FOR_AM_TO_FREE_RESOURCES_SECS 
             if self.dcn:
                 sleepSecs = self.PAUSE_FOR_DCN_AM_TO_FREE_RESOURCES_SECS
-            self.logger.info("Pause %d seconds to let aggregate free resources...", sleepSecs)
+            self.logger.info("Pausing %d seconds to let aggregate free resources...", sleepSecs)
             time.sleep(sleepSecs)
         # end of block to delete a previous reservation
 
@@ -1198,8 +1198,9 @@ class Aggregate(object):
             omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
         else:
             omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, self.rspecfileName]
-            
-        self.logger.info("\n\tStitcher doing %s at %s", opName, self.url)
+
+        # FIXME: Drop that \n\t?
+        self.logger.info("Stitcher doing %s at %s...", opName, self)
         self.logger.debug("omniargs: %r", omniargs)
 
         result = None
@@ -1436,7 +1437,7 @@ class Aggregate(object):
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s. Malformed request?: %s..." % (self, str(ae)[:120])
-                            elif code == 7 and amcode == 7 and msg.startswith("Must delete existing sli"):
+                            elif code == 7 and amcode == 7 and "Must delete existing sli" in msg:
                                 self.logger.debug("Fatal error from PG AM")
                                 isFatal = True
                                 fatalMsg = "Reservation request impossible at %s: You already have a reservation in slice %s at this aggregate - delete it first or use another aggregate. %s..." % (self, slicename, str(ae)[:120])
@@ -1648,7 +1649,7 @@ class Aggregate(object):
         status = 'unknown'
         while tries < self.SLIVERSTATUS_MAX_TRIES:
             # Pause before calls to sliverstatus
-            self.logger.info("Pause %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
+            self.logger.info("Pausing %d seconds to let circuit become ready...", self.SLIVERSTATUS_POLL_INTERVAL_SEC)
             time.sleep(self.SLIVERSTATUS_POLL_INTERVAL_SEC)
 
             # generate args for sliverstatus
@@ -1819,7 +1820,11 @@ class Aggregate(object):
                     else:
                         self.logger.warn("%s is (still) %s at %s. Delete and retry.", opName, status, self)
                     if dcnerror and dcnerror.strip() != '':
-                        self.logger.warn("  Status had error message: %s", dcnerror)
+                        if "There are no VLANs available on link" in dcnerror and "VLAN PCE(PCE_CREATE_FAILED)" in dcnerror:
+                            # We'll log something better later
+                            self.logger.debug("  Status had error message: %s", dcnerror)
+                        else:
+                            self.logger.warn("  Status had error message: %s", dcnerror)
 
             # deleteReservation
             opName = 'deletesliver'
@@ -1885,7 +1890,7 @@ class Aggregate(object):
                                         unavailHop = hop
                                         break
                         if unavailHop:
-                            self.logger.info("%s says requested VLAN was unavailable at %s", self, unavailHop)
+                            self.logger.warn("%s says requested VLAN was unavailable at %s", self, unavailHop)
                             # Adjust msg
                             msg = "%s reports selected VLAN is unavailable for %s: %s" % (self, unavailHop, origMsg)
                         elif unavailHopUrn:
@@ -1903,7 +1908,7 @@ class Aggregate(object):
             # But if we have retried a bunch already, treat it as VLAN Unavailable - which will exclude the VLANs
             # we used before and go back to the SCS
             if wasVlanUnavail:
-                self.handleVlanUnavailable('createsliver', msg, unavailHop)
+                self.handleVlanUnavailable('createsliver', msg, unavailHop, False, opts, slicename)
             elif self.localPickNewVlanTries >= self.MAX_DCN_AGG_NEW_VLAN_TRIES:
                 # Treat as VLAN was Unavailable - note it could have been a transient circuit failure or something else too
                 self.handleVlanUnavailable('createsliver', msg)
@@ -2007,7 +2012,7 @@ class Aggregate(object):
 # else can't find an AM to start over from: raise StitchingCircuitFailedError
         pass
 
-    def handleVlanUnavailable(self, opName, exception, failedHop=None, suggestedWasNull=False):
+    def handleVlanUnavailable(self, opName, exception, failedHop=None, suggestedWasNull=False, opts=None, slicename=None):
 # This method handles the case where an AM reports a particular VLAN tag was not available.
 # Sometimes the caller indicates which hop failed. Sometimes the AM error messages indicates the path,
 # or the path plus tag. With that, we can ID the failed hop.
@@ -2142,6 +2147,37 @@ class Aggregate(object):
         else:
             # No single failed hop - must treat them all as failed
             failedHops = self.hops
+
+        # If this is something like ION saying the VLAN you asked for isn't available (VLAN_PCE), and
+        # we got here cause an AM was asked for 'any', then try re-asking that AM for a different 'any'
+        # See ticket #622
+        if failedHop and failedHop._hop_link.vlan_xlate and slicename and failedHop.import_vlans:
+            self.logger.debug("Potential ION VLAN_PCE redo case")
+            toDelete = []
+            toDelete.append(self)
+            last = self
+            lastHop = failedHop
+            parent = failedHop.import_vlans_from
+            while parent is not None:
+                if last != parent.aggregate:
+                    last = parent.aggregate
+                    toDelete.append(last)
+                lastHop = parent
+                parent = parent.import_vlans_from
+
+            if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
+                self.logger.debug("Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
+                lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
+                self.logger.info("Deleting some reservations to retry, avoiding failed VLAN...")
+                for am in toDelete:
+                    if am.completed:
+                        am.deleteReservation(opts, slicename)
+                self.inProcess = False
+                msg = "Retrying reservations at earlier AMs to avoid unavailable VLAN tag at %s...." % self
+                raise StitchingRetryAggregateNewVlanImmediatelyError(msg)
+            # else cannot redo just this leg easily. Fall through.
+        # End of block to see if this is a simple ION failed and started with 'any' case
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
         for hop in failedHops:
@@ -2629,7 +2665,7 @@ class Aggregate(object):
         else:
             omniargs = ['-V%d' % self.api_version,'--raise-error-on-v2-amapi-error', '-o', '-a', self.url, opName, slicename]
 
-        self.logger.info("Doing %s at %s", opName, self.url)
+        self.logger.info("Doing %s at %s...", opName, self)
         if not opts.fakeModeDir:
             try:
                 self.inProcess = True
@@ -2639,7 +2675,7 @@ class Aggregate(object):
                 if self.api_version == 2:
                     (successList, fail) = result
                     if self.url in fail or (len(successList) == 0 and len(fail) > 0):
-                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
+                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
                     else:
                         self.logger.debug("%s %s Result: %s", opName, self, text)
                 else:
@@ -2649,9 +2685,9 @@ class Aggregate(object):
                         retCode = result[self.url]["code"]["geni_code"]
                     except:
                         # Malformed return - treat as error
-                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self.url, text))
+                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self, text))
                     if retCode != 0:
-                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self.url, text))
+                        raise StitchingError("Failed to delete prior reservation at %s: %s" % (self, text))
                     # need to check status of slivers to ensure they are all deleted
                     try:
                         for sliver in result[self.url]["value"]:
@@ -2659,10 +2695,10 @@ class Aggregate(object):
                             if status != 'geni_unallocated':
                                 if sliver.has_key("geni_error"):
                                     text = text + "; " + sliver["geni_error"]
-                                raise StitchingError("Failed to delete prior reservation at %s for sliver %s: %s" % (self.url, sliver["geni_sliver_urn"], text))
+                                raise StitchingError("Failed to delete prior reservation at %s for sliver %s: %s" % (self, sliver["geni_sliver_urn"], text))
                     except:
                         # Malformed return I think
-                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self.url, text))
+                        raise StitchingError("Failed to delete prior reservation at %s (malformed return): %s" % (self, text))
 
             except OmniError, e:
                 self.inProcess = False
