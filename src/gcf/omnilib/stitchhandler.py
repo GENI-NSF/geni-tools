@@ -322,6 +322,7 @@ class StitchingHandler(object):
 
             # Print something about sliver expiration times
             soonest = None
+            secondTime = None
             msg = None
             for am in self.ams_to_process:
                 exps = am.sliverExpirations
@@ -348,6 +349,16 @@ class StitchingHandler(object):
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
                                 soonest = (soonest[0], soonest[1], count)
+                            elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
+
+                            # If this isn't the next expiration, is it the 2nd?
+                            if nextTime > soonest[0]:
+                                if secondTime is None:
+                                    secondTime = nextTime
+                                elif nextTime < secondTime:
+                                    secondTime = nextTime
 
                             outputstr = nextTime.isoformat()
                             msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
@@ -372,6 +383,17 @@ class StitchingHandler(object):
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
                                 soonest = (soonest[0], soonest[1], count)
+                            elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
+
+                            # If this isn't the next expiration, is it the 2nd?
+                            if exps[0] > soonest[0]:
+                                if secondTime is None:
+                                    secondTime = exps[0]
+                                elif exps[0] < secondTime:
+                                    secondTime = exps[0]
+
                     else:
                         outputstr = exps.isoformat()
                         msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
@@ -392,6 +414,17 @@ class StitchingHandler(object):
                             if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
                                 count = count + 1
                             soonest = (soonest[0], soonest[1], count)
+                        elif abs(exps - soonest[0]) < datetime.timedelta(seconds=1):
+                            label = soonest[1] + " and %s" % str(am)
+                            soonest = (soonest[0], label, soonest[2])
+
+                        # If this isn't the next expiration, is it the 2nd?
+                        if exps > soonest[0]:
+                            if secondTime is None:
+                                secondTime = exps
+                            elif exps < secondTime:
+                                secondTime = exps
+
                 else:
                     # else got no sliver expiration for this AM
                     # Like at EG or GRAM AMs. See ticket #318
@@ -405,6 +438,8 @@ class StitchingHandler(object):
             if soonest is not None and soonest[2] > 1:
                 # Diff parts of the slice expire at different times
                 msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
+                if secondTime and abs(secondTime - soonest[0]) > datetime.timedelta(minutes=30):
+                    msg += "Second expiration is %s UTC. " % secondTime.isoformat()
             elif soonest:
                 msg = "Your resources expire at %s (UTC). " % (soonest[0])
 
