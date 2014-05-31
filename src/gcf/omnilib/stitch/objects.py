@@ -466,9 +466,11 @@ class Aggregate(object):
         manifestString = self.doReservation(opts, slicename, scsCallCount)
 
         # Look for and save any sliver expiration
-        self.sliverExpirations = expires_from_rspec(manifestString, self.logger)
+        sliverExpirations = expires_from_rspec(manifestString, self.logger)
+        if sliverExpirations is not None and sliverExpirations != []:
+            self.sliverExpirations = sliverExpirations
 
-        # Save it on the Agg
+        # Save manifest on the Agg
         try:
             self.manifestDom = parseString(manifestString)
 
