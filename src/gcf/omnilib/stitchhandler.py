@@ -341,20 +341,27 @@ class StitchingHandler(object):
                                 count = soonest[2]
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
-                                soonest = (nextTime, str(am), count)
+                                    secondTime = soonest[0]
+                                    soonest = (nextTime, str(am), count)
+                                else:
+                                    label = soonest[1] + " and %s" % str(am)
+                                    soonest = (soonest[0], label, soonest[2])
                             elif nextTime > soonest[0]:
                                 # Only increment soonest[2] if the difference is more than a few minutes
                                 # - that is, more than the stitcher runtime
                                 count = soonest[2]
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
-                                soonest = (soonest[0], soonest[1], count)
+                                    soonest = (soonest[0], soonest[1], count)
+                                else:
+                                    label = soonest[1] + " and %s" % str(am)
+                                    soonest = (soonest[0], label, soonest[2])
                             elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
                                 label = soonest[1] + " and %s" % str(am)
                                 soonest = (soonest[0], label, soonest[2])
 
                             # If this isn't the next expiration, is it the 2nd?
-                            if nextTime > soonest[0]:
+                            if nextTime > soonest[0] and abs(nextTime - soonest[0]) > datetime.timedelta(minutes=30):
                                 if secondTime is None:
                                     secondTime = nextTime
                                 elif nextTime < secondTime:
@@ -375,25 +382,31 @@ class StitchingHandler(object):
                                 count = soonest[2]
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
-                                soonest = (exps[0], str(am), count)
+                                    secondTime = soonest[0]
+                                    soonest = (exps[0], str(am), count)
+                                else:
+                                    label = soonest[1] + " and %s" % str(am)
+                                    soonest = (soonest[0], label, soonest[2])
                             elif exps[0] > soonest[0]:
                                 # Only increment soonest[2] if the difference is more than a few minutes
                                 # - that is, more than the stitcher runtime
                                 count = soonest[2]
                                 if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                     count = count + 1
-                                soonest = (soonest[0], soonest[1], count)
+                                    soonest = (soonest[0], soonest[1], count)
+                                else:
+                                    label = soonest[1] + " and %s" % str(am)
+                                    soonest = (soonest[0], label, soonest[2])
                             elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
                                 label = soonest[1] + " and %s" % str(am)
                                 soonest = (soonest[0], label, soonest[2])
 
                             # If this isn't the next expiration, is it the 2nd?
-                            if exps[0] > soonest[0]:
+                            if exps[0] > soonest[0] and abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                 if secondTime is None:
                                     secondTime = exps[0]
                                 elif exps[0] < secondTime:
                                     secondTime = exps[0]
-
                     else:
                         outputstr = exps.isoformat()
                         msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
@@ -406,25 +419,31 @@ class StitchingHandler(object):
                             count = soonest[2]
                             if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
                                 count = count + 1
-                            soonest = (exps, str(am), count)
+                                secondTime = soonest[0]
+                                soonest = (exps, str(am), count)
+                            else:
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
                         elif exps > soonest[0]:
                             # Only increment soonest[2] if the difference is more than a few minutes
                             # - that is, more than the stitcher runtime
                             count = soonest[2]
                             if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
                                 count = count + 1
-                            soonest = (soonest[0], soonest[1], count)
+                                soonest = (soonest[0], soonest[1], count)
+                            else:
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
                         elif abs(exps - soonest[0]) < datetime.timedelta(seconds=1):
                             label = soonest[1] + " and %s" % str(am)
                             soonest = (soonest[0], label, soonest[2])
 
                         # If this isn't the next expiration, is it the 2nd?
-                        if exps > soonest[0]:
+                        if exps > soonest[0] and abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
                             if secondTime is None:
                                 secondTime = exps
                             elif exps < secondTime:
                                 secondTime = exps
-
                 else:
                     # else got no sliver expiration for this AM
                     # Like at EG or GRAM AMs. See ticket #318
@@ -438,7 +457,7 @@ class StitchingHandler(object):
             if soonest is not None and soonest[2] > 1:
                 # Diff parts of the slice expire at different times
                 msg = "Your resources expire at %d different times at different AMs. The first expiration is %s UTC at %s. " % (soonest[2], soonest[0], soonest[1])
-                if secondTime and abs(secondTime - soonest[0]) > datetime.timedelta(minutes=30):
+                if secondTime:
                     msg += "Second expiration is %s UTC. " % secondTime.isoformat()
             elif soonest:
                 msg = "Your resources expire at %s (UTC). " % (soonest[0])
@@ -1742,13 +1761,10 @@ class StitchingHandler(object):
                             # Sort and take first
                             agg.sliverExpirations = agg.sliverExpirations.sort()
                             outputstr = agg.sliverExpirations[0].isoformat()
-                            msg = "Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr)
-                        elif len(agg.sliverExpirations) == 0:
-                            pass
-                        else:
+                            self.logger.debug("   Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr))
+                        elif len(agg.sliverExpirations) == 1:
                             outputstr = agg.sliverExpirations[0].isoformat()
-                            msg = "Resources here expire at %s UTC" % (outputstr)
-                        pass
+                            self.logger.debug("   Resources here expire at %s UTC" % (outputstr))
                     else:
                         self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
                 for h in agg.hops:
