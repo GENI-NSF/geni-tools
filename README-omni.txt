@@ -66,6 +66,11 @@ New in v2.6:
    `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
   * Added new utilities in `handler_utils` to extract sliver
     expiration from the manifest and sliverstatus.
+ * Clean up console log messages. (#623)
+ * Retry on AM busy message one more time, sleeping 15 seconds instead
+   of 10. (#624)
+ * Restore printing of non-standard options used in command summary. (#625)
+ * Help specifies defaults for more options. (#626)
  * Mac install clears old `omni.py` and similar aliases (#556)
  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
  * `renewslice` properly warns if your new expiration is not what you
@@ -79,6 +84,7 @@ New in v2.6:
    Ads, and some manifests. Uses less memory. (#610)
  * Clean up error getting slice credential for unknown slice from
   `chapi` clearinghouses. (#538)
+ * Clarify error messages in `delegateSliceCred`. (#619)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)
@@ -86,7 +92,7 @@ New in v2.5.3:
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
    avoiding the heartbleed vulnerability. (#593)
- * Update various packages in Windows/Mac binaries to be
+ * Update various packages in Windows and Mac binaries to be
    consistent versions. (#594)
 
 New in v2.5:
@@ -756,7 +762,6 @@ clearinghouse to be reminded of where you may have reservations, using `listsliv
 Omni supports the following command-line options.
 
 {{{
-
 $ ~/gcf/src/omni.py -h                            
 Usage: 
 GENI Omni Command Line Aggregate Manager Tool Version 2.6
@@ -802,15 +807,15 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 listmykeys [optional: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
- 			 print_slice_expiration <slicename>
-			 listslivers <slicename>
+ 			 print_slice_expiration <slicename> 
+ 			 listslivers <slicename> 
  			 listprojectmembers <projectname> 
-			 listslicemembers <slicename>
-			 addslicemember <slicename> <username> [optional: role]
-			 removeslicemember <slicename> <username>
+ 			 listslicemembers <slicename> 
+ 			 addslicemember <slicename> <username> [optional: role] 
+ 			 removeslicemember <slicename> <username>  
  		Other functions: 
  			 nicknames 
-			 print_sliver_expirations <slicename>
+ 			 print_sliver_expirations <slicename> 
 
 	 See README-omni.txt for details.
 	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
@@ -834,18 +839,19 @@ Options:
                         time as possible, instead of failing if the requested
                         time is not possible. Default is False.
     -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
-                        RSpec type and version to return, default 'GENI 3'
+                        RSpec type and version to return, default: '['GENI',
+                        '3']'
     -V API_VERSION, --api-version=API_VERSION
-                        Specify version of AM API to use (default 2)
+                        Specify version of AM API to use (default v2)
     --useSliceAggregates
-                        Perform slice action at all aggregates the given slice
-                        is known to use according to clearinghouse records. Default is
-                        False.
-    --useSliceMembers   Put slice members' SSH keys on reserved resources in
-                        createsliver, provision or performoperationalaction.
-                        Default is False. When true, adds these users and keys to
-                        those read from your omni_config (unless
-                        --ignoreConfigUsers).
+                        Perform the slice action at all aggregates the given
+                        slice is known to use according to clearinghouse
+                        records. Default is False.
+    --useSliceMembers   Create accounts and install slice members' SSH keys on
+                        reserved resources in createsliver, provision or
+                        performoperationalaction. Default is False. When true,
+                        adds these users and keys to those read from your
+                        omni_config (unless --ignoreConfigUsers).
     --ignoreConfigUsers
                         Ignore users and SSH keys listed in your omni_config
                         when installing SSH keys on resources in createsliver
@@ -902,7 +908,7 @@ Options:
                         Python logging config file
     --logoutput=LOGOUTPUT
                         Python logging output file [use %(logfilename)s in
-                        logging config file]
+                        logging config file]. Default: 'omni.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
 
@@ -986,8 +992,8 @@ Options:
                         Use the given Orca slice id
     --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default is False. For
-                        use by scripts.
+                        result code, raise an AMAPIError. Default is False.
+                        For use by scripts.
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
@@ -2653,7 +2659,7 @@ Sample output:
 {{{
   Result Summary: Slice urn:publicid:IDN+ch.geni.net:ahscaletest+slice+ahtest expires on 2014-05-21 18:37:12 UTC
 Resources in slice ahtest at AM utahddc-ig expire at 2014-05-21T00:00:00 UTC.
- Next resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
+ First resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
 }}}
 
 Slice name could be a full URN, but is usually just the slice name portion.

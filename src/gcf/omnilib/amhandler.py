@@ -2106,7 +2106,7 @@ class AMCallHandler(object):
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 if len(orderedDates) > 0:
-                    retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+                    retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
                 successCnt += 1
@@ -2375,7 +2375,7 @@ class AMCallHandler(object):
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 if len(orderedDates) > 0:
-                    retVal += " Next sliver expiration: %s" % orderedDates[0].isoformat()
+                    retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
@@ -3250,7 +3250,7 @@ class AMCallHandler(object):
                         # FIXME: Sort and take first?
                         exps = exps.sort()
                         outputstr = exps[0].isoformat()
-                        msg = "Resources in slice %s at AM %s expire at %d different times. Next expiration is %s UTC" % (name, client.str, len(exps), outputstr)
+                        msg = "Resources in slice %s at AM %s expire at %d different times. First expiration is %s UTC" % (name, client.str, len(exps), outputstr)
                     elif len(exps) == 0:
                         self.logger.debug("Failed to parse a sliver expiration from status")
                         msg = None
@@ -4495,7 +4495,7 @@ class AMCallHandler(object):
                         # Sort and take first
                         exps = exps.sort()
                         outputstr = exps[0].isoformat()
-                        msg = "Resources in slice %s at AM %s expire at %d different times. Next expiration is %s UTC" % (name, client.str, len(exps), outputstr)
+                        msg = "Resources in slice %s at AM %s expire at %d different times. First expiration is %s UTC" % (name, client.str, len(exps), outputstr)
                     elif len(exps) == 0:
                         msg = "Failed to get sliver expiration from %s" % client.str
                         self.logger.debug("Failed to parse a sliver expiration from status")
@@ -4577,7 +4577,7 @@ class AMCallHandler(object):
                 else:
                     firstTime = orderedDates[0]
                     firstCount = len(sliverExps[firstTime])
-                    msg = "Resources in slice %s at AM %s expire at %d different times. Next expiration is %s UTC (%d slivers), and other slivers at %d different times." % (name, client.str, len(orderedDates), firstTime, firstCount, len(orderedDates) - 1)
+                    msg = "Resources in slice %s at AM %s expire at %d different times. First expiration is %s UTC (%d slivers), and other slivers at %d different times." % (name, client.str, len(orderedDates), firstTime, firstCount, len(orderedDates) - 1)
                 if msg:
                     self.logger.info(msg)
                     retVal += msg + ".\n "
@@ -4596,7 +4596,7 @@ class AMCallHandler(object):
                         if soonest is None or nextTime < soonest[0]:
                             soonest = (nextTime, client.str)
             if soonest:
-                retVal += "Next resources expire at %s (UTC) at AM %s.\n" % (soonest[0], soonest[1])
+                retVal += "First resources expire at %s (UTC) at AM %s.\n" % (soonest[0], soonest[1])
         return retVal, retItem
     # End of print_sliver_expirations
 
@@ -5345,7 +5345,7 @@ class AMCallHandler(object):
         #    self.logger.info("%d slivers expire on %s, the rest (%d) on %s", len(sliverExps[orderedDates[0]]), orderedDates[0], len(sliverExps[orderedDates[0]]), orderedDates[1])
         # else:
         #    self.logger.info("%d slivers expire on %s, %d on %s, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0], len(sliverExps[orderedDates[0]]), orderedDates[1])
-        # retVal += " Next sliver expiration: %s" % orderedDates[0]
+        # retVal += " First sliver expiration: %s" % orderedDates[0]
 
         # Renew/specific time case
         # (orderedDates, sliverExps) = self._getSliverExpirations(realresult, requestedExpiration/None)
