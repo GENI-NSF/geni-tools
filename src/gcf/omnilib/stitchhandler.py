@@ -467,7 +467,7 @@ class StitchingHandler(object):
                 retVal += msg + "\n"
 
             if filename:
-                msg = "Saved combined reservation RSpec at %d AMs to file %s" % (len(self.ams_to_process), filename)
+                msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
                 self.logger.info(msg)
                 retVal += msg
 
@@ -841,7 +841,7 @@ class StitchingHandler(object):
             if self.opts.output:
                 filename = handler_utils._construct_output_filename(self.opts, self.slicename, '', None, "expanded-request-rspec", ".xml", 1)
             if filename:
-                self.logger.info("Saving expanded request RSpec to file %s", filename)
+                self.logger.info("Saving expanded request RSpec to file: %s", os.path.abspath(filename))
             else:
                 self.logger.info("Expanded request RSpec:")
 
@@ -1241,7 +1241,7 @@ class StitchingHandler(object):
 
         self.logger.debug("Calling SCS with options %s", scsOptions)
         if self.opts.savedSCSResults:
-            self.logger.debug("** Not actually calling SCS, using results from %s", self.opts.savedSCSResults)
+            self.logger.debug("** Not actually calling SCS, using results from '%s'", self.opts.savedSCSResults)
         try:
             scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions, self.opts.savedSCSResults)
         except StitchingError as e:
@@ -1846,12 +1846,12 @@ class StitchingHandler(object):
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
-        listdir = os.path.dirname(fname)
+        listdir = os.path.abspath(os.path.dirname(fname))
         if not os.path.exists(listdir):
             try:
                 os.makedirs(listdir)
             except Exception, e:
-                self.logger.warn("Failed to create %s to save list of used AMs: %s", listdir, e)
+                self.logger.warn("Failed to create dir '%s' to save list of used AMs: %s", listdir, e)
 
         # URL,URN
         with open (fname, 'w') as file:
