@@ -64,6 +64,7 @@ gcf 2.6:
   * Clean up logging: console log messages are cleaner and fewer. 
     Stitcher produces a debug-level log file named `stitcher.log`
     suitable for use in reporting problems. (#450)
+   * Ensure log config file is found when running from other directories. (#628)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
