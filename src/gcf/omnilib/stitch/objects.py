@@ -2306,7 +2306,7 @@ class Aggregate(object):
                 msg = ""
                 if exception.returnstruct.has_key("output"):
                     msg = exception.returnstruct["output"]
-                self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
+                self.logger.debug("Error was code %d (am code %s): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
 
@@ -2331,7 +2331,7 @@ class Aggregate(object):
                 # what about those cases? Those aren't handled here as
                 # we have no exception struct
                 else:
-                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %d, %s", code, amcode, msg)
+                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %s, %s", code, amcode, msg)
                     canRedoRequestHere = False
 
 
@@ -2389,6 +2389,7 @@ class Aggregate(object):
 #                    self.logger.debug("depAgg %s has an issue - cannot redo here", depAgg)
                     errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere=False
+                    self.logger.debug(errMsg)
                     break
             # end of loop over Aggs that depend on self
         # End of block to check if can redo request here
