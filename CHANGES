@@ -45,6 +45,8 @@ gcf 2.6:
   * Clean up error getting slice credential for unknown slice from
    `chapi` clearinghouses. (#538)
   * Clarify error messages in `delegateSliceCred`. (#619)
+  * Harden update of `agg_nick_cache` to avoid replacing a good cache
+    with one that was empty or incomplete on download. (#631)
 
  * stitcher
   * Where possible, request that the AM pick the VLAN tag,

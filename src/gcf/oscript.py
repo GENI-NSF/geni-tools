@@ -423,17 +423,52 @@ def load_framework(config, opts):
 def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
     store in the specified place."""
+    tmpcache = None
     try:
+        import tempfile
+        handle, tmpcache = tempfile.mkstemp()
         # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
         directory = os.path.dirname(opts.aggNickCacheName)
         if not os.path.exists( directory ):
             os.makedirs( directory )
-        urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
-        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
-    except:
+        urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        good = False
+        if os.path.exists(tmpcache) and os.path.getsize(tmpcache) > 0:
+            if os.path.exists(opts.aggNickCacheName) and os.path.getsize(opts.aggNickCacheName) > 0:
+                tmpsize = os.path.getsize(tmpcache)
+                oldsize = os.path.getsize(opts.aggNickCacheName)
+                if tmpsize / oldsize > 10 or oldsize / tmpsize > 10:
+                    # If the size changed dramatically, then assume the new one is broken.
+                    # Of course, it could be that the old one is broken...
+                    logger.info("Download of latest `agg_nick_cache` from '%s' seems broken (size is wrong). Keeping old cache.", opts.aggNickDefinitiveLocation)
+                    logger.debug("Old cache '%s' size: %d. New temp '%s' size: %d", opts.aggNickCacheName, oldsize, tmpcache, tmpsize)
+                else:
+                    # Size didn't change dramatically
+                    good = True
+            else:
+                # No previous cache - use the new one
+                good = True
+        else:
+            logger.info("Download of latest `agg_nick_cache` from '%s' seems broken (no or empty file). Keeping old cache.", opts.aggNickDefinitiveLocation)
+            logger.debug("Temp file: '%s'. Exists? %s", tmpcache, os.path.exists(tmpcache))
+        if good:
+            # On Windows, rename doesn't delete any existing file, so explicitly delete the old one first
+            try:
+                os.unlink(opts.aggNickCacheName)
+            except:
+                pass
+            os.rename(tmpcache, opts.aggNickCacheName)
+            logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
+    except Exception, e:
         logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
+        logger.debug(e)
+    finally:
+        try:
+            os.unlink(tmpcache)
+        except:
+            pass
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
