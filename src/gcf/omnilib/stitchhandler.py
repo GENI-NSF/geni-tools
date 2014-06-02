@@ -1624,6 +1624,12 @@ class StitchingHandler(object):
 #                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
 #                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
 #                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
+                                # The reason to do this would be to
+                                # avoid errors like:
+#16:46:34 WARNING : Requested API version 2, but AM https://clemson-clemson-control-1.clemson.edu:5001 uses version 3. Same aggregate talks API v2 at a different URL: https://clemson-clemson-control-1.clemson.edu:5002
+#                                if len(version[agg.url]['value']['geni_api_versions'].keys()) > 1 and \
+#                                        agg.url != version[agg.url]['value']['geni_api_versions'][key]:
+#                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
@@ -1842,6 +1848,17 @@ class StitchingHandler(object):
                 self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
             else:
                 self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
+        except OmniError, oe:
+            # If there is an EG AM in the mix, then we expect an error
+            # like:
+#Manifest RSpec file did not contain a Manifest RSpec (wrong type or schema)
+            hasEG = False
+            for am in ams:
+                if am.isEG:
+                    hasEG = True
+                    break
+            if hasEG and "Manifest RSpec file did not contain a Manifest RSpec (wrong type or schema)" in str(oe):
+                self.logger.debug("EG AM meant manifest does not validate: %s", oe)
         except Exception, e:
             self.logger.error(e)
 
