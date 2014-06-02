@@ -145,7 +145,7 @@ def call(argv, options=None):
     parser.set_defaults(logoutput='stitcher.log')
 
     # Configure stitcher with a specific set of configs by default
-    parser.set_defaults(logconfig="gcf/stitcher_logging.conf")
+    parser.set_defaults(logconfig=os.path.join(sys.path[0], "gcf/stitcher_logging.conf"))
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
