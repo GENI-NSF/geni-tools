@@ -695,6 +695,22 @@ class StitchingHandler(object):
             if found:
                 continue
             else:
+                # AM URN was not in the workflow from the SCS
+#                # If this URN was on a stitching link, then this isn't going to work
+#                for link in self.parsedSCSRSpec.links:
+#                    if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
+#                        # This is a link that needs stitching
+#                        for linkagg in link.aggregates:
+#                            if linkagg.urn == amURN or amURN in linkagg.urn_syns:
+#                                self.logger.debug("Found AM %s on stitching link %s that is not in SCS Workflow. URL: %s", amURN, link.id, linkagg.url)
+#                                stitching = self.parsedSCSRSpec.stitching
+#                                slink = None
+#                                if stitching:
+#                                    slink = stitching.find_path(link.id)
+#                                if not slink:
+#                                    self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
+#                                raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
+
                 am = Aggregate.find(amURN)
                 addedAMs.append(am)
                 if not am.url:
@@ -723,7 +739,7 @@ class StitchingHandler(object):
                     except:
                         pass
                 if not am.url:
-                    self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
+                    raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
                 else:
                     self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
                     self.ams_to_process.append(am)

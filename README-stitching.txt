@@ -452,6 +452,10 @@ Cannot find the set of paths for the RequestTopology. '.
  link. Each stitched link should be between 2 interfaces on 2
  different nodes/AMs.
 
+`RSpec requires AM ... which is not in workflow and URL is unknown!`
+ - Check your RSpec does not have a typo in the
+ `component_manager`. You asked for resources at an unknown aggregate.
+
 === Errors in the tool – you may need to report this as a bug ===
 
 ` … has request tag XXX that is already in use by …`
