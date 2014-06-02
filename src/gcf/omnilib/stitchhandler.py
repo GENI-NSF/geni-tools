@@ -326,124 +326,85 @@ class StitchingHandler(object):
             msg = None
             for am in self.ams_to_process:
                 exps = am.sliverExpirations
-                if exps:
-                    if isinstance(exps, list):
-                        if len(exps) > 1:
-                            # More than 1 distinct sliver expiration found
-                            # Sort and take first
-                            exps = exps.sort()
-                            nextTime = exps[0]
-                            if soonest is None:
-                                soonest = (nextTime, str(am), 1)
-                            elif nextTime < soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    secondTime = soonest[0]
-                                    soonest = (nextTime, str(am), count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif nextTime > soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    soonest = (soonest[0], soonest[1], count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-
-                            # If this isn't the next expiration, is it the 2nd?
-                            if nextTime > soonest[0] and abs(nextTime - soonest[0]) > datetime.timedelta(minutes=30):
-                                if secondTime is None:
-                                    secondTime = nextTime
-                                elif nextTime < secondTime:
-                                    secondTime = nextTime
-
-                            outputstr = nextTime.isoformat()
-                            msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
-                        elif len(exps) == 0:
-                            msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
-                        else:
-                            outputstr = exps[0].isoformat()
-                            msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
-                            if soonest is None:
-                                soonest = (exps[0], str(am), 1)
-                            elif exps[0] < soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    secondTime = soonest[0]
-                                    soonest = (exps[0], str(am), count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif exps[0] > soonest[0]:
-                                # Only increment soonest[2] if the difference is more than a few minutes
-                                # - that is, more than the stitcher runtime
-                                count = soonest[2]
-                                if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                    count = count + 1
-                                    soonest = (soonest[0], soonest[1], count)
-                                else:
-                                    label = soonest[1] + " and %s" % str(am)
-                                    soonest = (soonest[0], label, soonest[2])
-                            elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
-                                label = soonest[1] + " and %s" % str(am)
-                                soonest = (soonest[0], label, soonest[2])
-
-                            # If this isn't the next expiration, is it the 2nd?
-                            if exps[0] > soonest[0] and abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
-                                if secondTime is None:
-                                    secondTime = exps[0]
-                                elif exps[0] < secondTime:
-                                    secondTime = exps[0]
-                    else:
-                        outputstr = exps.isoformat()
-                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
-
+                if exps is not None:
+                    if len(exps) > 1:
+                        # More than 1 distinct sliver expiration found
+                        # Sort and take first
+                        nextTime = exps[0]
                         if soonest is None:
-                            soonest = (exps, str(am), 1)
-                        elif exps < soonest[0]:
+                            soonest = (nextTime, str(am), 1)
+                        elif nextTime < soonest[0]:
                             # Only increment soonest[2] if the difference is more than a few minutes
                             # - that is, more than the stitcher runtime
                             count = soonest[2]
-                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                 count = count + 1
                                 secondTime = soonest[0]
-                                soonest = (exps, str(am), count)
+                                soonest = (nextTime, str(am), count)
                             else:
                                 label = soonest[1] + " and %s" % str(am)
                                 soonest = (soonest[0], label, soonest[2])
-                        elif exps > soonest[0]:
+                        elif nextTime > soonest[0]:
                             # Only increment soonest[2] if the difference is more than a few minutes
                             # - that is, more than the stitcher runtime
                             count = soonest[2]
-                            if abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
                                 count = count + 1
                                 soonest = (soonest[0], soonest[1], count)
                             else:
                                 label = soonest[1] + " and %s" % str(am)
                                 soonest = (soonest[0], label, soonest[2])
-                        elif abs(exps - soonest[0]) < datetime.timedelta(seconds=1):
+                        elif abs(nextTime - soonest[0]) < datetime.timedelta(seconds=1):
                             label = soonest[1] + " and %s" % str(am)
                             soonest = (soonest[0], label, soonest[2])
 
                         # If this isn't the next expiration, is it the 2nd?
-                        if exps > soonest[0] and abs(exps - soonest[0]) > datetime.timedelta(minutes=30):
+                        if nextTime > soonest[0] and abs(nextTime - soonest[0]) > datetime.timedelta(minutes=30):
                             if secondTime is None:
-                                secondTime = exps
-                            elif exps < secondTime:
-                                secondTime = exps
+                                secondTime = nextTime
+                            elif nextTime < secondTime:
+                                secondTime = nextTime
+
+                        outputstr = nextTime.isoformat()
+                        msg = "Resources in slice %s at %s expire at %d different times. First expiration is %s UTC. " % (self.slicename, am, len(exps), outputstr)
+                    elif len(exps) == 0:
+                        msg = "Failed to get sliver expiration from %s - try print_sliver_expirations. " % am
+                    else:
+                        outputstr = exps[0].isoformat()
+                        msg = "Resources in slice %s at %s expire at %s UTC. " % (self.slicename, am, outputstr)
+                        if soonest is None:
+                            soonest = (exps[0], str(am), 1)
+                        elif exps[0] < soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                                secondTime = soonest[0]
+                                soonest = (exps[0], str(am), count)
+                            else:
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
+                        elif exps[0] > soonest[0]:
+                            # Only increment soonest[2] if the difference is more than a few minutes
+                            # - that is, more than the stitcher runtime
+                            count = soonest[2]
+                            if abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                                count = count + 1
+                                soonest = (soonest[0], soonest[1], count)
+                            else:
+                                label = soonest[1] + " and %s" % str(am)
+                                soonest = (soonest[0], label, soonest[2])
+                        elif abs(exps[0] - soonest[0]) < datetime.timedelta(seconds=1):
+                            label = soonest[1] + " and %s" % str(am)
+                            soonest = (soonest[0], label, soonest[2])
+
+                        # If this isn't the next expiration, is it the 2nd?
+                        if exps[0] > soonest[0] and abs(exps[0] - soonest[0]) > datetime.timedelta(minutes=30):
+                            if secondTime is None:
+                                secondTime = exps[0]
+                            elif exps[0] < secondTime:
+                                secondTime = exps[0]
                 else:
                     # else got no sliver expiration for this AM
                     # Like at EG or GRAM AMs. See ticket #318
@@ -1754,19 +1715,15 @@ class StitchingHandler(object):
                     self.logger.debug("   Supports Stitch Schema V2")
                 if agg.pgLogUrl:
                     self.logger.debug("   PG Log URL %s", agg.pgLogUrl)
-                if agg.sliverExpirations:
-                    if isinstance(agg.sliverExpirations, list):
-                        if len(agg.sliverExpirations) > 1:
-                            # More than 1 distinct sliver expiration found
-                            # Sort and take first
-                            agg.sliverExpirations = agg.sliverExpirations.sort()
-                            outputstr = agg.sliverExpirations[0].isoformat()
-                            self.logger.debug("   Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr))
-                        elif len(agg.sliverExpirations) == 1:
-                            outputstr = agg.sliverExpirations[0].isoformat()
-                            self.logger.debug("   Resources here expire at %s UTC" % (outputstr))
-                    else:
-                        self.logger.debug("   Resources here expire at %s UTC", agg.sliverExpirations)
+                if agg.sliverExpirations is not None:
+                    if len(agg.sliverExpirations) > 1:
+                        # More than 1 distinct sliver expiration found
+                        # Sort and take first
+                        outputstr = agg.sliverExpirations[0].isoformat()
+                        self.logger.debug("   Resources here expire at %d different times. First expiration is %s UTC" % (len(agg.sliverExpirations), outputstr))
+                    elif len(agg.sliverExpirations) == 1:
+                        outputstr = agg.sliverExpirations[0].isoformat()
+                        self.logger.debug("   Resources here expire at %s UTC" % (outputstr))
                 for h in agg.hops:
                     self.logger.debug( "  Hop %s" % (h))
                 for ad in agg.dependsOn:

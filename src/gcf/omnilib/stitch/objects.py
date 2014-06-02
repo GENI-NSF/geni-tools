@@ -261,6 +261,95 @@ class Aggregate(object):
 
         return urn_syns
 
+    @classmethod
+    def getExpComparator(cls, delta=0):
+        def expComparator(agg1, agg2):
+            # Return 0 if they're same
+            # If agg1 is smaller, return negative
+            # FIXME: Which goes later if 1 is None?
+            # for now, None < not None
+            agg1exp0 = agg1.sliverExpirations
+            agg2exp0 = agg2.sliverExpirations
+            if (agg1exp0 is None or len(agg1exp0) == 0) and (agg2exp0 is not None and len(agg2exp0) > 0):
+                return -1
+            elif (agg1exp0 is not None and len(agg1exp0) > 0) and (agg2exp0 is None or len(agg2exp0) == 0):
+                return 1
+            elif (agg1exp0 is None or len(agg1exp0) == 0) and (agg2exp0 is None or len(agg2exp0) == 0):
+                return 0
+            agg1exp0 = agg1exp0[0]
+            agg2exp0 = agg2exp0[0]
+            if delta > 0:
+                if abs(agg1exp0 - agg2exp0) < datetime.timedelta(minutes=delta):
+                    return 0
+                # else they're more than delta apart
+            else:
+                if abs(agg1exp0 - agg2exp0) < datetime.timedelta.resolution:
+                    return 0
+                # else they're more than resolution apart
+            if agg1exp0 < agg2exp0:
+                return -1
+            # elif agg1exp0 > agg2exp0:
+            return 1
+        return expComparator
+
+    @classmethod
+    def sortAggsByExpirations(cls, delta=0):
+        # Make a list of lists
+        # Each entry in list is a collection of aggs with the same expiration
+        # FIXME: if AM has multiple sliver expiration times, do I look at first or last?
+        # for now first
+        aggs = cls.aggs
+        if aggs is None or len(aggs) == 0:
+            return aggs
+
+        # If there's just one agg, return it in a list
+        if len(aggs) == 1:
+            return [aggs]
+
+        expComparator = Aggregate.getExpComparator(delta)
+        aggs.sort(expComparator)
+
+        # Now I have them sorted in ascending expiration order.
+        # Now bucket them
+
+        # If they all expire at the same time, return a list of length 1 containing the list of aggs
+        if expComparator(aggs[0], aggs[-1]) == 0:
+            return [aggs]
+
+        aggs2 = []
+        prev = None
+        slotInd = -1
+        for agg in aggs:
+            if not prev:
+                aggs2.append([agg])
+                prev = agg
+                slotInd = 0
+                continue
+            prev = aggs2[slotInd][0]
+            comp = expComparator(prev, agg)
+            if comp == 0:
+                aggs2[slotInd].append(agg)
+                if delta > 0:
+                    aggs2[slotInd].sort(Aggregate.getExpComparator())
+                continue
+            # comp should never be > 0
+            elif comp > 0:
+                pass
+                #logger = logging.getLogger('stitcher')
+                #logger.warn("comp > 0?!")
+            else:
+                aggs2.append([agg])
+                slotInd += 1
+                prev = agg
+                continue
+
+        if delta > 0:
+            # Now sort each slot by expiration (strictly)
+            for slot in aggs2:
+                slot.sort(Aggregate.getExpComparator())
+
+        return aggs2
+
     def __init__(self, urn, url=None):
         self.urn = urn
 
@@ -362,6 +451,13 @@ class Aggregate(object):
 
     def add_agg_that_dependsOnThis(self, agg):
         self.isDependencyFor.add(agg)
+
+    def setSliverExpirations(expirations):
+        if expirations is None or expirations == []:
+            return
+        if not isinstance(expirations, list):
+            expirations = [expirations]
+        self.sliverExpirations = expirations.sort()
 
     @property
     def dependencies_complete(self):
@@ -466,9 +562,7 @@ class Aggregate(object):
         manifestString = self.doReservation(opts, slicename, scsCallCount)
 
         # Look for and save any sliver expiration
-        sliverExpirations = expires_from_rspec(manifestString, self.logger)
-        if sliverExpirations is not None and sliverExpirations != []:
-            self.sliverExpirations = sliverExpirations
+        self.setSliverExpirations(expires_from_rspec(manifestString, self.logger))
 
         # Save manifest on the Agg
         try:
@@ -1700,7 +1794,7 @@ class Aggregate(object):
                 if self.api_version == 2:
 
                     # Save off the sliver expiration if found
-                    self.sliverExpirations = expires_from_status(result[self.url], self.logger)
+                    self.setSliverExpirations(expires_from_status(result[self.url], self.logger))
 
                     if result[self.url].has_key("geni_status"):
                         status = result[self.url]["geni_status"]
@@ -1751,16 +1845,16 @@ class Aggregate(object):
 #                        (orderedDates, sliverExps) = handler_utils._getSliverExpirations(result[self.url]["value"], None)
 #                        self.sliverExpirations = orderedDates
                         # For now, reproduce the stuff I care about here
-                        self.sliverExpirations = []
+                        expirations = []
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_expires"):
                                 sliver_expires = sliver['geni_expires']
                                 if isinstance(sliver_expires, str):
                                     # parse it
                                     expObj = _naiveUTCFromString(sliver_expires)
-                                    if expObj and expObj not in self.sliverExpirations:
-                                        self.sliverExpirations.append(expObj)
-                        self.sliverExpirations = self.sliverExpirations.sort()
+                                    if expObj and expObj not in expirations:
+                                        expirations.append(expObj)
+                        self.setSliverExpirations(expirations)
 
                         for sliver in result[self.url]["value"]["geni_slivers"]:
                             if isinstance(sliver, dict) and sliver.has_key("geni_allocation_status"):
