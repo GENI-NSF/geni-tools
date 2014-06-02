@@ -111,6 +111,8 @@ gcf 2.6:
   * On `VLAN PCE` error from a DCN AM, if we had asked for 'any' from the endpoints,
     then re-request asking for a different tag. Note that this still fails
     due to an IG bug. (#622)
+  * Exit if the request RSpec requires an aggregate for which the URL
+    is unknown. (#630)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
