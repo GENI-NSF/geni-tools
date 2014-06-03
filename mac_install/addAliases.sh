@@ -38,6 +38,7 @@ writeAliases () {
     echo "alias readyToLogin='/Applications/omniTools-2.6/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
     echo "alias addMemberToSliceAndSlivers='/Applications/omniTools-2.6/addMemberToSliceAndSlivers.app/Contents/MacOS/addMemberToSliceAndSlivers'" >> $1
     echo "alias clear-passphrases='/Applications/omniTools-2.6/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
+    echo "alias remote-execute='/Applications/omniTools-2.6/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
 }
 
 wroteAliases=false
