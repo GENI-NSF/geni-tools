@@ -472,6 +472,9 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
   except:
       print "ERROR: empty aggregate sliver status!"
       return amLoginInfo      
+  if not isinstance(amSliverStat, dict) or not amSliverStat.has_key('geni_resources'):
+      print "ERROR: aggregate sliver status lists no geni_resources!"
+      return amLoginInfo
   if amType == "protogeni":
     amLoginInfo = addNodeStatusPG( amLoginInfo, amSliverStat )
     # 10/9/13 PG code is switching to include login info in manifest

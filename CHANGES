@@ -118,6 +118,9 @@ gcf 2.6:
   * Support iMinds PG instance, and fix error message on unsupported
     PG SA (#597)
 
+ * readyToLogin
+  * Handle malformed sliver status (#599) 
+
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
   * Support for `geni_am_type` and `geni_am_code` in GCF AMv3 (#568)
