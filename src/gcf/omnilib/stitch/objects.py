@@ -453,7 +453,7 @@ class Aggregate(object):
         self.isDependencyFor.add(agg)
 
     def setSliverExpirations(self, expirations):
-        if expirations is None or expirations == []:
+        if expirations is None or expirations == [] or expirations == [None]:
             return
         if not isinstance(expirations, list):
             expirations = [expirations]
