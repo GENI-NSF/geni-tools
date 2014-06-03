@@ -558,7 +558,7 @@ class Aggregate(object):
         # Mark AM not busy
         self.inProcess = False
 
-        self.logger.info("Allocation at %s complete.", self)
+        self.logger.info("... Allocation at %s complete.", self)
 
         if not hadSuggestedNotRequest:
             # mark self complete
@@ -2185,7 +2185,7 @@ class Aggregate(object):
                 parent = parent.import_vlans_from
 
             if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
-                self.logger.debug("Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedHop._hop_link.vlan_suggested_request, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
@@ -2206,7 +2206,9 @@ class Aggregate(object):
                 self.inProcess = False
                 msg = "Retrying reservations at earlier AMs to avoid unavailable VLAN tag at %s...." % self
                 raise StitchingRetryAggregateNewVlanImmediatelyError(msg)
-            # else cannot redo just this leg easily. Fall through.
+            else:
+                # else cannot redo just this leg easily. Fall through.
+                self.logger.debug("... not a simple VLAN PCE case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
         # End of block to see if this is a simple ION failed and started with 'any' case
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
