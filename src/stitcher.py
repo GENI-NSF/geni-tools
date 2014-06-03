@@ -145,7 +145,7 @@ def call(argv, options=None):
     parser.set_defaults(logoutput='stitcher.log')
 
     # Configure stitcher with a specific set of configs by default
-    parser.set_defaults(logconfig="gcf/stitcher_logging.conf")
+    parser.set_defaults(logconfig=os.path.join(sys.path[0], "gcf/stitcher_logging.conf"))
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
@@ -156,11 +156,12 @@ def call(argv, options=None):
         if fpDir and fpDir != "":
             if not fpDir.endswith(os.sep):
                 fpDir += os.sep
-            if not os.path.exists(fpDir):
+            fpd2 = os.path.abspath(fpDir)
+            if not os.path.exists(fpd2):
                 try:
-                    os.makedirs(fpDir)
+                    os.makedirs(fpd2)
                 except Exception, e:
-                    sys.exit("Failed to create %s for saving files per --fileDir option: %s" % (fpDir, e))
+                    sys.exit("Failed to create '%s' for saving files per --fileDir option: %s" % (fpd2, e))
         options.fileDir = fpDir
         options.logoutput = os.path.normpath(os.path.join(options.fileDir, options.logoutput))
 
@@ -191,7 +192,7 @@ def call(argv, options=None):
     logger = logging.getLogger("stitcher")
 
     if options.fileDir:
-        logger.info("All files will be saved in the directory '%s'", options.fileDir)
+        logger.info("All files will be saved in the directory '%s'", os.path.abspath(options.fileDir))
 
     # We use the omni config file
     # First load the agg nick cache
@@ -239,12 +240,12 @@ def call(argv, options=None):
 
     # Create the dirs needed for options.prefix if specified
     if options.prefix:
-        fpDir = os.path.dirname(options.prefix)
+        fpDir = os.path.abspath(os.path.dirname(options.prefix))
         if fpDir and fpDir != "" and not os.path.exists(fpDir):
             try:
                 os.makedirs(fpDir)
             except Exception, e:
-                sys.exit("Failed to create %s for saving files per --prefix option: %s" % (fpDir, e))
+                sys.exit("Failed to create '%s' for saving files per --prefix option: %s" % (fpDir, e))
 
     if options.fakeModeDir:
         if not os.path.isdir(options.fakeModeDir):

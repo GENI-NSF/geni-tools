@@ -1034,7 +1034,7 @@ def expires_from_status(status, logger):
             if tO:
                 exps.append(tO)
             if logger:
-                logger.debug("Got real sliver expiration using sliverstatus at DCN AM")
+                logger.debug("Got real sliver expiration using sliverstatus at DCN or similar AM")
         elif status.has_key('foam_expires'):
             exp = status['foam_expires']
             tO = _naiveUTCFromString(exp)

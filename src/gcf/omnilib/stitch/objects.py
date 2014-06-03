@@ -652,7 +652,7 @@ class Aggregate(object):
         # Mark AM not busy
         self.inProcess = False
 
-        self.logger.info("Allocation at %s complete.", self)
+        self.logger.info("... Allocation at %s complete.", self)
 
         if not hadSuggestedNotRequest:
             # mark self complete
@@ -1418,19 +1418,24 @@ class Aggregate(object):
 
             if self.isEG:
                 didInfo = True
-                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                # FIXME: On the 'Error in building the dependency tree' error,
+                # amhandler already printed the AMAPIError,
+                # So I'd rather not print it here
+                self.logger.info("Got an error reserving resources in %s at %s", slicename, self)
+                self.logger.debug("Op: %s. Error: %s", opName, ae)
+#                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                 # deleteReservation
-                opName = 'deletesliver'
+                opName2 = 'deletesliver'
                 if self.api_version > 2:
-                    opName = 'delete'
+                    opName2 = 'delete'
                 if opts.warn:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 else:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 try:
                     # FIXME: right counter?
-                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
-                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName, slicename, self, text)
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName2, slicename, self.allocateTries, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName2, slicename, self, text)
                 except Exception, e:
                     self.logger.warn("Failed to delete failed (AMAPIError) reservation at EG AM %s: %s", self, e)
 
@@ -1644,7 +1649,8 @@ class Aggregate(object):
 
                     if isVlanAvailableIssue:
                         if not didInfo:
-                            self.logger.info("A requested VLAN was unavailable doing %s %s at %s: %s", opName, slicename, self, ae)
+                            self.logger.info("A requested VLAN was unavailable doing %s %s at %s", opName, slicename, self)
+                            self.logger.debug(str(ae))
                             didInfo = True
                         self.handleVlanUnavailable(opName, ae)
                     else:
@@ -2273,7 +2279,7 @@ class Aggregate(object):
                 parent = parent.import_vlans_from
 
             if lastHop._hop_link.vlan_suggested_request==VLANRange.fromString('any'):
-                self.logger.debug("Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
+                self.logger.debug("A simple VLAN PCE case we handle quickly: Root of chain was %s. Chain had %d AMs including the failure at %s", lastHop.aggregate, len(toDelete), self)
                 self.logger.debug("Marking failed tag %s unavail at %s and %s", failedHop._hop_link.vlan_suggested_request, lastHop, failedHop)
                 lastHop.vlans_unavailable = lastHop.vlans_unavailable.union(failedHop._hop_link.vlan_suggested_request)
                 lastHop._hop_link.vlan_range_request = lastHop._hop_link.vlan_range_request - lastHop.vlans_unavailable
@@ -2294,7 +2300,9 @@ class Aggregate(object):
                 self.inProcess = False
                 msg = "Retrying reservations at earlier AMs to avoid unavailable VLAN tag at %s...." % self
                 raise StitchingRetryAggregateNewVlanImmediatelyError(msg)
-            # else cannot redo just this leg easily. Fall through.
+            else:
+                # else cannot redo just this leg easily. Fall through.
+                self.logger.debug("... not a simple VLAN PCE case, because lastHop (chain root) %s suggested VLAN was not 'any'", lastHop)
         # End of block to see if this is a simple ION failed and started with 'any' case
 
         # For each failed hop (could be all), or hop on same path as failed hop that does not do translation, mark unavail the tag from before
@@ -2400,7 +2408,7 @@ class Aggregate(object):
                 msg = ""
                 if exception.returnstruct.has_key("output"):
                     msg = exception.returnstruct["output"]
-                self.logger.debug("Error was code %d (am code %d): %s", code, amcode, msg)
+                self.logger.debug("Error was code %d (am code %s): %s", code, amcode, msg)
 #                # FIXME: If we got an empty / None / null suggested value on the failedHop
                 # in a manifest, then we could also redo
 
@@ -2424,10 +2432,12 @@ class Aggregate(object):
                 # See handleDCN where it checks wasVlanUnavail:
                 # what about those cases? Those aren't handled here as
                 # we have no exception struct
+                elif 'Error in building the dependency tree, probably not available vlan path' in msg and self.isEG:
+#                    self.logger.debug("Looks like an EG vlan avail issue")
+                    pass
                 else:
-                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %d, %s", code, amcode, msg)
+                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, amcode %s, %s", code, amcode, msg)
                     canRedoRequestHere = False
-
 
             except Exception, e2:
                 canRedoRequestHere = False
@@ -2483,6 +2493,7 @@ class Aggregate(object):
 #                    self.logger.debug("depAgg %s has an issue - cannot redo here", depAgg)
                     errMsg = "Topology too complex - ask Stitching Service to find a VLAN tag (%s)" % errMsg
                     canRedoRequestHere=False
+                    self.logger.debug(errMsg)
                     break
             # end of loop over Aggs that depend on self
         # End of block to check if can redo request here

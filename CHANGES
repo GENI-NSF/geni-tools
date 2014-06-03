@@ -8,6 +8,7 @@ gcf 2.6:
     to list the members of a project and their role in the project and
     email address. (#495)
   * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
+  * Include `remote-execute` in Mac binaries (#601)
   * Record FOAM reservations at the clearinghouse when using the
     `chapi` framework, by using fake sliver URNs. (#574)
   * `listslicemembers` honors the `-o` option to save results to a
@@ -45,6 +46,8 @@ gcf 2.6:
   * Clean up error getting slice credential for unknown slice from
    `chapi` clearinghouses. (#538)
   * Clarify error messages in `delegateSliceCred`. (#619)
+  * Harden update of `agg_nick_cache` to avoid replacing a good cache
+    with one that was empty or incomplete on download. (#631)
 
  * stitcher
   * Where possible, request that the AM pick the VLAN tag,
@@ -60,10 +63,12 @@ gcf 2.6:
     and current working directory otherwise used. This prefix also modifies 
     the value from `--prefix`, so other output files are written to this directory. 
     Therefore 2 stitcher instances can run in parallel. (#588)
+   * Be sure to manipulate directories as absolute paths, so '.' works. (#629)
   * Support GRE links (instead of or in addition to stitched links). (#562)
   * Clean up logging: console log messages are cleaner and fewer. 
     Stitcher produces a debug-level log file named `stitcher.log`
     suitable for use in reporting problems. (#450)
+   * Ensure log config file is found when running from other directories. (#628)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
@@ -107,10 +112,15 @@ gcf 2.6:
   * On `VLAN PCE` error from a DCN AM, if we had asked for 'any' from the endpoints,
     then re-request asking for a different tag. Note that this still fails
     due to an IG bug. (#622)
+  * Exit if the request RSpec requires an aggregate for which the URL
+    is unknown. (#630)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
     PG SA (#597)
+
+ * readyToLogin
+  * Handle malformed sliver status (#599) 
 
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)

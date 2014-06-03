@@ -264,7 +264,7 @@ omni.py --slicecred mySliceCred.xml -o getslicecred mySliceName\n\
 
     # owned by user whose cert we got
     if not owner_cert.get_urn() == slicecred.get_gid_caller().get_urn():
-        sys.exit("Can't delegate slice: not owner (mismatched URNs)")
+        sys.exit("Can't delegate slice: certificate from '--cert' option is for %s but the slice credential is owned by %s." % (owner_cert.get_urn(), slicecred.get_gid_caller().get_urn()))
     if not owner_cert.save_to_string(False) == slicecred.get_gid_caller().save_to_string(False):
         sys.exit("Can't delegate slice: not owner (mismatched GIDs but same URN - try downloading your cert again)")
 

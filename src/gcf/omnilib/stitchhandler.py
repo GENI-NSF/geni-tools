@@ -428,7 +428,7 @@ class StitchingHandler(object):
                 retVal += msg + "\n"
 
             if filename:
-                msg = "Saved combined reservation RSpec at %d AMs to file %s" % (len(self.ams_to_process), filename)
+                msg = "Saved combined reservation RSpec at %d AMs to file '%s'" % (len(self.ams_to_process), os.path.abspath(filename))
                 self.logger.info(msg)
                 retVal += msg
 
@@ -656,6 +656,22 @@ class StitchingHandler(object):
             if found:
                 continue
             else:
+                # AM URN was not in the workflow from the SCS
+#                # If this URN was on a stitching link, then this isn't going to work
+#                for link in self.parsedSCSRSpec.links:
+#                    if len(link.aggregates) > 1 and not link.hasSharedVlan and link.typeName == link.VLAN_LINK_TYPE:
+#                        # This is a link that needs stitching
+#                        for linkagg in link.aggregates:
+#                            if linkagg.urn == amURN or amURN in linkagg.urn_syns:
+#                                self.logger.debug("Found AM %s on stitching link %s that is not in SCS Workflow. URL: %s", amURN, link.id, linkagg.url)
+#                                stitching = self.parsedSCSRSpec.stitching
+#                                slink = None
+#                                if stitching:
+#                                    slink = stitching.find_path(link.id)
+#                                if not slink:
+#                                    self.logger.debug("No path in stitching section of rspec for link %s that seems to need stitching", link.id)
+#                                raise StitchingError("SCS did not handle link %s - perhaps AM %s is unknown?", link.id, amURN)
+
                 am = Aggregate.find(amURN)
                 addedAMs.append(am)
                 if not am.url:
@@ -684,7 +700,7 @@ class StitchingHandler(object):
                     except:
                         pass
                 if not am.url:
-                    self.logger.error("RSpec requires AM %s which is not in workflow and URL is unknown!", amURN)
+                    raise StitchingError("RSpec requires AM '%s' which is not in workflow and URL is unknown!" % amURN)
                 else:
                     self.logger.debug("Adding am to ams_to_process from URN %s, with url %s", amURN, am.url)
                     self.ams_to_process.append(am)
@@ -802,7 +818,7 @@ class StitchingHandler(object):
             if self.opts.output:
                 filename = handler_utils._construct_output_filename(self.opts, self.slicename, '', None, "expanded-request-rspec", ".xml", 1)
             if filename:
-                self.logger.info("Saving expanded request RSpec to file %s", filename)
+                self.logger.info("Saving expanded request RSpec to file: %s", os.path.abspath(filename))
             else:
                 self.logger.info("Expanded request RSpec:")
 
@@ -1202,7 +1218,7 @@ class StitchingHandler(object):
 
         self.logger.debug("Calling SCS with options %s", scsOptions)
         if self.opts.savedSCSResults:
-            self.logger.debug("** Not actually calling SCS, using results from %s", self.opts.savedSCSResults)
+            self.logger.debug("** Not actually calling SCS, using results from '%s'", self.opts.savedSCSResults)
         try:
             scsResponse = self.scsService.ComputePath(sliceurn, requestString, scsOptions, self.opts.savedSCSResults)
         except StitchingError as e:
@@ -1569,6 +1585,12 @@ class StitchingHandler(object):
 #                                # Change the stored URL for this Agg to the URL the AM advertises if necessary
 #                                if agg.url != version[agg.url]['value']['geni_api_versions'][key]:
 #                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
+                                # The reason to do this would be to
+                                # avoid errors like:
+#16:46:34 WARNING : Requested API version 2, but AM https://clemson-clemson-control-1.clemson.edu:5001 uses version 3. Same aggregate talks API v2 at a different URL: https://clemson-clemson-control-1.clemson.edu:5002
+#                                if len(version[agg.url]['value']['geni_api_versions'].keys()) > 1 and \
+#                                        agg.url != version[agg.url]['value']['geni_api_versions'][key]:
+#                                    agg.url = version[agg.url]['value']['geni_api_versions'][key]
                             if int(key) > maxVer:
                                 maxVer = int(key)
 
@@ -1783,6 +1805,17 @@ class StitchingHandler(object):
                 self.confirmGoodRSpec(manString, rspec_schema.REQUEST, False)
             else:
                 self.confirmGoodRSpec(manString, rspec_schema.MANIFEST, False)
+        except OmniError, oe:
+            # If there is an EG AM in the mix, then we expect an error
+            # like:
+#Manifest RSpec file did not contain a Manifest RSpec (wrong type or schema)
+            hasEG = False
+            for am in ams:
+                if am.isEG:
+                    hasEG = True
+                    break
+            if hasEG and "Manifest RSpec file did not contain a Manifest RSpec (wrong type or schema)" in str(oe):
+                self.logger.debug("EG AM meant manifest does not validate: %s", oe)
         except Exception, e:
             self.logger.error(e)
 
@@ -1803,12 +1836,12 @@ class StitchingHandler(object):
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
-        listdir = os.path.dirname(fname)
+        listdir = os.path.abspath(os.path.dirname(fname))
         if not os.path.exists(listdir):
             try:
                 os.makedirs(listdir)
             except Exception, e:
-                self.logger.warn("Failed to create %s to save list of used AMs: %s", listdir, e)
+                self.logger.warn("Failed to create dir '%s' to save list of used AMs: %s", listdir, e)
 
         # URL,URN
         with open (fname, 'w') as file:

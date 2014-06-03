@@ -48,6 +48,7 @@ New in v2.6:
    to list the members of a project and their role in the project and
    email address. (#495)
  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
+ * Include `remote-execute` in Mac binaries (#601)
  * Record FOAM reservations at the clearinghouse when using the
    `chapi` framework, by using fake sliver URNs. (#574)
  * `listslicemembers` honors the `-o` option to save results to a
@@ -85,6 +86,8 @@ New in v2.6:
  * Clean up error getting slice credential for unknown slice from
   `chapi` clearinghouses. (#538)
  * Clarify error messages in `delegateSliceCred`. (#619)
+ * Harden update of `agg_nick_cache` to avoid replacing a good cache
+   with one that was empty or incomplete on download. (#631)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)
