@@ -66,6 +66,7 @@ gcf 2.6:
     the value from `--prefix`, so other output files are written to this directory. 
     Therefore 2 stitcher instances can run in parallel. (#588)
    * Be sure to manipulate directories as absolute paths, so '.' works. (#629)
+   * Test to ensure fileDir is a writable directory. (#633)
   * Support GRE links (instead of or in addition to stitched links). (#562)
   * Clean up logging: console log messages are cleaner and fewer. 
     Stitcher produces a debug-level log file named `stitcher.log`

@@ -162,6 +162,20 @@ def call(argv, options=None):
                     os.makedirs(fpd2)
                 except Exception, e:
                     sys.exit("Failed to create '%s' for saving files per --fileDir option: %s" % (fpd2, e))
+            if not os.path.isdir(fpd2):
+                sys.exit("Path specified in '--fileDir' is not a directory: %s" % fpd2)
+            handle = None
+            try:
+                import tempfile
+                handle, testfile = tempfile.mkstemp(dir=fpDir)
+            except Exception, e:
+                sys.exit("Cannot write to directory '%s' specified by '--fileDir': %s" % (fpDir, e))
+            finally:
+                try:
+                    if handle is not None:
+                        handle.close()
+                except:
+                    pass
         options.fileDir = fpDir
         options.logoutput = os.path.normpath(os.path.join(options.fileDir, options.logoutput))
 
