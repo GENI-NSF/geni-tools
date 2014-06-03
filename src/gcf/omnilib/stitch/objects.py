@@ -452,7 +452,7 @@ class Aggregate(object):
     def add_agg_that_dependsOnThis(self, agg):
         self.isDependencyFor.add(agg)
 
-    def setSliverExpirations(expirations):
+    def setSliverExpirations(self, expirations):
         if expirations is None or expirations == []:
             return
         if not isinstance(expirations, list):
