@@ -1327,7 +1327,9 @@ class Aggregate(object):
                 # FIXME: On the 'Error in building the dependency tree' error,
                 # amhandler already printed the AMAPIError,
                 # So I'd rather not print it here
-                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
+                self.logger.info("Got an error reserving resources in %s at %s", slicename, self)
+                self.logger.debug("Op: %s. Error: %s", opName, ae)
+#                self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                 # deleteReservation
                 opName2 = 'deletesliver'
                 if self.api_version > 2:
@@ -1553,7 +1555,8 @@ class Aggregate(object):
 
                     if isVlanAvailableIssue:
                         if not didInfo:
-                            self.logger.info("A requested VLAN was unavailable doing %s %s at %s: %s", opName, slicename, self, ae)
+                            self.logger.info("A requested VLAN was unavailable doing %s %s at %s", opName, slicename, self)
+                            self.logger.debug(str(ae))
                             didInfo = True
                         self.handleVlanUnavailable(opName, ae)
                     else:
