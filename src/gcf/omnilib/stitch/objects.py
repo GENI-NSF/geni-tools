@@ -2330,10 +2330,12 @@ class Aggregate(object):
                 # See handleDCN where it checks wasVlanUnavail:
                 # what about those cases? Those aren't handled here as
                 # we have no exception struct
+                elif 'Error in building the dependency tree, probably not available vlan path' in msg and self.isEG:
+#                    self.logger.debug("Looks like an EG vlan avail issue")
+                    pass
                 else:
-                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, %s, %s", code, amcode, msg)
+                    self.logger.debug("handleVU says this isn't a vlan availability issue. Got error %d, amcode %s, %s", code, amcode, msg)
                     canRedoRequestHere = False
-
 
             except Exception, e2:
                 canRedoRequestHere = False
