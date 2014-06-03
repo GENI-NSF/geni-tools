@@ -1324,19 +1324,22 @@ class Aggregate(object):
 
             if self.isEG:
                 didInfo = True
+                # FIXME: On the 'Error in building the dependency tree' error,
+                # amhandler already printed the AMAPIError,
+                # So I'd rather not print it here
                 self.logger.info("Got AMAPIError doing %s %s at %s: %s", opName, slicename, self, ae)
                 # deleteReservation
-                opName = 'deletesliver'
+                opName2 = 'deletesliver'
                 if self.api_version > 2:
-                    opName = 'delete'
+                    opName2 = 'delete'
                 if opts.warn:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 else:
-                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
+                    omniargs = ['--raise-error-on-v2-amapi-error', '-o', '-V%d' % self.api_version, '-a', self.url, opName2, slicename]
                 try:
                     # FIXME: right counter?
-                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName, slicename, self.allocateTries, suppressLogs=True)
-                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName, slicename, self, text)
+                    (text, delResult) = self.doAMAPICall(omniargs, opts, opName2, slicename, self.allocateTries, suppressLogs=True)
+                    self.logger.debug("doAMAPICall on EG AM where res had AMAPIError: %s %s at %s got: %s", opName2, slicename, self, text)
                 except Exception, e:
                     self.logger.warn("Failed to delete failed (AMAPIError) reservation at EG AM %s: %s", self, e)
 
