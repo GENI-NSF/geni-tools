@@ -56,7 +56,7 @@ gcf 2.6:
     by requesting 'any'. Therefore, many fewer VLAN unavailable
     errors. This only works at AMs that are VLAN producers or
     per the SCS do not depend on other AMs. This does not currently work at
-    ExoGENI or GRAM AMs. (#576,#604)
+    ExoGENI or GRAM-based AMs. (#576,#604)
   * Put the list of AMs used by the stitched slice in `~/.gcf`, not
     the current directory. So you can be in a different directory later 
     to find it. (#462)
@@ -99,7 +99,7 @@ gcf 2.6:
   * Global IDs are per DCN AM, so record them on the hop not the path,
     to avoid misleading warnings on paths that cross 2 DCN AMs (like
     MAX and ION). (#582)
-  * Support producing integrated manifest RSpec when using a GRAM AM. (#605)
+  * Support producing integrated manifest RSpec when using a GRAM-based AM. (#605)
   * `no edge hop` message at ProtoGENI AMs is fatal. (#611)
   * `--noReservation` exits with code `0`. (#609)
   * `Error in building the dependency tree, probably not available
