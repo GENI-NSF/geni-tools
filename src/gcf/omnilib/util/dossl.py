@@ -59,7 +59,7 @@ def _do_ssl(framework, suppresserrors, reason, fn, *args):
     otherwise returns None. And (2) A message explaining any errors."""
 
     # Change exception name?
-    max_attempts = 3
+    max_attempts = 4
     attempt = 0
     retry_pause_seconds = 15
 

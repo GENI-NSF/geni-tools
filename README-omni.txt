@@ -68,8 +68,8 @@ New in v2.6:
   * Added new utilities in `handler_utils` to extract sliver
     expiration from the manifest and sliverstatus.
  * Clean up console log messages. (#623)
- * Retry on AM busy message one more time, sleeping 15 seconds instead
-   of 10. (#624)
+ * Retry on AM busy message two more times, sleeping 15 seconds instead
+   of 10. (#624,#635)
  * Restore printing of non-standard options used in command summary. (#625)
  * Help specifies defaults for more options. (#626)
  * Mac install clears old `omni.py` and similar aliases (#556)
