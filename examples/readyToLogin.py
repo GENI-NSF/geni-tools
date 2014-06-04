@@ -130,10 +130,11 @@ def getInfoFromManifest(manifestStr):
   loginInfo = []
   for node_el in dom.findall(tag("node")):
     # Try to get the per node status from the EG specific geni_sliver_info RSpec extension
-    geni_status = ""
+    geni_status = "unknown"
     for gsi_el in node_el.findall("%s%s" % (gsiNS, "geni_sliver_info")):
-        # print "Got a geni_sliver_info that says state is: %s" % (gsi_el.attrib['state'])
-        geni_status = gsi_el.attrib['state']
+        if 'state' in gsi_el.keys():
+            # print "Got a geni_sliver_info that says state is: %s" % (gsi_el.attrib['state'])
+            geni_status = gsi_el.attrib['state']
     for serv_el in node_el.findall(tag("services")):
       for login_el in serv_el.findall(tag("login")):
          # print "Looking in login tag: %s with attribute %s in node %s" % (login_el, login_el.attrib, node_el.attrib["client_id"])
