@@ -124,6 +124,7 @@ gcf 2.6:
 
  * readyToLogin
   * Handle malformed sliver status (#599) 
+  * Be robust to malformed EG manifest missing 'state' attribute. (#636)
 
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
