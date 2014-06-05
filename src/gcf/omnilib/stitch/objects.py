@@ -1969,6 +1969,47 @@ class Aggregate(object):
                 # Exit gracefully
                 raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
 
+
+            # ION seems to sometimes give a reservation past the slice expiration
+            # check for that, log the issue, renew to the slice expiration if necessary.
+            if len(self.sliverExpirations) > 0:
+                thisExp = self.sliverExpirations[-1]
+                thisExp = naiveUTC(thisExp)
+                sliceexp = credutils.get_cred_exp(self.logger, sliceCred)
+                sliceexp = naiveUTC(sliceexp)
+                if thisExp > sliceexp:
+                    # An ION bug!
+                    self.logger.debug("%s expiration is after slice expiration. %s > %s. Renew it to match slice expiration.", self, thisExp, sliceexp)
+
+                    if self.api_version == 2:
+                        opName = 'renewsliver'
+                    else:
+                        opName = 'renew'
+                    if opts.warn:
+                        omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, str(sliceexp)]
+                    else:
+                        omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, str(sliceexp)]
+
+                    try:
+                        # FIXME: Suppressing all but WARN messages, but I'll lose PG log URL?
+                        (text3, result3) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
+                        self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text3)
+                        succ = False
+                        if result3 and isinstance(result3, list) and len(result3) == 2 and len(result3[0]) > 0:
+                            succ = True
+                        elif result3 and isinstance(result3, dict) and len(result3.keys()) == 1 and isinstance(result3[result3.keys()[0]], dict) and result3[result3.keys()[0]].has_key('code'):
+                            code = result3[result3.keys()[0]]['code']
+                            if instance(code, dict):
+                                if code.has_key('geni_code') and code['geni_code'] == 0:
+                                    succ = True
+                        # FIXME: Query for the actual sliver expiration?
+                        if succ:
+                            self.setSliverExpirations(sliceexp)
+                    except Exception, e:
+                        self.logger.debug("Failed to renew at %s: %s", self, e)
+                # Else the sliver expires at or before the slice. OK
+            # Else we have no sliver expirations. Don't bother trying this renew thing here
+
             # Get the single manifest out of the result struct
             try:
                 if self.api_version == 2:
