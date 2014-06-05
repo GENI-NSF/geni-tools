@@ -47,7 +47,7 @@ from ... import oscript as omni
 
 from ..util import naiveUTC
 from ..util.handler_utils import _construct_output_filename, _printResults, _naiveUTCFromString, \
-    expires_from_status, expires_from_rspec
+    expires_from_status, expires_from_rspec, _load_cred
 from ..util.dossl import is_busy_reply
 from ..util.credparsing import get_cred_exp
 from ..util.omnierror import OmniError, AMAPIError
@@ -1978,6 +1978,14 @@ class Aggregate(object):
             if len(self.sliverExpirations) > 0:
                 thisExp = self.sliverExpirations[-1]
                 thisExp = naiveUTC(thisExp)
+
+                # Anonymous inner class that acts like the handler object the method expects
+                class MyHandler(object):
+                    def __init__(self, logger, opts):
+                        self.logger = logger
+                        self.opts = opts
+
+                sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
                 sliceexp = get_cred_exp(self.logger, sliceCred)
                 sliceexp = naiveUTC(sliceexp)
                 if thisExp > sliceexp:
