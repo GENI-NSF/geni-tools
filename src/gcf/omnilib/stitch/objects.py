@@ -49,6 +49,7 @@ from ..util import naiveUTC
 from ..util.handler_utils import _construct_output_filename, _printResults, _naiveUTCFromString, \
     expires_from_status, expires_from_rspec
 from ..util.dossl import is_busy_reply
+from ..util.credparsing import get_cred_exp
 from ..util.omnierror import OmniError, AMAPIError
 from ...geni.util import rspec_schema, rspec_util, urn_util
 
@@ -1970,12 +1971,14 @@ class Aggregate(object):
                 raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
 
 
-            # ION seems to sometimes give a reservation past the slice expiration
+            # ION seems to sometimes give a reservation past the slice expiration.
+            # Xi says that ION uses the 'expires' from the request rspec, or else 24 hours.
+            # So if either of those were > slice expiration, you'd have this problem.
             # check for that, log the issue, renew to the slice expiration if necessary.
             if len(self.sliverExpirations) > 0:
                 thisExp = self.sliverExpirations[-1]
                 thisExp = naiveUTC(thisExp)
-                sliceexp = credutils.get_cred_exp(self.logger, sliceCred)
+                sliceexp = get_cred_exp(self.logger, sliceCred)
                 sliceexp = naiveUTC(sliceexp)
                 if thisExp > sliceexp:
                     # An ION bug!
