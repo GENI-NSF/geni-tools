@@ -119,7 +119,7 @@ gcf 2.6:
   * Exit if the request RSpec requires an aggregate for which the URL
     is unknown. (#630)
   * When reserving at a DCN AM, if the expiration is after the slice expiration
-    (a bug - ggw#1258), renew at the AM back to the slice expiration. (#628)
+    (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
