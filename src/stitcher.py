@@ -145,7 +145,7 @@ def call(argv, options=None):
     parser.set_defaults(logoutput='stitcher.log')
 
     # Configure stitcher with a specific set of configs by default
-    parser.set_defaults(logconfig=os.path.join(sys.path[0], "gcf/stitcher_logging.conf"))
+    parser.set_defaults(logconfig=os.path.join(sys.path[0], os.path.join("gcf","stitcher_logging.conf")))
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
@@ -181,6 +181,8 @@ def call(argv, options=None):
 
     # Set up the logger
     # First, rotate the logfile if necessary
+    if options.logoutput:
+        options.logoutput = os.path.normpath(os.path.expanduser(options.logoutput))
     if options.logoutput and os.path.exists(options.logoutput) and options.logFileCount > 0:
         backupCount = options.logFileCount
         bfn = options.logoutput
@@ -254,7 +256,7 @@ def call(argv, options=None):
 
     # Create the dirs needed for options.prefix if specified
     if options.prefix:
-        fpDir = os.path.abspath(os.path.dirname(options.prefix))
+        fpDir = os.path.normpath(os.path.expanduser(os.path.dirname(options.prefix)))
         if fpDir and fpDir != "" and not os.path.exists(fpDir):
             try:
                 os.makedirs(fpDir)
