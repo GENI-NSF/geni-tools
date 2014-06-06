@@ -1971,9 +1971,12 @@ class Aggregate(object):
                 raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
 
 
+            # Ticket #628
             # ION seems to sometimes give a reservation past the slice expiration.
             # Xi says that ION uses the 'expires' from the request rspec, or else 24 hours.
             # So if either of those were > slice expiration, you'd have this problem.
+            # In practice this means any circuit reserved within 24 hours of expiration
+            # will have this problem for something < 24 hours.
             # check for that, log the issue, renew to the slice expiration if necessary.
             if len(self.sliverExpirations) > 0:
                 thisExp = self.sliverExpirations[-1]
