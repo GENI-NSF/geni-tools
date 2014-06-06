@@ -90,6 +90,7 @@ New in v2.6:
    with one that was empty or incomplete on download. (#631)
  * Document creating an alias for `addMemberToSliceAndSlivers`
    in `INSTALL.txt`. (#632)
+ * Avoid error doing `listprojects` when user has none. (#637)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)

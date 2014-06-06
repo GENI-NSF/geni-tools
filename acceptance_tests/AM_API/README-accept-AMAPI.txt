@@ -148,13 +148,16 @@ help@geni.net or see http://groups.geni.net/geni/wiki/SignMeUp
 
   (c) Configure `omni_config`.
 
-     (i) Omni configuration is described in README-omni.txt. 
+     (i) Omni configuration is described in README-omni.txt.
 
-     (ii) Verify the ProtoGENI .pem files are found in the location
+     (ii) Verify the Portal .pem files are found in the location
      specified in the omni_config
 {{{
       $ cp omni_config.sample omni_config
 }}}
+
+     (iii) Set the `default_project` to the Portal project where you
+     will create your testing slices.
 
   (d) Set PYTHONPATH so the acceptance tests can locate `omni.py`:
 {{{

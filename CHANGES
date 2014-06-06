@@ -50,6 +50,7 @@ gcf 2.6:
     with one that was empty or incomplete on download. (#631)
   * Document creating an alias for `addMemberToSliceAndSlivers`
     in `INSTALL.txt`. (#632)
+  * Avoid error doing `listprojects` when user has none. (#637)
 
  * stitcher
   * Where possible, request that the AM pick the VLAN tag,
@@ -117,6 +118,8 @@ gcf 2.6:
     due to an IG bug. (#622)
   * Exit if the request RSpec requires an aggregate for which the URL
     is unknown. (#630)
+  * When reserving at a DCN AM, if the expiration is after the slice expiration
+    (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
@@ -124,6 +127,7 @@ gcf 2.6:
 
  * readyToLogin
   * Handle malformed sliver status (#599) 
+  * Be robust to malformed EG manifest missing 'state' attribute. (#636)
 
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
