@@ -1879,7 +1879,7 @@ class StitchingHandler(object):
             self.logger.debug("No AMs in AM list to process, so not creating amlist file")
             return
 
-        listdir = os.path.abspath(os.path.dirname(fname))
+        listdir = os.path.abspath(os.path.expanduser(os.path.dirname(fname)))
         if not os.path.exists(listdir):
             try:
                 os.makedirs(listdir)
