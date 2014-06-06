@@ -2106,7 +2106,10 @@ class AMCallHandler(object):
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 if len(orderedDates) > 0:
-                    retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
+                    if len(orderedDates) == 1:
+                        retVal += " All slivers expire on: %s" % orderedDates[0].isoformat()
+                    else:
+                        retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Allocate %s result: %s" %  (descripMsg, prettyResult))
                 successCnt += 1
@@ -2375,7 +2378,10 @@ class AMCallHandler(object):
                 else:
                     self.logger.info("%d slivers expire on %r, %d on %r, and others later", len(sliverExps[orderedDates[0]]), orderedDates[0].isoformat(), len(sliverExps[orderedDates[0]]), orderedDates[1].isoformat())
                 if len(orderedDates) > 0:
-                    retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
+                    if len(orderedDates) == 1:
+                        retVal += " All slivers expire on: %s" % orderedDates[0].isoformat()
+                    else:
+                        retVal += " First sliver expiration: %s" % orderedDates[0].isoformat()
 
                 self.logger.debug("Provision %s result: %s" %  (descripMsg, prettyResult))
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:
@@ -2609,7 +2615,7 @@ class AMCallHandler(object):
                     prettyResult = json.dumps(realresult, ensure_ascii=True, indent=2)
                 else:
                     prettyResult = pprint.pformat(realresult)
-                header="PerformOperationalAction result for %s at AM %s" % (descripMsg, client.str)
+                header="PerformOperationalAction result for %s at AM %s:" % (descripMsg, client.str)
                 filename = None
                 if self.opts.output:
                     filename = _construct_output_filename(self.opts, slicename, client.url, client.urn, "poa-" + action, ".json", numClients)
@@ -2622,6 +2628,8 @@ class AMCallHandler(object):
                     retVal += " - with %d slivers reporting errors!" % len(sliverFails.keys())
                 if filename:
                     retVal += " Saved results at AM %s to file %s. \n" % (client.str, filename)
+                elif len(prettyResult) < 120:
+                    retVal += ' ' + prettyResult + '\n'
                 else:
                     retVal += ' \n'
                 if len(missingSlivers) == 0 and len(sliverFails.keys()) == 0:

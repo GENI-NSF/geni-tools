@@ -47,8 +47,9 @@ from ... import oscript as omni
 
 from ..util import naiveUTC
 from ..util.handler_utils import _construct_output_filename, _printResults, _naiveUTCFromString, \
-    expires_from_status, expires_from_rspec
+    expires_from_status, expires_from_rspec, _load_cred
 from ..util.dossl import is_busy_reply
+from ..util.credparsing import get_cred_exp
 from ..util.omnierror import OmniError, AMAPIError
 from ...geni.util import rspec_schema, rspec_util, urn_util
 
@@ -2062,6 +2063,61 @@ class Aggregate(object):
                 # Note this could be an AMAPIError. But what AMAPIError could this be that we could handle?
                 # Exit gracefully
                 raise StitchingError("Stitching failed in handleDcn trying %s at %s: %s" % (opName, self, e))
+
+
+            # Ticket #638
+            # ION seems to sometimes give a reservation past the slice expiration.
+            # Xi says that ION uses the 'expires' from the request rspec, or else 24 hours.
+            # So if either of those were > slice expiration, you'd have this problem.
+            # In practice this means any circuit reserved within 24 hours of expiration
+            # will have this problem for something < 24 hours.
+            # check for that, log the issue, renew to the slice expiration if necessary.
+            if len(self.sliverExpirations) > 0:
+                thisExp = self.sliverExpirations[-1]
+                thisExp = naiveUTC(thisExp)
+
+                # Anonymous inner class that acts like the handler object the method expects
+                class MyHandler(object):
+                    def __init__(self, logger, opts):
+                        self.logger = logger
+                        self.opts = opts
+
+                sliceCred = _load_cred(MyHandler(self.logger, opts), opts.slicecredfile)
+                sliceexp = get_cred_exp(self.logger, sliceCred)
+                sliceexp = naiveUTC(sliceexp)
+                if thisExp > sliceexp:
+                    # An ION bug!
+                    self.logger.debug("%s expiration is after slice expiration. %s > %s. Renew it to match slice expiration.", self, thisExp, sliceexp)
+
+                    if self.api_version == 2:
+                        opName = 'renewsliver'
+                    else:
+                        opName = 'renew'
+                    if opts.warn:
+                        omniargs = ['--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, str(sliceexp)]
+                    else:
+                        omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, str(sliceexp)]
+
+                    try:
+                        (text3, result3) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
+                        self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text3)
+                        succ = False
+                        if result3 and isinstance(result3, list) and len(result3) == 2 and len(result3[0]) > 0:
+                            succ = True
+                        elif result3 and isinstance(result3, dict) and len(result3.keys()) == 1 and isinstance(result3[result3.keys()[0]], dict) and result3[result3.keys()[0]].has_key('code'):
+                            code = result3[result3.keys()[0]]['code']
+                            if instance(code, dict):
+                                if code.has_key('geni_code') and code['geni_code'] == 0:
+                                    succ = True
+                        # FIXME: Query for the actual sliver expiration?
+                        if succ:
+                            self.setSliverExpirations(sliceexp)
+                    except Exception, e:
+                        self.logger.debug("Failed to renew at %s: %s", self, e)
+                # Else the sliver expires at or before the slice. OK
+#                else:
+#                    self.logger.debug("DCN AM %s expiration legal: %s <= %s", self, thisExp, sliceExp)
+            # Else we have no sliver expirations. Don't bother trying this renew thing here
 
             # Get the single manifest out of the result struct
             try:

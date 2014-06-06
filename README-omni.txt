@@ -68,8 +68,8 @@ New in v2.6:
   * Added new utilities in `handler_utils` to extract sliver
     expiration from the manifest and sliverstatus.
  * Clean up console log messages. (#623)
- * Retry on AM busy message one more time, sleeping 15 seconds instead
-   of 10. (#624)
+ * Retry on AM busy message two more times, sleeping 15 seconds instead
+   of 10. (#624,#635)
  * Restore printing of non-standard options used in command summary. (#625)
  * Help specifies defaults for more options. (#626)
  * Mac install clears old `omni.py` and similar aliases (#556)
@@ -88,6 +88,9 @@ New in v2.6:
  * Clarify error messages in `delegateSliceCred`. (#619)
  * Harden update of `agg_nick_cache` to avoid replacing a good cache
    with one that was empty or incomplete on download. (#631)
+ * Document creating an alias for `addMemberToSliceAndSlivers`
+   in `INSTALL.txt`. (#632)
+ * Avoid error doing `listprojects` when user has none. (#637)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)

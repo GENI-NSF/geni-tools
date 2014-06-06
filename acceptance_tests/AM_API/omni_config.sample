@@ -39,7 +39,7 @@ default_rspec_extension = rspec
 [aggregate_nicknames]
 
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
-am-undertest=urn:publicid:IDN+emulab.net+authority+cm,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+am-undertest=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 
 [portal]
 type=chapi
@@ -52,8 +52,12 @@ sa=https://ch.geni.net/SA
 # CONFIGURATION: If necessary, replace the next two lines with the
 #  location of your combined cert/key file you downloaded from
 #  http://portal.geni.net
-cert=~/.gcf/encrypted.pem
-key=~/.gcf/encrypted.pem
+cert = ~/.ssl/geni_cert_portal.pem
+key = ~/.ssl/geni_cert_portal.pem
+
+# CONFIGURATION: Edit this to specify the Portal project
+# in which you are creating your testing slices.
+#default_project = MyTestingProject
 
 [my_gcf]
 type=gcf
