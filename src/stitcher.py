@@ -164,7 +164,7 @@ def call(argv, options=None):
                     sys.exit("Failed to create '%s' for saving files per --fileDir option: %s" % (fpd2, e))
             if not os.path.isdir(fpd2):
                 sys.exit("Path specified in '--fileDir' is not a directory: %s" % fpd2)
-            handle = None
+            testfile = None
             try:
                 import tempfile
                 handle, testfile = tempfile.mkstemp(dir=fpDir)
@@ -172,8 +172,7 @@ def call(argv, options=None):
                 sys.exit("Cannot write to directory '%s' specified by '--fileDir': %s" % (fpDir, e))
             finally:
                 try:
-                    if handle is not None:
-                        handle.close()
+                    os.unlink(testfile)
                 except:
                     pass
         options.fileDir = fpDir
