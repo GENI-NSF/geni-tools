@@ -91,6 +91,7 @@ New in v2.6:
  * Document creating an alias for `addMemberToSliceAndSlivers`
    in `INSTALL.txt`. (#632)
  * Avoid error doing `listprojects` when user has none. (#637)
+ * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)
