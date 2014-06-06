@@ -51,6 +51,7 @@ gcf 2.6:
   * Document creating an alias for `addMemberToSliceAndSlivers`
     in `INSTALL.txt`. (#632)
   * Avoid error doing `listprojects` when user has none. (#637)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
 
  * stitcher
   * Where possible, request that the AM pick the VLAN tag,
@@ -120,6 +121,7 @@ gcf 2.6:
     is unknown. (#630)
   * When reserving at a DCN AM, if the expiration is after the slice expiration
     (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
