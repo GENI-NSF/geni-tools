@@ -100,9 +100,9 @@ New in v2.5.3:
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
-   avoiding the heartbleed vulnerability. (#593)
+   avoiding the heartbleed vulnerability. (#594)
  * Update various packages in Windows and Mac binaries to be
-   consistent versions. (#594)
+   consistent versions. (#595)
 
 New in v2.5:
 
