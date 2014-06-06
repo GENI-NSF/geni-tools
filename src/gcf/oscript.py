@@ -427,6 +427,7 @@ def update_agg_nick_cache( opts, logger ):
     try:
         import tempfile
         handle, tmpcache = tempfile.mkstemp()
+        os.close(handle)
         # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
