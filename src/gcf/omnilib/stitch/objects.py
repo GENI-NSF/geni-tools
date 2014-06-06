@@ -2002,7 +2002,6 @@ class Aggregate(object):
                         omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename, str(sliceexp)]
 
                     try:
-                        # FIXME: Suppressing all but WARN messages, but I'll lose PG log URL?
                         (text3, result3) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                         self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text3)
                         succ = False
@@ -2019,6 +2018,8 @@ class Aggregate(object):
                     except Exception, e:
                         self.logger.debug("Failed to renew at %s: %s", self, e)
                 # Else the sliver expires at or before the slice. OK
+#                else:
+#                    self.logger.debug("DCN AM %s expiration legal: %s <= %s", self, thisExp, sliceExp)
             # Else we have no sliver expirations. Don't bother trying this renew thing here
 
             # Get the single manifest out of the result struct
