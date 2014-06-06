@@ -165,18 +165,20 @@ def call(argv, options=None):
             if not os.path.isdir(fpd2):
                 sys.exit("Path specified in '--fileDir' is not a directory: %s" % fpd2)
             testfile = None
+            handle = None
             try:
                 import tempfile
-                handle, testfile = tempfile.mkstemp(dir=fpDir)
+                handle, testfile = tempfile.mkstemp(dir=fpd2)
+                os.close(handle)
             except Exception, e:
                 sys.exit("Cannot write to directory '%s' specified by '--fileDir': %s" % (fpDir, e))
             finally:
                 try:
                     os.unlink(testfile)
-                except:
+                except Exception, e2:
                     pass
         options.fileDir = fpDir
-        options.logoutput = os.path.normpath(os.path.join(options.fileDir, options.logoutput))
+        options.logoutput = os.path.normpath(os.path.join(os.path.abspath(options.fileDir), options.logoutput))
 
     # Set up the logger
     # First, rotate the logfile if necessary

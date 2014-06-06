@@ -92,6 +92,8 @@ New in v2.6:
    in `INSTALL.txt`. (#632)
  * Avoid error doing `listprojects` when user has none. (#637)
  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+ * Ensure SFA libraries look for temp in TMP as well as TEMPDIR, and try to create
+   the directory if it doesn't exist. (#560)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)

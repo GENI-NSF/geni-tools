@@ -192,10 +192,10 @@ class Aggregate(object):
     MAX_DCN_AGG_NEW_VLAN_TRIES = 3 # Max times to locally pick a new VLAN
 
     # Constant name of SCS expanded request (for use here and elsewhere)
-    FAKEMODESCSFILENAME = '/tmp/stitching-scs-expanded-request.xml'
+    FAKEMODESCSFILENAME = os.path.normpath(os.path.join(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")), 'stitching-scs-expanded-request.xml'))
 
     # Directory to store request rspecs - must be universally writable
-    REQ_RSPEC_DIR = '/tmp'
+    REQ_RSPEC_DIR = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
 
     @classmethod
     def find(cls, urn):

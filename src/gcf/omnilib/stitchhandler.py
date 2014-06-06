@@ -67,7 +67,7 @@ MAX_SCS_CALLS = 5
 
 # File in which we save the slice cred so omni calls don't have to keep re-fetching it
 # Valid substitutions: %username, %slicename, %slicehrn
-SLICECRED_FILENAME = '/tmp/slice-%slicehrn-for-%username-cred.xml'
+SLICECRED_FILENAME = 'slice-%slicehrn-for-%username-cred.xml'
 
 def urn_to_clean_hrn( urn ):
     hrn, type = urn_to_hrn( urn )
@@ -1011,13 +1011,14 @@ class StitchingHandler(object):
         self.savedSliceCred = False
         # Force the slice cred to be from a saved file if not already set
         if not self.opts.slicecredfile:
-            self.opts.slicecredfile = SLICECRED_FILENAME
+            self.opts.slicecredfile = os.path.join(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")), SLICECRED_FILENAME)
             if "%username" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%username", self.username)
             if "%slicename" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicename", self.slicename)
             if "%slicehrn" in self.opts.slicecredfile:
                 self.opts.slicecredfile = string.replace(self.opts.slicecredfile, "%slicehrn", self.slicehrn)
+            self.opts.slicecredfile = os.path.normpath(self.opts.slicecredfile)
             if self.opts.fileDir:
                 self.opts.slicecredfile = prependFilePrefix(self.opts.fileDir, self.opts.slicecredfile)
             trim = -4
