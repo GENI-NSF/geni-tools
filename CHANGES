@@ -127,6 +127,8 @@ gcf 2.6:
   * When reserving at a DCN AM, if the expiration is after the slice expiration
     (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
   * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * If CWD is not writable and `fileDir` isn't already set, set `fileDir` to
+    a writable temporary directory to hold stitcher output. (#642)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported

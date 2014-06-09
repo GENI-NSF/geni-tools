@@ -161,28 +161,31 @@ def call(argv, options=None):
 
     if not os.path.exists(lcfile):
         # File didn't exist as a regular file among python source
-        # Try it where py2exe puts resources. And maybe py2app
+        # Try it where py2exe (Windows) puts resources. 
         print "Didn't find lcfile in source: %s" % lcfile
         lcfile = os.path.join(os.path.normpath(os.path.join(sys.path[0], '..')), os.path.join("gcf","stitcher_logging.conf"))
         print "Trying lcfile one up: %s" % lcfile
 
     if not os.path.exists(lcfile):
         # File didn't exist in dir parallel to zip of source
-        # Try one more up
+        # Try one more up, but no gcf sub-directory - where py2app (Mac) puts it.
         # Try it where py2exe puts resources. And maybe py2app
         print "Didn't find lcfile one up: %s" % lcfile
-        lcfile = os.path.join(os.path.normpath(os.path.join(os.path.join(sys.path[0], '..'), '..')), os.path.join("gcf","stitcher_logging.conf"))
-        print "Trying lcfile 2 up: %s" % lcfile
+        lcfile = os.path.join(os.path.normpath(os.path.join(os.path.join(sys.path[0], '..'), '..')), "stitcher_logging.conf")
+        print "Trying lcfile 2 up no gcf sub-directory: %s" % lcfile
 
     if not os.path.exists(lcfile):
         print "Didn't find lcfile two up: %s" % lcfile
+        # Now we'll try a couple approaches to read the .conf file out of a source zip
+        # And put it in a temp directory
         tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
         if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
             os.makedirs(tmpdir)
         lcfile = os.path.join(tmpdir, "stitcher_logging.conf")
 
         try:
-            # This approach requires I find a way to get the .conf file into the library.zip
+            # This approach requires the .conf be in the source.zip (e.g. library.zip, python27.zip)
+            # On Windows (py2exe) this isn't easy apparently. But it happens by default on Mac (py2app)
             # Note that could be a manual copy & paste possibly
             import pkgutil
             lconf = pkgutil.get_data("gcf", "stitcher_logging.conf")
@@ -204,6 +207,41 @@ def call(argv, options=None):
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
+
+    # If there is no fileDir, then we try to write to the CWD. In some installations, that will
+    # fail. So test writing to CWD. If that fails, set fileDir to a temp dir to write files ther.
+    if not options.fileDir:
+        testfile = None
+        handle = None
+        try:
+            import tempfile
+            handle, testfile = tempfile.mkstemp(dir='.')
+            #print "Can write to CWD: created %s" % testfile
+            os.close(handle)
+        except Exception, e:
+            #print "Cannot write to CWD '%s' for output files: %s" % (os.path.abspath('.'), e)
+            tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
+            if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
+                os.makedirs(tmpdir)
+            testfile1 = None
+            handle1 = None
+            try:
+                import tempfile
+                handle1, testfile1 = tempfile.mkstemp(dir=tmpdir)
+                os.close(handle1)
+                options.fileDir = tmpdir
+            except Exception, e1:
+                sys.exit("Cannot write to temp directory '%s' for output files. Try setting `--fileDir` to point to a writable directory. Error: %s'" % (tmpdir, e1))
+            finally:
+                try:
+                    os.unlink(testfile1)
+                except Exception, e2:
+                    pass
+        finally:
+            try:
+                os.unlink(testfile)
+            except Exception, e2:
+                pass
 
     # Create the dirs for fileDir option as needed
     if options.fileDir:
