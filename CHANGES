@@ -76,6 +76,9 @@ gcf 2.6:
     Stitcher produces a debug-level log file named `stitcher.log`
     suitable for use in reporting problems. (#450)
    * Ensure log config file is found when running from other directories. (#628)
+   * When the logging.conf file cannot be read (e.g. in Windows and Mac
+     binary archives), try `pkg_utils`. Else, read a default configuration
+     from a python constant. (#641)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
@@ -124,6 +127,8 @@ gcf 2.6:
   * When reserving at a DCN AM, if the expiration is after the slice expiration
     (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
   * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * If CWD is not writable and `fileDir` isn't already set, set `fileDir` to
+    a writable temporary directory to hold stitcher output. (#642)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
