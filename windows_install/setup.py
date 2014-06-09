@@ -37,6 +37,8 @@ gcf.omnilib.frameworks.framework_gib, gcf.omnilib.frameworks.framework_of,\
 gcf.omnilib.frameworks.framework_pg, gcf.omnilib.frameworks.framework_pgch,\
  gcf.omnilib.frameworks.framework_sfa,gcf.omnilib,gcf.sfa,dateutil,gcf.geni,\
  copy,ConfigParser,logging,optparse,os,sys,string,re,platform,shutil,zipfile,logging,subprocess',
+              'skip_archive': True
               }
-            }
+            },
+      data_files = [('gcf', ['gcf/stitcher_logging.conf'])]
         )

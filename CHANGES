@@ -76,6 +76,9 @@ gcf 2.6:
     Stitcher produces a debug-level log file named `stitcher.log`
     suitable for use in reporting problems. (#450)
    * Ensure log config file is found when running from other directories. (#628)
+   * When the logging.conf file cannot be read (e.g. in Windows and Mac
+     binary archives), try `pkg_utils`. Else, read a default configuration
+     from a python constant. (#641)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
