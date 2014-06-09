@@ -42,7 +42,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.6:
- * New function `removeslicemember <slice> <usernane>`: 
+ * New function `removeslicemember <slice> <username>`: 
    Remove the user with the given username from the named slice. (#515)
  * Add functions `listprojects` to list your projects, and `listprojectmembers`
    to list the members of a project and their role in the project and
