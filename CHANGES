@@ -2,7 +2,7 @@
 
 gcf 2.6:
  * Omni
-  * New function `removeslicemember <slice> <usernane>`: 
+  * New function `removeslicemember <slice> <username>`: 
     Remove the user with the given username from the named slice. (#515)
   * Add functions `listprojects` to list your projects, and `listprojectmembers`
     to list the members of a project and their role in the project and
@@ -223,7 +223,7 @@ sa=https://ch.geni.net/SA
    - New function `listslicemembers <slice>`: lists the members of
      the given slice, with their email and registered SSH public
      keys (if any) and role in the slice. (#421, #431, #278)
-   - New function `addslicemember <slice> <usernane> [optional: role]`:
+   - New function `addslicemember <slice> <username> [optional: role]`:
      Adds the user with the given username to the named slice,
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing
