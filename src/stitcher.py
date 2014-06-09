@@ -72,7 +72,7 @@ from gcf.omnilib.stitchhandler import StitchingHandler
 from gcf.omnilib.stitch.utils import StitchingError, prependFilePrefix
 from gcf.omnilib.stitch.objects import Aggregate
 import gcf.omnilib.stitch.objects
-#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
+#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
@@ -145,7 +145,45 @@ def call(argv, options=None):
     parser.set_defaults(logoutput='stitcher.log')
 
     # Configure stitcher with a specific set of configs by default
-    parser.set_defaults(logconfig=os.path.join(sys.path[0], os.path.join("gcf","stitcher_logging.conf")))
+
+    # First, set the default logging config file
+    lcfile = os.path.join(sys.path[0], os.path.join("gcf","stitcher_logging.conf"))
+
+    # Windows & Mac binaries do not get the .conf file in the proper archive apparently
+    # And even if they did, it appears the logging stuff can't readily read .conf files
+    # from that archive.
+    # Solution 1 that fails (no pkg_resources on windows so far, needs the file in the .zip)
+    #    lcfile = pkg_resources.resource_filename("gcf", "stitcher_logging.conf")
+    # Solution2 is to use pkgutil to read the file from the archive
+    # And write it to a temp file that the logging stuff can use.
+    # Note this requires finding some way to get the file into the archive
+    # With whatever I do, I want to read the file direct from source per above if possible
+
+    if not os.path.exists(lcfile):
+        tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
+        if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
+            os.makedirs(tmpdir)
+        lcfile = os.path.join(tmpdir, "stitcher_logging.conf")
+
+        try:
+            # This approach requires I find a way to get the .conf file into the library.zip
+            # Note that could be a manual copy & paste possibly
+            import pkgutil
+            lconf = pkgutil.get_data("gcf", "stitcher_logging.conf")
+            with open(lcfile, 'w') as file:
+                file.write(lconf)
+        except Exception, e:
+            #print "Failed to read .conf file using pkgutil: %s" % e
+            # If we didn't get the file in the archive, use the .py version
+            # I find this solution distasteful
+            from gcf import stitcher_logging_deft
+            try:
+                with open(lcfile, 'w') as file:
+                    file.write(stitcher_logging_deft.DEFT_STITCHER_LOGGING_CONFIG)
+            except Exception, e2:
+                sys.exit("Error configuring logging: Could not write (from python default) logging config file %s: %s" % (lcfile, e2))
+            #print "Read from logging config from .py into tmp file %s" % lcfile
+    parser.set_defaults(logconfig=lcfile)
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
@@ -201,9 +239,14 @@ def call(argv, options=None):
         if os.path.exists(bfn):
             os.rename(bfn, dfn)
 
-    omni.configure_logging(options)
+    # Then have Omni configure the logger
+    try:
+        omni.configure_logging(options)
+    except Exception, e:
+        sys.exit("Failed to configure logging: %s" % e)
 
-    # Now that we've configured logging, reset this to None to avoid later log messages about configuring logging
+    # Now that we've configured logging, reset this to None 
+    # to avoid later log messages about configuring logging
     options.logconfig = None
 
     logger = logging.getLogger("stitcher")
