@@ -43,6 +43,7 @@ Source: ..\src\dist\readyToLogin.exe; DestDir: {app}
 Source: ..\src\dist\select.pyd; DestDir: {app}
 Source: ..\src\dist\SSLEAY32.dll; DestDir: {app}
 Source: ..\src\dist\stitcher.exe; DestDir: {app}
+Source: ..\src\dist\gcf\stitcher_logging.conf; DestDir: {app}\gcf
 Source: ..\src\dist\addMemberToSliceandSlivers.exe; DestDir: {app}
 Source: ..\src\dist\tcl85.dll; DestDir: {app}
 Source: ..\src\dist\tk85.dll; DestDir: {app}
@@ -1002,3 +1003,4 @@ Source: ..\src\dist\_ctypes.pyd; DestDir: {app}
 Source: install.vbs; DestDir: {app}
 [Dirs]
 Name: {app}\tcl
+Name: {app}\gcf

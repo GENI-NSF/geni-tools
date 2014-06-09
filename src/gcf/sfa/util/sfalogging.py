@@ -50,7 +50,13 @@ class _SfaLogger:
         except IOError:
             # This is usually a permissions error becaue the file is
             # owned by root, but httpd is trying to access it.
-            tmplogfile=os.getenv("TMPDIR", "/tmp") + os.path.sep + os.path.basename(logfile)
+            tmplogfile=os.path.join(os.getenv("TMPDIR", os.getenv("TMP", os.path.normpath("/tmp"))), os.path.basename(logfile))
+            tmplogfile = os.path.normpath(tmplogfile)
+
+            tmpdir = os.path.dirname(tmplogfile)
+            if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
+                os.makedirs(tmpdir)
+
             # In strange uses, 2 users on same machine might use same code,
             # meaning they would clobber each others files
             # We could (a) rename the tmplogfile, or (b)
