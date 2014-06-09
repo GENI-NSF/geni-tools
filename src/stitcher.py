@@ -160,6 +160,22 @@ def call(argv, options=None):
     # With whatever I do, I want to read the file direct from source per above if possible
 
     if not os.path.exists(lcfile):
+        # File didn't exist as a regular file among python source
+        # Try it where py2exe puts resources. And maybe py2app
+        print "Didn't find lcfile in source: %s" % lcfile
+        lcfile = os.path.join(os.path.normpath(os.path.join(sys.path[0], '..')), os.path.join("gcf","stitcher_logging.conf"))
+        print "Trying lcfile one up: %s" % lcfile
+
+    if not os.path.exists(lcfile):
+        # File didn't exist in dir parallel to zip of source
+        # Try one more up
+        # Try it where py2exe puts resources. And maybe py2app
+        print "Didn't find lcfile one up: %s" % lcfile
+        lcfile = os.path.join(os.path.normpath(os.path.join(os.path.join(sys.path[0], '..'), '..')), os.path.join("gcf","stitcher_logging.conf"))
+        print "Trying lcfile 2 up: %s" % lcfile
+
+    if not os.path.exists(lcfile):
+        print "Didn't find lcfile two up: %s" % lcfile
         tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
         if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
             os.makedirs(tmpdir)
@@ -172,8 +188,9 @@ def call(argv, options=None):
             lconf = pkgutil.get_data("gcf", "stitcher_logging.conf")
             with open(lcfile, 'w') as file:
                 file.write(lconf)
+            print "Read config with pkgutils %s" % lcfile
         except Exception, e:
-            #print "Failed to read .conf file using pkgutil: %s" % e
+            print "Failed to read .conf file using pkgutil: %s" % e
             # If we didn't get the file in the archive, use the .py version
             # I find this solution distasteful
             from gcf import stitcher_logging_deft
@@ -182,7 +199,7 @@ def call(argv, options=None):
                     file.write(stitcher_logging_deft.DEFT_STITCHER_LOGGING_CONFIG)
             except Exception, e2:
                 sys.exit("Error configuring logging: Could not write (from python default) logging config file %s: %s" % (lcfile, e2))
-            #print "Read from logging config from .py into tmp file %s" % lcfile
+            print "Read from logging config from .py into tmp file %s" % lcfile
     parser.set_defaults(logconfig=lcfile)
 
     # Have omni use our parser to parse the args, manipulating options as needed
