@@ -830,6 +830,11 @@ def _save_cred(handler, name, cred):
         filename = name + ftype
     else:
         filename = name
+
+    filedir = os.path.dirname(filename)
+    if filedir and filedir != "" and not os.path.exists(filedir):
+        os.makedirs(filedir)
+
 # usercred did this:
 #        with open(fname, "wb") as file:
 #            file.write(cred)

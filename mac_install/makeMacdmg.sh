@@ -15,7 +15,7 @@ py2applet --make-setup omni-configure.py
 python setup.py py2app --no-chdir
 mv dist/omni-configure.app $DESTDIR
 rm -r dist build setup.py 
-py2applet --make-setup stitcher.py
+py2applet --make-setup stitcher.py gcf/stitcher_logging.conf
 python setup.py py2app --no-chdir
 mv dist/stitcher.app $DESTDIR
 rm -r dist build setup.py 

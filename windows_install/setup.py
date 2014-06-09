@@ -21,6 +21,16 @@
 # IN THE WORK.
 #----------------------------------------------------------------------
 
+# Notes 6/2014
+# Non python files are not added to library.zip
+# Logging config not found in zip files
+# data_files are not included in the archive, but are parallel to the archive
+# Later ideally we'd get the .conf file into library.zip
+# Or perhaps add in 'options' inside 'py2exe': 
+# 'skip_archive': True
+# That creates a lot more files that Inno Setup has to tar up (and more files that will 
+# be in the final directory)
+
 from distutils.core import setup
 
 import py2exe
@@ -38,5 +48,6 @@ gcf.omnilib.frameworks.framework_pg, gcf.omnilib.frameworks.framework_pgch,\
  gcf.omnilib.frameworks.framework_sfa,gcf.omnilib,gcf.sfa,dateutil,gcf.geni,\
  copy,ConfigParser,logging,optparse,os,sys,string,re,platform,shutil,zipfile,logging,subprocess',
               }
-            }
+            },
+      data_files = [('gcf', ['gcf/stitcher_logging.conf'])]
         )
