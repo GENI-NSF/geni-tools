@@ -42,7 +42,7 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.6:
- * New function `removeslicemember <slice> <usernane>`: 
+ * New function `removeslicemember <slice> <username>`: 
    Remove the user with the given username from the named slice. (#515)
  * Add functions `listprojects` to list your projects, and `listprojectmembers`
    to list the members of a project and their role in the project and
@@ -68,8 +68,8 @@ New in v2.6:
   * Added new utilities in `handler_utils` to extract sliver
     expiration from the manifest and sliverstatus.
  * Clean up console log messages. (#623)
- * Retry on AM busy message one more time, sleeping 15 seconds instead
-   of 10. (#624)
+ * Retry on AM busy message two more times, sleeping 15 seconds instead
+   of 10. (#624,#635)
  * Restore printing of non-standard options used in command summary. (#625)
  * Help specifies defaults for more options. (#626)
  * Mac install clears old `omni.py` and similar aliases (#556)
@@ -88,15 +88,21 @@ New in v2.6:
  * Clarify error messages in `delegateSliceCred`. (#619)
  * Harden update of `agg_nick_cache` to avoid replacing a good cache
    with one that was empty or incomplete on download. (#631)
+ * Document creating an alias for `addMemberToSliceAndSlivers`
+   in `INSTALL.txt`. (#632)
+ * Avoid error doing `listprojects` when user has none. (#637)
+ * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+ * Ensure SFA libraries look for the temp dir in `TMP` as well as `TEMPDIR`, and try to create
+   the directory if it doesn't exist. (#560)
 
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
-   avoiding the heartbleed vulnerability. (#593)
+   avoiding the heartbleed vulnerability. (#594)
  * Update various packages in Windows and Mac binaries to be
-   consistent versions. (#594)
+   consistent versions. (#595)
 
 New in v2.5:
 

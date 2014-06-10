@@ -81,6 +81,7 @@ alias readyToLogin='readyToLogin.py'
 alias clear-passphrases='clear-passphrases.py'
 alias stitcher='stitcher.py'
 alias remote-execute='remote-execute.py'
+alias addMemberToSliceAndSlivers='addMemberToSliceAndSlivers.py'
 }}}
 
 For the changes to take effect in your current terminal run:

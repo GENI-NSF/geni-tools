@@ -157,7 +157,7 @@ def load_agg_nick_config(opts, logger):
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = curr_dir.rsplit("/",1)[0]
+    parent_dir = curr_dir.rsplit(os.sep,1)[0]
 
     # Load up the config file
     configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
@@ -231,8 +231,8 @@ def locate_config( opts, logger, config={}):
             configfiles.insert(0, opts.configfile)
         else:
             # Check maybe the default directory for the file
-            configfile = os.path.join( '~/.gcf', opts.configfile )
-            configfile = os.path.expanduser( configfile )
+            configfile = os.path.join( os.path.join('~','.gcf'), opts.configfile )
+            configfile = os.path.normpath(os.path.expanduser( configfile ))
             if os.path.exists( configfile ):
                 configfiles.insert(0, configfile)
             else:
@@ -243,7 +243,7 @@ def locate_config( opts, logger, config={}):
 
     # Find the first valid config file
     for cf in configfiles:
-        filename = os.path.expanduser(cf)
+        filename = os.path.normpath(os.path.expanduser(cf))
         if os.path.exists(filename):
             break
 
@@ -427,6 +427,7 @@ def update_agg_nick_cache( opts, logger ):
     try:
         import tempfile
         handle, tmpcache = tempfile.mkstemp()
+        os.close(handle)
         # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName

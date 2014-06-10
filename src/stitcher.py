@@ -72,7 +72,7 @@ from gcf.omnilib.stitchhandler import StitchingHandler
 from gcf.omnilib.stitch.utils import StitchingError, prependFilePrefix
 from gcf.omnilib.stitch.objects import Aggregate
 import gcf.omnilib.stitch.objects
-#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as objects.DCN_AM_RETRY_INTERVAL_SECS
+#from gcf.omnilib.stitch.objects import DCN_AM_RETRY_INTERVAL_SECS as DCN_AM_RETRY_INTERVAL_SECS
 
 # URL of the SCS service
 SCS_URL = "http://oingo.dragon.maxgigapop.net:8081/geni/xmlrpc"
@@ -145,10 +145,97 @@ def call(argv, options=None):
     parser.set_defaults(logoutput='stitcher.log')
 
     # Configure stitcher with a specific set of configs by default
-    parser.set_defaults(logconfig=os.path.join(sys.path[0], "gcf/stitcher_logging.conf"))
+
+    # First, set the default logging config file
+    lcfile = os.path.join(sys.path[0], os.path.join("gcf","stitcher_logging.conf"))
+
+    # Windows & Mac binaries do not get the .conf file in the proper archive apparently
+    # And even if they did, it appears the logging stuff can't readily read .conf files
+    # from that archive.
+    # Solution 1 that fails (no pkg_resources on windows so far, needs the file in the .zip)
+    #    lcfile = pkg_resources.resource_filename("gcf", "stitcher_logging.conf")
+    # Solution2 is to use pkgutil to read the file from the archive
+    # And write it to a temp file that the logging stuff can use.
+    # Note this requires finding some way to get the file into the archive
+    # With whatever I do, I want to read the file direct from source per above if possible
+
+    if not os.path.exists(lcfile):
+        # File didn't exist as a regular file among python source
+        # Try it where py2exe (Windows) puts resources (one directory up, parallel to zip). 
+        lcfile = os.path.join(os.path.normpath(os.path.join(sys.path[0], '..')), os.path.join("gcf","stitcher_logging.conf"))
+
+    if not os.path.exists(lcfile):
+        # File didn't exist in dir parallel to zip of source
+        # Try one more up, but no gcf sub-directory - where py2app (Mac) puts it.
+        lcfile = os.path.join(os.path.normpath(os.path.join(os.path.join(sys.path[0], '..'), '..')), "stitcher_logging.conf")
+
+    if not os.path.exists(lcfile):
+        # Now we'll try a couple approaches to read the .conf file out of a source zip
+        # And put it in a temp directory
+        tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
+        if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
+            os.makedirs(tmpdir)
+        lcfile = os.path.join(tmpdir, "stitcher_logging.conf")
+
+        try:
+            # This approach requires the .conf be in the source.zip (e.g. library.zip, python27.zip)
+            # On Windows (py2exe) this isn't easy apparently. But it happens by default on Mac (py2app)
+            # Note that could be a manual copy & paste possibly
+            import pkgutil
+            lconf = pkgutil.get_data("gcf", "stitcher_logging.conf")
+            with open(lcfile, 'w') as file:
+                file.write(lconf)
+            #print "Read config with pkgutils %s" % lcfile
+        except Exception, e:
+            #print "Failed to read .conf file using pkgutil: %s" % e
+            # If we didn't get the file in the archive, use the .py version
+            # I find this solution distasteful
+            from gcf import stitcher_logging_deft
+            try:
+                with open(lcfile, 'w') as file:
+                    file.write(stitcher_logging_deft.DEFT_STITCHER_LOGGING_CONFIG)
+            except Exception, e2:
+                sys.exit("Error configuring logging: Could not write (from python default) logging config file %s: %s" % (lcfile, e2))
+            #print "Read from logging config from .py into tmp file %s" % lcfile
+    parser.set_defaults(logconfig=lcfile)
 
     # Have omni use our parser to parse the args, manipulating options as needed
     options, args = omni.parse_args(argv, parser=parser)
+
+    # If there is no fileDir, then we try to write to the CWD. In some installations, that will
+    # fail. So test writing to CWD. If that fails, set fileDir to a temp dir to write files ther.
+    if not options.fileDir:
+        testfile = None
+        handle = None
+        try:
+            import tempfile
+            handle, testfile = tempfile.mkstemp(dir='.')
+            #print "Can write to CWD: created %s" % testfile
+            os.close(handle)
+        except Exception, e:
+            #print "Cannot write to CWD '%s' for output files: %s" % (os.path.abspath('.'), e)
+            tmpdir = os.path.normpath(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")))
+            if tmpdir and tmpdir != "" and not os.path.exists(tmpdir):
+                os.makedirs(tmpdir)
+            testfile1 = None
+            handle1 = None
+            try:
+                import tempfile
+                handle1, testfile1 = tempfile.mkstemp(dir=tmpdir)
+                os.close(handle1)
+                options.fileDir = tmpdir
+            except Exception, e1:
+                sys.exit("Cannot write to temp directory '%s' for output files. Try setting `--fileDir` to point to a writable directory. Error: %s'" % (tmpdir, e1))
+            finally:
+                try:
+                    os.unlink(testfile1)
+                except Exception, e2:
+                    pass
+        finally:
+            try:
+                os.unlink(testfile)
+            except Exception, e2:
+                pass
 
     # Create the dirs for fileDir option as needed
     if options.fileDir:
@@ -162,11 +249,28 @@ def call(argv, options=None):
                     os.makedirs(fpd2)
                 except Exception, e:
                     sys.exit("Failed to create '%s' for saving files per --fileDir option: %s" % (fpd2, e))
+            if not os.path.isdir(fpd2):
+                sys.exit("Path specified in '--fileDir' is not a directory: %s" % fpd2)
+            testfile = None
+            handle = None
+            try:
+                import tempfile
+                handle, testfile = tempfile.mkstemp(dir=fpd2)
+                os.close(handle)
+            except Exception, e:
+                sys.exit("Cannot write to directory '%s' specified by '--fileDir': %s" % (fpDir, e))
+            finally:
+                try:
+                    os.unlink(testfile)
+                except Exception, e2:
+                    pass
         options.fileDir = fpDir
-        options.logoutput = os.path.normpath(os.path.join(options.fileDir, options.logoutput))
+        options.logoutput = os.path.normpath(os.path.join(os.path.abspath(options.fileDir), options.logoutput))
 
     # Set up the logger
     # First, rotate the logfile if necessary
+    if options.logoutput:
+        options.logoutput = os.path.normpath(os.path.expanduser(options.logoutput))
     if options.logoutput and os.path.exists(options.logoutput) and options.logFileCount > 0:
         backupCount = options.logFileCount
         bfn = options.logoutput
@@ -184,9 +288,14 @@ def call(argv, options=None):
         if os.path.exists(bfn):
             os.rename(bfn, dfn)
 
-    omni.configure_logging(options)
+    # Then have Omni configure the logger
+    try:
+        omni.configure_logging(options)
+    except Exception, e:
+        sys.exit("Failed to configure logging: %s" % e)
 
-    # Now that we've configured logging, reset this to None to avoid later log messages about configuring logging
+    # Now that we've configured logging, reset this to None 
+    # to avoid later log messages about configuring logging
     options.logconfig = None
 
     logger = logging.getLogger("stitcher")
@@ -240,7 +349,7 @@ def call(argv, options=None):
 
     # Create the dirs needed for options.prefix if specified
     if options.prefix:
-        fpDir = os.path.abspath(os.path.dirname(options.prefix))
+        fpDir = os.path.normpath(os.path.expanduser(os.path.dirname(options.prefix)))
         if fpDir and fpDir != "" and not os.path.exists(fpDir):
             try:
                 os.makedirs(fpDir)

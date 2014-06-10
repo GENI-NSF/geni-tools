@@ -2,7 +2,7 @@
 
 gcf 2.6:
  * Omni
-  * New function `removeslicemember <slice> <usernane>`: 
+  * New function `removeslicemember <slice> <username>`: 
     Remove the user with the given username from the named slice. (#515)
   * Add functions `listprojects` to list your projects, and `listprojectmembers`
     to list the members of a project and their role in the project and
@@ -28,8 +28,8 @@ gcf 2.6:
    * Added new utilities in `handler_utils` to extract sliver
      expiration from the manifest and sliverstatus.
   * Clean up console log messages. (#623)
-  * Retry on AM busy message one more time, sleeping 15 seconds instead 
-    of 10. (#624)
+  * Retry on AM busy message two more times, sleeping 15 seconds instead 
+    of 10. (#624,#635)
   * Restore printing of non-standard options used in command summary. (#625)
   * Help specifies defaults for more options. (#626)
   * Mac install clears old `omni.py` and similar aliases (#556)
@@ -48,13 +48,19 @@ gcf 2.6:
   * Clarify error messages in `delegateSliceCred`. (#619)
   * Harden update of `agg_nick_cache` to avoid replacing a good cache
     with one that was empty or incomplete on download. (#631)
+  * Document creating an alias for `addMemberToSliceAndSlivers`
+    in `INSTALL.txt`. (#632)
+  * Avoid error doing `listprojects` when user has none. (#637)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * Ensure SFA libraries look for the temp dir in `TMP` as well as `TEMPDIR`, and try to create
+    the directory if it doesn't exist. (#560)
 
  * stitcher
   * Where possible, request that the AM pick the VLAN tag,
     by requesting 'any'. Therefore, many fewer VLAN unavailable
     errors. This only works at AMs that are VLAN producers or
     per the SCS do not depend on other AMs. This does not currently work at
-    ExoGENI or GRAM AMs. (#576,#604)
+    ExoGENI or GRAM-based AMs. (#576,#604)
   * Put the list of AMs used by the stitched slice in `~/.gcf`, not
     the current directory. So you can be in a different directory later 
     to find it. (#462)
@@ -64,11 +70,15 @@ gcf 2.6:
     the value from `--prefix`, so other output files are written to this directory. 
     Therefore 2 stitcher instances can run in parallel. (#588)
    * Be sure to manipulate directories as absolute paths, so '.' works. (#629)
+   * Test to ensure fileDir is a writable directory. (#633)
   * Support GRE links (instead of or in addition to stitched links). (#562)
   * Clean up logging: console log messages are cleaner and fewer. 
     Stitcher produces a debug-level log file named `stitcher.log`
     suitable for use in reporting problems. (#450)
    * Ensure log config file is found when running from other directories. (#628)
+   * When the logging.conf file cannot be read (e.g. in Windows and Mac
+     binary archives), try `pkg_utils`. Else, read a default configuration
+     from a python constant. (#641)
   * Remove the MTU bug as a known issue, since it is fixed. (#555)
   * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
     advise the user to try less bandwidth. (#579)
@@ -97,7 +107,7 @@ gcf 2.6:
   * Global IDs are per DCN AM, so record them on the hop not the path,
     to avoid misleading warnings on paths that cross 2 DCN AMs (like
     MAX and ION). (#582)
-  * Support producing integrated manifest RSpec when using a GRAM AM. (#605)
+  * Support producing integrated manifest RSpec when using a GRAM-based AM. (#605)
   * `no edge hop` message at ProtoGENI AMs is fatal. (#611)
   * `--noReservation` exits with code `0`. (#609)
   * `Error in building the dependency tree, probably not available
@@ -114,6 +124,11 @@ gcf 2.6:
     due to an IG bug. (#622)
   * Exit if the request RSpec requires an aggregate for which the URL
     is unknown. (#630)
+  * When reserving at a DCN AM, if the expiration is after the slice expiration
+    (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * If CWD is not writable and `fileDir` isn't already set, set `fileDir` to
+    a writable temporary directory to hold stitcher output. (#642)
 
  * omni-configure
   * Support iMinds PG instance, and fix error message on unsupported
@@ -121,6 +136,7 @@ gcf 2.6:
 
  * readyToLogin
   * Handle malformed sliver status (#599) 
+  * Be robust to malformed EG manifest missing 'state' attribute. (#636)
 
  * gcf
   * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
@@ -156,9 +172,9 @@ gcf 2.5.3:
 
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
-   avoiding the heartbleed vulnerability. (#593)
+   avoiding the heartbleed vulnerability. (#594)
  * Update various packages in Windows and Mac binaries to be
-   consistent versions. (#594)
+   consistent versions. (#595)
 
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)
@@ -212,7 +228,7 @@ sa=https://ch.geni.net/SA
    - New function `listslicemembers <slice>`: lists the members of
      the given slice, with their email and registered SSH public
      keys (if any) and role in the slice. (#421, #431, #278)
-   - New function `addslicemember <slice> <usernane> [optional: role]`:
+   - New function `addslicemember <slice> <username> [optional: role]`:
      Adds the user with the given username to the named slice,
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing

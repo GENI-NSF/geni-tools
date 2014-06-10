@@ -434,6 +434,7 @@ class CHCallHandler(object):
                 self._raise_omni_error("listmyprojects failed to find your username")
 
         retStr = ""
+        projectnames = list()
         ((projects, samsg), message) = _do_ssl(self.framework, None, "List Projects from Slice Authority", self.framework.list_my_projects, username)
         if projects is None:
             # only end up here if call to _do_ssl failed
@@ -446,7 +447,6 @@ class CHCallHandler(object):
             else:
                 retStr += "Server error: %s. " % message
         elif len(projects) > 0:
-            projectnames = list()
             expiredprojects = list()
             for tup in projects:
                 expired = False
