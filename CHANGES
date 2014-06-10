@@ -1,5 +1,7 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.7:
+
 gcf 2.6:
  * Omni
   * New function `removeslicemember <slice> <username>`: 
