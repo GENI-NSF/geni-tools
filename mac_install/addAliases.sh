@@ -31,14 +31,14 @@
 ## Function that writes aliases to the specified rc file
 writeAliases () {
     echo $'\n' >> $1
-    echo "# Aliases for commands in the GENI omniTools-2.6 package" >> $1
-    echo "alias omni='/Applications/omniTools-2.6/omni.app/Contents/MacOS/omni'" >> $1
-    echo "alias stitcher='/Applications/omniTools-2.6/stitcher.app/Contents/MacOS/stitcher'" >> $1
-    echo "alias omni-configure='/Applications/omniTools-2.6/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
-    echo "alias readyToLogin='/Applications/omniTools-2.6/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
-    echo "alias addMemberToSliceAndSlivers='/Applications/omniTools-2.6/addMemberToSliceAndSlivers.app/Contents/MacOS/addMemberToSliceAndSlivers'" >> $1
-    echo "alias clear-passphrases='/Applications/omniTools-2.6/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
-    echo "alias remote-execute='/Applications/omniTools-2.6/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
+    echo "# Aliases for commands in the GENI omniTools-2.7 package" >> $1
+    echo "alias omni='/Applications/omniTools-2.7/omni.app/Contents/MacOS/omni'" >> $1
+    echo "alias stitcher='/Applications/omniTools-2.7/stitcher.app/Contents/MacOS/stitcher'" >> $1
+    echo "alias omni-configure='/Applications/omniTools-2.7/omni-configure.app/Contents/MacOS/omni-configure'" >> $1
+    echo "alias readyToLogin='/Applications/omniTools-2.7/readyToLogin.app/Contents/MacOS/readyToLogin'" >> $1
+    echo "alias addMemberToSliceAndSlivers='/Applications/omniTools-2.7/addMemberToSliceAndSlivers.app/Contents/MacOS/addMemberToSliceAndSlivers'" >> $1
+    echo "alias clear-passphrases='/Applications/omniTools-2.7/clear-passphrases.app/Contents/MacOS/clear-passphrases'" >> $1
+    echo "alias remote-execute='/Applications/omniTools-2.7/remote-execute.app/Contents/MacOS/remote-execute'" >> $1
 }
 
 wroteAliases=false

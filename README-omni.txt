@@ -41,6 +41,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.7:
+
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
    Remove the user with the given username from the named slice. (#515)

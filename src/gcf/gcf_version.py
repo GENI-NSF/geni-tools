@@ -22,4 +22,4 @@
 #----------------------------------------------------------------------
 
 # The current version of GCF and Omni. Update this with each new release
-GCF_VERSION="2.6"
+GCF_VERSION="2.7"
