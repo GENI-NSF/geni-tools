@@ -41,14 +41,68 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 
 == Release Notes ==
 
+New in v2.6:
+ * New function `removeslicemember <slice> <username>`: 
+   Remove the user with the given username from the named slice. (#515)
+ * Add functions `listprojects` to list your projects, and `listprojectmembers`
+   to list the members of a project and their role in the project and
+   email address. (#495)
+ * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
+ * Include `remote-execute` in Mac binaries (#601)
+ * Record FOAM reservations at the clearinghouse when using the
+   `chapi` framework, by using fake sliver URNs. (#574)
+ * `listslicemembers` honors the `-o` option to save results to a
+   file, and `--tostdout` to instead go to STDOUT. (#489)
+ * `listslivers` honors the `-o` option to save results to a file,
+   and `--tostdout` to instead go to STDOUT. (#488)
+ * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
+   `listkeys`, `listmykeys`, `listimages`, and `nicknames`
+   honor the `-o` option to save results to a file,
+   and `--tostdout` to instead to to STDOUT. (#371)
+ * `listkeys` return is a list of structs of ('`public_key`',
+   '`private_key`'), where `private_key` is omitted for most
+   frameworks and most cases where not available. (#600)
+ * Added `print_sliver_expirations` to print the expirations of your
+   slivers at requested aggregates. Also print sliver expirations from
+   `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
+  * Added new utilities in `handler_utils` to extract sliver
+    expiration from the manifest and sliverstatus.
+ * Clean up console log messages. (#623)
+ * Retry on AM busy message two more times, sleeping 15 seconds instead
+   of 10. (#624,#635)
+ * Restore printing of non-standard options used in command summary. (#625)
+ * Help specifies defaults for more options. (#626)
+ * Mac install clears old `omni.py` and similar aliases (#556)
+ * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+ * `renewslice` properly warns if your new expiration is not what you
+   requested (#575)
+ * rspec_util utility takes optional logger (#612)
+ * Add support for talking to SA/MA that speak Federation API v2.
+   To use the v2 APIs, add to your `omni_config`: `speakv2=true`. (#613)
+ * Ensure manifest from `createsliver` is printed prettily.
+   `getPrettyRSpec` takes a flag on whether it does pretty
+   printing, default True. Do not do pretty printing on most
+   Ads, and some manifests. Uses less memory. (#610)
+ * Clean up error getting slice credential for unknown slice from
+  `chapi` clearinghouses. (#538)
+ * Clarify error messages in `delegateSliceCred`. (#619)
+ * Harden update of `agg_nick_cache` to avoid replacing a good cache
+   with one that was empty or incomplete on download. (#631)
+ * Document creating an alias for `addMemberToSliceAndSlivers`
+   in `INSTALL.txt`. (#632)
+ * Avoid error doing `listprojects` when user has none. (#637)
+ * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+ * Ensure SFA libraries look for the temp dir in `TMP` as well as `TEMPDIR`, and try to create
+   the directory if it doesn't exist. (#560)
+
 New in v2.5.3:
  * Can now parse omni-configure sections of omni_config. (#436)
 
 New in v2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
-   avoiding the heartbleed vulnerability. (#593)
- * Update various packages in Windows/Mac binaries to be
-   consistent versions. (#594)
+   avoiding the heartbleed vulnerability. (#594)
+ * Update various packages in Windows and Mac binaries to be
+   consistent versions. (#595)
 
 New in v2.5:
 
@@ -717,10 +771,9 @@ clearinghouse to be reminded of where you may have reservations, using `listsliv
 Omni supports the following command-line options.
 
 {{{
-
 $ ~/gcf/src/omni.py -h                            
 Usage: 
-GENI Omni Command Line Aggregate Manager Tool Version 2.5.3
+GENI Omni Command Line Aggregate Manager Tool Version 2.6
 Copyright (c) 2014 Raytheon BBN Technologies
 
 omni.py [options] [--project <proj_name>] <command and arguments> 
@@ -758,15 +811,20 @@ omni.py [options] [--project <proj_name>] <command and arguments>
  			 deleteslice <slicename> 
  			 listslices [optional: username] [Alias for listmyslices]
  			 listmyslices [optional: username] 
+ 			 listprojects [optional: username] [Alias for listmyprojects]
+ 			 listmyprojects [optional: username] 
  			 listmykeys [optional: username] [Alias for listkeys]
  			 listkeys [optional: username]
  			 getusercred 
- 			 print_slice_expiration <slicename>
-			 listslivers <slicename>
-			 listslicemembers <slicename>
-			 addslicemember <slicename> <username> [optional: role]
+ 			 print_slice_expiration <slicename> 
+ 			 listslivers <slicename> 
+ 			 listprojectmembers <projectname> 
+ 			 listslicemembers <slicename> 
+ 			 addslicemember <slicename> <username> [optional: role] 
+ 			 removeslicemember <slicename> <username>  
  		Other functions: 
  			 nicknames 
+ 			 print_sliver_expirations <slicename> 
 
 	 See README-omni.txt for details.
 	 And see the Omni website at http://trac.gpolab.bbn.com/gcf
@@ -790,18 +848,19 @@ Options:
                         time as possible, instead of failing if the requested
                         time is not possible. Default is False.
     -t RSPEC-TYPE RSPEC-VERSION, --rspectype=RSPEC-TYPE RSPEC-VERSION
-                        RSpec type and version to return, default 'GENI 3'
+                        RSpec type and version to return, default: '['GENI',
+                        '3']'
     -V API_VERSION, --api-version=API_VERSION
-                        Specify version of AM API to use (default 2)
+                        Specify version of AM API to use (default v2)
     --useSliceAggregates
-                        Perform slice action at all aggregates the given slice
-                        is known to use according to clearinghouse records. Default is
-                        False.
-    --useSliceMembers   Put slice members' SSH keys on reserved resources in
-                        createsliver, provision or performoperationalaction.
-                        Default is False. When true, adds these users and keys to
-                        those read from your omni_config (unless
-                        --ignoreConfigUsers).
+                        Perform the slice action at all aggregates the given
+                        slice is known to use according to clearinghouse
+                        records. Default is False.
+    --useSliceMembers   Create accounts and install slice members' SSH keys on
+                        reserved resources in createsliver, provision or
+                        performoperationalaction. Default is False. When true,
+                        adds these users and keys to those read from your
+                        omni_config (unless --ignoreConfigUsers).
     --ignoreConfigUsers
                         Ignore users and SSH keys listed in your omni_config
                         when installing SSH keys on resources in createsliver
@@ -858,7 +917,7 @@ Options:
                         Python logging config file
     --logoutput=LOGOUTPUT
                         Python logging output file [use %(logfilename)s in
-                        logging config file]
+                        logging config file]. Default: 'omni.log'
     --tostdout          Print results like rspecs to STDOUT instead of to log
                         stream
 
@@ -942,8 +1001,8 @@ Options:
                         Use the given Orca slice id
     --raise-error-on-v2-amapi-error
                         In AM API v2, if an AM returns a non-0 (failure)
-                        result code, raise an AMAPIError. Default is False. For
-                        use by scripts.
+                        result code, raise an AMAPIError. Default is False.
+                        For use by scripts.
     --ssltimeout=SSLTIMEOUT
                         Seconds to wait before timing out AM and CH calls.
                         Default is 360 seconds.
@@ -1059,6 +1118,15 @@ clearinghouse, if supported. Return is a dictionary.
 
 Format: `omni.py get_ch_version`
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config 
+  * e.g.: myprefix-portal-chversion.txt
+
 ==== listaggregates ====
 List the URN and URL for all known aggregates.
 
@@ -1081,6 +1149,15 @@ Gets aggregates from:
  - omni_config `aggregates` entry (1+, no URNs available), OR
  - Specified control framework (via remote query). This is the
  aggregates that registered with the framework.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the CH name from the omni config
+  * e.g.: `myprefix-portal-aggregates.txt`
 
 ==== createslice ====
 Creates the slice in your chosen control framework (cf) - that is, at
@@ -1198,22 +1275,87 @@ Sample Usage: `omni.py listmyslices jdoe`
 With no `username` supplied, it will look up slices registered to you
 (the user whose certificate is supplied).
 
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose slices are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-slices-portal.txt`
+
+==== listprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Alias for `listmyprojects`.
+
+==== listmyprojects ====
+List projects registered under the given username at the configured
+slice authority.
+Not supported by all frameworks.
+
+Format: `omni.py listmyprojects [optional: username]`
+
+Sample Usage: `omni.py listmyprojects jdoe`
+
+With no `username` supplied, it will look up projects registered to you
+(the user whose certificate is supplied).
+
+Printed output shows the names of your projects and your role in the
+project. Supply `--debug` or `--devmode` to see a listing of your
+expired projects as well.
+
+Return object is a list of structs, containing
+`PROJECT_URN`, `PROJECT_UID`, `EXPIRED`, and `PROJECT_ROLE`. `EXPIRED` is a boolean.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose projects are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-projects-portal.txt`
+
 ==== listmykeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
 Not supported by all frameworks. Some frameworks only support querying
 the current user.
+At some frameworks will return the caller's private SSH key if known.
 Really just an alias for `listkeys`.
 
 Sample Usage: `omni.py listmykeys`
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed
+  * e.g.: `myprefix-jsmith-keys.txt`
 
 ==== listkeys ====
 Provides a list of SSH public keys registered at the configured
 control framework for the specified user, or current user if not defined.
 Not supported by all frameworks. Some frameworks only support querying
 the current user.
+At some frameworks will return the caller's private SSH key if known.
 
 Sample Usage: `omni.py listkeys` or `omni.py listkeys jsmith`
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the username whose keys are listed and the configuration
+   file name of the framework
+  * e.g.: `myprefix-jsmith-keys-portal.txt`
 
 ==== getusercred ====
 Get the AM API compliant user credential (signed XML document) from
@@ -1288,6 +1430,15 @@ each of which is a dictionary possibly containing:
  - `SLIVER_INFO_CREATION`: When the sliver was created if known (or
  sometimes when it was first reported to the clearinghouse)
 
+Output directing options:
+ - `-o` Save result in a file
+ - `-p` (used with `-o`) Prefix for resulting filename
+ - `--outputfile` If supplied, use this output file name: substitute slicename for any `%s`.
+ - If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ - File names will indicate the slice name
+  - e.g.: `myprefix-myslice-slivers.txt`
+
 This is purely advisory information, that is voluntarily reported by
 some tools and some aggregates to the clearinghouse. As such, it is
 not authoritative. You may use it to look for reservations, but if you
@@ -1296,6 +1447,37 @@ particular that slivers reserved through Flack are currently not reported here.
 
 This function is only supported at some `chapi` style clearinghouses,
 including the GENI Clearinghouse.
+
+==== listprojectmembers ====
+List all the members of the given project.
+
+Format: `omni.py listprojectmembers <projectname>`
+
+Sample usage: `omni.py listprojectmembers myproject>`
+
+Output prints out the project members and their project role, and
+email.
+
+Return is a list of the members of the project as registered at the
+clearinghouse. For each such user, the return includes:
+ - `PROJECT_MEMBER`: URN identifier of the user
+ - `EMAIL` address of the user
+ - `PROJECT_ROLE` of the user in the project.
+ - `PROJECT_MEMBER_UID`: Internal UID identifier of the member
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile` If supplied, use this output file name: substitute projectname for any '`%s`'.
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the project name
+  * e.g.: `myprefix-myproject-projectmembers.txt`
+
+Note that project membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Project membership
+determines who has rights to create a slice in the
+named project. 
 
 ==== listslicemembers ====
 List all the members of the given slice, including their registered
@@ -1314,6 +1496,15 @@ clearinghouse. For each such user, the return includes:
  - `URN` identifier of the user
  - `EMAIL` address of the user
  - `ROLE` of the user in the slice.
+
+Output directing options:
+ * `-o` Save result in a file
+ * `-p` (used with `-o`) Prefix for resulting filename
+ * `--outputfile` If supplied, use this output file name: substitute slicename for any '`%s`'.
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File names will indicate the slice name
+  * e.g.: `myprefix-myslice-slicemembers.txt`
 
 Note that slice membership is only supported at some `chapi` type
 clearinghouses, including the GENI Clearinghouse. Slice membership
@@ -1350,6 +1541,28 @@ clearinghouse, limited to slice members with the role `LEAD` or
 
 Note also that adding a user to a slice does not automatically add
 their public SSH keys to resources that have already been reserved.
+
+==== removeslicemember ====
+Remove the named user from the named slice. 
+
+Format: `omni.py removeslicemember <slice name> <user username>`
+
+Sample Usage: `omni.py removeslicemember myslice jsmith`
+
+Return is a boolean indicating success or failure.
+
+Note that slice membership is only supported at some `chapi` type
+clearinghouses, including the GENI Clearinghouse. Slice membership
+determines who has rights to get a slice credential and can act on the
+named slice. Additionally, all members of a slice ''may'' have their
+public SSH keys installed on reserved resources.
+
+This function is typically a privileged operation at the
+clearinghouse, limited to slice members with the role `LEAD` or
+`ADMIN`.
+
+Note also that removing a user from a slice does not automatically remove
+their public SSH keys from resources that have already been reserved.
 
 ==== getversion ====
 Call the AM API !GetVersion function at each aggregate.
@@ -2400,9 +2613,29 @@ Aggregates queried:
  - List of URLs given in `omni_config` aggregates option, if provided, ELSE
  - List of URNs and URLs provided by the selected clearinghouse
 
+Output directing options:
+ - `-o`: Save result in per-Aggregate files
+ - `-`p (used with `-o`): Prefix for resulting files
+ - `--outputfile`: If supplied, use this output file name: substitute the AM for any `%a`
+ - If not saving results to a file, they are logged.
+ - If `--tostdout` option is supplied (and not `-o`), then instead of logging, print to STDOUT.
+ - File names will indicate the user and which aggregate is represented.
+  - e.g.: `myprefix-imageowner-listimages-localhost-8001.json`
+
 ==== nicknames ====
 Print / return the known Aggregate and RSpec nicknames, as defined in
 the Omni config file(s). 
+
+If you specify nicknames in `-a` arguments, it will look up that
+nickname and print any matching aggregate URN/URL.
+
+Output directing options:
+ * `-o`: Save result in a file
+ * `-p` (used with `-o`): Prefix for resulting filename
+ * `--outputfile`: If supplied, use this output file name
+ * If not saving results to a file, they are logged.
+ * If intead of `-o` you specify the `--tostdout` option, then instead of logging, print to STDOUT.
+ * File name will be `nicknames.txt` (plus any requested prefix)
 
 Sample Output:
 {{{
@@ -2411,7 +2644,7 @@ Sample Output:
 
         Nickname | URL                                                                    | URN
 =============================================================================================================
-          pg-bbn | https://pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0             | urn:publicid:IDN+pgeni.gpolab.bbn.com+authority+cm
+          gpo-ig | https://boss.instageni.gpolab.bbn.com:12369/protogeni/xmlrpc/am/2.0    | urn:publicid:IDN+instageni.gpolab.bbn.com+authority+cm
 ....
 Omni knows the following RSpec Nicknames:
 
@@ -2423,3 +2656,41 @@ Omni knows the following RSpec Nicknames:
 
 (Default RSpec extension: rspec )
 }}}
+
+==== print_sliver_expirations ====
+Print the expiration of any slivers in the given slice.
+Return is a string, and a struct by AM URL of the list of sliver expirations.
+
+Format: 
+`omni.py [-a amURNOrNick] [--useSliceAggregates] [-u sliverurn] print_sliver_expirations mySlice`
+
+Sample output:
+{{{
+  Result Summary: Slice urn:publicid:IDN+ch.geni.net:ahscaletest+slice+ahtest expires on 2014-05-21 18:37:12 UTC
+Resources in slice ahtest at AM utahddc-ig expire at 2014-05-21T00:00:00 UTC.
+ First resources expire at 2014-05-21 00:00:00 (UTC) at AM utahddc-ig.
+}}}
+
+Slice name could be a full URN, but is usually just the slice name portion.
+Note that PLC Web UI lists slices as <site name>_<slice name>
+(e.g. bbn_myslice), and we want only the slice name part here (e.g. myslice).
+
+Slice credential is usually retrieved from the Slice Authority. But
+with the `--slicecredfile` option it is read from that file, if it exists.
+
+ - `--sliver-urn` / `-u` option: each specifies a sliver URN to get status on. If specified, 
+   only the listed slivers will be queried. Otherwise, all slivers in the slice will be queried.
+
+Aggregates queried:
+ - If `--useSliceAggregates`, each aggregate recorded at the clearinghouse as having resources for the given slice,
+   '''and''' any aggregates specified with the `-a` option.
+  - Only supported at some clearinghouses, and the list of aggregates is only advisory
+ - Each URL given in an `-a` argument or URL listed under that given
+   nickname in omni_config, if provided, ELSE
+ - List of URLs given in omni_config aggregates option, if provided, ELSE
+ - List of URNs and URLs provided by the selected clearinghouse
+
+ - `-V#` API Version #
+ - `--devmode`: Continue on error if possible
+ - `-l` to specify a logging config file
+ - `--logoutput <filename>` to specify a logging output filename

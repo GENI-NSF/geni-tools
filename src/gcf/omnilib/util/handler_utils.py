@@ -25,9 +25,11 @@
 from __future__ import absolute_import
 
 import datetime
+import dateutil
 import json
 import logging
 import os
+import re
 import string
 
 from . import json_encoding
@@ -36,6 +38,7 @@ from .dossl import _do_ssl
 from .dates import naiveUTC
 from .files import *
 from ...geni.util import rspec_util
+from ...geni.util.tz_util import tzd
 from ...sfa.trust.gid import GID
 from ...sfa.trust.credential import Credential
 
@@ -556,6 +559,7 @@ def remove_bad_characters( input ):
     input = input.translate(table)
     if input.endswith('-'):
         input = input[:-1]
+    input = re.sub("--", "-", input)
     return input
 
 def _get_server_name(clienturl, clienturn):
@@ -589,9 +593,10 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
     if opts and opts.outputfile:
         filename = opts.outputfile
         if "%a" in opts.outputfile:
-            # replace %a with server
-            filename = string.replace(filename, "%a", server)
-        elif clientcount > 1:
+            if server is not None:
+                # replace %a with server
+                filename = string.replace(filename, "%a", server)
+        elif clientcount > 1 and server is not None:
             # FIXME: How do we distinguish? Let's just prefix server
             filename = server + "-" + filename
         if "%s" in opts.outputfile:
@@ -601,13 +606,19 @@ def _construct_output_filename(opts, slicename, clienturl, clienturn, methodname
             filename = string.replace(filename, "%s", slicename)
         return filename
 
-    filename = methodname + "-" + server + filetype
+    if server is None or server.strip() == '':
+        filename = methodname + filetype
+    else:
+        filename = methodname + "-" + server + filetype
 #--- AM API specific
     if slicename:
         filename = slicename+"-" + filename
 #--- 
     if opts and opts.prefix and opts.prefix.strip() != "":
-        filename  = opts.prefix.strip() + "-" + filename
+        if not opts.prefix.strip().endswith(os.sep):
+            filename  = opts.prefix.strip() + "-" + filename
+        else:
+            filename  = opts.prefix.strip() + filename
     return filename
 
 def _getRSpecOutput(logger, rspec, slicename, urn, url, message, slivers=None):
@@ -723,7 +734,8 @@ def _printResults(opts, logger, header, content, filename=None):
                     print header + "\n"
         elif content is not None:
             if not opts.tostdout:
-                logger.info(content[:cstart])
+                if cstart > 0 and content[:cstart].strip() != "":
+                    logger.info(content[:cstart])
             else:
                 print content[:cstart] + "\n"
         if content is not None:
@@ -818,6 +830,11 @@ def _save_cred(handler, name, cred):
         filename = name + ftype
     else:
         filename = name
+
+    filedir = os.path.dirname(filename)
+    if filedir and filedir != "" and not os.path.exists(filedir):
+        os.makedirs(filedir)
+
 # usercred did this:
 #        with open(fname, "wb") as file:
 #            file.write(cred)
@@ -853,8 +870,19 @@ def _get_user_urn(logger, config):
         return None
 
 def printNicknames(config, opts):
-    '''Get the known aggregate and rspec nicknames and return them as a string and a struct'''
+    '''Get the known aggregate and rspec nicknames and return them as a string and a struct.
+
+        Output directing options:
+        -o Save result in a file
+        -p (used with -o) Prefix for resulting filename
+        --outputfile If supplied, use this output file name
+        If not saving results to a file, they are logged.
+        If intead of -o you specify the --tostdout option, then instead of logging, print to STDOUT.
+
+        File name will be nicknames.txt (plus any requested prefix)
+    '''
     retStruct = dict()
+    result_string = ""
     retStruct['aggregate_nicknames'] = config['aggregate_nicknames']
     retString = "Omni knows the following Aggregate Nicknames:\n\n"
     retString += "%16s | %s | %s\n" % ("Nickname", string.ljust("URL", 70), "URN")
@@ -878,12 +906,190 @@ def printNicknames(config, opts):
         retString += "\n(Default RSpec extension: %s )\n" % config["default_rspec_extension"]
 
     if opts.aggregate and len(opts.aggregate) > 0:
-        retString += "\nRequested aggregate nicknames:\n"
+        result_string += "\nRequested aggregate nicknames:\n"
         for nick in opts.aggregate:
             if nick in config['aggregate_nicknames'].keys():
                 (urn, url) = config['aggregate_nicknames'][nick]
-                retString += "\t%s = %s (%s)\n" % (nick, url, urn)
+                result_string += "\t%s = %s (%s)\n" % (nick, url, urn)
             else:
-                retString += "\t%s = Not a known aggregate nickname\n" % nick
+                result_string += "\t%s = Not a known aggregate nickname\n" % nick
+        result_string += "\n"
 
-    return retString, retStruct
+    header=None
+    filename = None
+    if opts.output:
+        filename = _construct_output_filename(opts, None, None, None, "nicknames", ".txt", 0)
+
+    if filename is not None or opts.tostdout:
+        _printResults(opts, config['logger'], header, retString, filename)
+
+    if filename is not None:
+        result_string += "Saved list of known nicknames to file %s. \n" % (filename)
+    elif opts.tostdout:
+        result_string += "Printed list of known nicknames. \n"
+    else:
+        result_string = retString + result_string
+
+    return result_string, retStruct
+
+def expires_from_rspec(result, logger=None):
+    '''Parse the expires attribute off the given rspec and return it as a naive UTC datetime 
+    (if found and different from any 'generated' timestamp).
+    If that fails, try to parse the ExoGENI sliver info extension.
+    If those fail, return None.'''
+    # SFA and PG use the expires attribute. MAX too. ION soon, but for now it is wrong.
+    # FOAM and EG and GRAM do not. EG however has a sliver_info extension.
+    if result is None or str(result).strip() == "":
+        return None
+    rspec = str(result)
+    match = re.search("<rspec [^>]*expires\s*=\s*[\'\"]([^\'\"]+)[\'\"]", rspec)
+    if match:
+        expStr = match.group(1).strip()
+        if logger:
+            logger.debug("Found rspec expires attribute: '%s'", expStr)
+        try:
+            expObj = _naiveUTCFromString(expStr)
+
+            # Now look for a generated attribute. If there and same, expires is no good
+            match2 = re.search("<rspec [^>]*generated\s*=\s*[\'\"]([^\'\"]+)[\'\"]", rspec)
+            if match2:
+                genStr = match2.group(1).strip()
+                #if logger:
+                #    logger.debug("Found generated %s", genStr)
+                try:
+                    genObj = _naiveUTCFromString(genStr)
+                    if expObj - genObj > datetime.timedelta.resolution:
+                        #if logger:
+                        #    logger.debug("Expires diff from gen, use it")
+                        return expObj
+                    else:
+                        if logger:
+                            logger.debug("Expires %s same as generated %s, pretend got no expires", expStr, genStr)
+                        expObj = None
+                except Exception, e2:
+                    if logger:
+                        logger.debug("Unparsabled generated timestamp %s: %s", genStr, e2)
+                    return expObj
+            else:
+                #if logger:
+                #    logger.debug("Found no generated")
+                return expObj
+        except Exception, e:
+            if logger:
+                logger.debug("Exception parsing expires attribute %s: %s", expStr, e)
+    else:
+        if logger:
+            logger.debug("RSpec had no expires attribute")
+
+    # Got no good expires so far. Look for the EG geni_sliver_info attribute
+    # FIXME: This is really per node, and here we're returning just one.
+    match = re.search("<rspec\s+.+\s+<node\s+.+\s+<.*geni_sliver_info\s+[^>]*expiration_time\s*=\s*[\'\"]([^\'\"]+)[\'\"]", rspec, re.DOTALL)
+    if match:
+        expStr = match.group(1).strip()
+        if logger:
+            logger.debug("Found EG style geni_sliver_info %s", expStr)
+        try:
+            expObj = _naiveUTCFromString(expStr)
+            return expObj
+        except Exception, e:
+            if logger:
+                logger.debug("Exception parsing EG expiration_time attribute %s: %s", expStr, e)
+    else:
+        if logger:
+            logger.debug("RSpec had no EG geni_sliver_info with an expiration_time attribute")
+
+    # If no expires found, return None
+    return None
+
+def _naiveUTCFromString(timeStr):
+    if not timeStr:
+        return None
+    try:
+        timeO = dateutil.parser.parse(timeStr, tzinfos=tzd)
+        return naiveUTC(timeO)
+    except Exception, e:
+#        print "Failed to parse time object from string %s: %s" % (timeStr, e)
+        return None
+
+def expires_from_status(status, logger):
+    # Get the sliver expiration(s) from the status struct
+    # Return a list of datetime objects in naiveUTC - may be an empty list if no expiration time found
+
+    # PG: top-level pg_expires
+    # DCN: top-level geni_expires
+    # GRAM: per resource geni_expires
+    # FOAM: top level foam_expires
+    # EG: per resource orca_expires
+    # SFA: pl_expires (also check sfa_expires to be safe)
+
+    # Caller will likely want to report # expirations and soonest and if they are all same/diff
+    # See logic in amhandler._getSliverExpirations and .status() around line 3397
+    exps = []
+    if status and isinstance(status, dict):
+        if status.has_key('pg_expires'):
+            exp = status['pg_expires']
+            tO = _naiveUTCFromString(exp)
+            if tO:
+                exps.append(tO)
+            if logger:
+                logger.debug("Got real sliver expiration using sliverstatus at PG AM")
+        elif status.has_key('geni_expires'):
+            exp = status['geni_expires']
+            tO = _naiveUTCFromString(exp)
+            if tO:
+                exps.append(tO)
+            if logger:
+                logger.debug("Got real sliver expiration using sliverstatus at DCN or similar AM")
+        elif status.has_key('foam_expires'):
+            exp = status['foam_expires']
+            tO = _naiveUTCFromString(exp)
+            if tO:
+                exps.append(tO)
+            if logger:
+                logger.debug("Got real sliver expiration using sliverstatus at FOAM AM")
+        elif status.has_key('pl_expires'):
+            exp = status['pl_expires']
+            tO = _naiveUTCFromString(exp)
+            if tO:
+                exps.append(tO)
+            if logger:
+                logger.debug("Got real sliver expiration using sliverstatus (pl_expires) at SFA AM")
+        elif status.has_key('sfa_expires'):
+            exp = status['sfa_expires']
+            tO = _naiveUTCFromString(exp)
+            if tO:
+                exps.append(tO)
+            if logger:
+                logger.debug("Got real sliver expiration using sliverstatus (sfa_expires) at SFA AM")
+        elif status.has_key('geni_resources') and \
+                isinstance(status['geni_resources'], list) and \
+                len(status['geni_resources']) > -1:
+            for resource in status['geni_resources']:
+                if isinstance(resource, dict):
+                    if resource.has_key('orca_expires'):
+                        exp = resource['orca_expires']
+                        tO = _naiveUTCFromString(exp)
+                        if tO and tO not in exps:
+                            exps.append(tO)
+                        if logger:
+                            logger.debug("Got real sliver expiration using sliverstatus at Orca AM")
+                    elif resource.has_key('geni_expires'):
+                        exp = resource['geni_expires']
+                        tO = _naiveUTCFromString(exp)
+                        if tO and tO not in exps:
+                            exps.append(tO)
+                        if logger:
+                            logger.debug("Got real sliver expiration using sliverstatus at GRAM AM")
+                    else:
+                        if logger:
+                            logger.debug("No expiration in this geni_resource")
+                else:
+                    if logger:
+                        logger.debug("Malformed non dict geni_resource")
+        else:
+            if logger:
+                logger.debug("No top level expires or geni_resources list")
+    else:
+        if logger:
+            logger.debug("Invalid status object")
+    return exps

@@ -29,6 +29,8 @@ STITCHING_TAG = 'stitching'
 PATH_TAG = 'path'
 EXPIRES_ATTRIBUTE = 'expires'
 # Capabilities element names
+CAPABILITIES_TAG = 'capabilities'
+CAPABILITY_TAG = 'capability'
 CONSUMER_VALUE = 'consumer'
 PRODUCER_VALUE = 'producer'
 VLANCONSUMER_VALUE = 'vlanconsumer'
@@ -41,3 +43,11 @@ LAST_UPDATE_TIME_TAG = "lastUpdateTime"
 
 # Need the ExoSM URL, as ugly as that is
 EXOSM_URL = "https://geni.renci.org:11443/orca/xmlrpc"
+
+# schema paths for switching between v1 and v2
+STITCH_V1_BASE = "hpn.east.isi.edu/rspec/ext/stitch/0.1"
+STITCH_V2_BASE = "geni.net/resources/rspec/ext/stitch/2"
+STITCH_V1_SCHEMA = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1/ http://hpn.east.isi.edu/rspec/ext/stitch/0.1/stitch-schema.xsd"
+STITCH_V1_NS = "http://hpn.east.isi.edu/rspec/ext/stitch/0.1"
+STITCH_V2_SCHEMA = "http://www.geni.net/resources/rspec/ext/stitch/2/ http://www.geni.net/resources/rspec/ext/stitch/2/stitch-schema.xsd"
+STITCH_V2_NS = "http://www.geni.net/resources/rspec/ext/stitch/2"

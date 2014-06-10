@@ -75,8 +75,12 @@ def is_valid_v3(logger, credString):
     if not "Signature" in credString:
         logger.warn("No Signature in cred: %s", credString)
         return False
+    if not "target_urn" in credString:
+        logger.warn("No target_urn in cred: %s", credString)
+        return False
 
     try:
+        # Note this is relatively memory intensive
         doc = md.parseString(credString)
         signed_cred = doc.getElementsByTagName("signed-credential")
 

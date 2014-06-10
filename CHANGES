@@ -1,5 +1,153 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
+gcf 2.6:
+ * Omni
+  * New function `removeslicemember <slice> <username>`: 
+    Remove the user with the given username from the named slice. (#515)
+  * Add functions `listprojects` to list your projects, and `listprojectmembers`
+    to list the members of a project and their role in the project and
+    email address. (#495)
+  * Include `addMemberToSliceAndSlivers` in Windows and Mac binaries (#585)
+  * Include `remote-execute` in Mac binaries (#601)
+  * Record FOAM reservations at the clearinghouse when using the
+    `chapi` framework, by using fake sliver URNs. (#574)
+  * `listslicemembers` honors the `-o` option to save results to a
+    file, and `--tostdout` to instead go to STDOUT. (#489)
+  * `listslivers` honors the `-o` option to save results to a file,
+    and `--tostdout` to instead go to STDOUT. (#488)
+  * `get_ch_version`, `listaggregates`, `listslices`, `listmyslices`,
+    `listkeys`, `listmykeys`, `listimages`, and `nicknames`
+    honor the `-o` option to save results to a file,
+    and `--tostdout` to instead go to STDOUT. (#371)
+  * `listkeys` return is a list of structs of ('`public_key`',
+    '`private_key`'), where `private_key` is omitted for most
+    frameworks and most cases where not available. (#600)
+  * Added `print_sliver_expirations` to print the expirations of your
+    slivers at requested aggregates. Also print sliver expirations from
+    `sliverstatus`, `listresources` and `createsliver` calls. (#465, #564, #571)
+   * Added new utilities in `handler_utils` to extract sliver
+     expiration from the manifest and sliverstatus.
+  * Clean up console log messages. (#623)
+  * Retry on AM busy message two more times, sleeping 15 seconds instead 
+    of 10. (#624,#635)
+  * Restore printing of non-standard options used in command summary. (#625)
+  * Help specifies defaults for more options. (#626)
+  * Mac install clears old `omni.py` and similar aliases (#556)
+  * Fix `get_cert_keyid` to get the key id from the certificate (#573)
+  * `renewslice` properly warns if your new expiration is not what you
+    requested (#575)
+  * rspec_util utility takes optional logger (#612)
+  * Add support for talking to SA/MA that speak Federation API v2.
+    To use the v2 APIs, add to your `omni_config`: `speakv2=true`. (#613)
+  * Ensure manifest from `createsliver` is printed prettily.
+    `getPrettyRSpec` takes a flag on whether it does pretty
+    printing, default True. Do not do pretty printing on most
+    Ads, and some manifests. Uses less memory. (#610)
+  * Clean up error getting slice credential for unknown slice from
+   `chapi` clearinghouses. (#538)
+  * Clarify error messages in `delegateSliceCred`. (#619)
+  * Harden update of `agg_nick_cache` to avoid replacing a good cache
+    with one that was empty or incomplete on download. (#631)
+  * Document creating an alias for `addMemberToSliceAndSlivers`
+    in `INSTALL.txt`. (#632)
+  * Avoid error doing `listprojects` when user has none. (#637)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * Ensure SFA libraries look for the temp dir in `TMP` as well as `TEMPDIR`, and try to create
+    the directory if it doesn't exist. (#560)
+
+ * stitcher
+  * Where possible, request that the AM pick the VLAN tag,
+    by requesting 'any'. Therefore, many fewer VLAN unavailable
+    errors. This only works at AMs that are VLAN producers or
+    per the SCS do not depend on other AMs. This does not currently work at
+    ExoGENI or GRAM-based AMs. (#576,#604)
+  * Put the list of AMs used by the stitched slice in `~/.gcf`, not
+    the current directory. So you can be in a different directory later 
+    to find it. (#462)
+  * Added new option `--fileDir`. If provided, all stitcher files go in this directory,
+    and not the `/tmp` and `~/.gcf` 
+    and current working directory otherwise used. This prefix also modifies 
+    the value from `--prefix`, so other output files are written to this directory. 
+    Therefore 2 stitcher instances can run in parallel. (#588)
+   * Be sure to manipulate directories as absolute paths, so '.' works. (#629)
+   * Test to ensure fileDir is a writable directory. (#633)
+  * Support GRE links (instead of or in addition to stitched links). (#562)
+  * Clean up logging: console log messages are cleaner and fewer. 
+    Stitcher produces a debug-level log file named `stitcher.log`
+    suitable for use in reporting problems. (#450)
+   * Ensure log config file is found when running from other directories. (#628)
+   * When the logging.conf file cannot be read (e.g. in Windows and Mac
+     binary archives), try `pkg_utils`. Else, read a default configuration
+     from a python constant. (#641)
+  * Remove the MTU bug as a known issue, since it is fixed. (#555)
+  * On an `INSUFFICIENT_BANDWIDTH` error, try excluding this AM, and
+    advise the user to try less bandwidth. (#579)
+  * Fix handling of ProtoGENI error messages and codes to reflect new
+    use of VLAN_UNAVAILABLE and other error codes. (#602)
+  * Add support for stitching schema v2: change schema versions to
+    make AM happy as needed, find VLAN tags in the openflowl2sc
+    capabilityDescriptor OR the l2sc descriptor (not both). Also added
+    new option `--savedSCSResults` for running from saved SCS
+    results. (#578)
+  * At run end, print sliver expiration times for each AM, and warn if there are
+    differences across AMs. (#572)
+  * Exit if any nodes are unbound in the request. (#614)
+  * Pass the usual `verbosessl` option to create the SCS client,
+    allowing verbose logging of SSL connections to the SCS. (#557)
+  * New range to pick a tag from must be limited by the available
+    tags on other hops on the same path if they don't translate.
+    Avoid picking a tag on one hop and copying it to another
+    where it is illegal. (#558)
+  * Make "Adding aggregate option" messages debug level (#584)
+  * At PG/IG, `Need node id for links` is fatal (#583)
+  * Request from the SCS the merged paths workflow, although we
+    do not use it, as this forces SCS to detect workflow loops. (#580)
+  * Clearer error messages when there are no more VLANs for stitcher
+    to try. (#561)
+  * Global IDs are per DCN AM, so record them on the hop not the path,
+    to avoid misleading warnings on paths that cross 2 DCN AMs (like
+    MAX and ION). (#582)
+  * Support producing integrated manifest RSpec when using a GRAM-based AM. (#605)
+  * `no edge hop` message at ProtoGENI AMs is fatal. (#611)
+  * `--noReservation` exits with code `0`. (#609)
+  * `Error in building the dependency tree, probably not available
+    vlan path` at EG means the VLAN is unavailable. (#606)
+  * `Edge iface mismatch when stitching` is fatal at PG AMs. (#615)
+  * Turn down some ExoGENI only harmless messages. (#321)
+  * Honor `--tostdout`, `--prefix`, and `--outputfile` in
+    controlling where expanded request RSpecs are written
+    when using `--noReservation`. (#608)
+  * Pause between calls to the SCS the full 600 seconds only if we tried
+    a reservation at a DCN AM - not just if any AM in the topology is a DCN AM. (#351)
+  * On `VLAN PCE` error from a DCN AM, if we had asked for 'any' from the endpoints,
+    then re-request asking for a different tag. Note that this still fails
+    due to an IG bug. (#622)
+  * Exit if the request RSpec requires an aggregate for which the URL
+    is unknown. (#630)
+  * When reserving at a DCN AM, if the expiration is after the slice expiration
+    (a bug - ggw#1258), renew at the AM back to the slice expiration. (#638)
+  * More use of `os.path.join`, `os.sep`, `os.normpath` for Windows support (#639)
+  * If CWD is not writable and `fileDir` isn't already set, set `fileDir` to
+    a writable temporary directory to hold stitcher output. (#642)
+
+ * omni-configure
+  * Support iMinds PG instance, and fix error message on unsupported
+    PG SA (#597)
+
+ * readyToLogin
+  * Handle malformed sliver status (#599) 
+  * Be robust to malformed EG manifest missing 'state' attribute. (#636)
+
+ * gcf
+  * Support for `geni_extend_alap` option in renew on GCF AMv2 and AMv3 (#414)
+  * Support for `geni_am_type` and `geni_am_code` in GCF AMv3 (#568)
+  * Fix gcf-test to work with AM API v3 again. (#616)
+
+ * acceptance
+  * Use your GENI Clearinghouse and Portal account for acceptance testing, not pgeni.
+    And use resources from utahddc, not the GPO PL nodes. (#617)
+  * Document scripts `am_api_accept_scaling.py` and `am_api_accept_nagios.py`. (#618)
+
 gcf 2.5.3:
  * omni-configure:
   * Clean up output and function of `omni-configure` (#436)
@@ -24,9 +172,9 @@ gcf 2.5.3:
 
 gcf 2.5.2:
  * Update the OpenSSL version used in the Windows package to 1.0.1g,
-   avoiding the heartbleed vulnerability. (#593)
- * Update various packages in Windows/Mac binaries to be
-   consistent versions. (#594)
+   avoiding the heartbleed vulnerability. (#594)
+ * Update various packages in Windows and Mac binaries to be
+   consistent versions. (#595)
 
 gcf 2.5.1:
  * Update licenses file for Windows and Mac Omni packages (#552)
@@ -80,7 +228,7 @@ sa=https://ch.geni.net/SA
    - New function `listslicemembers <slice>`: lists the members of
      the given slice, with their email and registered SSH public
      keys (if any) and role in the slice. (#421, #431, #278)
-   - New function `addslicemember <slice> <usernane> [optional: role]`:
+   - New function `addslicemember <slice> <username> [optional: role]`:
      Adds the user with the given username to the named slice,
      with the given role (or `MEMBER` by default). Note this
      does not change what SSH keys are installed on any existing

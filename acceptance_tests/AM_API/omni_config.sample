@@ -1,5 +1,5 @@
 [omni]
-default_cf = pg-gpo
+default_cf = portal
 
 # CONFIGURATION: Edit the url below to match the location of the AM to be tested
 # Should match am-undertest below
@@ -8,8 +8,8 @@ aggregates = https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
 users = alice
 
 [alice]
-# Should be PG GPO
-urn=urn:publicid:IDN+pgeni.gpolab.bbn.com+user+alice
+# Should be GENI Portal
+urn=urn:publicid:IDN+ch.geni.net+user+alice
 keys=~/.ssh/id_rsa.pg.pub
 
 #------RSpec nicknames
@@ -39,20 +39,25 @@ default_rspec_extension = rspec
 [aggregate_nicknames]
 
 # CONFIGURATION: Edit the url to match the location of the AM to be tested
-am-undertest=,https://www.emulab.net:12369/protogeni/xmlrpc/am/2.0
+am-undertest=urn:publicid:IDN+utahddc.geniracks.net+authority+cm,https://boss.utahddc.geniracks.net:12369/protogeni/xmlrpc/am/2.0
 
-
-[pg-gpo]
-type=pg
+[portal]
+type=chapi
+authority=ch.geni.net
 verbose=false
-ch=https://www.emulab.net:12369/protogeni/xmlrpc/ch
-sa=https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa
+ch=https://ch.geni.net:8444/CH
+ma=https://ch.geni.net/MA
+sa=https://ch.geni.net/SA
 
 # CONFIGURATION: If necessary, replace the next two lines with the
 #  location of your combined cert/key file you downloaded from
-#  http://pgeni.gpolab.bbn.com
-cert=~/.gcf/encrypted.pem
-key=~/.gcf/encrypted.pem
+#  http://portal.geni.net
+cert = ~/.ssl/geni_cert_portal.pem
+key = ~/.ssl/geni_cert_portal.pem
+
+# CONFIGURATION: Edit this to specify the Portal project
+# in which you are creating your testing slices.
+#default_project = MyTestingProject
 
 [my_gcf]
 type=gcf

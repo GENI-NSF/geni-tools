@@ -190,8 +190,6 @@ def is_valid_urn_bytype(inurn, urntype, logger=None):
             return False
     elif urntype == 'sliver':
         # May use only alphanumeric characters plus hyphen
-        # Draft AM API change O1 allows also underscore or period. So
-        # allow that here.
         # Note that EG uses a ':' as well.
         if not re.match("^[-a-zA-Z0-9_\.]+$", name):
             if logger:

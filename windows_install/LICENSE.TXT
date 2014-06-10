@@ -65,8 +65,8 @@ https://github.com/martinpaljak/M2Crypto/blob/v0.22.3/LICENCE
 III. OpenSSL
 
   A. Windows 
-Version 1.0.1g
-Software retrieved from   http://slproweb.com/download/Win32OpenSSL-1_0_1f.exe
+Version 1.0.1h
+Software retrieved from   http://slproweb.com/download/Win32OpenSSL-1_0_1h.exe
 Distributed under the license in the installer.
 OpenSSL Toolkit license downloaded from here: http://www.openssl.org/source/license.html
 

@@ -43,11 +43,10 @@ import ConfigParser
 import optparse
 import logging
 from gcf.sfa.trust.certificate import Certificate, Keypair
+from gcf.gcf_version import GCF_VERSION as OMNI_VERSION
 import M2Crypto
 
 logger = None
-
-OMNI_VERSION="2.5.3"
 
 DEFAULT_PRIVATE_CERT_KEY = {
                             'pg' : "~/.ssh/geni_cert_key_pg",

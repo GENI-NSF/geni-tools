@@ -144,6 +144,10 @@ verbose=false
 # Uncomment this line for such servers (such as emulab.net)
 #needcred=true
 
+# Does this Clearinghouse speak the Common Federation API v2?
+# Default is false, so use v1
+#speakv2=true
+
 [my_gcf]
 type=gcf
 
@@ -166,8 +170,8 @@ ch=https://www.emulab.net:12369/protogeni/xmlrpc/ch
 
 # The address of the PG slice authority. Here for comparison we show
 # using a different slice authority for the PG authority
-# pgeni.gpolab.bbn.com
-sa=https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa
+# www.uky.emulab.net
+sa=https://www.uky.emulab.net:12369/protogeni/xmlrpc/sa
 
 # When you log in to PG you can download your cert and key in 1 file.
 # That combined .pem file can be used as both cert and key here.

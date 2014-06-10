@@ -1,5 +1,5 @@
 SRCDIR=~/gcf
-DESTDIR=~/omniTools/omniTools-2.5.3
+DESTDIR=~/omniTools/omniTools-2.6
 COVERDIR=~/omniTools
 
 cd ${SRCDIR}/src
@@ -15,7 +15,7 @@ py2applet --make-setup omni-configure.py
 python setup.py py2app --no-chdir
 mv dist/omni-configure.app $DESTDIR
 rm -r dist build setup.py 
-py2applet --make-setup stitcher.py
+py2applet --make-setup stitcher.py gcf/stitcher_logging.conf
 python setup.py py2app --no-chdir
 mv dist/stitcher.app $DESTDIR
 rm -r dist build setup.py 
@@ -28,6 +28,10 @@ py2applet --make-setup addMemberToSliceAndSlivers.py
 python setup.py py2app --no-chdir
 mv dist/addMemberToSliceAndSlivers.app $DESTDIR
 rm -r dist build setup.py 
+py2applet --make-setup remote-execute.py
+python setup.py py2app --no-chdir
+mv dist/remote-execute.app $DESTDIR
+rm -r dist build setup.py
 
 #copy License and make Applications link
 ln -s /Applications $COVERDIR

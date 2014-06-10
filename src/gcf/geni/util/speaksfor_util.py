@@ -84,38 +84,17 @@ def run_subprocess(cmd, stdout, stderr):
     except Exception as e:
         raise Exception("Failed call to subprocess '%s': %s" % (" ".join(cmd), e))
 
-# Pull the keyid (sha1 hash of the bits of the cert public key) from given cert
-# Requires openssl be installed and in the path
-# Fixme: are there pyopenssl or m2crypto ways of doing some of these things?
 def get_cert_keyid(gid):
+    """Extract the subject key identifier from the given certificate.
+    Return they key id as lowercase string with no colon separators
+    between pairs. The key id as shown in the text output of a
+    certificate are in uppercase with colon separators.
 
-    # Write cert to tempfile
-    cert_file = write_to_tempfile(gid.save_to_string())
-
-    # Pull the public key out as pem
-    # openssl x509 -in cert.pem -pubkey -noout > key.pem
-    cmd = ['openssl', 'x509', '-in', cert_file, '-pubkey', '-noout']
-    pubkey = run_subprocess(cmd, subprocess.PIPE, None)
-    pubkey_file = write_to_tempfile(pubkey)
-
-    # Pull out the bits
-    # openssl asn1parse -in key.pem -strparse 18 -out key.der
-    derkey_file = write_to_tempfile(None)
-    cmd = ['openssl', 'asn1parse', '-in', pubkey_file, '-strparse', \
-               '18', '-out', derkey_file]
-    run_subprocess(cmd, subprocess.PIPE, subprocess.PIPE)
-
-    # Get the hash
-    # openssl sha1 key.der
-    cmd = ['openssl', 'sha1', derkey_file]
-    output = run_subprocess(cmd, subprocess.PIPE, subprocess.PIPE)
-    parts = output.split(' ')
-    keyid = parts[1].strip()
-
-    os.unlink(cert_file)
-    os.unlink(pubkey_file)
-    os.unlink(derkey_file)
-
+    """
+    raw_key_id = gid.get_extension('subjectKeyIdentifier')
+    # Raw has colons separating pairs, and all characters are upper case.
+    # Remove the colons and convert to lower case.
+    keyid = raw_key_id.replace(':', '').lower()
     return keyid
 
 # Pull the cert out of a list of certs in a PEM formatted cert string
@@ -148,7 +127,7 @@ def grab_toplevel_cert(cert):
 #      (None otherwise)
 #   Error message indicating why the speaks_for call failed ("" otherwise)
 def verify_speaks_for(cred, tool_gid, speaking_for_urn, \
-                          trusted_roots, schema=None):
+                          trusted_roots, schema=None, logger=None):
 
     # Credential has not expired
     if cred.expiration and cred.expiration < datetime.datetime.utcnow():
@@ -282,13 +261,13 @@ def determine_speaks_for(logger, credentials, caller_gid, options, \
             is_valid_speaks_for, user_gid, msg = \
                 verify_speaks_for(cred,
                                   caller_gid, speaking_for_urn, \
-                                      trusted_roots, schema)
+                                      trusted_roots, schema, logger)
 
             if is_valid_speaks_for:
                 return user_gid # speaks-for
             else:
                 if logger:
-                    logger.info("Got speaks-for option but not a valid speaks_for with this credential: %s", msg)
+                    logger.info("Got speaks-for option but not a valid speaks_for with this credential: %s" % msg)
                 else:
                     print "Got a speaks-for option but not a valid speaks_for with this credential: " + msg
     return caller_gid # Not speaks-for

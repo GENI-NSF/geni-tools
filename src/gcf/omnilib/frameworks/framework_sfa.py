@@ -149,11 +149,15 @@ def create_selfsigned_cert(filename, user, key):
             [ req_attributes ]
             unstructuredName =""" % user
     
-    f = open("/tmp/tmp_openssl_config",'w')
+    fname = os.path.normpath(os.path.join(os.getenv("TMPDIR", os.getenv("TMP", "/tmp")), "tmp_openssl_config"))
+    fdir = os.path.dirname(fname)
+    if fdir and fdir != "" and not os.path.exists(fdir):
+        os.makedirs(fdir)
+    f = open(fname,'w')
     f.write(config)
     f.close()
-    os.popen('openssl req -new -x509 -nodes -sha1 -config /tmp/tmp_openssl_config -key %s > %s' % (key, filename))
-    os.remove("/tmp/tmp_openssl_config")
+    os.popen('openssl req -new -x509 -nodes -sha1 -config %s -key %s > %s' % (fname, key, filename))
+    os.remove(fname)
     
 
 class Framework(Framework_Base):
@@ -592,10 +596,16 @@ class Framework(Framework_Base):
             self.logger.debug("Resolve returned key_ids %s", record['key_ids'])
         if record.has_key("keys"):
             self.logger.debug("Found keys in field 'keys'")
-            return record['keys'], None
+            keys = []
+            for key in record['keys']:
+                keys.append({'public_key': key})
+            return keys, None
         elif record.has_key('reg-keys'):
             self.logger.debug("Found keys in field 'reg-keys'")
-            return record['reg-keys'], None
+            keys = []
+            for key in record['reg-keys']:
+                keys.append({'public_key': key})
+            return keys, None
         else:
             msg = "Cannot get SFA SSH keys - malformed return (missing keys entry)"
             self.logger.error(msg)

@@ -18,8 +18,8 @@ Alternatively the tests can be run against:
  - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V2_DELTAS#ChangeSetA Change set A of the AM API v2 specification], or
  - [http://groups.geni.net/geni/wiki/GAPI_AM_API_V3 GENI AM API v3].
 
-Acceptance tests are intended to be run with credentials from the GPO ProtoGENI,
-but they work with any credentials that are trusted at the AM under test.
+Acceptance tests are intended to be run with credentials from the GENI
+Clearinghouse, but they work with any credentials that are trusted at the AM under test.
 
 Test verifies: 
      - Sliver creation workflow
@@ -92,10 +92,10 @@ Requires:
 == Credentials ==
 
 By policy, requires:
- * GENI credentials from the GPO ProtoGENI Slice Authority (SA) which
+ * GENI credentials from the GENI Portal/Clearinghouse Slice Authority (SA) which
    is located at
 
-   {{{https://boss.pgeni.gpolab.bbn.com:12369/protogeni/xmlrpc/sa}}}
+   {{{https://ch.geni.net/SA}}}
 
  * A colleague with GENI credentials willing to delegate you a slice.
 
@@ -105,6 +105,8 @@ The GENI AM API Acceptance Tests:
  * $GCF/acceptance_tests/AM_API/am_api_accept.py
  * $GCF/acceptance_tests/AM_API/am_api_accept_shutdown.py
  * $GCF/acceptance_tests/AM_API/am_api_accept_delegate.py
+ * $GCF/acceptance_tests/AM_API/am_api_accept_scaling.py
+ * $GCF/acceptance_tests/AM_API/am_api_accept_nagios.py
 
 Default omni_config file:
  * `$GCF/acceptance_tests/AM_API/omni_config.sample`
@@ -120,15 +122,16 @@ Script to facilitate using Omni and unittest together:
 
 These instructions assume you have already done the following items:
 
-(1) Allow your Aggregate Manager (AM) to use credentials from the GPO ProtoGENI AM.
+(1) Allow your Aggregate Manager (AM) to use credentials from the GENI
+Clearinghouse.
 
 This step varies by AM type. For example, instructions for doing this with a MyPLC
 are here:
 
    http://groups.geni.net/geni/wiki/GpoLab/MyplcReferenceImplementation#TrustaRemoteSliceAuthority
 
-(2) Request GPO ProtoGENI credentials.  If you don't have any, e-mail:
-help@geni.net
+(2) Request GENI Clearinghouse credentials.  If you don't have any, e-mail:
+help@geni.net or see http://groups.geni.net/geni/wiki/SignMeUp
 
 == Usage Instructions ==
 
@@ -145,13 +148,16 @@ help@geni.net
 
   (c) Configure `omni_config`.
 
-     (i) Omni configuration is described in README-omni.txt. 
+     (i) Omni configuration is described in README-omni.txt.
 
-     (ii) Verify the ProtoGENI .pem files are found in the location
+     (ii) Verify the Portal .pem files are found in the location
      specified in the omni_config
 {{{
       $ cp omni_config.sample omni_config
 }}}
+
+     (iii) Set the `default_project` to the Portal project where you
+     will create your testing slices.
 
   (d) Set PYTHONPATH so the acceptance tests can locate `omni.py`:
 {{{
@@ -213,7 +219,7 @@ help@geni.net
 	If you need to run with unbound RSpecs, use the `--un-bound` option.
 
   (c) To test slice delegation, you will need to:
-   send your certificate to a co-worker with a PG GPO account and have
+   send your certificate to a co-worker with a GENI Portal account and have
    them create a slice, reserve resources on that slice, and
    delegate their slice credential to you.
 
@@ -242,7 +248,7 @@ help@geni.net
               --slicecred delegSlice-cred.xml
 }}}
      Note: This command generates a delegation file named something like
-     `pgeni--gpolab-bbn--com-lnevers-delegated-delegSlice-cred.xml`.
+     `ch-geni-net-lnevers-delegated-delegSlice-cred.xml`.
 
     (v) Place the output delegation file in your acceptance test path as:
 {{{
@@ -288,7 +294,12 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
 {{{
         $ am_api_accept_shutdown.py -a am-undertest
 }}}
-(7) Congratulations! You are done.
+(7) Optional: Test the AM handles multiple calls reasonably (scaling):
+{{{
+        $ am_api_accept_scaling.py -a am-undertest
+}}}
+
+(8) Congratulations! You are done.
 
 == Variations ==
 
@@ -340,6 +351,9 @@ admin to recover from as it runs the AM API command "Shutdown" on a slice.
    `--rspec-file-list` and `--reuse-slice-list` which take lists of
    RSpec file and lists of existing slicenames for use in
    `Test.test_CreateSliverWorkflow_multiSlice`
+
+ * Some of the tests may be run to monitor AM operations, e.g. via
+   nagios. See `am_api_accept_nagios.py`.
 
 == Common Errors and What to Do About It ==
 
@@ -620,6 +634,22 @@ Usage:
   WARNING: Be very careful running this test. Administator support is
   likely to be needed to recover from running this test. 
 
+<snip>
+
+$ ./am_api_accept_scaling.py -h
+Usage: 
+      ./am_api_accept_scaling.py -a am-undertest
+      Also try --vv
+
+Options:
+<snip>
+  --max-createsliver-time=MAX_TIME
+                        Max number of seconds will attempt to check status of
+                        a sliver before failing  [default: 180]
+  --num-slices=NUM_SLICES
+                        Number of slices to create [default: 3]
+  --slice-name=SLICE_NAME
+                        Use slice name as base of slice name [default: scale]
 <snip>
 }}}
 

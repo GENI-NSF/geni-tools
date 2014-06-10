@@ -87,16 +87,21 @@ from __future__ import absolute_import
        [string Boolean] = omni.py deleteslice SLICENAME
        [string listOfSliceURNs] = omni.py listslices USER
        [string listOfSliceURNs] = omni.py listmyslices USER
-       [string listOfSSHPublicKeys] = omni.py listmykeys
-       [string listOfSSHPublicKeys] = omni.py listkeys USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listprojects USER
+       [string listOfProjectDictionaries (PROJECT_URN, PROJECT_UID, PROJECT_ROLE, EXPIRED)] = omni.py listmyprojects USER
+       [string listOfSSHKeyPairs] = omni.py listmykeys
+       [string listOfSSHKeyPairs] = omni.py listkeys USER
        [string stringCred] = omni.py getusercred
        [string string] = omni.py print_slice_expiration SLICENAME
        [string dictionary AM URN->dict by sliver URN of silver info] = omni.py listslivers SLICENAME
+       [string listOfMemberDictionaries (PROJECT_MEMBER (URN), EMAIL, PROJECT_ROLE, PROJECT_MEMBER_UID)] = omni.py listprojectmembers PROJECTNAME
        [string listOfMemberDictionaries (KEYS, URN, EMAIL, ROLE)] = omni.py listslicemembers SLICENAME
        [string Boolean] = omni.py addslicemember SLICENAME USER [ROLE]
+       [string Boolean] = omni.py removeslicemember SLICENAME USER 
 
       Other functions:
        [string dictionary] = omni.py nicknames # List aggregate and rspec nicknames    
+       [string dictionary] = omni.py print_sliver_expirations SLICENAME
 """
 
 import ConfigParser
@@ -124,8 +129,7 @@ from .omnilib.frameworks import framework_pg
 from .omnilib.frameworks import framework_pgch
 from .omnilib.frameworks import framework_sfa
 from .omnilib.frameworks import framework_chapi
-
-OMNI_VERSION="2.5.3"
+from .gcf_version import GCF_VERSION
 
 #DEFAULT_RSPEC_LOCATION = "http://www.gpolab.bbn.com/experiment-support"               
 #DEFAULT_RSPEC_EXTENSION = "xml"                
@@ -153,7 +157,7 @@ def load_agg_nick_config(opts, logger):
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = curr_dir.rsplit("/",1)[0]
+    parent_dir = curr_dir.rsplit(os.sep,1)[0]
 
     # Load up the config file
     configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
@@ -227,8 +231,8 @@ def locate_config( opts, logger, config={}):
             configfiles.insert(0, opts.configfile)
         else:
             # Check maybe the default directory for the file
-            configfile = os.path.join( '~/.gcf', opts.configfile )
-            configfile = os.path.expanduser( configfile )
+            configfile = os.path.join( os.path.join('~','.gcf'), opts.configfile )
+            configfile = os.path.normpath(os.path.expanduser( configfile ))
             if os.path.exists( configfile ):
                 configfiles.insert(0, configfile)
             else:
@@ -239,7 +243,7 @@ def locate_config( opts, logger, config={}):
 
     # Find the first valid config file
     for cf in configfiles:
-        filename = os.path.expanduser(cf)
+        filename = os.path.normpath(os.path.expanduser(cf))
         if os.path.exists(filename):
             break
 
@@ -419,17 +423,53 @@ def load_framework(config, opts):
 def update_agg_nick_cache( opts, logger ):
     """Try to download the definitive version of `agg_nick_cache` and
     store in the specified place."""
+    tmpcache = None
     try:
+        import tempfile
+        handle, tmpcache = tempfile.mkstemp()
+        os.close(handle)
         # make sure the directory containing --aggNickCacheName exists
         # wget `agg_nick_cache`
         # cp `agg_nick_cache` opts.aggNickCacheName
         directory = os.path.dirname(opts.aggNickCacheName)
         if not os.path.exists( directory ):
             os.makedirs( directory )
-        urllib.urlretrieve( opts.aggNickDefinitiveLocation, opts.aggNickCacheName )
-        logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
-    except:
+        urllib.urlretrieve( opts.aggNickDefinitiveLocation, tmpcache )
+        good = False
+        if os.path.exists(tmpcache) and os.path.getsize(tmpcache) > 0:
+            if os.path.exists(opts.aggNickCacheName) and os.path.getsize(opts.aggNickCacheName) > 0:
+                tmpsize = os.path.getsize(tmpcache)
+                oldsize = os.path.getsize(opts.aggNickCacheName)
+                if tmpsize / oldsize > 10 or oldsize / tmpsize > 10:
+                    # If the size changed dramatically, then assume the new one is broken.
+                    # Of course, it could be that the old one is broken...
+                    logger.info("Download of latest `agg_nick_cache` from '%s' seems broken (size is wrong). Keeping old cache.", opts.aggNickDefinitiveLocation)
+                    logger.debug("Old cache '%s' size: %d. New temp '%s' size: %d", opts.aggNickCacheName, oldsize, tmpcache, tmpsize)
+                else:
+                    # Size didn't change dramatically
+                    good = True
+            else:
+                # No previous cache - use the new one
+                good = True
+        else:
+            logger.info("Download of latest `agg_nick_cache` from '%s' seems broken (no or empty file). Keeping old cache.", opts.aggNickDefinitiveLocation)
+            logger.debug("Temp file: '%s'. Exists? %s", tmpcache, os.path.exists(tmpcache))
+        if good:
+            # On Windows, rename doesn't delete any existing file, so explicitly delete the old one first
+            try:
+                os.unlink(opts.aggNickCacheName)
+            except:
+                pass
+            os.rename(tmpcache, opts.aggNickCacheName)
+            logger.info("Downloaded latest `agg_nick_cache` from '%s' and copied to '%s'." % (opts.aggNickDefinitiveLocation, opts.aggNickCacheName))
+    except Exception, e:
         logger.info("Attempted to download latest `agg_nick_cache` from '%s' but could not." % opts.aggNickDefinitiveLocation )
+        logger.debug(e)
+    finally:
+        try:
+            os.unlink(tmpcache)
+        except:
+            pass
 
 def initialize(argv, options=None ):
     """Parse argv (list) into the given optional optparse.Values object options.
@@ -632,6 +672,58 @@ if __name__ == "__main__":
     # process the user's call
     return API_call( framework, config, args, opts, verbose=verbose )
 
+def getOptsUsed(parser, opts, logger=None):
+    '''Get string to print out the options supplied'''
+    #sys.argv when called as a library is
+    # uninteresting/misleading. So args is better, but this misses
+    # the options.
+    # We print here all non-default options
+    nondef = ""
+    for attr in dir(opts):
+        import types
+        if attr.startswith("_"):
+            continue
+        if isinstance(getattr(opts, attr), types.MethodType):
+            continue
+        # if the parser has no option with a dest==attr,
+        # then continue
+        # This means that the user supplied an option the parser didn't
+        # handle, and typically there would have been an error,
+        # but lets not complain here
+        has = False
+        for opt in parser.option_list:
+            if opt.dest == attr:
+                has=True
+                break
+
+        if has == False:
+            for group in parser.option_groups:
+                for opt in group.option_list:
+                    if opt.dest == attr:
+                        has = True
+                        break
+                if has:
+                    break
+            if not has:
+                continue
+        if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
+            # If default is a relative path we expanded,
+            # then it looks like it changed here. So try expanding
+            # any defaults to see if that makes it match
+            try:
+                defVal = parser.defaults[attr]
+                defVal = os.path.normcase(os.path.expanduser(defVal))
+                if defVal == getattr(opts, attr):
+                    continue
+            except:
+                pass
+            # non-default value
+            nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
+
+    if nondef != "":
+        nondef = "\n  Options as run:" + nondef + "\n\n  "
+    return nondef
+
 def API_call( framework, config, args, opts, verbose=False ):
     """Call the function from the given args list. 
     Apply the options from the given optparse.Values opts argument
@@ -664,46 +756,7 @@ def API_call( framework, config, args, opts, verbose=False ):
 
     # Print the summary of the command result
     if verbose:
-        #sys.argv when called as a library is
-        # uninteresting/misleading. So args is better, but this misses
-        # the options.
-        # We print here all non-default options
-        parser = getParser()
-        nondef = ""
-        for attr in dir(opts):
-            import types
-            if attr.startswith("_"):
-                continue
-            if isinstance(getattr(opts, attr), types.MethodType):
-                continue
-            # if the parser has no option with a dest==attr,
-            # then continue
-            # This means that the user supplied an option the parser didn't
-            # handle, and typically there would have been an error,
-            # but lets not complain here
-            has = False
-            for opt in parser.option_list:
-                if opt.dest == attr:
-                    has=True
-            if has == False:
-                continue
-            if (not parser.defaults.has_key(attr)) or (parser.defaults[attr] != getattr(opts, attr)):
-                # If default is a relative path we expanded,
-                # then it looks like it changed here. So try expanding
-                # any defaults to see if that makes it match
-                try:
-                    defVal = parser.defaults[attr]
-                    defVal = os.path.normcase(os.path.expanduser(defVal))
-                    if defVal == getattr(opts, attr):
-                        continue
-                except:
-                    pass
-                # non-default value
-                nondef += "\n\t\t" + attr + ": " + str(getattr(opts, attr))
-
-        if nondef != "":
-            nondef = "\n  Options as run:" + nondef + "\n\n  "
-
+        nondef = getOptsUsed(getParser(), opts, logger)
         cmd = None
         if len(args) > 0:
             cmd = args[0]
@@ -766,7 +819,8 @@ def configure_logging(opts):
         applyLogConfig(opts.logconfig, defaults=deft)
     else:
         # Ticket 296: Add timestamps to log messages
-        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
+#        fmt = '%(asctime)s %(levelname)-8s %(name)s: %(message)s'
+        fmt = '%(asctime)s %(levelname)-8s: %(message)s'
         logging.basicConfig(level=level,format=fmt,datefmt='%H:%M:%S')
 
     logger = logging.getLogger("omni")
@@ -828,7 +882,7 @@ def getSystemInfo():
     return "Python: " + pver + "\nOS: " + osinfo
 
 def getOmniVersion():
-    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % OMNI_VERSION
+    version ="GENI Omni Command Line Aggregate Manager Tool Version %s" % GCF_VERSION
     version +="\nCopyright (c) 2014 Raytheon BBN Technologies"
     return version
 
@@ -870,15 +924,20 @@ def getParser():
  \t\t\t deleteslice <slicename> \n\
  \t\t\t listslices [optional: username] [Alias for listmyslices]\n\
  \t\t\t listmyslices [optional: username] \n\
+ \t\t\t listprojects [optional: username] [Alias for listmyprojects]\n\
+ \t\t\t listmyprojects [optional: username] \n\
  \t\t\t listmykeys [optional: username] [Alias for listkeys]\n\
  \t\t\t listkeys [optional: username]\n\
  \t\t\t getusercred \n\
  \t\t\t print_slice_expiration <slicename> \n\
  \t\t\t listslivers <slicename> \n\
+ \t\t\t listprojectmembers <projectname> \n\
  \t\t\t listslicemembers <slicename> \n\
  \t\t\t addslicemember <slicename> <username> [optional: role] \n\
+ \t\t\t removeslicemember <slicename> <username>  \n\
  \t\tOther functions: \n\
  \t\t\t nicknames \n\
+ \t\t\t print_sliver_expirations <slicename> \n\
 \n\t See README-omni.txt for details.\n\
 \t And see the Omni website at http://trac.gpolab.bbn.com/gcf"
 
@@ -902,14 +961,14 @@ def getParser():
     # Note that type and version are case in-sensitive strings.
     # This causes settiong options.explicitRSpecVersion as well
     basicgroup.add_option("-t", "--rspectype", nargs=2, default=["GENI", '3'], metavar="RSPEC-TYPE RSPEC-VERSION",
-                      help="RSpec type and version to return, default 'GENI 3'")
+                      help="RSpec type and version to return, default: '%default'")
     # This goes in options.api_version. Also causes setting options.explicitAPIVersion
     basicgroup.add_option("-V", "--api-version", type="int", default=2,
-                      help="Specify version of AM API to use (default 2)")
+                      help="Specify version of AM API to use (default v%default)")
     basicgroup.add_option("--useSliceAggregates", default=False, action="store_true",
-                          help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is False.")
+                          help="Perform the slice action at all aggregates the given slice is known to use according to clearinghouse records. Default is %default.")
     basicgroup.add_option("--useSliceMembers", default=False, action="store_true",
-                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is False. " + \
+                          help="Create accounts and install slice members' SSH keys on reserved resources in createsliver, provision or performoperationalaction. Default is %default. " + \
                               "When true, adds these users and keys to those read from your omni_config (unless --ignoreConfigUsers).")
     basicgroup.add_option("--ignoreConfigUsers", default=False, action="store_true",
                           help="Ignore users and SSH keys listed in your omni_config when installing SSH keys on resources in createsliver or provision or " + \
@@ -959,9 +1018,9 @@ def getParser():
     loggroup.add_option("--verbosessl", default=False, action="store_true",
                       help="Turn on verbose SSL / XMLRPC logging")
     loggroup.add_option("-l", "--logconfig", default=None,
-                      help="Python logging config file")
+                      help="Python logging config file. Default: '%default'")
     loggroup.add_option("--logoutput", default='omni.log',
-                      help="Python logging output file [use %(logfilename)s in logging config file]")
+                      help="Python logging output file [use %(logfilename)s in logging config file]. Default: '%default'")
     loggroup.add_option("--tostdout", default=False, action="store_true",
                       help="Print results like rspecs to STDOUT instead of to log stream")
     parser.add_option_group( loggroup )
@@ -995,10 +1054,10 @@ def getParser():
     # This causes setting options.GetVersionCacheOldestDate
     gvgroup.add_option("--GetVersionCacheAge", dest='GetVersionCacheAge',
                       default=7,
-                      help="Age in days of GetVersion cache info before refreshing (default is 7)")
+                      help="Age in days of GetVersion cache info before refreshing (default is %default)")
     gvgroup.add_option("--GetVersionCacheName", dest='getversionCacheName',
                       default="~/.gcf/get_version_cache.json",
-                      help="File where GetVersion info will be cached, default is ~/.gcf/get_version_cache.json")
+                      help="File where GetVersion info will be cached, default is %default")
     parser.add_option_group( gvgroup )
 
     # AggNick
@@ -1043,11 +1102,11 @@ def getParser():
                       help="Use the given Orca slice id")
     devgroup.add_option("--raise-error-on-v2-amapi-error", dest='raiseErrorOnV2AMAPIError',
                       default=False, action="store_true",
-                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is False. For use by scripts.")
+                      help="In AM API v2, if an AM returns a non-0 (failure) result code, raise an AMAPIError. Default is %default. For use by scripts.")
     devgroup.add_option("--ssltimeout", default=360, action="store", type="float",
-                        help="Seconds to wait before timing out AM and CH calls. Default is 360 seconds.")
+                        help="Seconds to wait before timing out AM and CH calls. Default is %default seconds.")
     devgroup.add_option("--noExtraCHCalls", default=False, action="store_true",
-                        help="Disable extra Clearinghouse calls like reporting slivers. Default is False.")
+                        help="Disable extra Clearinghouse calls like reporting slivers. Default is %default.")
     parser.add_option_group( devgroup )
     return parser
 
