@@ -202,9 +202,13 @@ def getInfoFromSliceManifest( amUrl ) :
       key = ("unspecified_AM_URN", amUrl)
 
     if not apicallout.has_key(key):
-      print "ERROR: No manifest found from %s at %s; review the logs." % \
-            (apicall, amUrl)
-      return []
+      if len(apicallout.keys()) == 1 :
+        newkey = apicallout.keys()[0]
+        print "WARN: Got result for AM URL %s instead of %s - did Omni redirect you?" % (newkey, key)
+        key = newkey
+      else:
+        print "ERROR: No manifest found from %s at %s; review the logs." % \
+        sys.exit(-1)
 
     if tmpoptions.api_version == 1:
       manifest = apicallout[key]
