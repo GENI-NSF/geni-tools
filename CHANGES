@@ -2,7 +2,7 @@
 
 gcf 2.7:
  * readyToLogin
-   * Handle when omni switches AM API version number for manifest (#643)
+   * Handle when omni switches AM API version number (#643)
 
 gcf 2.6:
  * Omni

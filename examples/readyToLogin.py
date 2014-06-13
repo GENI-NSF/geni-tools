@@ -378,15 +378,16 @@ def getSliverStatus( amUrl, amType ) :
       else:
         print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
         sys.exit(-1)
-    return sliverStatus
+    return sliverStatus[amUrl]
+
 def getInfoFromSliverStatus( amUrl, amType ) :
     sliverStatus = getSliverStatus( amUrl, amType )
     if amType == 'sfa' : 
-      loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
+      loginInfo = getInfoFromSliverStatusPL(sliverStatus)
     if amType == 'protogeni' : 
-      loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
+      loginInfo = getInfoFromSliverStatusPG(sliverStatus)
 #    if amType == 'orca' : 
-#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
+#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus)
       
     return loginInfo
 
@@ -473,7 +474,7 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
       print "ERROR: empty sliver status!"
       return amLoginInfo
   try:
-      amSliverStat = sliverStatus[ amUrl ]
+      amSliverStat = sliverStatus
   except:
       print "ERROR: empty aggregate sliver status!"
       return amLoginInfo      
@@ -696,10 +697,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 if item.has_key('am_status') and item['am_status'].strip()!="":
                     amsOut = "am_status: %s" % item['am_status']
                 if gsOut:
-                    if amsOut:
-                        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
-                    else:
-                        output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+                    # if amsOut:
+                    #    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    #else:
+                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
                 elif amsOut:
                         output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
                 else:
