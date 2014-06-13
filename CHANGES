@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.7:
+ * readyToLogin
+   * Handle when omni switches AM API version number for manifest (#643)
 
 gcf 2.6:
  * Omni
