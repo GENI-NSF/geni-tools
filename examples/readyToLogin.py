@@ -697,10 +697,10 @@ def printLoginInfo( loginInfoDict, keyList ) :
                 if item.has_key('am_status') and item['am_status'].strip()!="":
                     amsOut = "am_status: %s" % item['am_status']
                 if gsOut:
-                    if amsOut:
-                        output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
-                    else:
-                        output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
+                    # if amsOut:
+                    #    output += "\n%s's geni_status is: %s (am_status:%s) \n" % (item['client_id'], item['geni_status'], item['am_status'])
+                    #else:
+                    output += "\n%s's geni_status is: %s \n" % (item['client_id'], item['geni_status'])
                 elif amsOut:
                         output += "\n%s's am_status is: %s \n" % (item['client_id'], item['am_status'])
                 else:
