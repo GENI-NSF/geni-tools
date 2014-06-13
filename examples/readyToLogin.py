@@ -378,15 +378,16 @@ def getSliverStatus( amUrl, amType ) :
       else:
         print "ERROR: Got no SliverStatus for AM %s; check the logs." % (amUrl)
         sys.exit(-1)
-    return sliverStatus
+    return sliverStatus[amUrl]
+
 def getInfoFromSliverStatus( amUrl, amType ) :
     sliverStatus = getSliverStatus( amUrl, amType )
     if amType == 'sfa' : 
-      loginInfo = getInfoFromSliverStatusPL(sliverStatus[amUrl])
+      loginInfo = getInfoFromSliverStatusPL(sliverStatus)
     if amType == 'protogeni' : 
-      loginInfo = getInfoFromSliverStatusPG(sliverStatus[amUrl])
+      loginInfo = getInfoFromSliverStatusPG(sliverStatus)
 #    if amType == 'orca' : 
-#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus[amUrl])
+#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus)
       
     return loginInfo
 
@@ -473,7 +474,7 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
       print "ERROR: empty sliver status!"
       return amLoginInfo
   try:
-      amSliverStat = sliverStatus[ amUrl ]
+      amSliverStat = sliverStatus
   except:
       print "ERROR: empty aggregate sliver status!"
       return amLoginInfo      
