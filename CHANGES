@@ -1,6 +1,8 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.7:
+ * Stitcher
+  * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
 
 gcf 2.6:
  * Omni
