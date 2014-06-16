@@ -291,6 +291,7 @@ class Aggregate(object):
         self.isExoSM = False # Maybe we need to handle the ExoSM differently too?
         self.isPG = False
         self.isGRAM = False
+        self.isOESS = False
         # reservation tries since last call to SCS
         self.allocateTries = 0 # see MAX_TRIES
         self.localPickNewVlanTries = 1 # see MAX_AGG_NEW_VLAN_TRIES
