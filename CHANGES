@@ -1,6 +1,10 @@
 # Note: keep this file in wiki format for easy pasting to the gcf wiki
 
 gcf 2.7:
+ * Omni
+  * Fix nickname cache updating when temp and home directories are on 
+    different disks - use `shutil.move`. (#646)
+
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
 

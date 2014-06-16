@@ -42,6 +42,8 @@ tips, see the Omni Wiki: http://trac.gpolab.bbn.com/gcf/wiki/Omni
 == Release Notes ==
 
 New in v2.7:
+ * Fix nickname cache updating when temp and home directories are on 
+   different disks - use `shutil.move`. (#646)
 
 New in v2.6:
  * New function `removeslicemember <slice> <username>`: 
