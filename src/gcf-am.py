@@ -123,6 +123,15 @@ def main(argv=None):
     if not os.path.getsize(keyfile) > 0:
         sys.exit("Aggregate keyfile %s is empty" % keyfile)
 
+    # Instantiate authorizer from 'authorizer' config argument
+    authorizer = None
+    if hasattr(opts, 'authorizer'):
+        authorizer_classname = opts.authorizer
+        authorizer_class_module = '.'.join(authorizer_classname.split('.')[:-1])
+        __import__(authorizer_class_module)
+        authorizer_class = eval(authorizer_classname)
+        authorizer = authorizer_class(opts.rootcadir)
+
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
@@ -139,18 +148,20 @@ def main(argv=None):
                                           base_name=config['global']['base_name'])
     elif opts.api_version == 2:
         ams = gcf.geni.am.am2.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          trust_roots_dir=getAbsPath(opts.rootcadir),
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     trust_roots_dir=getAbsPath(opts.rootcadir),
+                                                     ca_certs=comboCertsFile,
+                                                     base_name=config['global']['base_name'], 
+                                                     authorizer=authorizer)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
-                                          keyfile=keyfile,
-                                          certfile=certfile,
-                                          trust_roots_dir=getAbsPath(opts.rootcadir),
-                                          ca_certs=comboCertsFile,
-                                          base_name=config['global']['base_name'])
+                                                     keyfile=keyfile,
+                                                     certfile=certfile,
+                                                     trust_roots_dir=getAbsPath(opts.rootcadir),
+                                                     ca_certs=comboCertsFile,
+                                                     base_name=config['global']['base_name'],
+                                                     authorizer=authorizer)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))

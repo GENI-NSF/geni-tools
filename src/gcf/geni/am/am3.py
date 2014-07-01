@@ -55,6 +55,8 @@ from ...gcf_version import GCF_VERSION
 
 from ...omnilib.util import credparsing as credutils
 
+from ..auth.base_authorizer import *
+from .am_method_context import AMMethodContext
 
 # See sfa/trust/rights.py
 # These are names of operations
@@ -1142,9 +1144,12 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, delegate):
+    def __init__(self, delegate, authorizer=None):
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am3')
+        self.authorizer = authorizer
+        if authorizer:
+            authorizer._logger = self.logger
 
     def _exception_result(self, exception):
         output = str(exception)
@@ -1180,13 +1185,13 @@ class AggregateManager(object):
         If geni_available is specified in the options,
         then only report available resources. If geni_compressed
         option is specified, then compress the result.'''
-        try:
-            return self._delegate.ListResources(credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {}
+        with AMMethodContext(self, AM_Methods.LIST_RESOURCES_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3=True) as amc:
+            amc._result = \
+                self._delegate.ListResources(credentials, options)
+        return amc._result
 
     def Allocate(self, slice_urn, credentials, rspec, options):
         """Allocate resources to a slice. This is a low-effort call
@@ -1195,39 +1200,37 @@ class AggregateManager(object):
         'Provision'. This is step 1 in the process of acquiring
         usable resources from an aggregate.
         """
-        try:
-            return self._delegate.Allocate(slice_urn, credentials, rspec,
-                                           options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'slice_urn' : slice_urn, 'rspec' : rspec}
+        with AMMethodContext(self, AM_Methods.ALLOCATE_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3=True) as amc:
+            amc._result = \
+                self._delegate.Allocate(slice_urn, credentials, rspec, options)
+        return amc._result
 
     def Provision(self, urns, credentials, options):
         """Make a reservation 'real' by instantiating the resources
         reserved in a previous allocate invocation. This is step 2 in
         the process of acquiring usable resources from an aggregate.
         """
-        try:
-            return self._delegate.Provision(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.PROVISION_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3=True) as amc:
+            amc._result = \
+                self._delegate.Provision(urns, credentials, options)
+        return amc._result
 
     def Delete(self, urns, credentials, options):
         """Delete the given resources.
         """
-        try:
-            return self._delegate.Delete(urns, credentials,
-                                           options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.DELETE_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3=True) as amc:
+            amc._result = \
+                self._delegate.Delete(urns, credentials, rspec, options)
+        return amc._result
 
     def PerformOperationalAction(self, urns, credentials, action, options):
         """Perform the given action on the objects named by the given URNs.
@@ -1235,62 +1238,60 @@ class AggregateManager(object):
         This is the third and final step in the process of acquiring usable
         resources from an aggregate.
         """
-        try:
-            return self._delegate.PerformOperationalAction(urns, credentials,
-                                                           action, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns, 'action' : action }
+        with AMMethodContext(self, AM_Methods.PERFORM_OPERATIONAL_ACTION_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3=True) as amc:
+            amc._result = \
+                self._delegate.PerformOperationalAction(urns, credentials, 
+                                                        action, options)
+        return amc._result
 
     def Status(self, urns, credentials, options):
         """Report the status of the specified resources.
         """
-        try:
-            return self._delegate.Status(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.STATUS_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3 = True) as amc:
+            amc._result = \
+                self._delegate.Status(urns, credentials, options)
+        return amc._result
 
     def Describe(self, urns, credentials, options):
         """Describe the specified resources.
         Return a manifest RSpec of the resources as well
         as their current status.
         """
-        try:
-            return self._delegate.Describe(urns, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns }
+        with AMMethodContext(self, AM_Methods.DESCRIBE_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3 = True) as amc:
+            amc._result = \
+                self._delegate.Describe(urns, credentials, options)
+        return amc._result
 
     def Renew(self, urns, credentials, expiration_time, options):
         """Extend the life of the given slice until the given
         expiration time."""
-        try:
-            return self._delegate.Renew(urns, credentials,
-                                        expiration_time, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
+        args = {'urns' : urns, 'expiration_time' : expiration_time }
+        with AMMethodContext(self, AM_Methods.RENEW_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3 = True) as amc:
+            amc._result = \
+                self._delegate.Renew(urns, credentials, expiration_time, options)
+        return amc._result
 
     def Shutdown(self, slice_urn, credentials, options):
         '''For Management Authority / operator use: shut down a badly
         behaving sliver, without deleting it to allow for forensics.'''
-        try:
-            return self._delegate.Shutdown(slice_urn, credentials, options)
-        except ApiErrorException as e:
-            return self._api_error(e)
-        except Exception as e:
-            traceback.print_exc()
-            return self._exception_result(e)
-        return self._delegate.Shutdown(slice_urn, credentials, options)
+        args = {'slice_urn' : slice_urn }
+        with AMMethodContext(self, AM_Methods.SHUTDOWN_V3,
+                             self.logger, self.authorizer, credentials,
+                             args, options, is_v3 = True) as amc:
+            amc._result = \
+                self._delegate.Shutdown(slice_urn, credentials, options)
+        return amc._result
 
 
 class AggregateManagerServer(object):
@@ -1299,7 +1300,8 @@ class AggregateManagerServer(object):
 
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
-                 ca_certs=None, base_name=None):
+                 ca_certs=None, base_name=None,
+                 authorizer=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -1313,7 +1315,8 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        self._server.register_instance(AggregateManager(delegate))
+        aggregate_manager = AggregateManager(delegate, authorizer)
+        self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.
         delegate._server = self._server
