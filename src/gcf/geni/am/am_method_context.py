@@ -22,6 +22,8 @@
 #----------------------------------------------------------------------       
 
 import gcf.sfa.trust.gid as gid
+from gcf.sfa.trust.credential import Credential
+from gcf.sfa.trust.abac_credential import ABACCredential
 
 # A class to support wrapping AM API calls from AggregateManager
 # to the delegate to check for authorization and perform speaks-for
@@ -47,6 +49,7 @@ class AMMethodContext:
         self._caller_urn = gid.GID(string=self._caller_cert).get_urn()
         self._is_v3 = is_v3
         self._result = None
+        self._error = False
 
     # This method is called prior to the 'with AMMethodContext' block
     def __enter__(self):
@@ -66,17 +69,21 @@ class AMMethodContext:
                         args['slice_urn'] = the_slice.urn
                 credentials = self.normalize_credentials(self._credentials)
 
-            self._authorizer.authorize(self._method_name, self._caller_cert, 
-                                       credentials, args, 
-                                       self._options)
+            if self._authorizer:
+                self._authorizer.authorize(self._method_name, 
+                                           self._caller_cert, 
+                                           credentials, args, 
+                                           self._options)
+        except Exception, e:
+            self._handleError(e)
         finally:
             return self
 
     # Take a V3 list of credentials and adjust for V2 Verification
-    def normalize_credentials(self):
-        delegate = self._aggregate_manager.delegate
+    def normalize_credentials(self, credentials):
+        delegate = self._aggregate_manager._delegate
         credentials = [delegate.normalize_credential(c) \
-                           for c in self._credentials]
+                           for c in credentials]
         credentials = \
             [c['geni_value'] for c in filter(isGeniCred, credentials)]
         return credentials
@@ -89,13 +96,26 @@ class AMMethodContext:
     def __exit__(self, type, value, traceback_object):
         if type:
             self._logger.exception("Error in %s" % self._method_name)
-            self._result = self._errorReturn(value)
+            self._handleError(value)
+        else:
+            if self._authorizer:
+                self._authorizer.handleResult(self._method_name, 
+                                              self._caller_cert,
+                                              self._args, 
+                                              self._options,
+                                              self._result)
+
         self._logger.info("Result from %s: %s", self._method_name, 
                           self._result)
 
     # Return a GENI_style error return for given exception/traceback
     def _errorReturn(self, e):
-        return {'code' : -1, 'value' : None, 'output' : str(e) }
+        code_dict = {'am_type' : 'gcf2', 'geni_code' : -1, 'am_code' : -1}
+        return {'code' : code_dict, 'value' : '', 'output' : str(e) }
+
+    def _handleError(self, e):
+        self._result = self._errorReturn(e)
+        self._error = True
         
 
 

@@ -265,6 +265,7 @@ class ReferenceAggregateManager(object):
         # Use the client PEM format cert as retrieved
         # from the https connection by the SecureXMLRPCServer
         # to identify the caller.
+
         try:
             creds = self._cred_verifier.verify_from_strings(self._server.pem_cert,
                                                             credentials,
@@ -697,8 +698,9 @@ class AggregateManager(object):
         with AMMethodContext(self, method,
                              self.logger, self.authorizer, credentials,
                              args, options) as amc:
-            amc._result = \
-                self._delegate.ListResources(credentials, options)
+            if not amc._error:
+                amc._result = \
+                    self._delegate.ListResources(credentials, options)
         return amc._result
 
     def CreateSliver(self, slice_urn, credentials, rspec, users, options):
@@ -712,8 +714,10 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.CREATE_SLIVER_V2, 
                               self.logger, self.authorizer, credentials, 
                              args, options) as amc:
-            amc._result = self._delegate.CreateSliver(slice_urn, credentials,
-                                                      rspec, users, options)
+            if not amc._error:
+                amc._result = self._delegate.CreateSliver(slice_urn, 
+                                                          credentials,
+                                                          rspec, users, options)
         return amc._result
 
     def DeleteSliver(self, slice_urn, credentials, options):
@@ -722,8 +726,9 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.DELETE_SLIVER_V2,
                              self.logger, self.authorizer, credentials,
                              args, options) as amc:
-            amc._result = \
-                self._delegate.DeleteSliver(slice_urn, credentials, options)
+            if not amc._error:
+                amc._result = \
+                    self._delegate.DeleteSliver(slice_urn, credentials, options)
         return amc._result
 
     def SliverStatus(self, slice_urn, credentials, options):
@@ -733,8 +738,9 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.SLIVER_STATUS_V2,
                              self.logger, self.authorizer, credentials,
                              args, options) as amc:
-            amc._result = \
-                self._delegate.SliverStatus(slice_urn, credentials, options)
+            if not amc._error:
+                amc._result = \
+                    self._delegate.SliverStatus(slice_urn, credentials, options)
         return amc._result
 
     def RenewSliver(self, slice_urn, credentials, expiration_time, options):
@@ -744,9 +750,10 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
                              self.logger, self.authorizer, credentials,
                              args, options) as amc:
-            amc._result = \
-                self._delegate.RenewSliver(slice_urn, credentials, 
-                                           expiration_time, options)
+            if not amc._error:
+                amc._result = \
+                    self._delegate.RenewSliver(slice_urn, credentials, 
+                                               expiration_time, options)
         return amc._result
 
     def Shutdown(self, slice_urn, credentials, options):
@@ -756,8 +763,9 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V2,
                              self.logger, self.authorizer, credentials,
                              args, options) as amc:
-            amc._result = \
-                self._delegate.Shutdown(slice_urn, credentials, options)
+            if not amc._error:
+                amc._result = \
+                    self._delegate.Shutdown(slice_urn, credentials, options)
         return amc._result
 
 

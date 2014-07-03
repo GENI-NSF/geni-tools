@@ -67,5 +67,11 @@ class Base_Authorizer:
             self._logger.info("Authorizing %s %s #Creds = %s Args = %s Opts =%s" % \
                                   (method, caller_urn, len(creds), \
                                        args.keys(), opts.keys()))
+
+
+    # Handle the result of a call, to update authorizer internal state
+    # E.g. for keepign track of successful calls, allocations, etc
+    def handleResult(self, method, caller, args, opts,  result):
+        pass
         
 
