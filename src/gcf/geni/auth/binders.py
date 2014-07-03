@@ -39,10 +39,10 @@ class Base_Binder:
     def __init__(self, root_cert):
         self._root_cert = root_cert
 
-    def generate_bindings(self, method, caller, creds, args, opts):
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         pass
 
-    def handle_result(self, method, caller, args, options, result):
+    def handle_result(self, method, caller, args, options, result, agg_mgr):
         pass
 
 
@@ -54,7 +54,7 @@ class Standard_Binder(Base_Binder):
     def __init__(self, root_cert):
         Base_Binder.__init__(self, root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts):
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         bindings = {}
 
         caller_urn = gid.GID(string=caller).get_urn()
@@ -86,7 +86,7 @@ class SFA_Binder(Base_Binder):
         Base_Binder.__init__(self, root_cert)
         self._cred_verifier = CredentialVerifier(root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts):
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
 
         bindings = {}
 
@@ -111,7 +111,7 @@ class Resource_Request_Binder(Base_Binder):
     def __init__(self, root_cert):
         Base_Binder.__init__(self, root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts):
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         bindings = {}
         if 'rspec' in args:
             rspec_raw = args['rspec']
@@ -129,7 +129,7 @@ class Resource_Allocation_Binder(Base_Binder):
         self._nodes_by_slice = {}
         self._nodes_by_user = {}
 
-    def generate_bindings(self, method, caller, creds, args, opts):
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         num_user_nodes = 0
         num_slice_nodes = 0
         num_project_nodes = 0
@@ -154,7 +154,7 @@ class Resource_Allocation_Binder(Base_Binder):
 
         return bindings
 
-    def handle_result(self, method, caller, args, options, result):
+    def handle_result(self, method, caller, args, options, result, agg_mgr):
         if method in [AM_Methods.CREATE_SLIVER_V2, AM_Methods.ALLOCATE_V3]:
             if result['code']['am_code'] != 0: return
             manifest_raw = result['value']
@@ -198,7 +198,10 @@ class Resource_Allocation_Binder(Base_Binder):
             sliver_urns = list(self._nodes_by_slice[slice_urn]) # Copy
             # But if we're given a list of URN's, use these instead
             if 'urns' in args:
-                sliver_urns = args['urns']
+                explicit_sliver_urns = \
+                    [urn for urn in args['urns'] if urn.find('+slice+') < 0 ]
+                if len(explicit_sliver_urns) > 0:
+                    sliver_urns = explicit_sliver_urns
 
             # Remove these slivers from the registry
             caller_urn, slice_urn, project_urn, authority_urn = \
@@ -218,7 +221,48 @@ class Resource_Allocation_Binder(Base_Binder):
                     if sliver_urn in self._nodes_by_user[user_urn]:
                         self._nodes_by_user[user_urn].remove(sliver_urn)
                         break
-            
+
+# Bind $STITCH_POINTS to all points on hops requested 
+# to be connected to this aggregate
+class Stitching_Binder(Base_Binder):
+
+    def __init__(self, root_cert):
+        Base_Binder.__init__(self, root_cert)
+
+    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+        if method in [AM_Methods.CREATE_SLIVER_V2, AM_Methods.ALLOCATE_V3]:
+            am_urn = agg_mgr._delegate._my_urn
+            if 'rspec' not in args: return
+            rspec_raw = args['rspec']
+            rspec_doc = xml.dom.minidom.parseString(rspec_raw)
+            rspec_elt = rspec_doc.getElementsByTagName('rspec')[0]
+            stitching_elts = rspec_elt.getElementsByTagName('stitching')
+            if len(stitching_elts) == 0: return str({})
+            stitching_elt = stitching_elts[0]
+            link_elts = [elt for elt in rspec_elt.childNodes \
+                             if elt.nodeType == elt.ELEMENT_NODE \
+                             and elt.tagName == 'link']
+            my_link_elts = []
+            requested_stitch_points = []
+            for link_elt in link_elts:
+                for component_manager in \
+                        link_elt.getElementsByTagName('component_manager'):
+                    if component_manager.getAttribute('name') == am_urn:
+                        my_link_elts.append(link_elt)
+                        break
+            my_link_ids = [link_elt.getAttribute('client_id') \
+                               for link_elt in my_link_elts]
+            my_paths = \
+                [path for path in stitching_elt.getElementsByTagName('path') \
+                     if path.getAttribute('id') in my_link_ids]
+            for path in my_paths:
+                path_link_ids = \
+                    [link.getAttribute('id') \
+                         for link in path.getElementsByTagName('link')]
+                requested_stitch_points = \
+                    requested_stitch_points + path_link_ids
+
+            return {"$REQUESTED_STITCH_POINTS" : str(requested_stitch_points) }
 
 # Return caller_urn, slice_urn, project_urn, authority_urn
 def _retrieve_context_urns(caller, args):

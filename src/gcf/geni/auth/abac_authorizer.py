@@ -44,8 +44,6 @@ class ABAC_Authorizer(Base_Authorizer):
             open('/home/mbrinn/gcf/src/gcf/geni/auth/am_policies.json').read()
         self.RULES = json.loads(RULES_RAW)
 
-        self.RULES = self.RULES[0] # ***
-
         self._binders = \
             [self._initialize_binder(b) for b in self.RULES['binders']]
         self._conditional_assertions = self.RULES['conditional_assertions']
@@ -65,11 +63,13 @@ class ABAC_Authorizer(Base_Authorizer):
     # For all assertions, evaluate precondition and if True, 
     #   Generate corresponding ABAC assertions 
     # Try to prove all the positive queries and none of the negative queries
-    def authorize(self, method, caller, creds, args, opts):
-        Base_Authorizer.authorize(self, method, caller, creds, args, opts)
+    def authorize(self, method, caller, creds, args, opts, agg_mgr):
+        Base_Authorizer.authorize(self, method, caller, creds, args, 
+                                  opts, agg_mgr)
         self._logger.info("In ABAC AUTHORIZER...")
 
-        bindings = self._generate_bindings(method, caller, creds, args, opts)
+        bindings = self._generate_bindings(method, caller, creds, args, 
+                                           opts, agg_mgr)
 
         self._logger.info("BINDINGS = %s" % bindings)
 
@@ -82,11 +82,11 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception(msg)
 
     # Get each binder to generate bindings
-    def _generate_bindings(self, method, caller, creds, args, opts):
+    def _generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         bindings = {}
         for binder in self._binders:
             new_bindings = binder.generate_bindings(method, caller, creds,
-                                                    args, opts)
+                                                    args, opts, agg_mgr)
             bindings = dict(bindings.items() + new_bindings.items())
         return bindings
 
@@ -97,6 +97,7 @@ class ABAC_Authorizer(Base_Authorizer):
             assertion = ca['assertion']
             bound_condition = self._bind_expression(condition, bindings)
             if self._has_unbound_variables(bound_condition): continue
+            self._logger.info("EVAL : %s" % bound_condition)
             if not eval(bound_condition): continue
             bound_assertion = self._bind_expression(assertion, bindings)
             if self._has_unbound_variables(bound_assertion): continue
@@ -159,9 +160,9 @@ class ABAC_Authorizer(Base_Authorizer):
 
     # Hand the result of a success call to each binder to update
     # its internal state
-    def handleResult(self, method, caller, args, opts, result):
+    def handleResult(self, method, caller, args, opts, result, agg_mgr):
         for binder in self._binders:
-            binder.handle_result(method, caller, args, opts, result)
+            binder.handle_result(method, caller, args, opts, result, agg_mgr)
 
 
 

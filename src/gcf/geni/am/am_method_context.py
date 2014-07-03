@@ -73,7 +73,8 @@ class AMMethodContext:
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
                                            credentials, args, 
-                                           self._options)
+                                           self._options,
+                                           self._aggregate_manager)
         except Exception, e:
             self._handleError(e)
         finally:
@@ -103,7 +104,8 @@ class AMMethodContext:
                                               self._caller_cert,
                                               self._args, 
                                               self._options,
-                                              self._result)
+                                              self._result,
+                                              self._aggregate_manager)
 
         self._logger.info("Result from %s: %s", self._method_name, 
                           self._result)

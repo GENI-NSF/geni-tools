@@ -82,7 +82,8 @@ class SFA_Authorizer(Base_Authorizer):
     #   creds : List of credential/type pairs
     #   args : Dictionary of name/value pairs of AM call arguments
     #   opts : Dictionary of user provided options
-    def authorize(self, method, caller, creds, args, opts):
+    #   agg_mgr: AggregateManager object in which this authorization runs
+    def authorize(self, method, caller, creds, args, opts, agg_mgr):
         Base_Authorizer.authorize(self, method, caller, creds, args, opts)
 
         if method not in self.METHOD_ATTRIBUTES:

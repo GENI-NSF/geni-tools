@@ -1,85 +1,71 @@
-[
-    {
-        "methods" : ["CreateSliver_V2, Allocate_V3"],
-        "binders" : [
-            "gcf.geni.auth.binders.Standard_Binder",
-            "gcf.geni.auth.binders.SFA_Binder",
-            "gcf.geni.auth.binders.Resource_Request_Binder",
-            "gcf.geni.auth.binders.Resource_Allocation_Binder"
-            ],
-        "conditional_assertions" : [
-            {
-                "condition" : "$SFA_AUTHORIZED", 
-                "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
-                },
-            {
-                "condition" : "$HOUR < 6 or $HOUR > 18",
-                "assertion" : "AM.VIOLATES_SCHEDULE<-$CALLER"
-                },
-            {
-                "condition" : "$AUTHORITY_NODES + $REQUESTED_NODES > 5",
-                "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
-                },
-            {
-                "condition" : "$PROJECT_NODES + $REQUESTED_NODES > 4",
-                "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
-                },
-            {
-                "condition" : "$SLICE_NODES + $REQUESTED_NODES > 3",
-                "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
-                },
-            {
-                "condition" : "$USER_NODES + $REQUESTED_NODES > 2",
-                "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
-                }
+{
+    "binders" : [
+        "gcf.geni.auth.binders.Standard_Binder",
+        "gcf.geni.auth.binders.SFA_Binder",
+        "gcf.geni.auth.binders.Resource_Request_Binder",
+        "gcf.geni.auth.binders.Resource_Allocation_Binder",
+        "gcf.geni.auth.binders.Stitching_Binder"
+        ],
+    "conditional_assertions" : [
+        {
+            "condition" : "$SFA_AUTHORIZED", 
+            "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
+            },
+        {
+            "condition" : "$HOUR < 6 or $HOUR > 18",
+            "assertion" : "AM.VIOLATES_SCHEDULE<-$CALLER"
+            },
+        {
+            "condition" : "$AUTHORITY_NODES + $REQUESTED_NODES > 5",
+            "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+            },
+        {
+            "condition" : "$PROJECT_NODES + $REQUESTED_NODES > 4",
+            "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+            },
+        {
+            "condition" : "$SLICE_NODES + $REQUESTED_NODES > 3",
+            "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+            },
+        {
+            "condition" : "$USER_NODES + $REQUESTED_NODES > 2",
+            "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+            },
+        {
+            "condition" : "'urn:publicid:IDN+ion.internet2.edu+interface+rtr.newy:ae0:gpo-eg' in $REQUESTED_STITCH_POINTS",
+            "assertion" : "AM.VIOLATES_TOPOLOGY<-$CALLER"
+            },
+        {
+            "condition" : "'urn:publicid:IDN+ch-mb.gpolab.bbn.com+user+mbrinn' == '$CALLER'",
+            "assertion" : "AM.IS_BLACKLISTED<-$CALLER"
+            }
 
-            ],
-        "queries" : [
-            {
-                "statement" : "AM.IS_AUTHORIZED<-$CALLER", 
-                "is_positive" : true, 
-                "message" : "Authorization Falure"
-                },
-            {
-                "statement" : "AM.EXCEEDS_QUOTA<-$CALLER", 
-                "is_positive" : false,
-                "message" : "Quota Exceeded"
-                },
-            {
-                "statement" : "AM.VIOLATES_SCHEDULE<-$CALLER", 
-                "is_positive" : false,
-                "message" : "Schedule Violation"
-                },
-            {
-                "statement" : "AM.VIOLATES_TOPOLOGY<-$CALLER",
-                "is_positive" : false,
-                "message" : "Topology Violation"
-                },
-            {
-                "statement" : "AM.IS_BLACKLISTED<-$CALLER",
-                "is_positive" : false,
-                "message" : "Blacklisted"
-                }
-            ]
-        },
-    {
-        "methods" : "default",
-        "binders" : [
-            "gcf.geni.auth.binders.SFA_Binder"
-            ],
-        "conditional_assertions" : [
-            {
-                "condition" : "$SFA_AUTHORIZED", 
-                "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
-                }
-            ],
-        "queries" : [
-            {
-                "statement" : "AM.IS_AUTHORIZED<-$CALLER",
-                "is_positive" : true,
-                "message" : "Authorization Failure"
-                }
-            ]
-        }
-    ]
-
+        ],
+    "queries" : [
+        {
+            "statement" : "AM.IS_AUTHORIZED<-$CALLER", 
+            "is_positive" : true, 
+            "message" : "Authorization Falure"
+            },
+        {
+            "statement" : "AM.EXCEEDS_QUOTA<-$CALLER", 
+            "is_positive" : false,
+            "message" : "Quota Exceeded"
+            },
+        {
+            "statement" : "AM.VIOLATES_SCHEDULE<-$CALLER", 
+            "is_positive" : false,
+            "message" : "Schedule Violation"
+            },
+        {
+            "statement" : "AM.VIOLATES_TOPOLOGY<-$CALLER",
+            "is_positive" : false,
+            "message" : "Topology Violation"
+            },
+        {
+            "statement" : "AM.IS_BLACKLISTED<-$CALLER",
+            "is_positive" : false,
+            "message" : "Blacklisted"
+            }
+        ]
+    }
