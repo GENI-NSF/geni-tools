@@ -36,7 +36,7 @@
             "assertion" : "AM.VIOLATES_TOPOLOGY<-$CALLER"
             },
         {
-            "condition" : "'urn:publicid:IDN+ch-mb.gpolab.bbn.com+user+mbrinn' == '$CALLER'",
+            "condition" : "'urn:publicid:IDN+ch1.gpolab.bbn.com+user+bujcich' == '$CALLER'",
             "assertion" : "AM.IS_BLACKLISTED<-$CALLER"
             }
 

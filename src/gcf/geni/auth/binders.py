@@ -47,7 +47,7 @@ class Base_Binder:
 
 
 # Define standard bindings of 
-# $SLICE_URN, $PROJECT_URN, $CALLER, $CALLER_AUTHORITY, 
+# $SLICE_URN, $PROJECT_URN, $CALLER, $CALLER_AUTHORITY, $METHOD
 # $HOUR, $MONTH, $YEAR, $DAY_OF_WEEK
 class Standard_Binder(Base_Binder):
 
@@ -56,6 +56,8 @@ class Standard_Binder(Base_Binder):
 
     def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         bindings = {}
+
+        bindings['$METHOD'] = method
 
         caller_urn = gid.GID(string=caller).get_urn()
         bindings['$CALLER'] = caller_urn

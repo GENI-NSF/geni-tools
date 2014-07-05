@@ -656,7 +656,8 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, delegate, authorizer=None):
+    def __init__(self, trust_roots_dir, delegate, authorizer=None):
+        self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am2')
         self.authorizer = authorizer
@@ -790,7 +791,8 @@ class AggregateManagerServer(object):
         # FIXME: set logRequests=true if --debug
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
-        aggregate_manager = AggregateManager(delegate, authorizer)
+        aggregate_manager = AggregateManager(trust_roots_dir, delegate, \
+                                                 authorizer)
         self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.

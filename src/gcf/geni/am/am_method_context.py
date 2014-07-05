@@ -21,9 +21,13 @@
 # IN THE WORK.                                                                 
 #----------------------------------------------------------------------       
 
+import os
 import gcf.sfa.trust.gid as gid
 from gcf.sfa.trust.credential import Credential
+from gcf.sfa.trust.certificate import Certificate
 from gcf.sfa.trust.abac_credential import ABACCredential
+from gcf.geni.util.speaksfor_util import determine_speaks_for
+
 
 # A class to support wrapping AM API calls from AggregateManager
 # to the delegate to check for authorization and perform speaks-for
@@ -60,6 +64,21 @@ class AMMethodContext:
             credentials = self._credentials
             args = self._args
 
+            # Change client cert if valid speaks-for invocation
+            caller_gid = gid.GID(string=self._caller_cert)
+            new_caller_gid = determine_speaks_for(self._logger,
+                                                   credentials,
+                                                   caller_gid,
+                                                   self._options,
+                                                   None)
+
+            if new_caller_gid != caller_gid:
+                new_caller_urn = new_caller_gid.get_urn()
+                self._logger.info("Speaks-for invoation: %s for %s" % 
+                                  (self._caller_urn, new_caller_urn))
+                self._caller_cert = new_caller_gid.save_to_string()
+                self._caller_urn = new_caller_urn
+
             if self._is_v3:
                 if 'urns' in args: 
                     urns = args['urns']
@@ -67,7 +86,7 @@ class AMMethodContext:
                         self._aggregate_manager._delegate.decode_urns(urns)
                     if 'slice_urn' not in args:
                         args['slice_urn'] = the_slice.urn
-                credentials = self.normalize_credentials(self._credentials)
+                credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer:
                 self._authorizer.authorize(self._method_name, 
@@ -80,8 +99,11 @@ class AMMethodContext:
         finally:
             return self
 
+    # Determine if this is a speaks-for invocation and if so,
+    # return the cert of the spoken-for entity
+
     # Take a V3 list of credentials and adjust for V2 Verification
-    def normalize_credentials(self, credentials):
+    def _normalize_credentials(self, credentials):
         delegate = self._aggregate_manager._delegate
         credentials = [delegate.normalize_credential(c) \
                            for c in credentials]
