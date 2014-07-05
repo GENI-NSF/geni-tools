@@ -124,13 +124,17 @@ def main(argv=None):
         sys.exit("Aggregate keyfile %s is empty" % keyfile)
 
     # Instantiate authorizer from 'authorizer' config argument
+    # By default, use the SFA authorizer
     authorizer = None
     if hasattr(opts, 'authorizer'):
         authorizer_classname = opts.authorizer
-        authorizer_class_module = '.'.join(authorizer_classname.split('.')[:-1])
-        __import__(authorizer_class_module)
-        authorizer_class = eval(authorizer_classname)
-        authorizer = authorizer_class(opts.rootcadir)
+    else:
+        authorizer_classname = "gcf.geni.auth.sfa_authorizer.SFA_Authorizer"
+
+    authorizer_class_module = '.'.join(authorizer_classname.split('.')[:-1])
+    __import__(authorizer_class_module)
+    authorizer_class = eval(authorizer_classname)
+    authorizer = authorizer_class(opts.rootcadir, opts)
 
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))

@@ -68,8 +68,8 @@ class SFA_Authorizer(Base_Authorizer):
 
     }
         
-    def __init__(self, root_cert):
-        Base_Authorizer.__init__(self, root_cert)
+    def __init__(self, root_cert, opts):
+        Base_Authorizer.__init__(self, root_cert, opts)
         self._cred_verifier = CredentialVerifier(root_cert)
 
     # Try to authorize the call. 
@@ -84,7 +84,8 @@ class SFA_Authorizer(Base_Authorizer):
     #   opts : Dictionary of user provided options
     #   agg_mgr: AggregateManager object in which this authorization runs
     def authorize(self, method, caller, creds, args, opts, agg_mgr):
-        Base_Authorizer.authorize(self, method, caller, creds, args, opts)
+        Base_Authorizer.authorize(self, method, caller, creds, args, \
+                                      opts, agg_mgr)
 
         if method not in self.METHOD_ATTRIBUTES:
             raise Exception("Unrecognized method: %s" % method)

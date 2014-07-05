@@ -40,7 +40,7 @@ class Base_Binder:
         self._root_cert = root_cert
 
     def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
-        pass
+        return {}
 
     def handle_result(self, method, caller, args, options, result, agg_mgr):
         pass
@@ -232,12 +232,12 @@ class Stitching_Binder(Base_Binder):
     def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
         if method in [AM_Methods.CREATE_SLIVER_V2, AM_Methods.ALLOCATE_V3]:
             am_urn = agg_mgr._delegate._my_urn
-            if 'rspec' not in args: return
+            if 'rspec' not in args: return {}
             rspec_raw = args['rspec']
             rspec_doc = xml.dom.minidom.parseString(rspec_raw)
             rspec_elt = rspec_doc.getElementsByTagName('rspec')[0]
             stitching_elts = rspec_elt.getElementsByTagName('stitching')
-            if len(stitching_elts) == 0: return str({})
+            if len(stitching_elts) == 0: return {}
             stitching_elt = stitching_elts[0]
             link_elts = [elt for elt in rspec_elt.childNodes \
                              if elt.nodeType == elt.ELEMENT_NODE \
@@ -263,6 +263,8 @@ class Stitching_Binder(Base_Binder):
                     requested_stitch_points + path_link_ids
 
             return {"$REQUESTED_STITCH_POINTS" : str(requested_stitch_points) }
+        else:
+            return {}
 
 # Return caller_urn, slice_urn, project_urn, authority_urn
 def _retrieve_context_urns(caller, args):
