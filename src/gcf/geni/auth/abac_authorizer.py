@@ -27,6 +27,11 @@
 import gcf
 import json
 from .base_authorizer import *
+from gcf.sfa.trust.credential_factory import CredentialFactory
+from gcf.sfa.trust.credential import Credential
+from gcf.sfa.trust.certificate import Certificate
+from gcf.sfa.trust.abac_credential import ABACCredential
+from gcf.geni.util.speaksfor_util import get_cert_keyid
 
 class ABAC_Authorizer(Base_Authorizer):
 
@@ -62,6 +67,17 @@ class ABAC_Authorizer(Base_Authorizer):
         for q in self.RULES['queries']:
             self._query_message_map[q['statement']] = q['message']
 
+        self._query_condition_map = {}
+        for q in self.RULES['queries']:
+            if 'condition' in q:
+                self._query_condition_map[q['statement']] = q['condition']
+
+        self._keyid_name_map = {}
+        for id_name, id_pem in self.RULES['identities'].items():
+            id_keyid = self._compute_keyid(cert_filename=id_pem)
+            if id_keyid:
+                self._keyid_name_map[id_keyid] = id_name
+
     # Bind all bindings in current context
     # For all assertions, evaluate precondition and if True, 
     #   Generate corresponding ABAC assertions 
@@ -71,6 +87,9 @@ class ABAC_Authorizer(Base_Authorizer):
                                   opts, agg_mgr)
         self._logger.info("In ABAC AUTHORIZER...")
 
+        caller_keyid = self._compute_keyid(cert_string=caller)
+        self._keyid_name_map[caller_keyid] = "$CALLER"
+
         bindings = self._generate_bindings(method, caller, creds, args, 
                                            opts, agg_mgr)
 
@@ -78,9 +97,19 @@ class ABAC_Authorizer(Base_Authorizer):
 
         assertions = self._generate_assertions(bindings)
 
+        credential_assertions = \
+            self._generate_credential_assertions(caller, creds, bindings)
+
+        fixed_policies = self.RULES['policies']
+
+        assertions = assertions + credential_assertions + fixed_policies
+
         self._logger.info("ASSERTIONS = %s" % assertions)
 
         success, msg = self._evaluate_queries(bindings, assertions)
+        
+        del self._keyid_name_map[caller_keyid]
+
         if not success:
             raise Exception(msg)
 
@@ -106,7 +135,31 @@ class ABAC_Authorizer(Base_Authorizer):
             if self._has_unbound_variables(bound_assertion): continue
             assertions.append(bound_assertion)
         return assertions
-            
+
+    def _generate_credential_assertions(self, caller, creds, bindings):
+        assertions = []
+        abac_cred_objects = [CredentialFactory.createCred(credString=cred) \
+                                 for cred in creds \
+                                 if CredentialFactory.getType(cred) == \
+                                 ABACCredential.ABAC_CREDENTIAL_TYPE]
+        for abac_cred in abac_cred_objects:
+            head_principal = abac_cred.head.get_principal_keyid()
+            head_principal_name = self._lookup_name_from_keyid(head_principal)
+            head_role = abac_cred.head.get_role()
+            tail = abac_cred.tails[0] # Only take the first one
+            tail_principal = tail.get_principal_keyid()
+            tail_principal_name = self._lookup_name_from_keyid(tail_principal)
+            tail_role = tail.get_role()
+            if tail_role:
+                assertion = "%s.%s<-%s.%s" % (head_principal_name, head_role, 
+                                              tail_principal_name, tail_role)
+            else:
+                assertion = "%s.%s<-%s" % (head_principal_name, head_role, 
+                                              tail_principal_name)
+            bound_assertion = self._bind_expression(assertion, bindings)
+            assertions.append(bound_assertion)
+
+        return assertions
 
     # Determine if all positive queries are proven and no negative
     # query is proven
@@ -116,24 +169,49 @@ class ABAC_Authorizer(Base_Authorizer):
 
         all_positive_proved = True
         for q in self._positive_queries:
-            bound_q = self._bind_expression(q, bindings)
-            if self._has_unbound_variables(bound_q): 
-                raise Exception("Illegal query: unbound variable %s" % bound_q)
-            if not self._prove_query(bound_q, assertions):
+            evaluated, proven, msg = \
+                self._evaluate_query(bindings, assertions, q)
+            if not evaluated: continue
+            if not proven:
                 all_positive_proved = False
-                messages.append(self._query_message_map[q])
+                messages.append(msg)
 
         all_negative_disproved = True
         for q in self._negative_queries:
-            bound_q = self._bind_expression(q, bindings)
-            if self._has_unbound_variables(bound_q): 
-                raise Exception("Illegal query: unbound variable %s" % bound_q)
-            if self._prove_query(bound_q, assertions):
+            evaluated, proven, msg = \
+                self._evaluate_query(bindings, assertions, q)
+            if not evaluated: continue
+            if proven:
                 all_negative_disproved = False
-                messages.append(self._query_message_map[q])
+                messages.append(msg)
 
         result = (all_positive_proved and all_negative_disproved)
         return result, ", ".join(messages)
+
+    # Evaluate a single query
+    # If there is a condition, it must be true to considered
+    # Return evaluated, evaluation, failure_message
+    def _evaluate_query(self, bindings, assertions, query):
+        # If there is a condition on this query, only evaluate if 
+        # condition is satisfied
+        if query in self._query_condition_map:
+            condition = self._query_condition_map[query]
+            bound_condition = self._bind_expression(condition, bindings)
+            if self._has_unbound_variables(bound_condition):
+                raise Exception("Illegal query condition: unbound variable %s"\
+                                    % bound_condition)
+            if not eval(bound_condition): 
+                return False, False, ""
+
+        # If no condition or condition  succeeded, evaluate bound query
+        bound_q = self._bind_expression(query, bindings)
+        if self._has_unbound_variables(bound_q): 
+            raise Exception("Illegal query: unbound variable %s" % bound_q)
+
+        evaluation = self._prove_query(bound_q, assertions)
+        msg = self._query_message_map[query]
+        return True, evaluation, msg
+        
 
     # Replace bindings ($VAR) with bound value
     def _bind_expression(self, expr, bindings):
@@ -149,10 +227,32 @@ class ABAC_Authorizer(Base_Authorizer):
 
     def _prove_query(self, query, assertions):
 
-        # *** WRITE A REAL PROVER ***
-        result = (query in assertions)
+        query_parts = query.split('<-')
+        query_lhs = query_parts[0].strip()
+        query_rhs = query_parts[1].strip()
+
+        parsed_assertions = {}
+        for assertion in assertions:
+            assertion_parts = assertion.split('<-')
+            assert_lhs = assertion_parts[0].strip()
+            assert_rhs = assertion_parts[1].strip()
+            if assert_lhs not in parsed_assertions:
+                parsed_assertions[assert_lhs] = []
+            parsed_assertions[assert_lhs].append(assert_rhs)
+
+        result = \
+            self._prove_query_internal(query_lhs, query_rhs, parsed_assertions)
+
         self._logger.info("QUERY (%s) : %s" % (result, query))
         return result
+
+    def _prove_query_internal(self, lhs, target, parsed_assertions):
+        if lhs not in parsed_assertions: return False
+        if target in parsed_assertions[lhs]: return True
+        for new_lhs in parsed_assertions[lhs]:
+            if self._prove_query_internal(new_lhs, target, parsed_assertions):
+                return True
+        return False
 
     def _initialize_binder(self, binder_classname):
         binder_class_module = ".".join(binder_classname.split('.')[:-1])
@@ -160,6 +260,21 @@ class ABAC_Authorizer(Base_Authorizer):
         binder_class = eval(binder_classname)
         binder = binder_class(self._root_cert)
         return binder
+
+    def _compute_keyid(self, cert_string=None, cert_filename=None):
+        if cert_string:
+            cert_gid = gid.GID(string=cert_string)
+        else:
+            cert_gid = gid.GID(filename=cert_filename)
+        extension_names = [ext[0] for ext in cert_gid.get_extensions()]
+        if 'subjectKeyIdentifier' not in extension_names:
+            return None
+        return get_cert_keyid(cert_gid)
+
+    def _lookup_name_from_keyid(self, keyid):
+        if keyid not in self._keyid_name_map:
+            raise Exception("Unknown keyid : %s" % keyid)
+        return self._keyid_name_map[keyid]
 
     # Hand the result of a success call to each binder to update
     # its internal state

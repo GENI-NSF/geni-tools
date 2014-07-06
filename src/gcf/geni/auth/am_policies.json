@@ -1,4 +1,11 @@
 {
+    "identities" : {
+    "CH1_SA" : "/tmp/cascade-sa-cert.pem",
+    "CH1_MA" : "/tmp/cascade-ma-cert.pem",
+    "CH_MB_SA" : "/usr/share/geni-ch/sa/sa-cert.pem",
+    "CH_MB_MA" : "/usr/share/geni-ch/ma/ma-cert.pem",
+    "AM" : "/home/mbrinn/.gcf/am-cert.pem"
+    },
     "binders" : [
         "gcf.geni.auth.binders.Standard_Binder",
         "gcf.geni.auth.binders.SFA_Binder",
@@ -12,7 +19,7 @@
             "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
             },
         {
-            "condition" : "$HOUR < 6 or $HOUR > 18",
+            "condition" : "$HOUR < 6 or $HOUR > 22",
             "assertion" : "AM.VIOLATES_SCHEDULE<-$CALLER"
             },
         {
@@ -41,6 +48,9 @@
             }
 
         ],
+    "policies" : [
+        "AM.MAY_SHUTDOWN<-CH_MB_SA.MAY_SHUTDOWN"
+    ],
     "queries" : [
         {
             "statement" : "AM.IS_AUTHORIZED<-$CALLER", 
@@ -66,6 +76,12 @@
             "statement" : "AM.IS_BLACKLISTED<-$CALLER",
             "is_positive" : false,
             "message" : "Blacklisted"
+            },
+        {
+            "statement" : "AM.MAY_SHUTDOWN<-$CALLER",
+            "is_positive" : true,
+            "message" : "Privilege Failure",
+	    "condition" : "'$METHOD' in ['Shutdown_V2', 'Shutdown_V3']"
             }
         ]
     }
