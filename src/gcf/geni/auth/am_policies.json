@@ -9,8 +9,6 @@
     "binders" : [
         "gcf.geni.auth.binders.Standard_Binder",
         "gcf.geni.auth.binders.SFA_Binder",
-        "gcf.geni.auth.binders.Resource_Request_Binder",
-        "gcf.geni.auth.binders.Resource_Allocation_Binder",
         "gcf.geni.auth.binders.Stitching_Binder"
         ],
     "conditional_assertions" : [
@@ -23,19 +21,19 @@
             "assertion" : "AM.VIOLATES_SCHEDULE<-$CALLER"
             },
         {
-            "condition" : "$AUTHORITY_NODES + $REQUESTED_NODES > 5",
+            "condition" : "$AUTHORITY_NODE + $REQUESTED_NODE > 5",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$PROJECT_NODES + $REQUESTED_NODES > 4",
+            "condition" : "$PROJECT_NODE + $REQUESTED_NODE > 4",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$SLICE_NODES + $REQUESTED_NODES > 3",
+            "condition" : "$SLICE_NODE + $REQUESTED_NODE > 3",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$USER_NODES + $REQUESTED_NODES > 2",
+            "condition" : "$USER_NODE + $REQUESTED_NODE > 2",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {

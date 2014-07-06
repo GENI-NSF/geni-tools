@@ -32,6 +32,7 @@ from gcf.sfa.trust.credential import Credential
 from gcf.sfa.trust.certificate import Certificate
 from gcf.sfa.trust.abac_credential import ABACCredential
 from gcf.geni.util.speaksfor_util import get_cert_keyid
+from .binders import *
 
 class ABAC_Authorizer(Base_Authorizer):
 
@@ -48,6 +49,15 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception("authorizer_policy_file not specified")
 
         policy_file = opts.authorizer_policy_file
+
+        self._resource_manager = None
+        if hasattr(opts, 'authorizer_resource_manager'):
+            resource_manager_classname = opts.authorizer_resource_manager
+            resource_manager_class_module = \
+                ".".join(resource_manager_classname.split('.')[:-1])
+            __import__(resource_manager_class_module)
+            resource_manager_class = eval(resource_manager_classname)
+            self._resource_manager = resource_manager_class()
 
         RULES_RAW = open(policy_file).read()
         self.RULES = json.loads(RULES_RAW)
@@ -93,6 +103,18 @@ class ABAC_Authorizer(Base_Authorizer):
         bindings = self._generate_bindings(method, caller, creds, args, 
                                            opts, agg_mgr)
 
+        resource_assertions = []
+        if self._resource_manager:
+            current_allocations = \
+                self._resource_manager.get_current_allocations(agg_mgr)
+            requested_allocations = \
+                self._resource_manager.get_requested_allocations(agg_mgr, args)
+            resource_bindings = \
+                self._generate_resource_bindings(caller, args,
+                                                   current_allocations, 
+                                                   requested_allocations)
+            bindings = dict(bindings.items() + resource_bindings.items())
+
         self._logger.info("BINDINGS = %s" % bindings)
 
         assertions = self._generate_assertions(bindings)
@@ -102,7 +124,8 @@ class ABAC_Authorizer(Base_Authorizer):
 
         fixed_policies = self.RULES['policies']
 
-        assertions = assertions + credential_assertions + fixed_policies
+        assertions = \
+            assertions + credential_assertions + fixed_policies
 
         self._logger.info("ASSERTIONS = %s" % assertions)
 
@@ -160,6 +183,57 @@ class ABAC_Authorizer(Base_Authorizer):
             assertions.append(bound_assertion)
 
         return assertions
+
+    # Generate bindings based on current and requested resource allocations
+    def _generate_resource_bindings(self, caller, args, 
+                                    current_allocations, 
+                                    requested_allocations):
+
+        bindings = {}
+
+        if 'slice_urn' not in args: return bindings
+
+        caller_urn = gid.GID(string=caller).get_urn()
+        slice_urn = args['slice_urn']
+        authority_urn = convert_user_urn_to_authority_urn(caller_urn)
+        project_urn = convert_slice_urn_to_project_urn(slice_urn)
+
+        # Create an assertion for current allocations
+        # each type of resource tracked
+        # for AUTHORITY, PROJECT, SLICE, USER
+        for res_type, allocs_per_res_type in current_allocations.items():
+
+            authority_allocs = 0
+            project_allocs = 0
+            slice_allocs = 0
+            user_allocs = 0
+
+            for user, allocs in allocs_per_res_type['by_user'].items():
+                user_authority  = convert_user_urn_to_authority_urn(user)
+                if user == caller_urn: 
+                    user_allocs = user_allocs + allocs
+                if user_authority == authority_urn: 
+                    authority_allocs = authority_allocs + allocs
+
+            for slice, allocs in allocs_per_res_type['by_slice'].items():
+                project = convert_slice_urn_to_project_urn(slice)
+                if slice == slice_urn:
+                    slice_allocs = slice_allocs + allocs
+                if project == project_urn:
+                    project_allocs = project_allocs + allocs
+
+            bindings["$AUTHORITY_%s" % res_type] = str(authority_allocs)
+            bindings["$PROJECT_%s" % res_type] = str(project_allocs)
+            bindings["$SLICE_%s" % res_type] = str(slice_allocs)
+            bindings["$USER_%s" % res_type] = str(user_allocs)
+
+        # Create an assertion for requested  allocations
+        # for each type of resource tracked
+        for res_type, allocs_per_res_type in requested_allocations.items():
+            bindings["$REQUESTED_%s" % res_type] = str(allocs_per_res_type)
+
+        return bindings
+
 
     # Determine if all positive queries are proven and no negative
     # query is proven
