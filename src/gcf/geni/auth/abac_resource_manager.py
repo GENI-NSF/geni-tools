@@ -56,16 +56,23 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
         Base_Resource_Manager.__init__(self)
 
     def get_current_allocations(self, aggregate_manager):
-        resource_info = {}
 
         by_slice_info = {}
+        by_user_info = {}
         slices = aggregate_manager._delegate._slices
         for slice_urn, slice_obj in slices.items():
             by_slice_info[slice_urn] = len(slice_obj.resources)
 
-        # *** NO WAY TO GET THIS FROM GCF-AM
-        by_user_info = {}
+        containers = aggregate_manager._delegate._agg.containers
+        for urn, slivers in containers.items():
+            if urn.find("+slice+") >= 0:
+                # It is a slice_urn
+                by_slice_info[urn] = len(slivers)
+            else:
+                # It is a user URN
+                by_user_info[urn] = len(slivers)
 
+        resource_info = {}
         resource_info['NODE'] = {'by_slice' : by_slice_info, 
                                  'by_user' : by_user_info}
 

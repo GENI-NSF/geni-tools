@@ -103,6 +103,10 @@ class ABAC_Authorizer(Base_Authorizer):
         bindings = self._generate_bindings(method, caller, creds, args, 
                                            opts, agg_mgr)
 
+        # Add 'constants' to bindings
+        if 'constants' in self.RULES:
+            bindings = dict(bindings.items() + self.RULES['constants'].items())
+
         resource_assertions = []
         if self._resource_manager:
             current_allocations = \

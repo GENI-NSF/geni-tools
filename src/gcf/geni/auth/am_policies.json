@@ -11,17 +11,28 @@
         "gcf.geni.auth.binders.SFA_Binder",
         "gcf.geni.auth.binders.Stitching_Binder"
         ],
+    "constants" : {
+       "$BLUE_AUTHS" : "['urn:publicid:IDN+ch1.gpolab.bbn.com+authority+ca']",
+       "$RED_AUTHS" :  "['urn:publicid:IDN+ch-mb.gpolab.bbn.com+authority+ca']"
+    },
     "conditional_assertions" : [
         {
             "condition" : "$SFA_AUTHORIZED", 
             "assertion" : "AM.IS_AUTHORIZED<-$CALLER"
             },
         {
-            "condition" : "$HOUR < 6 or $HOUR > 22",
+            "condition" : 
+	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and ($HOUR < 6 or $HOUR > 22)",
             "assertion" : "AM.VIOLATES_SCHEDULE<-$CALLER"
             },
         {
-            "condition" : "$AUTHORITY_NODE + $REQUESTED_NODE > 5",
+            "condition" : 
+	    "'$CALLER_AUTHORITY' in $RED_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 5)",
+            "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
+            },
+        {
+            "condition" : 
+	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 2)",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {

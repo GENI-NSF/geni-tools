@@ -79,6 +79,8 @@ class AMMethodContext:
                 self._caller_cert = new_caller_gid.save_to_string()
                 self._caller_urn = new_caller_urn
 
+            self._options['geni_true_caller_cert'] = self._caller_cert
+
             if self._is_v3:
                 if 'urns' in args: 
                     urns = args['urns']
