@@ -377,6 +377,7 @@ class ReferenceAggregateManager(object):
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
+        import pdb; pdb.set_trace()
         if slice_urn in self._slices:
             sliver = self._slices[slice_urn]
             resources = self._agg.catalog(slice_urn)
@@ -393,6 +394,7 @@ class ReferenceAggregateManager(object):
             return self.successResult(True)
         else:
             return self._no_such_slice(slice_urn)
+
 
 
     def SliverStatus(self, slice_urn, credentials, options):
