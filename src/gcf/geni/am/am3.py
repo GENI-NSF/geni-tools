@@ -437,6 +437,9 @@ class ReferenceAggregateManager(object):
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if slice_urn in self._slices:
@@ -487,6 +490,8 @@ class ReferenceAggregateManager(object):
                                       and options['geni_end_time']))
 
         newslice = Slice(slice_urn)
+        self._agg.allocate(slice_urn, resources)
+        self._agg.allocate(user_urn, resources)
         for resource in resources:
             sliver = newslice.add_resource(resource)
             sliver.setExpiration(expiration)
@@ -596,6 +601,9 @@ class ReferenceAggregateManager(object):
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
+        # Grab the user_urn
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
+
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
         if the_slice.isShutdown():
@@ -604,6 +612,9 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.UNAVAILABLE,
                                     ("Unavailable: Slice %s is unavailable."
                                      % (the_slice.urn)))
+
+        self._agg.deallocate(slice_urn, slivers)
+        self._agg.deallocate(user_urn, slivers)
         for sliver in slivers:
             slyce = sliver.slice()
             slyce.delete_sliver(sliver)

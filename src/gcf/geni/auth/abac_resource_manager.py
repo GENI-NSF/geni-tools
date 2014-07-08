@@ -25,6 +25,7 @@
 # so that the authorizer can enforce resource quota policies
 
 import xml.dom.minidom
+import types
 
 class Base_Resource_Manager:
     
@@ -61,7 +62,12 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
         by_user_info = {}
         slices = aggregate_manager._delegate._slices
         for slice_urn, slice_obj in slices.items():
-            by_slice_info[slice_urn] = len(slice_obj.resources)
+            if hasattr(slice_obj, 'resources') and \
+                    type(slice_obj.resources) == types.MethodType:
+                resources = slice_obj.resources()
+            else:
+                resources = slice_obj.resources
+            by_slice_info[slice_urn] = len(resources)
 
         containers = aggregate_manager._delegate._agg.containers
         for urn, slivers in containers.items():
