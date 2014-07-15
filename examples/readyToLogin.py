@@ -231,83 +231,7 @@ def getInfoFromSliceManifest( amUrl ) :
     maniInfo = getInfoFromManifest(manifest)
     return maniInfo 
 
-def getInfoFromSliverStatusPG( sliverStat ):
 
-    loginInfo = []
-    pgKeyList = {}
-    if not sliverStat:
-      print "ERROR: empty sliver status!"
-      return loginInfo
-
-    if not sliverStat.has_key("users"):
-      print "ERROR: No 'users' key in sliver status!"
-      return loginInfo
-
-    if not sliverStat.has_key('geni_resources'):
-      print "ERROR: Sliver Status lists no resources"
-      return loginInfo
-
-    for userDict in sliverStat['users'] :
-      if not userDict.has_key('login'):
-        print "User entry had no 'login' key"
-        continue
-      pgKeyList[userDict['login']] = [] 
-      if not userDict.has_key("keys"):
-        print "User entry for %s had no keys" % userDict['login']
-        continue
-      for k in userDict['keys']:
-          #XXX nriga Keep track of keys, in the future we can verify what key goes with
-          # which private key
-          pgKeyList[userDict['login']].append(k['key'])
-
-    for resourceDict in sliverStat['geni_resources']: 
-      if not resourceDict.has_key("pg_manifest"):
-        print "No pg_manifest in this entry"
-        continue
-      if not resourceDict['pg_manifest'].has_key('children'):
-        print "pg_manifest entry has no children"
-        continue
-      for children1 in resourceDict['pg_manifest']['children']:
-        if not children1.has_key('children'):
-          #print "No child in resource[pg_man][children]"
-          continue
-        for children2 in children1['children']:
-          if not children2.has_key("attributes"):
-            #print "No attributes on child under pg_man/children"
-            continue
-          child = children2['attributes']
-          port = ""
-          hostname = ""
-          if child.has_key("hostname"):
-            hostname = child["hostname"]
-          else:
-            #print "No hostname"
-            continue
-          if child.has_key("port"):
-            port = child["port"]
-          client_id = ""
-          if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
-            client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
-          #else:
-          #    print "Got no client_id from pg_man/attribs"
-          geni_status = ""
-          if resourceDict.has_key("geni_status"):
-            geni_status = resourceDict["geni_status"]
-          am_status = ""
-          if resourceDict.has_key("pg_status"):
-            am_status = resourceDict["pg_status"]
-          for user, keys in pgKeyList.items():
-            loginInfo.append({'authentication':'ssh-keys', 
-                              'hostname':hostname,
-                              'client_id': client_id,
-                              'port':port,
-                              'username':user,
-                              'keys' : keys,
-                              'geni_status':geni_status,
-                              'am_status':am_status
-                             })
-    return loginInfo
-     
 
 def getInfoFromSliverStatusPL( sliverStat ):
 
@@ -327,23 +251,6 @@ def getInfoFromSliverStatusPL( sliverStat ):
                           'geni_status':resourceDict['geni_status'],
                           'am_status':resourceDict['pl_boot_state']
                        })
-    return loginInfo
-
-def getInfoFromSliverStatusOrca( sliverStat ):
-    # NOTE: not currently used
-    loginInfo = []
-    if not sliverStat or not sliverStat.has_key('geni_resources'):
-      print "ERROR: Empty Sliver Status, or no geni_resources listed"
-      return loginInfo
-
-    for resourceDict in sliverStat['geni_resources']:
-      if not resourceDict.has_key("geni_urn") or not resourceDict.has_key("geni_status"):
-          continue
-      urn = resourceDict['geni_urn']
-      client_id = urn.split(':')[-1]
-      loginInfo.append({'client_id':client_id, 'geni_status':resourceDict['geni_status']})
-      print "Orca SliverStatus for URN %s got client_id %s, status %s" % (urn, client_id, resourceDict['geni_status'])
-
     return loginInfo
 
 def getSliverStatus( amUrl, amType ) :
@@ -384,11 +291,6 @@ def getInfoFromSliverStatus( amUrl, amType ) :
     sliverStatus = getSliverStatus( amUrl, amType )
     if amType == 'sfa' : 
       loginInfo = getInfoFromSliverStatusPL(sliverStatus)
-    if amType == 'protogeni' : 
-      loginInfo = getInfoFromSliverStatusPG(sliverStatus)
-#    if amType == 'orca' : 
-#      loginInfo = getInfoFromSliverStatusOrca(sliverStatus)
-      
     return loginInfo
 
 def getAMTypeFromGetVersionOut(amUrl, amOutput) :
@@ -495,12 +397,9 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
 
 def addNodeStatusPG( amLoginInfo, amSliverStat ):
     for resourceDict in amSliverStat['geni_resources']:
-      if not resourceDict.has_key("pg_manifest"):
-        print "No pg_manifest in this entry"
-        continue
-      client_id = ""
-      if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
-         client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
       geni_status = ""
       if resourceDict.has_key("geni_status"):
          geni_status = resourceDict["geni_status"]
@@ -508,7 +407,7 @@ def addNodeStatusPG( amLoginInfo, amSliverStat ):
       if resourceDict.has_key("pg_status"):
          am_status = resourceDict["pg_status"]
       for userLoginInfo in amLoginInfo:
-         if userLoginInfo['client_id'] != client_id:
+         if userLoginInfo['sliver_urn'] != sliver_urn:
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
@@ -560,10 +459,14 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
           #XXX nriga Keep track of keys, in the future we can verify what key goes with
           # which private key
           pgKeyList[userDict['login']].append(k['key'])  
-    for resourceDict in sliverStat['geni_resources']: 
+    for resourceDict in sliverStat['geni_resources']:
       if not resourceDict.has_key("pg_manifest"):
         print "No pg_manifest in this entry"
         continue
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
+
       if not resourceDict['pg_manifest'].has_key('children'):
         print "pg_manifest entry has no children"
         continue
@@ -610,16 +513,17 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
                 # skip users for whom we already have login info
                 continue
             # add info for users not listed in the manifest
-            userLoginInfo.append({'authentication':'ssh-keys', 
+            userLoginInfo.append({'authentication':'ssh-keys',
                               'hostname':hostname,
                               'client_id': client_id,
+                              'sliver_urn': sliver_urn,
                               'port':port,
                               'username':user,
                               'keys' : keys,
                               'geni_status':geni_status,
                               'am_status':am_status
                              })
-    return userLoginInfo  
+    return userLoginInfo
   
 
 def getKeysForUser( amType, username, keyList ):

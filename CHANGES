@@ -4,12 +4,15 @@ gcf 2.7:
  * Omni
   * Fix nickname cache updating when temp and home directories are on 
     different disks - use `shutil.move`. (#646)
+  * Look for fallback agg_nick_cache in correct location (#662)
 
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)
+   * Remove defunct code (#666)
+   * Remove reliance on 'pg_manifest' field of SliverStatus return.  Leave fallback code for now. (#665)
 
 gcf 2.6:
  * Omni

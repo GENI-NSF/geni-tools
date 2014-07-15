@@ -158,7 +158,7 @@ def load_agg_nick_config(opts, logger):
 
     # the directory of this file
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = curr_dir.rsplit(os.sep,1)[0]
+    parent_dir = curr_dir.rsplit(os.sep,2)[0]
 
     # Load up the config file
     configfiles = [os.path.join(parent_dir, 'agg_nick_cache.base')]
