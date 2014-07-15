@@ -666,11 +666,13 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, trust_roots_dir, delegate, authorizer=None):
+    def __init__(self, trust_roots_dir, delegate, authorizer=None,
+                 resource_manager=None):
         self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am2')
         self.authorizer = authorizer
+        self.resource_manager = resource_manager
         if authorizer:
             authorizer._logger = self.logger
 
@@ -707,7 +709,9 @@ class AggregateManager(object):
             method = AM_Methods.LIST_RESOURCES_FOR_SLICE_V2
             args['slice_urn'] = options['geni_slice_urn']
         with AMMethodContext(self, method,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options) as amc:
             if not amc._error:
                 amc._result = \
@@ -723,7 +727,9 @@ class AggregateManager(object):
         """
         args = {'slice_urn' : slice_urn, 'rspec' : rspec,  'users' : users}
         with AMMethodContext(self, AM_Methods.CREATE_SLIVER_V2, 
-                              self.logger, self.authorizer, credentials, 
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials, 
                              args, options) as amc:
             if not amc._error:
                 amc._result = self._delegate.CreateSliver(slice_urn, 
@@ -735,7 +741,9 @@ class AggregateManager(object):
         """Delete the given sliver. Return true on success."""
         args = {'slice_urn' : slice_urn}
         with AMMethodContext(self, AM_Methods.DELETE_SLIVER_V2,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options) as amc:
             if not amc._error:
                 amc._result = \
@@ -747,7 +755,9 @@ class AggregateManager(object):
         in the sliver. The AM may not know.'''
         args = {'slice_urn' : slice_urn}
         with AMMethodContext(self, AM_Methods.SLIVER_STATUS_V2,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options) as amc:
             if not amc._error:
                 amc._result = \
@@ -760,6 +770,7 @@ class AggregateManager(object):
         args = {'slice_urn' : slice_urn, 'expiration_time' : expiration_time}
         with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
                              self.logger, self.authorizer, credentials,
+                             self.resource_manager,
                              args, options) as amc:
             if not amc._error:
                 amc._result = \
@@ -773,6 +784,7 @@ class AggregateManager(object):
         args = {'slice_urn' : slice_urn}
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V2,
                              self.logger, self.authorizer, credentials,
+                             self.resource_manager,
                              args, options) as amc:
             if not amc._error:
                 amc._result = \
@@ -787,7 +799,7 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None):
+                 authorizer=None, resource_manager=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -802,7 +814,7 @@ class AggregateManagerServer(object):
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, \
-                                                 authorizer)
+                                                 authorizer, resource_manager)
         self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.

@@ -39,11 +39,8 @@ class Base_Binder:
     def __init__(self, root_cert):
         self._root_cert = root_cert
 
-    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+    def generate_bindings(self, method, caller, creds, args, opts):
         return {}
-
-    def handle_result(self, method, caller, args, options, result, agg_mgr):
-        pass
 
 
 # Define standard bindings of 
@@ -54,7 +51,7 @@ class Standard_Binder(Base_Binder):
     def __init__(self, root_cert):
         Base_Binder.__init__(self, root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+    def generate_bindings(self, method, caller, creds, args, opts):
         bindings = {}
 
         bindings['$METHOD'] = method
@@ -89,7 +86,7 @@ class SFA_Binder(Base_Binder):
         Base_Binder.__init__(self, root_cert)
         self._cred_verifier = CredentialVerifier(root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+    def generate_bindings(self, method, caller, creds, args, opts):
 
         bindings = {}
 
@@ -116,9 +113,9 @@ class Stitching_Binder(Base_Binder):
     def __init__(self, root_cert):
         Base_Binder.__init__(self, root_cert)
 
-    def generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+    def generate_bindings(self, method, caller, creds, args, opts):
         if method in [AM_Methods.CREATE_SLIVER_V2, AM_Methods.ALLOCATE_V3]:
-            am_urn = agg_mgr._delegate._my_urn
+            am_urn = opts['geni_am_urn']
             if 'rspec' not in args: return {}
             rspec_raw = args['rspec']
             rspec_doc = xml.dom.minidom.parseString(rspec_raw)

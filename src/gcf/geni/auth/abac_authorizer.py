@@ -92,32 +92,27 @@ class ABAC_Authorizer(Base_Authorizer):
     # For all assertions, evaluate precondition and if True, 
     #   Generate corresponding ABAC assertions 
     # Try to prove all the positive queries and none of the negative queries
-    def authorize(self, method, caller, creds, args, opts, agg_mgr):
-        Base_Authorizer.authorize(self, method, caller, creds, args, 
-                                  opts, agg_mgr)
+    def authorize(self, method, caller, creds, args, opts,
+                  current_allocations, requested_allocations):
+        Base_Authorizer.authorize(self, method, caller, creds, args, opts,
+                                  current_allocations, requested_allocations)
         self._logger.info("In ABAC AUTHORIZER...")
 
         caller_keyid = self._compute_keyid(cert_string=caller)
         self._keyid_name_map[caller_keyid] = "$CALLER"
 
-        bindings = self._generate_bindings(method, caller, creds, args, 
-                                           opts, agg_mgr)
+        bindings = self._generate_bindings(method, caller, creds, args, opts)
 
         # Add 'constants' to bindings
         if 'constants' in self.RULES:
             bindings = dict(bindings.items() + self.RULES['constants'].items())
 
         resource_assertions = []
-        if self._resource_manager:
-            current_allocations = \
-                self._resource_manager.get_current_allocations(agg_mgr)
-            requested_allocations = \
-                self._resource_manager.get_requested_allocations(agg_mgr, args)
-            resource_bindings = \
-                self._generate_resource_bindings(caller, args,
-                                                   current_allocations, 
-                                                   requested_allocations)
-            bindings = dict(bindings.items() + resource_bindings.items())
+        resource_bindings = \
+            self._generate_resource_bindings(caller, args,
+                                             current_allocations, 
+                                             requested_allocations)
+        bindings = dict(bindings.items() + resource_bindings.items())
 
         self._logger.info("BINDINGS = %s" % bindings)
 
@@ -141,11 +136,11 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception(msg)
 
     # Get each binder to generate bindings
-    def _generate_bindings(self, method, caller, creds, args, opts, agg_mgr):
+    def _generate_bindings(self, method, caller, creds, args, opts):
         bindings = {}
         for binder in self._binders:
             new_bindings = binder.generate_bindings(method, caller, creds,
-                                                    args, opts, agg_mgr)
+                                                    args, opts)
             bindings = dict(bindings.items() + new_bindings.items())
         return bindings
 
@@ -355,11 +350,6 @@ class ABAC_Authorizer(Base_Authorizer):
             raise Exception("Unknown keyid : %s" % keyid)
         return self._keyid_name_map[keyid]
 
-    # Hand the result of a success call to each binder to update
-    # its internal state
-    def handleResult(self, method, caller, args, opts, result, agg_mgr):
-        for binder in self._binders:
-            binder.handle_result(method, caller, args, opts, result, agg_mgr)
 
 
 

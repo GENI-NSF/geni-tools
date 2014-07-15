@@ -41,11 +41,13 @@ class AMMethodContext:
 
     def __init__(self, aggregate_manager, 
                  method_name, logger, authorizer,
+                 resource_manager, 
                  credentials, args, options, is_v3=False):
         self._aggregate_manager = aggregate_manager
         self._method_name = method_name
         self._logger = logger
         self._authorizer = authorizer
+        self._resource_manager = resource_manager
         self._credentials = credentials
         self._args = args
         self._options = options
@@ -80,6 +82,8 @@ class AMMethodContext:
                 self._caller_urn = new_caller_urn
 
             self._options['geni_true_caller_cert'] = self._caller_cert
+            self._options['geni_am_urn'] = \
+                self._aggregate_manager._delegate._my_urn
 
             if self._is_v3:
                 if 'urns' in args: 
@@ -91,11 +95,20 @@ class AMMethodContext:
                 credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer:
+                current_allocations = {}
+                requested_alloczations = {}
+                if self._resource_manager:
+                    my_am = self._aggregate_manager
+                    my_rm = self._resource_manager
+                    current_allocations = my_rm.get_current_allocations(my_am)
+                    requested_allocations = \
+                        my_rm.get_requested_allocations(my_am, args)
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
                                            credentials, args, 
                                            self._options,
-                                           self._aggregate_manager)
+                                           current_allocations,
+                                           requested_allocations)
         except Exception, e:
             self._handleError(e)
         finally:
@@ -122,14 +135,6 @@ class AMMethodContext:
         if type:
             self._logger.exception("Error in %s" % self._method_name)
             self._handleError(value)
-        else:
-            if self._authorizer:
-                self._authorizer.handleResult(self._method_name, 
-                                              self._caller_cert,
-                                              self._args, 
-                                              self._options,
-                                              self._result,
-                                              self._aggregate_manager)
 
         self._logger.info("Result from %s: %s", self._method_name, 
                           self._result)

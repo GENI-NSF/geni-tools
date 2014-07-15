@@ -62,18 +62,15 @@ class Base_Authorizer:
     #   creds : List of credential/type pairs
     #   args : Dictionary of name/value pairs of AM call arguments
     #   opts : Dictionary of user provided options
-    #   agg_mgr: AggregateManager object in which this authorization runs
-    def authorize(self, method, caller, creds, args, opts, agg_mgr):
+    def authorize(self, method, caller, creds, args, opts,
+                  current_allocations, requested_allocations):
         if self._logger:
             caller_urn = gid.GID(string=caller).get_urn()
-            self._logger.info("Authorizing %s %s #Creds = %s Args = %s Opts =%s" % \
+            template = "Authorizing %s %s #Creds = %s Args = %s Opts =%s"
+            self._logger.info(template % \
                                   (method, caller_urn, len(creds), \
                                        args.keys(), opts.keys()))
 
 
-    # Handle the result of a call, to update authorizer internal state
-    # E.g. for keepign track of successful calls, allocations, etc
-    def handleResult(self, method, caller, args, opts,  result, agg_mgr):
-        pass
         
 

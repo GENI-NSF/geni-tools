@@ -1199,7 +1199,9 @@ class AggregateManager(object):
         option is specified, then compress the result.'''
         args = {}
         with AMMethodContext(self, AM_Methods.LIST_RESOURCES_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1215,7 +1217,9 @@ class AggregateManager(object):
         """
         args = {'slice_urn' : slice_urn, 'rspec' : rspec}
         with AMMethodContext(self, AM_Methods.ALLOCATE_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1230,7 +1234,9 @@ class AggregateManager(object):
         """
         args = {'urns' : urns }
         with AMMethodContext(self, AM_Methods.PROVISION_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1242,7 +1248,9 @@ class AggregateManager(object):
         """
         args = {'urns' : urns }
         with AMMethodContext(self, AM_Methods.DELETE_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1257,7 +1265,9 @@ class AggregateManager(object):
         """
         args = {'urns' : urns, 'action' : action }
         with AMMethodContext(self, AM_Methods.PERFORM_OPERATIONAL_ACTION_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3=True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1270,7 +1280,9 @@ class AggregateManager(object):
         """
         args = {'urns' : urns }
         with AMMethodContext(self, AM_Methods.STATUS_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1284,7 +1296,9 @@ class AggregateManager(object):
         """
         args = {'urns' : urns }
         with AMMethodContext(self, AM_Methods.DESCRIBE_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1296,7 +1310,9 @@ class AggregateManager(object):
         expiration time."""
         args = {'urns' : urns, 'expiration_time' : expiration_time }
         with AMMethodContext(self, AM_Methods.RENEW_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1309,7 +1325,9 @@ class AggregateManager(object):
         behaving sliver, without deleting it to allow for forensics.'''
         args = {'slice_urn' : slice_urn }
         with AMMethodContext(self, AM_Methods.SHUTDOWN_V3,
-                             self.logger, self.authorizer, credentials,
+                             self.logger, self.authorizer, 
+                             self.resource_manager,
+                             credentials,
                              args, options, is_v3 = True) as amc:
             if not amc._error:
                 amc._result = \
@@ -1324,7 +1342,7 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None):
+                 authorizer=None, resource_maanger=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
@@ -1339,7 +1357,7 @@ class AggregateManagerServer(object):
         self._server = SecureXMLRPCServer(addr, keyfile=keyfile,
                                           certfile=certfile, ca_certs=ca_certs)
         aggregate_manager = AggregateManager(trust_roots_dir, delegate, \
-                                                 authorizer)
+                                                 authorizer, resource_manager)
         self._server.register_instance(aggregate_manager)
         # Set the server on the delegate so it can access the
         # client certificate.

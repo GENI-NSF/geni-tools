@@ -136,6 +136,17 @@ def main(argv=None):
     authorizer_class = eval(authorizer_classname)
     authorizer = authorizer_class(opts.rootcadir, opts)
 
+    # Instantiate resource manager from 'authorizer_resource_manager' 
+    # config argument. Default = None
+    resource_manager = None
+    if hasattr(opts, 'authorizer_resource_manager'):
+        res_mgr_classname = opts.authorizer_resource_manager
+        res_mgr_module = \
+            ".".join(res_mgr_classname.split('.')[:-1])
+        __import__(res_mgr_module)
+        res_mgr_class = eval(res_mgr_classname)
+        resource_manager = res_mgr_class()
+
     # rootcadir is  dir of multiple certificates
     delegate = geni.ReferenceAggregateManager(getAbsPath(opts.rootcadir))
 
@@ -157,7 +168,8 @@ def main(argv=None):
                                                      trust_roots_dir=getAbsPath(opts.rootcadir),
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'], 
-                                                     authorizer=authorizer)
+                                                     authorizer=authorizer,
+                                                     resource_manager=resource_manager)
     elif opts.api_version == 3:
         ams = gcf.geni.am.am3.AggregateManagerServer((opts.host, int(opts.port)),
                                                      keyfile=keyfile,
@@ -165,7 +177,8 @@ def main(argv=None):
                                                      trust_roots_dir=getAbsPath(opts.rootcadir),
                                                      ca_certs=comboCertsFile,
                                                      base_name=config['global']['base_name'],
-                                                     authorizer=authorizer)
+                                                     authorizer=authorizer,
+                                                     resource_manager=resource_manager)
     else:
         msg = "Unknown API version: %d. Valid choices are \"1\", \"2\", or \"3\""
         sys.exit(msg % (opts.api_version))
