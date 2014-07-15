@@ -67,7 +67,8 @@ class Standard_Binder(Base_Binder):
 
 
         project_urn = convert_slice_urn_to_project_urn(slice_urn)
-        bindings['$PROJECT_URN'] = project_urn
+        if project_urn:
+            bindings['$PROJECT_URN'] = project_urn
 
         caller_authority = convert_user_urn_to_authority_urn(caller_urn)
         bindings['$CALLER_AUTHORITY'] = caller_authority
@@ -152,20 +153,10 @@ class Stitching_Binder(Base_Binder):
         else:
             return {}
 
-# Return caller_urn, slice_urn, project_urn, authority_urn
-def _retrieve_context_urns(caller, args):
-    slice_urn = None
-    project_urn = None
-    if 'slice_urn' in args:
-        slice_urn = args['slice_urn']
-        project_urn = convert_slice_urn_to_project_urn(slice_urn)
-    caller_urn = gid.GID(string=caller).get_urn()
-    authority_urn = convert_user_urn_to_authority_urn(caller_urn)
-    return caller_urn, slice_urn, project_urn, authority_urn
-    
 def convert_slice_urn_to_project_urn(slice_urn):
     project_auth_token = slice_urn.split('+')[1]
     project_auth_parts = project_auth_token.split(':')
+    if len(project_auth_parts) < 2: return None # No project
     project_auth = project_auth_parts[0]
     project_name = project_auth_parts[1]
     project_urn = _convert_urn(project_auth, 'project', project_name)

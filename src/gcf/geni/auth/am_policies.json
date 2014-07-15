@@ -12,7 +12,7 @@
         "gcf.geni.auth.binders.Stitching_Binder"
         ],
     "constants" : {
-       "$BLUE_AUTHS" : "['urn:publicid:IDN+ch1.gpolab.bbn.com+authority+ca']",
+       "$BLUE_AUTHS" : "['urn:publicid:IDN+ch1.gpolab.bbn.com+authority+ca', 'urn:publicid:IDN+wall2.ilabt.iminds.be+authority+ca']",
        "$RED_AUTHS" :  "['urn:publicid:IDN+ch-mb.gpolab.bbn.com+authority+ca']"
     },
     "conditional_assertions" : [

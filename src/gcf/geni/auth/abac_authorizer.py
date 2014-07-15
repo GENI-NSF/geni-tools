@@ -223,11 +223,12 @@ class ABAC_Authorizer(Base_Authorizer):
                 project = convert_slice_urn_to_project_urn(slice)
                 if slice == slice_urn:
                     slice_allocs = slice_allocs + allocs
-                if project == project_urn:
+                if project and project_urn and (project == project_urn):
                     project_allocs = project_allocs + allocs
 
             bindings["$AUTHORITY_%s" % res_type] = str(authority_allocs)
-            bindings["$PROJECT_%s" % res_type] = str(project_allocs)
+            if project_urn:
+                bindings["$PROJECT_%s" % res_type] = str(project_allocs)
             bindings["$SLICE_%s" % res_type] = str(slice_allocs)
             bindings["$USER_%s" % res_type] = str(user_allocs)
 
