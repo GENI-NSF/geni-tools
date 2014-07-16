@@ -266,7 +266,7 @@ class ReferenceAggregateManager(object):
         self._am_type = "gcf"
         self._slices = dict()
         self._agg = Aggregate()
-        self._agg.add_resources([FakeVM(self._agg) for _ in range(3)])
+        self._agg.add_resources([FakeVM(self._agg) for _ in range(20)])
         self._my_urn = publicid_to_urn("%s %s %s" % (self._urn_authority, 'authority', 'am'))
         self.max_lease = datetime.timedelta(minutes=REFAM_MAXLEASE_MINUTES)
         self.max_alloc = datetime.timedelta(seconds=ALLOCATE_EXPIRATION_SECONDS)
@@ -490,12 +490,12 @@ class ReferenceAggregateManager(object):
                                       and options['geni_end_time']))
 
         newslice = Slice(slice_urn)
-        self._agg.allocate(slice_urn, resources)
-        self._agg.allocate(user_urn, resources)
         for resource in resources:
             sliver = newslice.add_resource(resource)
             sliver.setExpiration(expiration)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
+        self._agg.allocate(slice_urn, newslice.slivers())
+        self._agg.allocate(user_urn, newslice.slivers())
         self._slices[slice_urn] = newslice
 
         # Log the allocation
@@ -588,6 +588,8 @@ class ReferenceAggregateManager(object):
         self.logger.info('Delete(%r)' % (urns))
         self.expire_slivers()
 
+        import pdb; pdb.set_trace()
+
         the_slice, slivers = self.decode_urns(urns)
         privileges = (DELETESLIVERPRIV,)
         credentials = [self.normalize_credential(c) for c in credentials]
@@ -613,7 +615,7 @@ class ReferenceAggregateManager(object):
                                     ("Unavailable: Slice %s is unavailable."
                                      % (the_slice.urn)))
 
-        self._agg.deallocate(slice_urn, slivers)
+        self._agg.deallocate(the_slice.urn, slivers)
         self._agg.deallocate(user_urn, slivers)
         for sliver in slivers:
             slyce = sliver.slice()
@@ -1155,11 +1157,13 @@ class AggregateManager(object):
     XMLRPC interface and invokes a delegate for all the operations.
     """
 
-    def __init__(self, trust_roots_dir, delegate, authorizer=None):
+    def __init__(self, trust_roots_dir, delegate, authorizer=None,
+                 resource_manager=None):
         self._trust_roots_dir = trust_roots_dir
         self._delegate = delegate
         self.logger = logging.getLogger('gcf.am3')
         self.authorizer = authorizer
+        self.resource_manager = resource_manager
         if authorizer:
             authorizer._logger = self.logger
 
@@ -1342,7 +1346,7 @@ class AggregateManagerServer(object):
     def __init__(self, addr, keyfile=None, certfile=None,
                  trust_roots_dir=None,
                  ca_certs=None, base_name=None,
-                 authorizer=None, resource_maanger=None):
+                 authorizer=None, resource_manager=None):
         # ca_certs arg here must be a file of concatenated certs
         if ca_certs is None:
             raise Exception('Missing CA Certs')
