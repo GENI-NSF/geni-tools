@@ -527,6 +527,18 @@ class ReferenceAggregateManager(object):
             return self.errorResult(AM_API.BAD_ARGS, 
                                     "Can't request start time on sliver after slice expiration")
 
+        # determine max expiration time from credentials
+        # do not create a sliver that will outlive the slice!
+        expiration = self.min_expire(creds, self.max_alloc,
+                                     ('geni_end_time' in options
+                                      and options['geni_end_time']))
+
+        # If we're allocating something for future, give a window
+        # from start time in which to reserve
+        if start_time > now:
+            expiration = min(start_time + self.max_alloc, 
+                             self.min_expire(creds))
+
         newslice = Slice(slice_urn)
         for resource in resources:
             sliver = newslice.add_resource(resource)
@@ -609,13 +621,16 @@ class ReferenceAggregateManager(object):
                                     'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
         self.logger.info("Provision requested RSpec %s (%s)", rspec_type, rspec_version)
 
-        import pdb; pdb.set_trace()
         # Only provision slivers that are in the scheduled time frame
         now = datetime.datetime.utcnow()
         provisionable_slivers = \
             [sliver for sliver in slivers \
                  if now >= sliver.startTime() and now <= sliver.endTime()]
         slivers = provisionable_slivers
+
+        if len(slivers) == 0:
+            return self.errorResult(AM_API.UNAVAILABLE,
+                                    "No slivers available to provision at this time")
 
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
