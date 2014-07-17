@@ -147,6 +147,8 @@ class Sliver(object):
         self._resource = resource
         self._slice = parent_slice
         self._expiration = None
+        self._start_time = None
+        self._end_time = None
         self._allocation_state = STATE_GENI_UNALLOCATED
         self._operational_state = OPSTATE_GENI_PENDING_ALLOCATION
         self._urn = None
@@ -181,6 +183,18 @@ class Sliver(object):
     def expiration(self):
         return self._expiration
 
+    def setStartTime(self, new_start_time):
+        self._start_time = new_start_time
+
+    def startTime(self):
+        return self._start_time
+
+    def setEndTime(self, new_end_time):
+        self._end_time = new_end_time
+
+    def endTime(self):
+        return self._end_time
+
     def _setUrnFromParent(self, parent_urn):
         authority = urn.URN(urn=parent_urn).getAuthority()
         self._urn = str(urn.URN(authority=authority,
@@ -212,8 +226,14 @@ class Sliver(object):
         """
         expire_with_tz = self.expiration().replace(tzinfo=dateutil.tz.tzutc())
         expire_string = expire_with_tz.isoformat()
+        start_with_tz = self.startTime().replace(tzinfo=dateutil.tz.tzutc())
+        start_string = start_with_tz.isoformat()
+        end_with_tz = self.endTime().replace(tzinfo=dateutil.tz.tzutc())
+        end_string = end_with_tz.isoformat()
         return dict(geni_sliver_urn=self.urn(),
                     geni_expires=expire_string,
+                    geni_start_time=start_string,
+                    geni_end_time=end_string,
                     geni_allocation_status=self.allocationState(),
                     geni_operational_status=self.operationalState(),
                     geni_error=geni_error)
@@ -489,10 +509,30 @@ class ReferenceAggregateManager(object):
                                      ('geni_end_time' in options
                                       and options['geni_end_time']))
 
+        # determine end time as min of the slice 
+        # and the requested time (if any)
+        end_time = self.min_expire(creds, 
+                                   requested=('geni_end_time' in options 
+                                              and options['geni_end_time']))
+        
+        # determine the start time as bounded by slice expiration and 'now'
+        now = datetime.datetime.utcnow()
+        start_time = now
+        if 'geni_start_time' in options:
+            # Need to parse this into datetime
+            start_time_raw = options['geni_start_time']
+            start_time = self._naiveUTC(dateutil.parser.parse(start_time_raw))
+        start_time = max(now, start_time)
+        if (start_time > self.min_expire(creds)):
+            return self.errorResult(AM_API.BAD_ARGS, 
+                                    "Can't request start time on sliver after slice expiration")
+
         newslice = Slice(slice_urn)
         for resource in resources:
             sliver = newslice.add_resource(resource)
             sliver.setExpiration(expiration)
+            sliver.setStartTime(start_time)
+            sliver.setEndTime(end_time)
             sliver.setAllocationState(STATE_GENI_ALLOCATED)
         self._agg.allocate(slice_urn, newslice.slivers())
         self._agg.allocate(user_urn, newslice.slivers())
@@ -539,10 +579,6 @@ class ReferenceAggregateManager(object):
         except Exception, e:
             raise xmlrpclib.Fault('Insufficient privileges', str(e))
 
-        expiration = self.min_expire(creds, self.max_lease,
-                                     ('geni_end_time' in options
-                                      and options['geni_end_time']))
-
         if 'geni_rspec_version' not in options:
             # This is a required option, so error out with bad arguments.
             self.logger.error('No geni_rspec_version supplied to Provision.')
@@ -573,9 +609,17 @@ class ReferenceAggregateManager(object):
                                     'Bad Version: requested RSpec version %s is not a valid option.' % (rspec_version))
         self.logger.info("Provision requested RSpec %s (%s)", rspec_type, rspec_version)
 
+        import pdb; pdb.set_trace()
+        # Only provision slivers that are in the scheduled time frame
+        now = datetime.datetime.utcnow()
+        provisionable_slivers = \
+            [sliver for sliver in slivers \
+                 if now >= sliver.startTime() and now <= sliver.endTime()]
+        slivers = provisionable_slivers
+
         for sliver in slivers:
             # Extend the lease and set to PROVISIONED
-            sliver.setExpiration(expiration)
+            sliver.setExpiration(sliver.endTime())
             sliver.setAllocationState(STATE_GENI_PROVISIONED)
             sliver.setOperationalState(OPSTATE_GENI_NOT_READY)
         result = dict(geni_rspec=self.manifest_rspec(the_slice.urn),
@@ -736,10 +780,14 @@ class ReferenceAggregateManager(object):
         geni_slivers = list()
         for sliver in slivers:
             expiration = self.rfc3339format(sliver.expiration())
+            start_time = self.rfc3339format(sliver.startTime())
+            end_time = self.rfc3339format(sliver.endTime())
             allocation_state = sliver.allocationState()
             operational_state = sliver.operationalState()
             geni_slivers.append(dict(geni_sliver_urn=sliver.urn(),
                                      geni_expires=expiration,
+                                     geni_start_time=start_time,
+                                     geni_end_time=end_time,
                                      geni_allocation_status=allocation_state,
                                      geni_operational_status=operational_state,
                                      geni_error=''))

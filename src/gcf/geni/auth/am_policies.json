@@ -27,7 +27,7 @@
             },
         {
             "condition" : 
-	    "'$CALLER_AUTHORITY' in $RED_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 5)",
+	    "'$CALLER_AUTHORITY' in $RED_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 20)",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
@@ -36,15 +36,15 @@
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$PROJECT_NODE + $REQUESTED_NODE > 4",
+            "condition" : "$PROJECT_NODE + $REQUESTED_NODE > 20",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$SLICE_NODE + $REQUESTED_NODE > 3",
+            "condition" : "$SLICE_NODE + $REQUESTED_NODE > 20",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$USER_NODE + $REQUESTED_NODE > 2",
+            "condition" : "$USER_NODE + $REQUESTED_NODE > 20",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
