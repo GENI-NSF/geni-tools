@@ -462,10 +462,6 @@ class ReferenceAggregateManager(object):
 
         # If we get here, the credentials give the caller
         # all needed privileges to act on the given target.
-        if slice_urn in self._slices:
-            self.logger.error('Slice %s already exists.', slice_urn)
-            return self.errorResult(AM_API.ALREADY_EXISTS,
-                                    'Slice %s already exists' % (slice_urn))
 
         rspec_dom = None
         try:
@@ -539,7 +535,26 @@ class ReferenceAggregateManager(object):
             expiration = min(start_time + self.max_alloc, 
                              self.min_expire(creds))
 
-        newslice = Slice(slice_urn)
+        # if slice exists, check accept only if no  existing sliver overlaps
+        # with requested start/end time. If slice doesn't exist, create it
+        if slice_urn in self._slices:
+            newslice = self._slices[slice_urn]
+            # Check if any current slivers overlap with requested start/end
+            one_slice_overlaps = False
+            for sliver in newslice.slivers():
+                if sliver.startTime() < end_time and \
+                        sliver.endTime() > start_time:
+                    one_slice_overlaps = True
+                    break
+
+            if one_slice_overlaps:
+                template = "Slice %s already has slivers at requested time"
+                self.logger.error(template % (slice_urn))
+                return self.errorResult(AM_API.ALREADY_EXISTS,
+                                        template % (slice_urn))
+        else:
+            newslice = Slice(slice_urn)
+
         for resource in resources:
             sliver = newslice.add_resource(resource)
             sliver.setExpiration(expiration)

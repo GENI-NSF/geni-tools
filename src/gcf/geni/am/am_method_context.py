@@ -96,7 +96,7 @@ class AMMethodContext:
 
             if self._authorizer:
                 current_allocations = {}
-                requested_alloczations = {}
+                requested_allocations = {}
                 if self._resource_manager:
                     my_am = self._aggregate_manager
                     my_rm = self._resource_manager
