@@ -46,6 +46,8 @@ class AM_Methods:
     RENEW_V3 = "Renew_V3"
     SHUTDOWN_V3 = "Shutdown_V3"
 
+# Base class for all AM authorizers
+# Should call its base method to get proper logging
 class Base_Authorizer:
     def __init__(self, root_cert, opts):
         self._root_cert = root_cert

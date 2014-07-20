@@ -32,8 +32,10 @@ from gcf.geni.util.cred_util import CredentialVerifier
 from .sfa_authorizer import SFA_Authorizer
 import xml.dom.minidom
 from .base_authorizer import AM_Methods
+from .util import *
 
 
+# Base class for a binder
 class Base_Binder:
 
     def __init__(self, root_cert):
@@ -79,7 +81,7 @@ class Standard_Binder(Base_Binder):
         return bindings
 
 
-
+# Bind the variable $SFA_AUTHORIZED if the SFA cred verifier successfully runs
 class SFA_Binder(Base_Binder):
 
     def __init__(self, root_cert):
@@ -149,21 +151,4 @@ class Stitching_Binder(Base_Binder):
             return {"$REQUESTED_STITCH_POINTS" : str(requested_stitch_points) }
         else:
             return {}
-
-def convert_slice_urn_to_project_urn(slice_urn):
-    project_auth_token = slice_urn.split('+')[1]
-    project_auth_parts = project_auth_token.split(':')
-    if len(project_auth_parts) < 2: return None # No project
-    project_auth = project_auth_parts[0]
-    project_name = project_auth_parts[1]
-    project_urn = _convert_urn(project_auth, 'project', project_name)
-    return project_urn
-
-def convert_user_urn_to_authority_urn(user_urn):
-    user_auth_token = user_urn.split('+')[1]
-    user_authority = _convert_urn(user_auth_token,'authority', 'ca')
-    return user_authority
-
-def _convert_urn(value, obj_type, obj_name):
-    return 'urn:publicid:IDN+%s+%s+%s' % (value, obj_type, obj_name)
 

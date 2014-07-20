@@ -42,7 +42,8 @@ class AMMethodContext:
     def __init__(self, aggregate_manager, 
                  method_name, logger, authorizer,
                  resource_manager, 
-                 credentials, args, options, is_v3=False):
+                 credentials, args, options, 
+                 is_v3=False, resource_bindings=False):
         self._aggregate_manager = aggregate_manager
         self._method_name = method_name
         self._logger = logger
@@ -54,6 +55,7 @@ class AMMethodContext:
         self._caller_cert = self._aggregate_manager._delegate._server.pem_cert
         self._caller_urn = gid.GID(string=self._caller_cert).get_urn()
         self._is_v3 = is_v3
+        self._resource_bindings = resource_bindings
         self._result = None
         self._error = False
 
@@ -95,14 +97,19 @@ class AMMethodContext:
                 credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer:
-                current_allocations = {}
-                requested_allocations = {}
-                if self._resource_manager:
+                current_allocations = []
+                requested_allocations = []
+                if self._resource_manager and self._resource_bindings:
                     my_am = self._aggregate_manager
                     my_rm = self._resource_manager
-                    current_allocations = my_rm.get_current_allocations(my_am)
+                    current_allocations = \
+                        my_rm.get_current_allocations(my_am, args, 
+                                                      self._options, 
+                                                      credentials)
                     requested_allocations = \
-                        my_rm.get_requested_allocations(my_am, args)
+                        my_rm.get_requested_allocations(my_am, args, 
+                                                        self._options, 
+                                                        credentials)
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
                                            credentials, args, 

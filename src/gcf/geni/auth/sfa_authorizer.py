@@ -42,6 +42,7 @@ from gcf.geni.util.cred_util import CredentialVerifier
 
 class SFA_Authorizer(Base_Authorizer):
 
+    # For each method (V2 and V3) indicate what SFA privileges are required
     METHOD_ATTRIBUTES = {
         # AM API V2 Methods
         AM_Methods.LIST_RESOURCES_V2 : { 'privileges' : (), 
@@ -68,6 +69,7 @@ class SFA_Authorizer(Base_Authorizer):
 
     }
         
+    # Create a cred verifier for all credentials on all calls
     def __init__(self, root_cert, opts):
         Base_Authorizer.__init__(self, root_cert, opts)
         self._cred_verifier = CredentialVerifier(root_cert)

@@ -1302,7 +1302,8 @@ class AggregateManager(object):
                              self.logger, self.authorizer, 
                              self.resource_manager,
                              credentials,
-                             args, options, is_v3=True) as amc:
+                             args, options, is_v3=True, 
+                             resource_bindings=True) as amc:
             if not amc._error:
                 amc._result = \
                     self._delegate.Allocate(slice_urn, credentials, 

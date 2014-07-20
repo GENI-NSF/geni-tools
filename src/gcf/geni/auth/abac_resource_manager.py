@@ -21,84 +21,110 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
+import datetime
+import dateutil.parser
+import gcf.sfa.trust.gid as gid
+import gcf.sfa.trust.credential as credential
+import types
+import xml.dom.minidom
+
 # Class to provide current and requested resources
 # so that the authorizer can enforce resource quota policies
-
-import xml.dom.minidom
-import types
 
 class Base_Resource_Manager:
     
     def __init__(self):
         pass
 
-    # Return a dictionary of all resource types
-    # currently allocated, by allocating user and slice
+    # Return a list of all currently allocated slivers
+    # with sliver_urn, slice_urn, user_urn, start_time, end_time,  plus a list
+    # of all measurements about the sliver
+    # {meas_type : value}
     # e.g.
-    # { "NODE" : { "by_user" : {user1 : num1, user2 : num2, ...},
-    #              "by_slice" : {slice1 : num1, slice2 : num2, ...}},
-    #   "LINK" : { "by_user" : {user1 : num1, user2 : num2, ...},
-    #              "by_slice" : {slice1 : num1, slice2 : num2, ...}},
+    # [
+    #   {'sliver_urn' : sliver1, 'slice_urn' : slice1, 'user_urn' : user1, 
+    #    'start_time' : t0, 'end_time' : t1',
+    #     'measurements' : {'M1' : 3, 'M2' : 4}}
     #   ...
-    #   }
-    def get_current_allocations(self, aggregate_manager):
-        return {}
+    # ]
+    def get_current_allocations(self, aggregate_manager,
+                                  arguments, options,  creds):
+        return []
 
-    # Return a dictionary of all requested resource (from a request_rspec)
-    # by type
-    # e.g.
-    # {"NODE" : num_nodes, "LINK" : num_links}
-    def get_requested_allocations(self, aggregate_manager, args):
-        return {}
+    # Return a list of proposed allocated slivers
+    # with sliver_urn, slice_urn, user_urn, start_time, end_time plus a list
+    # of all masurements about the sliver
+    # {meas : value}
+    def get_requested_allocations(self, aggregate_manager, 
+                                  arguments, options,  creds):
+        return []
 
+# Class for a Resource Manager for the GCF AM
+# We only compute a single metric, i.e. NODE (the number of nodes allocated)
 class GCFAM_Resource_Manager(Base_Resource_Manager):
 
     def __init__(self):
         Base_Resource_Manager.__init__(self)
 
-    def get_current_allocations(self, aggregate_manager):
+    # Get all current slivers and return them in proper format
+    def get_current_allocations(self, aggregate_manager,
+                                arguments, options, credentials):
 
-        by_slice_info = {}
-        by_user_info = {}
+        sliver_info = []
         slices = aggregate_manager._delegate._slices
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
+
         for slice_urn, slice_obj in slices.items():
-            if hasattr(slice_obj, 'resources') and \
-                    type(slice_obj.resources) == types.MethodType:
-                resources = slice_obj.resources()
-            else:
-                resources = slice_obj.resources
-            by_slice_info[slice_urn] = len(resources)
+            for sliver in slice_obj.slivers():
+                entry = {'sliver_urn' : sliver.urn(),
+                         'slice_urn' : slice_urn,
+                         'user_urn' : user_urn,
+                         'start_time' : sliver.startTime(),
+                         'end_time' : sliver.endTime(),
+                         'measurements' : {'NODE' : 1}}
+                sliver_info.append(entry)
 
-        containers = aggregate_manager._delegate._agg.containers
-        for urn, slivers in containers.items():
-            if urn.find("+slice+") >= 0:
-                # It is a slice_urn
-                by_slice_info[urn] = len(slivers)
-            else:
-                # It is a user URN
-                by_user_info[urn] = len(slivers)
+        return sliver_info
 
-        resource_info = {}
-        resource_info['NODE'] = {'by_slice' : by_slice_info, 
-                                 'by_user' : by_user_info}
+    # Take the given rspec (if provided) and determine how
+    # many nodes are being requested over what time ranges
+    # and compute the sliver info accordingly
+    def get_requested_allocations(self, aggregate_manager, 
+                                  arguments, options, credentials):
+        if 'rspec' not in arguments: return []
+        if 'slice_urn' not in arguments: return []
 
-        return resource_info
+        amd = aggregate_manager._delegate
 
+        sliver_info = []
+        slice_urn = arguments['slice_urn']
+        user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
 
-    # *** Need to get this from GCF AM (or the AM as it is)
-    def get_requested_allocations(self, aggregate_manager, args):
-        if 'rspec' not in args: return {}
+        start_time = datetime.datetime.utcnow()
+        if 'geni_start_time' in options:
+            raw_start_time = options['geni_start_time']
+            start_time = amd._naiveUTC(dateutil.parser.parse(raw_start_time))
 
-        resource_info = {}
+        creds = [credential.Credential(string=c) for c in credentials]
+        if 'geni_end_time' in options:
+            raw_end_time = options['geni_end_time']
+            end_time = amd.min_expire(creds, requested=raw_end_time)
+        else:
+            end_time = amd.min_expire(creds)
 
-        rspec_raw = args['rspec']
+        rspec_raw = arguments['rspec']
         rspec = xml.dom.minidom.parseString(rspec_raw)
         nodes = rspec.getElementsByTagName('node')
-        resource_info['NODE'] = len(nodes)
+        for node in nodes:
+                entry = {'sliver_urn' : 'not_set_yet',
+                         'slice_urn' : slice_urn,
+                         'user_urn' : user_urn,
+                         'start_time' : start_time,
+                         'end_time' : end_time,
+                         'measurements' : {'NODE' : 1}}
+                sliver_info.append(entry)
 
-        return resource_info
+        return sliver_info
 
         
 
-
-        

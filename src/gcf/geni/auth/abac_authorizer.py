@@ -21,9 +21,6 @@
 # IN THE WORK.                                                                
 #----------------------------------------------------------------------       
 
-# AM authorizer class that uses policies to generate ABAC proofs 
-# for authorization decisions
-
 import gcf
 import json
 from .base_authorizer import *
@@ -32,7 +29,11 @@ from gcf.sfa.trust.credential import Credential
 from gcf.sfa.trust.certificate import Certificate
 from gcf.sfa.trust.abac_credential import ABACCredential
 from gcf.geni.util.speaksfor_util import get_cert_keyid
-from .binders import *
+from .util import *
+from .resource_binder import ResourceBinder
+
+# AM authorizer class that uses policies to generate ABAC proofs 
+# for authorization decisions
 
 class ABAC_Authorizer(Base_Authorizer):
 
@@ -107,7 +108,6 @@ class ABAC_Authorizer(Base_Authorizer):
         if 'constants' in self.RULES:
             bindings = dict(bindings.items() + self.RULES['constants'].items())
 
-        resource_assertions = []
         resource_bindings = \
             self._generate_resource_bindings(caller, args,
                                              current_allocations, 
@@ -144,6 +144,9 @@ class ABAC_Authorizer(Base_Authorizer):
             bindings = dict(bindings.items() + new_bindings.items())
         return bindings
 
+    # For each conditional assertion, evaluate the condition
+    # If true and if the associated assertion is completely bound,
+    # generate the assertion
     def _generate_assertions(self, bindings):
         assertions = []
         for ca in self._conditional_assertions:
@@ -158,6 +161,8 @@ class ABAC_Authorizer(Base_Authorizer):
             assertions.append(bound_assertion)
         return assertions
 
+    # If provided a set of ABAC assertions, import them into our set
+    # of assertions
     def _generate_credential_assertions(self, caller, creds, bindings):
         assertions = []
         abac_cred_objects = [CredentialFactory.createCred(credString=cred) \
@@ -188,52 +193,27 @@ class ABAC_Authorizer(Base_Authorizer):
                                     current_allocations, 
                                     requested_allocations):
 
+        print "CURRENT = %s" % current_allocations
+        print "REQUESTED = %s" % requested_allocations
+
         bindings = {}
 
         if 'slice_urn' not in args: return bindings
 
         caller_urn = gid.GID(string=caller).get_urn()
         slice_urn = args['slice_urn']
-        authority_urn = convert_user_urn_to_authority_urn(caller_urn)
         project_urn = convert_slice_urn_to_project_urn(slice_urn)
+        authority_urn = convert_user_urn_to_authority_urn(caller_urn)
 
-        # Create an assertion for current allocations
-        # each type of resource tracked
-        # for AUTHORITY, PROJECT, SLICE, USER
-        for res_type, allocs_per_res_type in current_allocations.items():
 
-            authority_allocs = 0
-            project_allocs = 0
-            slice_allocs = 0
-            user_allocs = 0
+        resource_binder = ResourceBinder(caller_urn, slice_urn, 
+                                           project_urn, authority_urn)
+        for sliver_info in (current_allocations + requested_allocations):
+            resource_binder.updateForSliver(sliver_info)
 
-            for user, allocs in allocs_per_res_type['by_user'].items():
-                user_authority  = convert_user_urn_to_authority_urn(user)
-                if user == caller_urn: 
-                    user_allocs = user_allocs + allocs
-                if user_authority == authority_urn: 
-                    authority_allocs = authority_allocs + allocs
-
-            for slice, allocs in allocs_per_res_type['by_slice'].items():
-                project = convert_slice_urn_to_project_urn(slice)
-                if slice == slice_urn:
-                    slice_allocs = slice_allocs + allocs
-                if project and project_urn and (project == project_urn):
-                    project_allocs = project_allocs + allocs
-
-            bindings["$AUTHORITY_%s" % res_type] = str(authority_allocs)
-            if project_urn:
-                bindings["$PROJECT_%s" % res_type] = str(project_allocs)
-            bindings["$SLICE_%s" % res_type] = str(slice_allocs)
-            bindings["$USER_%s" % res_type] = str(user_allocs)
-
-        # Create an assertion for requested  allocations
-        # for each type of resource tracked
-        for res_type, allocs_per_res_type in requested_allocations.items():
-            bindings["$REQUESTED_%s" % res_type] = str(allocs_per_res_type)
+        bindings = resource_binder.getBindings()
 
         return bindings
-
 
     # Determine if all positive queries are proven and no negative
     # query is proven
@@ -299,6 +279,9 @@ class ABAC_Authorizer(Base_Authorizer):
         return expr.find("$") > -1
         
 
+    # Prove (or fail to prove) an ABAC query based on a set of assertions
+    # We use a simple recursive chaining to see if we can find a path
+    # from the query LHS to the query RHS
     def _prove_query(self, query, assertions):
 
         query_parts = query.split('<-')
@@ -320,6 +303,7 @@ class ABAC_Authorizer(Base_Authorizer):
         self._logger.info("QUERY (%s) : %s" % (result, query))
         return result
 
+    # Internal method supporting _prove_query as a recursive call
     def _prove_query_internal(self, lhs, target, parsed_assertions):
         if lhs not in parsed_assertions: return False
         if target in parsed_assertions[lhs]: return True
@@ -328,6 +312,7 @@ class ABAC_Authorizer(Base_Authorizer):
                 return True
         return False
 
+    # Initialize a binder from its classname
     def _initialize_binder(self, binder_classname):
         binder_class_module = ".".join(binder_classname.split('.')[:-1])
         __import__(binder_class_module)
@@ -335,6 +320,7 @@ class ABAC_Authorizer(Base_Authorizer):
         binder = binder_class(self._root_cert)
         return binder
 
+    # Compute keyid from a cert
     def _compute_keyid(self, cert_string=None, cert_filename=None):
         if cert_string:
             cert_gid = gid.GID(string=cert_string)
@@ -345,6 +331,7 @@ class ABAC_Authorizer(Base_Authorizer):
             return None
         return get_cert_keyid(cert_gid)
 
+    # Find the name assocaited to a given keyid
     def _lookup_name_from_keyid(self, keyid):
         if keyid not in self._keyid_name_map:
             raise Exception("Unknown keyid : %s" % keyid)
