@@ -317,7 +317,7 @@ def load_config(opts, logger, config={}, filename=None):
             opts.project = config['omni']['default_project']
 
     # Config of useslicemembers some value of true sets the option
-    if hasattr(opts,'useslicemembers') and config['omni'].has_key('useslicemembers'):
+    if hasattr(opts,'useSliceMembers') and config['omni'].has_key('useslicemembers'):
         usm = config['omni']['useslicemembers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
