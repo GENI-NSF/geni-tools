@@ -27,24 +27,24 @@
             },
         {
             "condition" : 
-	    "'$CALLER_AUTHORITY' in $RED_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 20)",
+	    "'$CALLER_AUTHORITY' in $RED_AUTHS and $AUTHORITY_NODE_TOTAL > 5",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
             "condition" : 
-	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and ($AUTHORITY_NODE + $REQUESTED_NODE > 2)",
+	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and $AUTHORITY_NODE_TOTAL > 2",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$PROJECT_NODE + $REQUESTED_NODE > 20",
+            "condition" : "$PROJECT_NODE_TOTAL > 7",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$SLICE_NODE + $REQUESTED_NODE > 20",
+            "condition" : "$SLICE_NODE_HOURS > 240",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
-            "condition" : "$USER_NODE + $REQUESTED_NODE > 20",
+            "condition" : "$USER_NODE_MAX > 3",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {

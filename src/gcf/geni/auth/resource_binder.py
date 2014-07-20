@@ -120,6 +120,12 @@ class ResourceMeasurementState:
         self._meas_total = 0
         self._meas_hours = 0
 
+        # Maintain list of times
+        self._times = set()
+
+        # Maintain list of [value, start, end] tuples
+        self._entries = []
+
         
     # Update for a given sliver measurement with time bounds
     def update(self, start_time, end_time, value):
@@ -131,16 +137,54 @@ class ResourceMeasurementState:
         num_hours = dt / 3600.0
         self._meas_hours = self._meas_hours + (value * num_hours)
 
+        # Register times
+        self._times.add(start_time)
+        self._times.add(end_time)
+
+        # Registry entry for later 'MAX' calculation
+        self._entries.append((start_time, end_time, value))
+
     # Grab the bindings provided by this state
     def getBindings(self):
         bindings = {}
 
-        total_key = "%s_%s_%s" % (self._urn_type, self._meas_type, 'TOTAL')
+        total_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'TOTAL')
         bindings[total_key] = str(self._meas_total)
 
-        hours_key = "%s_%s_%s" % (self._urn_type, self._meas_type, 'HOURS')
+        hours_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'HOURS')
         bindings[hours_key] = str(self._meas_hours)
 
-        # *** TO DO: MAX ***
+
+        # Compute the max value at one time
+
+        # Get a sorted list of all the start/end times
+        time_boundaries = [tm for tm in self._times]
+        time_boundaries.sort()
+
+        # Collect totals for each window [i:i+1] in bin [i]
+        totals = [0 for i in range(len(time_boundaries)-1)]
+
+        # For each entry, add the value to the right bins if
+        # entry overlaps the time window of that bin
+        # In so doing, compute max_total
+        #
+        # Note: we treat start_time as first included time
+        # end_times as NON-included time
+        max_total = 0
+        for entry in self._entries:
+            entry_start = entry[0]
+            entry_end = entry[1]
+            value = entry[2]
+            for i in range(len(totals)):
+                boundary_start = time_boundaries[i]
+                boundary_end = time_boundaries[i+1]
+                no_overlap =  entry_start >= boundary_end or \
+                    entry_end <= boundary_start;
+                if not no_overlap:
+                    totals[i] = totals[i] + value
+                    max_total = max(totals[i], max_total)
+
+        max_key = "$%s_%s_%s" % (self._urn_type, self._meas_type, 'MAX')
+        bindings[max_key] = str(max_total)
 
         return bindings
