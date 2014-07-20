@@ -27,12 +27,12 @@
             },
         {
             "condition" : 
-	    "'$CALLER_AUTHORITY' in $RED_AUTHS and $AUTHORITY_NODE_TOTAL > 5",
+	    "'$CALLER_AUTHORITY' in $RED_AUTHS and $AUTHORITY_NODE_TOTAL > 8",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {
             "condition" : 
-	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and $AUTHORITY_NODE_TOTAL > 2",
+	    "'$CALLER_AUTHORITY' in $BLUE_AUTHS and $AUTHORITY_NODE_TOTAL > 4",
             "assertion" : "AM.EXCEEDS_QUOTA<-$CALLER"
             },
         {

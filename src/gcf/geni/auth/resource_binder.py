@@ -133,8 +133,8 @@ class ResourceMeasurementState:
         self._meas_total = self._meas_total + value
 
         # Update HOURS
-        dt = (end_time - start_time).total_seconds()
-        num_hours = dt / 3600.0
+        dt = (end_time - start_time)
+        num_hours = (dt.days*24) + (dt.seconds/3600.0)
         self._meas_hours = self._meas_hours + (value * num_hours)
 
         # Register times
