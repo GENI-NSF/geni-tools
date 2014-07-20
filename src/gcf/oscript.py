@@ -325,7 +325,7 @@ def load_config(opts, logger, config={}, filename=None):
                 logger.info("Setting option useSliceMembers based on omni_config setting")
                 opts.useSliceMembers = True
     # Config of ignoreconfigusers some value of true sets the option
-    if  hasattr(opts,'ignoreconfigusers') and config['omni'].has_key('ignoreconfigusers'):
+    if  hasattr(opts,'ignoreConfigUsers') and config['omni'].has_key('ignoreconfigusers'):
         usm = config['omni']['ignoreconfigusers'].strip().lower()
         if usm in ('t', 'true', 'y', 'yes', '1', 'on'):
             usm = True
