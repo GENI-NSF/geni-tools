@@ -23,6 +23,7 @@
 
 import gcf
 import json
+import logging
 from .base_authorizer import *
 from gcf.sfa.trust.credential_factory import CredentialFactory
 from gcf.sfa.trust.credential import Credential
@@ -62,6 +63,8 @@ class ABAC_Authorizer(Base_Authorizer):
 
         RULES_RAW = open(policy_file).read()
         self.RULES = json.loads(RULES_RAW)
+
+        self._logger = logging.getLogger('abac_auth')
 
         self._binders = \
             [self._initialize_binder(b) for b in self.RULES['binders']]

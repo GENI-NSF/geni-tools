@@ -136,6 +136,11 @@ def main(argv=None):
     authorizer_class = eval(authorizer_classname)
     authorizer = authorizer_class(opts.rootcadir, opts)
 
+    # Use XMLRPC authorizer if opt.remote_authorizer is set
+    if hasattr(opts, 'remote_authorizer'):
+        import xmlrpclib
+        authorizer = xmlrpclib.Server(opts.remote_authorizer)
+
     # Instantiate resource manager from 'authorizer_resource_manager' 
     # config argument. Default = None
     resource_manager = None

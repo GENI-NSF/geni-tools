@@ -96,7 +96,7 @@ class AMMethodContext:
                         args['slice_urn'] = the_slice.urn
                 credentials = self._normalize_credentials(self._credentials)
 
-            if self._authorizer:
+            if self._authorizer is not None:
                 current_allocations = []
                 requested_allocations = []
                 if self._resource_manager and self._resource_bindings:

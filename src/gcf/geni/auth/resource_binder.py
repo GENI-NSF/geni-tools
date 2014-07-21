@@ -22,6 +22,7 @@
 #----------------------------------------------------------------------       
 
 from .util import *
+import dateutil.parser
 
 # A class to compute resource bindings from a set of 
 # sliver entries. We take only those slivers that match the 
@@ -52,8 +53,8 @@ class ResourceBinder:
         sliver_urn = sliver_info['sliver_urn']
         slice_urn = sliver_info['slice_urn']
         user_urn = sliver_info['user_urn']
-        start_time = sliver_info['start_time']
-        end_time = sliver_info['end_time']
+        start_time = dateutil.parser.parse(sliver_info['start_time'])
+        end_time = dateutil.parser.parse(sliver_info['end_time'])
         measurements = sliver_info['measurements']
 
         project_urn = convert_slice_urn_to_project_urn(slice_urn)

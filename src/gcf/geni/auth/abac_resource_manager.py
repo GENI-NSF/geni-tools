@@ -79,8 +79,8 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                 entry = {'sliver_urn' : sliver.urn(),
                          'slice_urn' : slice_urn,
                          'user_urn' : user_urn,
-                         'start_time' : sliver.startTime(),
-                         'end_time' : sliver.endTime(),
+                         'start_time' : str(sliver.startTime()),
+                         'end_time' : str(sliver.endTime()),
                          'measurements' : {'NODE' : 1}}
                 sliver_info.append(entry)
 
@@ -119,8 +119,8 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
                 entry = {'sliver_urn' : 'not_set_yet',
                          'slice_urn' : slice_urn,
                          'user_urn' : user_urn,
-                         'start_time' : start_time,
-                         'end_time' : end_time,
+                         'start_time' : str(start_time),
+                         'end_time' : str(end_time),
                          'measurements' : {'NODE' : 1}}
                 sliver_info.append(entry)
 

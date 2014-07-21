@@ -1242,8 +1242,6 @@ class AggregateManager(object):
         self.logger = logging.getLogger('gcf.am3')
         self.authorizer = authorizer
         self.resource_manager = resource_manager
-        if authorizer:
-            authorizer._logger = self.logger
 
     def _exception_result(self, exception):
         output = str(exception)

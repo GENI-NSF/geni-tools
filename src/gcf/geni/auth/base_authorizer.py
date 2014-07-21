@@ -48,7 +48,7 @@ class AM_Methods:
 
 # Base class for all AM authorizers
 # Should call its base method to get proper logging
-class Base_Authorizer:
+class Base_Authorizer(object):
     def __init__(self, root_cert, opts):
         self._root_cert = root_cert
         self._opts = opts # Opts provided by user in GCF configuration
