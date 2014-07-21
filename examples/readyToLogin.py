@@ -397,12 +397,9 @@ def addNodeStatus(amUrl, amType, amLoginInfo):
 
 def addNodeStatusPG( amLoginInfo, amSliverStat ):
     for resourceDict in amSliverStat['geni_resources']:
-      if not resourceDict.has_key("pg_manifest"):
-        print "No pg_manifest in this entry"
-        continue
-      client_id = ""
-      if resourceDict["pg_manifest"].has_key("attributes") and resourceDict["pg_manifest"]["attributes"].has_key("client_id"):
-         client_id = resourceDict["pg_manifest"]["attributes"]["client_id"]
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
       geni_status = ""
       if resourceDict.has_key("geni_status"):
          geni_status = resourceDict["geni_status"]
@@ -410,7 +407,7 @@ def addNodeStatusPG( amLoginInfo, amSliverStat ):
       if resourceDict.has_key("pg_status"):
          am_status = resourceDict["pg_status"]
       for userLoginInfo in amLoginInfo:
-         if userLoginInfo['client_id'] != client_id:
+         if userLoginInfo['sliver_urn'] != sliver_urn:
             continue
          userLoginInfo['geni_status'] = geni_status
          userLoginInfo['am_status'] = am_status
@@ -462,10 +459,14 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
           #XXX nriga Keep track of keys, in the future we can verify what key goes with
           # which private key
           pgKeyList[userDict['login']].append(k['key'])  
-    for resourceDict in sliverStat['geni_resources']: 
+    for resourceDict in sliverStat['geni_resources']:
       if not resourceDict.has_key("pg_manifest"):
         print "No pg_manifest in this entry"
         continue
+      sliver_urn = ""
+      if resourceDict.has_key("geni_urn"):
+         sliver_urn = resourceDict["geni_urn"]
+
       if not resourceDict['pg_manifest'].has_key('children'):
         print "pg_manifest entry has no children"
         continue
@@ -512,16 +513,17 @@ def addNodeStatusCheckForPGFallback( userLoginInfo, sliverStat ):
                 # skip users for whom we already have login info
                 continue
             # add info for users not listed in the manifest
-            userLoginInfo.append({'authentication':'ssh-keys', 
+            userLoginInfo.append({'authentication':'ssh-keys',
                               'hostname':hostname,
                               'client_id': client_id,
+                              'sliver_urn': sliver_urn,
                               'port':port,
                               'username':user,
                               'keys' : keys,
                               'geni_status':geni_status,
                               'am_status':am_status
                              })
-    return userLoginInfo  
+    return userLoginInfo
   
 
 def getKeysForUser( amType, username, keyList ):
