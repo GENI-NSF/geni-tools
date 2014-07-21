@@ -4,8 +4,8 @@ gcf 2.7:
  * Omni
   * Fix nickname cache updating when temp and home directories are on 
     different disks - use `shutil.move`. (#646)
-  * Look for fallback agg_nick_cache in correct location (#662)
-  * Honor the useslicemembers and ignoreconfigusers options in the omni_config (#671)
+  * Look for fallback `agg_nick_cache` in correct location (#662)
+  * Honor the `useslicemembers` and `ignoreconfigusers` options in the `omni_config` (#671)
 
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
