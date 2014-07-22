@@ -65,7 +65,7 @@ class Base_Authorizer(object):
     #   args : Dictionary of name/value pairs of AM call arguments
     #   opts : Dictionary of user provided options
     def authorize(self, method, caller, creds, args, opts,
-                  current_allocations, requested_allocations):
+                  requested_allocation_state):
         if self._logger:
             caller_urn = gid.GID(string=caller).get_urn()
             template = "Authorizing %s %s #Creds = %s Args = %s Opts =%s"

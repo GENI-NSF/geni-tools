@@ -28,7 +28,7 @@ import gcf.sfa.trust.credential as credential
 import types
 import xml.dom.minidom
 
-# Class to provide current and requested resources
+# Class to provide requested resource states
 # so that the authorizer can enforce resource quota policies
 
 class Base_Resource_Manager:
@@ -36,10 +36,10 @@ class Base_Resource_Manager:
     def __init__(self):
         pass
 
-    # Return a list of all currently allocated slivers
-    # with sliver_urn, slice_urn, user_urn, start_time, end_time,  plus a list
-    # of all measurements about the sliver
-    # {meas_type : value}
+    # Return a list of proposed allocated slivers
+    # with sliver_urn, slice_urn, user_urn, start_time, end_time plus a list
+    # of all masurements about the sliver
+    # {meas : value}
     # e.g.
     # [
     #   {'sliver_urn' : sliver1, 'slice_urn' : slice1, 'user_urn' : user1, 
@@ -47,16 +47,8 @@ class Base_Resource_Manager:
     #     'measurements' : {'M1' : 3, 'M2' : 4}}
     #   ...
     # ]
-    def get_current_allocations(self, aggregate_manager,
-                                  arguments, options,  creds):
-        return []
-
-    # Return a list of proposed allocated slivers
-    # with sliver_urn, slice_urn, user_urn, start_time, end_time plus a list
-    # of all masurements about the sliver
-    # {meas : value}
-    def get_requested_allocations(self, aggregate_manager, 
-                                  arguments, options,  creds):
+    def get_requested_allocation_state(self, aggregate_manager, 
+                                       arguments, options,  creds):
         return []
 
 # Class for a Resource Manager for the GCF AM
@@ -65,6 +57,19 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
 
     def __init__(self):
         Base_Resource_Manager.__init__(self)
+
+    # Return combindation of current and requested allocations
+    # *** Needs to handle renew
+    def get_requested_allocation_state(self, aggregate_manager,
+                                       arguments, options, creds):
+        curr_allocations = \
+            self.get_current_allocations(aggregate_manager, arguments, 
+                                         options, creds)
+        req_allocations = \
+            self.get_requested_allocations(aggregate_manager, arguments, 
+                                           options, creds)
+
+        return curr_allocations + req_allocations
 
     # Get all current slivers and return them in proper format
     def get_current_allocations(self, aggregate_manager,

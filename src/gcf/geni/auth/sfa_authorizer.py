@@ -85,9 +85,9 @@ class SFA_Authorizer(Base_Authorizer):
     #   args : Dictionary of name/value pairs of AM call arguments
     #   opts : Dictionary of user provided options
     def authorize(self, method, caller, creds, args, opts,
-                  current_allocations, requested_allocations):
+                  requested_allocation_state):
         Base_Authorizer.authorize(self, method, caller, creds, args, opts,
-                                  current_allocations, requested_allocations)
+                                  requested_allocation_state)
 
 
         if method not in self.METHOD_ATTRIBUTES:

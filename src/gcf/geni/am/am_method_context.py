@@ -97,25 +97,19 @@ class AMMethodContext:
                 credentials = self._normalize_credentials(self._credentials)
 
             if self._authorizer is not None:
-                current_allocations = []
-                requested_allocations = []
+                requested_allocation_state = []
                 if self._resource_manager and self._resource_bindings:
                     my_am = self._aggregate_manager
                     my_rm = self._resource_manager
-                    current_allocations = \
-                        my_rm.get_current_allocations(my_am, args, 
-                                                      self._options, 
-                                                      credentials)
-                    requested_allocations = \
-                        my_rm.get_requested_allocations(my_am, args, 
-                                                        self._options, 
-                                                        credentials)
+                    requested_allocation_state = \
+                        my_rm.get_requested_allocation_state(my_am, args, 
+                                                              self._options, 
+                                                              credentials)
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
                                            credentials, args, 
                                            self._options,
-                                           current_allocations,
-                                           requested_allocations)
+                                           requested_allocation_state)
         except Exception, e:
             self._handleError(e)
         finally:

@@ -97,9 +97,9 @@ class ABAC_Authorizer(Base_Authorizer):
     #   Generate corresponding ABAC assertions 
     # Try to prove all the positive queries and none of the negative queries
     def authorize(self, method, caller, creds, args, opts,
-                  current_allocations, requested_allocations):
+                  requested_allocation_state):
         Base_Authorizer.authorize(self, method, caller, creds, args, opts,
-                                  current_allocations, requested_allocations)
+                                  requested_allocation_state)
         self._logger.info("In ABAC AUTHORIZER...")
 
         caller_keyid = self._compute_keyid(cert_string=caller)
@@ -113,8 +113,7 @@ class ABAC_Authorizer(Base_Authorizer):
 
         resource_bindings = \
             self._generate_resource_bindings(caller, args,
-                                             current_allocations, 
-                                             requested_allocations)
+                                             requested_allocation_state)
         bindings = dict(bindings.items() + resource_bindings.items())
 
         self._logger.info("BINDINGS = %s" % bindings)
@@ -193,11 +192,9 @@ class ABAC_Authorizer(Base_Authorizer):
 
     # Generate bindings based on current and requested resource allocations
     def _generate_resource_bindings(self, caller, args, 
-                                    current_allocations, 
-                                    requested_allocations):
+                                    requested_allocation_state):
 
-        print "CURRENT = %s" % current_allocations
-        print "REQUESTED = %s" % requested_allocations
+        print "REQUESTED = %s" % requested_allocation_state
 
         bindings = {}
 
@@ -211,7 +208,7 @@ class ABAC_Authorizer(Base_Authorizer):
 
         resource_binder = ResourceBinder(caller_urn, slice_urn, 
                                            project_urn, authority_urn)
-        for sliver_info in (current_allocations + requested_allocations):
+        for sliver_info in requested_allocation_state:
             resource_binder.updateForSliver(sliver_info)
 
         bindings = resource_binder.getBindings()
