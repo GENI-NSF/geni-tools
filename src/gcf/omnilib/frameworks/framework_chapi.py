@@ -471,7 +471,7 @@ class Framework(Framework_Base):
             # In V1, we get a dictionary of KEY_MEMBER => KEY_PUBLIC, KEY_PRIVATE
             # In V2, we get a dictionary of KEY_ID => KEY_MEMBER, KEY_PUBLIC, KEY_PRIVATE
             # We only asked for one person so flip back to V1 format
-            if res['code'] == 0:
+            if res and res['code'] == 0:
                 res['value'] = {fetch_urn : res['value'].values()}
 
         keys = []
