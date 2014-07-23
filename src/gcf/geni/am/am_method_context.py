@@ -102,9 +102,11 @@ class AMMethodContext:
                     my_am = self._aggregate_manager
                     my_rm = self._resource_manager
                     requested_allocation_state = \
-                        my_rm.get_requested_allocation_state(my_am, args, 
-                                                              self._options, 
-                                                              credentials)
+                        my_rm.get_requested_allocation_state(my_am, 
+                                                             self._method_name, 
+                                                             args, 
+                                                             self._options, 
+                                                             credentials)
                 self._authorizer.authorize(self._method_name, 
                                            self._caller_cert, 
                                            credentials, args, 

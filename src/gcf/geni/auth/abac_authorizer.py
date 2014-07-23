@@ -65,6 +65,7 @@ class ABAC_Authorizer(Base_Authorizer):
         self.RULES = json.loads(RULES_RAW)
 
         self._logger = logging.getLogger('abac_auth')
+        logging.basicConfig(level=logging.INFO)
 
         self._binders = \
             [self._initialize_binder(b) for b in self.RULES['binders']]
@@ -100,6 +101,7 @@ class ABAC_Authorizer(Base_Authorizer):
                   requested_allocation_state):
         Base_Authorizer.authorize(self, method, caller, creds, args, opts,
                                   requested_allocation_state)
+        self._logger.info("RAS = %s" % requested_allocation_state)
         self._logger.info("In ABAC AUTHORIZER...")
 
         caller_keyid = self._compute_keyid(cert_string=caller)
@@ -194,7 +196,7 @@ class ABAC_Authorizer(Base_Authorizer):
     def _generate_resource_bindings(self, caller, args, 
                                     requested_allocation_state):
 
-        print "REQUESTED = %s" % requested_allocation_state
+        self._logger.info("REQUESTED = %s" % requested_allocation_state)
 
         bindings = {}
 

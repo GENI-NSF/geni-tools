@@ -730,7 +730,7 @@ class AggregateManager(object):
                              self.logger, self.authorizer, 
                              self.resource_manager,
                              credentials, 
-                             args, options) as amc:
+                             args, options, resource_bindings=True) as amc:
             if not amc._error:
                 amc._result = self._delegate.CreateSliver(slice_urn, 
                                                           credentials,
@@ -771,7 +771,7 @@ class AggregateManager(object):
         with AMMethodContext(self, AM_Methods.RENEW_SLIVER_V2,
                              self.logger, self.authorizer, credentials,
                              self.resource_manager,
-                             args, options) as amc:
+                             args, options, resource_bindings=True) as amc:
             if not amc._error:
                 amc._result = \
                     self._delegate.RenewSliver(slice_urn, credentials, 

@@ -26,7 +26,9 @@ import dateutil.parser
 import gcf.sfa.trust.gid as gid
 import gcf.sfa.trust.credential as credential
 import types
+from ..util.tz_util import tzd
 import xml.dom.minidom
+from .base_authorizer import AM_Methods
 
 # Class to provide requested resource states
 # so that the authorizer can enforce resource quota policies
@@ -47,7 +49,7 @@ class Base_Resource_Manager:
     #     'measurements' : {'M1' : 3, 'M2' : 4}}
     #   ...
     # ]
-    def get_requested_allocation_state(self, aggregate_manager, 
+    def get_requested_allocation_state(self, aggregate_manager, method_name,
                                        arguments, options,  creds):
         return []
 
@@ -59,21 +61,65 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
         Base_Resource_Manager.__init__(self)
 
     # Return combindation of current and requested allocations
-    # *** Needs to handle renew
-    def get_requested_allocation_state(self, aggregate_manager,
-                                       arguments, options, creds):
-        curr_allocations = \
-            self.get_current_allocations(aggregate_manager, arguments, 
-                                         options, creds)
-        req_allocations = \
-            self.get_requested_allocations(aggregate_manager, arguments, 
-                                           options, creds)
+    def get_requested_allocation_state(self, aggregate_manager, method_name,
+                                       arguments, options, credentials):
 
-        return curr_allocations + req_allocations
+
+        if method_name in (AM_Methods.CREATE_SLIVER_V2, AM_Methods.ALLOCATE_V3):
+
+            creds = [credential.Credential(string=c) for c in credentials]
+
+            # Concatenate the current allocations and requested, since
+            # these must be distinct
+            curr_allocations = \
+                self.get_current_allocations(aggregate_manager, arguments, 
+                                             options, creds)
+            req_allocations = \
+                self.get_requested_allocations(aggregate_manager, arguments, 
+                                               options, creds)
+
+            return curr_allocations + req_allocations
+
+        elif method_name in (AM_Methods.RENEW_SLIVER_V2, AM_Methods.RENEW_V3):
+
+            amd = aggregate_manager._delegate
+            creds = [credential.Credential(string=c) for c in credentials]
+
+            # Grab current allocations
+            curr_allocations = \
+                self.get_current_allocations(aggregate_manager, arguments, 
+                                             options, creds)
+            # get slice credential expiration time
+            expiration = amd.min_expire(creds, max_duration=amd.max_lease)
+            # get requested end time
+            requested_str = arguments['expiration_time']
+            requested = dateutil.parser.parse(requested_str, tzinfos=tzd)
+            requested = amd._naiveUTC(requested)
+            # if --alap use credential end time
+            if "geni_extend_alap" in options:
+                requested = min(expiration, requested)
+            
+            requested = str(requested)
+                
+            # go over all slivers in curr_allocations and change end time
+            # of those we're trying to change 
+            # (slivers of slice or specific slivers)
+            urns = arguments['urns']
+            the_slice, slivers = amd.decode_urns(urns)
+            sliver_urns = [the_sliver.urn() for the_sliver in slivers]
+            for sliver_info in curr_allocations:
+                if sliver_info['sliver_urn'] in sliver_urns:
+                    sliver_info['end_time'] = requested
+
+            return curr_allocations
+                                             
+        else:
+            return []
+
 
     # Get all current slivers and return them in proper format
     def get_current_allocations(self, aggregate_manager,
-                                arguments, options, credentials):
+                                arguments, options, creds):
 
         sliver_info = []
         slices = aggregate_manager._delegate._slices
@@ -95,12 +141,12 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
     # many nodes are being requested over what time ranges
     # and compute the sliver info accordingly
     def get_requested_allocations(self, aggregate_manager, 
-                                  arguments, options, credentials):
+                                  arguments, options, creds):
         if 'rspec' not in arguments: return []
         if 'slice_urn' not in arguments: return []
 
         amd = aggregate_manager._delegate
-
+            
         sliver_info = []
         slice_urn = arguments['slice_urn']
         user_urn = gid.GID(string=options['geni_true_caller_cert']).get_urn()
@@ -110,7 +156,6 @@ class GCFAM_Resource_Manager(Base_Resource_Manager):
             raw_start_time = options['geni_start_time']
             start_time = amd._naiveUTC(dateutil.parser.parse(raw_start_time))
 
-        creds = [credential.Credential(string=c) for c in credentials]
         if 'geni_end_time' in options:
             raw_end_time = options['geni_end_time']
             end_time = amd.min_expire(creds, requested=raw_end_time)

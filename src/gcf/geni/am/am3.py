@@ -959,6 +959,8 @@ class ReferenceAggregateManager(object):
             # Renew all the named slivers
             for sliver in slivers:
                 sliver.setExpiration(requested)
+                end_time = max(sliver.endTime(), requested)
+                sliver.setEndTime(end_time)
 
         geni_slivers = [s.status() for s in slivers]
         return self.successResult(geni_slivers)
@@ -1394,7 +1396,8 @@ class AggregateManager(object):
                              self.logger, self.authorizer, 
                              self.resource_manager,
                              credentials,
-                             args, options, is_v3 = True) as amc:
+                             args, options, is_v3 = True,
+                             resource_bindings=True) as amc:
             if not amc._error:
                 amc._result = \
                     self._delegate.Renew(urns, credentials, expiration_time, 
