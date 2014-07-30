@@ -1964,6 +1964,8 @@ class Aggregate(object):
                 omniargs = ['-o', '--raise-error-on-v2-amapi-error', '-V%d' % self.api_version, '-a', self.url, opName, slicename]
             try:
                 # FIXME: Suppressing all but WARN messages, but I'll lose PG log URL?
+                # FIXME: Currently I see this info: 11:24:37 INFO    : Getting credential from file 
+                # Suppress using the code that manipulatest levels on handlers as around line 1186?
                 (text, result) = self.doAMAPICall(omniargs, opts, opName, slicename, ctr, suppressLogs=True)
                 self.logger.debug("%s %s at %s got: %s", opName, slicename, self, text)
             except Exception, e:
