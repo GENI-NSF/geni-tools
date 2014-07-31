@@ -10,6 +10,7 @@ gcf 2.7:
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
   * In `devmode`, keep going if request RSpec is of wrong schema. (#673)
+  * Always allow a request RSpec of either PGv2 or GENIv3. (#673)
   * Added new option `useSCSSugg` to always use VLAN tags picked
     by the SCS, not letting the AM pick. (#675)
 

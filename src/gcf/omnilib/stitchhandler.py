@@ -961,8 +961,9 @@ class StitchingHandler(object):
             raise OmniError("Empty %s rspec" % typeStr)
         if not is_rspec_string(requestString, None, None, logger=self.logger):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
-        if not is_rspec_of_type(requestString, rspecType):
+#        if not is_rspec_of_type(requestString, rspecType):
 #        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
+        if not (is_rspec_of_type(requestString, rspecType, "GENI 3", False) or is_rspec_of_type(requestString, rspecType, "ProtoGENI 2", False)):
             if self.opts.devmode:
                 self.logger.info("RSpec of wrong type or schema, but continuing...")
             else:
@@ -975,7 +976,7 @@ class StitchingHandler(object):
             except:
                 self.logger.debug("No rspeclint found")
                 return
-            # FIXME: Make this support GENIv4+?
+            # FIXME: Make this support GENIv4+? PGv2?
             schema = rspec_schema.GENI_3_REQ_SCHEMA
             if rspecType == rspec_schema.MANIFEST:
                 schema = rspec_schema.GENI_3_MAN_SCHEMA
