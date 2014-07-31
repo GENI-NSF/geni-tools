@@ -9,6 +9,7 @@ gcf 2.7:
 
  * Stitcher
   * Avoid requesting VLAN tag 'any' at OESS and DCN AMs. (#644)
+  * In `devmode`, keep going if request RSpec is of wrong schema. (#673)
 
  * readyToLogin
    * Handle when omni switches AM API version number (#643)

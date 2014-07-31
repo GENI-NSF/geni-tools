@@ -961,7 +961,10 @@ class StitchingHandler(object):
             raise OmniError("%s RSpec file did not contain an RSpec" % typeStr)
         if not is_rspec_of_type(requestString, rspecType):
 #        if not is_rspec_of_type(requestString, rspecType, "GENI 3", False, logger=self.logger):
-            raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
+            if self.opts.devmode:
+                self.logger.info("RSpec of wrong type or schema, but continuing...")
+            else:
+                raise OmniError("%s RSpec file did not contain a %s RSpec (wrong type or schema)" % (typeStr, typeStr))
 
         # Run rspeclint
         if doRSpecLint:
